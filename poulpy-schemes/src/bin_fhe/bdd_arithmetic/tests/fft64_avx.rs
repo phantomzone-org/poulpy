@@ -5,7 +5,7 @@ use poulpy_cpu_avx::FFT64Avx;
 use crate::bin_fhe::{bdd_arithmetic::tests::test_suite, blind_rotation::CGGI};
 
 static TEST_CONTEXT_CGGI_FFT64_REF: LazyLock<test_suite::TestContext<CGGI, FFT64Avx>> =
-    LazyLock::new(|| test_suite::TestContext::<CGGI, FFT64Avx>::new());
+    LazyLock::new(test_suite::TestContext::<CGGI, FFT64Avx>::new);
 
 #[test]
 fn glwe_blind_retriever() {

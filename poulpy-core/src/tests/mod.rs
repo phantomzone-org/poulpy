@@ -4,10 +4,10 @@ pub mod test_suite;
 mod serialization;
 
 #[cfg(test)]
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
 mod poulpy_core {
     use poulpy_hal::backend_test_suite;
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     backend_test_suite!(
     mod cpu_avx,
     backend = poulpy_cpu_avx::FFT64Avx,
@@ -69,8 +69,13 @@ mod poulpy_core {
         lwe_to_glwe => crate::tests::test_suite::test_lwe_to_glwe,
     }
     );
+}
 
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
+#[cfg(test)]
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+mod poulpy_core {
+    use poulpy_hal::backend_test_suite;
+
     backend_test_suite!(
     mod cpu_ref,
     backend = poulpy_cpu_ref::FFT64Ref,

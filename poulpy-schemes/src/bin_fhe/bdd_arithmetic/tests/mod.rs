@@ -1,9 +1,9 @@
 pub mod test_suite;
 
 #[cfg(test)]
-#[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
 mod fft64_ref;
 
 #[cfg(test)]
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
 mod fft64_avx;

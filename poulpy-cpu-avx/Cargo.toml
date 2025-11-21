@@ -9,6 +9,9 @@ repository = "https://github.com/phantomzone-org/poulpy"
 homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
+[features]
+enable-avx = []
+
 [dependencies]
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}

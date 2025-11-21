@@ -6,7 +6,13 @@ use poulpy_core::layouts::{
 use std::{hint::black_box, time::Duration};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use poulpy_cpu_ref::FFT64Ref;
+
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
+
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
+
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Module, ScratchOwned},
@@ -27,7 +33,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << p.log_n);
+        let module: Module<BackendImpl> = Module::<BackendImpl>::new(1 << p.log_n);
 
         let n: Degree = Degree(module.n() as u32);
         let base2k: Base2K = p.base2k;
@@ -66,7 +72,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_layout);
         let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
 
-        let mut scratch: ScratchOwned<FFT64Ref> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<BackendImpl> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_atk_layout)
                 | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_in_layout)
                 | GLWE::keyswitch_tmp_bytes(
@@ -84,7 +90,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_in_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Ref> = GLWESecretPrepared::alloc(&module, rank);
+        let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank);
         sk_in_dft.prepare(&module, &sk_in);
 
         ksk.encrypt_sk(
@@ -150,7 +156,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << p.log_n);
+        let module: Module<BackendImpl> = Module::<BackendImpl>::new(1 << p.log_n);
 
         let n: Degree = Degree(module.n() as u32);
         let base2k: Base2K = p.base2k;
@@ -181,7 +187,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_layout);
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_layout);
 
-        let mut scratch: ScratchOwned<FFT64Ref> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<BackendImpl> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_layout)
                 | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_layout)
                 | GLWE::keyswitch_tmp_bytes(&module, &glwe_layout, &glwe_layout, &gglwe_layout),
@@ -194,7 +200,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Ref> = GLWESecretPrepared::alloc(&module, rank);
+        let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank);
         sk_in_dft.prepare(&module, &sk_in);
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);

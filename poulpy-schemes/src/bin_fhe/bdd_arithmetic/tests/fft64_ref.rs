@@ -5,7 +5,7 @@ use poulpy_cpu_ref::FFT64Ref;
 use crate::bin_fhe::{bdd_arithmetic::tests::test_suite, blind_rotation::CGGI};
 
 static TEST_CONTEXT_CGGI_FFT64_REF: LazyLock<test_suite::TestContext<CGGI, FFT64Ref>> =
-    LazyLock::new(|| test_suite::TestContext::<CGGI, FFT64Ref>::new());
+    LazyLock::new(test_suite::TestContext::<CGGI, FFT64Ref>::new);
 
 #[test]
 fn glwe_blind_retriever() {

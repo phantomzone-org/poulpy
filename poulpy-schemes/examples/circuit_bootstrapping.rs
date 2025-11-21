@@ -8,10 +8,10 @@ use poulpy_core::{
 };
 use std::time::Instant;
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
 use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 
-#[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{

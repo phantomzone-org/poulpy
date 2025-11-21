@@ -367,12 +367,8 @@ fn test_vec_znx_normalize_conv() {
 
             let out_prec: u32 = (end_size * end_base2k) as u32;
 
-            let mut data_want: Vec<Float> = (0..n)
-                .map(|_| Float::with_val(out_prec as u32, 0))
-                .collect();
-            let mut data_res: Vec<Float> = (0..n)
-                .map(|_| Float::with_val(out_prec as u32, 0))
-                .collect();
+            let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec, 0)).collect();
+            let mut data_res: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec, 0)).collect();
 
             have.decode_vec_float(end_base2k, 0, &mut data_want);
             want.decode_vec_float(end_base2k, 0, &mut data_res);

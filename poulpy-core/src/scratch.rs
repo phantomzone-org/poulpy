@@ -358,7 +358,7 @@ where
         let pairs: u32 = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1);
         let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(pairs);
-        let (data, scratch) = self.take_gglwe(infos);
+        let (data, scratch) = self.take_gglwe(&ksk_infos);
         (GLWETensorKey(data), scratch)
     }
 
@@ -377,7 +377,7 @@ where
         let pairs: u32 = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1);
         let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(pairs);
-        let (data, scratch) = self.take_gglwe_prepared(module, infos);
+        let (data, scratch) = self.take_gglwe_prepared(module, &ksk_infos);
         (GLWETensorKeyPrepared(data), scratch)
     }
 }

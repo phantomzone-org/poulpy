@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: recursive
@@ -21,7 +21,7 @@ jobs:
       with:
         components: clippy, rustfmt
 
-    - name: Cache cargo dependencies
+    - name: Cache cargo deps
       uses: actions/cache@v4
       with:
         path: |
@@ -32,14 +32,48 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Build
-      run: cargo build --all-targets
+    # Detect whether runner supports AVX2 + FMA
+    - name: Detect AVX support
+      id: avxcheck
+      run: |
+        if lscpu | grep -qi avx2 && lscpu | grep -qi fma; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
 
-    - name: Clippy (deny warnings)
-      run: cargo clippy --workspace --all-targets --all-features
-
+    # rustfmt always runs — unrelated to AVX support
     - name: rustfmt (check only)
       run: cargo fmt --all --check
 
-    - name: Run tests
-      run: cargo test --all
+    # Build / lint / test WITH AVX
+    - name: Build (AVX enabled)
+      if: steps.avxcheck.outputs.supported == 'true'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma" \
+        cargo build --workspace --all-targets --features enable-avx
+
+    - name: Clippy (AVX enabled)
+      if: steps.avxcheck.outputs.supported == 'true'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma" \
+        cargo clippy --workspace --all-targets --features enable-avx -- -D warnings
+
+    - name: Tests (AVX enabled)
+      if: steps.avxcheck.outputs.supported == 'true'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma" \
+        cargo test --workspace --features enable-avx
+
+    # Build / lint / test WITHOUT AVX
+    - name: Build (portable mode)
+      if: steps.avxcheck.outputs.supported == 'false'
+      run: cargo build --workspace --all-targets
+
+    - name: Clippy (portable mode)
+      if: steps.avxcheck.outputs.supported == 'false'
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: Tests (portable mode)
+      if: steps.avxcheck.outputs.supported == 'false'
+      run: cargo test --workspace
