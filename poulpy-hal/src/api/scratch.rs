@@ -1,6 +1,6 @@
 use crate::{
-    api::{ModuleN, SvpPPolBytesOf, VecZnxBigBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
-    layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    api::{CnvPVecBytesOf, ModuleN, SvpPPolBytesOf, VecZnxBigBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
+    layouts::{Backend, CnvPVecL, CnvPVecR, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
 };
 
 /// Allocates a new [crate::layouts::ScratchOwned] of `size` aligned bytes.
@@ -56,6 +56,28 @@ pub trait ScratchTakeBasic
 where
     Self: TakeSlice,
 {
+    fn take_cnv_pvec_left<M, B: Backend>(&mut self, module: &M, cols: usize, size: usize) -> (CnvPVecL<&mut [u8], B>, &mut Self)
+    where
+        M: ModuleN + CnvPVecBytesOf,
+    {
+        let (take_slice, rem_slice) = self.take_slice(module.bytes_of_cnv_pvec_left(cols, size));
+        (
+            CnvPVecL::from_data(take_slice, module.n(), cols, size),
+            rem_slice,
+        )
+    }
+
+    fn take_cnv_pvec_right<M, B: Backend>(&mut self, module: &M, cols: usize, size: usize) -> (CnvPVecR<&mut [u8], B>, &mut Self)
+    where
+        M: ModuleN + CnvPVecBytesOf,
+    {
+        let (take_slice, rem_slice) = self.take_slice(module.bytes_of_cnv_pvec_right(cols, size));
+        (
+            CnvPVecR::from_data(take_slice, module.n(), cols, size),
+            rem_slice,
+        )
+    }
+
     fn take_scalar_znx(&mut self, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
         let (take_slice, rem_slice) = self.take_slice(ScalarZnx::bytes_of(n, cols));
         (ScalarZnx::from_data(take_slice, n, cols), rem_slice)

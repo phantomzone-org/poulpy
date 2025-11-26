@@ -77,6 +77,18 @@ where
     }
 }
 
+impl<D: Data, B: Backend> CnvPVecR<D, B> {
+    pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 pub struct CnvPVecL<D: Data, BE: Backend> {
     data: D,
     n: usize,
@@ -143,6 +155,18 @@ where
             n,
             size,
             cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<D: Data, B: Backend> CnvPVecL<D, B> {
+    pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            size,
             _phantom: PhantomData,
         }
     }

@@ -1,6 +1,62 @@
 # CHANGELOG
 
-## [0.4.0] - 2025-10-27
+## [0.4.1] - 2025-11-26
+
+### Summary
+- Update convolution API to match spqlios-arithmetic & removed API for bivariate tensoring.
+
+## `poulpy-hal`
+- Removed `Backend` generic from `VecZnxBigAllocBytesImpl`.
+- Add `CnvPVecL` and `CnvPVecR` structs.
+- Add `CnvPVecBytesOf` and `CnvPVecAlloc` traits.
+- Add `Convolution` trait, which regroups the following methods:
+  - `cnv_prepare_left_tmp_bytes`
+  - `cnv_prepare_left`
+  - `cnv_prepare_right_tmp_bytes`
+  - `cnv_prepare_right`
+  - `cnv_apply_dft_tmp_bytes`
+  - `cnv_apply_dft`
+  - `cnv_pairwise_apply_dft_tmp_bytes`
+  - `cnv_pairwise_apply_dft`
+- Add `Reim4Convolution`, `Reim4Convolution1Coeff`, `Reim4Convolution2Coeffs`, `Reim4Save1BlkContiguous` traits.
+- Update signature `Reim4Extract1Blk` to `Reim4Extract1BlkContiguous`.
+- Add fft64 backend reference code for 
+  - `reim4_save_1blk_to_reim_contiguous_ref`
+  - `convolution_prepare_left`
+  - `convolution_prepare_right`
+  - `convolution_apply_dft_tmp_bytes`
+  - `convolution_apply_dft`
+  - `convolution_pairwise_apply_dft_tmp_bytes`
+  - `convolution_pairwise_apply_dft`
+- Add `take_cnv_pvec_left` and `take_cnv_pvec_right` methods to `ScratchTakeBasic` trait.
+- Add the following tests methods for convolution:
+  - `test_convolution`
+  - `test_convolution_pairwise`
+- Add the following benches methods for convolution:
+  - `bench_cnv_prepare_left`
+  - `bench_cnv_prepare_right`
+  - `bench_cnv_apply_dft`
+  - `bench_cnv_pairwise_apply_dft`
+
+## `poulpy-cpu-ref`
+- Implemented `ConvolutionImpl` OPE on `FFT64Ref` backend.
+- Add benchmark for convolution.
+- Add test for convolution.
+
+## `poulpy-cpu-avx`
+- Implemented `ConvolutionImpl` OPE on `FFT64Avx` backend.
+- Add benchmark for convolution.
+- Add test for convolution.
+- Add fft64 AVX code for
+  - `reim4_convolution_2coeffs_avx`
+  - `reim4_convolution_1coeff_avx`
+  - `reim4_save_1blk_to_reim_contiguous_avx`
+
+## `poulpy-core`
+- Temporary disabled `GLWETensoring` trait.
+
+
+## [0.4.0] - 2025-11-20
 
 ### Summary
 - Full support for base2k operations.
