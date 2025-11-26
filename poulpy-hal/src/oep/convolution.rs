@@ -1,6 +1,6 @@
 use crate::layouts::{
     Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxDftToMut,
-    VecZnxToRef, ZnxInfos, ZnxViewMut,
+    VecZnxToRef, ZnxInfos,
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -29,12 +29,12 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
     fn cnv_prepare_left_tmp_bytes_impl(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
     fn cnv_prepare_left_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
-        R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
-        A: VecZnxToRef + ZnxInfos;
+        R: CnvPVecLToMut<BE>,
+        A: VecZnxToRef;
     fn cnv_prepare_right_tmp_bytes_impl(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
     fn cnv_prepare_right_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
-        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        R: CnvPVecRToMut<BE>,
         A: VecZnxToRef + ZnxInfos;
     fn cnv_apply_dft_tmp_bytes_impl(
         module: &Module<BE>,
@@ -43,6 +43,7 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
         a_size: usize,
         b_size: usize,
     ) -> usize;
+    #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_impl<R, A, B>(
         module: &Module<BE>,
         res: &mut R,
@@ -52,6 +53,28 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
         a_col: usize,
         b: &B,
         b_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>;
+    fn cnv_pairwise_apply_dft_tmp_bytes(
+        module: &Module<BE>,
+        res_size: usize,
+        res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize;
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_pairwise_apply_dft_impl<R, A, B>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        b: &B,
+        i: usize,
+        j: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxDftToMut<BE>,

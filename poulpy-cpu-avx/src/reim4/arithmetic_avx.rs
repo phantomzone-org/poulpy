@@ -339,7 +339,6 @@ pub unsafe fn reim4_convolution_1coeff_avx(k: usize, dst: &mut [f64; 8], a: &[f6
 pub unsafe fn reim4_convolution_2coeffs_avx(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
     use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fnmadd_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
 
-    debug_assert!(k.is_multiple_of(2));
     debug_assert!(a.len() >= 8 * a_size);
     debug_assert!(b.len() >= 8 * b_size);
 
@@ -349,7 +348,7 @@ pub unsafe fn reim4_convolution_2coeffs_avx(k: usize, dst: &mut [f64; 16], a: &[
 
     // Since k is a multiple of two, if either k0 or k1 are out of range,
     // both are.
-    if k0 >= bound || k1 >= bound {
+    if k0 >= bound {
         unsafe {
             let zero: __m256d = _mm256_setzero_pd();
             let dst_ptr: *mut f64 = dst.as_mut_ptr();
@@ -370,70 +369,91 @@ pub unsafe fn reim4_convolution_2coeffs_avx(k: usize, dst: &mut [f64; 16], a: &[
         let j0_min: usize = (k0 + 1).saturating_sub(a_size);
         let j0_max: usize = (k0 + 1).min(b_size);
 
-        let j1_min: usize = (k1 + 1).saturating_sub(a_size);
-        let j1_max: usize = (k1 + 1).min(b_size);
+        if k1 >= bound {
+            let mut a_k0_ptr: *const f64 = a.as_ptr().add(8 * (k0 - j0_min));
+            let mut b_ptr: *const f64 = b.as_ptr().add(8 * j0_min);
 
-        let mut a_k0_ptr: *const f64 = a.as_ptr().add(8 * (k0 - j0_min));
-        let mut a_k1_ptr: *const f64 = a.as_ptr().add(8 * (k1 - j1_min));
-        let mut b_ptr: *const f64 = b.as_ptr().add(8 * j0_min);
+            // Region 1: contributions to k0 only, j ∈ [j0_min, j1_min)
+            for _ in 0..j0_max - j0_min {
+                let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
+                let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
+                let br: __m256d = _mm256_loadu_pd(b_ptr);
+                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
 
-        // Region 1: contributions to k0 only, j ∈ [j0_min, j1_min)
-        for _ in 0..j1_min - j0_min {
-            let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
-            let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-            let br: __m256d = _mm256_loadu_pd(b_ptr);
-            let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
+                acc_re_k0 = _mm256_fnmadd_pd(ai, bi, acc_re_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ar, bi, acc_im_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
 
-            acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
-            acc_re_k0 = _mm256_fnmadd_pd(ai, bi, acc_re_k0);
-            acc_im_k0 = _mm256_fmadd_pd(ar, bi, acc_im_k0);
-            acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
+                a_k0_ptr = a_k0_ptr.sub(8);
+                b_ptr = b_ptr.add(8);
+            }
+        } else {
+            let j1_min: usize = (k1 + 1).saturating_sub(a_size);
+            let j1_max: usize = (k1 + 1).min(b_size);
 
-            a_k0_ptr = a_k0_ptr.sub(8);
-            b_ptr = b_ptr.add(8);
-        }
+            let mut a_k0_ptr: *const f64 = a.as_ptr().add(8 * (k0 - j0_min));
+            let mut a_k1_ptr: *const f64 = a.as_ptr().add(8 * (k1 - j1_min));
+            let mut b_ptr: *const f64 = b.as_ptr().add(8 * j0_min);
 
-        // Region 2: overlap, contributions to both k0 and k1, j ∈ [j1_min, j0_max)
-        // We can save one load on b.
-        for _ in 0..j0_max - j1_min {
-            let ar0: __m256d = _mm256_loadu_pd(a_k0_ptr);
-            let ai0: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-            let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-            let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-            let br: __m256d = _mm256_loadu_pd(b_ptr);
-            let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+            // Region 1: contributions to k0 only, j ∈ [j0_min, j1_min)
+            for _ in 0..j1_min - j0_min {
+                let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
+                let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
+                let br: __m256d = _mm256_loadu_pd(b_ptr);
+                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
 
-            // k0
-            acc_re_k0 = _mm256_fmadd_pd(ar0, br, acc_re_k0);
-            acc_re_k0 = _mm256_fnmadd_pd(ai0, bi, acc_re_k0);
-            acc_im_k0 = _mm256_fmadd_pd(ar0, bi, acc_im_k0);
-            acc_im_k0 = _mm256_fmadd_pd(ai0, br, acc_im_k0);
+                acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
+                acc_re_k0 = _mm256_fnmadd_pd(ai, bi, acc_re_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ar, bi, acc_im_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
 
-            // k1
-            acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-            acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
-            acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
-            acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                a_k0_ptr = a_k0_ptr.sub(8);
+                b_ptr = b_ptr.add(8);
+            }
 
-            a_k0_ptr = a_k0_ptr.sub(8);
-            a_k1_ptr = a_k1_ptr.sub(8);
-            b_ptr = b_ptr.add(8);
-        }
+            // Region 2: overlap, contributions to both k0 and k1, j ∈ [j1_min, j0_max)
+            // We can save one load on b.
+            for _ in 0..j0_max - j1_min {
+                let ar0: __m256d = _mm256_loadu_pd(a_k0_ptr);
+                let ai0: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
+                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
+                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
+                let br: __m256d = _mm256_loadu_pd(b_ptr);
+                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
 
-        // Region 3: contributions to k1 only, j ∈ [j0_max, j1_max)
-        for _ in 0..j1_max - j0_max {
-            let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-            let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-            let br: __m256d = _mm256_loadu_pd(b_ptr);
-            let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                // k0
+                acc_re_k0 = _mm256_fmadd_pd(ar0, br, acc_re_k0);
+                acc_re_k0 = _mm256_fnmadd_pd(ai0, bi, acc_re_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ar0, bi, acc_im_k0);
+                acc_im_k0 = _mm256_fmadd_pd(ai0, br, acc_im_k0);
 
-            acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-            acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
-            acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
-            acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                // k1
+                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
+                acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
+                acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
+                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
 
-            a_k1_ptr = a_k1_ptr.sub(8);
-            b_ptr = b_ptr.add(8);
+                a_k0_ptr = a_k0_ptr.sub(8);
+                a_k1_ptr = a_k1_ptr.sub(8);
+                b_ptr = b_ptr.add(8);
+            }
+
+            // Region 3: contributions to k1 only, j ∈ [j0_max, j1_max)
+            for _ in 0..j1_max - j0_max {
+                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
+                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
+                let br: __m256d = _mm256_loadu_pd(b_ptr);
+                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+
+                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
+                acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
+                acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
+                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+
+                a_k1_ptr = a_k1_ptr.sub(8);
+                b_ptr = b_ptr.add(8);
+            }
         }
 
         // Store both coefficients
