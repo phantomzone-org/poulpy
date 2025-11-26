@@ -19,13 +19,16 @@ pub trait Convolution<BE: Backend> {
     where
         R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
+
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
     fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
+
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
+    #[allow(clippy::too_many_arguments)]
     /// Evaluates a bivariate convolution over Z[X, Y] / (X^N + 1) where Y = 2^-K over the
     /// selected columsn and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
@@ -58,6 +61,26 @@ pub trait Convolution<BE: Backend> {
         a_col: usize,
         b: &B,
         b_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>;
+
+    fn cnv_pairwise_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
+
+    #[allow(clippy::too_many_arguments)]
+    /// Evaluates the bivariate pair-wise convolution res = (a[i] + a[j]) * (b[i] + b[j]).
+    /// See [Convolution::cnv_apply_dft] for informations about the bivariate convolution.
+    fn cnv_pairwise_apply_dft<R, A, B>(
+        &self,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        b: &B,
+        i: usize,
+        j: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxDftToMut<BE>,

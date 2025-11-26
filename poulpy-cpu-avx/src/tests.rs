@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
-    test_suite::convolution::{test_bivariate_tensoring, test_convolution},
+    test_suite::convolution::{test_convolution, test_convolution_pairwise},
 };
 
 use crate::FFT64Avx;
@@ -123,13 +123,13 @@ mod poulpy_cpu_avx {
 }
 
 #[test]
-fn test_bivariate_tensoring_fft64_avx() {
-    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(64);
-    test_bivariate_tensoring(&module);
-}
-
-#[test]
 fn test_convolution_fft64_avx() {
     let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
     test_convolution(&module);
+}
+
+#[test]
+fn test_convolution_pairwise_fft64_avx() {
+    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
+    test_convolution_pairwise(&module);
 }

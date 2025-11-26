@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // Build the backend **only when ALL conditions are satisfied**
 // ─────────────────────────────────────────────────────────────
-//#![cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
+#![cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
 
 // If the user enables this backend but targets a non-x86_64 CPU → abort
 #[cfg(all(feature = "enable-avx", not(target_arch = "x86_64")))]

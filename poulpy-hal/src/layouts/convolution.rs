@@ -10,12 +10,13 @@ pub struct CnvPVecR<D: Data, BE: Backend> {
     data: D,
     n: usize,
     size: usize,
+    cols: usize,
     _phantom: PhantomData<BE>,
 }
 
 impl<D: Data, BE: Backend> ZnxInfos for CnvPVecR<D, BE> {
     fn cols(&self) -> usize {
-        1
+        self.cols
     }
 
     fn n(&self) -> usize {
@@ -58,6 +59,7 @@ where
             data: data.into(),
             n,
             size,
+            cols,
             _phantom: PhantomData,
         }
     }
@@ -69,6 +71,7 @@ where
             data: data.into(),
             n,
             size,
+            cols,
             _phantom: PhantomData,
         }
     }
@@ -78,12 +81,13 @@ pub struct CnvPVecL<D: Data, BE: Backend> {
     data: D,
     n: usize,
     size: usize,
+    cols: usize,
     _phantom: PhantomData<BE>,
 }
 
 impl<D: Data, BE: Backend> ZnxInfos for CnvPVecL<D, BE> {
     fn cols(&self) -> usize {
-        1
+        self.cols
     }
 
     fn n(&self) -> usize {
@@ -126,6 +130,7 @@ where
             data: data.into(),
             n,
             size,
+            cols,
             _phantom: PhantomData,
         }
     }
@@ -137,6 +142,7 @@ where
             data: data.into(),
             n,
             size,
+            cols,
             _phantom: PhantomData,
         }
     }
@@ -152,6 +158,7 @@ impl<D: DataRef, BE: Backend> CnvPVecRToRef<BE> for CnvPVecR<D, BE> {
             data: self.data.as_ref(),
             n: self.n,
             size: self.size,
+            cols: self.cols,
             _phantom: self._phantom,
         }
     }
@@ -167,6 +174,7 @@ impl<D: DataMut, BE: Backend> CnvPVecRToMut<BE> for CnvPVecR<D, BE> {
             data: self.data.as_mut(),
             n: self.n,
             size: self.size,
+            cols: self.cols,
             _phantom: self._phantom,
         }
     }
@@ -182,6 +190,7 @@ impl<D: DataRef, BE: Backend> CnvPVecLToRef<BE> for CnvPVecL<D, BE> {
             data: self.data.as_ref(),
             n: self.n,
             size: self.size,
+            cols: self.cols,
             _phantom: self._phantom,
         }
     }
@@ -197,6 +206,7 @@ impl<D: DataMut, BE: Backend> CnvPVecLToMut<BE> for CnvPVecL<D, BE> {
             data: self.data.as_mut(),
             n: self.n,
             size: self.size,
+            cols: self.cols,
             _phantom: self._phantom,
         }
     }

@@ -47,6 +47,7 @@ where
     {
         BE::cnv_prepare_left_impl(self, res, a, scratch);
     }
+
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize {
         BE::cnv_prepare_right_tmp_bytes_impl(self, res_size, a_size)
     }
@@ -57,6 +58,7 @@ where
     {
         BE::cnv_prepare_right_impl(self, res, a, scratch);
     }
+
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
         BE::cnv_apply_dft_tmp_bytes_impl(self, res_size, res_offset, a_size, b_size)
     }
@@ -76,5 +78,27 @@ where
         B: CnvPVecRToRef<BE>,
     {
         BE::cnv_apply_dft_impl(self, res, res_offset, res_col, a, a_col, b, b_col, scratch);
+    }
+
+    fn cnv_pairwise_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
+        BE::cnv_pairwise_apply_dft_tmp_bytes(self, res_size, res_offset, a_size, b_size)
+    }
+
+    fn cnv_pairwise_apply_dft<R, A, B>(
+        &self,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        b: &B,
+        i: usize,
+        j: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>,
+    {
+        BE::cnv_pairwise_apply_dft_impl(self, res, res_offset, res_col, a, b, i, j, scratch);
     }
 }
