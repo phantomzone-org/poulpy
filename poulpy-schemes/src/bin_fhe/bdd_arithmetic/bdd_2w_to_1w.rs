@@ -188,15 +188,35 @@ macro_rules! impl_bdd_2w_to_1w_trait {
         }
     };
 }
+
+// a + b
 define_bdd_2w_to_1w_trait!(pub Add, add);
+
+// a - b
 define_bdd_2w_to_1w_trait!(pub Sub, sub);
+
+// a << b
 define_bdd_2w_to_1w_trait!(pub Sll, sll);
+
+// a >> b arithmetic
 define_bdd_2w_to_1w_trait!(pub Sra, sra);
+
+// a >> b logical
 define_bdd_2w_to_1w_trait!(pub Srl, srl);
+
+// signed a < signed b
 define_bdd_2w_to_1w_trait!(pub Slt, slt);
+
+// unsigned a < unsigned b
 define_bdd_2w_to_1w_trait!(pub Sltu, sltu);
+
+// a or b
 define_bdd_2w_to_1w_trait!(pub Or, or);
+
+// a and b
 define_bdd_2w_to_1w_trait!(pub And, and);
+
+// a xor b
 define_bdd_2w_to_1w_trait!(pub Xor, xor);
 
 impl_bdd_2w_to_1w_trait!(
