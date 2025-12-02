@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -17,7 +17,7 @@ pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
@@ -30,8 +30,7 @@ use poulpy_schemes::bin_fhe::{
         BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
+        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
     },
 };
 
@@ -58,16 +57,10 @@ where
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
-        + GLWEExternalProduct<BE>
         + GLWEDecrypt<BE>
-        + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
-        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
-        + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
@@ -169,7 +162,7 @@ where
         a_enc_prepared,
         b_enc_prepared,
         bdd_key_prepared,
-        glwe_layout: params.glwe_layout.clone(),
+        glwe_layout: params.glwe_layout,
     }
 }
 
@@ -220,16 +213,11 @@ fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
-        + GLWEExternalProduct<BE>
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
-        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
-        + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
@@ -257,16 +245,11 @@ where
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
-        + GLWEExternalProduct<BE>
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
-        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
-        + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
@@ -286,7 +269,7 @@ where
     const RANK: u32 = 2;
 
     let params: Params = Params {
-        name: String::from(format!("n_glwe={N_GLWE}")),
+        name: format!("n_glwe={N_GLWE}"),
         block_size: BINARY_BLOCK_SIZE as usize,
         glwe_layout: GLWELayout {
             n: Degree(N_GLWE),

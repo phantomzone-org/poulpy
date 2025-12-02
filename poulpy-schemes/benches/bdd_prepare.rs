@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -17,22 +17,18 @@ pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared,
+        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, FheUintPrepare, FheUintPrepared,
     },
     blind_rotation::{
         BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },
-    circuit_bootstrapping::{
-        CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPreparedFactory,
-        CirtuitBootstrappingExecute,
-    },
+    circuit_bootstrapping::{CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout},
 };
 
 pub fn benc_bdd_prepare<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
@@ -40,20 +36,13 @@ where
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
-        + GLWEExternalProduct<BE>
         + GLWEDecrypt<BE>
-        + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
-        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
-        + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
-        + FheUintPrepare<BRA, BE>
-        + ExecuteBDDCircuit2WTo1W<BE>,
+        + FheUintPrepare<BRA, BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -75,20 +64,13 @@ where
         Module<BE>: ModuleNew<BE>
             + ModuleN
             + GLWESecretPreparedFactory<BE>
-            + GLWEExternalProduct<BE>
             + GLWEDecrypt<BE>
-            + LWEEncryptSk<BE>
             + CircuitBootstrappingKeyEncryptSk<BRA, BE>
-            + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-            + CirtuitBootstrappingExecute<BRA, BE>
             + GGSWPreparedFactory<BE>
-            + GGSWNoise<BE>
             + GLWEEncryptSk<BE>
-            + VecZnxRotateInplace<BE>
             + BDDKeyEncryptSk<BRA, BE>
             + BDDKeyPreparedFactory<BRA, BE>
-            + FheUintPrepare<BRA, BE>
-            + ExecuteBDDCircuit2WTo1W<BE>,
+            + FheUintPrepare<BRA, BE>,
         BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, /* TODO find a way to remove this bound or move it to CBT KEY */
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -157,7 +139,7 @@ where
     const RANK: u32 = 2;
 
     let params: Params = Params {
-        name: String::from(format!("n_glwe={N_GLWE}")),
+        name: format!("n_glwe={N_GLWE}"),
         block_size: BINARY_BLOCK_SIZE as usize,
         glwe_layout: GLWELayout {
             n: Degree(N_GLWE),

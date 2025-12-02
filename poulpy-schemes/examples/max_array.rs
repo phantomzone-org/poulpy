@@ -76,37 +76,34 @@ where
         dsize: Dsize(1),
     };
 
-    // Used to generate CBT Keys
-    let cbt_layout = CircuitBootstrappingKeyLayout {
-        brk_layout: BlindRotationKeyLayout {
-            n_glwe: Degree(N_GLWE),
-            n_lwe: Degree(N_LWE),
-            base2k: Base2K(BASE2K),
-            k: TorusPrecision(4 * BASE2K),
-            dnum: Dnum(4),
-            rank: Rank(RANK),
-        },
-        atk_layout: GLWEAutomorphismKeyLayout {
-            n: Degree(N_GLWE),
-            base2k: Base2K(BASE2K),
-            k: TorusPrecision(4 * BASE2K),
-            dnum: Dnum(4),
-            dsize: Dsize(1),
-            rank: Rank(RANK),
-        },
-        tsk_layout: GGLWEToGGSWKeyLayout {
-            n: Degree(N_GLWE),
-            base2k: Base2K(BASE2K),
-            k: TorusPrecision(4 * BASE2K),
-            dnum: Dnum(4),
-            dsize: Dsize(1),
-            rank: Rank(RANK),
-        },
-    };
-
     // Used to generate BDD Keys, for the arithmetic operations
     let bdd_layout = BDDKeyLayout {
-        cbt_layout: cbt_layout,
+        cbt_layout: CircuitBootstrappingKeyLayout {
+            brk_layout: BlindRotationKeyLayout {
+                n_glwe: Degree(N_GLWE),
+                n_lwe: Degree(N_LWE),
+                base2k: Base2K(BASE2K),
+                k: TorusPrecision(4 * BASE2K),
+                dnum: Dnum(4),
+                rank: Rank(RANK),
+            },
+            atk_layout: GLWEAutomorphismKeyLayout {
+                n: Degree(N_GLWE),
+                base2k: Base2K(BASE2K),
+                k: TorusPrecision(4 * BASE2K),
+                dnum: Dnum(4),
+                dsize: Dsize(1),
+                rank: Rank(RANK),
+            },
+            tsk_layout: GGLWEToGGSWKeyLayout {
+                n: Degree(N_GLWE),
+                base2k: Base2K(BASE2K),
+                k: TorusPrecision(4 * BASE2K),
+                dnum: Dnum(4),
+                dsize: Dsize(1),
+                rank: Rank(RANK),
+            },
+        },
         ks_glwe_layout: Some(GLWESwitchingKeyLayout {
             n: Degree(N_GLWE),
             base2k: Base2K(BASE2K),
@@ -212,7 +209,7 @@ where
 
         let mut input_i_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
             FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-        input_i_enc_prepared.prepare(&module, &input_i, &bdd_key_prepared, scratch.borrow());
+        input_i_enc_prepared.prepare(&module, input_i, &bdd_key_prepared, scratch.borrow());
 
         // b = (input_i < max)
         compare_enc.sltu(

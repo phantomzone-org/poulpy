@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -9,7 +9,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
@@ -41,18 +41,17 @@ use poulpy_cpu_ref::FFT64Ref;
 //
 // - Result Decryption
 //
+// There also is an example use of the GLWE Blind Selection operation,
+// which can choose between any number of encrypted fheuint inputs
 
 fn example_bdd_arithmetic<BE: Backend, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
-        + GLWEExternalProduct<BE>
         + GLWEDecrypt<BE>
-        + LWEEncryptSk<BE>
         + GGSWPreparedFactory<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
