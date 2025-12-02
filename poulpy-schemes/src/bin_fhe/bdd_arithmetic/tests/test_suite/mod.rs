@@ -165,8 +165,8 @@ pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
 };
 
 pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
-    cbt: CircuitBootstrappingKeyLayout {
-        layout_brk: BlindRotationKeyLayout {
+    cbt_layout: CircuitBootstrappingKeyLayout {
+        brk_layout: BlindRotationKeyLayout {
             n_glwe: Degree(TEST_N_GLWE),
             n_lwe: Degree(TEST_N_LWE),
             base2k: Base2K(TEST_BRK_BASE2K),
@@ -174,7 +174,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dnum: Dnum(4),
             rank: Rank(TEST_RANK),
         },
-        layout_atk: GLWEAutomorphismKeyLayout {
+        atk_layout: GLWEAutomorphismKeyLayout {
             n: Degree(TEST_N_GLWE),
             base2k: Base2K(TEST_ATK_BASE2K),
             k: TorusPrecision(52),
@@ -182,7 +182,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dnum: Dnum(4),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWEToGGSWKeyLayout {
+        tsk_layout: GGLWEToGGSWKeyLayout {
             n: Degree(TEST_N_GLWE),
             base2k: Base2K(TEST_TSK_BASE2K),
             k: TorusPrecision(52),
@@ -191,7 +191,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dsize: Dsize(1),
         },
     },
-    ks_glwe: Some(GLWESwitchingKeyLayout {
+    ks_glwe_layout: Some(GLWESwitchingKeyLayout {
         n: Degree(TEST_N_GLWE),
         base2k: Base2K(TEST_LWE_BASE2K),
         k: TorusPrecision(20),
@@ -200,7 +200,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
         dnum: Dnum(3),
         dsize: Dsize(1),
     }),
-    ks_lwe: GLWEToLWEKeyLayout {
+    ks_lwe_layout: GLWEToLWEKeyLayout {
         n: Degree(TEST_N_GLWE),
         base2k: Base2K(TEST_LWE_BASE2K),
         k: TorusPrecision(16),

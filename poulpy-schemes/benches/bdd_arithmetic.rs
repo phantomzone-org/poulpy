@@ -1,0 +1,437 @@
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use poulpy_core::{
+    GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
+        GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
+        LWESecret, Rank, TorusPrecision,
+    },
+};
+
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
+
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
+
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
+    source::Source,
+};
+use poulpy_schemes::bin_fhe::{
+    bdd_arithmetic::{
+        Add, And, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
+        FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,
+    },
+    blind_rotation::{
+        BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
+    },
+    circuit_bootstrapping::{
+        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
+    },
+};
+
+// Common setup data structure
+struct BenchmarkSetup<BE: Backend, BRA: BlindRotationAlgo> {
+    module: Module<BE>,
+    scratch: ScratchOwned<BE>,
+    a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE>,
+    b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE>,
+    bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE>,
+    glwe_layout: GLWELayout,
+}
+
+struct Params {
+    name: String,
+    block_size: usize,
+    glwe_layout: GLWELayout,
+    ggsw_layout: GGSWLayout,
+    bdd_layout: BDDKeyLayout,
+}
+
+fn setup_benchmark<BE: Backend, BRA: BlindRotationAlgo>(params: &Params) -> BenchmarkSetup<BE, BRA>
+where
+    Module<BE>: ModuleNew<BE>
+        + ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GLWEEncryptSk<BE>
+        + BDDKeyEncryptSk<BRA, BE>
+        + BDDKeyPreparedFactory<BRA, BE>
+        + FheUintPrepare<BRA, BE>
+        + ExecuteBDDCircuit2WTo1W<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    // Scratch space (16MB)
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 24);
+
+    let n_glwe: poulpy_core::layouts::Degree = params.bdd_layout.cbt_layout.brk_layout.n_glwe();
+    let n_lwe: poulpy_core::layouts::Degree = params.bdd_layout.cbt_layout.brk_layout.n_lwe();
+    let rank: poulpy_core::layouts::Rank = params.bdd_layout.cbt_layout.brk_layout.rank;
+
+    let module: Module<BE> = Module::<BE>::new(n_glwe.as_u32() as u64);
+
+    let mut source_xs: Source = Source::new([1u8; 32]);
+    let mut source_xa: Source = Source::new([1u8; 32]);
+    let mut source_xe: Source = Source::new([1u8; 32]);
+
+    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
+    sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
+
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
+    sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
+
+    // Circuit bootstrapping evaluation key
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> =
+        CircuitBootstrappingKey::alloc_from_infos(&params.bdd_layout.cbt_layout);
+    cbt_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
+    cbt_key_prepared.prepare(&module, &cbt_key, scratch.borrow());
+
+    let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &params.glwe_layout);
+    sk_glwe_prepared.prepare(&module, &sk_glwe);
+
+    let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
+    bdd_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    let input_a = 255_u32;
+    let input_b = 30_u32;
+
+    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&params.glwe_layout);
+    a_enc.encrypt_sk(
+        &module,
+        input_a,
+        &sk_glwe_prepared,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&params.glwe_layout);
+    b_enc.encrypt_sk(
+        &module,
+        input_b,
+        &sk_glwe_prepared,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    //////// Homomorphic computation starts here ////////
+
+    // Preparing the BDD Key
+    // The BDD key must be prepared once before any operation is performed
+    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
+    bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
+
+    // Input Preparation
+    // Before each operation, the inputs to that operation must be prepared
+    // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
+    let mut a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
+    a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
+
+    let mut b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
+    b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
+
+    BenchmarkSetup {
+        module,
+        scratch,
+        a_enc_prepared,
+        b_enc_prepared,
+        bdd_key_prepared,
+        glwe_layout: params.glwe_layout,
+    }
+}
+
+fn create_runner<BE: Backend, BRA: BlindRotationAlgo, F>(setup: BenchmarkSetup<BE, BRA>, operation: F) -> impl FnMut()
+where
+    Module<BE>: ExecuteBDDCircuit2WTo1W<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+    ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
+    F: Fn(
+        &mut FheUint<Vec<u8>, u32>,
+        &Module<BE>,
+        &FheUintPrepared<Vec<u8>, u32, BE>,
+        &FheUintPrepared<Vec<u8>, u32, BE>,
+        &BDDKeyPrepared<Vec<u8>, BRA, BE>,
+        &mut Scratch<BE>,
+    ),
+{
+    let BenchmarkSetup {
+        module,
+        mut scratch,
+        a_enc_prepared,
+        b_enc_prepared,
+        bdd_key_prepared,
+        glwe_layout,
+    } = setup;
+
+    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+
+    move || {
+        operation(
+            &mut c_enc,
+            &module,
+            &a_enc_prepared,
+            &b_enc_prepared,
+            &bdd_key_prepared,
+            scratch.borrow(),
+        );
+        black_box(());
+    }
+}
+
+fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
+    group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
+    params: &Params,
+    operation_name: &str,
+    operation: F,
+) where
+    Module<BE>: ModuleNew<BE>
+        + ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GLWEEncryptSk<BE>
+        + BDDKeyEncryptSk<BRA, BE>
+        + BDDKeyPreparedFactory<BRA, BE>
+        + FheUintPrepare<BRA, BE>
+        + ExecuteBDDCircuit2WTo1W<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+    F: Fn(
+            &mut FheUint<Vec<u8>, u32>,
+            &Module<BE>,
+            &FheUintPrepared<Vec<u8>, u32, BE>,
+            &FheUintPrepared<Vec<u8>, u32, BE>,
+            &BDDKeyPrepared<Vec<u8>, BRA, BE>,
+            &mut Scratch<BE>,
+        ) + 'static,
+{
+    let setup = setup_benchmark::<BE, BRA>(params);
+    let mut runner = create_runner(setup, operation);
+    let id = BenchmarkId::from_parameter(format!("{}_{}", params.name, operation_name));
+    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+}
+
+pub fn benc_bdd_arithmetic<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+where
+    Module<BE>: ModuleNew<BE>
+        + ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GLWEEncryptSk<BE>
+        + BDDKeyEncryptSk<BRA, BE>
+        + BDDKeyPreparedFactory<BRA, BE>
+        + FheUintPrepare<BRA, BE>
+        + ExecuteBDDCircuit2WTo1W<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let group_name: String = format!("bdd_arithmetic::{label}");
+
+    let mut group = c.benchmark_group(group_name);
+
+    const N_GLWE: u32 = 1024;
+    const N_LWE: u32 = 679;
+    const BINARY_BLOCK_SIZE: u32 = 7;
+    const BASE2K: u32 = 15;
+    const RANK: u32 = 2;
+
+    let params: Params = Params {
+        name: format!("n_glwe={N_GLWE}"),
+        block_size: BINARY_BLOCK_SIZE as usize,
+        glwe_layout: GLWELayout {
+            n: Degree(N_GLWE),
+            base2k: Base2K(BASE2K),
+            k: TorusPrecision(2 * BASE2K),
+            rank: Rank(RANK),
+        },
+        ggsw_layout: GGSWLayout {
+            n: Degree(N_GLWE),
+            base2k: Base2K(BASE2K),
+            k: TorusPrecision(3 * BASE2K),
+            rank: Rank(RANK),
+            dnum: Dnum(3),
+            dsize: Dsize(1),
+        },
+        bdd_layout: BDDKeyLayout {
+            cbt_layout: CircuitBootstrappingKeyLayout {
+                brk_layout: BlindRotationKeyLayout {
+                    n_glwe: Degree(N_GLWE),
+                    n_lwe: Degree(N_LWE),
+                    base2k: Base2K(BASE2K),
+                    k: TorusPrecision(4 * BASE2K),
+                    dnum: Dnum(4),
+                    rank: Rank(RANK),
+                },
+                atk_layout: GLWEAutomorphismKeyLayout {
+                    n: Degree(N_GLWE),
+                    base2k: Base2K(BASE2K),
+                    k: TorusPrecision(4 * BASE2K),
+                    dnum: Dnum(4),
+                    dsize: Dsize(1),
+                    rank: Rank(RANK),
+                },
+                tsk_layout: GGLWEToGGSWKeyLayout {
+                    n: Degree(N_GLWE),
+                    base2k: Base2K(BASE2K),
+                    k: TorusPrecision(4 * BASE2K),
+                    dnum: Dnum(4),
+                    dsize: Dsize(1),
+                    rank: Rank(RANK),
+                },
+            },
+            ks_glwe_layout: Some(GLWESwitchingKeyLayout {
+                n: Degree(N_GLWE),
+                base2k: Base2K(BASE2K),
+                k: TorusPrecision(4 * BASE2K),
+                dnum: Dnum(4),
+                dsize: Dsize(1),
+                rank_in: Rank(RANK),
+                rank_out: Rank(1),
+            }),
+            ks_lwe_layout: GLWEToLWEKeyLayout {
+                n: Degree(N_GLWE),
+                base2k: Base2K(BASE2K),
+                k: TorusPrecision(4 * BASE2K),
+                rank_in: Rank(1),
+                dnum: Dnum(4),
+            },
+        },
+    };
+
+    // Benchmark each operation
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "add",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.add(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "sub",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.sub(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "sll",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.sll(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "sra",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.sra(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "srl",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.srl(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "slt",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.slt(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "sltu",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.sltu(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "or",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.or(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "and",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.and(module, a, b, key, scratch);
+        },
+    );
+
+    bench_operation::<BE, BRA, _>(
+        &mut group,
+        &params,
+        "xor",
+        |c_enc, module, a, b, key, scratch| {
+            c_enc.xor(module, a, b, key, scratch);
+        },
+    );
+
+    group.finish();
+}
+
+fn bench_bdd_arithmetic_fft64(c: &mut Criterion) {
+    #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+    let label = "fft64_avx";
+    #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+    let label = "fft64_ref";
+    benc_bdd_arithmetic::<BackendImpl, CGGI>(c, label);
+}
+
+criterion_group!(benches, bench_bdd_arithmetic_fft64);
+criterion_main!(benches);

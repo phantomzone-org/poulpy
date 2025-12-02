@@ -77,8 +77,8 @@ fn main() {
     // GGLWE tensor key modulus
     let k_tsk: usize = (rows_tsk + 1) * base2k;
 
-    let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
-        layout_brk: BlindRotationKeyLayout {
+    let cbt_layout: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
+        brk_layout: BlindRotationKeyLayout {
             n_glwe: n_glwe.into(),
             n_lwe: n_lwe.into(),
             base2k: base2k.into(),
@@ -86,7 +86,7 @@ fn main() {
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GLWEAutomorphismKeyLayout {
+        atk_layout: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_trace.into(),
@@ -94,7 +94,7 @@ fn main() {
             dsize: 1_u32.into(),
             rank: rank.into(),
         },
-        layout_tsk: GGLWEToGGSWKeyLayout {
+        tsk_layout: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -134,12 +134,12 @@ fn main() {
     // LWE secret
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
-    sk_lwe.fill_zero();
+    // sk_lwe.fill_zero(); // for testing
 
     // GLWE secret
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    // sk_glwe.fill_zero();
+    // sk_glwe.fill_zero(); // for testing
 
     // GLWE secret prepared (opaque backend dependant write only struct)
     let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank.into());
@@ -151,7 +151,7 @@ fn main() {
     // LWE plaintext
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
 
-    // LWE plaintext(data * 2^{- (k_lwe_pt - 1)})
+    // LWE plaintext(data * 2^{- (k_lwe_pt + 1)})
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into()); // +1 for padding bit
 
     // Normalize plaintext to nicely print coefficients
@@ -174,7 +174,7 @@ fn main() {
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
-    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_layout);
 
     cbt_key.encrypt_sk(
         &module,
@@ -192,7 +192,7 @@ fn main() {
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
     let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
-        CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_infos);
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_layout);
     cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
     // Apply circuit bootstrapping: LWE(data * 2^{- (k_lwe_pt + 2)}) -> GGSW(data)

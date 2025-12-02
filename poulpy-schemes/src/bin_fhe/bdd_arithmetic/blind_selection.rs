@@ -8,9 +8,9 @@ use poulpy_hal::layouts::{Backend, Module, Scratch, ZnxZero};
 
 use crate::bin_fhe::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
-impl<T: UnsignedInteger, BE: Backend> GLWEBlinSelection<T, BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE> {}
+impl<T: UnsignedInteger, BE: Backend> GLWEBlindSelection<T, BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE> {}
 
-pub trait GLWEBlinSelection<T: UnsignedInteger, BE: Backend>
+pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend>
 where
     Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>,
 {

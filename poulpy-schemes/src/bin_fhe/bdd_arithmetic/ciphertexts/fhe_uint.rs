@@ -87,7 +87,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         &mut self,
         module: &M,
         data: T,
-        sk: &S,
+        sk_glwe: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
@@ -100,7 +100,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         {
             assert!(module.n().is_multiple_of(T::BITS as usize));
             assert_eq!(self.n(), module.n() as u32);
-            assert_eq!(sk.n(), module.n() as u32);
+            assert_eq!(sk_glwe.n(), module.n() as u32);
         }
 
         let mut data_bits: Vec<i64> = vec![0i64; module.n()];
@@ -122,7 +122,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
         self.bits
-            .encrypt_sk(module, &pt, sk, source_xa, source_xe, scratch_1);
+            .encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
     }
 }
 
@@ -150,7 +150,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
         self.bits.noise(module, &pt, sk, scratch_1)
     }
 
-    pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
+    pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk_glwe: &S, scratch: &mut Scratch<BE>) -> T
     where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEDecrypt<BE>,
@@ -160,7 +160,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
         {
             assert!(module.n().is_multiple_of(T::BITS as usize));
             assert_eq!(self.n(), module.n() as u32);
-            assert_eq!(sk.n(), module.n() as u32);
+            assert_eq!(sk_glwe.n(), module.n() as u32);
         }
 
         let pt_infos = GLWEPlaintextLayout {
@@ -171,7 +171,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
-        self.bits.decrypt(module, &mut pt, sk, scratch_1);
+        self.bits.decrypt(module, &mut pt, sk_glwe, scratch_1);
 
         let mut data_bits: Vec<i64> = vec![0i64; module.n()];
         pt.decode_vec_i64(&mut data_bits, TorusPrecision(2));

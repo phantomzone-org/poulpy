@@ -16,7 +16,7 @@ use rand::RngCore;
 
 use crate::bin_fhe::{
     bdd_arithmetic::{
-        FheUintPrepared, GLWEBlinSelection,
+        FheUintPrepared, GLWEBlindSelection,
         tests::test_suite::{TEST_FHEUINT_BASE2K, TEST_RANK, TestContext},
     },
     blind_rotation::BlindRotationAlgo,
@@ -28,7 +28,7 @@ where
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
         + GGSWEncryptSk<BE>
-        + GLWEBlinSelection<u32, BE>
+        + GLWEBlindSelection<u32, BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
