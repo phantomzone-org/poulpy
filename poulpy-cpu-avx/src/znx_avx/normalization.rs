@@ -359,13 +359,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_first_step_ref;
 
-        znx_normalize_first_step_ref(
-            base2k,
-            lsh,
-            &mut x[span << 2..],
-            &a[span << 2..],
-            &mut carry[span << 2..],
-        );
+        znx_normalize_first_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -604,13 +598,7 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_middle_step_ref;
 
-        znx_normalize_middle_step_ref(
-            base2k,
-            lsh,
-            &mut x[span << 2..],
-            &a[span << 2..],
-            &mut carry[span << 2..],
-        );
+        znx_normalize_middle_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -753,13 +741,7 @@ pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_final_step_ref;
 
-        znx_normalize_final_step_ref(
-            base2k,
-            lsh,
-            &mut x[span << 2..],
-            &a[span << 2..],
-            &mut carry[span << 2..],
-        );
+        znx_normalize_final_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 

@@ -44,15 +44,7 @@ where
         }
     }
 
-    for params in [
-        [10, 1],
-        [11, 2],
-        [12, 4],
-        [13, 8],
-        [14, 16],
-        [15, 32],
-        [16, 64],
-    ] {
+    for params in [[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]] {
         let log_n: usize = params[0];
         let size: usize = params[1];
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x{}", 1 << log_n, size));
@@ -99,15 +91,7 @@ where
         }
     }
 
-    for params in [
-        [10, 1],
-        [11, 2],
-        [12, 4],
-        [13, 8],
-        [14, 16],
-        [15, 32],
-        [16, 64],
-    ] {
+    for params in [[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]] {
         let log_n: usize = params[0];
         let size: usize = params[1];
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x{}", 1 << log_n, size));
@@ -164,15 +148,7 @@ where
         }
     }
 
-    for params in [
-        [10, 1],
-        [11, 2],
-        [12, 4],
-        [13, 8],
-        [14, 16],
-        [15, 32],
-        [16, 64],
-    ] {
+    for params in [[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]] {
         let log_n: usize = params[0];
         let size: usize = params[1];
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x{}", 1 << log_n, size));
@@ -230,15 +206,7 @@ where
         }
     }
 
-    for params in [
-        [10, 1],
-        [11, 2],
-        [12, 4],
-        [13, 8],
-        [14, 16],
-        [15, 32],
-        [16, 64],
-    ] {
+    for params in [[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]] {
         let log_n: usize = params[0];
         let size: usize = params[1];
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x{}", 1 << log_n, size));

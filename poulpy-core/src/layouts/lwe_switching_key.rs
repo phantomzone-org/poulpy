@@ -106,55 +106,23 @@ impl LWESwitchingKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for LWESwitchingKey"
-        );
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
         Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
-        LWESwitchingKey(GLWESwitchingKey::alloc(
-            n,
-            base2k,
-            k,
-            Rank(1),
-            Rank(1),
-            dnum,
-            Dsize(1),
-        ))
+        LWESwitchingKey(GLWESwitchingKey::alloc(n, base2k, k, Rank(1), Rank(1), dnum, Dsize(1)))
     }
 
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for LWESwitchingKey"
-        );
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
         Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.dnum())
     }
 

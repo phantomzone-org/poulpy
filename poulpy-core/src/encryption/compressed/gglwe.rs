@@ -77,9 +77,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(infos)
-            .max(self.vec_znx_normalize_tmp_bytes())
-            + GLWEPlaintext::bytes_of_from_infos(infos)
+        self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes()) + GLWEPlaintext::bytes_of_from_infos(infos)
     }
 
     fn gglwe_compressed_encrypt_sk<R, P, S>(

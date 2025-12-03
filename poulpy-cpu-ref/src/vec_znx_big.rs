@@ -292,7 +292,7 @@ where
         A: VecZnxBigToRef<Self>,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_big_normalize(res_basek, res, res_col, a_basek, a, a_col, carry);
+        vec_znx_big_normalize(0, res_basek, res, res_col, a_basek, a, a_col, carry);
     }
 }
 

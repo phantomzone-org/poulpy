@@ -170,26 +170,10 @@ where
                 self.vec_znx_copy(&mut a_0, 0, glwe_mi_1.data(), 0);
             } else {
                 for i in 0..cols - 1 {
-                    self.vec_znx_normalize(
-                        base2k_tsk,
-                        &mut a_0,
-                        0,
-                        base2k_res,
-                        glwe_mi_1.data(),
-                        i + 1,
-                        scratch_2,
-                    );
+                    self.vec_znx_normalize(base2k_tsk, &mut a_0, 0, base2k_res, glwe_mi_1.data(), i + 1, scratch_2);
                     self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_0, 0);
                 }
-                self.vec_znx_normalize(
-                    base2k_tsk,
-                    &mut a_0,
-                    0,
-                    base2k_res,
-                    glwe_mi_1.data(),
-                    0,
-                    scratch_2,
-                );
+                self.vec_znx_normalize(base2k_tsk, &mut a_0, 0, base2k_res, glwe_mi_1.data(), 0, scratch_2);
             }
 
             ggsw_expand_rows_internal(self, row, res, &a_0, &a_dft, tsk, scratch_2)

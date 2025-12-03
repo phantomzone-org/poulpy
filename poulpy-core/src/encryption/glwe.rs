@@ -402,15 +402,7 @@ where
                 let mut ci_big = self.vec_znx_idft_apply_consume(ci_dft);
 
                 // ci_big = u * pk[i] + e
-                self.vec_znx_big_add_normal(
-                    base2k,
-                    &mut ci_big,
-                    0,
-                    pk.k().into(),
-                    source_xe,
-                    SIGMA,
-                    SIGMA_BOUND,
-                );
+                self.vec_znx_big_add_normal(base2k, &mut ci_big, 0, pk.k().into(), source_xe, SIGMA, SIGMA_BOUND);
 
                 // ci_big = u * pk[i] + e + m (if col = i)
                 if let Some((pt, col)) = pt
@@ -487,12 +479,7 @@ where
         let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
 
         if compressed {
-            assert_eq!(
-                ct.cols(),
-                1,
-                "invalid glwe: compressed tag=true but #cols={} != 1",
-                ct.cols()
-            )
+            assert_eq!(ct.cols(), 1, "invalid glwe: compressed tag=true but #cols={} != 1", ct.cols())
         }
 
         assert!(

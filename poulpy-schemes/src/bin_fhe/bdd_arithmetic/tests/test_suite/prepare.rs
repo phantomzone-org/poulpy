@@ -54,14 +54,7 @@ where
     // GLWE(value)
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
     let value: u32 = source.next_u32();
-    c_enc.encrypt_sk(
-        module,
-        value,
-        sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    c_enc.encrypt_sk(module, value, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
     // GGSW(0)
     let mut c_enc_prep_debug: FheUintPreparedDebug<Vec<u8>, u32> =

@@ -54,10 +54,7 @@ pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
 /// Alignement must be a power of two and size a multiple of the alignement.
 /// Allocated memory is initialized to zero.
 fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
-    assert!(
-        align.is_power_of_two(),
-        "Alignment must be a power of two but is {align}"
-    );
+    assert!(align.is_power_of_two(), "Alignment must be a power of two but is {align}");
     assert_eq!(
         (size * size_of::<u8>()) % align,
         0,
@@ -82,10 +79,7 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 /// Allocates a block of T aligned with [DEFAULTALIGN].
 /// Size of T * size msut be a multiple of [DEFAULTALIGN].
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
-    assert!(
-        align.is_power_of_two(),
-        "Alignment must be a power of two but is {align}"
-    );
+    assert!(align.is_power_of_two(), "Alignment must be a power of two but is {align}");
 
     assert_eq!(
         (size * size_of::<T>()) % align,

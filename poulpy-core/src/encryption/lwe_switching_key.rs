@@ -70,21 +70,9 @@ where
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWESwitchingKey"
-        );
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for LWESwitchingKey"
-        );
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
+        assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
         GLWESecret::bytes_of(self.n().into(), Rank(1))
             + GLWESecretPrepared::bytes_of(self, Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
@@ -125,13 +113,6 @@ where
         sk_glwe_in.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
         self.vec_znx_automorphism_inplace(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, scratch_2);
 
-        self.glwe_switching_key_encrypt_sk(
-            res,
-            &sk_glwe_in,
-            &sk_glwe_out,
-            source_xa,
-            source_xe,
-            scratch_2,
-        );
+        self.glwe_switching_key_encrypt_sk(res, &sk_glwe_in, &sk_glwe_out, source_xa, source_xe, scratch_2);
     }
 }

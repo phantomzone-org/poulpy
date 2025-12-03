@@ -20,9 +20,7 @@ impl<D: DataRef> BlindRotationKeyFactory<CGGI> for BlindRotationKey<D, CGGI> {
         A: BlindRotationKeyInfos,
     {
         BlindRotationKey {
-            keys: (0..infos.n_lwe().as_usize())
-                .map(|_| GGSW::alloc_from_infos(infos))
-                .collect(),
+            keys: (0..infos.n_lwe().as_usize()).map(|_| GGSW::alloc_from_infos(infos)).collect(),
             dist: Distribution::NONE,
             _phantom: PhantomData,
         }

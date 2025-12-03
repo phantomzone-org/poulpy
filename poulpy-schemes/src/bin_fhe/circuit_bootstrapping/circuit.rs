@@ -95,15 +95,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         R: GGSWToMut + GGSWInfos,
         L: LWEToRef + LWEInfos,
     {
-        module.circuit_bootstrapping_execute_to_exponent(
-            log_gap_out,
-            res,
-            lwe,
-            self,
-            log_domain,
-            extension_factor,
-            scratch,
-        );
+        module.circuit_bootstrapping_execute_to_exponent(log_gap_out, res, lwe, self, log_domain, extension_factor, scratch);
     }
 }
 
@@ -144,14 +136,9 @@ where
             rank_out: res_infos.rank(),
         };
 
-        self.blind_rotation_execute_tmp_bytes(
-            block_size,
-            extension_factor,
-            res_infos,
-            &cbt_infos.brk_infos(),
-        )
-        .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
-        .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
+        self.blind_rotation_execute_tmp_bytes(block_size, extension_factor, res_infos, &cbt_infos.brk_infos())
+            .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
+            .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
             + GLWE::bytes_of_from_infos(res_infos)
             + GGLWE::bytes_of_from_infos(&gglwe_infos)
     }
@@ -173,17 +160,7 @@ where
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
         );
 
-        circuit_bootstrap_core(
-            false,
-            self,
-            0,
-            res,
-            lwe,
-            log_domain,
-            extension_factor,
-            key,
-            scratch,
-        );
+        circuit_bootstrap_core(false, self, 0, res, lwe, log_domain, extension_factor, key, scratch);
     }
 
     fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
@@ -204,17 +181,7 @@ where
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
         );
 
-        circuit_bootstrap_core(
-            true,
-            self,
-            log_gap_out,
-            res,
-            lwe,
-            log_domain,
-            extension_factor,
-            key,
-            scratch,
-        );
+        circuit_bootstrap_core(true, self, log_gap_out, res, lwe, log_domain, extension_factor, key, scratch);
     }
 }
 
@@ -309,8 +276,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     // Execute blind rotation over BRK layout and returns result over ATK layout
     {
         let (mut res_glwe_brk_layout, scratch_2) = scratch_1.take_glwe(glwe_brk_layout);
-        key.brk
-            .execute(module, &mut res_glwe_brk_layout, lwe, &lut, scratch_2);
+        key.brk.execute(module, &mut res_glwe_brk_layout, lwe, &lut, scratch_2);
 
         if res_glwe_brk_layout.base2k() == res_glwe_atk_layout.base2k() {
             module.glwe_copy(&mut res_glwe_atk_layout, &res_glwe_brk_layout);
@@ -376,13 +342,7 @@ fn post_process<R, A, M, H, K, BE: Backend>(
 
         // First partial trace, vanishes all coefficients which are not multiples of gap_in
         // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
-        module.glwe_trace(
-            &mut a_trace,
-            module.log_n() - log_gap_in + 1,
-            a,
-            auto_keys,
-            scratch_1,
-        );
+        module.glwe_trace(&mut a_trace, module.log_n() - log_gap_in + 1, a, auto_keys, scratch_1);
 
         let steps: usize = 1 << log_domain;
 

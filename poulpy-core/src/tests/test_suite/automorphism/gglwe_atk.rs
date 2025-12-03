@@ -84,10 +84,7 @@ where
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_in_infos)
-                    .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
-                        module,
-                        &auto_key_apply_infos,
-                    ))
+                    .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply_infos))
                     .max(GLWEAutomorphismKey::automorphism_tmp_bytes(
                         module,
                         &auto_key_out_infos,
@@ -100,24 +97,10 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key_in.encrypt_sk(
-                module,
-                p0,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_in.encrypt_sk(module, p0, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(
-                module,
-                p1,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_apply.encrypt_sk(module, p1, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_infos);
@@ -125,12 +108,7 @@ where
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-            auto_key_out.automorphism(
-                module,
-                &auto_key_in,
-                &auto_key_apply_prepared,
-                scratch.borrow(),
-            );
+            auto_key_out.automorphism(module, &auto_key_in, &auto_key_apply_prepared, scratch.borrow());
 
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_out_infos);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
@@ -171,11 +149,7 @@ where
                         .std()
                         .log2();
 
-                    assert!(
-                        noise_have < max_noise + 0.5,
-                        "{noise_have} > {}",
-                        max_noise + 0.5
-                    );
+                    assert!(noise_have < max_noise + 0.5, "{noise_have} > {}", max_noise + 0.5);
                 }
             }
         }
@@ -248,24 +222,10 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key.encrypt_sk(
-                module,
-                p0,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p0, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(
-                module,
-                p1,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_apply.encrypt_sk(module, p1, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_layout);
@@ -315,11 +275,7 @@ where
                         .std()
                         .log2();
 
-                    assert!(
-                        noise_have < max_noise + 0.5,
-                        "{noise_have} {}",
-                        max_noise + 0.5
-                    );
+                    assert!(noise_have < max_noise + 0.5, "{noise_have} {}", max_noise + 0.5);
                 }
             }
         }

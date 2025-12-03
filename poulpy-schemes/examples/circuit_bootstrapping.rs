@@ -8,10 +8,20 @@ use poulpy_core::{
 };
 use std::time::Instant;
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
+#[cfg(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+))]
 use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+#[cfg(not(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+)))]
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
@@ -162,28 +172,14 @@ fn main() {
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(
-        &module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_layout);
 
-    cbt_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
@@ -197,14 +193,7 @@ fn main() {
 
     // Apply circuit bootstrapping: LWE(data * 2^{- (k_lwe_pt + 2)}) -> GGSW(data)
     let now: Instant = Instant::now();
-    cbt_prepared.execute_to_constant(
-        &module,
-        &mut res,
-        &ct_lwe,
-        k_lwe_pt,
-        extension_factor,
-        scratch.borrow(),
-    );
+    cbt_prepared.execute_to_constant(&module, &mut res, &ct_lwe, k_lwe_pt, extension_factor, scratch.borrow());
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     // Allocate "ideal" GGSW(data) plaintext
@@ -216,16 +205,9 @@ fn main() {
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(
-                    &module,
-                    row,
-                    col,
-                    &pt_ggsw,
-                    &sk_glwe_prepared,
-                    scratch.borrow()
-                )
-                .std()
-                .log2()
+                res.noise(&module, row, col, &pt_ggsw, &sk_glwe_prepared, scratch.borrow())
+                    .std()
+                    .log2()
             )
         }
     }

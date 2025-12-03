@@ -86,7 +86,6 @@ where
         {
             let mut res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
             let other: GLWESecret<&[u8]> = other.to_ref();
-
             for i in 0..res.rank().into() {
                 self.svp_prepare(&mut res.data, i, &other.data, i);
             }

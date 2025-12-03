@@ -109,21 +109,8 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -143,13 +130,7 @@ where
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<Vec<u8>, BE> = GGLWEToGGSWKeyPrepared::alloc_from_infos(module, &tsk);
             tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
-            ct_out.automorphism(
-                module,
-                &ct_in,
-                &auto_key_prepared,
-                &tsk_prepared,
-                scratch.borrow(),
-            );
+            ct_out.automorphism(module, &ct_in, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
             module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 
@@ -266,21 +247,8 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -327,10 +295,7 @@ where
                         .std()
                         .log2();
                     let noise_max: f64 = max_noise(col);
-                    assert!(
-                        noise_have <= noise_max,
-                        "noise_have:{noise_have} > noise_max:{noise_max}",
-                    )
+                    assert!(noise_have <= noise_max, "noise_have:{noise_have} > noise_max:{noise_max}",)
                 }
             }
         }

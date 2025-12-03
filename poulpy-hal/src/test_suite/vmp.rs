@@ -205,18 +205,8 @@ where
                     source.fill_bytes(res_dft_ref.data_mut());
                     source.fill_bytes(res_dft_test.data_mut());
 
-                    module_ref.vmp_apply_dft_to_dft(
-                        &mut res_dft_ref,
-                        &a_dft_ref,
-                        &pmat_ref,
-                        scratch_ref.borrow(),
-                    );
-                    module_test.vmp_apply_dft_to_dft(
-                        &mut res_dft_test,
-                        &a_dft_test,
-                        &pmat_test,
-                        scratch_test.borrow(),
-                    );
+                    module_ref.vmp_apply_dft_to_dft(&mut res_dft_ref, &a_dft_ref, &pmat_ref, scratch_ref.borrow());
+                    module_test.vmp_apply_dft_to_dft(&mut res_dft_test, &a_dft_test, &pmat_test, scratch_test.borrow());
 
                     let res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
                     let res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);

@@ -66,14 +66,7 @@ where
                 let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
                 sk_out_prepared.prepare(module, &sk_out);
 
-                ksk.encrypt_sk(
-                    module,
-                    &sk_in,
-                    &sk_out,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch.borrow(),
-                );
+                ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
                 let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
 
@@ -81,14 +74,7 @@ where
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &sk_in.data,
-                                &sk_out_prepared,
-                                scratch.borrow(),
-                            )
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2();
 
@@ -144,10 +130,8 @@ where
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(
-                    module,
-                    &gglwe_infos,
-                ));
+                let mut scratch: ScratchOwned<BE> =
+                    ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, &gglwe_infos));
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -159,14 +143,7 @@ where
 
                 let seed_xa = [1u8; 32];
 
-                ksk_compressed.encrypt_sk(
-                    module,
-                    &sk_in,
-                    &sk_out,
-                    seed_xa,
-                    &mut source_xe,
-                    scratch.borrow(),
-                );
+                ksk_compressed.encrypt_sk(module, &sk_in, &sk_out, seed_xa, &mut source_xe, scratch.borrow());
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
@@ -177,14 +154,7 @@ where
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &sk_in.data,
-                                &sk_out_prepared,
-                                scratch.borrow(),
-                            )
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2();
 
@@ -269,14 +239,7 @@ where
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &sk_in.data,
-                                &sk_out_prepared,
-                                scratch.borrow(),
-                            )
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2();
 

@@ -75,12 +75,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut scratch: ScratchOwned<BackendImpl> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_atk_layout)
                 | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_in_layout)
-                | GLWE::keyswitch_tmp_bytes(
-                    &module,
-                    &glwe_out_layout,
-                    &glwe_in_layout,
-                    &gglwe_atk_layout,
-                ),
+                | GLWE::keyswitch_tmp_bytes(&module, &glwe_out_layout, &glwe_in_layout, &gglwe_atk_layout),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
@@ -93,22 +88,9 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank);
         sk_in_dft.prepare(&module, &sk_in);
 
-        ksk.encrypt_sk(
-            &module,
-            -1,
-            &sk_in,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ksk.encrypt_sk(&module, -1, &sk_in, &mut source_xa, &mut source_xe, scratch.borrow());
 
-        ct_in.encrypt_zero_sk(
-            &module,
-            &sk_in_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_in.encrypt_zero_sk(&module, &sk_in_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut ksk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, _> =
             GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &ksk);
@@ -206,22 +188,9 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
-        ksk.encrypt_sk(
-            &module,
-            &sk_in,
-            &sk_out,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ksk.encrypt_sk(&module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
-        ct.encrypt_zero_sk(
-            &module,
-            &sk_in_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct.encrypt_zero_sk(&module, &sk_in_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, _> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
         ksk_prepared.prepare(&module, &ksk, scratch.borrow());
@@ -249,9 +218,5 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_keyswitch_glwe_fft64,
-    bench_keyswitch_glwe_inplace_fft64
-);
+criterion_group!(benches, bench_keyswitch_glwe_fft64, bench_keyswitch_glwe_inplace_fft64);
 criterion_main!(benches);

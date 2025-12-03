@@ -79,291 +79,131 @@ impl BitCircuitFamily for AnyBitCircuit {
 
 pub(crate) static OUTPUT_CIRCUITS: Circuit<AnyBitCircuit, 32usize> = Circuit([
     AnyBitCircuit::B0(BitCircuit::new(
-        [
-            Node::Cmux(32, 1, 0),
-            Node::Copy,
-            Node::Cmux(0, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(32, 1, 0), Node::Copy, Node::Cmux(0, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B1(BitCircuit::new(
-        [
-            Node::Cmux(33, 1, 0),
-            Node::Copy,
-            Node::Cmux(1, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(33, 1, 0), Node::Copy, Node::Cmux(1, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B2(BitCircuit::new(
-        [
-            Node::Cmux(34, 1, 0),
-            Node::Copy,
-            Node::Cmux(2, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(34, 1, 0), Node::Copy, Node::Cmux(2, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B3(BitCircuit::new(
-        [
-            Node::Cmux(35, 1, 0),
-            Node::Copy,
-            Node::Cmux(3, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(35, 1, 0), Node::Copy, Node::Cmux(3, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B4(BitCircuit::new(
-        [
-            Node::Cmux(36, 1, 0),
-            Node::Copy,
-            Node::Cmux(4, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(36, 1, 0), Node::Copy, Node::Cmux(4, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B5(BitCircuit::new(
-        [
-            Node::Cmux(37, 1, 0),
-            Node::Copy,
-            Node::Cmux(5, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(37, 1, 0), Node::Copy, Node::Cmux(5, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B6(BitCircuit::new(
-        [
-            Node::Cmux(38, 1, 0),
-            Node::Copy,
-            Node::Cmux(6, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(38, 1, 0), Node::Copy, Node::Cmux(6, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B7(BitCircuit::new(
-        [
-            Node::Cmux(39, 1, 0),
-            Node::Copy,
-            Node::Cmux(7, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(39, 1, 0), Node::Copy, Node::Cmux(7, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B8(BitCircuit::new(
-        [
-            Node::Cmux(40, 1, 0),
-            Node::Copy,
-            Node::Cmux(8, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(40, 1, 0), Node::Copy, Node::Cmux(8, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B9(BitCircuit::new(
-        [
-            Node::Cmux(41, 1, 0),
-            Node::Copy,
-            Node::Cmux(9, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(41, 1, 0), Node::Copy, Node::Cmux(9, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B10(BitCircuit::new(
-        [
-            Node::Cmux(42, 1, 0),
-            Node::Copy,
-            Node::Cmux(10, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(42, 1, 0), Node::Copy, Node::Cmux(10, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B11(BitCircuit::new(
-        [
-            Node::Cmux(43, 1, 0),
-            Node::Copy,
-            Node::Cmux(11, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(43, 1, 0), Node::Copy, Node::Cmux(11, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B12(BitCircuit::new(
-        [
-            Node::Cmux(44, 1, 0),
-            Node::Copy,
-            Node::Cmux(12, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(44, 1, 0), Node::Copy, Node::Cmux(12, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B13(BitCircuit::new(
-        [
-            Node::Cmux(45, 1, 0),
-            Node::Copy,
-            Node::Cmux(13, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(45, 1, 0), Node::Copy, Node::Cmux(13, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B14(BitCircuit::new(
-        [
-            Node::Cmux(46, 1, 0),
-            Node::Copy,
-            Node::Cmux(14, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(46, 1, 0), Node::Copy, Node::Cmux(14, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B15(BitCircuit::new(
-        [
-            Node::Cmux(47, 1, 0),
-            Node::Copy,
-            Node::Cmux(15, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(47, 1, 0), Node::Copy, Node::Cmux(15, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B16(BitCircuit::new(
-        [
-            Node::Cmux(48, 1, 0),
-            Node::Copy,
-            Node::Cmux(16, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(48, 1, 0), Node::Copy, Node::Cmux(16, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B17(BitCircuit::new(
-        [
-            Node::Cmux(49, 1, 0),
-            Node::Copy,
-            Node::Cmux(17, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(49, 1, 0), Node::Copy, Node::Cmux(17, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B18(BitCircuit::new(
-        [
-            Node::Cmux(50, 1, 0),
-            Node::Copy,
-            Node::Cmux(18, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(50, 1, 0), Node::Copy, Node::Cmux(18, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B19(BitCircuit::new(
-        [
-            Node::Cmux(51, 1, 0),
-            Node::Copy,
-            Node::Cmux(19, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(51, 1, 0), Node::Copy, Node::Cmux(19, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B20(BitCircuit::new(
-        [
-            Node::Cmux(52, 1, 0),
-            Node::Copy,
-            Node::Cmux(20, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(52, 1, 0), Node::Copy, Node::Cmux(20, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B21(BitCircuit::new(
-        [
-            Node::Cmux(53, 1, 0),
-            Node::Copy,
-            Node::Cmux(21, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(53, 1, 0), Node::Copy, Node::Cmux(21, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B22(BitCircuit::new(
-        [
-            Node::Cmux(54, 1, 0),
-            Node::Copy,
-            Node::Cmux(22, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(54, 1, 0), Node::Copy, Node::Cmux(22, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B23(BitCircuit::new(
-        [
-            Node::Cmux(55, 1, 0),
-            Node::Copy,
-            Node::Cmux(23, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(55, 1, 0), Node::Copy, Node::Cmux(23, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B24(BitCircuit::new(
-        [
-            Node::Cmux(56, 1, 0),
-            Node::Copy,
-            Node::Cmux(24, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(56, 1, 0), Node::Copy, Node::Cmux(24, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B25(BitCircuit::new(
-        [
-            Node::Cmux(57, 1, 0),
-            Node::Copy,
-            Node::Cmux(25, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(57, 1, 0), Node::Copy, Node::Cmux(25, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B26(BitCircuit::new(
-        [
-            Node::Cmux(58, 1, 0),
-            Node::Copy,
-            Node::Cmux(26, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(58, 1, 0), Node::Copy, Node::Cmux(26, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B27(BitCircuit::new(
-        [
-            Node::Cmux(59, 1, 0),
-            Node::Copy,
-            Node::Cmux(27, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(59, 1, 0), Node::Copy, Node::Cmux(27, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B28(BitCircuit::new(
-        [
-            Node::Cmux(60, 1, 0),
-            Node::Copy,
-            Node::Cmux(28, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(60, 1, 0), Node::Copy, Node::Cmux(28, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B29(BitCircuit::new(
-        [
-            Node::Cmux(61, 1, 0),
-            Node::Copy,
-            Node::Cmux(29, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(61, 1, 0), Node::Copy, Node::Cmux(29, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B30(BitCircuit::new(
-        [
-            Node::Cmux(62, 1, 0),
-            Node::Copy,
-            Node::Cmux(30, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(62, 1, 0), Node::Copy, Node::Cmux(30, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B31(BitCircuit::new(
-        [
-            Node::Cmux(63, 1, 0),
-            Node::Copy,
-            Node::Cmux(31, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(63, 1, 0), Node::Copy, Node::Cmux(31, 1, 0), Node::None],
         2,
     )),
 ]);

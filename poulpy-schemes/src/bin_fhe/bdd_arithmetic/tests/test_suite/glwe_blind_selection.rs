@@ -70,14 +70,7 @@ where
 
     let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
-    k_enc_prep.encrypt_sk(
-        module,
-        k,
-        sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let digit = 5;
     let mask: u32 = (1 << digit) - 1;
@@ -97,14 +90,7 @@ where
         for value in data.iter().take(1 << digit) {
             pt.encode_coeff_i64(*value, TorusPrecision(base2k.as_u32()), 0);
             let mut ct = GLWE::alloc_from_infos(&glwe_infos);
-            ct.encrypt_sk(
-                module,
-                &pt,
-                sk_glwe_prep,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct.encrypt_sk(module, &pt, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
             cts.push(ct);
         }
 
@@ -117,14 +103,7 @@ where
         // How many bits to take
         let bit_size: usize = (32 - bit_start).min(digit);
 
-        module.glwe_blind_selection(
-            &mut res,
-            cts_map,
-            &k_enc_prep,
-            bit_start,
-            bit_size,
-            scratch.borrow(),
-        );
+        module.glwe_blind_selection(&mut res, cts_map, &k_enc_prep, bit_start, bit_size, scratch.borrow());
 
         res.decrypt(module, &mut pt, sk_glwe_prep, scratch.borrow());
 
@@ -132,10 +111,7 @@ where
         if !idx.is_multiple_of(3) {
             assert_eq!(0, pt.decode_coeff_i64(TorusPrecision(base2k.as_u32()), 0));
         } else {
-            assert_eq!(
-                data[idx],
-                pt.decode_coeff_i64(TorusPrecision(base2k.as_u32()), 0)
-            );
+            assert_eq!(data[idx], pt.decode_coeff_i64(TorusPrecision(base2k.as_u32()), 0));
         }
 
         bit_start += digit;

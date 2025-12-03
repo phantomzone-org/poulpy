@@ -5,13 +5,10 @@ use criterion::{BenchmarkId, Criterion};
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::{
-        vec_znx::vec_znx_copy,
-        znx::{
-            ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-            ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-            ZnxZero,
-        },
+    reference::znx::{
+        ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+        ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
+        ZnxZero,
     },
     source::Source,
 };
@@ -54,10 +51,7 @@ where
 
         (0..size - steps).for_each(|j| {
             let (lhs, rhs) = res_raw.split_at_mut(slice_size * (j + steps));
-            ZNXARI::znx_copy(
-                &mut lhs[start + j * slice_size..end + j * slice_size],
-                &rhs[start..end],
-            );
+            ZNXARI::znx_copy(&mut lhs[start + j * slice_size..end + j * slice_size], &rhs[start..end]);
         });
 
         for j in size - steps..size {
@@ -65,16 +59,13 @@ where
         }
     }
 
-    // Inplace normalization with left shift of k % base2k
-    if !k.is_multiple_of(base2k) {
-        for j in (0..size - steps).rev() {
-            if j == size - steps - 1 {
-                ZNXARI::znx_normalize_first_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
-            } else if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
-            }
+    for j in (0..size - steps).rev() {
+        if j == size - steps - 1 {
+            ZNXARI::znx_normalize_first_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
+        } else if j == 0 {
+            ZNXARI::znx_normalize_final_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
         }
     }
 }
@@ -104,38 +95,13 @@ where
 
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
-    if !k.is_multiple_of(base2k) {
-        for j in (0..min_size).rev() {
-            if j == min_size - 1 {
-                ZNXARI::znx_normalize_first_step(
-                    base2k,
-                    k_rem,
-                    res.at_mut(res_col, j),
-                    a.at(a_col, j + steps),
-                    carry,
-                );
-            } else if j == 0 {
-                ZNXARI::znx_normalize_final_step(
-                    base2k,
-                    k_rem,
-                    res.at_mut(res_col, j),
-                    a.at(a_col, j + steps),
-                    carry,
-                );
-            } else {
-                ZNXARI::znx_normalize_middle_step(
-                    base2k,
-                    k_rem,
-                    res.at_mut(res_col, j),
-                    a.at(a_col, j + steps),
-                    carry,
-                );
-            }
-        }
-    } else {
-        // If k % base2k = 0, then this is simply a copy.
-        for j in (0..min_size).rev() {
-            ZNXARI::znx_copy(res.at_mut(res_col, j), a.at(a_col, j + steps));
+    for j in (0..min_size).rev() {
+        if j == min_size - 1 {
+            ZNXARI::znx_normalize_first_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+        } else if j == 0 {
+            ZNXARI::znx_normalize_final_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         }
     }
 
@@ -146,10 +112,10 @@ where
 }
 
 pub fn vec_znx_rsh_tmp_bytes(n: usize) -> usize {
-    n * size_of::<i64>()
+    2 * n * size_of::<i64>()
 }
 
-pub fn vec_znx_rsh_inplace<R, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
+pub fn vec_znx_rsh_inplace<R, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
     ZNXARI: ZnxZero
@@ -163,76 +129,48 @@ where
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let n: usize = res.n();
-    let cols: usize = res.cols();
+
     let size: usize = res.size();
 
     let mut steps: usize = k / base2k;
     let k_rem: usize = k % base2k;
-
-    if k == 0 {
-        return;
-    }
-
-    if steps >= size {
-        for j in 0..size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        }
-        return;
-    }
-
-    let start: usize = n * res_col;
-    let end: usize = start + n;
-    let slice_size: usize = n * cols;
 
     if !k.is_multiple_of(base2k) {
         // We rsh by an additional base2k and then lsh by base2k-k
         // Allows to re-use efficient normalization code, avoids
         // avoids overflows & produce output that is normalized
         steps += 1;
+    }
 
-        // All limbs of a that would fall outside of the limbs of res are discarded,
-        // but the carry still need to be computed.
-        (size - steps..size).rev().for_each(|j| {
-            if j == size - 1 {
-                ZNXARI::znx_normalize_first_step_carry_only(base2k, base2k - k_rem, res.at(res_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_carry_only(base2k, base2k - k_rem, res.at(res_col, j), carry);
-            }
-        });
+    let (carry, tmp) = tmp.split_at_mut(n);
 
-        // Continues with shifted normalization
-        let res_raw: &mut [i64] = res.raw_mut();
-        (steps..size).rev().for_each(|j| {
-            let (lhs, rhs) = res_raw.split_at_mut(slice_size * j);
-            let rhs_slice: &mut [i64] = &mut rhs[start..end];
-            let lhs_slice: &[i64] = &lhs[(j - steps) * slice_size + start..(j - steps) * slice_size + end];
-            ZNXARI::znx_normalize_middle_step(base2k, base2k - k_rem, rhs_slice, lhs_slice, carry);
-        });
+    let lsh: usize = (base2k - k_rem) % base2k;
 
-        // Propagates carry on the rest of the limbs of res
-        for j in (0..steps).rev() {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-            if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(base2k, base2k - k_rem, res.at_mut(res_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_inplace(base2k, base2k - k_rem, res.at_mut(res_col, j), carry);
-            }
+    // All limbs of a that would fall outside of the limbs of res are discarded,
+    // but the carry still need to be computed.
+    for j in 0..steps {
+        if j == 0 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
         }
-    } else {
-        // Shift by multiples of base2k
-        let res_raw: &mut [i64] = res.raw_mut();
-        (steps..size).rev().for_each(|j| {
-            let (lhs, rhs) = res_raw.split_at_mut(slice_size * j);
-            ZNXARI::znx_copy(
-                &mut rhs[start..end],
-                &lhs[(j - steps) * slice_size + start..(j - steps) * slice_size + end],
-            );
-        });
+    }
 
-        // Zeroes the top
-        (0..steps).for_each(|j| {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        });
+    // Continues with shifted normalization
+    for j in 0..size - steps {
+        ZNXARI::znx_copy(tmp, res.at(res_col, size - steps - j - 1));
+        ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, tmp, carry);
+        ZNXARI::znx_copy(res.at_mut(res_col, size - j - 1), tmp);
+    }
+
+    // Propagates carry on the rest of the limbs of res
+    for j in 0..steps {
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
+        if j == 0 {
+            ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
+        }
     }
 }
 
@@ -259,90 +197,59 @@ where
     let mut steps: usize = k / base2k;
     let k_rem: usize = k % base2k;
 
-    if k == 0 {
-        vec_znx_copy::<_, _, ZNXARI>(&mut res, res_col, &a, a_col);
-        return;
-    }
-
-    if steps >= res_size {
-        for j in 0..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        }
-        return;
-    }
-
     if !k.is_multiple_of(base2k) {
         // We rsh by an additional base2k and then lsh by base2k-k
         // Allows to re-use efficient normalization code, avoids
         // avoids overflows & produce output that is normalized
         steps += 1;
+    }
 
-        // All limbs of a that are moved outside of the limbs of res are discarded,
-        // but the carry still need to be computed.
-        for j in (res_size..a_size + steps).rev() {
-            if j == a_size + steps - 1 {
-                ZNXARI::znx_normalize_first_step_carry_only(base2k, base2k - k_rem, a.at(a_col, j - steps), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_carry_only(base2k, base2k - k_rem, a.at(a_col, j - steps), carry);
-            }
+    let lsh: usize = (base2k - k_rem) % base2k; // 0 if k | base2k
+    let res_end: usize = res_size.min(steps);
+    let res_start: usize = res_size.min(a_size + steps);
+    let a_start: usize = a_size.min(res_size.saturating_sub(steps));
+
+    // All limbs of a that are moved outside of the limbs of res are discarded,
+    // but the carry still need to be computed.
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+
+    for j in 0..a_out_range {
+        if j == 0 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
         }
+    }
 
-        // Avoids over flow of limbs of res
-        let min_size: usize = res_size.min(a_size + steps);
+    if a_out_range == 0 {
+        ZNXARI::znx_zero(carry);
+    }
 
-        // Zeroes lower limbs of res if a_size + steps < res_size
-        (min_size..res_size).for_each(|j| {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        });
+    // Zeroes lower limbs of res if a_size + steps < res_size
+    for j in 0..res_size {
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
+    }
 
-        // Continues with shifted normalization
-        for j in (steps..min_size).rev() {
-            // Case if no limb of a was previously discarded
-            if res_size.saturating_sub(steps) >= a_size && j == min_size - 1 {
-                ZNXARI::znx_normalize_first_step(
-                    base2k,
-                    base2k - k_rem,
-                    res.at_mut(res_col, j),
-                    a.at(a_col, j - steps),
-                    carry,
-                );
-            } else {
-                ZNXARI::znx_normalize_middle_step(
-                    base2k,
-                    base2k - k_rem,
-                    res.at_mut(res_col, j),
-                    a.at(a_col, j - steps),
-                    carry,
-                );
-            }
+    // Continues with shifted normalization
+    let mid_range: usize = res_start.saturating_sub(res_end);
+
+    for j in 0..mid_range {
+        ZNXARI::znx_normalize_middle_step(
+            base2k,
+            lsh,
+            res.at_mut(res_col, res_start - j - 1),
+            a.at(a_col, a_start - j - 1),
+            carry,
+        );
+    }
+
+    // Propagates carry on the rest of the limbs of res
+    for j in 0..res_end {
+        if j == res_end - 1 {
+            ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
         }
-
-        // Propagates carry on the rest of the limbs of res
-        for j in (0..steps).rev() {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-            if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(base2k, base2k - k_rem, res.at_mut(res_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_inplace(base2k, base2k - k_rem, res.at_mut(res_col, j), carry);
-            }
-        }
-    } else {
-        let min_size: usize = res_size.min(a_size + steps);
-
-        // Zeroes the top
-        (0..steps).for_each(|j| {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        });
-
-        // Shift a into res, up to the maximum
-        for j in (steps..min_size).rev() {
-            ZNXARI::znx_copy(res.at_mut(res_col, j), a.at(a_col, j - steps));
-        }
-
-        // Zeroes bottom if a_size + steps < res_size
-        (min_size..res_size).for_each(|j| {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        });
     }
 }
 
@@ -373,7 +280,7 @@ where
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(n * size_of::<i64>());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -423,7 +330,7 @@ where
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(n * size_of::<i64>());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -473,7 +380,7 @@ where
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(n * size_of::<i64>());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -523,7 +430,7 @@ where
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(n * size_of::<i64>());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -552,8 +459,8 @@ mod tests {
         layouts::{FillUniform, VecZnx, ZnxView},
         reference::{
             vec_znx::{
-                vec_znx_copy, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_normalize_inplace, vec_znx_rsh, vec_znx_rsh_inplace,
-                vec_znx_sub_inplace,
+                vec_znx_copy, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_tmp_bytes, vec_znx_normalize_inplace, vec_znx_rsh,
+                vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_sub_inplace,
             },
             znx::ZnxRef,
         },
@@ -572,7 +479,7 @@ mod tests {
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut carry: Vec<i64> = vec![0i64; n];
+        let mut carry: Vec<i64> = vec![0i64; vec_znx_lsh_tmp_bytes(n) / size_of::<i64>()];
 
         let base2k: usize = 50;
 
@@ -604,7 +511,7 @@ mod tests {
         let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
         let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
-        let mut carry: Vec<i64> = vec![0i64; n];
+        let mut carry: Vec<i64> = vec![0i64; vec_znx_rsh_tmp_bytes(n) / size_of::<i64>()];
 
         let base2k: usize = 50;
 

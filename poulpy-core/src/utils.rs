@@ -16,13 +16,11 @@ impl<D: DataMut> GLWEPlaintext<D> {
 
 impl<D: DataRef> GLWEPlaintext<D> {
     pub fn decode_vec_i64(&self, data: &mut [i64], k: TorusPrecision) {
-        self.data
-            .decode_vec_i64(self.base2k().into(), 0, k.into(), data);
+        self.data.decode_vec_i64(self.base2k().into(), 0, k.into(), data);
     }
 
     pub fn decode_coeff_i64(&self, k: TorusPrecision, idx: usize) -> i64 {
-        self.data
-            .decode_coeff_i64(self.base2k().into(), 0, k.into(), idx)
+        self.data.decode_coeff_i64(self.base2k().into(), 0, k.into(), idx)
     }
 
     pub fn decode_vec_float(&self, data: &mut [Float]) {
@@ -43,14 +41,12 @@ impl<D: DataMut> LWEPlaintext<D> {
 
 impl<D: DataRef> LWEPlaintext<D> {
     pub fn decode_i64(&self, k: TorusPrecision) -> i64 {
-        self.data
-            .decode_coeff_i64(self.base2k().into(), 0, k.into(), 0)
+        self.data.decode_coeff_i64(self.base2k().into(), 0, k.into(), 0)
     }
 
     pub fn decode_float(&self) -> Float {
         let mut out: [Float; 1] = [Float::new(self.k().as_u32())];
-        self.data
-            .decode_vec_float(self.base2k().into(), 0, &mut out);
+        self.data.decode_vec_float(self.base2k().into(), 0, &mut out);
         out[0].clone()
     }
 }

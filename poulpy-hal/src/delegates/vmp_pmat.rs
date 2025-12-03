@@ -76,9 +76,7 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        B::vmp_apply_dft_tmp_bytes_impl(
-            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
-        )
+        B::vmp_apply_dft_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
     }
 }
 
@@ -109,9 +107,7 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        B::vmp_apply_dft_to_dft_tmp_bytes_impl(
-            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
-        )
+        B::vmp_apply_dft_to_dft_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
     }
 }
 
@@ -142,9 +138,7 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        B::vmp_apply_dft_to_dft_add_tmp_bytes_impl(
-            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
-        )
+        B::vmp_apply_dft_to_dft_add_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
     }
 }
 

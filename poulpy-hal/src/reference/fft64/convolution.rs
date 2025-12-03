@@ -1,7 +1,6 @@
 use crate::{
-    api::TakeSlice,
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnx, VecZnxDft,
+        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnx, VecZnxDft,
         VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
@@ -78,13 +77,7 @@ where
         let res_col: &mut [f64] = &mut res_raw[i * n * res_size..];
 
         for blk_i in 0..m / 4 {
-            BE::reim4_extract_1blk_contiguous(
-                m,
-                min_size,
-                blk_i,
-                &mut res_col[blk_i * res_size * 8..],
-                tmp_raw,
-            );
+            BE::reim4_extract_1blk_contiguous(m, min_size, blk_i, &mut res_col[blk_i * res_size * 8..], tmp_raw);
             BE::reim_zero(&mut res_col[blk_i * res_size * 8 + min_size * 8..(blk_i + 1) * res_size * 8]);
         }
     }
@@ -110,7 +103,6 @@ pub fn convolution_apply_dft<R, A, B, BE>(
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
-    Scratch<BE>: TakeSlice,
 {
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
@@ -138,15 +130,7 @@ pub fn convolution_apply_dft<R, A, B, BE>(
     let a_offset: usize = a_size * 8;
     let b_offset: usize = b_size * 8;
     for blk_i in 0..m / 4 {
-        BE::reim4_convolution(
-            tmp,
-            min_size,
-            offset,
-            &a_raw[a_idx..],
-            a_size,
-            &b_raw[b_idx..],
-            b_size,
-        );
+        BE::reim4_convolution(tmp, min_size, offset, &a_raw[a_idx..], a_size, &b_raw[b_idx..], b_size);
         BE::reim4_save_1blk_contiguous(m, min_size, blk_i, dst, tmp);
         a_idx += a_offset;
         b_idx += b_offset;
@@ -183,6 +167,11 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
 {
+    if col_i == col_j {
+        convolution_apply_dft(res, res_offset, res_col, a, col_i, b, col_j, tmp);
+        return;
+    }
+
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
     let b: &CnvPVecR<&[u8], BE> = &b.to_ref();

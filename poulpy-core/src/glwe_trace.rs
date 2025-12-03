@@ -169,11 +169,7 @@ where
             for i in skip..log_n {
                 self.glwe_rsh(1, res, scratch);
 
-                let p: i64 = if i == 0 {
-                    -1
-                } else {
-                    self.galois_element(1 << (i - 1))
-                };
+                let p: i64 = if i == 0 { -1 } else { self.galois_element(1 << (i - 1)) };
 
                 if let Some(key) = keys.get_automorphism_key(p) {
                     self.glwe_automorphism_add_inplace(res, key, scratch);

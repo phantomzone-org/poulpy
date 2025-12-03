@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
@@ -24,7 +24,8 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
     block_size: usize,
     extension_factor: usize,
 ) where
-    M: BlindRotationKeyEncryptSk<BRA, BE>
+    M: ModuleN
+        + BlindRotationKeyEncryptSk<BRA, BE>
         + BlindRotationKeyPreparedFactory<BRA, BE>
         + BlindRotationExecute<BRA, BE>
         + LookupTableFactory
@@ -111,22 +112,12 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(
-        module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 
     let mut f_vec: Vec<i64> = vec![0i64; message_modulus];
-    f_vec
-        .iter_mut()
-        .enumerate()
-        .for_each(|(i, x)| *x = f(i as i64));
+    f_vec.iter_mut().enumerate().for_each(|(i, x)| *x = f(i as i64));
 
     let lut_infos = LookUpTableLayout {
         n: module.n().into(),
@@ -151,20 +142,10 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
 
-    mod_switch_2n(
-        2 * lut.domain_size(),
-        &mut lwe_2n,
-        &lwe.to_ref(),
-        lut.rotation_direction(),
-    );
+    mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe.to_ref(), lut.rotation_direction());
 
-    let pt_want: i64 = (lwe_2n[0]
-        + lwe_2n[1..]
-            .iter()
-            .zip(sk_lwe.raw())
-            .map(|(x, y)| x * y)
-            .sum::<i64>())
-        & (2 * lut.domain_size() - 1) as i64;
+    let pt_want: i64 =
+        (lwe_2n[0] + lwe_2n[1..].iter().zip(sk_lwe.raw()).map(|(x, y)| x * y).sum::<i64>()) & (2 * lut.domain_size() - 1) as i64;
 
     lut.rotate(module, pt_want);
 

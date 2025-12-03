@@ -17,9 +17,7 @@ where
     }
 
     fn automorphism_key_infos(&self) -> GGLWELayout {
-        self.get(self.keys().next().unwrap())
-            .unwrap()
-            .gglwe_layout()
+        self.get(self.keys().next().unwrap()).unwrap().gglwe_layout()
     }
 }
 
@@ -110,13 +108,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.alloc_glwe_automorphism_key_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
+        self.alloc_glwe_automorphism_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn bytes_of_glwe_automorphism_key_prepared(
@@ -139,13 +131,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.bytes_of_glwe_automorphism_key_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
+        self.bytes_of_glwe_automorphism_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn prepare_glwe_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize

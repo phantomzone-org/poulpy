@@ -18,11 +18,7 @@ pub(crate) fn fft_avx2_fma(m: usize, omg: &[f64], data: &mut [f64]) {
     let (re, im) = data.split_at_mut(m);
 
     if m == 16 {
-        fft16_avx2_fma(
-            as_arr_mut::<16, f64>(re),
-            as_arr_mut::<16, f64>(im),
-            as_arr::<16, f64>(omg),
-        )
+        fft16_avx2_fma(as_arr_mut::<16, f64>(re), as_arr_mut::<16, f64>(im), as_arr::<16, f64>(omg))
     } else if m <= 2048 {
         fft_bfs_16_avx2_fma(m, re, im, omg, 0);
     } else {
@@ -70,12 +66,7 @@ fn fft_bfs_16_avx2_fma(m: usize, re: &mut [f64], im: &mut [f64], omg: &[f64], mu
     while mm > 16 {
         let h: usize = mm >> 2;
         for off in (0..m).step_by(mm) {
-            bitwiddle_fft_avx2_fma(
-                h,
-                &mut re[off..],
-                &mut im[off..],
-                as_arr::<4, f64>(&omg[pos..]),
-            );
+            bitwiddle_fft_avx2_fma(h, &mut re[off..], &mut im[off..], as_arr::<4, f64>(&omg[pos..]));
 
             pos += 4;
         }
@@ -232,16 +223,10 @@ fn test_fft_avx2_fma() {
 
         let mut values_0: Vec<f64> = vec![0f64; m << 1];
         let scale: f64 = 1.0f64 / m as f64;
-        values_0
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+        values_0.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
         let mut values_1: Vec<f64> = vec![0f64; m << 1];
-        values_1
-            .iter_mut()
-            .zip(values_0.iter())
-            .for_each(|(y, x)| *y = *x);
+        values_1.iter_mut().zip(values_0.iter()).for_each(|(y, x)| *y = *x);
 
         ReimFFTAvx::reim_dft_execute(&table, &mut values_0);
         ReimFFTRef::reim_dft_execute(&table, &mut values_1);
@@ -250,14 +235,7 @@ fn test_fft_avx2_fma() {
 
         for i in 0..m * 2 {
             let diff: f64 = (values_0[i] - values_1[i]).abs();
-            assert!(
-                diff <= max_diff,
-                "{} -> {}-{} = {}",
-                i,
-                values_0[i],
-                values_1[i],
-                diff
-            )
+            assert!(diff <= max_diff, "{} -> {}-{} = {}", i, values_0[i], values_1[i], diff)
         }
     }
 

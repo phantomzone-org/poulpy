@@ -184,11 +184,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
 
     let block_size: usize = brk.block_size();
 
-    izip!(
-        a.chunks_exact(block_size),
-        brk.data.chunks_exact(block_size)
-    )
-    .for_each(|(ai, ski)| {
+    izip!(a.chunks_exact(block_size), brk.data.chunks_exact(block_size)).for_each(|(ai, ski)| {
         for i in 0..extension_factor {
             for j in 0..cols {
                 module.vec_znx_dft_apply(1, 0, &mut acc_dft[i], j, &acc[i], j);
@@ -306,12 +302,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
 
     let cols: usize = (out_mut.rank() + 1).into();
 
-    mod_switch_2n(
-        2 * lut.domain_size(),
-        &mut lwe_2n,
-        &lwe_ref,
-        lut.rotation_direction(),
-    );
+    mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];
@@ -337,11 +328,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
         panic!("invalid key: x_pow_a has not been initialized")
     }
 
-    izip!(
-        a.chunks_exact(block_size),
-        brk.data.chunks_exact(block_size)
-    )
-    .for_each(|(ai, ski)| {
+    izip!(a.chunks_exact(block_size), brk.data.chunks_exact(block_size)).for_each(|(ai, ski)| {
         for j in 0..cols {
             module.vec_znx_dft_apply(1, 0, &mut acc_dft, j, out_mut.data_mut(), j);
             module.vec_znx_dft_zero(&mut acc_add_dft, j)
@@ -367,15 +354,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
             (0..cols).for_each(|i| {
                 module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, out_mut.data_mut(), i);
-                module.vec_znx_big_normalize(
-                    base2k,
-                    out_mut.data_mut(),
-                    i,
-                    base2k,
-                    &acc_add_big,
-                    0,
-                    scratch_5,
-                );
+                module.vec_znx_big_normalize(base2k, out_mut.data_mut(), i, base2k, &acc_add_big, 0, scratch_5);
             });
         }
     });
@@ -397,13 +376,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, M, BE: Backend>(
 {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(
-            res.n(),
-            brk.n(),
-            "res.n(): {} != brk.n(): {}",
-            res.n(),
-            brk.n()
-        );
+        assert_eq!(res.n(), brk.n(), "res.n(): {} != brk.n(): {}", res.n(), brk.n());
         assert_eq!(
             lut.domain_size(),
             brk.n_glwe().as_usize(),
@@ -431,12 +404,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, M, BE: Backend>(
     let mut out_mut: GLWE<&mut [u8]> = res.to_mut();
     let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
-    mod_switch_2n(
-        2 * lut.domain_size(),
-        &mut lwe_2n,
-        &lwe_ref,
-        lut.rotation_direction(),
-    );
+    mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];

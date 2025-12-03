@@ -69,16 +69,8 @@ where
     where
         A: GGLWEInfos,
     {
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWEToGLWEKey"
-        );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWEToGLWEKey"
-        );
+        debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
+        debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
         self.alloc_lwe_to_glwe_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
@@ -90,16 +82,8 @@ where
     where
         A: GGLWEInfos,
     {
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWEToGLWEKey"
-        );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWEToGLWEKey"
-        );
+        debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
+        debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
         self.bytes_of_lwe_to_glwe_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 

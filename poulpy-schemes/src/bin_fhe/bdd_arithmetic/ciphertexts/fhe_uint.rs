@@ -121,8 +121,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits
-            .encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
+        self.bits.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
     }
 }
 
@@ -233,15 +232,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
 
         let (mut tmp, scratch_1) = scratch.take_fhe_uint(self);
         tmp.splice_u8(module, dst << 1, src << 1, a, b, keys, scratch_1);
-        self.splice_u8(
-            module,
-            (dst << 1) + 1,
-            (src << 1) + 1,
-            &tmp,
-            b,
-            keys,
-            scratch_1,
-        );
+        self.splice_u8(module, (dst << 1) + 1, (src << 1) + 1, &tmp, b, keys, scratch_1);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -279,11 +270,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         let (mut tmp_fhe_uint_byte, scratch_1) = scratch.take_fhe_uint(b);
 
         // Move a[byte_a] into a[dst]
-        module.glwe_rotate(
-            -((T::bit_index(src << 3) << log_gap) as i64),
-            &mut tmp_fhe_uint_byte,
-            b,
-        );
+        module.glwe_rotate(-((T::bit_index(src << 3) << log_gap) as i64), &mut tmp_fhe_uint_byte, b);
 
         // Zeroes all other bytes
         module.glwe_trace_inplace(&mut tmp_fhe_uint_byte, trace_start, keys, scratch_1);
@@ -348,13 +335,8 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
                 rank: ks_lwe.rank_out(),
             });
             module.glwe_keyswitch(&mut res_tmp, self, ks_glwe, scratch_1);
-            res.to_mut().from_glwe(
-                module,
-                &res_tmp,
-                T::bit_index(bit) << log_gap,
-                ks_lwe,
-                scratch_1,
-            );
+            res.to_mut()
+                .from_glwe(module, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, scratch_1);
         } else {
             res.to_mut()
                 .from_glwe(module, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
@@ -415,8 +397,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     {
         let zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self);
         let mut one: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self);
-        one.data_mut()
-            .encode_coeff_i64(self.base2k().into(), 0, 2, 0, 1);
+        one.data_mut().encode_coeff_i64(self.base2k().into(), 0, 2, 0, 1);
 
         let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::BITS as usize, self);
 

@@ -108,36 +108,17 @@ where
                     sk2_prepared.prepare(module, &sk2);
 
                     // gglwe_{s1}(s0) = s0 -> s1
-                    gglwe_s0s1.encrypt_sk(
-                        module,
-                        &sk0,
-                        &sk1,
-                        &mut source_xa,
-                        &mut source_xe,
-                        scratch_enc.borrow(),
-                    );
+                    gglwe_s0s1.encrypt_sk(module, &sk0, &sk1, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                     // gglwe_{s2}(s1) -> s1 -> s2
-                    gglwe_s1s2.encrypt_sk(
-                        module,
-                        &sk1,
-                        &sk2,
-                        &mut source_xa,
-                        &mut source_xe,
-                        scratch_enc.borrow(),
-                    );
+                    gglwe_s1s2.encrypt_sk(module, &sk1, &sk2, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                     let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
                         GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
                     gglwe_s1s2_prepared.prepare(module, &gglwe_s1s2, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-                    gglwe_s0s2.keyswitch(
-                        module,
-                        &gglwe_s0s1,
-                        &gglwe_s1s2_prepared,
-                        scratch_apply.borrow(),
-                    );
+                    gglwe_s0s2.keyswitch(module, &gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
 
                     let max_noise: f64 = var_noise_gglwe_product_v2(
                         module.n() as f64,
@@ -160,14 +141,7 @@ where
                             assert!(
                                 gglwe_s0s2
                                     .key
-                                    .noise(
-                                        module,
-                                        row,
-                                        col,
-                                        &sk0.data,
-                                        &sk2_prepared,
-                                        scratch_apply.borrow()
-                                    )
+                                    .noise(module, row, col, &sk0.data, &sk2_prepared, scratch_apply.borrow())
                                     .std()
                                     .log2()
                                     <= max_noise + 0.5
@@ -260,24 +234,10 @@ where
                 sk2_prepared.prepare(module, &sk2);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                gglwe_s0s1.encrypt_sk(
-                    module,
-                    &sk0,
-                    &sk1,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch_enc.borrow(),
-                );
+                gglwe_s0s1.encrypt_sk(module, &sk0, &sk1, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                 // gglwe_{s2}(s1) -> s1 -> s2
-                gglwe_s1s2.encrypt_sk(
-                    module,
-                    &sk1,
-                    &sk2,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch_enc.borrow(),
-                );
+                gglwe_s1s2.encrypt_sk(module, &sk1, &sk2, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                 let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
                     GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
@@ -306,14 +266,7 @@ where
                         assert!(
                             gglwe_s0s2
                                 .key
-                                .noise(
-                                    module,
-                                    row,
-                                    col,
-                                    &sk0.data,
-                                    &sk2_prepared,
-                                    scratch_apply.borrow()
-                                )
+                                .noise(module, row, col, &sk0.data, &sk2_prepared, scratch_apply.borrow())
                                 .std()
                                 .log2()
                                 <= max_noise + 0.5

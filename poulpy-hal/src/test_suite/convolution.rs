@@ -1,7 +1,8 @@
 use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
-        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
+        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
+        VecZnxNormalizeInplace,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut, VecZnxToRef,
@@ -61,27 +62,10 @@ where
     for a_col in 0..a.cols() {
         for b_col in 0..b.cols() {
             for offset in 0..res_size {
-                module.cnv_apply_dft(
-                    &mut res_dft,
-                    offset,
-                    0,
-                    &a_prep,
-                    a_col,
-                    &b_prep,
-                    b_col,
-                    scratch.borrow(),
-                );
+                module.cnv_apply_dft(&mut res_dft, offset, 0, &a_prep, a_col, &b_prep, b_col, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
-                module.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_have,
-                    0,
-                    base2k,
-                    &res_big,
-                    0,
-                    scratch.borrow(),
-                );
+                module.vec_znx_big_normalize(base2k, &mut res_have, 0, base2k, &res_big, 0, scratch.borrow());
 
                 bivariate_convolution_naive(
                     module,
@@ -113,7 +97,8 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>
-        + VecZnxAdd,
+        + VecZnxAdd
+        + VecZnxCopy,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
@@ -155,30 +140,18 @@ where
     for col_i in 0..cols {
         for col_j in 0..cols {
             for offset in 0..res_size {
-                module.cnv_pairwise_apply_dft(
-                    &mut res_dft,
-                    offset,
-                    0,
-                    &a_prep,
-                    &b_prep,
-                    col_i,
-                    col_j,
-                    scratch.borrow(),
-                );
+                module.cnv_pairwise_apply_dft(&mut res_dft, offset, 0, &a_prep, &b_prep, col_i, col_j, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
-                module.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_have,
-                    0,
-                    base2k,
-                    &res_big,
-                    0,
-                    scratch.borrow(),
-                );
+                module.vec_znx_big_normalize(base2k, &mut res_have, 0, base2k, &res_big, 0, scratch.borrow());
 
-                module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);
-                module.vec_znx_add(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                if col_i != col_j {
+                    module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);
+                    module.vec_znx_add(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                } else {
+                    module.vec_znx_copy(&mut tmp_a, 0, &a, col_i);
+                    module.vec_znx_copy(&mut tmp_b, 0, &b, col_j);
+                }
 
                 bivariate_convolution_naive(
                     module,
@@ -236,21 +209,13 @@ fn bivariate_convolution_naive<R, A, B, M, BE: Backend>(
                 res_limb += res_scale_abs;
 
                 if res_limb < res.size() {
-                    negacyclic_convolution_naive_add(
-                        res.at_mut(res_col, res_limb),
-                        a.at(a_col, a_limb),
-                        b.at(b_col, b_limb),
-                    );
+                    negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
                 }
             } else if res_limb >= res_scale_abs {
                 res_limb -= res_scale_abs;
 
                 if res_limb < res.size() {
-                    negacyclic_convolution_naive_add(
-                        res.at_mut(res_col, res_limb),
-                        a.at(a_col, a_limb),
-                        b.at(b_col, b_limb),
-                    );
+                    negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
                 }
             }
         }

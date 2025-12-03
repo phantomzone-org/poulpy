@@ -126,15 +126,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(
-                base2k_res,
-                res.data_mut(),
-                i,
-                base2k_key,
-                &res_big,
-                i,
-                scratch_1,
-            );
+            self.vec_znx_big_normalize(base2k_res, res.data_mut(), i, base2k_key, &res_big, i, scratch_1);
         }
     }
 
@@ -190,15 +182,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(
-                base2k_res,
-                res.data_mut(),
-                i,
-                base2k_key,
-                &res_big,
-                i,
-                scratch_1,
-            );
+            self.vec_znx_big_normalize(base2k_res, res.data_mut(), i, base2k_key, &res_big, i, scratch_1);
         }
     }
 }

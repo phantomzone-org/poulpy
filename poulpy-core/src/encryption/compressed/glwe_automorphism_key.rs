@@ -112,14 +112,7 @@ where
             sk_out_prepared.prepare(self, &sk_out);
         }
 
-        self.gglwe_compressed_encrypt_sk(
-            res,
-            &sk.data,
-            &sk_out_prepared,
-            seed_xa,
-            source_xe,
-            scratch_1,
-        );
+        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, source_xe, scratch_1);
 
         res.set_p(p);
     }

@@ -65,11 +65,8 @@ pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
 
     /// Returns a non-mutable pointer starting at the j-th small polynomial of the i-th column.
     fn at_ptr(&self, i: usize, j: usize) -> *const Self::Scalar {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols(), "cols: {} >= {}", i, self.cols());
-            assert!(j < self.size(), "size: {} >= {}", j, self.size());
-        }
+        assert!(i < self.cols(), "cols: {} >= self.cols(): {}", i, self.cols());
+        assert!(j < self.size(), "size: {} >= self.size(): {}", j, self.size());
         let offset: usize = self.n() * (j * self.cols() + i);
         unsafe { self.as_ptr().add(offset) }
     }
@@ -93,11 +90,8 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: DataMut> {
 
     /// Returns a mutable pointer starting at the j-th small polynomial of the i-th column.
     fn at_mut_ptr(&mut self, i: usize, j: usize) -> *mut Self::Scalar {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols(), "cols: {} >= {}", i, self.cols());
-            assert!(j < self.size(), "size: {} >= {}", j, self.size());
-        }
+        assert!(i < self.cols(), "cols: {} >= self.cols(): {}", i, self.cols());
+        assert!(j < self.size(), "size: {} >= self.size(): {}", j, self.size());
         let offset: usize = self.n() * (j * self.cols() + i);
         unsafe { self.as_mut_ptr().add(offset) }
     }

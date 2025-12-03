@@ -51,26 +51,12 @@ where
         assert!(b_size > 0);
 
         for k in (0..dst_size - 1).step_by(2) {
-            BE::reim4_convolution_2coeffs(
-                k + offset,
-                as_arr_mut(&mut dst[8 * k..]),
-                a,
-                a_size,
-                b,
-                b_size,
-            );
+            BE::reim4_convolution_2coeffs(k + offset, as_arr_mut(&mut dst[8 * k..]), a, a_size, b, b_size);
         }
 
         if !dst_size.is_multiple_of(2) {
             let k: usize = dst_size - 1;
-            BE::reim4_convolution_1coeff(
-                k + offset,
-                as_arr_mut(&mut dst[8 * k..]),
-                a,
-                a_size,
-                b,
-                b_size,
-            );
+            BE::reim4_convolution_1coeff(k + offset, as_arr_mut(&mut dst[8 * k..]), a, a_size, b, b_size);
         }
     }
 }

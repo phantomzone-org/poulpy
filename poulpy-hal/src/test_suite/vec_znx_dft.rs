@@ -207,15 +207,7 @@ where
             let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_small_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(base2k, &mut res_small_ref, j, base2k, &res_big_ref, j, scratch_ref.borrow());
                 module_test.vec_znx_big_normalize(
                     base2k,
                     &mut res_small_test,
@@ -392,13 +384,7 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_idft_apply(&mut res_big_ref, j, &res_dft_ref, j, scratch_ref.borrow());
-                    module_test.vec_znx_idft_apply(
-                        &mut res_big_test,
-                        j,
-                        &res_dft_test,
-                        j,
-                        scratch_test.borrow(),
-                    );
+                    module_test.vec_znx_idft_apply(&mut res_big_test, j, &res_dft_test, j, scratch_test.borrow());
                 }
 
                 assert_eq!(res_dft_ref.digest_u64(), res_dft_ref_digest);
@@ -814,15 +800,7 @@ where
             let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_small_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(base2k, &mut res_small_ref, j, base2k, &res_big_ref, j, scratch_ref.borrow());
                 module_test.vec_znx_big_normalize(
                     base2k,
                     &mut res_small_test,
@@ -922,15 +900,7 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
             let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_small_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(base2k, &mut res_small_ref, j, base2k, &res_big_ref, j, scratch_ref.borrow());
                 module_test.vec_znx_big_normalize(
                     base2k,
                     &mut res_small_test,

@@ -33,10 +33,21 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
     }
 }
 
-pub trait GLWEDecrypt<BE: Backend>
+pub trait GLWEDecrypt<BE: Backend> {
+    fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos;
+
+    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToRef,
+        P: GLWEPlaintextToMut,
+        S: GLWESecretPreparedToRef<BE>;
+}
+
+impl<BE: Backend> GLWEDecrypt<BE> for Module<BE>
 where
-    Self: Sized
-        + ModuleN
+    Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
@@ -46,6 +57,7 @@ where
         + VecZnxBigAddInplace<BE>
         + VecZnxBigAddSmallInplace<BE>
         + VecZnxBigNormalize<BE>,
+    Scratch<BE>: ScratchTakeBasic,
 {
     fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -60,7 +72,6 @@ where
         R: GLWEToRef,
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeBasic,
     {
         let res: &GLWE<&[u8]> = &res.to_ref();
         let pt: &mut GLWEPlaintext<&mut [u8]> = &mut pt.to_ref();
@@ -108,18 +119,4 @@ where
         pt.base2k = res.base2k();
         pt.k = pt.k().min(res.k());
     }
-}
-
-impl<BE: Backend> GLWEDecrypt<BE> for Module<BE> where
-    Self: ModuleN
-        + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigAddInplace<BE>
-        + VecZnxBigAddSmallInplace<BE>
-        + VecZnxBigNormalize<BE>
-{
 }

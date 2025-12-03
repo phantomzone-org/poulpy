@@ -162,14 +162,7 @@ where
     // This key is required to prepare all Fhe Integers for operations,
     // and for performing the operations themselves
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     ////////// Input Encryption
     // Encrypting the inputs
@@ -216,13 +209,7 @@ where
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
 
     // Performing the operation
-    c_enc.add(
-        &module,
-        &a_enc_prepared,
-        &b_enc_prepared,
-        &bdd_key_prepared,
-        scratch.borrow(),
-    );
+    c_enc.add(&module, &a_enc_prepared, &b_enc_prepared, &bdd_key_prepared, scratch.borrow());
 
     // Preparing the intermediate result ciphertext, c_enc, for the next operation
     let mut c_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
@@ -230,13 +217,7 @@ where
 
     // Creating the output ciphertext d_enc
     let mut selected_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
-    selected_enc.xor(
-        &module,
-        &c_enc_prepared,
-        &a_enc_prepared,
-        &bdd_key_prepared,
-        scratch.borrow(),
-    );
+    selected_enc.xor(&module, &c_enc_prepared, &a_enc_prepared, &bdd_key_prepared, scratch.borrow());
 
     //////// Homomorphic computation ends here ////////
 
@@ -301,12 +282,7 @@ where
     );
     let mut input_selector_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-    input_selector_enc_prepared.prepare(
-        &module,
-        &input_selector_enc,
-        &bdd_key_prepared,
-        scratch.borrow(),
-    );
+    input_selector_enc_prepared.prepare(&module, &input_selector_enc, &bdd_key_prepared, scratch.borrow());
 
     module.glwe_blind_selection(
         &mut selected_enc,

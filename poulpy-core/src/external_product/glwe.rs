@@ -130,15 +130,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(
-                base2k_res,
-                res.data_mut(),
-                j,
-                base2k_ggsw,
-                &res_big,
-                j,
-                scratch_1,
-            );
+            self.vec_znx_big_normalize(base2k_res, res.data_mut(), j, base2k_ggsw, &res_big, j, scratch_1);
         }
     }
 
@@ -176,15 +168,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(
-                base2k_res,
-                res.data_mut(),
-                j,
-                base2k_ggsw,
-                &res_big,
-                j,
-                scratch_1,
-            );
+            self.vec_znx_big_normalize(base2k_res, res.data_mut(), j, base2k_ggsw, &res_big, j, scratch_1);
         }
     }
 }
@@ -231,10 +215,7 @@ where
         A: GLWEInfos,
         B: GGSWInfos,
     {
-        let in_size: usize = a_infos
-            .k()
-            .div_ceil(b_infos.base2k())
-            .div_ceil(b_infos.dsize().into()) as usize;
+        let in_size: usize = a_infos.k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
         let out_size: usize = res_infos.size();
         let ggsw_size: usize = b_infos.size();
         let a_dft: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), in_size);

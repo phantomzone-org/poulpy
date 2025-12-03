@@ -88,8 +88,7 @@ where
             let key: &K = if i == 0 {
                 keys.get_automorphism_key(-1).unwrap()
             } else {
-                keys.get_automorphism_key(self.galois_element(1 << (i - 1)))
-                    .unwrap()
+                keys.get_automorphism_key(self.galois_element(1 << (i - 1))).unwrap()
             };
 
             for j in 0..t {

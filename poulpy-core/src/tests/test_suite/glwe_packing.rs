@@ -63,9 +63,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
-            .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
-                module, &key_infos,
-            ))
+            .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos))
             .max(module.glwe_pack_tmp_bytes(&glwe_out_infos, &key_infos)),
     );
 
@@ -88,14 +86,7 @@ where
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
     let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
-        tmp.encrypt_sk(
-            module,
-            *gal_el,
-            &sk,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        tmp.encrypt_sk(module, *gal_el, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
             GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
         atk_prepared.prepare(module, &tmp, scratch.borrow());
@@ -106,14 +97,7 @@ where
         .step_by(5)
         .map(|_| {
             let mut ct = GLWE::alloc_from_infos(&glwe_out_infos);
-            ct.encrypt_sk(
-                module,
-                &pt,
-                &sk_prep,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct.encrypt_sk(module, &pt, &sk_prep, &mut source_xa, &mut source_xe, scratch.borrow());
             module.glwe_rotate_inplace(-5, &mut pt, scratch.borrow()); // X^-batch * pt
             ct
         })
@@ -139,10 +123,5 @@ where
 
     pt_want.encode_vec_i64(&data, pt_k.into());
 
-    assert!(
-        res.noise(module, &pt_want, &sk_prep, scratch.borrow())
-            .std()
-            .log2()
-            <= ((k_ct - base2k_out) as f64)
-    );
+    assert!(res.noise(module, &pt_want, &sk_prep, scratch.borrow()).std().log2() <= ((k_ct - base2k_out) as f64));
 }

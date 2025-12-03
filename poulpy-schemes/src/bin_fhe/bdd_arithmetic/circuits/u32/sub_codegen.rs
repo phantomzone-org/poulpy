@@ -79,12 +79,7 @@ impl BitCircuitFamily for AnyBitCircuit {
 
 pub(crate) static OUTPUT_CIRCUITS: Circuit<AnyBitCircuit, 32usize> = Circuit([
     AnyBitCircuit::B0(BitCircuit::new(
-        [
-            Node::Cmux(32, 1, 0),
-            Node::Cmux(32, 0, 1),
-            Node::Cmux(0, 1, 0),
-            Node::None,
-        ],
+        [Node::Cmux(32, 1, 0), Node::Cmux(32, 0, 1), Node::Cmux(0, 1, 0), Node::None],
         2,
     )),
     AnyBitCircuit::B1(BitCircuit::new(

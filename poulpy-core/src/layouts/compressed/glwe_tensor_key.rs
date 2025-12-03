@@ -95,15 +95,7 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
-        GLWETensorKeyCompressed(GGLWECompressed::alloc(
-            n,
-            base2k,
-            k,
-            Rank(pairs),
-            rank,
-            dnum,
-            dsize,
-        ))
+        GLWETensorKeyCompressed(GGLWECompressed::alloc(n, base2k, k, Rank(pairs), rank, dnum, dsize))
     }
 
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize

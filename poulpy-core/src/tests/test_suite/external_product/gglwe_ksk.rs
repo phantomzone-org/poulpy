@@ -106,14 +106,7 @@ where
                 sk_out_prepared.prepare(module, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe_in.encrypt_sk(
-                    module,
-                    &sk_in,
-                    &sk_out,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch.borrow(),
-                );
+                ct_gglwe_in.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
                 ct_rgsw.encrypt_sk(
                     module,
@@ -131,12 +124,7 @@ where
                 ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
-                    module.vec_znx_rotate_inplace(
-                        r as i64,
-                        &mut sk_in.data.as_vec_znx_mut(),
-                        i,
-                        scratch.borrow(),
-                    ); // * X^{r}
+                    module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}
                 });
 
                 let var_gct_err_lhs: f64 = SIGMA * SIGMA;
@@ -165,14 +153,7 @@ where
                         assert!(
                             ct_gglwe_out
                                 .key
-                                .noise(
-                                    module,
-                                    row,
-                                    col,
-                                    &sk_in.data,
-                                    &sk_out_prepared,
-                                    scratch.borrow()
-                                )
+                                .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
                                 .std()
                                 .log2()
                                 <= max_noise + 0.5
@@ -263,14 +244,7 @@ where
                 sk_out_prepared.prepare(module, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe.encrypt_sk(
-                    module,
-                    &sk_in,
-                    &sk_out,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch.borrow(),
-                );
+                ct_gglwe.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
                 ct_rgsw.encrypt_sk(
                     module,
@@ -288,12 +262,7 @@ where
                 ct_gglwe.external_product_inplace(module, &ct_rgsw_prepared, scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
-                    module.vec_znx_rotate_inplace(
-                        r as i64,
-                        &mut sk_in.data.as_vec_znx_mut(),
-                        i,
-                        scratch.borrow(),
-                    ); // * X^{r}
+                    module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}
                 });
 
                 let var_gct_err_lhs: f64 = SIGMA * SIGMA;
@@ -322,14 +291,7 @@ where
                         assert!(
                             ct_gglwe
                                 .key
-                                .noise(
-                                    module,
-                                    row,
-                                    col,
-                                    &sk_in.data,
-                                    &sk_out_prepared,
-                                    scratch.borrow()
-                                )
+                                .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
                                 .std()
                                 .log2()
                                 <= max_noise + 0.5

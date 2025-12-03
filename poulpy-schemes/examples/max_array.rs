@@ -152,14 +152,7 @@ where
     // This key is required to prepare all Fhe Integers for operations,
     // and for performing the operations themselves
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     ////////// Input Encryption
     // Encrypting the inputs

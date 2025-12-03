@@ -98,14 +98,7 @@ where
                 let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
                 sk_out_prepared.prepare(module, &sk_out);
 
-                ksk.encrypt_sk(
-                    module,
-                    &sk_in,
-                    &sk_out,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch.borrow(),
-                );
+                ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
                 glwe_in.encrypt_sk(
                     module,
@@ -201,12 +194,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(
-                pt_want.base2k().into(),
-                &mut pt_want.data,
-                0,
-                &mut source_xa,
-            );
+            module.vec_znx_fill_uniform(pt_want.base2k().into(), &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_infos)
@@ -226,14 +214,7 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(
-                module,
-                &sk_in,
-                &sk_out,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
             glwe_out.encrypt_sk(
                 module,

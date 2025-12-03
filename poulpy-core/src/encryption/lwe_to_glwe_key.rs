@@ -106,13 +106,6 @@ where
         sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
         self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
 
-        self.gglwe_encrypt_sk(
-            res,
-            &sk_lwe_as_glwe.data,
-            sk_glwe,
-            source_xa,
-            source_xe,
-            scratch_1,
-        );
+        self.gglwe_encrypt_sk(res, &sk_lwe_as_glwe.data, sk_glwe, source_xa, source_xe, scratch_1);
     }
 }

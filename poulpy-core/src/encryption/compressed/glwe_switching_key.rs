@@ -104,12 +104,7 @@ where
 
         let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self.n(), sk_in.rank().into());
         for i in 0..sk_in.rank().into() {
-            self.vec_znx_switch_ring(
-                &mut sk_in_tmp.as_vec_znx_mut(),
-                i,
-                &sk_in.data.as_vec_znx(),
-                i,
-            );
+            self.vec_znx_switch_ring(&mut sk_in_tmp.as_vec_znx_mut(), i, &sk_in.data.as_vec_znx(), i);
         }
 
         let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out.rank());

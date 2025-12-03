@@ -1,11 +1,21 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+#[cfg(not(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+)))]
 fn bench_ifft_avx2_fma(_c: &mut Criterion) {
     eprintln!("Skipping: AVX IFft benchmark requires x86_64 + AVX2 + FMA");
 }
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
+#[cfg(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+))]
 pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_avx::ReimIFFTAvx;
@@ -21,10 +31,7 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
             let mut values: Vec<f64> = vec![0f64; m << 1];
 
             let scale = 1.0f64 / (2 * m) as f64;
-            values
-                .iter_mut()
-                .enumerate()
-                .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+            values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
             let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
             move || {
@@ -47,12 +54,22 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
     group.finish();
 }
 
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+#[cfg(not(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+)))]
 fn bench_fft_avx2_fma(_c: &mut Criterion) {
     eprintln!("Skipping: AVX FFT benchmark requires x86_64 + AVX2 + FMA");
 }
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
+#[cfg(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+))]
 pub fn bench_fft_avx2_fma(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_avx::ReimFFTAvx;
@@ -68,10 +85,7 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
             let mut values: Vec<f64> = vec![0f64; m << 1];
 
             let scale = 1.0f64 / (2 * m) as f64;
-            values
-                .iter_mut()
-                .enumerate()
-                .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+            values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
             let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
             move || {

@@ -170,11 +170,7 @@ pub fn reim4_vec_mat2cols_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], 
 
     #[cfg(debug_assertions)]
     {
-        assert!(
-            dst.len() >= 8,
-            "dst must be at least 8 doubles but is {}",
-            dst.len()
-        );
+        assert!(dst.len() >= 8, "dst must be at least 8 doubles but is {}", dst.len());
         assert!(
             u.len() >= nrows * 8,
             "u must be at least nrows={} * 8 doubles but is {}",
@@ -241,10 +237,7 @@ pub fn reim4_vec_mat2cols_2ndcol_product_avx(nrows: usize, dst: &mut [f64], u: &
     {
         assert_eq!(dst.len(), 16, "dst must have 16 doubles");
         assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
-        assert!(
-            v.len() >= nrows * 16,
-            "v must be at least nrows * 16 doubles"
-        );
+        assert!(v.len() >= nrows * 16, "v must be at least nrows * 16 doubles");
     }
 
     unsafe {

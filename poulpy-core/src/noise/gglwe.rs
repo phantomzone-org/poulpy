@@ -78,13 +78,7 @@ where
         let dsize: usize = res.dsize().into();
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
         pt.data_mut().zero();
-        self.vec_znx_add_scalar_inplace(
-            &mut pt.data,
-            0,
-            (dsize - 1) + res_row * dsize,
-            pt_want,
-            res_col,
-        );
+        self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, res_col);
         self.glwe_noise(&res.at(res_row, res_col), &pt, sk_prepared, scratch_1)
     }
 }

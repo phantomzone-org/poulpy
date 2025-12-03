@@ -38,10 +38,7 @@ where
     where
         A: GLWEInfos,
     {
-        GLWEPlaintext::bytes_of_from_infos(infos)
-            + self
-                .glwe_normalize_tmp_bytes()
-                .max(self.glwe_decrypt_tmp_bytes(infos))
+        GLWEPlaintext::bytes_of_from_infos(infos) + self.glwe_normalize_tmp_bytes().max(self.glwe_decrypt_tmp_bytes(infos))
     }
 
     fn glwe_noise<R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats

@@ -137,58 +137,22 @@ impl GLWEToLWEKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for GLWEToLWEKey"
-        );
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for GLWEToLWEKey"
-        );
-        Self::alloc(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.dnum(),
-        )
+        assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for GLWEToLWEKey");
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for GLWEToLWEKey");
+        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
-        GLWEToLWEKey(GLWESwitchingKey::alloc(
-            n,
-            base2k,
-            k,
-            rank_in,
-            Rank(1),
-            dnum,
-            Dsize(1),
-        ))
+        GLWEToLWEKey(GLWESwitchingKey::alloc(n, base2k, k, rank_in, Rank(1), dnum, Dsize(1)))
     }
 
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for GLWEToLWEKey"
-        );
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for GLWEToLWEKey"
-        );
-        Self::bytes_of(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.dnum(),
-        )
+        assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for GLWEToLWEKey");
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for GLWEToLWEKey");
+        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize {

@@ -106,14 +106,7 @@ where
                 scratch.borrow(),
             );
 
-            glwe_in.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prepared,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            glwe_in.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut ct_ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
             ct_ggsw_prepared.prepare(module, &ggsw_apply, scratch.borrow());
@@ -145,13 +138,7 @@ where
                 k_ggsw,
             );
 
-            assert!(
-                glwe_out
-                    .noise(module, &pt_out, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }
@@ -274,13 +261,7 @@ where
                 k_ggsw,
             );
 
-            assert!(
-                glwe_out
-                    .noise(module, &pt_want, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }

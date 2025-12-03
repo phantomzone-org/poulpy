@@ -92,23 +92,9 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            autokey.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
-            ct_in.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prepared,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct_in.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey_infos);
@@ -135,13 +121,7 @@ where
             module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
             module.vec_znx_automorphism_inplace(p, &mut pt_out.data, 0, scratch.borrow());
 
-            assert!(
-                ct_out
-                    .noise(module, &pt_out, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(ct_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }
@@ -213,14 +193,7 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            autokey.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             ct.encrypt_sk(
                 module,
@@ -255,12 +228,7 @@ where
 
             module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
-            assert!(
-                ct.noise(module, &pt_want, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }

@@ -11,10 +11,7 @@ pub fn bench_fft_ref(c: &mut Criterion) {
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
         let scale: f64 = 1.0f64 / (2 * m) as f64;
-        values
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+        values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
         let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
         move || {
             ReimFFTRef::reim_dft_execute(&table, &mut values);
@@ -39,10 +36,7 @@ pub fn bench_ifft_ref(c: &mut Criterion) {
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
         let scale: f64 = 1.0f64 / (2 * m) as f64;
-        values
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+        values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
         let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
         move || {
             ReimIFFTRef::reim_dft_execute(&table, &mut values);

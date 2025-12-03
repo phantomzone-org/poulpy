@@ -160,14 +160,7 @@ where
                 tmp_pt.data.zero(); // zeroes for next iteration
                 self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
                 self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
-                self.glwe_encrypt_sk(
-                    &mut res.at_mut(row_i, col_i),
-                    &tmp_pt,
-                    sk,
-                    source_xa,
-                    source_xe,
-                    scrach_1,
-                );
+                self.glwe_encrypt_sk(&mut res.at_mut(row_i, col_i), &tmp_pt, sk, source_xa, source_xe, scrach_1);
             }
         }
     }

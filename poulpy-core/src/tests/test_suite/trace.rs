@@ -82,33 +82,17 @@ where
 
         let mut data_want: Vec<i64> = vec![0i64; n];
 
-        data_want
-            .iter_mut()
-            .for_each(|x| *x = source_xa.next_i64() & 0xFF);
+        data_want.iter_mut().for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
         module.vec_znx_fill_uniform(base2k_out, &mut pt_have.data, 0, &mut source_xa);
 
-        glwe_out.encrypt_sk(
-            module,
-            &pt_have,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        glwe_out.encrypt_sk(module, &pt_have, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
         let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
-            tmp.encrypt_sk(
-                module,
-                *gal_el,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            tmp.encrypt_sk(module, *gal_el, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
             let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
             atk_prepared.prepare(module, &tmp, scratch.borrow());
@@ -122,12 +106,7 @@ where
         glwe_out.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
         module.vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
-        module.vec_znx_normalize_inplace(
-            pt_want.base2k().as_usize(),
-            &mut pt_want.data,
-            0,
-            scratch.borrow(),
-        );
+        module.vec_znx_normalize_inplace(pt_want.base2k().as_usize(), &mut pt_want.data, 0, scratch.borrow());
 
         let noise_have: f64 = pt_want.stats().std().log2();
 
@@ -147,9 +126,6 @@ where
         noise_want += n as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
         noise_want = noise_want.sqrt().log2();
 
-        assert!(
-            (noise_have - noise_want).abs() < 1.0,
-            "{noise_have} > {noise_want}"
-        );
+        assert!((noise_have - noise_want).abs() < 1.0, "{noise_have} > {noise_want}");
     }
 }

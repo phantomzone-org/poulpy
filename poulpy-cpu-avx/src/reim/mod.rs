@@ -32,10 +32,7 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::reim::{fft_avx2_fma::fft_avx2_fma, ifft_avx2_fma::ifft_avx2_fma};
 
-global_asm!(
-    include_str!("fft16_avx2_fma.s"),
-    include_str!("ifft16_avx2_fma.s")
-);
+global_asm!(include_str!("fft16_avx2_fma.s"), include_str!("ifft16_avx2_fma.s"));
 
 #[inline(always)]
 pub(crate) fn as_arr<const SIZE: usize, R: Float + FloatConst>(x: &[R]) -> &[R; SIZE] {

@@ -53,23 +53,15 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
-                module, &atk_infos,
-            ));
+            let mut scratch: ScratchOwned<BE> =
+                ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &atk_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
 
-            atk.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            atk.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
             (0..atk.rank().into()).for_each(|i| {
@@ -90,14 +82,7 @@ where
                 for col in 0..atk.rank().as_usize() {
                     assert!(
                         atk.key
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &sk.data,
-                                &sk_out_prepared,
-                                scratch.borrow()
-                            )
+                            .noise(module, row, col, &sk.data, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2()
                             <= max_noise
@@ -145,9 +130,8 @@ where
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(
-                module, &atk_infos,
-            ));
+            let mut scratch: ScratchOwned<BE> =
+                ScratchOwned::alloc(GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(module, &atk_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -180,14 +164,7 @@ where
                 for col in 0..atk.rank().as_usize() {
                     let noise_have = atk
                         .key
-                        .noise(
-                            module,
-                            row,
-                            col,
-                            &sk.data,
-                            &sk_out_prepared,
-                            scratch.borrow(),
-                        )
+                        .noise(module, row, col, &sk.data, &sk_out_prepared, scratch.borrow())
                         .std()
                         .log2();
 

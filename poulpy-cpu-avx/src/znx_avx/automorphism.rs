@@ -53,12 +53,8 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
         let mask_1n_vec: __m256i = _mm256_set1_epi64x(mask_1n as i64);
 
         // Lane offsets [0, inv, 2*inv, 3*inv] (mod 2n)
-        let lane_offsets: __m256i = _mm256_set_epi64x(
-            ((inv * 3) & mask_2n) as i64,
-            ((inv * 2) & mask_2n) as i64,
-            inv as i64,
-            0i64,
-        );
+        let lane_offsets: __m256i =
+            _mm256_set_epi64x(((inv * 3) & mask_2n) as i64, ((inv * 2) & mask_2n) as i64, inv as i64, 0i64);
 
         // t_base = (j * inv) mod 2n.
         let mut t_base: usize = 0;

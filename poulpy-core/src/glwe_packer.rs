@@ -265,23 +265,9 @@ fn pack_core<A, K, H, M, BE: Backend>(
 
         // Propagates to next accumulator
         if acc_prev[0].value {
-            pack_core(
-                module,
-                Some(&acc_prev[0].data),
-                acc_next,
-                i + 1,
-                auto_keys,
-                scratch,
-            );
+            pack_core(module, Some(&acc_prev[0].data), acc_next, i + 1, auto_keys, scratch);
         } else {
-            pack_core(
-                module,
-                None::<&GLWE<Vec<u8>>>,
-                acc_next,
-                i + 1,
-                auto_keys,
-                scratch,
-            );
+            pack_core(module, None::<&GLWE<Vec<u8>>>, acc_next, i + 1, auto_keys, scratch);
         }
     }
 }
@@ -319,11 +305,7 @@ fn combine<B, K, H, M, BE: Backend>(
     let log_n: usize = acc.data.n().log2();
     let a: &mut GLWE<Vec<u8>> = &mut acc.data;
 
-    let gal_el: i64 = if i == 0 {
-        -1
-    } else {
-        module.galois_element(1 << (i - 1))
-    };
+    let gal_el: i64 = if i == 0 { -1 } else { module.galois_element(1 << (i - 1)) };
 
     let t: i64 = 1 << (log_n - i - 1);
 

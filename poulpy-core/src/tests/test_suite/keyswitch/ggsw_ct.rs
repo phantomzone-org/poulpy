@@ -99,13 +99,7 @@ where
                 GGSW::encrypt_sk_tmp_bytes(module, &ggsw_in_infos)
                     | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
                     | GGLWEToGGSWKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
-                    | GGSW::keyswitch_tmp_bytes(
-                        module,
-                        &ggsw_out_infos,
-                        &ggsw_in_infos,
-                        &ksk_apply_infos,
-                        &tsk_infos,
-                    ),
+                    | GGSW::keyswitch_tmp_bytes(module, &ggsw_out_infos, &ggsw_in_infos, &ksk_apply_infos, &tsk_infos),
             );
 
             let var_xs: f64 = 0.5;
@@ -122,21 +116,8 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(
-                module,
-                &sk_in,
-                &sk_out,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk_out,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -156,13 +137,7 @@ where
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<Vec<u8>, BE> = GGLWEToGGSWKeyPrepared::alloc_from_infos(module, &tsk);
             tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
-            ggsw_out.keyswitch(
-                module,
-                &ggsw_in,
-                &ksk_prepared,
-                &tsk_prepared,
-                scratch.borrow(),
-            );
+            ggsw_out.keyswitch(module, &ggsw_in, &ksk_prepared, &tsk_prepared, scratch.borrow());
 
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
@@ -184,14 +159,7 @@ where
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     assert!(
                         ggsw_out
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &pt_scalar,
-                                &sk_out_prepared,
-                                scratch.borrow()
-                            )
+                            .noise(module, row, col, &pt_scalar, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2()
                             <= max_noise(col)
@@ -272,13 +240,7 @@ where
                 GGSW::encrypt_sk_tmp_bytes(module, &ggsw_out_infos)
                     | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
                     | GGLWEToGGSWKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
-                    | GGSW::keyswitch_tmp_bytes(
-                        module,
-                        &ggsw_out_infos,
-                        &ggsw_out_infos,
-                        &ksk_apply_infos,
-                        &tsk_infos,
-                    ),
+                    | GGSW::keyswitch_tmp_bytes(module, &ggsw_out_infos, &ggsw_out_infos, &ksk_apply_infos, &tsk_infos),
             );
 
             let var_xs: f64 = 0.5;
@@ -295,21 +257,8 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(
-                module,
-                &sk_in,
-                &sk_out,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk_out,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -351,14 +300,7 @@ where
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     assert!(
                         ggsw_out
-                            .noise(
-                                module,
-                                row,
-                                col,
-                                &pt_scalar,
-                                &sk_out_prepared,
-                                scratch.borrow()
-                            )
+                            .noise(module, row, col, &pt_scalar, &sk_out_prepared, scratch.borrow())
                             .std()
                             .log2()
                             <= max_noise(col)

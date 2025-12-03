@@ -107,14 +107,7 @@ where
                 scratch.borrow(),
             );
 
-            ggsw_in.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prepared,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ggsw_in.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
             ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());
@@ -242,14 +235,7 @@ where
                 scratch.borrow(),
             );
 
-            ggsw_out.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prepared,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ggsw_out.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
             ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());

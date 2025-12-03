@@ -75,13 +75,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for TensorKeyPrepared"
         );
-        self.alloc_tensor_key_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.dnum(),
-            infos.dsize(),
-            infos.rank_out(),
-        )
+        self.alloc_tensor_key_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank_out())
     }
 
     fn bytes_of_tensor_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
@@ -93,13 +87,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.bytes_of_tensor_key_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
+        self.bytes_of_tensor_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn prepare_tensor_key_tmp_bytes<A>(&self, infos: &A) -> usize
