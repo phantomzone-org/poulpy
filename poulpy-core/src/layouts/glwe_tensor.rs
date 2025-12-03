@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -93,9 +93,10 @@ impl GLWETensor<Vec<u8>> {
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1);
+        let cols: usize = rank.as_usize() + 1;
+        let pairs: usize = (((cols + 1) * cols) >> 1).max(1);
         GLWETensor {
-            data: VecZnx::alloc(n.into(), pairs + 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::alloc(n.into(), pairs, k.0.div_ceil(base2k.0) as usize),
             base2k,
             k,
             rank,
@@ -110,36 +111,27 @@ impl GLWETensor<Vec<u8>> {
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1);
-        VecZnx::bytes_of(n.into(), pairs + 1, k.0.div_ceil(base2k.0) as usize)
+        let cols: usize = rank.as_usize() + 1;
+        let pairs: usize = (((cols + 1) * cols) >> 1).max(1);
+        VecZnx::bytes_of(n.into(), pairs, k.0.div_ceil(base2k.0) as usize)
     }
 }
 
-pub trait GLWETensorToRef {
-    fn to_ref(&self) -> GLWETensor<&[u8]>;
-}
-
-impl<D: DataRef> GLWETensorToRef for GLWETensor<D> {
-    fn to_ref(&self) -> GLWETensor<&[u8]> {
-        GLWETensor {
+impl<D: DataRef> GLWEToRef for GLWETensor<D> {
+    fn to_ref(&self) -> GLWE<&[u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
-            rank: self.rank,
         }
     }
 }
 
-pub trait GLWETensorToMut {
-    fn to_mut(&mut self) -> GLWETensor<&mut [u8]>;
-}
-
-impl<D: DataMut> GLWETensorToMut for GLWETensor<D> {
-    fn to_mut(&mut self) -> GLWETensor<&mut [u8]> {
-        GLWETensor {
+impl<D: DataMut> GLWEToMut for GLWETensor<D> {
+    fn to_mut(&mut self) -> GLWE<&mut [u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
-            rank: self.rank,
             data: self.data.to_mut(),
         }
     }

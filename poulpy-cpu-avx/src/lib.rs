@@ -15,6 +15,7 @@ compile_error!("feature `enable-avx` requires AVX2. Build with RUSTFLAGS=\"-C ta
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64", not(target_feature = "fma")))]
 compile_error!("feature `enable-avx` requires FMA. Build with RUSTFLAGS=\"-C target-feature=+fma\".");
 
+mod convolution;
 mod module;
 mod reim;
 mod reim4;

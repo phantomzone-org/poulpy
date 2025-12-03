@@ -88,6 +88,8 @@ mod poulpy_core {
         glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
         // GLWE Base2k Conversion
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
+        // GLWE Tensoring
+        test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
         // GLWE Keyswitch
         glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
         glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,

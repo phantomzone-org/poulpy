@@ -5,7 +5,7 @@ use poulpy_hal::reference::vec_znx::{bench_vec_znx_add, bench_vec_znx_automorphi
 
 #[allow(dead_code)]
 fn bench_vec_znx_add_cpu_ref_fft64(c: &mut Criterion) {
-    bench_vec_znx_add::<FFT64Ref>(c, "cpu_spqlios::fft64");
+    bench_vec_znx_add::<FFT64Ref>(c, "cpu_ref::fft64");
 }
 
 #[allow(dead_code)]

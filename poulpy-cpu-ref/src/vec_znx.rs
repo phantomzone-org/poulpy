@@ -65,7 +65,7 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_normalize::<R, A, Self>(res_basek, res, res_col, a_basek, a, a_col, carry);
+        vec_znx_normalize::<R, A, Self>(0, res_basek, res, res_col, a_basek, a, a_col, carry);
     }
 }
 

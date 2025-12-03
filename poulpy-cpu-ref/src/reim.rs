@@ -8,9 +8,11 @@ use poulpy_hal::reference::fft64::{
         reim_zero_ref,
     },
     reim4::{
-        Reim4Extract1Blk, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save2Blks,
-        reim4_extract_1blk_from_reim_ref, reim4_save_1blk_to_reim_ref, reim4_save_2blk_to_reim_ref,
-        reim4_vec_mat1col_product_ref, reim4_vec_mat2cols_2ndcol_product_ref, reim4_vec_mat2cols_product_ref,
+        Reim4Convolution1Coeff, Reim4Convolution2Coeffs, Reim4Extract1BlkContiguous, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd,
+        Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save1BlkContiguous, Reim4Save2Blks, reim4_convolution_1coeff_ref,
+        reim4_convolution_2coeffs_ref, reim4_extract_1blk_from_reim_contiguous_ref, reim4_save_1blk_to_reim_contiguous_ref,
+        reim4_save_1blk_to_reim_ref, reim4_save_2blk_to_reim_ref, reim4_vec_mat1col_product_ref,
+        reim4_vec_mat2cols_2ndcol_product_ref, reim4_vec_mat2cols_product_ref,
     },
 };
 
@@ -133,10 +135,29 @@ impl ReimZero for FFT64Ref {
     }
 }
 
-impl Reim4Extract1Blk for FFT64Ref {
+impl Reim4Convolution1Coeff for FFT64Ref {
+    fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        reim4_convolution_1coeff_ref(k, dst, a, a_size, b, b_size);
+    }
+}
+
+impl Reim4Convolution2Coeffs for FFT64Ref {
+    fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        reim4_convolution_2coeffs_ref(k, dst, a, a_size, b, b_size);
+    }
+}
+
+impl Reim4Extract1BlkContiguous for FFT64Ref {
     #[inline(always)]
-    fn reim4_extract_1blk(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        reim4_extract_1blk_from_reim_ref(m, rows, blk, dst, src);
+    fn reim4_extract_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_extract_1blk_from_reim_contiguous_ref(m, rows, blk, dst, src);
+    }
+}
+
+impl Reim4Save1BlkContiguous for FFT64Ref {
+    #[inline(always)]
+    fn reim4_save_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_save_1blk_to_reim_contiguous_ref(m, rows, blk, dst, src);
     }
 }
 

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
@@ -24,7 +24,8 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
     block_size: usize,
     extension_factor: usize,
 ) where
-    M: BlindRotationKeyEncryptSk<BRA, BE>
+    M: ModuleN
+        + BlindRotationKeyEncryptSk<BRA, BE>
         + BlindRotationKeyPreparedFactory<BRA, BE>
         + BlindRotationExecute<BRA, BE>
         + LookupTableFactory

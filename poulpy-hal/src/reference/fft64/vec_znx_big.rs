@@ -13,9 +13,9 @@ use crate::{
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
-            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-            ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero,
-            znx_add_normal_f64_ref,
+            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
+            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+            ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero, znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -235,6 +235,7 @@ pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
 }
 
 pub fn vec_znx_big_normalize<R, A, BE>(
+    offset: i64,
     res_base2k: usize,
     res: &mut R,
     res_col: usize,
@@ -256,7 +257,9 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
-        + ZnxNormalizeDigit,
+        + ZnxNormalizeDigit
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -267,7 +270,9 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         max_size: a.max_size,
     };
 
-    vec_znx_normalize::<_, _, BE>(res_base2k, res, res_col, a_base2k, &a_vznx, a_col, carry);
+    vec_znx_normalize::<_, _, BE>(
+        offset, res_base2k, res, res_col, a_base2k, &a_vznx, a_col, carry,
+    );
 }
 
 pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
@@ -301,7 +306,7 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
 pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl<B>,
+    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
