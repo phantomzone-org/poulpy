@@ -71,6 +71,7 @@ pub trait Convolution<BE: Backend> {
 
     #[allow(clippy::too_many_arguments)]
     /// Evaluates the bivariate pair-wise convolution res = (a[i] + a[j]) * (b[i] + b[j]).
+    /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a[i] * b[i].
     /// See [Convolution::cnv_apply_dft] for informations about the bivariate convolution.
     fn cnv_pairwise_apply_dft<R, A, B>(
         &self,

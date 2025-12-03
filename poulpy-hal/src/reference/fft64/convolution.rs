@@ -1,7 +1,6 @@
 use crate::{
-    api::TakeSlice,
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnx, VecZnxDft,
+        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnx, VecZnxDft,
         VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
@@ -110,7 +109,6 @@ pub fn convolution_apply_dft<R, A, B, BE>(
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
-    Scratch<BE>: TakeSlice,
 {
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
@@ -183,6 +181,11 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
 {
+    if col_i == col_j {
+        convolution_apply_dft(res, res_offset, res_col, a, col_i, b, col_j, tmp);
+        return;
+    }
+
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
     let b: &CnvPVecR<&[u8], BE> = &b.to_ref();

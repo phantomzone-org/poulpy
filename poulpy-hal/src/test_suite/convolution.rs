@@ -1,7 +1,6 @@
 use crate::{
     api::{
-        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
-        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
+        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut, VecZnxToRef,
@@ -113,7 +112,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>
-        + VecZnxAdd,
+        + VecZnxAdd + VecZnxCopy,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
@@ -177,8 +176,13 @@ where
                     scratch.borrow(),
                 );
 
-                module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);
-                module.vec_znx_add(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                if col_i != col_j{
+                    module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);
+                    module.vec_znx_add(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                }else{
+                    module.vec_znx_copy(&mut tmp_a, 0, &a, col_i);
+                    module.vec_znx_copy(&mut tmp_b, 0, &b, col_j);
+                }
 
                 bivariate_convolution_naive(
                     module,
