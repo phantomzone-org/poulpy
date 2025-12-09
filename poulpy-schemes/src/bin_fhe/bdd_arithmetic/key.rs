@@ -34,22 +34,22 @@ pub trait BDDKeyInfos {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BDDKeyLayout {
-    pub cbt: CircuitBootstrappingKeyLayout,
-    pub ks_glwe: Option<GLWESwitchingKeyLayout>,
-    pub ks_lwe: GLWEToLWEKeyLayout,
+    pub cbt_layout: CircuitBootstrappingKeyLayout,
+    pub ks_glwe_layout: Option<GLWESwitchingKeyLayout>,
+    pub ks_lwe_layout: GLWEToLWEKeyLayout,
 }
 
 impl BDDKeyInfos for BDDKeyLayout {
     fn cbt_infos(&self) -> CircuitBootstrappingKeyLayout {
-        self.cbt
+        self.cbt_layout
     }
 
     fn ks_glwe_infos(&self) -> Option<GLWESwitchingKeyLayout> {
-        self.ks_glwe
+        self.ks_glwe_layout
     }
 
     fn ks_lwe_infos(&self) -> GLWEToLWEKeyLayout {
-        self.ks_lwe
+        self.ks_lwe_layout
     }
 }
 
@@ -176,9 +176,9 @@ where
 impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyInfos for BDDKeyPrepared<D, BRA, BE> {
     fn cbt_infos(&self) -> CircuitBootstrappingKeyLayout {
         CircuitBootstrappingKeyLayout {
-            layout_brk: self.cbt.brk_infos(),
-            layout_atk: self.cbt.atk_infos(),
-            layout_tsk: self.cbt.tsk_infos(),
+            brk_layout: self.cbt.brk_infos(),
+            atk_layout: self.cbt.atk_infos(),
+            tsk_layout: self.cbt.tsk_infos(),
         }
     }
     fn ks_glwe_infos(&self) -> Option<GLWESwitchingKeyLayout> {

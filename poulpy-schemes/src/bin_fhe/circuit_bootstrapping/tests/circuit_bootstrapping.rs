@@ -78,7 +78,7 @@ where
     };
 
     let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
-        layout_brk: BlindRotationKeyLayout {
+        brk_layout: BlindRotationKeyLayout {
             n_glwe: n_glwe.into(),
             n_lwe: n_lwe.into(),
             base2k: base2k_brk.into(),
@@ -86,7 +86,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GLWEAutomorphismKeyLayout {
+        atk_layout: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k_atk.into(),
             k: k_atk.into(),
@@ -94,7 +94,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWEToGGSWKeyLayout {
+        tsk_layout: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k_tsk.into(),
             k: k_tsk.into(),
@@ -285,7 +285,7 @@ where
     };
 
     let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
-        layout_brk: BlindRotationKeyLayout {
+        brk_layout: BlindRotationKeyLayout {
             n_glwe: n_glwe.into(),
             n_lwe: n_lwe.into(),
             base2k: base2k_brk.into(),
@@ -293,7 +293,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GLWEAutomorphismKeyLayout {
+        atk_layout: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k_atk.into(),
             k: k_atk.into(),
@@ -301,7 +301,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWEToGGSWKeyLayout {
+        tsk_layout: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k_tsk.into(),
             k: k_tsk.into(),

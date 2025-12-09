@@ -26,3 +26,11 @@ paste = "1.0.15"
 [[bench]]
 name = "circuit_bootstrapping"
 harness = false
+
+[[bench]]
+name = "bdd_prepare"
+harness = false
+
+[[bench]]
+name = "bdd_arithmetic"
+harness = false

@@ -85,9 +85,9 @@ where
         // Scratch space (4MB)
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-        let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_glwe();
-        let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_lwe();
-        let rank: poulpy_core::layouts::Rank = params.cbt_infos.layout_brk.rank;
+        let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.brk_layout.n_glwe();
+        let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.brk_layout.n_lwe();
+        let rank: poulpy_core::layouts::Rank = params.cbt_infos.brk_layout.rank;
 
         let module: Module<BE> = Module::<BE>::new(n_glwe.as_u32() as u64);
 
@@ -97,7 +97,6 @@ where
 
         let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
         sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
-        sk_lwe.fill_zero();
 
         let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -151,7 +150,7 @@ where
             rank: 2_u32.into(),
         },
         cbt_infos: CircuitBootstrappingKeyLayout {
-            layout_brk: BlindRotationKeyLayout {
+            brk_layout: BlindRotationKeyLayout {
                 n_glwe: 1024_u32.into(),
                 n_lwe: 574_u32.into(),
                 base2k: 13_u32.into(),
@@ -159,7 +158,7 @@ where
                 dnum: 3_u32.into(),
                 rank: 2_u32.into(),
             },
-            layout_atk: GLWEAutomorphismKeyLayout {
+            atk_layout: GLWEAutomorphismKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
@@ -167,7 +166,7 @@ where
                 dsize: Dsize(1),
                 rank: 2_u32.into(),
             },
-            layout_tsk: GGLWEToGGSWKeyLayout {
+            tsk_layout: GGLWEToGGSWKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),

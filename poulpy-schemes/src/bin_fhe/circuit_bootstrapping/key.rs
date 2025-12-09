@@ -27,9 +27,9 @@ pub trait CircuitBootstrappingKeyInfos {
 
 #[derive(Debug, Clone, Copy)]
 pub struct CircuitBootstrappingKeyLayout {
-    pub layout_brk: BlindRotationKeyLayout,
-    pub layout_atk: GLWEAutomorphismKeyLayout,
-    pub layout_tsk: GGLWEToGGSWKeyLayout,
+    pub brk_layout: BlindRotationKeyLayout,
+    pub atk_layout: GLWEAutomorphismKeyLayout,
+    pub tsk_layout: GGLWEToGGSWKeyLayout,
 }
 
 impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
@@ -38,15 +38,15 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
     }
 
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
-        self.layout_atk
+        self.atk_layout
     }
 
     fn brk_infos(&self) -> BlindRotationKeyLayout {
-        self.layout_brk
+        self.brk_layout
     }
 
     fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout {
-        self.layout_tsk
+        self.tsk_layout
     }
 }
 
