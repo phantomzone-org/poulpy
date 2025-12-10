@@ -142,7 +142,7 @@ where
         steps += 1;
     }
 
-    let (carry, tmp) = tmp.split_at_mut(n);
+    let (carry, tmp) = tmp[..2 * n].split_at_mut(n);
 
     let lsh: usize = (base2k - k_rem) % base2k;
 

@@ -9,7 +9,8 @@ use crate::{
     reference::{
         vec_znx::{
             vec_znx_add, vec_znx_add_inplace, vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_negate,
-            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
+            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_normalize_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace,
+            vec_znx_sub_negate_inplace,
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
@@ -231,7 +232,7 @@ where
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
-    2 * n * size_of::<i64>()
+    vec_znx_normalize_tmp_bytes(n)
 }
 
 #[allow(clippy::too_many_arguments)]
