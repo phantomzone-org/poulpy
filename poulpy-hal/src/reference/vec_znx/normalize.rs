@@ -345,7 +345,7 @@ fn test_vec_znx_normalize_base2k_not_equal_base2k_out() {
                 println!("data_want: {:?}", data_want);
                 println!("data_have: {:?}", data_have);
 
-                let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.abs() as u32));
+                let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
 
                 if offset > 0 {
                     for x in &mut data_want {
@@ -434,7 +434,7 @@ fn test_vec_znx_normalize_base2k_in_equal_base2k_out() {
             //println!("data_want: {:?}", &data_want);
             //println!("data_have: {:?}", &data_have);
 
-            let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.abs() as u32));
+            let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
 
             //println!("scale: {}", scale);
 
