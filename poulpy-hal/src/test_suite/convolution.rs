@@ -65,7 +65,7 @@ where
                 module.cnv_apply_dft(&mut res_dft, offset, 0, &a_prep, a_col, &b_prep, b_col, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
-                module.vec_znx_big_normalize(base2k, &mut res_have, 0, base2k, &res_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
 
                 bivariate_convolution_naive(
                     module,
@@ -143,7 +143,7 @@ where
                 module.cnv_pairwise_apply_dft(&mut res_dft, offset, 0, &a_prep, &b_prep, col_i, col_j, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
-                module.vec_znx_big_normalize(base2k, &mut res_have, 0, base2k, &res_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
 
                 if col_i != col_j {
                     module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);

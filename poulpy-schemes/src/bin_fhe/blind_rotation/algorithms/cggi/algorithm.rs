@@ -254,7 +254,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
                 (0..cols).for_each(|i| {
                     module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft[j], i, scratch7);
                     module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &acc[j], i);
-                    module.vec_znx_big_normalize(base2k, &mut acc[j], i, base2k, &acc_add_big, 0, scratch7);
+                    module.vec_znx_big_normalize(&mut acc[j], base2k, 0, i, &acc_add_big, base2k, 0, scratch7);
                 });
             });
         }
@@ -354,7 +354,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
             (0..cols).for_each(|i| {
                 module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, out_mut.data_mut(), i);
-                module.vec_znx_big_normalize(base2k, out_mut.data_mut(), i, base2k, &acc_add_big, 0, scratch_5);
+                module.vec_znx_big_normalize(out_mut.data_mut(), base2k, 0, i, &acc_add_big, base2k, 0, scratch_5);
             });
         }
     });

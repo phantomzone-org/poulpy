@@ -102,7 +102,7 @@ where
             self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
             self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, res_col - 1);
             let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
-            self.vec_znx_big_normalize(base2k, &mut pt.data, 0, base2k, &pt_big, 0, scratch_2);
+            self.vec_znx_big_normalize(&mut pt.data, base2k, 0, 0, &pt_big, base2k, 0, scratch_2);
         }
 
         self.glwe_noise(&res.at(res_row, res_col), &pt, sk_prepared, scratch_1)

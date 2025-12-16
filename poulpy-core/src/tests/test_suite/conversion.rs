@@ -174,11 +174,12 @@ where
     let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.k());
 
     module.vec_znx_normalize(
-        glwe_pt.base2k().as_usize(),
         lwe_pt_conv.data_mut(),
+        glwe_pt.base2k().as_usize(),
         0,
-        lwe_pt.base2k().as_usize(),
+        0,
         lwe_pt.data(),
+        lwe_pt.base2k().as_usize(),
         0,
         scratch.borrow(),
     );
@@ -281,11 +282,12 @@ where
     let mut glwe_pt_conv = GLWEPlaintext::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.k());
 
     module.vec_znx_normalize(
-        lwe_pt.base2k().as_usize(),
         glwe_pt_conv.data_mut(),
+        lwe_pt.base2k().as_usize(),
         0,
-        glwe_ct.base2k().as_usize(),
+        0,
         glwe_pt.data(),
+        glwe_ct.base2k().as_usize(),
         0,
         scratch.borrow(),
     );

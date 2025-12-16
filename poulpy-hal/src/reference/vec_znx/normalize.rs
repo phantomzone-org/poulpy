@@ -19,12 +19,12 @@ pub fn vec_znx_normalize_tmp_bytes(n: usize) -> usize {
 
 #[allow(clippy::too_many_arguments)]
 pub fn vec_znx_normalize<R, A, ZNXARI>(
-    res_offset: i64,
-    res_base2k: usize,
     res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
     res_col: usize,
-    a_base2k: usize,
     a: &A,
+    a_base2k: usize,
     a_col: usize,
     carry: &mut [i64],
 ) where
@@ -137,6 +137,7 @@ fn vec_znx_normalize_inter_base2k<R, A, ZNXARI>(
 
     // Propagates the carry over the non-overlapping limbs between res and a
     for j in 0..res_end {
+        ZNXARI::znx_zero(res.at_mut(res_col, res_end - j - 1));
         if j == res_end - 1 {
             ZNXARI::znx_normalize_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
@@ -356,11 +357,7 @@ fn vec_znx_normalize_cross_base2k<R, A, ZNXARI>(
                     break 'outer;
                 }
 
-                // This block is not needed since exactly `res_base2k` bits are accumulated on `res_slice`.
-                // else{
-                //ZNXARI::znx_normalize_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
-                //}
-
+                // If we reached the last limb of res
                 if res_limb == 0 {
                     break 'outer;
                 }
@@ -442,55 +439,31 @@ fn test_vec_znx_normalize_cross_base2k() {
 
     let prec: usize = 128;
 
-    for base2k_in in 1..=51 {
-        for base2k_out in 1..=51 {
+    for in_base2k in 1..=51 {
+        for out_base2k in 1..=51 {
             for offset in -(prec as i64)..=(prec as i64) {
                 let mut source: Source = Source::new([1u8; 32]);
 
-                //-(base2k_in as i64)..(base2k_in as i64 + 1) {
-
-                // for base2k_out in 1..2_usize {
-                println!("offset: {offset} base2k_in: {base2k_in} base2k_out: {base2k_out}");
-
-                let in_size: usize = prec.div_ceil(base2k_in);
-                let in_prec: u32 = (in_size * base2k_in) as u32;
+                let in_size: usize = prec.div_ceil(in_base2k);
+                let in_prec: u32 = (in_size * in_base2k) as u32;
 
                 // Ensures no loss of precision (mostly for testing purpose)
-                let out_size: usize = (in_prec as usize).div_ceil(base2k_out);
+                let out_size: usize = (in_prec as usize).div_ceil(out_base2k);
 
-                let out_prec: u32 = (out_size * base2k_out) as u32;
-                let min_prec: u32 = (in_size * base2k_in).min(out_size * base2k_out) as u32;
+                let out_prec: u32 = (out_size * out_base2k) as u32;
+                let min_prec: u32 = (in_size * in_base2k).min(out_size * out_base2k) as u32;
                 let mut want: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, in_size);
                 want.fill_uniform(60, &mut source);
 
                 let mut have: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, out_size);
-                vec_znx_normalize_cross_base2k::<_, _, ZnxRef>(&mut have, base2k_out, offset, 0, &want, base2k_in, 0, &mut carry);
+                have.fill_uniform(60, &mut source);
+                vec_znx_normalize_cross_base2k::<_, _, ZnxRef>(&mut have, out_base2k, offset, 0, &want, in_base2k, 0, &mut carry);
 
                 let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
-                //let mut data_have_2: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
                 let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(in_prec + 60, 0)).collect();
 
-                have.decode_vec_float(base2k_out, 0, &mut data_have);
-
-                want.decode_vec_float(base2k_in, 0, &mut data_want);
-
-                //let mut have2: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, out_size);
-                //if offset < 0{
-                //    vec_znx_rsh_inplace::<_, ZnxRef>(base2k_in, offset.unsigned_abs() as usize, &mut want, 0, &mut carry);
-                //    vec_znx_normalize::<_, _, ZnxRef>(0, base2k_out, &mut have2, 0, base2k_in, &want, 0, &mut carry);
-                //}else{
-                //vec_znx_normalize::<_, _, ZnxRef>(0, base2k_out, &mut have2, 0, base2k_in, &want, 0, &mut carry);
-                //}
-
-                //have2.decode_vec_float(base2k_out, 0, &mut data_have_2);
-
-                println!("data_want: {:?}", data_want);
-                println!("data_have: {:?}", data_have);
-                //println!("data_have: {:?}", data_have_2);
-
-                println!("have: {have}");
-                println!("want: {want}");
-                //println!("have2: {have2}");
+                have.decode_vec_float(out_base2k, 0, &mut data_have);
+                want.decode_vec_float(in_base2k, 0, &mut data_want);
 
                 let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
 
@@ -527,7 +500,7 @@ fn test_vec_znx_normalize_cross_base2k() {
                 }
 
                 for i in 0..n {
-                    println!("i:{i:02} {} {}", data_want[i], data_have[i]);
+                    //println!("i:{i:02} {} {}", data_want[i], data_have[i]);
 
                     let mut err: Float = data_have[i].clone();
                     err.sub_assign_round(&data_want[i], Round::Nearest);
@@ -568,7 +541,7 @@ fn test_vec_znx_normalize_inter_base2k() {
 
             // Fills "have" with the shifted normalization of "want"
             let mut have: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, size);
-
+            have.fill_uniform(60, &mut source);
             vec_znx_normalize_inter_base2k::<_, _, ZnxRef>(base2k, &mut have, offset, 0, &want, 0, &mut carry);
 
             let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
@@ -657,10 +630,10 @@ where
         res.fill_uniform(50, &mut source);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
-
+        let res_offset: i64 = 0;
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize(base2k, &mut res, i, base2k, &a, i, scratch.borrow());
+                module.vec_znx_normalize(&mut res, base2k, res_offset, i, &a, base2k, i, scratch.borrow());
             }
             black_box(());
         }

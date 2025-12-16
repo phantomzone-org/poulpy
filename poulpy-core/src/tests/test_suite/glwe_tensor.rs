@@ -25,8 +25,8 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 10;
-    let base2k_out: usize = 10;
+    let in_base2k: usize = 10;
+    let out_base2k: usize = 10;
     let k: usize = 54;
 
     for rank in 1_usize..2 {
@@ -36,15 +36,15 @@ where
 
         let glwe_in_infos: GLWELayout = GLWELayout {
             n: n.into(),
-            base2k: base2k_out.into(),
+            base2k: out_base2k.into(),
             k: k.into(),
             rank: rank.into(),
         };
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
-            base2k: base2k_out.into(),
-            k: (k - base2k_in).into(),
+            base2k: out_base2k.into(),
+            k: (k - in_base2k).into(),
             rank: rank.into(),
         };
 
@@ -81,7 +81,7 @@ where
         data_want[2 * k] = 1; // X^k * X^k = X^2k
 
         // X^k
-        pt_have_in.encode_coeff_i64(255, TorusPrecision(3 * base2k_in as u32), k);
+        pt_have_in.encode_coeff_i64(255, TorusPrecision(3 * in_base2k as u32), k);
 
         a.encrypt_sk(module, &pt_have_in, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 

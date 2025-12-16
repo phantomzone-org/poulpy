@@ -110,12 +110,12 @@ where
         assert_eq!(ggsw.n(), res.n());
         assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, res, ggsw));
 
-        let base2k_res: usize = res.base2k().as_usize();
-        let base2k_ggsw: usize = ggsw.base2k().as_usize();
+        let res_base2k: usize = res.base2k().as_usize();
+        let ggsw_base2k: usize = ggsw.base2k().as_usize();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
 
-        let res_big: VecZnxBig<&mut [u8], BE> = if base2k_res != base2k_ggsw {
+        let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != ggsw_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: ggsw.base2k(),
@@ -130,7 +130,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(base2k_res, res.data_mut(), j, base2k_ggsw, &res_big, j, scratch_1);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
 
@@ -147,13 +147,13 @@ where
         assert_eq!(a.n(), res.n());
         assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, a, ggsw));
 
-        let base2k_a: usize = a.base2k().into();
-        let base2k_ggsw: usize = ggsw.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let a_base2k: usize = a.base2k().into();
+        let ggsw_base2k: usize = ggsw.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
 
-        let res_big: VecZnxBig<&mut [u8], BE> = if base2k_a != base2k_ggsw {
+        let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != ggsw_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: ggsw.base2k(),
@@ -168,7 +168,7 @@ where
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(base2k_res, res.data_mut(), j, base2k_ggsw, &res_big, j, scratch_1);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
 }

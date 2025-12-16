@@ -90,20 +90,22 @@ where
 
                     for j in 0..cols_out {
                         module_ref.vec_znx_big_normalize(
-                            base2k,
                             &mut res_small_ref,
-                            j,
                             base2k,
+                            0,
+                            j,
                             &res_big_ref,
+                            base2k,
                             j,
                             scratch_ref.borrow(),
                         );
                         module_test.vec_znx_big_normalize(
-                            base2k,
                             &mut res_small_test,
-                            j,
                             base2k,
+                            0,
+                            j,
                             &res_big_test,
+                            base2k,
                             j,
                             scratch_test.borrow(),
                         );
@@ -219,20 +221,22 @@ where
 
                     for j in 0..cols_out {
                         module_ref.vec_znx_big_normalize(
-                            base2k,
                             &mut res_small_ref,
-                            j,
                             base2k,
+                            0,
+                            j,
                             &res_big_ref,
+                            base2k,
                             j,
                             scratch_ref.borrow(),
                         );
                         module_test.vec_znx_big_normalize(
-                            base2k,
                             &mut res_small_test,
-                            j,
                             base2k,
+                            0,
+                            j,
                             &res_big_test,
+                            base2k,
                             j,
                             scratch_test.borrow(),
                         );
@@ -369,20 +373,22 @@ where
 
                         for j in 0..cols_out {
                             module_ref.vec_znx_big_normalize(
-                                base2k,
                                 &mut res_small_ref,
-                                j,
                                 base2k,
+                                0,
+                                j,
                                 &res_big_ref,
+                                base2k,
                                 j,
                                 scratch_ref.borrow(),
                             );
                             module_test.vec_znx_big_normalize(
-                                base2k,
                                 &mut res_small_test,
-                                j,
                                 base2k,
+                                0,
+                                j,
                                 &res_big_test,
+                                base2k,
                                 j,
                                 scratch_test.borrow(),
                             );

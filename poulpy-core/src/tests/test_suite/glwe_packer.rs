@@ -33,26 +33,26 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let n: usize = module.n();
-    let base2k_out: usize = 15;
-    let base2k_key: usize = 10;
+    let out_base2k: usize = 15;
+    let key_base2k: usize = 10;
     let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
     let dsize: usize = 1;
-    let k_ksk: usize = k_ct + base2k_key * dsize;
+    let k_ksk: usize = k_ct + key_base2k * dsize;
 
-    let dnum: usize = k_ct.div_ceil(base2k_key * dsize);
+    let dnum: usize = k_ct.div_ceil(key_base2k * dsize);
 
     let glwe_out_infos: GLWELayout = GLWELayout {
         n: n.into(),
-        base2k: base2k_out.into(),
+        base2k: out_base2k.into(),
         k: k_ct.into(),
         rank: rank.into(),
     };
 
     let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
         n: n.into(),
-        base2k: base2k_key.into(),
+        base2k: key_base2k.into(),
         k: k_ksk.into(),
         rank: rank.into(),
         dsize: dsize.into(),
@@ -132,7 +132,7 @@ where
 
     let noise_have: f64 = pt.stats().std().log2();
 
-    assert!(noise_have < -((k_ct - base2k_out) as f64), "noise: {noise_have}");
+    assert!(noise_have < -((k_ct - out_base2k) as f64), "noise: {noise_have}");
 }
 
 #[inline(always)]

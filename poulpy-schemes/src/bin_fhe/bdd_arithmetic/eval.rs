@@ -364,13 +364,13 @@ where
             // res_a = (b-a) * bit + a
             for j in 0..(res_a.rank() + 1).into() {
                 self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, res_a.data(), j);
-                self.vec_znx_big_normalize(res_base2k, res_a.data_mut(), j, s_base2k, &res_big_tmp, 0, scratch_2);
+                self.vec_znx_big_normalize(res_a.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_2);
             }
 
             // res_b = a - (a - b) * bit = (b - a) * bit + a
             for j in 0..(res_b.rank() + 1).into() {
                 self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, res_b.data(), j, &res_big, j);
-                self.vec_znx_big_normalize(res_base2k, res_b.data_mut(), j, s_base2k, &res_big_tmp, 0, scratch_2);
+                self.vec_znx_big_normalize(res_b.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_2);
             }
         } else {
             let (mut tmp_a, scratch_1) = scratch.take_glwe(&GLWELayout {
@@ -411,13 +411,13 @@ where
             // res_a = (b-a) * bit + a
             for j in 0..(res_a.rank() + 1).into() {
                 self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, tmp_a.data(), j);
-                self.vec_znx_big_normalize(res_base2k, res_a.data_mut(), j, s_base2k, &res_big_tmp, 0, scratch_4);
+                self.vec_znx_big_normalize(res_a.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_4);
             }
 
             // res_b = a - (a - b) * bit = (b - a) * bit + a
             for j in 0..(res_b.rank() + 1).into() {
                 self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, tmp_b.data(), j, &res_big, j);
-                self.vec_znx_big_normalize(res_base2k, res_b.data_mut(), j, s_base2k, &res_big_tmp, 0, scratch_4);
+                self.vec_znx_big_normalize(res_b.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_4);
             }
         }
     }
@@ -468,7 +468,7 @@ where
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, f.data(), j);
-            self.vec_znx_big_normalize(res_base2k, res.data_mut(), j, ggsw_base2k, &res_big, j, scratch_1);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
 
@@ -499,7 +499,7 @@ where
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, &tmp, s, scratch_2);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, res.data(), j);
-            self.vec_znx_big_normalize(res_base2k, res.data_mut(), j, ggsw_base2k, &res_big, j, scratch_2);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_2);
         }
     }
 
@@ -521,7 +521,7 @@ where
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, a.data(), j);
-            self.vec_znx_big_normalize(res_base2k, res.data_mut(), j, ggsw_base2k, &res_big, j, scratch_1);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
 }

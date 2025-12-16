@@ -221,7 +221,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
 
     assert_eq!(res.n(), key.brk.n());
 
-    let base2k_res: usize = res.base2k().as_usize();
+    let res_base2k: usize = res.base2k().as_usize();
     let dnum_res: usize = res.dnum().into();
 
     let alpha: usize = dnum_res.next_power_of_two();
@@ -230,12 +230,12 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
 
     if to_exponent {
         (0..dnum_res).for_each(|i| {
-            f[i] = 1 << (base2k_res * (dnum_res - 1 - i));
+            f[i] = 1 << (res_base2k * (dnum_res - 1 - i));
         });
     } else {
         (0..1 << log_domain).for_each(|j| {
             (0..dnum_res).for_each(|i| {
-                f[j * alpha + i] = j as i64 * (1 << (base2k_res * (dnum_res - 1 - i)));
+                f[j * alpha + i] = j as i64 * (1 << (res_base2k * (dnum_res - 1 - i)));
             });
         });
     }
@@ -243,13 +243,13 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let lut_infos: LookUpTableLayout = LookUpTableLayout {
         n: module.n().into(),
         extension_factor,
-        k: (base2k_res * dnum_res).into(),
+        k: (res_base2k * dnum_res).into(),
         base2k: key.brk.base2k(),
     };
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
     let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
-    lut.set(module, &f, base2k_res * dnum_res);
+    lut.set(module, &f, res_base2k * dnum_res);
 
     if to_exponent {
         lut.set_rotation_direction(LookUpTableRotationDirection::Right);

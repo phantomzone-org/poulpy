@@ -32,27 +32,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 15;
-    let base2k_key: usize = 10;
+    let out_base2k: usize = 15;
+    let key_base2k: usize = 10;
     let k: usize = 54;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
-        let k_autokey: usize = k + base2k_key;
+        let k_autokey: usize = k + key_base2k;
 
         let dsize: usize = 1;
-        let dnum: usize = k.div_ceil(base2k_key * dsize);
+        let dnum: usize = k.div_ceil(key_base2k * dsize);
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
-            base2k: base2k_out.into(),
+            base2k: out_base2k.into(),
             k: k.into(),
             rank: rank.into(),
         };
 
         let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
             n: n.into(),
-            base2k: base2k_key.into(),
+            base2k: key_base2k.into(),
             k: k_autokey.into(),
             rank: rank.into(),
             dsize: dsize.into(),
@@ -84,7 +84,7 @@ where
 
         data_want.iter_mut().for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-        module.vec_znx_fill_uniform(base2k_out, &mut pt_have.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform(out_base2k, &mut pt_have.data, 0, &mut source_xa);
 
         glwe_out.encrypt_sk(module, &pt_have, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
@@ -112,7 +112,7 @@ where
 
         let mut noise_want: f64 = var_noise_gglwe_product(
             n as f64,
-            base2k_key * dsize,
+            key_base2k * dsize,
             0.5,
             0.5,
             1.0 / 12.0,

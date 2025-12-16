@@ -211,7 +211,16 @@ where
                 self.svp_apply_dft_to_dft(&mut a_ij_dft, 0, &a_prepared.data, j, &a_dft, i);
                 self.vec_znx_idft_apply_tmpa(&mut a_ij_big, 0, &mut a_ij_dft, 0);
 
-                self.vec_znx_big_normalize(base2k, &mut res.data.as_vec_znx_mut(), idx, base2k, &a_ij_big, 0, scratch_4);
+                self.vec_znx_big_normalize(
+                    &mut res.data.as_vec_znx_mut(),
+                    base2k,
+                    0,
+                    idx,
+                    &a_ij_big,
+                    base2k,
+                    0,
+                    scratch_4,
+                );
             }
         }
     }

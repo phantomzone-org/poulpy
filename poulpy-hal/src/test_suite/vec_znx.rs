@@ -547,18 +547,20 @@ where
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
-            // Set d to garbage
-            res_ref.fill_uniform(base2k, &mut source);
-            res_test.fill_uniform(base2k, &mut source);
+            for res_offset in -(base2k as i64)..=(base2k as i64) {
+                // Set d to garbage
+                res_ref.fill_uniform(base2k, &mut source);
+                res_test.fill_uniform(base2k, &mut source);
 
-            // Reference
-            for i in 0..cols {
-                module_ref.vec_znx_normalize(base2k, &mut res_ref, i, base2k, &a, i, scratch_ref.borrow());
-                module_test.vec_znx_normalize(base2k, &mut res_test, i, base2k, &a, i, scratch_test.borrow());
+                // Reference
+                for i in 0..cols {
+                    module_ref.vec_znx_normalize(&mut res_ref, base2k, res_offset, i, &a, base2k, i, scratch_ref.borrow());
+                    module_test.vec_znx_normalize(&mut res_test, base2k, res_offset, i, &a, base2k, i, scratch_test.borrow());
+                }
+
+                assert_eq!(a.digest_u64(), a_digest);
+                assert_eq!(res_ref, res_test);
             }
-
-            assert_eq!(a.digest_u64(), a_digest);
-            assert_eq!(res_ref, res_test);
         }
     }
 }

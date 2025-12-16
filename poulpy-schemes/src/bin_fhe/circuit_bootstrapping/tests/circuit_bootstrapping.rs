@@ -46,11 +46,11 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
-    let base2k_res: usize = 15;
+    let res_base2k: usize = 15;
     let base2k_lwe: usize = 14;
     let base2k_brk: usize = 13;
-    let base2k_tsk: usize = 12;
-    let base2k_atk: usize = 11;
+    let tsk_base2k: usize = 12;
+    let a_base2ktk: usize = 11;
     let extension_factor: usize = 1;
     let rank: usize = 1;
 
@@ -59,16 +59,16 @@ where
     let k_lwe_ct: usize = 22;
     let block_size: usize = 7;
 
-    let k_ggsw_res: usize = 4 * base2k_res;
+    let k_ggsw_res: usize = 4 * res_base2k;
     let rows_ggsw_res: usize = 3;
 
     let k_brk: usize = k_ggsw_res + base2k_brk;
     let rows_brk: usize = 4;
 
-    let k_atk: usize = k_ggsw_res + base2k_tsk;
+    let k_atk: usize = k_ggsw_res + tsk_base2k;
     let rows_atk: usize = 4;
 
-    let k_tsk: usize = k_ggsw_res + base2k_atk;
+    let k_tsk: usize = k_ggsw_res + a_base2ktk;
     let rows_tsk: usize = 4;
 
     let lwe_infos: LWELayout = LWELayout {
@@ -88,7 +88,7 @@ where
         },
         atk_layout: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k_atk.into(),
+            base2k: a_base2ktk.into(),
             k: k_atk.into(),
             dnum: rows_atk.into(),
             rank: rank.into(),
@@ -96,7 +96,7 @@ where
         },
         tsk_layout: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k_tsk.into(),
+            base2k: tsk_base2k.into(),
             k: k_tsk.into(),
             dnum: rows_tsk.into(),
             dsize: Dsize(1),
@@ -106,7 +106,7 @@ where
 
     let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
-        base2k: base2k_res.into(),
+        base2k: res_base2k.into(),
         k: k_ggsw_res.into(),
         dnum: rows_ggsw_res.into(),
         dsize: Dsize(1),
@@ -183,7 +183,7 @@ where
     }
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
     let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
-    pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k_res - 2);
+    pt_glwe.data.at_mut(0, 0)[0] = 1 << (res_base2k - 2);
 
     ct_glwe.encrypt_sk(
         module,
@@ -227,11 +227,11 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
-    let base2k_res: usize = 15;
+    let res_base2k: usize = 15;
     let base2k_lwe: usize = 14;
     let base2k_brk: usize = 13;
-    let base2k_tsk: usize = 12;
-    let base2k_atk: usize = 11;
+    let tsk_base2k: usize = 12;
+    let a_base2ktk: usize = 11;
     let extension_factor: usize = 1;
     let rank: usize = 1;
 
@@ -240,16 +240,16 @@ where
     let k_lwe_ct: usize = 13;
     let block_size: usize = 7;
 
-    let k_ggsw_res: usize = 4 * base2k_res;
+    let k_ggsw_res: usize = 4 * res_base2k;
     let rows_ggsw_res: usize = 3;
 
     let k_brk: usize = k_ggsw_res + base2k_brk;
     let rows_brk: usize = 4;
 
-    let k_atk: usize = k_ggsw_res + base2k_tsk;
+    let k_atk: usize = k_ggsw_res + tsk_base2k;
     let rows_atk: usize = 4;
 
-    let k_tsk: usize = k_ggsw_res + base2k_atk;
+    let k_tsk: usize = k_ggsw_res + a_base2ktk;
     let rows_tsk: usize = 4;
 
     let lwe_infos: LWELayout = LWELayout {
@@ -269,7 +269,7 @@ where
         },
         atk_layout: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k_atk.into(),
+            base2k: a_base2ktk.into(),
             k: k_atk.into(),
             dnum: rows_atk.into(),
             rank: rank.into(),
@@ -277,7 +277,7 @@ where
         },
         tsk_layout: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k_tsk.into(),
+            base2k: tsk_base2k.into(),
             k: k_tsk.into(),
             dnum: rows_tsk.into(),
             dsize: Dsize(1),
@@ -287,7 +287,7 @@ where
 
     let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
-        base2k: base2k_res.into(),
+        base2k: res_base2k.into(),
         k: k_ggsw_res.into(),
         dnum: rows_ggsw_res.into(),
         dsize: Dsize(1),
@@ -354,7 +354,7 @@ where
 
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
     let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
-    pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k_res - k_lwe_pt - 1);
+    pt_glwe.data.at_mut(0, 0)[0] = 1 << (res_base2k - k_lwe_pt - 1);
 
     ct_glwe.encrypt_sk(
         module,

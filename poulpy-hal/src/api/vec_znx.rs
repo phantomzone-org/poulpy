@@ -19,11 +19,12 @@ pub trait VecZnxNormalize<B: Backend> {
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
     fn vec_znx_normalize<R, A>(
         &self,
-        res_basek: usize,
         res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
         res_col: usize,
-        a_basek: usize,
         a: &A,
+        a_base2k: usize,
         a_col: usize,
         scratch: &mut Scratch<B>,
     ) where

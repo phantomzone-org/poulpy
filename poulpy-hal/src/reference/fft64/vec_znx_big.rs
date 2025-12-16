@@ -237,12 +237,12 @@ pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
 
 #[allow(clippy::too_many_arguments)]
 pub fn vec_znx_big_normalize<R, A, BE>(
-    offset: i64,
-    res_base2k: usize,
     res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
     res_col: usize,
-    a_base2k: usize,
     a: &A,
+    a_base2k: usize,
     a_col: usize,
     carry: &mut [i64],
 ) where
@@ -272,7 +272,7 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         max_size: a.max_size,
     };
 
-    vec_znx_normalize::<_, _, BE>(offset, res_base2k, res, res_col, a_base2k, &a_vznx, a_col, carry);
+    vec_znx_normalize::<_, _, BE>(res, res_base2k, res_offset, res_col, &a_vznx, a_base2k, a_col, carry);
 }
 
 pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(

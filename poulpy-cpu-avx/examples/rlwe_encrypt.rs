@@ -98,11 +98,12 @@ fn main() {
     // Normalizes back to VecZnx
     // ct[0] <- m - BIG(c1 * s)
     module.vec_znx_big_normalize(
-        base2k,
         &mut ct,
-        0, // Selects the first column of ct (ct[0])
         base2k,
+        0,
+        0, // Selects the first column of ct (ct[0])
         &buf_big,
+        base2k,
         0, // Selects the first column of buf_big
         scratch.borrow(),
     );
@@ -140,7 +141,7 @@ fn main() {
 
     // m + e <- BIG(ct[1] * s + ct[0])
     let mut res = VecZnx::alloc(module.n(), 1, ct_size);
-    module.vec_znx_big_normalize(base2k, &mut res, 0, base2k, &buf_big, 0, scratch.borrow());
+    module.vec_znx_big_normalize(&mut res, base2k, 0, 0, &buf_big, base2k, 0, scratch.borrow());
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];

@@ -404,7 +404,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_normalize(base2k, &mut res, i, base2k, &a, i, scratch.borrow());
+                module.vec_znx_big_normalize(&mut res, base2k, 0, i, &a, base2k, i, scratch.borrow());
             }
             black_box(());
         }

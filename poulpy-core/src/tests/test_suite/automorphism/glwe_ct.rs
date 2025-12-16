@@ -30,37 +30,37 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = 15;
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = 15;
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
     let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_ksk: usize = k_in + key_base2k * dsize;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
-            let dnum: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum: usize = k_in.div_ceil(key_base2k * dsize);
 
             let ct_in_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_in.into(),
+                base2k: in_base2k.into(),
                 k: k_in.into(),
                 rank: rank.into(),
             };
 
             let ct_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
             };
 
             let autokey_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
                 dnum: dnum.into(),
@@ -77,7 +77,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(base2k_in, &mut pt_in.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform(in_base2k, &mut pt_in.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
@@ -107,7 +107,7 @@ where
                 k_ksk,
                 dnum,
                 max_dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -141,29 +141,29 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_out + base2k_key * dsize;
+            let k_ksk: usize = k_out + key_base2k * dsize;
 
             let n: usize = module.n();
-            let dnum: usize = k_out.div_ceil(base2k_key * dsize);
+            let dnum: usize = k_out.div_ceil(key_base2k * dsize);
 
             let ct_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
             };
 
             let autokey_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 rank: rank.into(),
                 dnum: dnum.into(),
@@ -178,7 +178,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(base2k_out, &mut pt_want.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform(out_base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
@@ -215,7 +215,7 @@ where
                 k_ksk,
                 dnum,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,

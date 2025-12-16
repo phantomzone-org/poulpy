@@ -131,20 +131,34 @@ where
         // c(s2s3) = a2 * b3 + a3 * b2 	    <- (L(a2) + L(a3)) * (R(b2) + R(b3)) + NEG(L(a2) * R(b2)) + SUB(L(a3) * R(b3))
         // c(s3^2) = a3 * b3				<- (L(a3) * R(b3))
 
+        // Ceil the lsh offset during conv, because we then correct
+        // with a rsh.
+        let res_offset_conv: usize = res_offset.div_ceil(a_base2k);
+        let res_offset_rsh: usize = (a_base2k - res_offset % a_base2k) % a_base2k;
+
         let res_dft_size = res
             .k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
-            .min(a.size() + b.size() - res_offset);
+            .min(a.size() + b.size() - res_offset_conv);
 
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(&mut res_dft, res_offset, 0, &a_prep, i, &b_prep, i, scratch_3);
+            self.cnv_apply_dft(&mut res_dft, res_offset_conv, 0, &a_prep, i, &b_prep, i, scratch_3);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res_dft_size);
-            self.vec_znx_big_normalize(res_base2k, &mut tmp, 0, a_base2k, &res_big, 0, scratch_4);
+            self.vec_znx_big_normalize(
+                &mut tmp,
+                res_base2k,
+                -(res_offset_rsh as i64),
+                0,
+                &res_big,
+                a_base2k,
+                0,
+                scratch_4,
+            );
 
             self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
 
@@ -168,7 +182,16 @@ where
                 self.cnv_pairwise_apply_dft(&mut res_dft, res_offset, 0, &a_prep, &b_prep, i, j, scratch_3);
                 let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
                 let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                self.vec_znx_big_normalize(res_base2k, &mut tmp, 0, a_base2k, &res_big, 0, scratch_3);
+                self.vec_znx_big_normalize(
+                    &mut tmp,
+                    res_base2k,
+                    -(res_offset_rsh as i64),
+                    0,
+                    &res_big,
+                    a_base2k,
+                    0,
+                    scratch_3,
+                );
                 self.vec_znx_add_inplace(res.data_mut(), col_i + j, &tmp, 0);
             }
         }
@@ -587,16 +610,10 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank());
 
+        let res_base2k = res.base2k().into();
+
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize(
-                res.base2k().into(),
-                res.data_mut(),
-                i,
-                a.base2k().into(),
-                a.data(),
-                i,
-                scratch,
-            );
+            self.vec_znx_normalize(res.data_mut(), res_base2k, 0, i, a.data(), a.base2k().into(), i, scratch);
         }
     }
 

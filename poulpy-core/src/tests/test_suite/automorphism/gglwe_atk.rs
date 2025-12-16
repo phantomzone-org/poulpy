@@ -29,27 +29,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = in_base2k; // MUST BE SAME
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_ksk: usize = k_in + key_base2k * dsize;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_in / base2k_in;
-            let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_in / in_base2k;
+            let dnum_ksk: usize = k_in.div_ceil(key_base2k * dsize);
 
             let auto_key_in_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_in.into(),
+                base2k: in_base2k.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -58,7 +58,7 @@ where
 
             let auto_key_out_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -67,7 +67,7 @@ where
 
             let auto_key_apply_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -130,7 +130,7 @@ where
                 k_ksk,
                 dnum_ksk,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -170,26 +170,26 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_out + base2k_key * dsize;
+            let k_ksk: usize = k_out + key_base2k * dsize;
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_out / base2k_out;
-            let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_out / out_base2k;
+            let dnum_ksk: usize = k_out.div_ceil(key_base2k * dsize);
 
             let auto_key_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -198,7 +198,7 @@ where
 
             let auto_key_apply_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -256,7 +256,7 @@ where
                 k_ksk,
                 dnum_ksk,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,

@@ -82,14 +82,14 @@ pub fn znx_extract_digit_addmul_avx(base2k: usize, lsh: usize, res: &mut [i64], 
         let mut ss: *mut __m256i = src.as_mut_ptr() as *mut __m256i;
 
         // constants for digit/carry extraction
-        let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+        let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
         let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
         for _ in 0..span {
             // load source & extract digit/carry
             let sv: __m256i = _mm256_loadu_si256(ss);
             let digit_256: __m256i = get_digit_avx(sv, mask, sign);
-            let carry_256: __m256i = get_carry_avx(sv, digit_256, basek_vec, top_mask);
+            let carry_256: __m256i = get_carry_avx(sv, digit_256, base2k_vec, top_mask);
 
             // res += (digit << lsh)
             let rv: __m256i = _mm256_loadu_si256(rr);
@@ -135,7 +135,7 @@ pub fn znx_normalize_digit_avx(base2k: usize, res: &mut [i64], src: &mut [i64]) 
         let mut ss: *mut __m256i = src.as_mut_ptr() as *mut __m256i;
 
         // Constants for digit/carry extraction
-        let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+        let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
         for _ in 0..span {
             // Load res lane
@@ -143,7 +143,7 @@ pub fn znx_normalize_digit_avx(base2k: usize, res: &mut [i64], src: &mut [i64]) 
 
             // Extract digit and carry from res
             let digit_256: __m256i = get_digit_avx(rv, mask, sign);
-            let carry_256: __m256i = get_carry_avx(rv, digit_256, basek_vec, top_mask);
+            let carry_256: __m256i = get_carry_avx(rv, digit_256, base2k_vec, top_mask);
 
             // src += carry
             let sv: __m256i = _mm256_loadu_si256(ss);
@@ -187,7 +187,7 @@ pub fn znx_normalize_first_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i
         let mut xx: *const __m256i = x.as_ptr() as *const __m256i;
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
-        let (mask, sign, basek_vec, top_mask) = if lsh == 0 {
+        let (mask, sign, base2k_vec, top_mask) = if lsh == 0 {
             normalize_consts_avx(base2k)
         } else {
             normalize_consts_avx(base2k - lsh)
@@ -200,7 +200,7 @@ pub fn znx_normalize_first_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i
             let digit_256: __m256i = get_digit_avx(xv, mask, sign);
 
             // (x - digit) >> base2k
-            let carry_256: __m256i = get_carry_avx(xv, digit_256, basek_vec, top_mask);
+            let carry_256: __m256i = get_carry_avx(xv, digit_256, base2k_vec, top_mask);
 
             _mm256_storeu_si256(cc, carry_256);
 
@@ -239,7 +239,7 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
         if lsh == 0 {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+            let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
             for _ in 0..span {
                 let xv: __m256i = _mm256_loadu_si256(xx);
@@ -248,7 +248,7 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
                 let digit_256: __m256i = get_digit_avx(xv, mask, sign);
 
                 // (x - digit) >> base2k
-                let carry_256: __m256i = get_carry_avx(xv, digit_256, basek_vec, top_mask);
+                let carry_256: __m256i = get_carry_avx(xv, digit_256, base2k_vec, top_mask);
 
                 _mm256_storeu_si256(xx, digit_256);
                 _mm256_storeu_si256(cc, carry_256);
@@ -257,7 +257,7 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
                 cc = cc.add(1);
             }
         } else {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k - lsh);
+            let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -268,7 +268,7 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
                 let digit_256: __m256i = get_digit_avx(xv, mask, sign);
 
                 // (x - digit) >> base2k
-                let carry_256: __m256i = get_carry_avx(xv, digit_256, basek_vec, top_mask);
+                let carry_256: __m256i = get_carry_avx(xv, digit_256, base2k_vec, top_mask);
 
                 _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
                 _mm256_storeu_si256(cc, carry_256);
@@ -311,7 +311,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
         if lsh == 0 {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+            let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
             for _ in 0..span {
                 let av: __m256i = _mm256_loadu_si256(aa);
@@ -320,7 +320,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 let digit_256: __m256i = get_digit_avx(av, mask, sign);
 
                 // (x - digit) >> base2k
-                let carry_256: __m256i = get_carry_avx(av, digit_256, basek_vec, top_mask);
+                let carry_256: __m256i = get_carry_avx(av, digit_256, base2k_vec, top_mask);
 
                 _mm256_storeu_si256(xx, digit_256);
                 _mm256_storeu_si256(cc, carry_256);
@@ -332,7 +332,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k - lsh);
+            let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -343,7 +343,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 let digit_256: __m256i = get_digit_avx(av, mask, sign);
 
                 // (x - digit) >> base2k
-                let carry_256: __m256i = get_carry_avx(av, digit_256, basek_vec, top_mask);
+                let carry_256: __m256i = get_carry_avx(av, digit_256, base2k_vec, top_mask);
 
                 _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
                 _mm256_storeu_si256(cc, carry_256);
@@ -380,7 +380,7 @@ pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut 
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+    let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
@@ -392,11 +392,11 @@ pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut 
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(xv, mask, sign);
-                let c0: __m256i = get_carry_avx(xv, d0, basek_vec, top_mask);
+                let c0: __m256i = get_carry_avx(xv, d0, base2k_vec, top_mask);
 
                 let s: __m256i = _mm256_add_epi64(d0, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(xx, x1);
@@ -408,7 +408,7 @@ pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut 
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
+            let (mask_lsh, sign_lsh, base2k_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -417,13 +417,13 @@ pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut 
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(xv, mask_lsh, sign_lsh);
-                let c0: __m256i = get_carry_avx(xv, d0, basek_vec_lsh, top_mask_lsh);
+                let c0: __m256i = get_carry_avx(xv, d0, base2k_vec_lsh, top_mask_lsh);
 
                 let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
 
                 let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(xx, x1);
@@ -459,7 +459,7 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+    let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *const __m256i = x.as_ptr() as *const __m256i;
@@ -471,11 +471,11 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(xv, mask, sign);
-                let c0: __m256i = get_carry_avx(xv, d0, basek_vec, top_mask);
+                let c0: __m256i = get_carry_avx(xv, d0, base2k_vec, top_mask);
 
                 let s: __m256i = _mm256_add_epi64(d0, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(cc, cout);
@@ -486,7 +486,7 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
+            let (mask_lsh, sign_lsh, base2k_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -495,13 +495,13 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(xv, mask_lsh, sign_lsh);
-                let c0: __m256i = get_carry_avx(xv, d0, basek_vec_lsh, top_mask_lsh);
+                let c0: __m256i = get_carry_avx(xv, d0, base2k_vec_lsh, top_mask_lsh);
 
                 let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
 
                 let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(cc, cout);
@@ -537,7 +537,7 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
+    let (mask, sign, base2k_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
@@ -550,11 +550,11 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(av, mask, sign);
-                let c0: __m256i = get_carry_avx(av, d0, basek_vec, top_mask);
+                let c0: __m256i = get_carry_avx(av, d0, base2k_vec, top_mask);
 
                 let s: __m256i = _mm256_add_epi64(d0, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(xx, x1);
@@ -567,7 +567,7 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
+            let (mask_lsh, sign_lsh, base2k_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -576,13 +576,13 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
                 let cv: __m256i = _mm256_loadu_si256(cc);
 
                 let d0: __m256i = get_digit_avx(av, mask_lsh, sign_lsh);
-                let c0: __m256i = get_carry_avx(av, d0, basek_vec_lsh, top_mask_lsh);
+                let c0: __m256i = get_carry_avx(av, d0, base2k_vec_lsh, top_mask_lsh);
 
                 let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
 
                 let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
-                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
                 _mm256_storeu_si256(xx, x1);
@@ -814,8 +814,8 @@ mod tests {
         unsafe {
             let x_256: __m256i = _mm256_loadu_si256(x.as_ptr() as *const __m256i);
             let d_256: __m256i = _mm256_loadu_si256(carry.as_ptr() as *const __m256i);
-            let (_, _, basek_vec, top_mask) = normalize_consts_avx(base2k);
-            let digit: __m256i = get_carry_avx(x_256, d_256, basek_vec, top_mask);
+            let (_, _, base2k_vec, top_mask) = normalize_consts_avx(base2k);
+            let digit: __m256i = get_carry_avx(x_256, d_256, base2k_vec, top_mask);
             _mm256_storeu_si256(y1.as_mut_ptr() as *mut __m256i, digit);
         }
         assert_eq!(y0, y1);
