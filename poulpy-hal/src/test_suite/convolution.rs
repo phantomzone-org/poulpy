@@ -173,7 +173,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn bivariate_convolution_naive<R, A, B, M, BE: Backend>(
+pub fn bivariate_convolution_naive<R, A, B, M, BE: Backend>(
     module: &M,
     base2k: usize,
     k: i64,
