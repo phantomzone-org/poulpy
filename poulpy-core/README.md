@@ -154,7 +154,7 @@ atk.at(row, 0).decrypt(...);
 ```
 ## Keyswitching, Automorphism & External Product
 
-Keyswitching, automorphisms, and external products are supported for all ciphertext types where they are well-defined.
+Keyswitching, automorphisms and external products are supported for all ciphertext types where they are well-defined.
 This includes subtypes such as `GGLWEAutomorphismKey`.
 
 For example:
