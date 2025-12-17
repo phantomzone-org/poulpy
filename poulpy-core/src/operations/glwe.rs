@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub trait GLWETensoring<BE: Backend> {
-    fn glwe_tensor_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B, ab_base2k: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -58,7 +58,7 @@ where
         + VecZnxCopy,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_tensor_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B, ab_base2k: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -82,7 +82,7 @@ where
             .k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
-            .min(a_size + b_size - res_offset);
+            .min(a_size + b_size - res_offset / ab_base2k);
 
         let res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
         let tmp: usize = VecZnx::bytes_of(self.n(), 1, res.size());
@@ -131,44 +131,41 @@ where
         // c(s2s3) = a2 * b3 + a3 * b2 	    <- (L(a2) + L(a3)) * (R(b2) + R(b3)) + NEG(L(a2) * R(b2)) + SUB(L(a3) * R(b3))
         // c(s3^2) = a3 * b3				<- (L(a3) * R(b3))
 
-        // Ceil the lsh offset during conv, because we then correct
-        // with a rsh.
-        let res_offset_conv: usize = res_offset.div_ceil(a_base2k);
-        let res_offset_rsh: usize = (a_base2k - res_offset % a_base2k) % a_base2k;
+        // Derive the offset. If res_offset < a_base2k, then we shift to a negative offset
+        // since the convolution doesn't support negative offset (yet).
+        let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
+            (0, -((a_base2k - (res_offset % a_base2k)) as i64))
+        } else {
+            ((res_offset / a_base2k).saturating_sub(1), (res_offset % a_base2k) as i64)
+        };
 
         let res_dft_size = res
             .k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
-            .min(a.size() + b.size() - res_offset_conv);
+            .min(a.size() + b.size() - res_offset_hi);
 
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(&mut res_dft, res_offset_conv, 0, &a_prep, i, &b_prep, i, scratch_3);
+            self.cnv_apply_dft(&mut res_dft, res_offset_hi, 0, &a_prep, i, &b_prep, i, scratch_3);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res_dft_size);
-            self.vec_znx_big_normalize(
-                &mut tmp,
-                res_base2k,
-                -(res_offset_rsh as i64),
-                0,
-                &res_big,
-                a_base2k,
-                0,
-                scratch_4,
-            );
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset_lo, 0, &res_big, a_base2k, 0, scratch_4);
 
             self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
 
             // Pre-subtracts
             // res[i!=j] = NEG(a[i] * b[i]) + SUB(a[j] * b[j])
-            for j in i + 1..cols {
-                if col_i < j {
-                    self.vec_znx_sub_inplace(res.data_mut(), col_i + j, &tmp, 0);
-                } else {
-                    self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+            for j in 0..cols {
+                if j != i {
+                    if j < i {
+                        let col_j = j * cols - (j * (j + 1) / 2);
+                        self.vec_znx_sub_inplace(res.data_mut(), col_j + i, &tmp, 0);
+                    } else {
+                        self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+                    }
                 }
             }
         }
@@ -176,23 +173,17 @@ where
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            for j in i + 1..cols {
-                // res_dft = (a[i] + a[j]) * (b[i] + b[j])
-                let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res.size());
-                self.cnv_pairwise_apply_dft(&mut res_dft, res_offset, 0, &a_prep, &b_prep, i, j, scratch_3);
-                let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-                let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                self.vec_znx_big_normalize(
-                    &mut tmp,
-                    res_base2k,
-                    -(res_offset_rsh as i64),
-                    0,
-                    &res_big,
-                    a_base2k,
-                    0,
-                    scratch_3,
-                );
-                self.vec_znx_add_inplace(res.data_mut(), col_i + j, &tmp, 0);
+            for j in i..cols {
+                if j != i {
+                    // res_dft = (a[i] + a[j]) * (b[i] + b[j])
+                    let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res.size());
+                    self.cnv_pairwise_apply_dft(&mut res_dft, res_offset_hi, 0, &a_prep, &b_prep, i, j, scratch_3);
+                    let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                    let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+                    self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset_lo, 0, &res_big, a_base2k, 0, scratch_3);
+
+                    self.vec_znx_add_inplace(res.data_mut(), col_i + j, &tmp, 0);
+                }
             }
         }
     }

@@ -92,8 +92,6 @@ where
             sk_grouped.data.at_mut(i + rank, 0).copy_from_slice(sk_tensor.data.at(i, 0));
         }
 
-        println!("sk_groupped: {}", sk_grouped.data);
-
         self.glwe_decrypt(res, pt, &sk_grouped, scratch_1);
     }
 }
