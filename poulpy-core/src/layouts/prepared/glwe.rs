@@ -21,7 +21,7 @@ impl<D: Data, B: Backend> LWEInfos for GLWEPrepared<D, B> {
         self.k
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 
@@ -77,7 +77,7 @@ where
 
             assert_eq!(res.n(), self.ring_degree());
             assert_eq!(other.n(), self.ring_degree());
-            assert_eq!(res.size(), other.size());
+            assert_eq!(res.limbs(), other.limbs());
             assert_eq!(res.k(), other.k());
             assert_eq!(res.base2k(), other.base2k());
 

@@ -49,7 +49,7 @@ impl<D: Data> LWEInfos for GLWESecretTensor<D> {
         Degree(self.data.n() as u32)
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         1
     }
 }

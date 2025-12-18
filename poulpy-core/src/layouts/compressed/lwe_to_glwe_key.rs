@@ -25,8 +25,8 @@ impl<D: Data> LWEInfos for LWEToGLWEKeyCompressed<D> {
     fn k(&self) -> TorusPrecision {
         self.0.k()
     }
-    fn size(&self) -> usize {
-        self.0.size()
+    fn limbs(&self) -> usize {
+        self.0.limbs()
     }
 }
 impl<D: Data> GLWEInfos for LWEToGLWEKeyCompressed<D> {

@@ -39,7 +39,7 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
         Degree(self.data.n() as u32)
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }

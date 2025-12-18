@@ -35,8 +35,8 @@ impl<D: Data> LWEInfos for GLWETensorKey<D> {
         self.0.k()
     }
 
-    fn size(&self) -> usize {
-        self.0.size()
+    fn limbs(&self) -> usize {
+        self.0.limbs()
     }
 }
 

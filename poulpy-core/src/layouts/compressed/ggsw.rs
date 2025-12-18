@@ -54,7 +54,7 @@ impl<D: Data> LWEInfos for GGSWCompressed<D> {
     fn k(&self) -> TorusPrecision {
         self.k
     }
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }

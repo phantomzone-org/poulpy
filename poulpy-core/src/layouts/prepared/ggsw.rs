@@ -28,7 +28,7 @@ impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
         self.k
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }
@@ -131,7 +131,7 @@ where
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
-            infos.size(),
+            infos.limbs(),
         )
     }
     fn ggsw_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)

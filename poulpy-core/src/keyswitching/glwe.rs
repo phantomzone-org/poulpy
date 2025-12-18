@@ -69,7 +69,7 @@ where
             self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
         };
 
-        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, key_infos.size())
+        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, key_infos.limbs())
     }
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -109,7 +109,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.limbs()); // Todo optimise
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -164,7 +164,7 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let key_base2k: usize = key.base2k().as_usize();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.limbs()); // Todo optimise
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -232,8 +232,8 @@ where
         K: GGLWEInfos,
     {
         let cols: usize = (a_infos.rank() + 1).into();
-        let a_size: usize = a_infos.size();
-        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols - 1, a_size)
+        let a_size: usize = a_infos.limbs();
+        self.gglwe_product_dft_tmp_bytes(res_infos.limbs(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols - 1, a_size)
     }
 
     fn glwe_keyswitch_internal<DR, A, K>(
@@ -253,7 +253,7 @@ where
         let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
         assert_eq!(a.base2k(), key.base2k());
         let cols: usize = (a.rank() + 1).into();
-        let a_size: usize = a.size();
+        let a_size: usize = a.limbs();
         let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols - 1, a_size);
         for col_i in 0..cols - 1 {
             self.vec_znx_dft_apply(1, 0, &mut a_dft, col_i, a.data(), col_i + 1);
@@ -299,7 +299,7 @@ where
                 key_infos.dnum().into(),
                 (key_infos.rank_in()).into(),
                 (key_infos.rank_out() + 1).into(),
-                key_infos.size(),
+                key_infos.limbs(),
             )
         } else {
             let dnum: usize = key_infos.dnum().into();
@@ -312,7 +312,7 @@ where
                 dnum,
                 (key_infos.rank_in()).into(),
                 (key_infos.rank_out() + 1).into(),
-                key_infos.size(),
+                key_infos.limbs(),
             );
 
             ai_dft + vmp

@@ -72,8 +72,8 @@ impl<D: Data> LWEInfos for LWESwitchingKey<D> {
         self.0.n()
     }
 
-    fn size(&self) -> usize {
-        self.0.size()
+    fn limbs(&self) -> usize {
+        self.0.limbs()
     }
 }
 

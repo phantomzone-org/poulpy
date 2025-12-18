@@ -125,7 +125,7 @@ where
         let rank: usize = res_infos.rank().into();
         let cols: usize = rank + 1;
 
-        let res_size: usize = res_infos.size();
+        let res_size: usize = res_infos.limbs();
         let a_size: usize = res_infos.max_k().as_usize().div_ceil(tsk_base2k);
 
         let a_0: usize = VecZnx::bytes_of(self.n(), 1, a_size);
@@ -223,7 +223,7 @@ fn ggsw_expand_rows_internal<M, R, C, A, T, BE: Backend>(
     // col 2: (-(c0s0 + c1s1 + c2s2)       , c0       , c1 + M[i], c2       )
     // col 3: (-(d0s0 + d1s1 + d2s2)       , d0       , d1       , d2 + M[i])
     for col in 1..cols {
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, tsk.size()); // Todo optimise
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, tsk.limbs()); // Todo optimise
 
         // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2
         //

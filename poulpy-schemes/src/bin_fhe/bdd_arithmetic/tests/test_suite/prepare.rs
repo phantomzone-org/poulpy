@@ -66,7 +66,7 @@ where
     c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch_2.borrow());
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_infos.size() as f64 * ggsw_infos.base2k().as_usize() as f64) + SIGMA.log2() + 2.0;
+        let mut noise: f64 = -(ggsw_infos.limbs() as f64 * ggsw_infos.base2k().as_usize() as f64) + SIGMA.log2() + 2.0;
         noise += 0.5 * ggsw_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_infos.log_n() as f64

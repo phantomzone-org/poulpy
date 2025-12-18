@@ -84,7 +84,7 @@ where
     let mut bit_start: usize = 0;
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_res_infos.size() as f64 * base2k.as_usize() as f64) + SIGMA.log2() + 3.0;
+        let mut noise: f64 = -(ggsw_res_infos.limbs() as f64 * base2k.as_usize() as f64) + SIGMA.log2() + 3.0;
         noise += 0.5 * ggsw_res_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_res_infos.log_n() as f64

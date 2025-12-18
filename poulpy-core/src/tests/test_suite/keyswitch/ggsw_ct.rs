@@ -8,9 +8,9 @@ use crate::{
     GGLWEToGGSWKeyEncryptSk, GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEToGGSWKey, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEInfos,
-        GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedFactory,
-        GLWETensorKeyLayout,
+        GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout,
+        GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout,
+        GLWESwitchingKeyPreparedFactory,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -66,7 +66,7 @@ where
                 rank: rank.into(),
             };
 
-            let tsk_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
+            let tsk_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_tsk.into(),
@@ -208,7 +208,7 @@ where
                 rank: rank.into(),
             };
 
-            let tsk_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
+            let tsk_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_tsk.into(),

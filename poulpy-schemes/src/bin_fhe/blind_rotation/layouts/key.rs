@@ -207,8 +207,8 @@ impl<D: DataRef, BRT: BlindRotationAlgo> LWEInfos for BlindRotationKey<D, BRT> {
         self.keys[0].n()
     }
 
-    fn size(&self) -> usize {
-        self.keys[0].size()
+    fn limbs(&self) -> usize {
+        self.keys[0].limbs()
     }
 }
 

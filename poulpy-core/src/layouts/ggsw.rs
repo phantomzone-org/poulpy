@@ -84,7 +84,7 @@ impl<D: Data> LWEInfos for GGSW<D> {
         self.k
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }

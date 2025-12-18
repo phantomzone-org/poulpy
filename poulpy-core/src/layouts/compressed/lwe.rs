@@ -32,7 +32,7 @@ impl<D: Data> LWEInfos for LWECompressed<D> {
         Degree(self.data.n() as u32)
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }
@@ -127,7 +127,7 @@ where
 
         let mut source: Source = Source::new(other.seed);
         self.vec_znx_fill_uniform(other.base2k().into(), &mut res.data, 0, &mut source);
-        for i in 0..res.size() {
+        for i in 0..res.limbs() {
             res.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         }
     }

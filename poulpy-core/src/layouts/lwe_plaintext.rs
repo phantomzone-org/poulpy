@@ -23,7 +23,7 @@ impl LWEInfos for LWEPlaintextLayout {
         Degree(0)
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.k.0.div_ceil(self.base2k.0) as usize
     }
 }
@@ -47,7 +47,7 @@ impl<D: Data> LWEInfos for LWEPlaintext<D> {
         Degree(self.data.n() as u32 - 1)
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.data.size()
     }
 }

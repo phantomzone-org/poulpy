@@ -67,7 +67,7 @@ where
         A: GGSWInfos,
     {
         GLWEPlaintext::bytes_of_from_infos(infos)
-            + (self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes())
+            + (self.bytes_of_vec_znx_dft(1, infos.limbs()) + self.vec_znx_big_normalize_tmp_bytes())
                 .max(self.glwe_noise_tmp_bytes(infos))
     }
 
@@ -98,7 +98,7 @@ where
 
         // mul with sk[col_j-1]
         if res_col > 0 {
-            let (mut pt_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, res.size());
+            let (mut pt_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, res.limbs());
             self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
             self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, res_col - 1);
             let pt_big = self.vec_znx_idft_apply_consume(pt_dft);

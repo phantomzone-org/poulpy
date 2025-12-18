@@ -30,7 +30,7 @@ where
         if lwe_infos.base2k() == key_infos.base2k() {
             ct + ks
         } else {
-            let a_conv = VecZnx::bytes_of(self.n(), 1, lwe_infos.size()) + self.vec_znx_normalize_tmp_bytes();
+            let a_conv = VecZnx::bytes_of(self.n(), 1, lwe_infos.limbs()) + self.vec_znx_normalize_tmp_bytes();
             ct + a_conv + ks
         }
     }
@@ -59,15 +59,15 @@ where
         let n_lwe: usize = lwe.n().into();
 
         if lwe.base2k() == ksk.base2k() {
-            for i in 0..lwe.size() {
+            for i in 0..lwe.limbs() {
                 let data_lwe: &[i64] = lwe.data.at(0, i);
                 glwe.data.at_mut(0, i)[0] = data_lwe[0];
                 glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
             }
         } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.size());
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.limbs());
             a_conv.zero();
-            for j in 0..lwe.size() {
+            for j in 0..lwe.limbs() {
                 let data_lwe: &[i64] = lwe.data.at(0, j);
                 a_conv.at_mut(0, j)[0] = data_lwe[0]
             }
@@ -84,7 +84,7 @@ where
             );
 
             a_conv.zero();
-            for j in 0..lwe.size() {
+            for j in 0..lwe.limbs() {
                 let data_lwe: &[i64] = lwe.data.at(0, j);
                 a_conv.at_mut(0, j)[..n_lwe].copy_from_slice(&data_lwe[1..]);
             }

@@ -3,7 +3,7 @@ use std::f64::consts::SQRT_2;
 use poulpy_hal::{
     api::{
         ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxSubInplace,
+        VecZnxNormalizeInplace,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned, VecZnx},
     source::Source,
@@ -115,7 +115,7 @@ where
 
         pt_in.encode_vec_i64(&data, TorusPrecision(scale as u32));
 
-        let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_in.size());
+        let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_in.limbs());
         bivariate_convolution_naive(
             module,
             in_base2k,
@@ -151,24 +151,19 @@ where
             module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
-            //println!("noise_have: {noise_have}");
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
-
-            //println!("pt_tmp {pt_tmp}");
 
             assert!(noise_have - noise_want <= 0.5, "{} > {}", noise_have, noise_want);
 
-            module.glwe_relinearize(&mut res_relin, &res_tensor, &tsk_prep, scratch.borrow());
+            module.glwe_relinearize(&mut res_relin, &res_tensor, &tsk_prep, tsk_prep.limbs(), scratch.borrow());
             res_relin.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
             module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
-            //println!("pt_tmp {pt_tmp}");
-
+            // We can reuse the same noise bound because the relinearization noise (which is additive)
+            // is much smaller than the tensoring noise (which is multiplicative)
             let noise_have: f64 = pt_tmp.stats().std().log2();
-
-            //println!("noise_have: {noise_have}");
             assert!(noise_have - noise_want <= 0.5, "{} > {}", noise_have, noise_want);
         }
     }

@@ -22,8 +22,8 @@ impl<D: Data, B: Backend> LWEInfos for LWESwitchingKeyPrepared<D, B> {
         self.0.n()
     }
 
-    fn size(&self) -> usize {
-        self.0.size()
+    fn limbs(&self) -> usize {
+        self.0.limbs()
     }
 }
 impl<D: Data, B: Backend> GLWEInfos for LWESwitchingKeyPrepared<D, B> {

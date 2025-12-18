@@ -57,8 +57,8 @@ impl<D: Data> LWEInfos for GLWESwitchingKeyCompressed<D> {
         self.key.k()
     }
 
-    fn size(&self) -> usize {
-        self.key.size()
+    fn limbs(&self) -> usize {
+        self.key.limbs()
     }
 }
 impl<D: Data> GLWEInfos for GLWESwitchingKeyCompressed<D> {

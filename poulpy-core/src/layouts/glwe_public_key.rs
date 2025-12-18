@@ -45,8 +45,8 @@ impl<D: Data> LWEInfos for GLWEPublicKey<D> {
         self.key.n()
     }
 
-    fn size(&self) -> usize {
-        self.key.size()
+    fn limbs(&self) -> usize {
+        self.key.limbs()
     }
 }
 
@@ -69,7 +69,7 @@ impl LWEInfos for GLWEPublicKeyLayout {
         self.n
     }
 
-    fn size(&self) -> usize {
+    fn limbs(&self) -> usize {
         self.k.0.div_ceil(self.base2k.0) as usize
     }
 }
