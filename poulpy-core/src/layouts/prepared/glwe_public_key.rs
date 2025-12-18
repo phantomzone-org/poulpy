@@ -39,8 +39,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
         self.key.k()
     }
 
-    fn limbs(&self) -> usize {
-        self.key.limbs()
+    fn size(&self) -> usize {
+        self.key.size()
     }
 
     fn n(&self) -> Degree {

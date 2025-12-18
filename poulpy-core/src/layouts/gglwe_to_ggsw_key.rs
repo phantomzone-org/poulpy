@@ -38,8 +38,8 @@ impl<D: Data> LWEInfos for GGLWEToGGSWKey<D> {
         self.keys[0].k()
     }
 
-    fn limbs(&self) -> usize {
-        self.keys[0].limbs()
+    fn size(&self) -> usize {
+        self.keys[0].size()
     }
 }
 

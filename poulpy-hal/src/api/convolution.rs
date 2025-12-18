@@ -1,6 +1,6 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnxDftToMut,
-    VecZnxToRef, ZnxInfos, ZnxViewMut,
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnxBigToMut,
+    VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
 };
 
 pub trait CnvPVecAlloc<BE: Backend> {
@@ -28,28 +28,64 @@ pub trait Convolution<BE: Backend> {
 
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
+    fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
+
+    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[Y] mod (X^N + 1) where Y = 2^-K over the
+    /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
+    ///
+    /// Behavior is identical to [Convolution::cnv_apply_dft] with `b` treated as a constant polynomial
+    /// in the X variable, for example:
+    ///     
+    ///       1    X   X^2  X^3
+    /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
+    ///     Y [a01, a11, a21, a31]
+    ///
+    /// b = 1 [b0] = (b00 + b01 * 2^-K)
+    ///     Y [b0]
+    ///
+    /// This method is intended to be used for multiplications by constants that are greater than the base2k.
     #[allow(clippy::too_many_arguments)]
-    /// Evaluates a bivariate convolution over Z[X, Y] / (X^N + 1) where Y = 2^-K over the
-    /// selected columsn and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
+    fn cnv_by_const_apply<R, A>(
+        &self,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxBigToMut<BE>,
+        A: VecZnxToRef;
+
+    #[allow(clippy::too_many_arguments)]
+    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[X, Y] mod (X^N + 1) where Y = 2^-K over the
+    /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
     /// # Example
-    /// a = [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
-    ///     [a01, a11, a21, a31]
     ///
-    /// b = [b00, b10, b20, b30] = (b00 + b01 * 2^-K) + (b10 + b11 * 2^-K) * X ...
-    ///     [b01, b11, b21, b31]
+    ///       1    X   X^2  X^3
+    /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
+    ///     Y [a01, a11, a21, a31]
+    ///
+    /// b = 1 [b00, b10, b20, b30] = (b00 + b01 * 2^-K) + (b10 + b11 * 2^-K) * X ...
+    ///     Y [b01, b11, b21, b31]
     ///
     /// If res_offset = 0:
-    /// res = [r00, r10, r20, r30] = (r00 + r01 * 2^-K + r02 * 2^-2K + r03 * 2^-3K) + ... * X + ...
-    ///       [r01, r11, r21, r31]
-    ///       [r02, r12, r22, r32]
-    ///       [r03, r13, r23, r33]
+    ///
+    ///            1    X   X^2  X^3
+    /// res = 1  [r00, r10, r20, r30] = (r00 + r01 * 2^-K + r02 * 2^-2K + r03 * 2^-3K) + ... * X + ...
+    ///       Y  [r01, r11, r21, r31]
+    ///       Y^2[r02, r12, r22, r32]
+    ///       Y^3[r03, r13, r23, r33]
     ///
     /// If res_offset = 1:
-    /// res = [r01, r11, r21, r31]  = (r01 + r02 * 2^-K + r03 * 2^-2K) + ... * X + ...
-    ///       [r02, r12, r22, r32]
-    ///       [r03, r13, r23, r33]
-    ///       [  0,   0,   0 ,  0]
+    ///
+    ///            1    X   X^2  X^3
+    /// res = 1  [r01, r11, r21, r31]  = (r01 + r02 * 2^-K + r03 * 2^-2K) + ... * X + ...
+    ///       Y  [r02, r12, r22, r32]
+    ///       Y^2[r03, r13, r23, r33]
+    ///       Y^3[  0,   0,   0 ,  0]
     ///
     /// If res.size() < a.size() + b.size() + k, result is truncated accordingly in the Y dimension.
     fn cnv_apply_dft<R, A, B>(
@@ -72,7 +108,7 @@ pub trait Convolution<BE: Backend> {
     #[allow(clippy::too_many_arguments)]
     /// Evaluates the bivariate pair-wise convolution res = (a[i] + a[j]) * (b[i] + b[j]).
     /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a[i] * b[i].
-    /// See [Convolution::cnv_apply_dft] for informations about the bivariate convolution.
+    /// See [Convolution::cnv_apply_dft] for information about the bivariate convolution.
     fn cnv_pairwise_apply_dft<R, A, B>(
         &self,
         res: &mut R,

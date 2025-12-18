@@ -55,7 +55,7 @@ impl<D: Data> LWEInfos for LWESecret<D> {
         Degree(self.data.n() as u32)
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         1
     }
 }

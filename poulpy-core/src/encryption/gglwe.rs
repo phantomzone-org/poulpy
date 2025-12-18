@@ -124,7 +124,7 @@ where
             "scratch.available: {} < GGLWE::encrypt_sk_tmp_bytes(self, res.rank()={}, res.size()={}): {}",
             scratch.available(),
             res.rank_out(),
-            res.limbs(),
+            res.size(),
             self.gglwe_encrypt_sk_tmp_bytes(res)
         );
         assert!(

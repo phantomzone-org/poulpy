@@ -55,7 +55,7 @@ impl<D: Data> LWEInfos for GGLWECompressed<D> {
         self.k
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 }

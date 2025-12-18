@@ -22,8 +22,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWEToLWEKeyPrepared<D, B> {
         self.0.n()
     }
 
-    fn limbs(&self) -> usize {
-        self.0.limbs()
+    fn size(&self) -> usize {
+        self.0.size()
     }
 }
 

@@ -2,12 +2,13 @@ use poulpy_hal::{
     api::{Convolution, ModuleN, ScratchTakeBasic, TakeSlice, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{
         Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnx,
-        VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
+        VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
     },
     oep::{CnvPVecBytesOfImpl, CnvPVecLAllocImpl, ConvolutionImpl},
     reference::fft64::convolution::{
-        convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_pairwise_apply_dft,
-        convolution_pairwise_apply_dft_tmp_bytes, convolution_prepare_left, convolution_prepare_right,
+        convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_by_const_apply, convolution_by_const_apply_tmp_bytes,
+        convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes, convolution_prepare_left,
+        convolution_prepare_right,
     },
 };
 
@@ -75,6 +76,36 @@ where
         b_size: usize,
     ) -> usize {
         convolution_apply_dft_tmp_bytes(res_size, a_size, b_size)
+    }
+
+    fn cnv_by_const_apply_tmp_bytes_impl(
+        _module: &Module<Self>,
+        res_size: usize,
+        _res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize {
+        convolution_by_const_apply_tmp_bytes(res_size, a_size, b_size)
+    }
+
+    fn cnv_by_const_apply_impl<R, A>(
+        module: &Module<Self>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxBigToMut<Self>,
+        A: VecZnxToRef,
+    {
+        let res: &mut VecZnxBig<&mut [u8], Self> = &mut res.to_mut();
+        let a: &VecZnx<&[u8]> = &a.to_ref();
+        let (tmp, _) =
+            scratch.take_slice(module.cnv_by_const_apply_tmp_bytes(res.size(), res_offset, a.size(), b.len()) / size_of::<i64>());
+        convolution_by_const_apply(res, res_offset, res_col, a, a_col, b, tmp);
     }
 
     fn cnv_apply_dft_impl<R, A, B>(

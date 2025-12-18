@@ -40,6 +40,14 @@ pub trait Reim4Convolution2Coeffs {
     fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize);
 }
 
+pub trait Reim4ConvolutionByRealConst1Coeff {
+    fn reim4_convolution_by_real_const_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]);
+}
+
+pub trait Reim4ConvolutionByRealConst2Coeffs {
+    fn reim4_convolution_by_real_const_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]);
+}
+
 impl<BE: Backend> Reim4Convolution<BE> for BE where Self: Reim4Convolution1Coeff + Reim4Convolution2Coeffs {}
 
 pub trait Reim4Convolution<BE: Backend>
@@ -57,6 +65,29 @@ where
         if !dst_size.is_multiple_of(2) {
             let k: usize = dst_size - 1;
             BE::reim4_convolution_1coeff(k + offset, as_arr_mut(&mut dst[8 * k..]), a, a_size, b, b_size);
+        }
+    }
+}
+
+impl<BE: Backend> Reim4ConvolutionByRealConst<BE> for BE where
+    Self: Reim4ConvolutionByRealConst1Coeff + Reim4ConvolutionByRealConst2Coeffs
+{
+}
+
+pub trait Reim4ConvolutionByRealConst<BE: Backend>
+where
+    BE: Reim4ConvolutionByRealConst1Coeff + Reim4ConvolutionByRealConst2Coeffs,
+{
+    fn reim4_convolution_by_real_const(dst: &mut [f64], dst_size: usize, offset: usize, a: &[f64], a_size: usize, b: &[f64]) {
+        assert!(a_size > 0);
+
+        for k in (0..dst_size - 1).step_by(2) {
+            BE::reim4_convolution_by_real_const_2coeffs(k + offset, as_arr_mut(&mut dst[8 * k..]), a, a_size, b);
+        }
+
+        if !dst_size.is_multiple_of(2) {
+            let k: usize = dst_size - 1;
+            BE::reim4_convolution_by_real_const_1coeff(k + offset, as_arr_mut(&mut dst[8 * k..]), a, a_size, b);
         }
     }
 }

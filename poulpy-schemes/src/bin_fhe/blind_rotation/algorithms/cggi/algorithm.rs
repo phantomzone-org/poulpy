@@ -53,7 +53,7 @@ where
         G: GLWEInfos,
         B: GGSWInfos,
     {
-        let brk_size: usize = brk_infos.limbs();
+        let brk_size: usize = brk_infos.size();
 
         if block_size > 1 {
             let cols: usize = (brk_infos.rank() + 1).into();
@@ -65,7 +65,7 @@ where
             let acc_dft_add: usize = vmp_res;
             let vmp: usize = self.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
             let acc: usize = if extension_factor > 1 {
-                VecZnx::bytes_of(self.n(), cols, glwe_infos.limbs()) * extension_factor
+                VecZnx::bytes_of(self.n(), cols, glwe_infos.size()) * extension_factor
             } else {
                 0
             };
@@ -144,11 +144,11 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
     let dnum: usize = brk.dnum().into();
     let cols: usize = (res.rank() + 1).into();
 
-    let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.limbs());
+    let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
     let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(module, extension_factor, cols, dnum);
-    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(module, extension_factor, cols, brk.limbs());
-    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(module, extension_factor, cols, brk.limbs());
-    let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(module, 1, brk.limbs());
+    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
+    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
+    let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(module, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
@@ -248,7 +248,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch7) = scratch_5.take_vec_znx_big(module, 1, brk.limbs());
+            let (mut acc_add_big, scratch7) = scratch_5.take_vec_znx_big(module, 1, brk.size());
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
@@ -317,9 +317,9 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
     let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, dnum);
-    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(module, cols, brk.limbs());
-    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, cols, brk.limbs());
-    let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(module, 1, brk.limbs());
+    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(module, cols, brk.size());
+    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, cols, brk.size());
+    let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(module, 1, brk.size());
 
     let x_pow_a: &Vec<SvpPPol<Vec<u8>, BE>>;
     if let Some(b) = &brk.x_pow_a {
@@ -349,7 +349,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch_5) = scratch_4.take_vec_znx_big(module, 1, brk.limbs());
+            let (mut acc_add_big, scratch_5) = scratch_4.take_vec_znx_big(module, 1, brk.size());
 
             (0..cols).for_each(|i| {
                 module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);

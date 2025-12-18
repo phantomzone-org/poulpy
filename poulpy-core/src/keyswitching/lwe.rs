@@ -93,7 +93,7 @@ where
 
         let n_lwe: usize = a.n().into();
 
-        for i in 0..a.limbs() {
+        for i in 0..a.size() {
             let data_lwe: &[i64] = a.data.at(0, i);
             glwe_in.data.at_mut(0, i)[0] = data_lwe[0];
             glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);

@@ -56,7 +56,7 @@ impl<D: Data> LWEInfos for GLWEPlaintext<D> {
         self.k
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 

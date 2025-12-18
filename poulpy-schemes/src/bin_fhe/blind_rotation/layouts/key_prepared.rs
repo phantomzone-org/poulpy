@@ -86,8 +86,8 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyP
         self.data[0].n()
     }
 
-    fn limbs(&self) -> usize {
-        self.data[0].limbs()
+    fn size(&self) -> usize {
+        self.data[0].size()
     }
 }
 

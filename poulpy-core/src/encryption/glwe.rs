@@ -140,7 +140,7 @@ where
     where
         A: GLWEInfos,
     {
-        let size: usize = infos.limbs();
+        let size: usize = infos.size();
         assert_eq!(self.n() as u32, infos.n());
         self.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(self.n(), 1, size) + self.bytes_of_vec_znx_dft(1, size)
     }
@@ -268,7 +268,7 @@ where
     where
         A: GLWEInfos,
     {
-        let size: usize = infos.limbs();
+        let size: usize = infos.size();
         assert_eq!(self.n() as u32, infos.n());
         ((self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size)).max(ScalarZnx::bytes_of(self.n(), 1)))
             + self.bytes_of_svp_ppol(1)
@@ -365,7 +365,7 @@ where
         }
 
         let base2k: usize = pk.base2k().into();
-        let size_pk: usize = pk.limbs();
+        let size_pk: usize = pk.size();
         let cols: usize = (res.rank() + 1).into();
 
         // Generates u according to the underlying secret distribution.

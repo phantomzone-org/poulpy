@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
-    test_suite::convolution::{test_convolution, test_convolution_pairwise},
+    test_suite::convolution::{test_convolution, test_convolution_by_const, test_convolution_pairwise},
 };
 
 use crate::FFT64Avx;
@@ -120,6 +120,12 @@ mod poulpy_cpu_avx {
             test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
         }
     }
+}
+
+#[test]
+fn test_convolution_by_const_fft64_avx() {
+    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
+    test_convolution_by_const(&module);
 }
 
 #[test]

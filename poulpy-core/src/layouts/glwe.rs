@@ -99,7 +99,7 @@ impl<D: Data> LWEInfos for GLWE<D> {
         Degree(self.data.n() as u32)
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 }

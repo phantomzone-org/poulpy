@@ -63,7 +63,7 @@ where
     where
         A: GLWEInfos,
     {
-        let size: usize = infos.limbs();
+        let size: usize = infos.size();
         (self.vec_znx_normalize_tmp_bytes() | self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
     }
 
@@ -86,13 +86,13 @@ where
 
         let cols: usize = (res.rank() + 1).into();
 
-        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res.limbs()); // TODO optimize size when pt << ct
+        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res.size()); // TODO optimize size when pt << ct
         c0_big.data_mut().fill(0);
 
         {
             (1..cols).for_each(|i| {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
-                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self, 1, res.limbs()); // TODO optimize size when pt << ct
+                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self, 1, res.size()); // TODO optimize size when pt << ct
                 self.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
                 self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = self.vec_znx_idft_apply_consume(ci_dft);

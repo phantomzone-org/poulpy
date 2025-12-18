@@ -73,8 +73,8 @@ impl<D: Data> LWEInfos for LWEToGLWEKey<D> {
         self.0.n()
     }
 
-    fn limbs(&self) -> usize {
-        self.0.limbs()
+    fn size(&self) -> usize {
+        self.0.size()
     }
 }
 

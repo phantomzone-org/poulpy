@@ -1,3 +1,5 @@
+use rand::RngCore;
+
 use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
@@ -10,6 +12,63 @@ use crate::{
     },
     source::Source,
 };
+
+pub fn test_convolution_by_const<M, BE: Backend>(module: &M)
+where
+    M: ModuleN + Convolution<BE> + VecZnxBigNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxBigAlloc<BE>,
+    Scratch<BE>: ScratchTakeBasic,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+
+    let base2k: usize = 12;
+
+    let a_cols: usize = 2;
+    let a_size: usize = 15;
+    let b_size: usize = 15;
+    let res_size: usize = a_size + b_size;
+
+    let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), a_cols, a_size);
+    let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, b_size);
+
+    let mut res_want: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
+    let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
+    let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
+
+    a.fill_uniform(base2k, &mut source);
+
+    let mut b_const = vec![0i64; b_size];
+    let mask = (1 << base2k) - 1;
+    for (j, x) in b_const[..1].iter_mut().enumerate() {
+        let r = source.next_u64() & mask;
+        *x = ((r << (64 - base2k)) as i64) >> (64 - base2k);
+        b.at_mut(0, j)[0] = *x
+    }
+
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size));
+
+    for a_col in 0..a.cols() {
+        for offset in 0..res_size {
+            module.cnv_by_const_apply(&mut res_big, offset, 0, &a, a_col, &b_const, scratch.borrow());
+            module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
+
+            bivariate_convolution_naive(
+                module,
+                base2k,
+                (offset + 1) as i64,
+                &mut res_want,
+                0,
+                &a,
+                a_col,
+                &b,
+                0,
+                scratch.borrow(),
+            );
+
+            assert_eq!(res_want, res_have);
+        }
+    }
+}
 
 pub fn test_convolution<M, BE: Backend>(module: &M)
 where

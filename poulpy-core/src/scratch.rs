@@ -23,7 +23,7 @@ where
     where
         A: LWEInfos,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.limbs());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             LWE {
                 k: infos.k(),
@@ -38,7 +38,7 @@ where
     where
         A: GLWEInfos,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.limbs());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
             GLWE {
                 k: infos.k(),
@@ -67,7 +67,7 @@ where
     where
         A: GLWEInfos,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.limbs());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             GLWEPlaintext {
                 k: infos.k(),
@@ -87,7 +87,7 @@ where
             infos.dnum().0.div_ceil(infos.dsize().0) as usize,
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
-            infos.limbs(),
+            infos.size(),
         );
         (
             GGLWE {
@@ -111,7 +111,7 @@ where
             infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
-            infos.limbs(),
+            infos.size(),
         );
         (
             GGLWEPrepared {
@@ -133,7 +133,7 @@ where
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
-            infos.limbs(),
+            infos.size(),
         );
         (
             GGSW {
@@ -157,7 +157,7 @@ where
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
-            infos.limbs(),
+            infos.size(),
         );
         (
             GGSWPrepared {
@@ -239,7 +239,7 @@ where
         M: ModuleN + VecZnxDftBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_vec_znx_dft(module, (infos.rank() + 1).into(), infos.limbs());
+        let (data, scratch) = self.take_vec_znx_dft(module, (infos.rank() + 1).into(), infos.size());
         (
             GLWEPrepared {
                 k: infos.k(),

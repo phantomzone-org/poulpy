@@ -1,6 +1,6 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxDftToMut,
-    VecZnxToRef, ZnxInfos,
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxBigToMut,
+    VecZnxDftToMut, VecZnxToRef, ZnxInfos,
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -43,6 +43,29 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
         a_size: usize,
         b_size: usize,
     ) -> usize;
+
+    fn cnv_by_const_apply_tmp_bytes_impl(
+        module: &Module<BE>,
+        res_size: usize,
+        res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize;
+
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_by_const_apply_impl<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxBigToMut<BE>,
+        A: VecZnxToRef;
+
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_impl<R, A, B>(
         module: &Module<BE>,

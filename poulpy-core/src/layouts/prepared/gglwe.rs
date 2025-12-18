@@ -28,7 +28,7 @@ impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
         self.k
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 }
@@ -156,7 +156,7 @@ where
             infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank() + 1).into(),
-            infos.limbs(),
+            infos.size(),
         )
     }
 

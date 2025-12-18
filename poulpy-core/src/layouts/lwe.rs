@@ -15,10 +15,10 @@ pub trait LWEInfos {
     }
     fn k(&self) -> TorusPrecision;
     fn max_k(&self) -> TorusPrecision {
-        TorusPrecision(self.base2k().0 * self.limbs() as u32)
+        TorusPrecision(self.base2k().0 * self.size() as u32)
     }
     fn base2k(&self) -> Base2K;
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.k().0.div_ceil(self.base2k().0) as usize
     }
     fn lwe_layout(&self) -> LWELayout {
@@ -74,7 +74,7 @@ impl<D: Data> LWEInfos for LWE<D> {
         Degree(self.data.n() as u32 - 1)
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 }

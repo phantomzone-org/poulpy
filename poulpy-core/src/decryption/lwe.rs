@@ -49,7 +49,7 @@ where
             assert_eq!(res.n(), sk.n());
         }
 
-        (0..pt.limbs().min(res.limbs())).for_each(|i| {
+        (0..pt.size().min(res.size())).for_each(|i| {
             pt.data.at_mut(0, i)[0] = res.data.at(0, i)[0]
                 + res.data.at(0, i)[1..]
                     .iter()
@@ -59,6 +59,6 @@ where
         });
         self.vec_znx_normalize_inplace(res.base2k().into(), &mut pt.data, 0, scratch);
         pt.base2k = res.base2k();
-        pt.k = crate::layouts::TorusPrecision(res.k().0.min(pt.limbs() as u32 * res.base2k().0));
+        pt.k = crate::layouts::TorusPrecision(res.k().0.min(pt.size() as u32 * res.base2k().0));
     }
 }

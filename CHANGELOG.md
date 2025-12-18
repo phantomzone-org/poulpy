@@ -15,13 +15,24 @@
   - `cnv_prepare_right_tmp_bytes`
   - `cnv_prepare_right`
   - `cnv_apply_dft_tmp_bytes`
+  - `cnv_by_const_apply_dft`
   - `cnv_apply_dft`
   - `cnv_pairwise_apply_dft_tmp_bytes`
   - `cnv_pairwise_apply_dft`
-- Add `Reim4Convolution`, `Reim4Convolution1Coeff`, `Reim4Convolution2Coeffs`, `Reim4Save1BlkContiguous` traits.
+- Add the following Reim4 traits:
+  - `Reim4Convolution`
+  - `Reim4Convolution1Coeff`
+  - `Reim4Convolution2Coeffs`
+  - `Reim4ConvolutionByRealConst1Coeff`
+  - `Reim4ConvolutionByRealConst2Coeffs`
+  - `Reim4Save1BlkContiguous`
 - Update signature `Reim4Extract1Blk` to `Reim4Extract1BlkContiguous`.
 - Add fft64 backend reference code for 
   - `reim4_save_1blk_to_reim_contiguous_ref`
+  - `reim4_convolution_1coeff_ref`
+  - `reim4_convolution_2coeffs_ref`
+  - `reim4_convolution_by_real_const_1coeff_ref`
+  - `reim4_convolution_by_real_const_2coeffs_ref`
   - `convolution_prepare_left`
   - `convolution_prepare_right`
   - `convolution_apply_dft_tmp_bytes`
@@ -31,12 +42,17 @@
 - Add `take_cnv_pvec_left` and `take_cnv_pvec_right` methods to `ScratchTakeBasic` trait.
 - Add the following tests methods for convolution:
   - `test_convolution`
+  - `test_convolution_by_const`
   - `test_convolution_pairwise`
 - Add the following benches methods for convolution:
   - `bench_cnv_prepare_left`
   - `bench_cnv_prepare_right`
   - `bench_cnv_apply_dft`
   - `bench_cnv_pairwise_apply_dft`
+- Update normalization API and OEP to take `res_offset: i64`. This allows the user to specify a bit-shift (positive or negative) applied to the normalization. Behavior-wise, the bit-shift is applied before the normalization (i.e. before applying mod 1 reduction). Since this is an API break, opportunity was taken to also re-order inputs for better consistency.
+  - `VecZnxNormalize` & `VecZnxNormalizeImpl`
+  - `VecZnxBigNormalize` & `VecZnxBigNormalizeImpl`
+  This change completes the road to unlocking full support for cross-base2k normalization, along with arbitrary positive/negative offset. Code is not ensured to be optimal, but correctness is ensured. 
 
 ## `poulpy-cpu-ref`
 - Implemented `ConvolutionImpl` OPE on `FFT64Ref` backend.
@@ -48,19 +64,27 @@
 - Add benchmark for convolution.
 - Add test for convolution.
 - Add fft64 AVX code for
-  - `reim4_convolution_2coeffs_avx`
-  - `reim4_convolution_1coeff_avx`
   - `reim4_save_1blk_to_reim_contiguous_avx`
+  - `reim4_convolution_1coeff_avx`
+  - `reim4_convolution_2coeffs_avx`
+  - `reim4_convolution_by_real_const_1coeff_avx`
+  - `reim4_convolution_by_real_const_2coeffs_avx`
 
 ## `poulpy-core`
-- Temporary disabled `GLWETensoring` trait.
-
+- Renamed `size` to `limbs`.
+- Add `GLWETensoring` trait:
+  - `glwe_tensor_apply_tmp_bytes`
+  - `glwe_tensor_apply`
+  - `glwe_tensor_relinearize_tmp_bytes`
+  - `glwe_tensor_relinearize`
+- Add method tests:
+  - `test_glwe_tensoring`
 
 ## [0.4.0] - 2025-11-20
 
 ### Summary
 - Full support for base2k operations.
-- Many improvments to BDD arithmetic.
+- Many improvements to BDD arithmetic.
 - Removal of **poulpy-backend** & spqlios backend.
 - Addition of individual crates for each specific backend.
 - Some minor bug fixes.
@@ -84,7 +108,7 @@
 - Improved Cmux speed
 
 ### `poulpy-cpu-ref`
-- A new crate that provides the refernce CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_ref**.
+- A new crate that provides the reference CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_ref**.
 
 ### `poulpy-cpu-avx`
 - A new crate that provides an AVX/FMA accelerated CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_avx**.
@@ -132,7 +156,7 @@
  - Added functionality-based traits, which removes the need to import the low-levels traits of `poulpy-hal` and makes backend agnostic code much cleaner. For example instead of having to import each individual traits required for the encryption of a GLWE, only the trait `GLWEEncryptSk` is needed.
 
 ### `poulpy-schemes`
- - Added basic framework for binary decicion circuit (BDD) arithmetic along with some operations.
+ - Added basic framework for binary decision circuit (BDD) arithmetic along with some operations.
 
 ## [0.2.0] - 2025-09-15
 

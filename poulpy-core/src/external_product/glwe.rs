@@ -97,7 +97,7 @@ where
             self.glwe_external_product_internal_tmp_bytes(res, a, ggsw)
         };
 
-        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, ggsw.limbs())
+        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, ggsw.size())
     }
 
     fn glwe_external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
@@ -113,7 +113,7 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let ggsw_base2k: usize = ggsw.base2k().as_usize();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.limbs()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != ggsw_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -151,7 +151,7 @@ where
         let ggsw_base2k: usize = ggsw.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.limbs()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != ggsw_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -216,8 +216,8 @@ where
         B: GGSWInfos,
     {
         let in_size: usize = a_infos.k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
-        let out_size: usize = res_infos.limbs();
-        let ggsw_size: usize = b_infos.limbs();
+        let out_size: usize = res_infos.size();
+        let ggsw_size: usize = b_infos.size();
         let a_dft: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), in_size);
         let vmp: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
@@ -252,14 +252,14 @@ where
 
         let cols: usize = (ggsw.rank() + 1).into();
         let dsize: usize = ggsw.dsize().into();
-        let a_size: usize = a.limbs();
+        let a_size: usize = a.size();
 
         let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize));
         a_dft.data_mut().fill(0);
 
         for di in 0..dsize {
             // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
-            a_dft.set_size((a.limbs() + di) / dsize);
+            a_dft.set_size((a.size() + di) / dsize);
 
             // Small optimization for dsize > 2
             // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
@@ -268,7 +268,7 @@ where
             // It is possible to further ignore the last dsize-1 limbs, but this introduce
             // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
             // noise is kept with respect to the ideal functionality.
-            res_dft.set_size(ggsw.limbs() - ((dsize - di) as isize - 2).max(0) as usize);
+            res_dft.set_size(ggsw.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
             for j in 0..cols {
                 self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &a.data, j);

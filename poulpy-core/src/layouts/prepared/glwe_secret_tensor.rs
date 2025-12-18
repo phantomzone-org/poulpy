@@ -43,7 +43,7 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretTensorPrepared<D, B> {
         Degree(self.data.n() as u32)
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         self.data.size()
     }
 }

@@ -109,8 +109,8 @@ impl<D: Data> LWEInfos for GLWESwitchingKey<D> {
         self.key.k()
     }
 
-    fn limbs(&self) -> usize {
-        self.key.limbs()
+    fn size(&self) -> usize {
+        self.key.size()
     }
 }
 

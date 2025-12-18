@@ -40,8 +40,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWEAutomorphismKeyPrepared<D, B> {
         self.key.k()
     }
 
-    fn limbs(&self) -> usize {
-        self.key.limbs()
+    fn size(&self) -> usize {
+        self.key.size()
     }
 }
 

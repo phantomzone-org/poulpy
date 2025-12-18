@@ -22,8 +22,8 @@ impl<D: Data, BE: Backend> LWEInfos for GGLWEToGGSWKeyPrepared<D, BE> {
         self.keys[0].k()
     }
 
-    fn limbs(&self) -> usize {
-        self.keys[0].limbs()
+    fn size(&self) -> usize {
+        self.keys[0].size()
     }
 }
 

@@ -23,6 +23,7 @@ byteorder = {workspace = true}
 bytemuck = {workspace = true}
 once_cell = {workspace = true}
 paste = {workspace = true}
+rand = {workspace = true}
 
 [[bench]]
 name = "external_product_glwe_fft64"

@@ -28,7 +28,7 @@ impl LWEInfos for GLWESecretLayout {
         self.n
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         1
     }
 }
@@ -57,7 +57,7 @@ impl<D: Data> LWEInfos for GLWESecret<D> {
         Degree(self.data.n() as u32)
     }
 
-    fn limbs(&self) -> usize {
+    fn size(&self) -> usize {
         1
     }
 }

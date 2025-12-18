@@ -24,7 +24,7 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert!(res.base2k() == a.base2k());
 
-        let min_size: usize = res.limbs().min(a.limbs());
+        let min_size: usize = res.size().min(a.size());
         let n: usize = res.n().into();
 
         res.data.zero();

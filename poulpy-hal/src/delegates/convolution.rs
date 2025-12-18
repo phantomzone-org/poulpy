@@ -1,8 +1,8 @@
 use crate::{
     api::{CnvPVecAlloc, CnvPVecBytesOf, Convolution},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxDftToMut,
-        VecZnxToRef, ZnxInfos, ZnxViewMut,
+        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxBigToMut,
+        VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
     },
     oep::{CnvPVecBytesOfImpl, CnvPVecLAllocImpl, ConvolutionImpl},
 };
@@ -62,6 +62,27 @@ where
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
         BE::cnv_apply_dft_tmp_bytes_impl(self, res_size, res_offset, a_size, b_size)
     }
+
+    fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
+        BE::cnv_by_const_apply_tmp_bytes_impl(self, res_size, res_offset, a_size, b_size)
+    }
+
+    fn cnv_by_const_apply<R, A>(
+        &self,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxBigToMut<BE>,
+        A: VecZnxToRef,
+    {
+        BE::cnv_by_const_apply_impl(self, res, res_offset, res_col, a, a_col, b, scratch);
+    }
+
     fn cnv_apply_dft<R, A, B>(
         &self,
         res: &mut R,

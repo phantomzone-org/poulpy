@@ -25,8 +25,8 @@ impl<D: Data> LWEInfos for LWESwitchingKeyCompressed<D> {
     fn n(&self) -> Degree {
         self.0.n()
     }
-    fn limbs(&self) -> usize {
-        self.0.limbs()
+    fn size(&self) -> usize {
+        self.0.size()
     }
 }
 impl<D: Data> GLWEInfos for LWESwitchingKeyCompressed<D> {

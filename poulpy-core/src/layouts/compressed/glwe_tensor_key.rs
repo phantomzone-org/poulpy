@@ -30,8 +30,8 @@ impl<D: Data> LWEInfos for GLWETensorKeyCompressed<D> {
     fn k(&self) -> TorusPrecision {
         self.0.k()
     }
-    fn limbs(&self) -> usize {
-        self.0.limbs()
+    fn size(&self) -> usize {
+        self.0.size()
     }
 }
 impl<D: Data> GLWEInfos for GLWETensorKeyCompressed<D> {

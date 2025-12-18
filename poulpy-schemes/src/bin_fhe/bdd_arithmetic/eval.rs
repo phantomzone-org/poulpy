@@ -295,7 +295,7 @@ where
         A: GLWEInfos,
         S: GGSWInfos,
     {
-        let res_dft: usize = self.bytes_of_vec_znx_dft((s_infos.rank() + 1).into(), s_infos.limbs());
+        let res_dft: usize = self.bytes_of_vec_znx_dft((s_infos.rank() + 1).into(), s_infos.size());
         let mut tot = res_dft
             + (self.glwe_external_product_internal_tmp_bytes(res_a_infos, res_b_infos, s_infos)
                 + GLWE::bytes_of_from_infos(&GLWELayout {
@@ -322,7 +322,7 @@ where
             });
         }
 
-        tot += self.bytes_of_vec_znx_big(1, s_infos.limbs());
+        tot += self.bytes_of_vec_znx_big(1, s_infos.size());
 
         tot
     }
@@ -344,7 +344,7 @@ where
 
         if res_base2k == s_base2k {
             let res_big: VecZnxBig<&mut [u8], BE>;
-            let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (s.rank() + 1).into(), s.limbs()); // Todo optimise
+            let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (s.rank() + 1).into(), s.size()); // Todo optimise
             {
                 // Temporary value storing a - b
                 let tmp_c_infos: GLWELayout = GLWELayout {
@@ -391,7 +391,7 @@ where
             self.glwe_normalize(&mut tmp_b, res_b, scratch_2);
 
             let res_big: VecZnxBig<&mut [u8], BE>;
-            let (res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, (s.rank() + 1).into(), s.limbs()); // Todo optimise
+            let (res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, (s.rank() + 1).into(), s.size()); // Todo optimise
             {
                 // Temporary value storing a - b
                 let tmp_c_infos: GLWELayout = GLWELayout {
@@ -440,7 +440,7 @@ where
         A: GLWEInfos,
         B: GGSWInfos,
     {
-        let res_dft: usize = self.bytes_of_vec_znx_dft((selector_infos.rank() + 1).into(), selector_infos.limbs());
+        let res_dft: usize = self.bytes_of_vec_znx_dft((selector_infos.rank() + 1).into(), selector_infos.size());
         res_dft
             + self
                 .glwe_external_product_internal_tmp_bytes(res_infos, a_infos, selector_infos)
@@ -464,7 +464,7 @@ where
         let ggsw_base2k: usize = s.base2k().into();
 
         self.glwe_sub(res, t, &f);
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.limbs()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, f.data(), j);
@@ -495,7 +495,7 @@ where
             rank: res.rank(),
         });
         self.glwe_sub(&mut tmp, a, res);
-        let (res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, (res.rank() + 1).into(), s.limbs()); // Todo optimise
+        let (res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, &tmp, s, scratch_2);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, res.data(), j);
@@ -517,7 +517,7 @@ where
         let res_base2k: usize = res.base2k().into();
         let ggsw_base2k: usize = s.base2k().into();
         self.glwe_sub_inplace(res, &a);
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.limbs()); // Todo optimise
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
             self.vec_znx_big_add_small_inplace(&mut res_big, j, a.data(), j);

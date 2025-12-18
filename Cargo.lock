@@ -370,6 +370,7 @@ dependencies = [
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",
  "poulpy-hal",
+ "rand",
  "rug",
 ]
 

@@ -234,3 +234,36 @@ pub fn reim4_convolution_2coeffs_ref(k: usize, dst: &mut [f64; 16], a: &[f64], a
     reim4_convolution_1coeff_ref(k, as_arr_mut(dst), a, a_size, b, b_size);
     reim4_convolution_1coeff_ref(k + 1, as_arr_mut(&mut dst[8..]), a, a_size, b, b_size);
 }
+
+#[inline(always)]
+pub fn reim4_add_mul_b_real_const(dst: &mut [f64; 8], a: &[f64; 8], b: f64) {
+    for k in 0..4 {
+        let ar: f64 = a[k];
+        let ai: f64 = a[k + 4];
+        dst[k] += ar * b;
+        dst[k + 4] += ai * b;
+    }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_by_real_const_1coeff_ref(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
+    reim_zero_ref(dst);
+
+    let b_size: usize = b.len();
+
+    if k >= a_size + b_size {
+        return;
+    }
+    let j_min: usize = k.saturating_sub(a_size - 1);
+    let j_max: usize = (k + 1).min(b_size);
+
+    for j in j_min..j_max {
+        reim4_add_mul_b_real_const(dst, as_arr(&a[8 * (k - j)..]), b[j]);
+    }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_by_real_const_2coeffs_ref(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
+    reim4_convolution_by_real_const_1coeff_ref(k, as_arr_mut(dst), a, a_size, b);
+    reim4_convolution_by_real_const_1coeff_ref(k + 1, as_arr_mut(&mut dst[8..]), a, a_size, b);
+}

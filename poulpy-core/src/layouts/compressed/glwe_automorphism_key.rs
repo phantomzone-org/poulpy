@@ -36,8 +36,8 @@ impl<D: Data> LWEInfos for GLWEAutomorphismKeyCompressed<D> {
         self.key.k()
     }
 
-    fn limbs(&self) -> usize {
-        self.key.limbs()
+    fn size(&self) -> usize {
+        self.key.size()
     }
 }
 

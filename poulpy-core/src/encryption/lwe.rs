@@ -77,9 +77,9 @@ where
 
         self.vec_znx_fill_uniform(base2k, &mut res.data, 0, source_xa);
 
-        let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::alloc(1, 1, res.limbs());
+        let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::alloc(1, 1, res.size());
 
-        let min_size: usize = res.limbs().min(pt.limbs());
+        let min_size: usize = res.size().min(pt.size());
 
         (0..min_size).for_each(|i| {
             tmp_znx.at_mut(0, i)[0] = pt.data.at(0, i)[0]
@@ -90,7 +90,7 @@ where
                     .sum::<i64>();
         });
 
-        (min_size..res.limbs()).for_each(|i| {
+        (min_size..res.size()).for_each(|i| {
             tmp_znx.at_mut(0, i)[0] -= res.data.at(0, i)[1..]
                 .iter()
                 .zip(sk.data.at(0, 0))
@@ -102,7 +102,7 @@ where
 
         self.vec_znx_normalize_inplace(base2k, &mut tmp_znx, 0, scratch);
 
-        (0..res.limbs()).for_each(|i| {
+        (0..res.size()).for_each(|i| {
             res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];
         });
     }
