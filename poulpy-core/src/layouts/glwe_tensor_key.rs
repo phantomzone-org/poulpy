@@ -48,7 +48,9 @@ impl<D: Data> GLWEInfos for GLWETensorKey<D> {
 
 impl<D: Data> GGLWEInfos for GLWETensorKey<D> {
     fn rank_in(&self) -> Rank {
-        self.rank_out()
+        let rank_out: usize = self.rank_out().as_usize();
+        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
+        pairs.into()
     }
 
     fn rank_out(&self) -> Rank {
@@ -86,7 +88,9 @@ impl GLWEInfos for GLWETensorKeyLayout {
 
 impl GGLWEInfos for GLWETensorKeyLayout {
     fn rank_in(&self) -> Rank {
-        self.rank
+        let rank_out: usize = self.rank_out().as_usize();
+        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
+        pairs.into()
     }
 
     fn dsize(&self) -> Dsize {
@@ -127,11 +131,6 @@ impl GLWETensorKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKey"
-        );
         Self::alloc(
             infos.n(),
             infos.base2k(),
@@ -151,11 +150,6 @@ impl GLWETensorKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKey"
-        );
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
