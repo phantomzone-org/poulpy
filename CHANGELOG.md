@@ -1,9 +1,23 @@
 # CHANGELOG
 
-## [0.4.1] - 2025-11-26
+## [0.4.2] - 2025-12-21
 
-### Summary
-- Update convolution API to match spqlios-arithmetic & removed API for bivariate tensoring.
+## `poulpy-core`
+- Add `GLWEMulPlain` trait:
+  - `glwe_mul_plain_tmp_bytes`
+  - `glwe_mul_plain`
+  - `glwe_mul_plain_inplace`
+- Add `GLWEMulConst` trait:
+  - `glwe_mul_const_tmp_bytes`
+  - `glwe_mul_const`
+  - `glwe_mul_const_inplace`
+- Add `GLWETensoring` trait:
+  - `glwe_tensor_apply_tmp_bytes`
+  - `glwe_tensor_apply`
+  - `glwe_tensor_relinearize_tmp_bytes`
+  - `glwe_tensor_relinearize`
+- Add method tests:
+  - `test_glwe_tensoring`
 
 ## `poulpy-hal`
 - Removed `Backend` generic from `VecZnxBigAllocBytesImpl`.
@@ -73,23 +87,9 @@
   - `reim4_convolution_1coeff_avx`
   - `reim4_convolution_2coeffs_avx`
 
-## `poulpy-core`
-- Renamed `size` to `limbs`.
-- Add `GLWEMulPlain` trait:
-  - `glwe_mul_plain_tmp_bytes`
-  - `glwe_mul_plain`
-  - `glwe_mul_plain_inplace`
-- Add `GLWEMulConst` trait:
-  - `glwe_mul_const_tmp_bytes`
-  - `glwe_mul_const`
-  - `glwe_mul_const_inplace`
-- Add `GLWETensoring` trait:
-  - `glwe_tensor_apply_tmp_bytes`
-  - `glwe_tensor_apply`
-  - `glwe_tensor_relinearize_tmp_bytes`
-  - `glwe_tensor_relinearize`
-- Add method tests:
-  - `test_glwe_tensoring`
+## [0.4.1] - 2025-11-21
+- Default backend set to `poulpy-cpu-ref`, `poulpy-cpu-avx` is not anymore built and compiled by default.
+- To build & use `poulpy-cpu-avx` user must use feature flag, see `poulpy-cpu-ref` and `poulpy-cpu-avx` READMEs.
 
 ## [0.4.0] - 2025-11-20
 
