@@ -35,14 +35,14 @@ pub trait Convolution<BE: Backend> {
     ///
     /// Behavior is identical to [Convolution::cnv_apply_dft] with `b` treated as a constant polynomial
     /// in the X variable, for example:
-    ///     
+    ///```text
     ///       1    X   X^2  X^3
     /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
     ///     Y [a01, a11, a21, a31]
     ///
     /// b = 1 [b0] = (b00 + b01 * 2^-K)
     ///     Y [b0]
-    ///
+    /// ```
     /// This method is intended to be used for multiplications by constants that are greater than the base2k.
     #[allow(clippy::too_many_arguments)]
     fn cnv_by_const_apply<R, A>(
@@ -63,7 +63,7 @@ pub trait Convolution<BE: Backend> {
     /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
     /// # Example
-    ///
+    ///```text
     ///       1    X   X^2  X^3
     /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
     ///     Y [a01, a11, a21, a31]
@@ -86,7 +86,7 @@ pub trait Convolution<BE: Backend> {
     ///       Y  [r02, r12, r22, r32]
     ///       Y^2[r03, r13, r23, r33]
     ///       Y^3[  0,   0,   0 ,  0]
-    ///
+    /// ```
     /// If res.size() < a.size() + b.size() + k, result is truncated accordingly in the Y dimension.
     fn cnv_apply_dft<R, A, B>(
         &self,

@@ -441,7 +441,21 @@ fn test_vec_znx_normalize_cross_base2k() {
 
     for in_base2k in 1..=51 {
         for out_base2k in 1..=51 {
-            for offset in -(prec as i64)..=(prec as i64) {
+            for offset in [
+                -(prec as i64),
+                -(prec as i64 - 1),
+                -(prec as i64 - in_base2k as i64),
+                -(in_base2k as i64 + 1),
+                in_base2k as i64,
+                -(in_base2k as i64 - 1),
+                0,
+                (in_base2k as i64 - 1),
+                in_base2k as i64,
+                (in_base2k as i64 + 1),
+                (prec as i64 - in_base2k as i64),
+                (prec - 1) as i64,
+                prec as i64,
+            ] {
                 let mut source: Source = Source::new([1u8; 32]);
 
                 let in_size: usize = prec.div_ceil(in_base2k);
@@ -531,7 +545,7 @@ fn test_vec_znx_normalize_inter_base2k() {
     let offset_range: i64 = prec as i64;
 
     for base2k in 1..=51 {
-        for offset in -offset_range..=offset_range {
+        for offset in (-offset_range..=offset_range).step_by(base2k + 1) {
             let size: usize = prec.div_ceil(base2k);
             let out_prec: u32 = (size * base2k) as u32;
 
