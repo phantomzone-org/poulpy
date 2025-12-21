@@ -73,13 +73,7 @@ impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
 
 impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "GLWEPlaintext: base2k={} k={}: {}",
-            self.base2k().0,
-            self.k().0,
-            self.data
-        )
+        write!(f, "GLWEPlaintext: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
     }
 }
 

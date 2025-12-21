@@ -127,13 +127,7 @@ impl GGSWCompressed<Vec<u8>> {
         );
 
         GGSWCompressed {
-            data: MatZnx::alloc(
-                n.into(),
-                dnum.into(),
-                (rank + 1).into(),
-                1,
-                k.0.div_ceil(base2k.0) as usize,
-            ),
+            data: MatZnx::alloc(n.into(), dnum.into(), (rank + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
             dsize,
@@ -171,13 +165,7 @@ impl GGSWCompressed<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::bytes_of(
-            n.into(),
-            dnum.into(),
-            (rank + 1).into(),
-            1,
-            k.0.div_ceil(base2k.0) as usize,
-        )
+        MatZnx::bytes_of(n.into(), dnum.into(), (rank + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 

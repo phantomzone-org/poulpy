@@ -1,3 +1,4 @@
+pub mod convolution;
 pub mod reim;
 pub mod reim4;
 pub mod svp;

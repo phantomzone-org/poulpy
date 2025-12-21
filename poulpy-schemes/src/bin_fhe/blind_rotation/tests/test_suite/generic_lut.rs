@@ -16,9 +16,7 @@ where
     let log_scale: usize = base2k + 1;
 
     let mut f: Vec<i64> = vec![0i64; message_modulus];
-    f.iter_mut()
-        .enumerate()
-        .for_each(|(i, x)| *x = (i as i64) - 8);
+    f.iter_mut().enumerate().for_each(|(i, x)| *x = (i as i64) - 8);
 
     let lut_infos: LookUpTableLayout = LookUpTableLayout {
         n: module.n().into(),
@@ -57,9 +55,7 @@ where
     let log_scale: usize = base2k + 1;
 
     let mut f: Vec<i64> = vec![0i64; message_modulus];
-    f.iter_mut()
-        .enumerate()
-        .for_each(|(i, x)| *x = (i as i64) - 8);
+    f.iter_mut().enumerate().for_each(|(i, x)| *x = (i as i64) - 8);
 
     let lut_infos: LookUpTableLayout = LookUpTableLayout {
         n: module.n().into(),

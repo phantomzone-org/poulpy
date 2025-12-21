@@ -130,14 +130,7 @@ where
             sk_out_prepared.prepare(self, &sk_out);
         }
 
-        self.gglwe_encrypt_sk(
-            res,
-            &sk.data,
-            &sk_out_prepared,
-            source_xa,
-            source_xe,
-            scratch_1,
-        );
+        self.gglwe_encrypt_sk(res, &sk.data, &sk_out_prepared, source_xa, source_xe, scratch_1);
 
         res.set_p(p);
     }

@@ -137,13 +137,7 @@ impl GGLWECompressed<Vec<u8>> {
         );
 
         GGLWECompressed {
-            data: MatZnx::alloc(
-                n.into(),
-                dnum.into(),
-                rank_in.into(),
-                1,
-                k.0.div_ceil(base2k.0) as usize,
-            ),
+            data: MatZnx::alloc(n.into(), dnum.into(), rank_in.into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
             dsize,
@@ -181,13 +175,7 @@ impl GGLWECompressed<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::bytes_of(
-            n.into(),
-            dnum.into(),
-            rank_in.into(),
-            1,
-            k.0.div_ceil(base2k.0) as usize,
-        )
+        MatZnx::bytes_of(n.into(), dnum.into(), rank_in.into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 

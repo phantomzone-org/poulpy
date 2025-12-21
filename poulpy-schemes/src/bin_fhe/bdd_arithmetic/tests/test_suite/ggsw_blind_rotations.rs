@@ -68,24 +68,13 @@ where
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_res_infos);
 
     let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
-    scalar
-        .raw_mut()
-        .iter_mut()
-        .enumerate()
-        .for_each(|(i, x)| *x = i as i64);
+    scalar.raw_mut().iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
 
     let k: u32 = source.next_u32();
 
     let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_k_infos);
-    k_enc_prep.encrypt_sk(
-        module,
-        k,
-        sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let base: [usize; 2] = [module.log_n() >> 1, module.log_n() - (module.log_n() >> 1)];
 
@@ -134,16 +123,9 @@ where
             for row in 0..res.dnum().as_usize() {
                 for col in 0..res.rank().as_usize() + 1 {
                     assert!(
-                        res.noise(
-                            module,
-                            row,
-                            col,
-                            &scalar_want,
-                            sk_glwe_prep,
-                            scratch.borrow()
-                        )
-                        .std()
-                        .log2()
+                        res.noise(module, row, col, &scalar_want, sk_glwe_prep, scratch.borrow())
+                            .std()
+                            .log2()
                             <= max_noise(col)
                     )
                 }

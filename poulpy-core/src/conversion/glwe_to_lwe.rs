@@ -56,12 +56,8 @@ where
             rank: Rank(1),
         };
 
-        GLWE::bytes_of(
-            self.n().into(),
-            lwe_infos.base2k(),
-            lwe_infos.k(),
-            1u32.into(),
-        ) + GLWE::bytes_of_from_infos(glwe_infos)
+        GLWE::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.k(), 1u32.into())
+            + GLWE::bytes_of_from_infos(glwe_infos)
             + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
     }
 

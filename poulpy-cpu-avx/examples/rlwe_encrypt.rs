@@ -1,8 +1,18 @@
 use itertools::izip;
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
+#[cfg(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+))]
 use poulpy_cpu_avx::FFT64Avx as BackendImpl;
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+#[cfg(not(all(
+    feature = "enable-avx",
+    target_arch = "x86_64",
+    target_feature = "avx2",
+    target_feature = "fma"
+)))]
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
@@ -73,8 +83,7 @@ fn main() {
         msg_size, // Number of small polynomials
     );
     let mut want: Vec<i64> = vec![0; n];
-    want.iter_mut()
-        .for_each(|x| *x = source.next_u64n(16, 15) as i64);
+    want.iter_mut().for_each(|x| *x = source.next_u64n(16, 15) as i64);
     m.encode_vec_i64(base2k, 0, log_scale, &want);
     module.vec_znx_normalize_inplace(base2k, &mut m, 0, scratch.borrow());
 
@@ -89,11 +98,12 @@ fn main() {
     // Normalizes back to VecZnx
     // ct[0] <- m - BIG(c1 * s)
     module.vec_znx_big_normalize(
-        base2k,
         &mut ct,
-        0, // Selects the first column of ct (ct[0])
         base2k,
+        0,
+        0, // Selects the first column of ct (ct[0])
         &buf_big,
+        base2k,
         0, // Selects the first column of buf_big
         scratch.borrow(),
     );
@@ -131,15 +141,13 @@ fn main() {
 
     // m + e <- BIG(ct[1] * s + ct[0])
     let mut res = VecZnx::alloc(module.n(), 1, ct_size);
-    module.vec_znx_big_normalize(base2k, &mut res, 0, base2k, &buf_big, 0, scratch.borrow());
+    module.vec_znx_big_normalize(&mut res, base2k, 0, 0, &buf_big, base2k, 0, scratch.borrow());
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
     res.decode_vec_i64(base2k, 0, ct_size * base2k, &mut have);
     let scale: f64 = (1 << (res.size() * base2k - log_scale)) as f64;
-    izip!(want.iter(), have.iter())
-        .enumerate()
-        .for_each(|(i, (a, b))| {
-            println!("{}: {} {}", i, a, (*b as f64) / scale);
-        });
+    izip!(want.iter(), have.iter()).enumerate().for_each(|(i, (a, b))| {
+        println!("{}: {} {}", i, a, (*b as f64) / scale);
+    });
 }

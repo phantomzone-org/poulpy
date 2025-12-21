@@ -19,9 +19,7 @@ impl GLWEBlindRetriever {
     {
         let bit_size: usize = (u32::BITS - (size as u32 - 1).leading_zeros()) as usize;
         Self {
-            accumulators: (0..bit_size)
-                .map(|_| Accumulator::alloc(infos))
-                .collect_vec(),
+            accumulators: (0..bit_size).map(|_| Accumulator::alloc(infos)).collect_vec(),
             counter: 0,
         }
     }
@@ -70,15 +68,7 @@ impl GLWEBlindRetriever {
             1 << self.accumulators.len()
         );
 
-        add_core(
-            module,
-            a,
-            &mut self.accumulators,
-            0,
-            selector,
-            offset,
-            scratch,
-        );
+        add_core(module, a, &mut self.accumulators, 0, selector, offset, scratch);
         self.counter += 1;
     }
 
@@ -92,15 +82,7 @@ impl GLWEBlindRetriever {
         for i in 0..self.accumulators.len() - 1 {
             let (acc_prev, acc_next) = self.accumulators.split_at_mut(i + 1);
             if acc_prev[i].num != 0 {
-                add_core(
-                    module,
-                    &acc_prev[i].data,
-                    acc_next,
-                    i + 1,
-                    selector,
-                    offset,
-                    scratch,
-                );
+                add_core(module, &acc_prev[i].data, acc_next, i + 1, selector, offset, scratch);
                 acc_prev[0].num = 0
             }
         }
@@ -156,23 +138,10 @@ fn add_core<A, S, M, BE: Backend>(
             acc_prev[0].num = 1;
         }
         1 => {
-            module.cmux_inplace_neg(
-                &mut acc_prev[0].data,
-                a,
-                &selector.get_bit(i + offset),
-                scratch,
-            );
+            module.cmux_inplace_neg(&mut acc_prev[0].data, a, &selector.get_bit(i + offset), scratch);
 
             if !acc_next.is_empty() {
-                add_core(
-                    module,
-                    &acc_prev[0].data,
-                    acc_next,
-                    i + 1,
-                    selector,
-                    offset,
-                    scratch,
-                );
+                add_core(module, &acc_prev[0].data, acc_next, i + 1, selector, offset, scratch);
             }
 
             acc_prev[0].num = 0

@@ -73,11 +73,7 @@ where
             1,
             "rank_out > 1 is not supported for GLWEToLWEKeyPrepared"
         );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for GLWEToLWEKeyPrepared"
-        );
+        debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for GLWEToLWEKeyPrepared");
         self.alloc_glwe_to_lwe_key_prepared(infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 
@@ -94,11 +90,7 @@ where
             1,
             "rank_out > 1 is not supported for GLWEToLWEKeyPrepared"
         );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for GLWEToLWEKeyPrepared"
-        );
+        debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for GLWEToLWEKeyPrepared");
         self.bytes_of_glwe_to_lwe_key_prepared(infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 

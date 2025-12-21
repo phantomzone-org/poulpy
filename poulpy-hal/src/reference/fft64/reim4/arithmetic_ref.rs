@@ -1,15 +1,34 @@
-use crate::reference::fft64::reim::as_arr;
+use crate::reference::fft64::reim::{as_arr, as_arr_mut, reim_zero_ref};
 
 #[inline(always)]
-pub fn reim4_extract_1blk_from_reim_ref(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-    let mut offset: usize = blk << 2;
-
+pub fn reim4_extract_1blk_from_reim_contiguous_ref(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
     debug_assert!(blk < (m >> 2));
     debug_assert!(dst.len() >= 2 * rows * 4);
 
-    for chunk in dst.chunks_exact_mut(4).take(2 * rows) {
-        chunk.copy_from_slice(&src[offset..offset + 4]);
-        offset += m
+    let offset: usize = blk << 2;
+
+    // src = 4-values chunks spaced by m, dst = sequential 4-values chunks
+    let src_rows = src.chunks_exact(m).take(2 * rows);
+    let dst_chunks = dst.chunks_exact_mut(4).take(2 * rows);
+
+    for (dst_chunk, src_row) in dst_chunks.zip(src_rows) {
+        dst_chunk.copy_from_slice(&src_row[offset..offset + 4]);
+    }
+}
+
+#[inline(always)]
+pub fn reim4_save_1blk_to_reim_contiguous_ref(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+    debug_assert!(blk < (m >> 2));
+    debug_assert!(src.len() >= 2 * rows * 4);
+
+    let offset: usize = blk << 2;
+
+    // dst = 4-values chunks spaced by m, src = sequential 4-values chunks
+    let dst_rows = dst.chunks_exact_mut(m).take(2 * rows);
+    let src_chunks = src.chunks_exact(4).take(2 * rows);
+
+    for (dst_row, src_chunk) in dst_rows.zip(src_chunks) {
+        dst_row[offset..offset + 4].copy_from_slice(src_chunk);
     }
 }
 
@@ -53,7 +72,7 @@ pub fn reim4_save_2blk_to_reim_ref<const OVERWRITE: bool>(m: usize, blk: usize, 
     debug_assert!(dst.len() >= offset + 3 * m + 4);
     debug_assert!(src.len() >= 16);
 
-    let dst_off = &mut dst[offset..offset + 4];
+    let dst_off: &mut [f64] = &mut dst[offset..offset + 4];
     if OVERWRITE {
         dst_off.copy_from_slice(&src[0..4]);
     } else {
@@ -64,7 +83,7 @@ pub fn reim4_save_2blk_to_reim_ref<const OVERWRITE: bool>(m: usize, blk: usize, 
     }
 
     offset += m;
-    let dst_off = &mut dst[offset..offset + 4];
+    let dst_off: &mut [f64] = &mut dst[offset..offset + 4];
     if OVERWRITE {
         dst_off.copy_from_slice(&src[4..8]);
     } else {
@@ -76,7 +95,7 @@ pub fn reim4_save_2blk_to_reim_ref<const OVERWRITE: bool>(m: usize, blk: usize, 
 
     offset += m;
 
-    let dst_off = &mut dst[offset..offset + 4];
+    let dst_off: &mut [f64] = &mut dst[offset..offset + 4];
     if OVERWRITE {
         dst_off.copy_from_slice(&src[8..12]);
     } else {
@@ -87,7 +106,7 @@ pub fn reim4_save_2blk_to_reim_ref<const OVERWRITE: bool>(m: usize, blk: usize, 
     }
 
     offset += m;
-    let dst_off = &mut dst[offset..offset + 4];
+    let dst_off: &mut [f64] = &mut dst[offset..offset + 4];
     if OVERWRITE {
         dst_off.copy_from_slice(&src[12..16]);
     } else {
@@ -132,10 +151,7 @@ pub fn reim4_vec_mat2cols_product_ref(
     {
         assert_eq!(dst.len(), 16, "dst must have 16 doubles");
         assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
-        assert!(
-            v.len() >= nrows * 16,
-            "v must be at least nrows * 16 doubles"
-        );
+        assert!(v.len() >= nrows * 16, "v must be at least nrows * 16 doubles");
     }
 
     // zero accumulators
@@ -161,11 +177,7 @@ pub fn reim4_vec_mat2cols_2ndcol_product_ref(
 ) {
     #[cfg(debug_assertions)]
     {
-        assert!(
-            dst.len() >= 8,
-            "dst must be at least 8 doubles but is {}",
-            dst.len()
-        );
+        assert!(dst.len() >= 8, "dst must be at least 8 doubles but is {}", dst.len());
         assert!(
             u.len() >= nrows * 8,
             "u must be at least nrows={} * 8 doubles but is {}",
@@ -200,4 +212,58 @@ pub fn reim4_add_mul(dst: &mut [f64; 8], a: &[f64; 8], b: &[f64; 8]) {
         dst[k] += ar * br - ai * bi;
         dst[k + 4] += ar * bi + ai * br;
     }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_1coeff_ref(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+    reim_zero_ref(dst);
+
+    if k >= a_size + b_size {
+        return;
+    }
+    let j_min: usize = k.saturating_sub(a_size - 1);
+    let j_max: usize = (k + 1).min(b_size);
+
+    for j in j_min..j_max {
+        reim4_add_mul(dst, as_arr(&a[8 * (k - j)..]), as_arr(&b[8 * j..]));
+    }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_2coeffs_ref(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+    reim4_convolution_1coeff_ref(k, as_arr_mut(dst), a, a_size, b, b_size);
+    reim4_convolution_1coeff_ref(k + 1, as_arr_mut(&mut dst[8..]), a, a_size, b, b_size);
+}
+
+#[inline(always)]
+pub fn reim4_add_mul_b_real_const(dst: &mut [f64; 8], a: &[f64; 8], b: f64) {
+    for k in 0..4 {
+        let ar: f64 = a[k];
+        let ai: f64 = a[k + 4];
+        dst[k] += ar * b;
+        dst[k + 4] += ai * b;
+    }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_by_real_const_1coeff_ref(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
+    reim_zero_ref(dst);
+
+    let b_size: usize = b.len();
+
+    if k >= a_size + b_size {
+        return;
+    }
+    let j_min: usize = k.saturating_sub(a_size - 1);
+    let j_max: usize = (k + 1).min(b_size);
+
+    for j in j_min..j_max {
+        reim4_add_mul_b_real_const(dst, as_arr(&a[8 * (k - j)..]), b[j]);
+    }
+}
+
+#[inline(always)]
+pub fn reim4_convolution_by_real_const_2coeffs_ref(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
+    reim4_convolution_by_real_const_1coeff_ref(k, as_arr_mut(dst), a, a_size, b);
+    reim4_convolution_by_real_const_1coeff_ref(k + 1, as_arr_mut(&mut dst[8..]), a, a_size, b);
 }

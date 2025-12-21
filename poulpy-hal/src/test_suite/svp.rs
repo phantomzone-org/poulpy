@@ -90,24 +90,8 @@ where
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_test,
-                    j,
-                    base2k,
-                    &res_big_test,
-                    j,
-                    scratch_test.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
+                module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
             }
 
             assert_eq!(res_ref, res_test);
@@ -212,24 +196,8 @@ where
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_test,
-                    j,
-                    base2k,
-                    &res_big_test,
-                    j,
-                    scratch_test.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
+                module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
             }
 
             assert_eq!(res_ref, res_test);
@@ -339,24 +307,8 @@ where
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_test,
-                    j,
-                    base2k,
-                    &res_big_test,
-                    j,
-                    scratch_test.borrow(),
-                );
+                module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
+                module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
             }
 
             assert_eq!(res_ref, res_test);
@@ -447,24 +399,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
         let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_normalize(
-                base2k,
-                &mut res_ref,
-                j,
-                base2k,
-                &res_big_ref,
-                j,
-                scratch_ref.borrow(),
-            );
-            module_test.vec_znx_big_normalize(
-                base2k,
-                &mut res_test,
-                j,
-                base2k,
-                &res_big_test,
-                j,
-                scratch_test.borrow(),
-            );
+            module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
+            module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
         }
 
         assert_eq!(res_ref, res_test);

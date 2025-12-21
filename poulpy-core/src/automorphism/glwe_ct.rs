@@ -218,13 +218,13 @@ where
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
 
-        let base2k_a: usize = a.base2k().into();
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let a_base2k: usize = a.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_a != base2k_key {
+        if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
@@ -236,30 +236,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_add_small_inplace(&mut res_big, i, a_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, a, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_add_small_inplace(&mut res_big, i, a.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }
@@ -272,12 +256,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_res != base2k_key {
+        if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
@@ -289,30 +273,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_add_small_inplace(&mut res_big, i, res_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, res, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_add_small_inplace(&mut res_big, i, res.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }
@@ -327,13 +295,13 @@ where
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
 
-        let base2k_a: usize = a.base2k().into();
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let a_base2k: usize = a.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_a != base2k_key {
+        if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
@@ -345,30 +313,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, a_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, a, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, a.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }
@@ -383,13 +335,13 @@ where
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
 
-        let base2k_a: usize = a.base2k().into();
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let a_base2k: usize = a.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_a != base2k_key {
+        if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
@@ -401,30 +353,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, a_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, a, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, a.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }
@@ -437,12 +373,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_res != base2k_key {
+        if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
@@ -454,30 +390,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, res_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, res, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, res.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }
@@ -490,12 +410,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
-        let base2k_key: usize = key.base2k().into();
-        let base2k_res: usize = res.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+        let res_base2k: usize = res.base2k().into();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
 
-        if base2k_res != base2k_key {
+        if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
@@ -507,30 +427,14 @@ where
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_2);
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, res_conv.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_2,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
             }
         } else {
             let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, res, key, scratch_1);
             for i in 0..res.rank().as_usize() + 1 {
                 self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, res.data(), i);
-                self.vec_znx_big_normalize(
-                    base2k_res,
-                    res.data_mut(),
-                    i,
-                    base2k_key,
-                    &res_big,
-                    i,
-                    scratch_1,
-                );
+                self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_1);
             }
         };
     }

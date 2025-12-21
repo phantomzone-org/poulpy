@@ -9,13 +9,14 @@ use crate::{
     reference::{
         vec_znx::{
             vec_znx_add, vec_znx_add_inplace, vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_negate,
-            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
+            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_normalize_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace,
+            vec_znx_sub_negate_inplace,
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
-            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-            ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero,
-            znx_add_normal_f64_ref,
+            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
+            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+            ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero, znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -231,15 +232,17 @@ where
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
-    2 * n * size_of::<i64>()
+    vec_znx_normalize_tmp_bytes(n)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn vec_znx_big_normalize<R, A, BE>(
-    res_base2k: usize,
     res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
     res_col: usize,
-    a_base2k: usize,
     a: &A,
+    a_base2k: usize,
     a_col: usize,
     carry: &mut [i64],
 ) where
@@ -256,7 +259,9 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
-        + ZnxNormalizeDigit,
+        + ZnxNormalizeDigit
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -267,7 +272,7 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         max_size: a.max_size,
     };
 
-    vec_znx_normalize::<_, _, BE>(res_base2k, res, res_col, a_base2k, &a_vznx, a_col, carry);
+    vec_znx_normalize::<_, _, BE>(res, res_base2k, res_offset, res_col, &a_vznx, a_base2k, a_col, carry);
 }
 
 pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
@@ -290,18 +295,13 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
 
     let limb: usize = k.div_ceil(base2k) - 1;
     let scale: f64 = (1 << ((limb + 1) * base2k - k)) as f64;
-    znx_add_normal_f64_ref(
-        res.at_mut(res_col, limb),
-        sigma * scale,
-        bound * scale,
-        source,
-    )
+    znx_add_normal_f64_ref(res.at_mut(res_col, limb), sigma * scale, bound * scale, source)
 }
 
 pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl<B>,
+    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
@@ -325,12 +325,7 @@ where
                 })
             } else {
                 let std: f64 = a.stats(base2k, col_i).std() * k_f64;
-                assert!(
-                    (std - sigma * sqrt2).abs() < 0.1,
-                    "std={} ~!= {}",
-                    std,
-                    sigma * sqrt2
-                );
+                assert!((std - sigma * sqrt2).abs() < 0.1, "std={} ~!= {}", std, sigma * sqrt2);
             }
         })
     });

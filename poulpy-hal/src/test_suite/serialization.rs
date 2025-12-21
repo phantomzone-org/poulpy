@@ -29,10 +29,7 @@ where
     receiver.read_from(&mut reader).expect("read_from failed");
 
     // Ensure serialization round-trip correctness
-    assert_eq!(
-        &original, &receiver,
-        "Deserialized object does not match the original"
-    );
+    assert_eq!(&original, &receiver, "Deserialized object does not match the original");
 }
 
 #[test]

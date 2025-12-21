@@ -1,4 +1,9 @@
 use poulpy_hal::reference::fft64::{
+    convolution::{
+        I64ConvolutionByConst1Coeff, I64ConvolutionByConst2Coeffs, I64Extract1BlkContiguous, I64Save1BlkContiguous,
+        i64_convolution_by_const_1coeff_ref, i64_convolution_by_const_2coeffs_ref, i64_extract_1blk_contiguous_ref,
+        i64_save_1blk_contiguous_ref,
+    },
     reim::{
         ReimAdd, ReimAddInplace, ReimAddMul, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimMul,
         ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx,
@@ -8,9 +13,13 @@ use poulpy_hal::reference::fft64::{
         reim_zero_ref,
     },
     reim4::{
-        Reim4Extract1Blk, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save2Blks,
-        reim4_extract_1blk_from_reim_ref, reim4_save_1blk_to_reim_ref, reim4_save_2blk_to_reim_ref,
-        reim4_vec_mat1col_product_ref, reim4_vec_mat2cols_2ndcol_product_ref, reim4_vec_mat2cols_product_ref,
+        Reim4Convolution1Coeff, Reim4Convolution2Coeffs, Reim4ConvolutionByRealConst1Coeff, Reim4ConvolutionByRealConst2Coeffs,
+        Reim4Extract1BlkContiguous, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk,
+        Reim4Save1BlkContiguous, Reim4Save2Blks, reim4_convolution_1coeff_ref, reim4_convolution_2coeffs_ref,
+        reim4_convolution_by_real_const_1coeff_ref, reim4_convolution_by_real_const_2coeffs_ref,
+        reim4_extract_1blk_from_reim_contiguous_ref, reim4_save_1blk_to_reim_contiguous_ref, reim4_save_1blk_to_reim_ref,
+        reim4_save_2blk_to_reim_ref, reim4_vec_mat1col_product_ref, reim4_vec_mat2cols_2ndcol_product_ref,
+        reim4_vec_mat2cols_product_ref,
     },
 };
 
@@ -133,10 +142,29 @@ impl ReimZero for FFT64Ref {
     }
 }
 
-impl Reim4Extract1Blk for FFT64Ref {
+impl Reim4Convolution1Coeff for FFT64Ref {
+    fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        reim4_convolution_1coeff_ref(k, dst, a, a_size, b, b_size);
+    }
+}
+
+impl Reim4Convolution2Coeffs for FFT64Ref {
+    fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        reim4_convolution_2coeffs_ref(k, dst, a, a_size, b, b_size);
+    }
+}
+
+impl Reim4Extract1BlkContiguous for FFT64Ref {
     #[inline(always)]
-    fn reim4_extract_1blk(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        reim4_extract_1blk_from_reim_ref(m, rows, blk, dst, src);
+    fn reim4_extract_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_extract_1blk_from_reim_contiguous_ref(m, rows, blk, dst, src);
+    }
+}
+
+impl Reim4Save1BlkContiguous for FFT64Ref {
+    #[inline(always)]
+    fn reim4_save_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_save_1blk_to_reim_contiguous_ref(m, rows, blk, dst, src);
     }
 }
 
@@ -172,5 +200,47 @@ impl Reim4Mat2Cols2ndColProd for FFT64Ref {
     #[inline(always)]
     fn reim4_mat2cols_2ndcol_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
         reim4_vec_mat2cols_2ndcol_product_ref(nrows, dst, u, v);
+    }
+}
+
+impl Reim4ConvolutionByRealConst1Coeff for FFT64Ref {
+    #[inline(always)]
+    fn reim4_convolution_by_real_const_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
+        reim4_convolution_by_real_const_1coeff_ref(k, dst, a, a_size, b);
+    }
+}
+
+impl Reim4ConvolutionByRealConst2Coeffs for FFT64Ref {
+    #[inline(always)]
+    fn reim4_convolution_by_real_const_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
+        reim4_convolution_by_real_const_2coeffs_ref(k, dst, a, a_size, b);
+    }
+}
+
+impl I64ConvolutionByConst1Coeff for FFT64Ref {
+    #[inline(always)]
+    fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
+        i64_convolution_by_const_1coeff_ref(k, dst, a, a_size, b);
+    }
+}
+
+impl I64ConvolutionByConst2Coeffs for FFT64Ref {
+    #[inline(always)]
+    fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
+        i64_convolution_by_const_2coeffs_ref(k, dst, a, a_size, b);
+    }
+}
+
+impl I64Save1BlkContiguous for FFT64Ref {
+    #[inline(always)]
+    fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+        i64_save_1blk_contiguous_ref(n, offset, rows, blk, dst, src);
+    }
+}
+
+impl I64Extract1BlkContiguous for FFT64Ref {
+    #[inline(always)]
+    fn i64_extract_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+        i64_extract_1blk_contiguous_ref(n, offset, rows, blk, dst, src);
     }
 }

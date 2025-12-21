@@ -1,3 +1,4 @@
+pub mod convolution;
 pub mod svp;
 pub mod vec_znx;
 pub mod vec_znx_big;

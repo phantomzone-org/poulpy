@@ -402,15 +402,7 @@ where
                 let mut ci_big = self.vec_znx_idft_apply_consume(ci_dft);
 
                 // ci_big = u * pk[i] + e
-                self.vec_znx_big_add_normal(
-                    base2k,
-                    &mut ci_big,
-                    0,
-                    pk.k().into(),
-                    source_xe,
-                    SIGMA,
-                    SIGMA_BOUND,
-                );
+                self.vec_znx_big_add_normal(base2k, &mut ci_big, 0, pk.k().into(), source_xe, SIGMA, SIGMA_BOUND);
 
                 // ci_big = u * pk[i] + e + m (if col = i)
                 if let Some((pt, col)) = pt
@@ -420,7 +412,7 @@ where
                 }
 
                 // ct[i] = norm(ci_big)
-                self.vec_znx_big_normalize(base2k, &mut res.data, i, base2k, &ci_big, 0, scratch_2);
+                self.vec_znx_big_normalize(&mut res.data, base2k, 0, i, &ci_big, base2k, 0, scratch_2);
             }
         }
     }
@@ -487,12 +479,7 @@ where
         let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
 
         if compressed {
-            assert_eq!(
-                ct.cols(),
-                1,
-                "invalid glwe: compressed tag=true but #cols={} != 1",
-                ct.cols()
-            )
+            assert_eq!(ct.cols(), 1, "invalid glwe: compressed tag=true but #cols={} != 1", ct.cols())
         }
 
         assert!(
@@ -537,7 +524,7 @@ where
                 let ci_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(ci_dft);
 
                 // use c[0] as buffer, which is overwritten later by the normalization step
-                self.vec_znx_big_normalize(base2k, &mut ci, 0, base2k, &ci_big, 0, scratch_3);
+                self.vec_znx_big_normalize(&mut ci, base2k, 0, 0, &ci_big, base2k, 0, scratch_3);
 
                 // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
                 self.vec_znx_sub_inplace(&mut c0, 0, &ci, 0);
@@ -555,6 +542,6 @@ where
         }
 
         // c[0] = norm(c[0])
-        self.vec_znx_normalize(base2k, ct, 0, base2k, &c0, 0, scratch_1);
+        self.vec_znx_normalize(ct, base2k, 0, 0, &c0, base2k, 0, scratch_1);
     }
 }

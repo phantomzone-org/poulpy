@@ -88,11 +88,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKeyCompressed"
-        );
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKeyCompressed");
         assert_eq!(
             infos.rank_in().0,
             1,
@@ -122,11 +118,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKeyCompressed"
-        );
+        assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKeyCompressed");
         assert_eq!(
             infos.rank_in().0,
             1,

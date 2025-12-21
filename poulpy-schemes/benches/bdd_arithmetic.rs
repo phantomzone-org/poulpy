@@ -91,14 +91,7 @@ where
     // Circuit bootstrapping evaluation key
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> =
         CircuitBootstrappingKey::alloc_from_infos(&params.bdd_layout.cbt_layout);
-    cbt_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
@@ -108,14 +101,7 @@ where
     sk_glwe_prepared.prepare(&module, &sk_glwe);
 
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
-    bdd_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let input_a = 255_u32;
     let input_b = 30_u32;
@@ -332,95 +318,45 @@ where
     };
 
     // Benchmark each operation
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "add",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.add(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "add", |c_enc, module, a, b, key, scratch| {
+        c_enc.add(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "sub",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.sub(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "sub", |c_enc, module, a, b, key, scratch| {
+        c_enc.sub(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "sll",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.sll(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "sll", |c_enc, module, a, b, key, scratch| {
+        c_enc.sll(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "sra",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.sra(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "sra", |c_enc, module, a, b, key, scratch| {
+        c_enc.sra(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "srl",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.srl(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "srl", |c_enc, module, a, b, key, scratch| {
+        c_enc.srl(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "slt",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.slt(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "slt", |c_enc, module, a, b, key, scratch| {
+        c_enc.slt(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "sltu",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.sltu(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "sltu", |c_enc, module, a, b, key, scratch| {
+        c_enc.sltu(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "or",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.or(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "or", |c_enc, module, a, b, key, scratch| {
+        c_enc.or(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "and",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.and(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "and", |c_enc, module, a, b, key, scratch| {
+        c_enc.and(module, a, b, key, scratch);
+    });
 
-    bench_operation::<BE, BRA, _>(
-        &mut group,
-        &params,
-        "xor",
-        |c_enc, module, a, b, key, scratch| {
-            c_enc.xor(module, a, b, key, scratch);
-        },
-    );
+    bench_operation::<BE, BRA, _>(&mut group, &params, "xor", |c_enc, module, a, b, key, scratch| {
+        c_enc.xor(module, a, b, key, scratch);
+    });
 
     group.finish();
 }

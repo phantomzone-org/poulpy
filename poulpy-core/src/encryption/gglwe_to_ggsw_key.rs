@@ -97,12 +97,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                self.vec_znx_copy(
-                    &mut sk_ij.as_vec_znx_mut(),
-                    j,
-                    &sk_tensor.at(i, j).as_vec_znx(),
-                    0,
-                );
+                self.vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             res.at_mut(i)

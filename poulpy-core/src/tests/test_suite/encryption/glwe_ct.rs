@@ -68,10 +68,7 @@ where
             scratch.borrow(),
         );
 
-        let noise_have: f64 = ct
-            .noise(module, &pt_want, &sk_prepared, scratch.borrow())
-            .std()
-            .log2();
+        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
 
         assert!(noise_have <= noise_want + 0.2);
@@ -126,22 +123,12 @@ where
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        ct_compressed.encrypt_sk(
-            module,
-            &pt_want,
-            &sk_prepared,
-            seed_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_compressed.encrypt_sk(module, &pt_want, &sk_prepared, seed_xa, &mut source_xe, scratch.borrow());
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
         ct.decompress(module, &ct_compressed);
 
-        let noise_have: f64 = ct
-            .noise(module, &pt_want, &sk_prepared, scratch.borrow())
-            .std()
-            .log2();
+        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
         assert!(noise_have <= noise_want + 0.2);
     }
@@ -186,18 +173,9 @@ where
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-        ct.encrypt_zero_sk(
-            module,
-            &sk_prepared,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct.encrypt_zero_sk(module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
-        let noise_have: f64 = ct
-            .noise(module, &pt, &sk_prepared, scratch.borrow())
-            .std()
-            .log2();
+        let noise_have: f64 = ct.noise(module, &pt, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
         assert!(noise_have <= noise_want + 0.2);
     }
@@ -265,10 +243,7 @@ where
             scratch.borrow(),
         );
 
-        let noise_have: f64 = ct
-            .noise(module, &pt_want, &sk_prepared, scratch.borrow())
-            .std()
-            .log2();
+        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * SIGMA * SIGMA).sqrt()).log2() - (k_ct as f64);
         assert!(noise_have <= noise_want + 0.2);
     }

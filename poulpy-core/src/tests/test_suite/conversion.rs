@@ -65,33 +65,19 @@ where
             let pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
             let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_out);
 
-            ct_in.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prep,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct_in.encrypt_sk(module, &pt_in, &sk_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut data: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
-            ct_in
-                .data()
-                .decode_vec_float(ct_in.base2k().into(), 0, &mut data);
+            ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
 
             ct_out.fill_uniform(ct_out.base2k().into(), &mut source_xa);
             module.glwe_normalize(&mut ct_out, &ct_in, scratch.borrow());
 
             let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
-            ct_out
-                .data()
-                .decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
+            ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
             assert!(
-                ct_out
-                    .noise(module, &pt_out, &sk_prep, scratch.borrow())
-                    .std()
-                    .log2()
+                ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2()
                     <= -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.50
             )
         }
@@ -162,14 +148,7 @@ where
     lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    lwe_ct.encrypt_sk(
-        module,
-        &lwe_pt,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    lwe_ct.encrypt_sk(module, &lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
 
@@ -195,11 +174,12 @@ where
     let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.k());
 
     module.vec_znx_normalize(
-        glwe_pt.base2k().as_usize(),
         lwe_pt_conv.data_mut(),
+        glwe_pt.base2k().as_usize(),
         0,
-        lwe_pt.base2k().as_usize(),
+        0,
         lwe_pt.data(),
+        lwe_pt.base2k().as_usize(),
         0,
         scratch.borrow(),
     );
@@ -287,14 +267,7 @@ where
 
     let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_from_infos(&glwe_to_lwe_infos);
 
-    ksk.encrypt_sk(
-        module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    ksk.encrypt_sk(module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
@@ -309,11 +282,12 @@ where
     let mut glwe_pt_conv = GLWEPlaintext::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.k());
 
     module.vec_znx_normalize(
-        lwe_pt.base2k().as_usize(),
         glwe_pt_conv.data_mut(),
+        lwe_pt.base2k().as_usize(),
         0,
-        glwe_ct.base2k().as_usize(),
+        0,
         glwe_pt.data(),
+        glwe_ct.base2k().as_usize(),
         0,
         scratch.borrow(),
     );

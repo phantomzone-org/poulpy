@@ -24,17 +24,17 @@ where
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let base2k_in: usize = 17;
-    let base2k_out: usize = 15;
-    let base2k_key: usize = 13;
+    let in_base2k: usize = 17;
+    let out_base2k: usize = 15;
+    let key_base2k: usize = 13;
 
     let n_lwe_in: usize = module.n() >> 1;
     let n_lwe_out: usize = module.n() >> 1;
     let k_lwe_ct: usize = 102;
     let k_lwe_pt: usize = 8;
 
-    let k_ksk: usize = k_lwe_ct + base2k_key;
-    let dnum: usize = k_lwe_ct.div_ceil(base2k_key);
+    let k_ksk: usize = k_lwe_ct + key_base2k;
+    let dnum: usize = k_lwe_ct.div_ceil(key_base2k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
@@ -42,21 +42,21 @@ where
 
     let key_apply_infos: LWESwitchingKeyLayout = LWESwitchingKeyLayout {
         n: n.into(),
-        base2k: base2k_key.into(),
+        base2k: key_base2k.into(),
         k: k_ksk.into(),
         dnum: dnum.into(),
     };
 
     let lwe_in_infos: LWELayout = LWELayout {
         n: n_lwe_in.into(),
-        base2k: base2k_in.into(),
+        base2k: in_base2k.into(),
         k: k_lwe_ct.into(),
     };
 
     let lwe_out_infos: LWELayout = LWELayout {
         n: n_lwe_out.into(),
         k: k_lwe_ct.into(),
-        base2k: base2k_out.into(),
+        base2k: out_base2k.into(),
     };
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -72,7 +72,7 @@ where
 
     let data: i64 = 17;
 
-    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k_in.into(), k_lwe_pt.into());
+    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(in_base2k.into(), k_lwe_pt.into());
     lwe_pt_in.encode_i64(data, k_lwe_pt.into());
 
     let mut lwe_ct_in: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_in_infos);
@@ -108,11 +108,12 @@ where
 
     let mut lwe_pt_want: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
     module.vec_znx_normalize(
-        base2k_out,
         lwe_pt_want.data_mut(),
+        out_base2k,
         0,
-        base2k_in,
+        0,
         lwe_pt_in.data(),
+        in_base2k,
         0,
         scratch.borrow(),
     );

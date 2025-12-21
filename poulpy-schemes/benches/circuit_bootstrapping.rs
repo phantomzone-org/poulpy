@@ -105,14 +105,7 @@ where
 
         // Circuit bootstrapping evaluation key
         let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&params.cbt_infos);
-        cbt_key.encrypt_sk(
-            &module,
-            &sk_lwe,
-            &sk_glwe,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&params.ggsw_infos);
         let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =

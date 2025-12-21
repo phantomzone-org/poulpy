@@ -98,14 +98,7 @@ where
         sk_glwe_prepared.prepare(&module, &sk_glwe);
 
         let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
-        bdd_key.encrypt_sk(
-            &module,
-            &sk_lwe,
-            &sk_glwe,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let input_a = 255_u32;
 

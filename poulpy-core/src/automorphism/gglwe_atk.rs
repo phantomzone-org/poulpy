@@ -75,13 +75,7 @@ where
             a.dnum()
         );
 
-        assert_eq!(
-            res.dsize(),
-            a.dsize(),
-            "res dnum: {} != a dnum: {}",
-            res.dsize(),
-            a.dsize()
-        );
+        assert_eq!(res.dsize(), a.dsize(), "res dnum: {} != a dnum: {}", res.dsize(), a.dsize());
 
         assert_eq!(res.base2k(), a.base2k());
 
@@ -139,13 +133,7 @@ where
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert_eq!(
-            res.rank(),
-            key.rank(),
-            "key rank: {} != key rank: {}",
-            res.rank(),
-            key.rank()
-        );
+        assert_eq!(res.rank(), key.rank(), "key rank: {} != key rank: {}", res.rank(), key.rank());
 
         let cols_out: usize = (key.rank_out() + 1).into();
         let cols_in: usize = key.rank_in().into();

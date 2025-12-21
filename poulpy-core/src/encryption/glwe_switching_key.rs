@@ -78,8 +78,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.gglwe_encrypt_sk_tmp_bytes(infos)
-            .max(ScalarZnx::bytes_of(self.n(), 1))
+        self.gglwe_encrypt_sk_tmp_bytes(infos).max(ScalarZnx::bytes_of(self.n(), 1))
             + ScalarZnx::bytes_of(self.n(), infos.rank_in().into())
             + self.bytes_of_glwe_secret_prepared_from_infos(infos)
     }
@@ -111,12 +110,7 @@ where
 
         let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self.n(), sk_in.rank().into());
         for i in 0..sk_in.rank().into() {
-            self.vec_znx_switch_ring(
-                &mut sk_in_tmp.as_vec_znx_mut(),
-                i,
-                &sk_in.data.as_vec_znx(),
-                i,
-            );
+            self.vec_znx_switch_ring(&mut sk_in_tmp.as_vec_znx_mut(), i, &sk_in.data.as_vec_znx(), i);
         }
 
         let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out.rank());
@@ -130,14 +124,7 @@ where
 
         sk_out_tmp.dist = sk_out.dist;
 
-        self.gglwe_encrypt_sk(
-            res,
-            &sk_in_tmp,
-            &sk_out_tmp,
-            source_xa,
-            source_xe,
-            scratch_2,
-        );
+        self.gglwe_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, source_xa, source_xe, scratch_2);
 
         *res.input_degree() = sk_in.n();
         *res.output_degree() = sk_out.n();

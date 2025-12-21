@@ -73,10 +73,7 @@ where
     {
         Self {
             cbt: CircuitBootstrappingKey::alloc_from_infos(&infos.cbt_infos()),
-            ks_glwe: infos
-                .ks_glwe_infos()
-                .as_ref()
-                .map(GLWESwitchingKey::alloc_from_infos),
+            ks_glwe: infos.ks_glwe_infos().as_ref().map(GLWESwitchingKey::alloc_from_infos),
             ks_lwe: GLWEToLWEKey::alloc_from_infos(&infos.ks_lwe_infos()),
         }
     }
@@ -131,15 +128,12 @@ where
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(sk_glwe.n(), key.rank_out());
             sk_out.fill_ternary_prob(0.5, source_xe);
             key.encrypt_sk(self, sk_glwe, &sk_out, source_xa, source_xe, scratch);
-            res.ks_lwe
-                .encrypt_sk(self, sk_lwe, &sk_out, source_xa, source_xe, scratch);
+            res.ks_lwe.encrypt_sk(self, sk_lwe, &sk_out, source_xa, source_xe, scratch);
         } else {
-            res.ks_lwe
-                .encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+            res.ks_lwe.encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
         }
 
-        res.cbt
-            .encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        res.cbt.encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
     }
 }
 
@@ -224,10 +218,7 @@ where
         A: BDDKeyInfos,
     {
         let ks_glwe = if let Some(ks_glwe_infos) = &infos.ks_glwe_infos() {
-            Some(GLWESwitchingKeyPrepared::alloc_from_infos(
-                self,
-                ks_glwe_infos,
-            ))
+            Some(GLWESwitchingKeyPrepared::alloc_from_infos(self, ks_glwe_infos))
         } else {
             None
         };

@@ -51,7 +51,7 @@ where
 
 impl<B> VecZnxBigBytesOf for Module<B>
 where
-    B: Backend + VecZnxBigAllocBytesImpl<B>,
+    B: Backend + VecZnxBigAllocBytesImpl,
 {
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
         B::vec_znx_big_bytes_of_impl(self.n(), cols, size)
@@ -264,18 +264,19 @@ where
 {
     fn vec_znx_big_normalize<R, A>(
         &self,
-        res_basek: usize,
         res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
         res_col: usize,
-        a_basek: usize,
         a: &A,
+        a_base2k: usize,
         a_col: usize,
         scratch: &mut Scratch<B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>,
     {
-        B::vec_znx_big_normalize_impl(self, res_basek, res, res_col, a_basek, a, a_col, scratch);
+        B::vec_znx_big_normalize_impl(self, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch);
     }
 }
 

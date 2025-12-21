@@ -148,19 +148,8 @@ where
             res.rank_out(),
             b.rank_out()
         );
-        assert!(
-            res.dnum() <= a.dnum(),
-            "res.dnum()={} > a.dnum()={}",
-            res.dnum(),
-            a.dnum()
-        );
-        assert_eq!(
-            res.dsize(),
-            a.dsize(),
-            "res dsize: {} != a dsize: {}",
-            res.dsize(),
-            a.dsize()
-        );
+        assert!(res.dnum() <= a.dnum(), "res.dnum()={} > a.dnum()={}", res.dnum(), a.dnum());
+        assert_eq!(res.dsize(), a.dsize(), "res dsize: {} != a dsize: {}", res.dsize(), a.dsize());
         assert_eq!(res.base2k(), a.base2k());
 
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();

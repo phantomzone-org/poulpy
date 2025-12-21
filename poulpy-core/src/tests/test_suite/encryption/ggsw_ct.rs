@@ -121,14 +121,7 @@ where
 
             let seed_xa: [u8; 32] = [1u8; 32];
 
-            ct_compressed.encrypt_sk(
-                module,
-                &pt_scalar,
-                &sk_prepared,
-                seed_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct_compressed.encrypt_sk(module, &pt_scalar, &sk_prepared, seed_xa, &mut source_xe, scratch.borrow());
 
             let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 

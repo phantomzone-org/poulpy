@@ -55,13 +55,7 @@ where
         let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
-        key.encrypt_sk(
-            module,
-            &sk,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        key.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
@@ -72,12 +66,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                module.vec_znx_copy(
-                    &mut pt_want.as_vec_znx_mut(),
-                    j,
-                    &sk_tensor.at(i, j).as_vec_znx(),
-                    0,
-                );
+                module.vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);
@@ -127,9 +116,8 @@ where
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGLWEToGGSWKeyCompressed::encrypt_sk_tmp_bytes(
-            module, &key_infos,
-        ));
+        let mut scratch: ScratchOwned<BE> =
+            ScratchOwned::alloc(GGLWEToGGSWKeyCompressed::encrypt_sk_tmp_bytes(module, &key_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -152,12 +140,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                module.vec_znx_copy(
-                    &mut pt_want.as_vec_znx_mut(),
-                    j,
-                    &sk_tensor.at(i, j).as_vec_znx(),
-                    0,
-                );
+                module.vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);

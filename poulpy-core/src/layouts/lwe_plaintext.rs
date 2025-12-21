@@ -71,13 +71,7 @@ impl LWEPlaintext<Vec<u8>> {
 
 impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "LWEPlaintext: base2k={} k={}: {}",
-            self.base2k().0,
-            self.k().0,
-            self.data
-        )
+        write!(f, "LWEPlaintext: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
     }
 }
 

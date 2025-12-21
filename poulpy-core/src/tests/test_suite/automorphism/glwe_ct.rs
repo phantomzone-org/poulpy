@@ -30,37 +30,37 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = 15;
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = 15;
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
     let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_ksk: usize = k_in + key_base2k * dsize;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
-            let dnum: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum: usize = k_in.div_ceil(key_base2k * dsize);
 
             let ct_in_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_in.into(),
+                base2k: in_base2k.into(),
                 k: k_in.into(),
                 rank: rank.into(),
             };
 
             let ct_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
             };
 
             let autokey_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
                 dnum: dnum.into(),
@@ -77,7 +77,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(base2k_in, &mut pt_in.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform(in_base2k, &mut pt_in.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
@@ -92,23 +92,9 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            autokey.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
-            ct_in.encrypt_sk(
-                module,
-                &pt_in,
-                &sk_prepared,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            ct_in.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey_infos);
@@ -121,7 +107,7 @@ where
                 k_ksk,
                 dnum,
                 max_dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -135,13 +121,7 @@ where
             module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
             module.vec_znx_automorphism_inplace(p, &mut pt_out.data, 0, scratch.borrow());
 
-            assert!(
-                ct_out
-                    .noise(module, &pt_out, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(ct_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }
@@ -161,29 +141,29 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_out + base2k_key * dsize;
+            let k_ksk: usize = k_out + key_base2k * dsize;
 
             let n: usize = module.n();
-            let dnum: usize = k_out.div_ceil(base2k_key * dsize);
+            let dnum: usize = k_out.div_ceil(key_base2k * dsize);
 
             let ct_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
             };
 
             let autokey_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 rank: rank.into(),
                 dnum: dnum.into(),
@@ -198,7 +178,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(base2k_out, &mut pt_want.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform(out_base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
@@ -213,14 +193,7 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            autokey.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             ct.encrypt_sk(
                 module,
@@ -242,7 +215,7 @@ where
                 k_ksk,
                 dnum,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -255,12 +228,7 @@ where
 
             module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
-            assert!(
-                ct.noise(module, &pt_want, &sk_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            assert!(ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }

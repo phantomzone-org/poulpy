@@ -167,17 +167,10 @@ where
         let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
         sk_glwe_prepared.prepare(self, sk_glwe);
 
-        res.brk.encrypt_sk(
-            self,
-            &sk_glwe_prepared,
-            sk_lwe,
-            source_xa,
-            source_xe,
-            scratch,
-        );
+        res.brk
+            .encrypt_sk(self, &sk_glwe_prepared, sk_lwe, source_xa, source_xe, scratch);
 
-        res.tsk
-            .encrypt_sk(self, sk_glwe, source_xa, source_xe, scratch);
+        res.tsk.encrypt_sk(self, sk_glwe, source_xa, source_xe, scratch);
     }
 }
 

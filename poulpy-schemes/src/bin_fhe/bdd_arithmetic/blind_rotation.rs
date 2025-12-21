@@ -48,15 +48,7 @@ where
 
         for col in 0..(res.rank() + 1).into() {
             for row in 0..res.dnum().into() {
-                self.glwe_blind_rotation_inplace(
-                    &mut res.at_mut(row, col),
-                    fhe_uint,
-                    sign,
-                    bit_rsh,
-                    bit_mask,
-                    bit_lsh,
-                    scratch,
-                );
+                self.glwe_blind_rotation_inplace(&mut res.at_mut(row, col), fhe_uint, sign, bit_rsh, bit_mask, bit_lsh, scratch);
             }
         }
     }
@@ -137,13 +129,7 @@ where
         for col in 0..(res.rank() + 1).into() {
             for row in 0..res.dnum().into() {
                 tmp_glwe.data_mut().zero();
-                self.vec_znx_add_scalar_inplace(
-                    tmp_glwe.data_mut(),
-                    col,
-                    (dsize - 1) + row * dsize,
-                    test_vector,
-                    0,
-                );
+                self.vec_znx_add_scalar_inplace(tmp_glwe.data_mut(), col, (dsize - 1) + row * dsize, test_vector, 0);
                 self.vec_znx_normalize_inplace(base2k, tmp_glwe.data_mut(), col, scratch_1);
 
                 self.glwe_blind_rotation(

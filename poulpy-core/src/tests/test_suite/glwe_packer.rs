@@ -33,26 +33,26 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let n: usize = module.n();
-    let base2k_out: usize = 15;
-    let base2k_key: usize = 10;
+    let out_base2k: usize = 15;
+    let key_base2k: usize = 10;
     let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
     let dsize: usize = 1;
-    let k_ksk: usize = k_ct + base2k_key * dsize;
+    let k_ksk: usize = k_ct + key_base2k * dsize;
 
-    let dnum: usize = k_ct.div_ceil(base2k_key * dsize);
+    let dnum: usize = k_ct.div_ceil(key_base2k * dsize);
 
     let glwe_out_infos: GLWELayout = GLWELayout {
         n: n.into(),
-        base2k: base2k_out.into(),
+        base2k: out_base2k.into(),
         k: k_ct.into(),
         rank: rank.into(),
     };
 
     let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
         n: n.into(),
-        base2k: base2k_key.into(),
+        base2k: key_base2k.into(),
         k: k_ksk.into(),
         rank: rank.into(),
         dsize: dsize.into(),
@@ -84,14 +84,7 @@ where
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
     let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
-        tmp.encrypt_sk(
-            module,
-            *gal_el,
-            &sk,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        tmp.encrypt_sk(module, *gal_el, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
             GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
         atk_prepared.prepare(module, &tmp, scratch.borrow());
@@ -104,26 +97,12 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
 
-    ct.encrypt_sk(
-        module,
-        &pt,
-        &sk_dft,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    ct.encrypt_sk(module, &pt, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
     let log_n: usize = module.log_n();
 
     (0..n >> log_batch).for_each(|i| {
-        ct.encrypt_sk(
-            module,
-            &pt,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct.encrypt_sk(module, &pt, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         module.glwe_rotate_inplace(-(1 << log_batch), &mut pt, scratch.borrow()); // X^-batch * pt
 
@@ -153,10 +132,7 @@ where
 
     let noise_have: f64 = pt.stats().std().log2();
 
-    assert!(
-        noise_have < -((k_ct - base2k_out) as f64),
-        "noise: {noise_have}"
-    );
+    assert!(noise_have < -((k_ct - out_base2k) as f64), "noise: {noise_have}");
 }
 
 #[inline(always)]

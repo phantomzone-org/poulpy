@@ -223,22 +223,22 @@ impl<D: DataRef> VecZnx<D> {
 
         let a: VecZnx<&[u8]> = self.to_ref();
         let size: usize = a.size();
-        let prec: u32 = (base2k * size) as u32;
+        let prec: u32 = data[0].prec();
 
         // 2^{base2k}
-        let base: Float = Float::with_val(prec, (1u64 << base2k) as f64);
+        let scale: Float = Float::with_val(prec, Float::u_pow_u(2, base2k as u32));
 
         // y[i] = sum x[j][i] * 2^{-base2k*j}
         (0..size).for_each(|i| {
             if i == 0 {
                 izip!(a.at(col, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
                     y.assign(*x);
-                    *y /= &base;
+                    *y /= &scale;
                 });
             } else {
                 izip!(a.at(col, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
                     *y += Float::with_val(prec, *x);
-                    *y /= &base;
+                    *y /= &scale;
                 });
             }
         });

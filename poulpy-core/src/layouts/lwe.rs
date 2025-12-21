@@ -96,7 +96,7 @@ impl<D: DataRef> LWE<D> {
 }
 
 impl<D: DataMut> LWE<D> {
-    pub fn data_mut(&mut self) -> &VecZnx<D> {
+    pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
 }
@@ -109,13 +109,7 @@ impl<D: DataRef> fmt::Debug for LWE<D> {
 
 impl<D: DataRef> fmt::Display for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "LWE: base2k={} k={}: {}",
-            self.base2k().0,
-            self.k().0,
-            self.data
-        )
+        write!(f, "LWE: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
     }
 }
 

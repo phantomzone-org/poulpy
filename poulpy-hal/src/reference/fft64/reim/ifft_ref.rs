@@ -11,26 +11,10 @@ pub fn ifft_ref<R: Float + FloatConst + Debug>(m: usize, omg: &[R], data: &mut [
     if m <= 16 {
         match m {
             1 => {}
-            2 => ifft2_ref(
-                as_arr_mut::<2, R>(re),
-                as_arr_mut::<2, R>(im),
-                *as_arr::<2, R>(omg),
-            ),
-            4 => ifft4_ref(
-                as_arr_mut::<4, R>(re),
-                as_arr_mut::<4, R>(im),
-                *as_arr::<4, R>(omg),
-            ),
-            8 => ifft8_ref(
-                as_arr_mut::<8, R>(re),
-                as_arr_mut::<8, R>(im),
-                *as_arr::<8, R>(omg),
-            ),
-            16 => ifft16_ref(
-                as_arr_mut::<16, R>(re),
-                as_arr_mut::<16, R>(im),
-                *as_arr::<16, R>(omg),
-            ),
+            2 => ifft2_ref(as_arr_mut::<2, R>(re), as_arr_mut::<2, R>(im), *as_arr::<2, R>(omg)),
+            4 => ifft4_ref(as_arr_mut::<4, R>(re), as_arr_mut::<4, R>(im), *as_arr::<4, R>(omg)),
+            8 => ifft8_ref(as_arr_mut::<8, R>(re), as_arr_mut::<8, R>(im), *as_arr::<8, R>(omg)),
+            16 => ifft16_ref(as_arr_mut::<16, R>(re), as_arr_mut::<16, R>(im), *as_arr::<16, R>(omg)),
             _ => {}
         }
     } else if m <= 2048 {
@@ -72,12 +56,7 @@ fn ifft_bfs_16_ref<R: Float + FloatConst>(m: usize, re: &mut [R], im: &mut [R], 
     while h < m_half {
         let mm: usize = h << 2;
         for off in (0..m).step_by(mm) {
-            inv_bitwiddle_ifft_ref(
-                h,
-                &mut re[off..],
-                &mut im[off..],
-                as_arr::<4, R>(&omg[pos..]),
-            );
+            inv_bitwiddle_ifft_ref(h, &mut re[off..], &mut im[off..], as_arr::<4, R>(&omg[pos..]));
             pos += 4;
         }
         h = mm;
@@ -284,14 +263,7 @@ fn inv_twiddle_ifft_ref<R: Float + FloatConst>(h: usize, re: &mut [R], im: &mut 
     let (im_lhs, im_rhs) = im.split_at_mut(h);
 
     for i in 0..h {
-        inv_twiddle(
-            &mut re_lhs[i],
-            &mut im_lhs[i],
-            &mut re_rhs[i],
-            &mut im_rhs[i],
-            romg,
-            iomg,
-        );
+        inv_twiddle(&mut re_lhs[i], &mut im_lhs[i], &mut re_rhs[i], &mut im_rhs[i], romg, iomg);
     }
 }
 

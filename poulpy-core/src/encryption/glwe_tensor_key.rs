@@ -103,13 +103,6 @@ where
         sk_prepared.prepare(self, sk);
         sk_tensor.prepare(self, sk, scratch_2);
 
-        self.gglwe_encrypt_sk(
-            res,
-            &sk_tensor.data,
-            &sk_prepared,
-            source_xa,
-            source_xe,
-            scratch_2,
-        );
+        self.gglwe_encrypt_sk(res, &sk_tensor.data, &sk_prepared, source_xa, source_xe, scratch_2);
     }
 }

@@ -34,7 +34,7 @@ pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
 /// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
 /// * See [crate::api::VecZnxBigAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
+pub unsafe trait VecZnxBigAllocBytesImpl {
     fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
@@ -46,7 +46,7 @@ pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
 pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
     fn add_normal_impl<R: VecZnxBigToMut<B>>(
         module: &Module<B>,
-        res_basek: usize,
+        res_base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -240,11 +240,12 @@ pub unsafe trait VecZnxBigNormalizeTmpBytesImpl<B: Backend> {
 pub unsafe trait VecZnxBigNormalizeImpl<B: Backend> {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<B>,
-        res_basek: usize,
         res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
         res_col: usize,
-        a_basek: usize,
         a: &A,
+        a_base2k: usize,
         a_col: usize,
         scratch: &mut Scratch<B>,
     ) where

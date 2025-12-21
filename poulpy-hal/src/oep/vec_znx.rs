@@ -29,11 +29,12 @@ pub unsafe trait VecZnxNormalizeImpl<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<B>,
-        res_basek: usize,
         res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
         res_col: usize,
-        a_basek: usize,
         a: &A,
+        a_base2k: usize,
         a_col: usize,
         scratch: &mut Scratch<B>,
     ) where

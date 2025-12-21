@@ -29,28 +29,28 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = in_base2k; // MUST BE SAME
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
 
     let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_ksk: usize = k_in + key_base2k * dsize;
             let k_tsk: usize = k_ksk;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
-            let dnum_in: usize = k_in / base2k_in;
-            let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_in / in_base2k;
+            let dnum_ksk: usize = k_in.div_ceil(key_base2k * dsize);
 
             let dsize_in: usize = 1;
 
             let ggsw_in_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k_in.into(),
+                base2k: in_base2k.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -59,7 +59,7 @@ where
 
             let ggsw_out_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -68,7 +68,7 @@ where
 
             let tsk_layout: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_tsk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -77,7 +77,7 @@ where
 
             let auto_key_layout: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -109,21 +109,8 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -143,20 +130,14 @@ where
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<Vec<u8>, BE> = GGLWEToGGSWKeyPrepared::alloc_from_infos(module, &tsk);
             tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
-            ct_out.automorphism(
-                module,
-                &ct_in,
-                &auto_key_prepared,
-                &tsk_prepared,
-                scratch.borrow(),
-            );
+            ct_out.automorphism(module, &ct_in, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
             module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
                     n as f64,
-                    base2k_key * dsize,
+                    key_base2k * dsize,
                     col_j,
                     var_xs,
                     0f64,
@@ -199,25 +180,25 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p: i64 = -1;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_out + base2k_key * dsize;
+            let k_ksk: usize = k_out + key_base2k * dsize;
             let k_tsk: usize = k_ksk;
 
             let n: usize = module.n();
-            let dnum_in: usize = k_out / base2k_out;
-            let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_out / out_base2k;
+            let dnum_ksk: usize = k_out.div_ceil(key_base2k * dsize);
             let dsize_in: usize = 1;
 
             let ggsw_out_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -226,7 +207,7 @@ where
 
             let tsk_layout: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_tsk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -235,7 +216,7 @@ where
 
             let auto_key_layout: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -266,21 +247,8 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(
-                module,
-                p,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
-            tsk.encrypt_sk(
-                module,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -307,7 +275,7 @@ where
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
                     n as f64,
-                    base2k_key * dsize,
+                    key_base2k * dsize,
                     col_j,
                     var_xs,
                     0f64,
@@ -327,10 +295,7 @@ where
                         .std()
                         .log2();
                     let noise_max: f64 = max_noise(col);
-                    assert!(
-                        noise_have <= noise_max,
-                        "noise_have:{noise_have} > noise_max:{noise_max}",
-                    )
+                    assert!(noise_have <= noise_max, "noise_have:{noise_have} > noise_max:{noise_max}",)
                 }
             }
         }

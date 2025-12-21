@@ -192,11 +192,7 @@ impl<D: DataMut, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
 
 impl<D: DataRef, B: Backend> fmt::Display for VecZnxDft<D, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "VecZnxDft(n={}, cols={}, size={})",
-            self.n, self.cols, self.size
-        )?;
+        writeln!(f, "VecZnxDft(n={}, cols={}, size={})", self.n, self.cols, self.size)?;
 
         for col in 0..self.cols {
             writeln!(f, "Column {col}:")?;

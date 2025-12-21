@@ -63,10 +63,7 @@ impl Distribution {
             TAG_ZERO => Distribution::ZERO,
             TAG_NONE => Distribution::NONE,
             _ => {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Invalid tag",
-                ));
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid tag"));
             }
         };
         Ok(dist)

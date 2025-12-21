@@ -93,20 +93,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -188,20 +190,22 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -279,20 +283,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -367,20 +373,22 @@ pub fn test_vec_znx_big_add_small_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -459,20 +467,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -546,20 +556,22 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -631,20 +643,22 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -709,20 +723,22 @@ where
 
         for j in 0..cols {
             module_ref.vec_znx_big_normalize(
-                base2k,
                 &mut res_small_ref,
-                j,
                 base2k,
+                0,
+                j,
                 &res_big_ref,
+                base2k,
                 j,
                 scratch_ref.borrow(),
             );
             module_test.vec_znx_big_normalize(
-                base2k,
                 &mut res_small_test,
-                j,
                 base2k,
+                0,
+                j,
                 &res_big_test,
+                base2k,
                 j,
                 scratch_test.borrow(),
             );
@@ -782,36 +798,40 @@ where
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
-            // Set d to garbage
-            source.fill_bytes(res_ref.data_mut());
-            source.fill_bytes(res_test.data_mut());
+            for res_offset in -(base2k as i64)..=(base2k as i64) {
+                // Set d to garbage
+                source.fill_bytes(res_ref.data_mut());
+                source.fill_bytes(res_test.data_mut());
 
-            // Reference
-            for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_ref,
-                    j,
-                    base2k,
-                    &a_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_test,
-                    j,
-                    base2k,
-                    &a_test,
-                    j,
-                    scratch_test.borrow(),
-                );
+                // Reference
+                for j in 0..cols {
+                    module_ref.vec_znx_big_normalize(
+                        &mut res_ref,
+                        base2k,
+                        res_offset,
+                        j,
+                        &a_ref,
+                        base2k,
+                        j,
+                        scratch_ref.borrow(),
+                    );
+                    module_test.vec_znx_big_normalize(
+                        &mut res_test,
+                        base2k,
+                        res_offset,
+                        j,
+                        &a_test,
+                        base2k,
+                        j,
+                        scratch_test.borrow(),
+                    );
+                }
+
+                assert_eq!(a_ref.digest_u64(), a_ref_digest);
+                assert_eq!(a_test.digest_u64(), a_test_digest);
+
+                assert_eq!(res_ref, res_test);
             }
-
-            assert_eq!(a_ref.digest_u64(), a_ref_digest);
-            assert_eq!(a_test.digest_u64(), a_test_digest);
-
-            assert_eq!(res_ref, res_test);
         }
     }
 }
@@ -891,20 +911,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -986,20 +1008,22 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -1083,20 +1107,22 @@ pub fn test_vec_znx_big_sub_negate_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -1180,20 +1206,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -1278,20 +1306,22 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_ref,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_ref,
+                        base2k,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        base2k,
                         &mut res_small_test,
-                        j,
                         base2k,
+                        0,
+                        j,
                         &res_big_test,
+                        base2k,
                         j,
                         scratch_test.borrow(),
                     );
@@ -1366,20 +1396,22 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_ref,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_ref,
+                    base2k,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    base2k,
                     &mut res_small_test,
-                    j,
                     base2k,
+                    0,
+                    j,
                     &res_big_test,
+                    base2k,
                     j,
                     scratch_test.borrow(),
                 );
@@ -1427,55 +1459,59 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
         let a_digest: u64 = a.digest_u64();
 
         for res_size in [1, 2, 3, 4] {
-            let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(base2k, &mut source);
+            for res_offset in -(base2k as i64)..=(base2k as i64) {
+                let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                res.fill_uniform(base2k, &mut source);
 
-            let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
-            let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
+                let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
+                let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
-            for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                for j in 0..cols {
+                    module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
+                    module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                }
+
+                for i in 0..cols {
+                    module_ref.vec_znx_big_sub_small_negate_inplace(&mut res_big_ref, i, &a, i);
+                    module_test.vec_znx_big_sub_small_negate_inplace(&mut res_big_test, i, &a, i);
+                }
+
+                assert_eq!(a.digest_u64(), a_digest);
+
+                let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+
+                let res_ref_digest: u64 = res_big_ref.digest_u64();
+                let res_test_digest: u64 = res_big_test.digest_u64();
+
+                for j in 0..cols {
+                    module_ref.vec_znx_big_normalize(
+                        &mut res_small_ref,
+                        base2k,
+                        res_offset,
+                        j,
+                        &res_big_ref,
+                        base2k,
+                        j,
+                        scratch_ref.borrow(),
+                    );
+                    module_test.vec_znx_big_normalize(
+                        &mut res_small_test,
+                        base2k,
+                        res_offset,
+                        j,
+                        &res_big_test,
+                        base2k,
+                        j,
+                        scratch_test.borrow(),
+                    );
+                }
+
+                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
+                assert_eq!(res_big_test.digest_u64(), res_test_digest);
+
+                assert_eq!(res_small_ref, res_small_test);
             }
-
-            for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_negate_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_negate_inplace(&mut res_big_test, i, &a, i);
-            }
-
-            assert_eq!(a.digest_u64(), a_digest);
-
-            let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-            let res_ref_digest: u64 = res_big_ref.digest_u64();
-            let res_test_digest: u64 = res_big_test.digest_u64();
-
-            for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_small_ref,
-                    j,
-                    base2k,
-                    &res_big_ref,
-                    j,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize(
-                    base2k,
-                    &mut res_small_test,
-                    j,
-                    base2k,
-                    &res_big_test,
-                    j,
-                    scratch_test.borrow(),
-                );
-            }
-
-            assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-            assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
-            assert_eq!(res_small_ref, res_small_test);
         }
     }
 }

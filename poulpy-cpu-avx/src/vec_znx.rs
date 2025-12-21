@@ -53,11 +53,12 @@ where
 {
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<Self>,
-        res_base2k: usize,
         res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
         res_col: usize,
-        a_base2k: usize,
         a: &A,
+        a_base2k: usize,
         a_col: usize,
         scratch: &mut Scratch<Self>,
     ) where
@@ -65,7 +66,7 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_normalize::<R, A, Self>(res_base2k, res, res_col, a_base2k, a, a_col, carry);
+        vec_znx_normalize::<R, A, Self>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 }
 

@@ -100,13 +100,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             1,
             "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
         );
-        Self::alloc(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.dnum(),
-        )
+        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {

@@ -129,13 +129,7 @@ impl<D: DataRef> fmt::Debug for GLWE<D> {
 
 impl<D: DataRef> fmt::Display for GLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "GLWE: base2k={} k={}: {}",
-            self.base2k().0,
-            self.k().0,
-            self.data
-        )
+        write!(f, "GLWE: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
     }
 }
 

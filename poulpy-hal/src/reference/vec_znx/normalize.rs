@@ -14,15 +14,17 @@ use crate::{
 };
 
 pub fn vec_znx_normalize_tmp_bytes(n: usize) -> usize {
-    2 * n * size_of::<i64>()
+    3 * n * size_of::<i64>()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn vec_znx_normalize<R, A, ZNXARI>(
-    res_base2k: usize,
     res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
     res_col: usize,
-    a_base2k: usize,
     a: &A,
+    a_base2k: usize,
     a_col: usize,
     carry: &mut [i64],
 ) where
@@ -38,14 +40,40 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace
         + ZnxNormalizeDigit,
+{
+    match res_base2k == a_base2k {
+        true => vec_znx_normalize_inter_base2k::<R, A, ZNXARI>(res_base2k, res, res_offset, res_col, a, a_col, carry),
+        false => vec_znx_normalize_cross_base2k::<R, A, ZNXARI>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry),
+    }
+}
+
+fn vec_znx_normalize_inter_base2k<R, A, ZNXARI>(
+    base2k: usize,
+    res: &mut R,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i64],
+) where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+    ZNXARI: ZnxZero
+        + ZnxNormalizeFirstStepCarryOnly
+        + ZnxNormalizeMiddleStepCarryOnly
+        + ZnxNormalizeMiddleStep
+        + ZnxNormalizeFinalStepInplace
+        + ZnxNormalizeMiddleStepInplace,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
 
     #[cfg(debug_assertions)]
     {
-        assert!(carry.len() >= 2 * res.n());
+        assert!(carry.len() >= vec_znx_normalize_tmp_bytes(res.n()) / size_of::<i64>());
         assert_eq!(res.n(), a.n());
     }
 
@@ -53,153 +81,323 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
     let res_size: usize = res.size();
     let a_size: usize = a.size();
 
-    let carry: &mut [i64] = &mut carry[..2 * n];
+    let (carry, _) = carry.split_at_mut(n);
 
-    if res_base2k == a_base2k {
-        if a_size > res_size {
-            for j in (res_size..a_size).rev() {
-                if j == a_size - 1 {
-                    ZNXARI::znx_normalize_first_step_carry_only(res_base2k, 0, a.at(a_col, j), carry);
-                } else {
-                    ZNXARI::znx_normalize_middle_step_carry_only(res_base2k, 0, a.at(a_col, j), carry);
-                }
-            }
+    let mut lsh: i64 = res_offset % base2k as i64;
+    let mut limbs_offset: i64 = res_offset / base2k as i64;
 
-            for j in (1..res_size).rev() {
-                ZNXARI::znx_normalize_middle_step(res_base2k, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-            }
+    // If res_offset is negative, makes it positive
+    // and corrects by adding an additional offset
+    // on the limbs.
+    if res_offset < 0 && lsh != 0 {
+        lsh = (lsh + base2k as i64) % (base2k as i64);
+        limbs_offset -= 1;
+    }
 
-            ZNXARI::znx_normalize_final_step(res_base2k, 0, res.at_mut(res_col, 0), a.at(a_col, 0), carry);
+    let lsh_pos: usize = lsh as usize;
+
+    let res_end: usize = (-limbs_offset).clamp(0, res_size as i64) as usize;
+    let res_start: usize = (a_size as i64 - limbs_offset).clamp(0, res_size as i64) as usize;
+    let a_end: usize = limbs_offset.clamp(0, a_size as i64) as usize;
+    let a_start: usize = (res_size as i64 + limbs_offset).clamp(0, a_size as i64) as usize;
+
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+
+    // Computes the carry over the discarded limbs of a
+    for j in 0..a_out_range {
+        if j == 0 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh_pos, a.at(a_col, a_size - j - 1), carry);
         } else {
-            for j in (0..a_size).rev() {
-                if j == a_size - 1 {
-                    ZNXARI::znx_normalize_first_step(res_base2k, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-                } else if j == 0 {
-                    ZNXARI::znx_normalize_final_step(res_base2k, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-                } else {
-                    ZNXARI::znx_normalize_middle_step(res_base2k, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-                }
-            }
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh_pos, a.at(a_col, a_size - j - 1), carry);
+        }
+    }
 
-            for j in a_size..res_size {
-                ZNXARI::znx_zero(res.at_mut(res_col, j));
+    // If no limbs were discarded, initialize carry to zero
+    if a_out_range == 0 {
+        ZNXARI::znx_zero(carry);
+    }
+
+    // Zeroes bottom limbs that will not be interacted with
+    for j in res_start..res_size {
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
+    }
+
+    let mid_range: usize = a_start.saturating_sub(a_end);
+
+    // Regular normalization over the overlapping limbs of res and a.
+    for j in 0..mid_range {
+        ZNXARI::znx_normalize_middle_step(
+            base2k,
+            lsh_pos,
+            res.at_mut(res_col, res_start - j - 1),
+            a.at(a_col, a_start - j - 1),
+            carry,
+        );
+    }
+
+    // Propagates the carry over the non-overlapping limbs between res and a
+    for j in 0..res_end {
+        ZNXARI::znx_zero(res.at_mut(res_col, res_end - j - 1));
+        if j == res_end - 1 {
+            ZNXARI::znx_normalize_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn vec_znx_normalize_cross_base2k<R, A, ZNXARI>(
+    res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_base2k: usize,
+    a_col: usize,
+    carry: &mut [i64],
+) where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+    ZNXARI: ZnxZero
+        + ZnxCopy
+        + ZnxAddInplace
+        + ZnxMulPowerOfTwoInplace
+        + ZnxNormalizeFirstStepCarryOnly
+        + ZnxNormalizeMiddleStepCarryOnly
+        + ZnxNormalizeMiddleStep
+        + ZnxNormalizeFinalStep
+        + ZnxNormalizeFirstStep
+        + ZnxExtractDigitAddMul
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace
+        + ZnxNormalizeDigit,
+{
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
+
+    #[cfg(debug_assertions)]
+    {
+        assert!(carry.len() >= vec_znx_normalize_tmp_bytes(res.n()) / size_of::<i64>());
+        assert_eq!(res.n(), a.n());
+    }
+
+    let n: usize = res.n();
+    let res_size: usize = res.size();
+    let a_size: usize = a.size();
+
+    let (a_norm, carry) = carry.split_at_mut(n);
+    let (res_carry, a_carry) = carry[..2 * n].split_at_mut(n);
+    ZNXARI::znx_zero(res_carry);
+
+    // Total precision (in bits) that `a` and `res` can represent.
+    let a_tot_bits: usize = a_size * a_base2k;
+    let res_tot_bits: usize = res_size * res_base2k;
+
+    // Derive intra-limb shift and cross-limb offset.
+    let mut lsh: i64 = res_offset % a_base2k as i64;
+    let mut limbs_offset: i64 = res_offset / a_base2k as i64;
+
+    // If res_offset is negative, ensures it is positive
+    // and corrects by incrementing the cross-limb offset.
+    if res_offset < 0 && lsh != 0 {
+        lsh = (lsh + a_base2k as i64) % (a_base2k as i64);
+        limbs_offset -= 1;
+    }
+
+    let lsh_pos: usize = lsh as usize;
+
+    // Derive start/stop bit indexes of the overlap between `a` and `res` (after taking into account the offset)..
+    let res_end_bit: usize = (-limbs_offset * a_base2k as i64).clamp(0, res_tot_bits as i64) as usize; // Stop bit
+    let res_start_bit: usize = (a_tot_bits as i64 - limbs_offset * a_base2k as i64).clamp(0, res_tot_bits as i64) as usize; // Start bit
+    let a_end_bit: usize = (limbs_offset * a_base2k as i64).clamp(0, a_tot_bits as i64) as usize; // Stop bit
+    let a_start_bit: usize = (res_tot_bits as i64 + limbs_offset * a_base2k as i64).clamp(0, a_tot_bits as i64) as usize; // Start bit
+
+    // Convert bits to limb indexes.
+    let res_end: usize = res_end_bit / res_base2k;
+    let res_start: usize = res_start_bit.div_ceil(res_base2k);
+    let a_end: usize = a_end_bit / a_base2k;
+    let a_start: usize = a_start_bit.div_ceil(a_base2k);
+
+    // Zero all limbs of `res`. Unlike the simple case
+    // where `res_base2k` is equal to `a_base2k`, we also
+    // need to ensure that the limbs starting from `res_end`
+    // are zero.
+    for j in 0..res_size {
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
+    }
+
+    // Case where offset is positive and greater or equal
+    // to the precision of a.
+    if res_start == 0 {
+        return;
+    }
+
+    // Limbs of `a` that have a greater precision than `res`.
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+
+    for j in 0..a_out_range {
+        if j == 0 {
+            ZNXARI::znx_normalize_first_step_carry_only(a_base2k, lsh_pos, a.at(a_col, a_size - j - 1), a_carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(a_base2k, lsh_pos, a.at(a_col, a_size - j - 1), a_carry);
+        }
+    }
+
+    // Zero carry if the above loop didn't trigger.
+    if a_out_range == 0 {
+        ZNXARI::znx_zero(a_carry);
+    }
+
+    // How much is left to accumulate to fill a limb of `res`.
+    let mut res_acc_left: usize = res_base2k;
+
+    // Starting limb of `res`.
+    let mut res_limb: usize = res_start - 1;
+
+    // How many limbs of `a` overlap with `res` (after taking into account the offset).
+    let mid_range: usize = a_start.saturating_sub(a_end);
+
+    // Regular normalization over the overlapping limbs of res and a.
+    'outer: for j in 0..mid_range {
+        let a_limb: usize = a_start - j - 1;
+
+        // Current res & a limbs
+        let a_slice: &[i64] = a.at(a_col, a_limb);
+
+        // Trackers: wow much of a_norm is left to
+        // be flushed on res.
+        let mut a_take_left: usize = a_base2k;
+
+        // Normalizes the j-th limb of a and store the results into `a_norm``.
+        // This step is required to avoid overflow in the next step,
+        // which assumes that |a| is bounded by 2^{a_base2k -1} (i.e. normalized).
+        ZNXARI::znx_normalize_middle_step(a_base2k, lsh_pos, a_norm, a_slice, a_carry);
+
+        // In the first iteration we need to match the precision `res` and `a`.
+        if j == 0 {
+            // Case where `a` has more precision than `res` (after taking into account the offset)
+            //
+            // For example:
+            //
+            // a:      [x  x  x  x  x][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x]
+            // res: [x  x  x  x  x  x][x  x  x  x  x  x][x  x  x  x  x  x]
+            if !(a_tot_bits - a_start_bit).is_multiple_of(a_base2k) {
+                let take: usize = (a_tot_bits - a_start_bit) % a_base2k;
+                ZNXARI::znx_mul_power_of_two_inplace(-(take as i64), a_norm);
+                a_take_left -= take;
+            // Case where `res` has more precision than `a` (after taking into account the offset)
+            //
+            // For example:
+            //
+            // a:    [x  x  x  x  x][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x]
+            // res:           [x  x  x  x  x  x][x  x  x  x  x  x][x  x  x  x  x  x]
+            } else if !(res_tot_bits - res_start_bit).is_multiple_of(res_base2k) {
+                res_acc_left -= (res_tot_bits - res_start_bit) % res_base2k;
             }
         }
-    } else {
-        let (a_norm, carry) = carry.split_at_mut(n);
 
-        // Relevant limbs of res
-        let res_min_size: usize = (a_size * a_base2k).div_ceil(res_base2k).min(res_size);
+        // Extract bits of `a_norm` and accumulates them on res[res_limb] until
+        // res_base2k bits have been accumulated or until all bits of `a` are
+        // extracted.
+        'inner: loop {
+            // Current limb of res
+            let res_slice: &mut [i64] = res.at_mut(res_col, res_limb);
 
-        // Relevant limbs of a
-        let a_min_size: usize = (res_size * res_base2k).div_ceil(a_base2k).min(a_size);
+            // We can take at most a_base2k bits
+            // but not more than what is left on a_norm or what is left to
+            // fully populate the current limb of res.
+            let a_take: usize = a_base2k.min(a_take_left).min(res_acc_left);
 
-        // Get carry for limbs of a that have higher precision than res
-        for j in (a_min_size..a_size).rev() {
-            if j == a_size - 1 {
-                ZNXARI::znx_normalize_first_step_carry_only(a_base2k, 0, a.at(a_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_middle_step_carry_only(a_base2k, 0, a.at(a_col, j), carry);
-            }
-        }
-
-        if a_min_size == a_size {
-            ZNXARI::znx_zero(carry);
-        }
-
-        // Maximum relevant precision of a
-        let a_prec: usize = a_min_size * a_base2k;
-
-        // Maximum relevant precision of res
-        let res_prec: usize = res_min_size * res_base2k;
-
-        // Res limb index
-        let mut res_idx: usize = res_min_size - 1;
-
-        // Trackers: wow much of res is left to be populated
-        // for the current limb.
-        let mut res_left: usize = res_base2k;
-
-        for j in 0..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
-        }
-
-        for j in (0..a_min_size).rev() {
-            // Trackers: wow much of a_norm is left to
-            // be flushed on res.
-            let mut a_left: usize = a_base2k;
-
-            // Normalizes the j-th limb of a and store the results into a_norm.
-            // This step is required to avoid overflow in the next step,
-            // which assumes that |a| is bounded by 2^{a_base2k -1}.
-            if j != 0 {
-                ZNXARI::znx_normalize_middle_step(a_base2k, 0, a_norm, a.at(a_col, j), carry);
-            } else {
-                ZNXARI::znx_normalize_final_step(a_base2k, 0, a_norm, a.at(a_col, j), carry);
+            if a_take != 0 {
+                // Extract `a_take` bits from a_norm and accumulates them on `res_slice`.
+                let scale: usize = res_base2k - res_acc_left;
+                ZNXARI::znx_extract_digit_addmul(a_take, scale, res_slice, a_norm);
+                a_take_left -= a_take;
+                res_acc_left -= a_take;
             }
 
-            // In the first iteration we need to match the precision of the input/output.
-            // If a_min_size * a_base2k > res_min_size * res_base2k
-            // then divround a_norm by the difference of precision and
-            // acts like if a_norm has already been partially consummed.
-            // Else acts like if res has been already populated
-            // by the difference.
-            if j == a_min_size - 1 {
-                if a_prec > res_prec {
-                    ZNXARI::znx_mul_power_of_two_inplace(res_prec as i64 - a_prec as i64, a_norm);
-                    a_left -= a_prec - res_prec;
-                } else if res_prec > a_prec {
-                    res_left -= res_prec - a_prec;
-                }
-            }
+            // If either:
+            //  * At least `res_base2k` bits have been accumulated
+            //  * We have reached the last limb of a
+            // Then: Flushes them onto res
+            if res_acc_left == 0 || a_limb == 0 {
+                // This case happens only if `res_offset` is negative.
+                // If `res_offset` is negative, we need to apply the offset BEFORE
+                // the normalization to ensure the `res-offset` overflowing bits of `a`
+                // are in the MSB of `res` instead of being discarded.
+                if a_limb == 0 && a_take_left == 0 {
+                    // TODO: prove no overflow can happen here (should not intuitively)
+                    ZNXARI::znx_add_inplace(a_carry, a_norm);
 
-            // Flushes a into res
-            loop {
-                // Selects the maximum amount of a that can be flushed
-                let a_take: usize = a_base2k.min(a_left).min(res_left);
-
-                // Output limb
-                let res_slice: &mut [i64] = res.at_mut(res_col, res_idx);
-
-                // Scaling of the value to flush
-                let lsh: usize = res_base2k - res_left;
-
-                // Extract the bits to flush on the output and updates
-                // a_norm accordingly.
-                ZNXARI::znx_extract_digit_addmul(a_take, lsh, res_slice, a_norm);
-
-                // Updates the trackers
-                a_left -= a_take;
-                res_left -= a_take;
-
-                // If the current limb of res is full,
-                // then normalizes this limb and adds
-                // the carry on a_norm.
-                if res_left == 0 {
-                    // Updates tracker
-                    res_left += res_base2k;
-
-                    // Normalizes res and propagates the carry on a.
-                    ZNXARI::znx_normalize_digit(res_base2k, res_slice, a_norm);
-
-                    // If we reached the last limb of res breaks,
-                    // but we might rerun the above loop if the
-                    // base2k of a is much smaller than the base2k
-                    // of res.
-                    if res_idx == 0 {
-                        ZNXARI::znx_add_inplace(carry, a_norm);
-                        break;
+                    // Usual case where for example
+                    // a:   [     overflow     ][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x]
+                    // res:      [x  x  x  x  x  x][x  x  x  x  x  x][x  x  x  x  x  x][x  x  x  x  x  x]
+                    //
+                    // where [overflow] are the overflowing bits of `a` (note that they are not a limb, but
+                    // stored in a[0] & carry from a[1]) that are moved into the MSB of `res` due to the
+                    // negative offset.
+                    //
+                    // In this case we populate what is left of `res_acc_left` using `a_carry`
+                    //
+                    // TODO: see if this can be simplified (e.g. just add).
+                    if res_acc_left != 0 {
+                        let scale: usize = res_base2k - res_acc_left;
+                        ZNXARI::znx_extract_digit_addmul(res_acc_left, scale, res_slice, a_carry);
                     }
 
-                    // Else updates the limb index of res.
-                    res_idx -= 1
+                    ZNXARI::znx_normalize_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
+
+                    // Previous step might not consume all bits of a_carry
+                    // TODO: prove no overflow can happen here
+                    ZNXARI::znx_add_inplace(res_carry, a_carry);
+
+                    // We are done, so breaks out of the loop (yes we are at a[0], but
+                    // this avoids possible over/under flows of tracking variables)
+                    break 'outer;
                 }
 
-                // If a_norm is exhausted, breaks the loop.
-                if a_left == 0 {
-                    ZNXARI::znx_add_inplace(carry, a_norm);
-                    break;
+                // If we reached the last limb of res
+                if res_limb == 0 {
+                    break 'outer;
                 }
+
+                res_acc_left += res_base2k;
+                res_limb -= 1;
+            }
+
+            // If a_norm is exhausted, breaks the inner loop.
+            if a_take_left == 0 {
+                ZNXARI::znx_add_inplace(a_carry, a_norm);
+                break 'inner;
+            }
+        }
+    }
+
+    // This case will happen if offset is negative.
+    if res_end != 0 {
+        // If there are no overlapping limbs between `res` and `a`
+        // (can happen if offset is negative), then we propagate the
+        // carry of `a` on res. Note that the carry of `a` can be
+        // greater than the precision of res.
+        //
+        // For example with offset = -8:
+        //             a carry           a[0]     a[1]     a[2]     a[3]
+        // a: [---------------------- ][x  x  x][x  x  x][x  x  x][x  x  x]
+        // b: [x  x  x  x][x  x  x  x ]
+        //        res[0]       res[1]
+        //
+        // If there are overlapping limbs between `res` and `a`,
+        // we can use `res_carry`, which contains the carry of propagating
+        // the shifted reconstruction of `a` in `res_base2k` along with
+        // the carry of a[0].
+        let carry_to_use = if a_start == a_end { a_carry } else { res_carry };
+
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                ZNXARI::znx_normalize_final_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+            } else {
+                ZNXARI::znx_normalize_middle_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             }
         }
     }
@@ -229,6 +427,191 @@ where
     }
 }
 
+#[test]
+fn test_vec_znx_normalize_cross_base2k() {
+    let n: usize = 8;
+
+    let mut carry: Vec<i64> = vec![0i64; vec_znx_normalize_tmp_bytes(n) / size_of::<i64>()];
+
+    use crate::reference::znx::ZnxRef;
+    use rug::ops::SubAssignRound;
+    use rug::{Float, float::Round};
+
+    let prec: usize = 128;
+
+    for in_base2k in 1..=51 {
+        for out_base2k in 1..=51 {
+            for offset in [
+                -(prec as i64),
+                -(prec as i64 - 1),
+                -(prec as i64 - in_base2k as i64),
+                -(in_base2k as i64 + 1),
+                in_base2k as i64,
+                -(in_base2k as i64 - 1),
+                0,
+                (in_base2k as i64 - 1),
+                in_base2k as i64,
+                (in_base2k as i64 + 1),
+                (prec as i64 - in_base2k as i64),
+                (prec - 1) as i64,
+                prec as i64,
+            ] {
+                let mut source: Source = Source::new([1u8; 32]);
+
+                let in_size: usize = prec.div_ceil(in_base2k);
+                let in_prec: u32 = (in_size * in_base2k) as u32;
+
+                // Ensures no loss of precision (mostly for testing purpose)
+                let out_size: usize = (in_prec as usize).div_ceil(out_base2k);
+
+                let out_prec: u32 = (out_size * out_base2k) as u32;
+                let min_prec: u32 = (in_size * in_base2k).min(out_size * out_base2k) as u32;
+                let mut want: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, in_size);
+                want.fill_uniform(60, &mut source);
+
+                let mut have: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, out_size);
+                have.fill_uniform(60, &mut source);
+                vec_znx_normalize_cross_base2k::<_, _, ZnxRef>(&mut have, out_base2k, offset, 0, &want, in_base2k, 0, &mut carry);
+
+                let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
+                let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(in_prec + 60, 0)).collect();
+
+                have.decode_vec_float(out_base2k, 0, &mut data_have);
+                want.decode_vec_float(in_base2k, 0, &mut data_want);
+
+                let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
+
+                if offset > 0 {
+                    for x in &mut data_want {
+                        *x *= &scale;
+                        *x %= 1;
+                    }
+                } else if offset < 0 {
+                    for x in &mut data_want {
+                        *x /= &scale;
+                        *x %= 1;
+                    }
+                } else {
+                    for x in &mut data_want {
+                        *x %= 1;
+                    }
+                }
+
+                for x in &mut data_have {
+                    if *x >= 0.5 {
+                        *x -= 1;
+                    } else if *x < -0.5 {
+                        *x += 1;
+                    }
+                }
+
+                for x in &mut data_want {
+                    if *x >= 0.5 {
+                        *x -= 1;
+                    } else if *x < -0.5 {
+                        *x += 1;
+                    }
+                }
+
+                for i in 0..n {
+                    //println!("i:{i:02} {} {}", data_want[i], data_have[i]);
+
+                    let mut err: Float = data_have[i].clone();
+                    err.sub_assign_round(&data_want[i], Round::Nearest);
+                    err = err.abs();
+
+                    let err_log2: f64 = err.clone().max(&Float::with_val(prec as u32, 1e-60)).log2().to_f64();
+
+                    assert!(err_log2 <= -(min_prec as f64) + 1.0, "{} {}", err_log2, -(min_prec as f64))
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_vec_znx_normalize_inter_base2k() {
+    let n: usize = 8;
+
+    let mut carry: Vec<i64> = vec![0i64; vec_znx_normalize_tmp_bytes(n) / size_of::<i64>()];
+
+    use crate::reference::znx::ZnxRef;
+    use rug::ops::SubAssignRound;
+    use rug::{Float, float::Round};
+
+    let mut source: Source = Source::new([1u8; 32]);
+
+    let prec: usize = 128;
+    let offset_range: i64 = prec as i64;
+
+    for base2k in 1..=51 {
+        for offset in (-offset_range..=offset_range).step_by(base2k + 1) {
+            let size: usize = prec.div_ceil(base2k);
+            let out_prec: u32 = (size * base2k) as u32;
+
+            // Fills "want" with uniform values
+            let mut want: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, size);
+            want.fill_uniform(60, &mut source);
+
+            // Fills "have" with the shifted normalization of "want"
+            let mut have: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, size);
+            have.fill_uniform(60, &mut source);
+            vec_znx_normalize_inter_base2k::<_, _, ZnxRef>(base2k, &mut have, offset, 0, &want, 0, &mut carry);
+
+            let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
+            let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
+
+            have.decode_vec_float(base2k, 0, &mut data_have);
+            want.decode_vec_float(base2k, 0, &mut data_want);
+
+            let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
+
+            if offset > 0 {
+                for x in &mut data_want {
+                    *x *= &scale;
+                    *x %= 1;
+                }
+            } else if offset < 0 {
+                for x in &mut data_want {
+                    *x /= &scale;
+                    *x %= 1;
+                }
+            } else {
+                for x in &mut data_want {
+                    *x %= 1;
+                }
+            }
+
+            for x in &mut data_have {
+                if *x >= 0.5 {
+                    *x -= 1;
+                } else if *x < -0.5 {
+                    *x += 1;
+                }
+            }
+
+            for x in &mut data_want {
+                if *x >= 0.5 {
+                    *x -= 1;
+                } else if *x < -0.5 {
+                    *x += 1;
+                }
+            }
+
+            for i in 0..n {
+                //println!("i:{i:02} {} {}", data_want[i], data_have[i]);
+
+                let mut err: Float = data_have[i].clone();
+                err.sub_assign_round(&data_want[i], Round::Nearest);
+                err = err.abs();
+
+                let err_log2: f64 = err.clone().max(&Float::with_val(prec as u32, 1e-60)).log2().to_f64();
+
+                assert!(err_log2 <= -(out_prec as f64), "{} {}", err_log2, -(out_prec as f64))
+            }
+        }
+    }
+}
 pub fn bench_vec_znx_normalize<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
@@ -261,10 +644,10 @@ where
         res.fill_uniform(50, &mut source);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
-
+        let res_offset: i64 = 0;
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize(base2k, &mut res, i, base2k, &a, i, scratch.borrow());
+                module.vec_znx_normalize(&mut res, base2k, res_offset, i, &a, base2k, i, scratch.borrow());
             }
             black_box(());
         }
@@ -325,72 +708,4 @@ where
     }
 
     group.finish();
-}
-
-#[test]
-fn test_vec_znx_normalize_conv() {
-    let n: usize = 8;
-
-    let mut carry: Vec<i64> = vec![0i64; 2 * n];
-
-    use crate::reference::znx::ZnxRef;
-    use rug::ops::SubAssignRound;
-    use rug::{Float, float::Round};
-
-    let mut source: Source = Source::new([1u8; 32]);
-
-    let prec: usize = 128;
-
-    let mut data: Vec<i128> = vec![0i128; n];
-
-    data.iter_mut().for_each(|x| *x = source.next_i128());
-
-    for start_base2k in 1..50 {
-        for end_base2k in 1..50 {
-            let end_size: usize = prec.div_ceil(end_base2k);
-
-            let mut want: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, end_size);
-            want.encode_vec_i128(end_base2k, 0, prec, &data);
-            vec_znx_normalize_inplace::<_, ZnxRef>(end_base2k, &mut want, 0, &mut carry);
-
-            // Creates a temporary poly where encoding is in start_base2k
-            let mut tmp: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, prec.div_ceil(start_base2k));
-            tmp.encode_vec_i128(start_base2k, 0, prec, &data);
-
-            vec_znx_normalize_inplace::<_, ZnxRef>(start_base2k, &mut tmp, 0, &mut carry);
-
-            let mut data_tmp: Vec<Float> = (0..n).map(|_| Float::with_val(prec as u32, 0)).collect();
-            tmp.decode_vec_float(start_base2k, 0, &mut data_tmp);
-
-            let mut have: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, end_size);
-            vec_znx_normalize::<_, _, ZnxRef>(end_base2k, &mut have, 0, start_base2k, &tmp, 0, &mut carry);
-
-            let out_prec: u32 = (end_size * end_base2k) as u32;
-
-            let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec, 0)).collect();
-            let mut data_res: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec, 0)).collect();
-
-            have.decode_vec_float(end_base2k, 0, &mut data_want);
-            want.decode_vec_float(end_base2k, 0, &mut data_res);
-
-            for i in 0..n {
-                let mut err: Float = data_want[i].clone();
-                err.sub_assign_round(&data_res[i], Round::Nearest);
-                err = err.abs();
-
-                let err_log2: f64 = err
-                    .clone()
-                    .max(&Float::with_val(prec as u32, 1e-60))
-                    .log2()
-                    .to_f64();
-
-                assert!(
-                    err_log2 <= -(out_prec as f64) + 1.,
-                    "{} {}",
-                    err_log2,
-                    -(out_prec as f64) + 1.
-                )
-            }
-        }
-    }
 }

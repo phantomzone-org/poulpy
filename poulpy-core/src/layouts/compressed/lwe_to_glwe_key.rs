@@ -98,13 +98,7 @@ impl LWEToGLWEKeyCompressed<Vec<u8>> {
             1,
             "rank_in > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
         );
-        Self::alloc(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank_out(),
-            infos.dnum(),
-        )
+        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {

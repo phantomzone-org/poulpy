@@ -24,10 +24,7 @@ where
     {
         assert_eq!(tmp.len(), res.n());
 
-        debug_assert!(
-            _n_out > _n_in,
-            "invalid a: output ring degree should be greater"
-        );
+        debug_assert!(_n_out > _n_in, "invalid a: output ring degree should be greater");
         a[1..].iter().for_each(|ai| {
             debug_assert_eq!(
                 ai.to_ref().n(),

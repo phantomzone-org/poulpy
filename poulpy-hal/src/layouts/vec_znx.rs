@@ -187,11 +187,7 @@ impl<D: Data> VecZnx<D> {
 
 impl<D: DataRef> fmt::Display for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "VecZnx(n={}, cols={}, size={})",
-            self.n, self.cols, self.size
-        )?;
+        writeln!(f, "VecZnx(n={}, cols={}, size={})", self.n, self.cols, self.size)?;
 
         for col in 0..self.cols {
             writeln!(f, "Column {col}:")?;

@@ -87,22 +87,9 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut sk_dft: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank);
         sk_dft.prepare(&module, &sk);
 
-        ct_ggsw.encrypt_sk(
-            &module,
-            &pt_rgsw,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_ggsw.encrypt_sk(&module, &pt_rgsw, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
-        ct_glwe_in.encrypt_zero_sk(
-            &module,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_glwe_in.encrypt_zero_sk(&module, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
         ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
@@ -190,22 +177,9 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let mut sk_dft: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank);
         sk_dft.prepare(&module, &sk);
 
-        ct_ggsw.encrypt_sk(
-            &module,
-            &pt_rgsw,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_ggsw.encrypt_sk(&module, &pt_rgsw, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
-        ct_glwe.encrypt_zero_sk(
-            &module,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        ct_glwe.encrypt_zero_sk(&module, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
         ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());

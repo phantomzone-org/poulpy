@@ -12,10 +12,6 @@ pub fn znx_automorphism_ref(p: i64, res: &mut [i64], a: &[i64]) {
     res[0] = a[0];
     for ai in a.iter().take(n).skip(1) {
         k = (k + p_2n) & mask;
-        if k < n {
-            res[k] = *ai
-        } else {
-            res[k - n] = -*ai
-        }
+        if k < n { res[k] = *ai } else { res[k - n] = -*ai }
     }
 }

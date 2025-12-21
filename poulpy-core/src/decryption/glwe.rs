@@ -33,10 +33,21 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
     }
 }
 
-pub trait GLWEDecrypt<BE: Backend>
+pub trait GLWEDecrypt<BE: Backend> {
+    fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos;
+
+    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToRef,
+        P: GLWEPlaintextToMut,
+        S: GLWESecretPreparedToRef<BE>;
+}
+
+impl<BE: Backend> GLWEDecrypt<BE> for Module<BE>
 where
-    Self: Sized
-        + ModuleN
+    Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
@@ -46,6 +57,7 @@ where
         + VecZnxBigAddInplace<BE>
         + VecZnxBigAddSmallInplace<BE>
         + VecZnxBigNormalize<BE>,
+    Scratch<BE>: ScratchTakeBasic,
 {
     fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -60,7 +72,6 @@ where
         R: GLWEToRef,
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeBasic,
     {
         let res: &GLWE<&[u8]> = &res.to_ref();
         let pt: &mut GLWEPlaintext<&mut [u8]> = &mut pt.to_ref();
@@ -94,32 +105,12 @@ where
         // c0_big = (a * s) + (-a * s + m + e) = BIG(m + e)
         self.vec_znx_big_add_small_inplace(&mut c0_big, 0, &res.data, 0);
 
+        let res_base2k: usize = res.base2k().into();
+
         // pt = norm(BIG(m + e))
-        self.vec_znx_big_normalize(
-            res.base2k().into(),
-            &mut pt.data,
-            0,
-            res.base2k().into(),
-            &c0_big,
-            0,
-            scratch_1,
-        );
+        self.vec_znx_big_normalize(&mut pt.data, res_base2k, 0, 0, &c0_big, res_base2k, 0, scratch_1);
 
         pt.base2k = res.base2k();
         pt.k = pt.k().min(res.k());
     }
-}
-
-impl<BE: Backend> GLWEDecrypt<BE> for Module<BE> where
-    Self: ModuleN
-        + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigAddInplace<BE>
-        + VecZnxBigAddSmallInplace<BE>
-        + VecZnxBigNormalize<BE>
-{
 }

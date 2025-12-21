@@ -1,80 +1,568 @@
 use poulpy_hal::{
     api::{
-        BivariateTensoring, ModuleN, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace, VecZnxBigNormalize, VecZnxCopy,
+        CnvPVecBytesOf, Convolution, ModuleN, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxIdftApplyConsume, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
         VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
-    layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, ZnxInfos},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
     reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
 };
 
 use crate::{
-    ScratchTakeCore,
+    GGLWEProduct, ScratchTakeCore,
     layouts::{
-        GLWE, GLWEInfos, GLWEPrepared, GLWEPreparedToRef, GLWETensor, GLWETensorToMut, GLWEToMut, GLWEToRef, LWEInfos,
+        Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
         TorusPrecision,
     },
 };
 
-pub trait GLWETensoring<BE: Backend>
+pub trait GLWEMulConst<BE: Backend> {
+    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos;
+
+    fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    where
+        R: DataMut,
+        A: DataRef;
+
+    fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    where
+        R: DataMut;
+}
+
+impl<BE: Backend> GLWEMulConst<BE> for Module<BE>
 where
-    Self: BivariateTensoring<BE> + VecZnxIdftApplyConsume<BE> + VecZnxBigNormalize<BE>,
+    Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    /// res = (a (x) b) * 2^{k * a_base2k}
-    ///
-    /// # Requires
-    /// * a.base2k() == b.base2k()
-    /// * res.cols() >= a.cols() + b.cols() - 1
-    ///
-    /// # Behavior
-    /// * res precision is truncated to res.max_k().min(a.max_k() + b.max_k() + k * a_base2k)
-    fn glwe_tensor<R, A, B>(&self, k: i64, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
     where
-        R: GLWETensorToMut,
-        A: GLWEToRef,
-        B: GLWEPreparedToRef<BE>,
+        R: GLWEInfos,
+        A: GLWEInfos,
     {
-        let res: &mut GLWETensor<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWEPrepared<&[u8], BE> = &b.to_ref();
+        let a_base2k: usize = a.base2k().as_usize();
+        let res_base2k: usize = res.base2k().as_usize();
 
-        assert_eq!(a.base2k(), b.base2k());
-        assert_eq!(a.rank(), res.rank());
+        let res_size: usize = (res.size() * res_base2k).div_ceil(a_base2k);
+        let res_big: usize = self.bytes_of_vec_znx_big(1, res_size);
+        let cnv: usize = self.cnv_by_const_apply_tmp_bytes(res_size, res_offset, a.size(), b_size);
+        let normalize: usize = self.vec_znx_big_normalize_tmp_bytes();
 
-        let res_cols: usize = res.data.cols();
+        res_big + cnv.max(normalize)
+    }
 
-        // Get tmp buffer of min precision between a_prec * b_prec and res_prec
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, res_cols, res.max_k().div_ceil(a.base2k()) as usize);
+    fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    where
+        R: DataMut,
+        A: DataRef,
+    {
+        assert_eq!(res.rank(), a.rank());
 
-        // DFT(res) = DFT(a) (x) DFT(b)
-        self.bivariate_tensoring(k, &mut res_dft, &a.data, &b.data, scratch_1);
+        let cols: usize = res.rank().as_usize() + 1;
+        let a_base2k: usize = a.base2k().as_usize();
+        let res_base2k: usize = res.base2k().as_usize();
 
-        // res = IDFT(res)
-        let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+        let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
+            (0, -((a_base2k - (res_offset % a_base2k)) as i64))
+        } else {
+            ((res_offset / a_base2k).saturating_sub(1), (res_offset % a_base2k) as i64)
+        };
 
-        // Normalize and switches basis if required
-        for res_col in 0..res_cols {
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a.size() + b.len() - res_offset_hi);
+
+        let (mut res_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res_dft_size);
+        for i in 0..cols {
+            self.cnv_by_const_apply(&mut res_big, res_offset_hi, 0, a.data(), i, b, scratch_1);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, res_offset_lo, i, &res_big, a_base2k, 0, scratch_1);
+        }
+    }
+
+    fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    where
+        R: DataMut,
+    {
+        let cols: usize = res.rank().as_usize() + 1;
+        let res_base2k: usize = res.base2k().as_usize();
+
+        let (res_offset_hi, res_offset_lo) = if res_offset < res_base2k {
+            (0, -((res_base2k - (res_offset % res_base2k)) as i64))
+        } else {
+            ((res_offset / res_base2k).saturating_sub(1), (res_offset % res_base2k) as i64)
+        };
+
+        let (mut res_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res.size());
+        for i in 0..cols {
+            self.cnv_by_const_apply(&mut res_big, res_offset_hi, 0, res.data(), i, b, scratch_1);
             self.vec_znx_big_normalize(
-                res.base2k().into(),
-                &mut res.data,
-                res_col,
-                a.base2k().into(),
+                res.data_mut(),
+                res_base2k,
+                res_offset_lo,
+                i,
                 &res_big,
-                res_col,
+                res_base2k,
+                0,
                 scratch_1,
             );
         }
     }
+}
 
-    // fn glwe_relinearize<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
-    // where
-    // R: GLWEToRef,
-    // A: GLWETensorToRef,
-    // T: GLWETensorKeyPreparedToRef<BE>,
-    // {
-    // }
+impl<BE: Backend> GLWEMulPlain<BE> for Module<BE>
+where
+    Self: Sized
+        + ModuleN
+        + CnvPVecBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigNormalize<BE>
+        + Convolution<BE>
+        + VecZnxBigNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+    {
+        let ab_base2k: Base2K = a.base2k();
+        assert_eq!(b.base2k(), ab_base2k);
+
+        let cols: usize = res.rank().as_usize() + 1;
+
+        let a_size: usize = a.size();
+        let b_size: usize = b.size();
+        let res_size: usize = res.size();
+
+        let cnv_pvec: usize = self.bytes_of_cnv_pvec_left(cols, a_size) + self.bytes_of_cnv_pvec_right(1, b_size);
+        let cnv_prep: usize = self
+            .cnv_prepare_left_tmp_bytes(a_size, a_size)
+            .max(self.cnv_prepare_right_tmp_bytes(a_size, a_size));
+        let cnv_apply: usize = self.cnv_apply_dft_tmp_bytes(res_size, res_offset, a_size, b_size);
+
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a_size + b_size - res_offset / ab_base2k.as_usize());
+
+        let res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
+        let norm: usize = self.vec_znx_big_normalize_tmp_bytes();
+
+        cnv_pvec + cnv_prep + res_dft + cnv_apply.max(norm)
+    }
+
+    fn glwe_mul_plain<R, A, B>(
+        &self,
+        res: &mut GLWE<R>,
+        res_offset: usize,
+        a: &GLWE<A>,
+        b: &GLWEPlaintext<B>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        assert_eq!(res.rank(), a.rank());
+
+        let a_base2k: usize = a.base2k().as_usize();
+        assert_eq!(b.base2k().as_usize(), a_base2k);
+        let res_base2k: usize = res.base2k().as_usize();
+
+        let cols: usize = res.rank().as_usize() + 1;
+
+        let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
+        let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, b.size());
+
+        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+
+        let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
+            (0, -((a_base2k - (res_offset % a_base2k)) as i64))
+        } else {
+            ((res_offset / a_base2k).saturating_sub(1), (res_offset % a_base2k) as i64)
+        };
+
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a.size() + b.size() - res_offset_hi);
+
+        for i in 0..cols {
+            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
+            self.cnv_apply_dft(&mut res_dft, res_offset_hi, 0, &a_prep, i, &b_prep, 0, scratch_3);
+            let res_big = self.vec_znx_idft_apply_consume(res_dft);
+
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, res_offset_lo, i, &res_big, a_base2k, 0, scratch_3);
+        }
+    }
+
+    fn glwe_mul_plain_inplace<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWEPlaintext<A>, scratch: &mut Scratch<BE>)
+    where
+        R: DataMut,
+        A: DataRef,
+    {
+        assert_eq!(res.rank(), a.rank());
+
+        let a_base2k: usize = a.base2k().as_usize();
+        let res_base2k: usize = res.base2k().as_usize();
+        assert_eq!(res_base2k, a_base2k);
+
+        let cols: usize = res.rank().as_usize() + 1;
+
+        let (mut res_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, res.size());
+        let (mut a_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, a.size());
+
+        self.cnv_prepare_left(&mut res_prep, res.data(), scratch_2);
+        self.cnv_prepare_right(&mut a_prep, a.data(), scratch_2);
+
+        let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
+            (0, -((a_base2k - (res_offset % a_base2k)) as i64))
+        } else {
+            ((res_offset / a_base2k).saturating_sub(1), (res_offset % a_base2k) as i64)
+        };
+
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a.size() + res.size() - res_offset_hi);
+
+        for i in 0..cols {
+            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
+            self.cnv_apply_dft(&mut res_dft, res_offset, 0, &res_prep, i, &a_prep, 0, scratch_3);
+            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, res_offset_lo, i, &res_big, a_base2k, 0, scratch_3);
+        }
+    }
+}
+
+pub trait GLWEMulPlain<BE: Backend> {
+    fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos;
+
+    fn glwe_mul_plain<R, A, B>(
+        &self,
+        res: &mut GLWE<R>,
+        res_offset: usize,
+        a: &GLWE<A>,
+        b: &GLWEPlaintext<B>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    fn glwe_mul_plain_inplace<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWEPlaintext<A>, scratch: &mut Scratch<BE>)
+    where
+        R: DataMut,
+        A: DataRef;
+}
+
+pub trait GLWETensoring<BE: Backend> {
+    fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos;
+
+    /// res = (a (x) b) * 2^{res_offset * a_base2k}
+    ///
+    /// # Requires
+    /// * a.base2k() == b.base2k()
+    /// * a.rank() == b.rank()
+    ///
+    /// # Behavior
+    /// * res precision is truncated to res.max_k().min(a.max_k() + b.max_k() + k * a_base2k)
+    fn glwe_tensor_apply<R, A, B>(
+        &self,
+        res: &mut GLWETensor<R>,
+        res_offset: usize,
+        a: &GLWE<A>,
+        b: &GLWE<B>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    fn glwe_tensor_relinearize<R, A, B>(
+        &self,
+        res: &mut GLWE<R>,
+        a: &GLWETensor<A>,
+        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GGLWEInfos;
+}
+
+impl<BE: Backend> GLWETensoring<BE> for Module<BE>
+where
+    Self: Sized
+        + ModuleN
+        + CnvPVecBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigNormalize<BE>
+        + Convolution<BE>
+        + VecZnxSubInplace
+        + VecZnxNegate
+        + VecZnxAddInplace
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxCopy
+        + VecZnxNormalize<BE>
+        + VecZnxDftApply<BE>
+        + GGLWEProduct<BE>
+        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+    {
+        let ab_base2k: Base2K = a.base2k();
+        assert_eq!(b.base2k(), ab_base2k);
+
+        let cols: usize = res.rank().as_usize() + 1;
+
+        let a_size: usize = a.size();
+        let b_size: usize = b.size();
+        let res_size: usize = res.size();
+
+        let cnv_pvec: usize = self.bytes_of_cnv_pvec_left(cols, a_size) + self.bytes_of_cnv_pvec_right(cols, b_size);
+        let cnv_prep: usize = self
+            .cnv_prepare_left_tmp_bytes(a_size, a_size)
+            .max(self.cnv_prepare_right_tmp_bytes(a_size, a_size));
+        let cnv_apply: usize = self
+            .cnv_apply_dft_tmp_bytes(res_size, res_offset, a_size, b_size)
+            .max(self.cnv_pairwise_apply_dft_tmp_bytes(res_size, res_offset, a_size, b_size));
+
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a_size + b_size - res_offset / ab_base2k.as_usize());
+
+        let res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
+        let tmp: usize = VecZnx::bytes_of(self.n(), 1, res.size());
+        let norm: usize = self.vec_znx_big_normalize_tmp_bytes();
+
+        cnv_pvec + cnv_prep + res_dft + cnv_apply.max(tmp + norm)
+    }
+
+    fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GGLWEInfos,
+    {
+        let a_base2k: usize = a.base2k().into();
+        let key_base2k: usize = tsk.base2k().into();
+        let res_base2k: usize = res.base2k().into();
+
+        let cols: usize = tsk.rank_out().as_usize() + 1;
+        let pairs: usize = tsk.rank_in().as_usize();
+
+        let a_dft_size: usize = (a.size() * a_base2k).div_ceil(key_base2k);
+
+        let a_dft = self.bytes_of_vec_znx_dft(pairs, a_dft_size);
+
+        let a_conv: usize = if a_base2k != key_base2k || res_base2k != key_base2k {
+            VecZnx::bytes_of(self.n(), 1, a_dft_size) + self.vec_znx_normalize_tmp_bytes()
+        } else {
+            0
+        };
+
+        let res_dft: usize = self.bytes_of_vec_znx_dft(cols, tsk.size());
+
+        let gglwe_product: usize = self.gglwe_product_dft_tmp_bytes(res.size(), a_dft_size, tsk);
+
+        let big_normalize: usize = self.vec_znx_big_normalize_tmp_bytes();
+
+        a_dft.max(a_conv + big_normalize) + res_dft + gglwe_product.max(a_conv).max(big_normalize)
+    }
+
+    fn glwe_tensor_relinearize<R, A, B>(
+        &self,
+        res: &mut GLWE<R>,
+        a: &GLWETensor<A>,
+        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        let a_base2k: usize = a.base2k().into();
+        let key_base2k: usize = tsk.base2k().into();
+        let res_base2k: usize = res.base2k().into();
+
+        assert_eq!(res.rank(), tsk.rank_out());
+        assert_eq!(a.rank(), tsk.rank_out());
+
+        let cols: usize = tsk.rank_out().as_usize() + 1;
+        let pairs: usize = tsk.rank_in().as_usize();
+
+        let a_dft_size: usize = (a.size() * a_base2k).div_ceil(key_base2k);
+
+        let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, pairs, a_dft_size);
+
+        if a_base2k != key_base2k {
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, a_dft_size);
+            for i in 0..pairs {
+                self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, a.data(), a_base2k, cols + i, scratch_2);
+                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv, 0);
+            }
+        } else {
+            for i in 0..pairs {
+                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, a.data(), 0);
+            }
+        }
+
+        let (mut res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, cols, tsk_size); // Todo optimise
+
+        self.gglwe_product_dft(&mut res_dft, &a_dft, &tsk.0, scratch_2);
+        let mut res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+
+        if res_base2k == key_base2k {
+            for i in 0..cols {
+                self.vec_znx_big_add_small_inplace(&mut res_big, i, a.data(), i);
+            }
+        } else {
+            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), 1, a_dft_size);
+            for i in 0..cols {
+                self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, a.data(), a_base2k, i, scratch_3);
+                self.vec_znx_big_add_small_inplace(&mut res_big, i, &a_conv, 0);
+            }
+        }
+
+        for i in 0..(res.rank() + 1).into() {
+            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
+        }
+    }
+
+    fn glwe_tensor_apply<R, A, B>(
+        &self,
+        res: &mut GLWETensor<R>,
+        res_offset: usize,
+        a: &GLWE<A>,
+        b: &GLWE<B>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        let a_base2k: usize = a.base2k().as_usize();
+        assert_eq!(b.base2k().as_usize(), a_base2k);
+        let res_base2k: usize = res.base2k().as_usize();
+
+        let cols: usize = res.rank().as_usize() + 1;
+
+        let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
+        let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, b.size());
+
+        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+
+        // Example for rank=3
+        //
+        // (a0, a1, a2, a3) x (b0, b1, b2, a3)
+        //   L   L  L   L       R   R   R   R
+        //
+        // c(1)    = a0 * b0 				<- (L(a0) * R(b0))
+        // c(s1)   = a0 * b1 + a1 * b0 		<- (L(a0) + L(a1)) * (R(b0) + R(b1)) + NEG(L(a0) * R(b0)) + SUB(L(a1) * R(b1))
+        // c(s2)   = a0 * b2 + a2 * b0		<- (L(a0) + L(a2)) * (R(b0) + R(b2)) + NEG(L(a0) * R(b0)) + SUB(L(a2) * R(b2))
+        // c(s3)   = a0 * b3 + a3 * b0		<- (L(a0) + L(a3)) * (R(b0) + R(b3)) + NEG(L(a0) * R(b0)) + SUB(L(a3) * R(b3))
+        // c(s1^2) = a1 * b1 				<- (L(a1) * R(b1))
+        // c(s1s2) = a1 * b2 + b2 * a1		<- (L(a1) + L(a2)) * (R(b1) + R(b2)) + NEG(L(a1) * R(b1)) + SUB(L(a2) * R(b2))
+        // c(s1s3) = a1 * b3 + b3 * a1		<- (L(a1) + L(a3)) * (R(b1) + R(b3)) + NEG(L(a1) * R(b1)) + SUB(L(a3) * R(b3))
+        // c(s2^2) = a2 * b2 				<- (L(a2) * R(b2))
+        // c(s2s3) = a2 * b3 + a3 * b2 	    <- (L(a2) + L(a3)) * (R(b2) + R(b3)) + NEG(L(a2) * R(b2)) + SUB(L(a3) * R(b3))
+        // c(s3^2) = a3 * b3				<- (L(a3) * R(b3))
+
+        // Derive the offset. If res_offset < a_base2k, then we shift to a negative offset
+        // since the convolution doesn't support negative offset (yet).
+        let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
+            (0, -((a_base2k - (res_offset % a_base2k)) as i64))
+        } else {
+            ((res_offset / a_base2k).saturating_sub(1), (res_offset % a_base2k) as i64)
+        };
+
+        let res_dft_size = res
+            .k()
+            .as_usize()
+            .div_ceil(a.base2k().as_usize())
+            .min(a.size() + b.size() - res_offset_hi);
+
+        for i in 0..cols {
+            let col_i: usize = i * cols - (i * (i + 1) / 2);
+
+            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
+            self.cnv_apply_dft(&mut res_dft, res_offset_hi, 0, &a_prep, i, &b_prep, i, scratch_3);
+            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+            let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res_dft_size);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset_lo, 0, &res_big, a_base2k, 0, scratch_4);
+
+            self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
+
+            // Pre-subtracts
+            // res[i!=j] = NEG(a[i] * b[i]) + SUB(a[j] * b[j])
+            for j in 0..cols {
+                if j != i {
+                    if j < i {
+                        let col_j = j * cols - (j * (j + 1) / 2);
+                        self.vec_znx_sub_inplace(res.data_mut(), col_j + i, &tmp, 0);
+                    } else {
+                        self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+                    }
+                }
+            }
+        }
+
+        for i in 0..cols {
+            let col_i: usize = i * cols - (i * (i + 1) / 2);
+
+            for j in i..cols {
+                if j != i {
+                    // res_dft = (a[i] + a[j]) * (b[i] + b[j])
+                    let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res.size());
+                    self.cnv_pairwise_apply_dft(&mut res_dft, res_offset_hi, 0, &a_prep, &b_prep, i, j, scratch_3);
+                    let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                    let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+                    self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset_lo, 0, &res_big, a_base2k, 0, scratch_3);
+
+                    self.vec_znx_add_inplace(res.data_mut(), col_i + j, &tmp, 0);
+                }
+            }
+        }
+    }
 }
 
 pub trait GLWEAdd
@@ -431,9 +919,7 @@ where
         *tmp_slot = Some(tmp);
 
         // Get a mutable handle to the temp and normalize into it
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot
-            .as_mut()
-            .expect("tmp_slot just set to Some, but found None");
+        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
         self.glwe_normalize(tmp_ref, glwe, scratch2);
 
@@ -470,9 +956,7 @@ where
         *tmp_slot = Some(tmp);
 
         // Get a mutable handle to the temp and normalize into it
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot
-            .as_mut()
-            .expect("tmp_slot just set to Some, but found None");
+        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
         self.glwe_normalize(tmp_ref, glwe, scratch2);
 
@@ -493,16 +977,10 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank());
 
+        let res_base2k = res.base2k().into();
+
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize(
-                res.base2k().into(),
-                res.data_mut(),
-                i,
-                a.base2k().into(),
-                a.data(),
-                i,
-                scratch,
-            );
+            self.vec_znx_normalize(res.data_mut(), res_base2k, 0, i, a.data(), a.base2k().into(), i, scratch);
         }
     }
 

@@ -58,10 +58,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUi
     }
     fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>> {
         assert!(start + count <= self.bits.len());
-        self.bits[start..start + count]
-            .iter_mut()
-            .map(|bit| bit.to_mut())
-            .collect()
+        self.bits[start..start + count].iter_mut().map(|bit| bit.to_mut()).collect()
     }
 }
 
@@ -95,13 +92,7 @@ where
     where
         A: GGSWInfos,
     {
-        self.alloc_fhe_uint_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.dnum(),
-            infos.dsize(),
-            infos.rank(),
-        )
+        self.alloc_fhe_uint_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 }
 
@@ -316,12 +307,8 @@ where
         A: GLWEInfos,
         B: BDDKeyInfos,
     {
-        self.circuit_bootstrapping_execute_tmp_bytes(
-            block_size,
-            extension_factor,
-            res_infos,
-            &bdd_infos.cbt_infos(),
-        ) + GGSW::bytes_of_from_infos(res_infos)
+        self.circuit_bootstrapping_execute_tmp_bytes(block_size, extension_factor, res_infos, &bdd_infos.cbt_infos())
+            + GGSW::bytes_of_from_infos(res_infos)
             + LWE::bytes_of_from_infos(bits_infos)
     }
 
@@ -371,14 +358,7 @@ where
                     let (mut tmp_ggsw, scratch_1) = scratch_thread.take_ggsw(ggsw_infos);
                     let (mut tmp_lwe, scratch_2) = scratch_1.take_lwe(bits);
                     for (local_bit, dst) in res_bits_chunk.iter_mut().enumerate() {
-                        bits.get_bit_lwe(
-                            self,
-                            start + local_bit,
-                            &mut tmp_lwe,
-                            ks_glwe,
-                            ks_lwe,
-                            scratch_2,
-                        );
+                        bits.get_bit_lwe(self, start + local_bit, &mut tmp_lwe, ks_glwe, ks_lwe, scratch_2);
                         cbt.execute_to_constant(self, &mut tmp_ggsw, &tmp_lwe, 1, 1, scratch_2);
                         dst.prepare(self, &tmp_ggsw, scratch_2);
                     }

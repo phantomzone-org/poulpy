@@ -46,23 +46,14 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWETensorKey::encrypt_sk_tmp_bytes(
-            module,
-            &tensor_key_infos,
-        ));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWETensorKey::encrypt_sk_tmp_bytes(module, &tensor_key_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&tensor_key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
-        tensor_key.encrypt_sk(
-            module,
-            &sk,
-            &mut source_xa,
-            &mut source_xe,
-            scratch.borrow(),
-        );
+        tensor_key.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
@@ -74,14 +65,7 @@ where
                 assert!(
                     tensor_key
                         .0
-                        .noise(
-                            module,
-                            row,
-                            col,
-                            &sk_tensor.data,
-                            &sk_prepared,
-                            scratch.borrow()
-                        )
+                        .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
                         .std()
                         .log2()
                         <= max_noise
@@ -124,10 +108,8 @@ where
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWETensorKeyCompressed::encrypt_sk_tmp_bytes(
-            module,
-            &tensor_key_infos,
-        ));
+        let mut scratch: ScratchOwned<BE> =
+            ScratchOwned::alloc(GLWETensorKeyCompressed::encrypt_sk_tmp_bytes(module, &tensor_key_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&tensor_key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -151,14 +133,7 @@ where
                 assert!(
                     tensor_key
                         .0
-                        .noise(
-                            module,
-                            row,
-                            col,
-                            &sk_tensor.data,
-                            &sk_prepared,
-                            scratch.borrow()
-                        )
+                        .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
                         .std()
                         .log2()
                         <= max_noise

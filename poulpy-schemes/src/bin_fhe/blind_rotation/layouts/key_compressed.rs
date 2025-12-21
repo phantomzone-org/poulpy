@@ -71,9 +71,7 @@ impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKeyCompre
 
 impl<D: DataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKeyCompressed<D, BRT> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
-        self.keys
-            .iter_mut()
-            .for_each(|key| key.fill_uniform(log_bound, source));
+        self.keys.iter_mut().for_each(|key| key.fill_uniform(log_bound, source));
     }
 }
 

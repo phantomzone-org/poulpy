@@ -107,13 +107,6 @@ where
             sk_lwe_as_glwe_prep.prepare(self, &sk_lwe_as_glwe);
         }
 
-        self.gglwe_encrypt_sk(
-            res,
-            &sk_glwe.data,
-            &sk_lwe_as_glwe_prep,
-            source_xa,
-            source_xe,
-            scratch_1,
-        );
+        self.gglwe_encrypt_sk(res, &sk_glwe.data, &sk_lwe_as_glwe_prep, source_xa, source_xe, scratch_1);
     }
 }

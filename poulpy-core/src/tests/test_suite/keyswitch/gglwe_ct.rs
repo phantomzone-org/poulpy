@@ -26,27 +26,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = in_base2k; // MUST BE SAME
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
 
     for rank_in_s0s1 in 1_usize..2 {
         for rank_out_s0s1 in 1_usize..3 {
             for rank_out_s1s2 in 1_usize..3 {
                 for dsize in 1_usize..max_dsize + 1 {
-                    let k_ksk: usize = k_in + base2k_key * dsize;
+                    let k_ksk: usize = k_in + key_base2k * dsize;
                     let k_out: usize = k_ksk; // Better capture noise.
 
                     let n: usize = module.n();
                     let dsize_in: usize = 1;
-                    let dnum_in: usize = k_in / base2k_in;
-                    let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
+                    let dnum_in: usize = k_in / in_base2k;
+                    let dnum_ksk: usize = k_in.div_ceil(key_base2k * dsize);
 
                     let gglwe_s0s1_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                         n: n.into(),
-                        base2k: base2k_in.into(),
+                        base2k: in_base2k.into(),
                         k: k_in.into(),
                         dnum: dnum_in.into(),
                         dsize: dsize_in.into(),
@@ -56,7 +56,7 @@ where
 
                     let gglwe_s1s2_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                         n: n.into(),
-                        base2k: base2k_key.into(),
+                        base2k: key_base2k.into(),
                         k: k_ksk.into(),
                         dnum: dnum_ksk.into(),
                         dsize: dsize.into(),
@@ -66,7 +66,7 @@ where
 
                     let gglwe_s0s2_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                         n: n.into(),
-                        base2k: base2k_out.into(),
+                        base2k: out_base2k.into(),
                         k: k_out.into(),
                         dnum: dnum_in.into(),
                         dsize: dsize_in.into(),
@@ -108,43 +108,24 @@ where
                     sk2_prepared.prepare(module, &sk2);
 
                     // gglwe_{s1}(s0) = s0 -> s1
-                    gglwe_s0s1.encrypt_sk(
-                        module,
-                        &sk0,
-                        &sk1,
-                        &mut source_xa,
-                        &mut source_xe,
-                        scratch_enc.borrow(),
-                    );
+                    gglwe_s0s1.encrypt_sk(module, &sk0, &sk1, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                     // gglwe_{s2}(s1) -> s1 -> s2
-                    gglwe_s1s2.encrypt_sk(
-                        module,
-                        &sk1,
-                        &sk2,
-                        &mut source_xa,
-                        &mut source_xe,
-                        scratch_enc.borrow(),
-                    );
+                    gglwe_s1s2.encrypt_sk(module, &sk1, &sk2, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                     let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
                         GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
                     gglwe_s1s2_prepared.prepare(module, &gglwe_s1s2, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-                    gglwe_s0s2.keyswitch(
-                        module,
-                        &gglwe_s0s1,
-                        &gglwe_s1s2_prepared,
-                        scratch_apply.borrow(),
-                    );
+                    gglwe_s0s2.keyswitch(module, &gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
 
                     let max_noise: f64 = var_noise_gglwe_product_v2(
                         module.n() as f64,
                         k_ksk,
                         dnum_ksk,
                         dsize,
-                        base2k_key,
+                        key_base2k,
                         0.5,
                         0.5,
                         0f64,
@@ -157,21 +138,12 @@ where
 
                     for row in 0..gglwe_s0s2.dnum().as_usize() {
                         for col in 0..gglwe_s0s2.rank_in().as_usize() {
-                            assert!(
-                                gglwe_s0s2
-                                    .key
-                                    .noise(
-                                        module,
-                                        row,
-                                        col,
-                                        &sk0.data,
-                                        &sk2_prepared,
-                                        scratch_apply.borrow()
-                                    )
-                                    .std()
-                                    .log2()
-                                    <= max_noise + 0.5
-                            )
+                            let noise: f64 = gglwe_s0s2
+                                .key
+                                .noise(module, row, col, &sk0.data, &sk2_prepared, scratch_apply.borrow())
+                                .std()
+                                .log2();
+                            assert!(noise <= max_noise + 0.5, "{noise} > {max_noise}",)
                         }
                     }
                 }
@@ -191,25 +163,25 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
             for dsize in 1_usize..max_dsize + 1 {
-                let k_ksk: usize = k_out + base2k_key * dsize;
+                let k_ksk: usize = k_out + key_base2k * dsize;
 
                 let n: usize = module.n();
                 let dsize_in: usize = 1;
 
-                let dnum_in: usize = k_out / base2k_out;
-                let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
+                let dnum_in: usize = k_out / out_base2k;
+                let dnum_ksk: usize = k_out.div_ceil(key_base2k * dsize);
 
                 let gglwe_s0s1_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
-                    base2k: base2k_out.into(),
+                    base2k: out_base2k.into(),
                     k: k_out.into(),
                     dnum: dnum_in.into(),
                     dsize: dsize_in.into(),
@@ -219,7 +191,7 @@ where
 
                 let gglwe_s1s2_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
-                    base2k: base2k_key.into(),
+                    base2k: key_base2k.into(),
                     k: k_ksk.into(),
                     dnum: dnum_ksk.into(),
                     dsize: dsize.into(),
@@ -260,24 +232,10 @@ where
                 sk2_prepared.prepare(module, &sk2);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                gglwe_s0s1.encrypt_sk(
-                    module,
-                    &sk0,
-                    &sk1,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch_enc.borrow(),
-                );
+                gglwe_s0s1.encrypt_sk(module, &sk0, &sk1, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                 // gglwe_{s2}(s1) -> s1 -> s2
-                gglwe_s1s2.encrypt_sk(
-                    module,
-                    &sk1,
-                    &sk2,
-                    &mut source_xa,
-                    &mut source_xe,
-                    scratch_enc.borrow(),
-                );
+                gglwe_s1s2.encrypt_sk(module, &sk1, &sk2, &mut source_xa, &mut source_xe, scratch_enc.borrow());
 
                 let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
                     GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
@@ -290,7 +248,7 @@ where
 
                 let max_noise: f64 = log2_std_noise_gglwe_product(
                     n as f64,
-                    base2k_key * dsize,
+                    key_base2k * dsize,
                     var_xs,
                     var_xs,
                     0f64,
@@ -303,21 +261,12 @@ where
 
                 for row in 0..gglwe_s0s2.dnum().as_usize() {
                     for col in 0..gglwe_s0s2.rank_in().as_usize() {
-                        assert!(
-                            gglwe_s0s2
-                                .key
-                                .noise(
-                                    module,
-                                    row,
-                                    col,
-                                    &sk0.data,
-                                    &sk2_prepared,
-                                    scratch_apply.borrow()
-                                )
-                                .std()
-                                .log2()
-                                <= max_noise + 0.5
-                        )
+                        let noise = gglwe_s0s2
+                            .key
+                            .noise(module, row, col, &sk0.data, &sk2_prepared, scratch_apply.borrow())
+                            .std()
+                            .log2();
+                        assert!(noise <= max_noise + 0.5, "{noise} > {max_noise}")
                     }
                 }
             }

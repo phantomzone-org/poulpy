@@ -22,10 +22,7 @@ where
     {
         assert_eq!(tmp.len(), a.n());
 
-        assert!(
-            _n_out < _n_in,
-            "invalid a: output ring degree should be smaller"
-        );
+        assert!(_n_out < _n_in, "invalid a: output ring degree should be smaller");
 
         res[1..].iter_mut().for_each(|bi| {
             assert_eq!(

@@ -60,35 +60,12 @@ where
     let b: u32 = source.next_u32();
 
     source.fill_bytes(&mut scratch.borrow().data);
-    a_enc_prep.encrypt_sk(
-        module,
-        a,
-        sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    a_enc_prep.encrypt_sk(module, a, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
     source.fill_bytes(&mut scratch.borrow().data);
-    b_enc_prep.encrypt_sk(
-        module,
-        b,
-        sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    b_enc_prep.encrypt_sk(module, b, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
     // a + b
-    res.add(
-        module,
-        &a_enc_prep,
-        &b_enc_prep,
-        bdd_key_prepared,
-        scratch.borrow(),
-    );
+    res.add(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch.borrow());
 
-    assert_eq!(
-        res.decrypt(module, sk_glwe_prep, scratch.borrow()),
-        a.wrapping_add(b)
-    );
+    assert_eq!(res.decrypt(module, sk_glwe_prep, scratch.borrow()), a.wrapping_add(b));
 }

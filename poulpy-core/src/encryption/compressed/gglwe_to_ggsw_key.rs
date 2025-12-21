@@ -101,24 +101,13 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                self.vec_znx_copy(
-                    &mut sk_ij.as_vec_znx_mut(),
-                    j,
-                    &sk_tensor.at(i, j).as_vec_znx(),
-                    0,
-                );
+                self.vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let (seed_xa_tmp, _) = source_xa.branch();
 
-            res.at_mut(i).encrypt_sk(
-                self,
-                &sk_ij,
-                &sk_prepared,
-                seed_xa_tmp,
-                source_xe,
-                scratch_3,
-            );
+            res.at_mut(i)
+                .encrypt_sk(self, &sk_ij, &sk_prepared, seed_xa_tmp, source_xe, scratch_3);
         }
     }
 }

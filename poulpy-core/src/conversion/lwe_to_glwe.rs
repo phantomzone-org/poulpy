@@ -73,11 +73,12 @@ where
             }
 
             self.vec_znx_normalize(
-                ksk.base2k().into(),
                 &mut glwe.data,
+                ksk.base2k().into(),
                 0,
-                lwe.base2k().into(),
+                0,
                 &a_conv,
+                lwe.base2k().into(),
                 0,
                 scratch_2,
             );
@@ -89,11 +90,12 @@ where
             }
 
             self.vec_znx_normalize(
-                ksk.base2k().into(),
                 &mut glwe.data,
+                ksk.base2k().into(),
+                0,
                 1,
-                lwe.base2k().into(),
                 &a_conv,
+                lwe.base2k().into(),
                 0,
                 scratch_2,
             );

@@ -33,9 +33,9 @@ pub fn znx_normalize_first_step_carry_only_ref(base2k: usize, lsh: usize, x: &[i
             *c = get_carry_i64(base2k, *x, get_digit_i64(base2k, *x));
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *c = get_carry_i64(basek_lsh, *x, get_digit_i64(basek_lsh, *x));
+            *c = get_carry_i64(base2k_lsh, *x, get_digit_i64(base2k_lsh, *x));
         });
     }
 }
@@ -55,10 +55,10 @@ pub fn znx_normalize_first_step_inplace_ref(base2k: usize, lsh: usize, x: &mut [
             *x = digit;
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit_i64(basek_lsh, *x);
-            *c = get_carry_i64(basek_lsh, *x, digit);
+            let digit: i64 = get_digit_i64(base2k_lsh, *x);
+            *c = get_carry_i64(base2k_lsh, *x, digit);
             *x = digit << lsh;
         });
     }
@@ -80,10 +80,10 @@ pub fn znx_normalize_first_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a:
             *x = digit;
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit_i64(basek_lsh, *a);
-            *c = get_carry_i64(basek_lsh, *a, digit);
+            let digit: i64 = get_digit_i64(base2k_lsh, *a);
+            *c = get_carry_i64(base2k_lsh, *a, digit);
             *x = digit << lsh;
         });
     }
@@ -104,10 +104,10 @@ pub fn znx_normalize_middle_step_carry_only_ref(base2k: usize, lsh: usize, x: &[
             *c = carry + get_carry_i64(base2k, digit_plus_c, get_digit_i64(base2k, digit_plus_c));
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit_i64(basek_lsh, *x);
-            let carry: i64 = get_carry_i64(basek_lsh, *x, digit);
+            let digit: i64 = get_digit_i64(base2k_lsh, *x);
+            let carry: i64 = get_carry_i64(base2k_lsh, *x, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
             *c = carry + get_carry_i64(base2k, digit_plus_c, get_digit_i64(base2k, digit_plus_c));
         });
@@ -131,10 +131,10 @@ pub fn znx_normalize_middle_step_inplace_ref(base2k: usize, lsh: usize, x: &mut 
             *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit_i64(basek_lsh, *x);
-            let carry: i64 = get_carry_i64(basek_lsh, *x, digit);
+            let digit: i64 = get_digit_i64(base2k_lsh, *x);
+            let carry: i64 = get_carry_i64(base2k_lsh, *x, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
             *x = get_digit_i64(base2k, digit_plus_c);
             *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
@@ -178,10 +178,10 @@ pub fn znx_normalize_middle_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a
             *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit_i64(basek_lsh, *a);
-            let carry: i64 = get_carry_i64(basek_lsh, *a, digit);
+            let digit: i64 = get_digit_i64(base2k_lsh, *a);
+            let carry: i64 = get_carry_i64(base2k_lsh, *a, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
             *x = get_digit_i64(base2k, digit_plus_c);
             *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
@@ -202,9 +202,9 @@ pub fn znx_normalize_final_step_inplace_ref(base2k: usize, lsh: usize, x: &mut [
             *x = get_digit_i64(base2k, get_digit_i64(base2k, *x) + *c);
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit_i64(base2k, (get_digit_i64(basek_lsh, *x) << lsh) + *c);
+            *x = get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *x) << lsh) + *c);
         });
     }
 }
@@ -221,9 +221,9 @@ pub fn znx_normalize_final_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a:
             *x = get_digit_i64(base2k, get_digit_i64(base2k, *a) + *c);
         });
     } else {
-        let basek_lsh: usize = base2k - lsh;
+        let base2k_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit_i64(base2k, (get_digit_i64(basek_lsh, *a) << lsh) + *c);
+            *x = get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *a) << lsh) + *c);
         });
     }
 }

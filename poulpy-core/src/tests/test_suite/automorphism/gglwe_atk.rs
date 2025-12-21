@@ -29,27 +29,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_in: usize = 17;
-    let base2k_key: usize = 13;
-    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let in_base2k: usize = 17;
+    let key_base2k: usize = 13;
+    let out_base2k: usize = in_base2k; // MUST BE SAME
     let k_in: usize = 102;
-    let max_dsize: usize = k_in.div_ceil(base2k_key);
+    let max_dsize: usize = k_in.div_ceil(key_base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_ksk: usize = k_in + key_base2k * dsize;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_in / base2k_in;
-            let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_in / in_base2k;
+            let dnum_ksk: usize = k_in.div_ceil(key_base2k * dsize);
 
             let auto_key_in_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_in.into(),
+                base2k: in_base2k.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -58,7 +58,7 @@ where
 
             let auto_key_out_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -67,7 +67,7 @@ where
 
             let auto_key_apply_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -84,10 +84,7 @@ where
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_in_infos)
-                    .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
-                        module,
-                        &auto_key_apply_infos,
-                    ))
+                    .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply_infos))
                     .max(GLWEAutomorphismKey::automorphism_tmp_bytes(
                         module,
                         &auto_key_out_infos,
@@ -100,24 +97,10 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key_in.encrypt_sk(
-                module,
-                p0,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_in.encrypt_sk(module, p0, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(
-                module,
-                p1,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_apply.encrypt_sk(module, p1, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_infos);
@@ -125,12 +108,7 @@ where
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-            auto_key_out.automorphism(
-                module,
-                &auto_key_in,
-                &auto_key_apply_prepared,
-                scratch.borrow(),
-            );
+            auto_key_out.automorphism(module, &auto_key_in, &auto_key_apply_prepared, scratch.borrow());
 
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_out_infos);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
@@ -152,7 +130,7 @@ where
                 k_ksk,
                 dnum_ksk,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -171,11 +149,7 @@ where
                         .std()
                         .log2();
 
-                    assert!(
-                        noise_have < max_noise + 0.5,
-                        "{noise_have} > {}",
-                        max_noise + 0.5
-                    );
+                    assert!(noise_have < max_noise + 0.5, "{noise_have} > {}", max_noise + 0.5);
                 }
             }
         }
@@ -196,26 +170,26 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k_out: usize = 17;
-    let base2k_key: usize = 13;
+    let out_base2k: usize = 17;
+    let key_base2k: usize = 13;
     let k_out: usize = 102;
-    let max_dsize: usize = k_out.div_ceil(base2k_key);
+    let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
-            let k_ksk: usize = k_out + base2k_key * dsize;
+            let k_ksk: usize = k_out + key_base2k * dsize;
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_out / base2k_out;
-            let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_out / out_base2k;
+            let dnum_ksk: usize = k_out.div_ceil(key_base2k * dsize);
 
             let auto_key_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_out.into(),
+                base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -224,7 +198,7 @@ where
 
             let auto_key_apply_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k_key.into(),
+                base2k: key_base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
@@ -248,24 +222,10 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key.encrypt_sk(
-                module,
-                p0,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key.encrypt_sk(module, p0, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(
-                module,
-                p1,
-                &sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+            auto_key_apply.encrypt_sk(module, p1, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_layout);
@@ -296,7 +256,7 @@ where
                 k_ksk,
                 dnum_ksk,
                 dsize,
-                base2k_key,
+                key_base2k,
                 0.5,
                 0.5,
                 0f64,
@@ -315,11 +275,7 @@ where
                         .std()
                         .log2();
 
-                    assert!(
-                        noise_have < max_noise + 0.5,
-                        "{noise_have} {}",
-                        max_noise + 0.5
-                    );
+                    assert!(noise_have < max_noise + 0.5, "{noise_have} {}", max_noise + 0.5);
                 }
             }
         }

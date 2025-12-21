@@ -93,13 +93,7 @@ where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_ggsw_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.dnum(),
-            infos.dsize(),
-            infos.rank(),
-        )
+        self.alloc_ggsw_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
     fn bytes_of_ggsw_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
@@ -125,13 +119,7 @@ where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_ggsw_prepared(
-            infos.base2k(),
-            infos.k(),
-            infos.dnum(),
-            infos.dsize(),
-            infos.rank(),
-        )
+        self.bytes_of_ggsw_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
     fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize

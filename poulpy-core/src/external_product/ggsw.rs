@@ -35,20 +35,8 @@ where
         let a: &GGSW<&[u8]> = &a.to_ref();
         let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
 
-        assert_eq!(
-            res.rank(),
-            a.rank(),
-            "res rank: {} != a rank: {}",
-            res.rank(),
-            a.rank()
-        );
-        assert_eq!(
-            res.rank(),
-            b.rank(),
-            "res rank: {} != b rank: {}",
-            res.rank(),
-            b.rank()
-        );
+        assert_eq!(res.rank(), a.rank(), "res rank: {} != a rank: {}", res.rank(), a.rank());
+        assert_eq!(res.rank(), b.rank(), "res rank: {} != b rank: {}", res.rank(), b.rank());
 
         assert_eq!(res.base2k(), a.base2k());
 
@@ -80,13 +68,7 @@ where
 
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(
-            res.rank(),
-            a.rank(),
-            "res rank: {} != a rank: {}",
-            res.rank(),
-            a.rank()
-        );
+        assert_eq!(res.rank(), a.rank(), "res rank: {} != a rank: {}", res.rank(), a.rank());
 
         for row in 0..res.dnum().into() {
             for col in 0..(res.rank() + 1).into() {

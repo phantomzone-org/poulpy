@@ -163,13 +163,7 @@ impl DivRound for usize {
 #[allow(dead_code)]
 fn max_bit_size(vec: &[i64]) -> u32 {
     vec.iter()
-        .map(|&v| {
-            if v == 0 {
-                0
-            } else {
-                v.unsigned_abs().ilog2() + 1
-            }
-        })
+        .map(|&v| if v == 0 { 0 } else { v.unsigned_abs().ilog2() + 1 })
         .max()
         .unwrap_or(0)
 }
@@ -192,10 +186,7 @@ where
 
         let base2k: usize = res.base2k.into();
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            self.vec_znx_normalize_tmp_bytes()
-                .max(res.domain_size() << 3),
-        );
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.vec_znx_normalize_tmp_bytes().max(res.domain_size() << 3));
 
         // Get the number minimum limb to store the message modulus
         let limbs: usize = k.div_ceil(base2k);
@@ -222,7 +213,7 @@ where
         // If LUT size > TakeScalarZnx
         let domain_size: usize = res.domain_size();
 
-        let size: usize = res.k.div_ceil(res.base2k) as usize;
+        let size: usize = res.k.as_usize().div_ceil(base2k);
 
         // Equivalent to AUTO([f(0), -f(n-1), -f(n-2), ..., -f(1)], -1)
         let mut lut_full: VecZnx<Vec<u8>> = VecZnx::alloc(domain_size, 1, size);
@@ -231,16 +222,15 @@ where
 
         let step: usize = domain_size.div_round(f_len);
 
-        f.iter().enumerate().for_each(|(i, fi)| {
+        for (i, fi) in f.iter().enumerate() {
             let start: usize = i * step;
             let end: usize = start + step;
             lut_at[start..end].fill(fi * scale);
-        });
+        }
 
         let drift: usize = step >> 1;
 
         // Rotates half the step to the left
-
         if res.extension_factor() > 1 {
             let (tmp, _) = scratch.borrow().take_slice(lut_full.n());
 

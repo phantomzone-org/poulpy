@@ -1,120 +1,97 @@
-use crate::{
-    api::{
-        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxDftAddScaledInplace,
-        VecZnxDftBytesOf, VecZnxDftZero,
-    },
-    layouts::{Backend, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos},
+use crate::layouts::{
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnxBigToMut,
+    VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
 };
 
-impl<BE: Backend> BivariateTensoring<BE> for Module<BE>
-where
-    Self: BivariateConvolution<BE>,
-    Scratch<BE>: ScratchTakeBasic,
-{
+pub trait CnvPVecAlloc<BE: Backend> {
+    fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE>;
+    fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, BE>;
 }
 
-pub trait BivariateTensoring<BE: Backend>
-where
-    Self: BivariateConvolution<BE>,
-    Scratch<BE>: ScratchTakeBasic,
-{
-    fn bivariate_tensoring<R, A, B>(&self, k: i64, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+pub trait CnvPVecBytesOf {
+    fn bytes_of_cnv_pvec_left(&self, cols: usize, size: usize) -> usize;
+    fn bytes_of_cnv_pvec_right(&self, cols: usize, size: usize) -> usize;
+}
+
+pub trait Convolution<BE: Backend> {
+    fn cnv_prepare_left_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
+    fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
-        R: VecZnxDftToMut<BE>,
-        A: VecZnxToRef,
-        B: VecZnxDftToRef<BE>,
-    {
-        let res: &mut crate::layouts::VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
-        let a: &crate::layouts::VecZnx<&[u8]> = &a.to_ref();
-        let b: &crate::layouts::VecZnxDft<&[u8], BE> = &b.to_ref();
+        R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        A: VecZnxToRef + ZnxInfos;
 
-        let res_cols: usize = res.cols();
-        let a_cols: usize = a.cols();
-        let b_cols: usize = b.cols();
+    fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
+    fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        A: VecZnxToRef + ZnxInfos;
 
-        assert!(res_cols >= a_cols + b_cols - 1);
+    fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
-        for res_col in 0..res_cols {
-            self.vec_znx_dft_zero(res, res_col);
-        }
+    fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
-        for a_col in 0..a_cols {
-            for b_col in 0..b_cols {
-                self.bivariate_convolution_add(k, res, a_col + b_col, a, a_col, b, b_col, scratch);
-            }
-        }
-    }
-}
-
-impl<BE: Backend> BivariateConvolution<BE> for Module<BE>
-where
-    Self: Sized
-        + ModuleN
-        + SvpPPolAlloc<BE>
-        + SvpApplyDftToDft<BE>
-        + SvpPrepare<BE>
-        + SvpPPolBytesOf
-        + VecZnxDftBytesOf
-        + VecZnxDftAddScaledInplace<BE>
-        + VecZnxDftZero<BE>,
-    Scratch<BE>: ScratchTakeBasic,
-{
-}
-
-pub trait BivariateConvolution<BE: Backend>
-where
-    Self: Sized
-        + ModuleN
-        + SvpPPolAlloc<BE>
-        + SvpApplyDftToDft<BE>
-        + SvpPrepare<BE>
-        + SvpPPolBytesOf
-        + VecZnxDftBytesOf
-        + VecZnxDftAddScaledInplace<BE>
-        + VecZnxDftZero<BE>,
-    Scratch<BE>: ScratchTakeBasic,
-{
-    fn convolution_tmp_bytes(&self, b_size: usize) -> usize {
-        self.bytes_of_svp_ppol(1) + self.bytes_of_vec_znx_dft(1, b_size)
-    }
+    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[Y] mod (X^N + 1) where Y = 2^-K over the
+    /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
+    ///
+    /// Behavior is identical to [Convolution::cnv_apply_dft] with `b` treated as a constant polynomial
+    /// in the X variable, for example:
+    ///```text
+    ///       1    X   X^2  X^3
+    /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
+    ///     Y [a01, a11, a21, a31]
+    ///
+    /// b = 1 [b0] = (b00 + b01 * 2^-K)
+    ///     Y [b0]
+    /// ```
+    /// This method is intended to be used for multiplications by constants that are greater than the base2k.
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_by_const_apply<R, A>(
+        &self,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxBigToMut<BE>,
+        A: VecZnxToRef;
 
     #[allow(clippy::too_many_arguments)]
-    /// Evaluates a bivariate convolution over Z[X, Y] / (X^N + 1) where Y = 2^-K over the
-    /// selected columsn and stores the result on the selected column, scaled by 2^{k * Base2K}
+    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[X, Y] mod (X^N + 1) where Y = 2^-K over the
+    /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
     /// # Example
-    /// a = [a00, a10, a20, a30] = (a00 * 2^-K + a01 * 2^-2K) + (a10 * 2^-K + a11 * 2^-2K) * X ...
-    ///     [a01, a11, a21, a31]
+    ///```text
+    ///       1    X   X^2  X^3
+    /// a = 1 [a00, a10, a20, a30] = (a00 + a01 * 2^-K) + (a10 + a11 * 2^-K) * X ...
+    ///     Y [a01, a11, a21, a31]
     ///
-    /// b = [b00, b10, b20, b30] = (b00 * 2^-K + b01 * 2^-2K) + (b10 * 2^-K + b11 * 2^-2K) * X ...
-    ///     [b01, b11, b21, b31]
+    /// b = 1 [b00, b10, b20, b30] = (b00 + b01 * 2^-K) + (b10 + b11 * 2^-K) * X ...
+    ///     Y [b01, b11, b21, b31]
     ///
-    /// If k = 0:
-    /// res = [  0,   0,   0,   0] = (r01 * 2^-2K + r02 * 2^-3K + r03 * 2^-4K + r04 * 2^-5K) + ...
-    ///       [r01, r11, r21, r31]
-    ///       [r02, r12, r22, r32]
-    ///       [r03, r13, r23, r33]
-    ///       [r04, r14, r24, r34]
+    /// If res_offset = 0:
     ///
-    /// If k = 1:
-    /// res = [r01, r11, r21, r31] = (r01 * 2^-K + r02 * 2^-2K + r03 * 2^-3K + r04 * 2^-4K + r05 * 2^-5K) + ...
-    ///       [r02, r12, r22, r32]
-    ///       [r03, r13, r23, r33]
-    ///       [r04, r14, r24, r34]
-    ///       [r05, r15, r25, r35]
+    ///            1    X   X^2  X^3
+    /// res = 1  [r00, r10, r20, r30] = (r00 + r01 * 2^-K + r02 * 2^-2K + r03 * 2^-3K) + ... * X + ...
+    ///       Y  [r01, r11, r21, r31]
+    ///       Y^2[r02, r12, r22, r32]
+    ///       Y^3[r03, r13, r23, r33]
     ///
-    /// If k = -1:
-    /// res = [  0,   0,   0,   0] = (r01 * 2^-3K + r02 * 2^-4K + r03 * 2^-5K) + ...
-    ///       [  0,   0,   0,   0]
-    ///       [r01, r11, r21, r31]
-    ///       [r02, r12, r22, r32]
-    ///       [r03, r13, r23, r33]
+    /// If res_offset = 1:
     ///
-    /// If res.size() < a.size() + b.size() + 1 + k, result is truncated accordingly in the Y dimension.
-    fn bivariate_convolution_add<R, A, B>(
+    ///            1    X   X^2  X^3
+    /// res = 1  [r01, r11, r21, r31]  = (r01 + r02 * 2^-K + r03 * 2^-2K) + ... * X + ...
+    ///       Y  [r02, r12, r22, r32]
+    ///       Y^2[r03, r13, r23, r33]
+    ///       Y^3[  0,   0,   0 ,  0]
+    /// ```
+    /// If res.size() < a.size() + b.size() + k, result is truncated accordingly in the Y dimension.
+    fn cnv_apply_dft<R, A, B>(
         &self,
-        k: i64,
         res: &mut R,
+        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -123,40 +100,27 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxDftToMut<BE>,
-        A: VecZnxToRef,
-        B: VecZnxDftToRef<BE>,
-    {
-        let res: &mut crate::layouts::VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
-        let a: &crate::layouts::VecZnx<&[u8]> = &a.to_ref();
-        let b: &crate::layouts::VecZnxDft<&[u8], BE> = &b.to_ref();
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>;
 
-        let (mut ppol, scratch_1) = scratch.take_svp_ppol(self, 1);
-        let (mut res_tmp, _) = scratch_1.take_vec_znx_dft(self, 1, b.size());
-
-        for a_limb in 0..a.size() {
-            self.svp_prepare(&mut ppol, 0, &a.as_scalar_znx_ref(a_col, a_limb), 0);
-            self.svp_apply_dft_to_dft(&mut res_tmp, 0, &ppol, 0, b, b_col);
-            self.vec_znx_dft_add_scaled_inplace(res, res_col, &res_tmp, 0, -(1 + a_limb as i64) + k);
-        }
-    }
+    fn cnv_pairwise_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
     #[allow(clippy::too_many_arguments)]
-    fn bivariate_convolution<R, A, B>(
+    /// Evaluates the bivariate pair-wise convolution res = (a[i] + a[j]) * (b[i] + b[j]).
+    /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a[i] * b[i].
+    /// See [Convolution::cnv_apply_dft] for information about the bivariate convolution.
+    fn cnv_pairwise_apply_dft<R, A, B>(
         &self,
-        k: i64,
         res: &mut R,
+        res_offset: usize,
         res_col: usize,
         a: &A,
-        a_col: usize,
         b: &B,
-        b_col: usize,
+        i: usize,
+        j: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxDftToMut<BE>,
-        A: VecZnxToRef,
-        B: VecZnxDftToRef<BE>,
-    {
-        self.vec_znx_dft_zero(res, res_col);
-        self.bivariate_convolution_add(k, res, res_col, a, a_col, b, b_col, scratch);
-    }
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>;
 }
