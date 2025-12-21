@@ -14,8 +14,9 @@
   - `cnv_prepare_left`
   - `cnv_prepare_right_tmp_bytes`
   - `cnv_prepare_right`
+  - `cnv_by_const_apply`
+  - `cnv_by_const_apply_tmp_bytes`
   - `cnv_apply_dft_tmp_bytes`
-  - `cnv_by_const_apply_dft`
   - `cnv_apply_dft`
   - `cnv_pairwise_apply_dft_tmp_bytes`
   - `cnv_pairwise_apply_dft`
@@ -23,22 +24,25 @@
   - `Reim4Convolution`
   - `Reim4Convolution1Coeff`
   - `Reim4Convolution2Coeffs`
-  - `Reim4ConvolutionByRealConst1Coeff`
-  - `Reim4ConvolutionByRealConst2Coeffs`
   - `Reim4Save1BlkContiguous`
+- Add the following traits:
+  - `i64Save1BlkContiguous`
+  - `i64Extract1BlkContiguous`
+  - `i64ConvolutionByConst1Coeff`
+  - `i64ConvolutionByConst2Coeffs`
 - Update signature `Reim4Extract1Blk` to `Reim4Extract1BlkContiguous`.
 - Add fft64 backend reference code for 
   - `reim4_save_1blk_to_reim_contiguous_ref`
   - `reim4_convolution_1coeff_ref`
   - `reim4_convolution_2coeffs_ref`
-  - `reim4_convolution_by_real_const_1coeff_ref`
-  - `reim4_convolution_by_real_const_2coeffs_ref`
   - `convolution_prepare_left`
   - `convolution_prepare_right`
   - `convolution_apply_dft_tmp_bytes`
   - `convolution_apply_dft`
   - `convolution_pairwise_apply_dft_tmp_bytes`
   - `convolution_pairwise_apply_dft`
+  - `convolution_by_const_apply_tmp_bytes`
+  - `convolution_by_const_apply`
 - Add `take_cnv_pvec_left` and `take_cnv_pvec_right` methods to `ScratchTakeBasic` trait.
 - Add the following tests methods for convolution:
   - `test_convolution`
@@ -49,6 +53,7 @@
   - `bench_cnv_prepare_right`
   - `bench_cnv_apply_dft`
   - `bench_cnv_pairwise_apply_dft`
+  - `bench_cnv_by_const`
 - Update normalization API and OEP to take `res_offset: i64`. This allows the user to specify a bit-shift (positive or negative) applied to the normalization. Behavior-wise, the bit-shift is applied before the normalization (i.e. before applying mod 1 reduction). Since this is an API break, opportunity was taken to also re-order inputs for better consistency.
   - `VecZnxNormalize` & `VecZnxNormalizeImpl`
   - `VecZnxBigNormalize` & `VecZnxBigNormalizeImpl`
@@ -67,11 +72,17 @@
   - `reim4_save_1blk_to_reim_contiguous_avx`
   - `reim4_convolution_1coeff_avx`
   - `reim4_convolution_2coeffs_avx`
-  - `reim4_convolution_by_real_const_1coeff_avx`
-  - `reim4_convolution_by_real_const_2coeffs_avx`
 
 ## `poulpy-core`
 - Renamed `size` to `limbs`.
+- Add `GLWEMulPlain` trait:
+  - `glwe_mul_plain_tmp_bytes`
+  - `glwe_mul_plain`
+  - `glwe_mul_plain_inplace`
+- Add `GLWEMulConst` trait:
+  - `glwe_mul_const_tmp_bytes`
+  - `glwe_mul_const`
+  - `glwe_mul_const_inplace`
 - Add `GLWETensoring` trait:
   - `glwe_tensor_apply_tmp_bytes`
   - `glwe_tensor_apply`
