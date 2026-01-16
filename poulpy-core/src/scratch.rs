@@ -7,7 +7,8 @@ use crate::{
     dist::Distribution,
     layouts::{
         Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWEPlaintext,
-        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, LWE, LWEInfos, Rank,
+        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, LWE, LWEInfos, LWEPlaintext,
+        Rank,
         prepared::{
             GGLWEPrepared, GGSWPrepared, GLWEAutomorphismKeyPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, GLWETensorKeyPrepared,
@@ -26,6 +27,21 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             LWE {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
+            scratch,
+        )
+    }
+
+    fn take_lwe_plaintext<A>(&mut self, infos: &A) -> (LWEPlaintext<&mut [u8]>, &mut Self)
+    where
+        A: LWEInfos,
+    {
+        let (data, scratch) = self.take_vec_znx(1, 1, infos.size());
+        (
+            LWEPlaintext {
                 k: infos.k(),
                 base2k: infos.base2k(),
                 data,
