@@ -55,6 +55,7 @@ impl<D: Data> LWEInfos for GLWETensor<D> {
 }
 
 impl<D: Data> GLWEInfos for GLWETensor<D> {
+    ///NOTE: self.rank() != self.to_ref().rank() if self is of type [GLWETensor]
     fn rank(&self) -> Rank {
         self.rank
     }

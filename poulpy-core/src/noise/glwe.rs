@@ -11,7 +11,7 @@ impl<D: DataRef> GLWE<D> {
     where
         M: GLWENoise<BE>,
         P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         module.glwe_noise(self, pt_want, sk_prepared, scratch)
     }
@@ -26,7 +26,7 @@ pub trait GLWENoise<BE: Backend> {
     where
         R: GLWEToRef + GLWEInfos,
         P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos;
 }
 
 impl<BE: Backend> GLWENoise<BE> for Module<BE>
@@ -45,7 +45,7 @@ where
     where
         R: GLWEToRef + GLWEInfos,
         P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         let (mut pt_have, scratch_1) = scratch.take_glwe_plaintext(res);
         self.glwe_decrypt(res, &mut pt_have, sk_prepared, scratch_1);

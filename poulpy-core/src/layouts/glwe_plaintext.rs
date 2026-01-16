@@ -140,11 +140,11 @@ impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
 }
 
 pub trait GLWEPlaintextToMut {
-    fn to_ref(&mut self) -> GLWEPlaintext<&mut [u8]>;
+    fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]>;
 }
 
 impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
-    fn to_ref(&mut self) -> GLWEPlaintext<&mut [u8]> {
+    fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]> {
         GLWEPlaintext {
             base2k: self.base2k,
             k: self.k,
