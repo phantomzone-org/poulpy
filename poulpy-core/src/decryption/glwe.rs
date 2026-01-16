@@ -7,8 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEToRef, LWEInfos,
-    prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+    GLWE, GLWEInfos, GLWEPlaintextToMut, GLWESecretPrepared, GLWEToRef, LWEInfos, SetGLWEInfos, prepared::GLWESecretPreparedToRef,
 };
 
 impl GLWE<Vec<u8>> {
@@ -24,8 +23,8 @@ impl GLWE<Vec<u8>> {
 impl<DataSelf: DataRef> GLWE<DataSelf> {
     pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
-        P: GLWEPlaintextToMut,
-        S: GLWESecretPreparedToRef<BE>,
+        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: GLWEDecrypt<BE>,
         Scratch<BE>: ScratchTakeBasic,
     {
@@ -40,9 +39,9 @@ pub trait GLWEDecrypt<BE: Backend> {
 
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToRef,
-        P: GLWEPlaintextToMut,
-        S: GLWESecretPreparedToRef<BE>;
+        R: GLWEToRef + GLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos;
 }
 
 impl<BE: Backend> GLWEDecrypt<BE> for Module<BE>
@@ -69,17 +68,16 @@ where
 
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToRef,
-        P: GLWEPlaintextToMut,
-        S: GLWESecretPreparedToRef<BE>,
+        R: GLWEToRef + GLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         let res: &GLWE<&[u8]> = &res.to_ref();
-        let pt: &mut GLWEPlaintext<&mut [u8]> = &mut pt.to_ref();
         let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(res.rank(), sk.rank());
+            assert_eq!(res.rank(), sk.rank()); //NOTE: res.rank() != res.to_ref().rank() if res is of type GLWETensor
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n(), sk.n());
         }
@@ -89,28 +87,34 @@ where
         let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res.size()); // TODO optimize size when pt << ct
         c0_big.data_mut().fill(0);
 
-        {
-            (1..cols).for_each(|i| {
-                // ci_dft = DFT(a[i]) * DFT(s[i])
-                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self, 1, res.size()); // TODO optimize size when pt << ct
-                self.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
-                self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
-                let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
+        (1..cols).for_each(|i| {
+            // ci_dft = DFT(a[i]) * DFT(s[i])
+            let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self, 1, res.size()); // TODO optimize size when pt << ct
+            self.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, res.data(), i);
+            self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
+            let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
 
-                // c0_big += a[i] * s[i]
-                self.vec_znx_big_add_inplace(&mut c0_big, 0, &ci_big, 0);
-            });
-        }
+            // c0_big += a[i] * s[i]
+            self.vec_znx_big_add_inplace(&mut c0_big, 0, &ci_big, 0);
+        });
 
         // c0_big = (a * s) + (-a * s + m + e) = BIG(m + e)
-        self.vec_znx_big_add_small_inplace(&mut c0_big, 0, &res.data, 0);
+        self.vec_znx_big_add_small_inplace(&mut c0_big, 0, res.data(), 0);
 
-        let res_base2k: usize = res.base2k().into();
+        let pt_base2k: usize = pt.base2k().into();
 
         // pt = norm(BIG(m + e))
-        self.vec_znx_big_normalize(&mut pt.data, res_base2k, 0, 0, &c0_big, res_base2k, 0, scratch_1);
+        self.vec_znx_big_normalize(
+            pt.to_mut().data_mut(),
+            pt_base2k,
+            0,
+            0,
+            &c0_big,
+            res.base2k().into(),
+            0,
+            scratch_1,
+        );
 
-        pt.base2k = res.base2k();
-        pt.k = pt.k().min(res.k());
+        pt.set_k(pt.k().min(res.k()));
     }
 }

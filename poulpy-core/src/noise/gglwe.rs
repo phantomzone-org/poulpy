@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWENoise,
-    layouts::{GGLWE, GGLWEInfos, GGLWEToRef, prepared::GLWESecretPreparedToRef},
+    layouts::{GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, prepared::GLWESecretPreparedToRef},
 };
 use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
 
@@ -20,7 +20,7 @@ impl<D: DataRef> GGLWE<D> {
         scratch: &mut Scratch<BE>,
     ) -> Stats
     where
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
         M: GGLWENoise<BE>,
     {
@@ -44,7 +44,7 @@ pub trait GGLWENoise<BE: Backend> {
     ) -> Stats
     where
         R: GGLWEToRef,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         P: ScalarZnxToRef;
 }
 
@@ -71,7 +71,7 @@ where
     ) -> Stats
     where
         R: GGLWEToRef,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
     {
         let res: &GGLWE<&[u8]> = &res.to_ref();
