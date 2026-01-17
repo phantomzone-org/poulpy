@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
-use crate::layouts::{Base2K, Degree, LWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, LWEInfos, SetLWEInfos, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWEPlaintextLayout {
@@ -32,6 +32,16 @@ pub struct LWEPlaintext<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
+}
+
+impl<D: DataMut> SetLWEInfos for LWEPlaintext<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
+        self.base2k = base2k
+    }
+
+    fn set_k(&mut self, k: TorusPrecision) {
+        self.k = k
+    }
 }
 
 impl<D: Data> LWEInfos for LWEPlaintext<D> {
@@ -66,6 +76,17 @@ impl LWEPlaintext<Vec<u8>> {
             k,
             base2k,
         }
+    }
+
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
+    where
+        A: LWEInfos,
+    {
+        Self::bytes_of(infos.size())
+    }
+
+    pub fn bytes_of(size: usize) -> usize {
+        VecZnx::bytes_of(1, 1, size)
     }
 }
 
