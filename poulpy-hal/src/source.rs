@@ -34,8 +34,13 @@ impl Source {
         x
     }
 
+    /// Returns a uniformly distributed f64 in [min, max).
+    ///
+    /// # Panics
+    /// Panics if `min > max`.
     #[inline(always)]
     pub fn next_f64(&mut self, min: f64, max: f64) -> f64 {
+        debug_assert!(min <= max, "next_f64: min ({min}) > max ({max})");
         min + ((self.next_u64() << 11 >> 11) as f64) / MAXF64 * (max - min)
     }
 

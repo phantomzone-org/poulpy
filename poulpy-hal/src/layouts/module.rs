@@ -23,7 +23,7 @@ pub trait Backend: Sized + Sync + Send {
 }
 
 pub struct Module<B: Backend> {
-    ptr: NonNull<B::Handle>,
+    ptr: Option<NonNull<B::Handle>>,
     n: u64,
     _marker: PhantomData<B>,
 }
@@ -32,11 +32,13 @@ unsafe impl<B: Backend> Sync for Module<B> {}
 unsafe impl<B: Backend> Send for Module<B> {}
 
 impl<B: Backend> Module<B> {
-    #[allow(clippy::missing_safety_doc)]
+    /// Creates a marker module with no backend handle.
+    /// Operations requiring a backend handle will panic.
     #[inline]
     pub fn new_marker(n: u64) -> Self {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Self {
-            ptr: NonNull::dangling(),
+            ptr: None,
             n,
             _marker: PhantomData,
         }
@@ -45,8 +47,9 @@ impl<B: Backend> Module<B> {
     #[allow(clippy::missing_safety_doc)]
     #[inline]
     pub unsafe fn from_nonnull(ptr: NonNull<B::Handle>, n: u64) -> Self {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Self {
-            ptr,
+            ptr: Some(ptr),
             n,
             _marker: PhantomData,
         }
@@ -57,26 +60,42 @@ impl<B: Backend> Module<B> {
     #[inline]
     #[allow(clippy::missing_safety_doc)]
     pub unsafe fn from_raw_parts(ptr: *mut B::Handle, n: u64) -> Self {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Self {
-            ptr: NonNull::new(ptr).expect("null module ptr"),
+            ptr: Some(NonNull::new(ptr).expect("null module ptr")),
             n,
             _marker: PhantomData,
         }
     }
 
+    /// Returns the raw pointer to the backend handle.
+    ///
+    /// # Panics
+    /// Panics if this is a marker module (created via `new_marker`).
     #[allow(clippy::missing_safety_doc)]
     #[inline]
     pub unsafe fn ptr(&self) -> *mut <B as Backend>::Handle {
-        self.ptr.as_ptr()
+        self.ptr.expect("called ptr() on a marker module (no backend handle)").as_ptr()
     }
 
     #[inline]
     pub fn n(&self) -> usize {
         self.n as usize
     }
+
+    /// Returns the raw pointer to the backend handle.
+    ///
+    /// # Panics
+    /// Panics if this is a marker module (created via `new_marker`).
     #[inline]
     pub fn as_mut_ptr(&self) -> *mut B::Handle {
-        self.ptr.as_ptr()
+        self.ptr.expect("called as_mut_ptr() on a marker module (no backend handle)").as_ptr()
+    }
+
+    /// Returns true if this module has a backend handle (not a marker).
+    #[inline]
+    pub fn has_handle(&self) -> bool {
+        self.ptr.is_some()
     }
 
     #[inline]
@@ -100,6 +119,11 @@ impl<BE: Backend> CyclotomicOrder for Module<BE> where Self: ModuleN {}
 
 #[inline(always)]
 pub fn galois_element(generator: i64, cyclotomic_order: i64) -> i64 {
+    debug_assert!(
+        cyclotomic_order > 0 && (cyclotomic_order as u64).is_power_of_two(),
+        "cyclotomic_order must be a power of two, got {cyclotomic_order}"
+    );
+
     if generator == 0 {
         return 1;
     }
@@ -133,7 +157,9 @@ impl<BE: Backend> GaloisElement for Module<BE> where Self: CyclotomicOrder {}
 
 impl<B: Backend> Drop for Module<B> {
     fn drop(&mut self) {
-        unsafe { B::destroy(self.ptr) }
+        if let Some(ptr) = self.ptr {
+            unsafe { B::destroy(ptr) }
+        }
     }
 }
 

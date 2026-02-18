@@ -95,6 +95,9 @@ impl<D: DataMut> ScalarZnx<D> {
 
     pub fn fill_ternary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
         assert!(hw <= self.n());
+        // Zero-initialize before setting non-zero entries, since shuffle will
+        // mix positions and we need indices hw..n to be zero.
+        self.at_mut(col, 0).fill(0);
         self.at_mut(col, 0)[..hw]
             .iter_mut()
             .for_each(|x: &mut i64| *x = (((source.next_u32() & 1) as i64) << 1) - 1);
@@ -112,6 +115,9 @@ impl<D: DataMut> ScalarZnx<D> {
 
     pub fn fill_binary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
         assert!(hw <= self.n());
+        // Zero-initialize before setting non-zero entries, since shuffle will
+        // mix positions and we need indices hw..n to be zero.
+        self.at_mut(col, 0).fill(0);
         self.at_mut(col, 0)[..hw]
             .iter_mut()
             .for_each(|x: &mut i64| *x = (source.next_u32() & 1) as i64);
@@ -120,6 +126,8 @@ impl<D: DataMut> ScalarZnx<D> {
 
     pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
         assert!(self.n().is_multiple_of(block_size));
+        // Zero-initialize: each block gets at most one non-zero entry.
+        self.at_mut(col, 0).fill(0);
         let max_idx: u64 = (block_size + 1) as u64;
         let mask_idx: u64 = (1 << ((u64::BITS - max_idx.leading_zeros()) as u64)) - 1;
         for block in self.at_mut(col, 0).chunks_mut(block_size) {
@@ -144,6 +152,7 @@ impl ScalarZnx<Vec<u8>> {
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::bytes_of(n, cols));
+        crate::assert_alignment(data.as_ptr());
         Self { data, n, cols }
     }
 }
@@ -237,17 +246,31 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.n = reader.read_u64::<LittleEndian>()? as usize;
-        self.cols = reader.read_u64::<LittleEndian>()? as usize;
+        let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
-        let buf: &mut [u8] = self.data.as_mut();
-        if buf.len() != len {
+
+        let expected_len: usize = new_n * new_cols * size_of::<i64>();
+        if expected_len != len {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                format!("self.data.len()={} != read len={}", buf.len(), len),
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "ScalarZnx metadata inconsistent: n={new_n} * cols={new_cols} * 8 = {expected_len} != data len={len}"
+                ),
+            ));
+        }
+
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() < len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("ScalarZnx buffer too small: self.data.len()={} < read len={len}", buf.len()),
             ));
         }
         reader.read_exact(&mut buf[..len])?;
+
+        self.n = new_n;
+        self.cols = new_cols;
         Ok(())
     }
 }

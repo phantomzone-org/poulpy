@@ -133,6 +133,7 @@ impl MatZnx<Vec<u8>> {
     pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::bytes_of(n, rows, cols_in, cols_out, size));
+        crate::assert_alignment(data.as_ptr());
         Self {
             data,
             n,
@@ -264,20 +265,37 @@ impl<D: Data> MatZnx<D> {
 
 impl<D: DataMut> ReaderFrom for MatZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.n = reader.read_u64::<LittleEndian>()? as usize;
-        self.size = reader.read_u64::<LittleEndian>()? as usize;
-        self.rows = reader.read_u64::<LittleEndian>()? as usize;
-        self.cols_in = reader.read_u64::<LittleEndian>()? as usize;
-        self.cols_out = reader.read_u64::<LittleEndian>()? as usize;
+        let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_size: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_rows: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_cols_in: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_cols_out: usize = reader.read_u64::<LittleEndian>()? as usize;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
-        let buf: &mut [u8] = self.data.as_mut();
-        if buf.len() != len {
+
+        let expected_len: usize = new_rows * new_cols_in * new_n * new_cols_out * new_size * size_of::<i64>();
+        if expected_len != len {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                format!("self.data.len()={} != read len={}", buf.len(), len),
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "MatZnx metadata inconsistent: rows={new_rows} * cols_in={new_cols_in} * n={new_n} * cols_out={new_cols_out} * size={new_size} * 8 = {expected_len} != data len={len}"
+                ),
+            ));
+        }
+
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() < len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("MatZnx buffer too small: self.data.len()={} < read len={len}", buf.len()),
             ));
         }
         reader.read_exact(&mut buf[..len])?;
+
+        self.n = new_n;
+        self.size = new_size;
+        self.rows = new_rows;
+        self.cols_in = new_cols_in;
+        self.cols_out = new_cols_out;
         Ok(())
     }
 }

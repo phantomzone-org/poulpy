@@ -93,7 +93,7 @@ impl<D: DataMut> VecZnx<D> {
         let k_rem: usize = (base2k - (k % base2k)) % base2k;
 
         for j in (0..size).rev() {
-            if j == a_size - 1 {
+            if j == size - 1 {
                 ZnxRef::znx_normalize_first_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             } else if j == 0 {
                 ZnxRef::znx_normalize_final_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);

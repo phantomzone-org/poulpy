@@ -160,9 +160,18 @@ impl VecZnx<Vec<u8>> {
         }
     }
 
-    pub fn from_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(n, cols, size));
+        assert!(
+            data.len() == Self::bytes_of(n, cols, size),
+            "from_bytes: data.len()={} != bytes_of({}, {}, {})={}",
+            data.len(),
+            n,
+            cols,
+            size,
+            Self::bytes_of(n, cols, size)
+        );
+        crate::assert_alignment(data.as_ptr());
         Self {
             data,
             n,
@@ -270,19 +279,38 @@ impl<D: DataMut> VecZnxToMut for VecZnx<D> {
 
 impl<D: DataMut> ReaderFrom for VecZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.n = reader.read_u64::<LittleEndian>()? as usize;
-        self.cols = reader.read_u64::<LittleEndian>()? as usize;
-        self.size = reader.read_u64::<LittleEndian>()? as usize;
-        self.max_size = reader.read_u64::<LittleEndian>()? as usize;
+        // Read into temporaries first to avoid leaving self in an inconsistent state on error.
+        let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_size: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_max_size: usize = reader.read_u64::<LittleEndian>()? as usize;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
-        let buf: &mut [u8] = self.data.as_mut();
-        if buf.len() != len {
+
+        // Validate metadata consistency: n * cols * size * sizeof(i64) must match data length.
+        let expected_len: usize = new_n * new_cols * new_size * size_of::<i64>();
+        if expected_len != len {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                format!("self.data.len()={} != read len={}", buf.len(), len),
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "VecZnx metadata inconsistent: n={new_n} * cols={new_cols} * size={new_size} * 8 = {expected_len} != data len={len}"
+                ),
+            ));
+        }
+
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() < len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("VecZnx buffer too small: self.data.len()={} < read len={len}", buf.len()),
             ));
         }
         reader.read_exact(&mut buf[..len])?;
+
+        // Only commit metadata after successful read.
+        self.n = new_n;
+        self.cols = new_cols;
+        self.size = new_size;
+        self.max_size = new_max_size;
         Ok(())
     }
 }

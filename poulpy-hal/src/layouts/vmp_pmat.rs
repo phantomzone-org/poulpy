@@ -103,6 +103,7 @@ where
     pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size));
+        crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),
             n,

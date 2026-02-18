@@ -89,6 +89,7 @@ where
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::svp_ppol_bytes_of_impl(n, cols));
+        crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),
             n,
@@ -145,17 +146,24 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.n = reader.read_u64::<LittleEndian>()? as usize;
-        self.cols = reader.read_u64::<LittleEndian>()? as usize;
+        let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+
+        // SvpPPol is backend-specific so we cannot compute expected_len from metadata alone,
+        // but we can at least validate the buffer is large enough before reading.
         let buf: &mut [u8] = self.data.as_mut();
-        if buf.len() != len {
+        if buf.len() < len {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::UnexpectedEof,
-                format!("self.data.len()={} != read len={}", buf.len(), len),
+                std::io::ErrorKind::InvalidData,
+                format!("SvpPPol buffer too small: self.data.len()={} < read len={len}", buf.len()),
             ));
         }
         reader.read_exact(&mut buf[..len])?;
+
+        // Commit metadata only after successful read
+        self.n = new_n;
+        self.cols = new_cols;
         Ok(())
     }
 }

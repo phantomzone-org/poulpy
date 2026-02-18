@@ -130,6 +130,7 @@ where
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::vec_znx_dft_bytes_of_impl(n, cols, size));
+        crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),
             n,
