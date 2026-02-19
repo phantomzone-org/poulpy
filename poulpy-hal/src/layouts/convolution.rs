@@ -6,6 +6,12 @@ use crate::{
     oep::CnvPVecBytesOfImpl,
 };
 
+/// Prepared right operand for bivariate convolution.
+///
+/// Holds a polynomial vector in the backend's prepared representation,
+/// ready to be used as the right operand of
+/// [`Convolution::cnv_apply_dft`](crate::api::Convolution::cnv_apply_dft).
+/// Created via [`Convolution::cnv_prepare_right`](crate::api::Convolution::cnv_prepare_right).
 pub struct CnvPVecR<D: Data, BE: Backend> {
     data: D,
     n: usize,
@@ -89,6 +95,12 @@ impl<D: Data, B: Backend> CnvPVecR<D, B> {
     }
 }
 
+/// Prepared left operand for bivariate convolution.
+///
+/// Holds a polynomial vector in the backend's prepared representation,
+/// ready to be used as the left operand of
+/// [`Convolution::cnv_apply_dft`](crate::api::Convolution::cnv_apply_dft).
+/// Created via [`Convolution::cnv_prepare_left`](crate::api::Convolution::cnv_prepare_left).
 pub struct CnvPVecL<D: Data, BE: Backend> {
     data: D,
     n: usize,
@@ -172,6 +184,7 @@ impl<D: Data, B: Backend> CnvPVecL<D, B> {
     }
 }
 
+/// Borrow a `CnvPVecR` as a shared reference view.
 pub trait CnvPVecRToRef<BE: Backend> {
     fn to_ref(&self) -> CnvPVecR<&[u8], BE>;
 }
@@ -188,6 +201,7 @@ impl<D: DataRef, BE: Backend> CnvPVecRToRef<BE> for CnvPVecR<D, BE> {
     }
 }
 
+/// Borrow a `CnvPVecR` as a mutable reference view.
 pub trait CnvPVecRToMut<BE: Backend> {
     fn to_mut(&mut self) -> CnvPVecR<&mut [u8], BE>;
 }
@@ -204,6 +218,7 @@ impl<D: DataMut, BE: Backend> CnvPVecRToMut<BE> for CnvPVecR<D, BE> {
     }
 }
 
+/// Borrow a `CnvPVecL` as a shared reference view.
 pub trait CnvPVecLToRef<BE: Backend> {
     fn to_ref(&self) -> CnvPVecL<&[u8], BE>;
 }
@@ -220,6 +235,7 @@ impl<D: DataRef, BE: Backend> CnvPVecLToRef<BE> for CnvPVecL<D, BE> {
     }
 }
 
+/// Borrow a `CnvPVecL` as a mutable reference view.
 pub trait CnvPVecLToMut<BE: Backend> {
     fn to_mut(&mut self) -> CnvPVecL<&mut [u8], BE>;
 }

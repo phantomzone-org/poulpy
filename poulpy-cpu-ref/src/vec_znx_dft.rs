@@ -1,3 +1,20 @@
+//! Fourier-domain ring element vector operations for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `VecZnxDft*` and `VecZnxIdft*` OEP traits. `VecZnxDft` stores
+//! ring element vectors in the frequency domain (`ScalarPrep = f64`), where
+//! polynomial multiplication reduces to coefficient-wise `f64` multiplication.
+//!
+//! Operations include:
+//!
+//! - **Allocation**: byte-size calculation, heap allocation, construction from raw bytes.
+//! - **Forward DFT**: integer-domain `VecZnx` → frequency-domain `VecZnxDft`, with
+//!   configurable step/offset for partial transforms.
+//! - **Inverse DFT**: `VecZnxDft` → `VecZnxBig` (large-coefficient), with variants that
+//!   consume, borrow, or use the input as temporary storage.
+//! - **Frequency-domain arithmetic**: add, sub, negate, scaled-add, copy, zero.
+//!
+//! The IDFT does not require scratch space for this backend (`idft_apply_tmp_bytes = 0`).
+
 use poulpy_hal::{
     layouts::{
         Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,

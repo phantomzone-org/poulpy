@@ -1,3 +1,5 @@
+//! Backend extension point for [`Module`] construction.
+
 use crate::layouts::{Backend, Module};
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

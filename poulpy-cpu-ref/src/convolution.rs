@@ -1,3 +1,21 @@
+//! Polynomial convolution operations for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `CnvPVecLAllocImpl`, `CnvPVecBytesOfImpl`, and `ConvolutionImpl`
+//! OEP traits, providing the full convolution pipeline:
+//!
+//! - **Prepare left / right**: transform integer-domain polynomials into their
+//!   frequency-domain prepared representations (`CnvPVecL`, `CnvPVecR`).
+//! - **Apply DFT**: multiply two prepared polynomials in the frequency domain,
+//!   producing a `VecZnxDft` result.
+//! - **Pairwise apply**: multiply a left vector against two columns of a right
+//!   vector simultaneously (2-column batching).
+//! - **By-constant apply**: convolve a `VecZnx` with a small constant polynomial
+//!   (given as a plain `&[i64]` slice), producing a `VecZnxBig` result. This
+//!   variant avoids the FFT entirely for small constant polynomials.
+//!
+//! Scratch space is required for all operations; the `*_tmp_bytes` methods report
+//! the required size.
+
 use poulpy_hal::{
     api::{Convolution, ModuleN, ScratchTakeBasic, TakeSlice, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{

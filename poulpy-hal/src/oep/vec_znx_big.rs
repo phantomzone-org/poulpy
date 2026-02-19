@@ -1,3 +1,5 @@
+//! Backend extension points for extended-precision [`VecZnxBig`](crate::layouts::VecZnxBig) operations.
+
 use crate::{
     layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -32,7 +34,7 @@ pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
-/// * See [crate::api::VecZnxBigAllocBytes] for corresponding public API.
+/// * See [crate::api::VecZnxBigBytesOf] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxBigAllocBytesImpl {
     fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;

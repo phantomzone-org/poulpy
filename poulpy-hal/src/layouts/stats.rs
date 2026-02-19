@@ -6,22 +6,28 @@ use rug::{
 
 use crate::layouts::{Backend, DataRef, VecZnx, VecZnxBig, VecZnxBigToRef, ZnxInfos};
 
+/// Summary statistics (max absolute value and standard deviation) of a
+/// polynomial vector's decoded floating-point coefficients.
 pub struct Stats {
     max: f64,
     std: f64,
 }
 
 impl Stats {
+    /// Returns the maximum absolute coefficient value.
     pub fn max(&self) -> f64 {
         self.max
     }
 
+    /// Returns the standard deviation of the coefficients.
     pub fn std(&self) -> f64 {
         self.std
     }
 }
 
 impl<D: DataRef> VecZnx<D> {
+    /// Computes [`Stats`] (max absolute value and standard deviation) for
+    /// column `col` by decoding all limbs into arbitrary-precision floats.
     pub fn stats(&self, base2k: usize, col: usize) -> Stats {
         let prec: u32 = (self.size() * base2k) as u32;
         let mut data: Vec<Float> = (0..self.n()).map(|_| Float::with_val(prec, 0)).collect();

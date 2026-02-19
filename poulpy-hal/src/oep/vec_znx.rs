@@ -1,3 +1,5 @@
+//! Backend extension points for coefficient-domain [`VecZnx`](crate::layouts::VecZnx) operations.
+
 use crate::{
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -397,7 +399,7 @@ pub unsafe trait VecZnxSplitRingTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::cpu_spqlios::vec_znx::vec_znx_split_ref] for reference code.
+/// * See `poulpy-backend` `cpu_spqlios::vec_znx::vec_znx_split_ref` for reference code.
 /// * See [crate::api::VecZnxSplitRing] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSplitRingImpl<B: Backend> {
@@ -422,8 +424,8 @@ pub unsafe trait VecZnxMergeRingsTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::cpu_spqlios::vec_znx::vec_znx_merge_ref] for reference code.
-/// * See [crate::api::VecZnxMerge] for corresponding public API.
+/// * See `poulpy-backend` `cpu_spqlios::vec_znx::vec_znx_merge_ref` for reference code.
+/// * See [crate::api::VecZnxMergeRings] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxMergeRingsImpl<B: Backend> {
     fn vec_znx_merge_rings_impl<R, A>(
@@ -440,7 +442,7 @@ pub unsafe trait VecZnxMergeRingsImpl<B: Backend> {
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [poulpy-backend/src/cpu_fft64_ref/vec_znx.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx.rs) for reference implementation.
-/// * See [crate::api::VecZnxSwithcDegree] for corresponding public API.
+/// * See [crate::api::VecZnxSwitchRing] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSwitchRingImpl<B: Backend> {
     fn vec_znx_switch_ring_impl<R: VecZnxToMut, A: VecZnxToRef>(

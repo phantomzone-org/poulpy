@@ -3,34 +3,48 @@ use crate::layouts::{
     VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
 };
 
+/// Allocates prepared convolution operands ([`CnvPVecL`], [`CnvPVecR`]).
 pub trait CnvPVecAlloc<BE: Backend> {
     fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE>;
     fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, BE>;
 }
 
+/// Returns the byte sizes for prepared convolution operands.
 pub trait CnvPVecBytesOf {
     fn bytes_of_cnv_pvec_left(&self, cols: usize, size: usize) -> usize;
     fn bytes_of_cnv_pvec_right(&self, cols: usize, size: usize) -> usize;
 }
 
+/// Bivariate convolution over `Z[X, Y] mod (X^N + 1)` where `Y = 2^{-K}`.
+///
+/// Provides methods to prepare left/right operands and apply the convolution.
+/// See method-level documentation for the mathematical formulation.
 pub trait Convolution<BE: Backend> {
+    /// Returns scratch bytes required for [`cnv_prepare_left`](Convolution::cnv_prepare_left).
     fn cnv_prepare_left_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
+    /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the left
+    /// operand of a bivariate convolution.
     fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
 
+    /// Returns scratch bytes required for [`cnv_prepare_right`](Convolution::cnv_prepare_right).
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
+    /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the right
+    /// operand of a bivariate convolution.
     fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
 
+    /// Returns scratch bytes required for [`cnv_apply_dft`](Convolution::cnv_apply_dft).
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
+    /// Returns scratch bytes required for [`cnv_by_const_apply`](Convolution::cnv_by_const_apply).
     fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
-    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[Y] mod (X^N + 1) where Y = 2^-K over the
+    /// Evaluates a bivariate convolution over Z\[X, Y\] (x) Z\[Y\] mod (X^N + 1) where Y = 2^-K over the
     /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
     /// Behavior is identical to [Convolution::cnv_apply_dft] with `b` treated as a constant polynomial
@@ -59,7 +73,7 @@ pub trait Convolution<BE: Backend> {
         A: VecZnxToRef;
 
     #[allow(clippy::too_many_arguments)]
-    /// Evaluates a bivariate convolution over Z[X, Y] (x) Z[X, Y] mod (X^N + 1) where Y = 2^-K over the
+    /// Evaluates a bivariate convolution over Z\[X, Y\] (x) Z\[X, Y\] mod (X^N + 1) where Y = 2^-K over the
     /// selected columns and stores the result on the selected column, scaled by 2^{res_offset * Base2K}
     ///
     /// # Example
@@ -103,11 +117,12 @@ pub trait Convolution<BE: Backend> {
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>;
 
+    /// Returns scratch bytes required for [`cnv_pairwise_apply_dft`](Convolution::cnv_pairwise_apply_dft).
     fn cnv_pairwise_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
 
     #[allow(clippy::too_many_arguments)]
-    /// Evaluates the bivariate pair-wise convolution res = (a[i] + a[j]) * (b[i] + b[j]).
-    /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a[i] * b[i].
+    /// Evaluates the bivariate pair-wise convolution res = (a\[i\] + a\[j\]) * (b\[i\] + b\[j\]).
+    /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a\[i\] * b\[i\].
     /// See [Convolution::cnv_apply_dft] for information about the bivariate convolution.
     fn cnv_pairwise_apply_dft<R, A, B>(
         &self,

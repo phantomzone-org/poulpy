@@ -1,3 +1,10 @@
+//! Backend-parametric test functions.
+//!
+//! Provides fully generic test functions that can be instantiated for any
+//! backend via the [`backend_test_suite!`](crate::backend_test_suite) and
+//! [`cross_backend_test_suite!`](crate::cross_backend_test_suite) macros.
+//! Tests validate correctness against the [`crate::reference`] implementation.
+
 pub mod convolution;
 pub mod serialization;
 pub mod svp;

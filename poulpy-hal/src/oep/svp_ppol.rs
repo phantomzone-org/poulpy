@@ -1,3 +1,6 @@
+//! Backend extension points for scalar-vector product (SVP) operations
+//! on [`SvpPPol`](crate::layouts::SvpPPol).
+
 use crate::layouts::{
     Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
 };
@@ -20,7 +23,7 @@ pub unsafe trait SvpPPolAllocImpl<B: Backend> {
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the [poulpy-backend/src/cpu_fft64_ref/svp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/svp.rs) reference implementation.
-/// * See [crate::api::SvpPPolAllocBytes] for corresponding public API.
+/// * See [crate::api::SvpPPolBytesOf] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait SvpPPolAllocBytesImpl<B: Backend> {
     fn svp_ppol_bytes_of_impl(n: usize, cols: usize) -> usize;

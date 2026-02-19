@@ -1,3 +1,19 @@
+//! Vector-matrix product (VMP) operations for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `VmpPMat*` and `VmpApply*` OEP traits. VMP computes the product
+//! of a `VecZnxDft` (row vector) with a `VmpPMat` (prepared matrix in frequency
+//! domain), yielding a `VecZnxDft` result. This is the core operation for key
+//! switching and bootstrapping in lattice-based cryptography.
+//!
+//! - **Allocate / zero**: create and initialize prepared matrices.
+//! - **Prepare**: FFT each row of an integer-domain `MatZnx` into a `VmpPMat`.
+//! - **Apply DFT-to-DFT**: multiply a frequency-domain vector by the prepared
+//!   matrix. The `_add` variant accumulates into an existing result instead of
+//!   overwriting it.
+//!
+//! All apply operations require scratch space; sizes are reported by
+//! `vmp_apply_dft_to_dft_tmp_bytes`.
+
 use poulpy_hal::{
     api::{TakeSlice, VmpPrepareTmpBytes},
     layouts::{
@@ -106,7 +122,6 @@ unsafe impl VmpPrepareImpl<Self> for FFT64Ref {
         R: VmpPMatToMut<Self>,
         A: MatZnxToRef,
     {
-        {}
         let mut res: VmpPMat<&mut [u8], Self> = res.to_mut();
         let a: MatZnx<&[u8]> = a.to_ref();
         let (tmp, _) =

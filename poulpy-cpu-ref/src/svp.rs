@@ -1,3 +1,14 @@
+//! Scalar-vector product (SVP) operations for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `SvpPPol*` and `SvpApply*` OEP traits. SVP multiplies a
+//! single scalar polynomial (prepared into frequency domain as `SvpPPol`) against
+//! a `VecZnxDft`, producing a `VecZnxDft` result. This is the frequency-domain
+//! analogue of scaling each row of a ciphertext vector by a common polynomial.
+//!
+//! - **Prepare**: FFT a `ScalarZnx` into a prepared `SvpPPol`.
+//! - **Apply DFT-to-DFT**: pointwise multiply a prepared scalar against each limb
+//!   of a `VecZnxDft`. Available in out-of-place and inplace variants.
+
 use poulpy_hal::{
     layouts::{Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef},
     oep::{

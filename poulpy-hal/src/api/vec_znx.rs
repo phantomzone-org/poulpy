@@ -8,6 +8,7 @@ pub trait VecZnxNormalizeTmpBytes {
     fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 }
 
+/// Zeroes all limbs of the selected column.
 pub trait VecZnxZero {
     fn vec_znx_zero<R>(&self, res: &mut R, res_col: usize)
     where
@@ -122,7 +123,7 @@ pub trait VecZnxSubScalarInplace {
 }
 
 pub trait VecZnxNegate {
-    // Negates the selected column of `a` and stores the result in `res_col` of `res`.
+    /// Negates the selected column of `a` and stores the result in `res_col` of `res`.
     fn vec_znx_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -136,6 +137,7 @@ pub trait VecZnxNegateInplace {
         A: VecZnxToMut;
 }
 
+/// Returns scratch bytes required for left-shift operations.
 pub trait VecZnxLshTmpBytes {
     fn vec_znx_lsh_tmp_bytes(&self) -> usize;
 }
@@ -157,6 +159,7 @@ pub trait VecZnxLsh<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// Returns scratch bytes required for right-shift operations.
 pub trait VecZnxRshTmpBytes {
     fn vec_znx_rsh_tmp_bytes(&self) -> usize;
 }
@@ -230,6 +233,7 @@ pub trait VecZnxAutomorphismInplace<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// Multiplies the selected column by `(X^p - 1)` in `Z[X]/(X^N + 1)`.
 pub trait VecZnxMulXpMinusOne {
     fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -281,6 +285,7 @@ pub trait VecZnxMergeRings<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// Switches ring degree between `a` and `res` by truncation or zero-padding.
 pub trait VecZnxSwitchRing {
     fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
     where
@@ -288,6 +293,7 @@ pub trait VecZnxSwitchRing {
         A: VecZnxToRef;
 }
 
+/// Copies the selected column of `a` into the selected column of `res`.
 pub trait VecZnxCopy {
     fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -303,6 +309,8 @@ pub trait VecZnxFillUniform {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Fills the selected column with a discrete Gaussian noise vector
+/// scaled by `2^{-k}` with standard deviation `sigma`, bounded to `[-bound, bound]`.
 pub trait VecZnxFillNormal {
     fn vec_znx_fill_normal<R>(
         &self,

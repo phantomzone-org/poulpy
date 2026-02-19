@@ -15,6 +15,17 @@ use crate::{
     oep::VecZnxDftAllocBytesImpl,
 };
 
+/// Polynomial vector in DFT (evaluation) domain.
+///
+/// `VecZnxDft` has the same structural shape as [`VecZnx`](crate::layouts::VecZnx)
+/// but stores coefficients as [`Backend::ScalarPrep`] values in the
+/// frequency domain rather than `i64` values in the coefficient domain.
+///
+/// Multiplication and scalar-vector/vector-matrix products are performed
+/// in this representation to exploit FFT-based convolution. Use
+/// [`VecZnxDftApply`](crate::api::VecZnxDftApply) /
+/// [`VecZnxIdftApply`](crate::api::VecZnxIdftApply) to convert
+/// between coefficient and DFT domains.
 #[repr(C)]
 #[derive(PartialEq, Eq)]
 pub struct VecZnxDft<D: Data, B: Backend> {
@@ -49,6 +60,10 @@ impl<D: DataRef, B: Backend> ZnxView for VecZnxDft<D, B> {
 }
 
 impl<D: Data, B: Backend> VecZnxDft<D, B> {
+    /// Reinterprets this DFT vector as a [`VecZnxBig`], consuming `self`.
+    ///
+    /// This is a zero-copy conversion that changes only the type tag;
+    /// the underlying data buffer is moved as-is.
     pub fn into_big(self) -> VecZnxBig<D, B> {
         VecZnxBig::<D, B>::from_data(self.data, self.n, self.cols, self.size)
     }
@@ -86,12 +101,18 @@ impl<D: Data, B: Backend> DataViewMut for VecZnxDft<D, B> {
 }
 
 impl<D: DataRef, B: Backend> VecZnxDft<D, B> {
+    /// Returns the allocated capacity (maximum number of limbs).
     pub fn max_size(&self) -> usize {
         self.max_size
     }
 }
 
 impl<D: DataMut, B: Backend> VecZnxDft<D, B> {
+    /// Sets the active limb count.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size > max_size`.
     pub fn set_size(&mut self, size: usize) {
         assert!(size <= self.max_size);
         self.size = size
@@ -142,9 +163,11 @@ where
     }
 }
 
+/// Owned `VecZnxDft` backed by a `Vec<u8>`.
 pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
 
 impl<D: Data, B: Backend> VecZnxDft<D, B> {
+    /// Constructs a `VecZnxDft` from raw parts without validation.
     pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
@@ -157,6 +180,7 @@ impl<D: Data, B: Backend> VecZnxDft<D, B> {
     }
 }
 
+/// Borrow a `VecZnxDft` as a shared reference view.
 pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
@@ -174,6 +198,7 @@ impl<D: DataRef, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B> {
     }
 }
 
+/// Borrow a `VecZnxDft` as a mutable reference view.
 pub trait VecZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }

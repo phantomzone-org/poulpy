@@ -13,6 +13,14 @@ use crate::{
     source::Source,
 };
 
+/// A single-limb polynomial vector in `Z[X]/(X^N + 1)`.
+///
+/// `ScalarZnx` is a specialization of [`VecZnx`] with exactly one limb
+/// (`size == 1`). It is the primary type for plaintext polynomials,
+/// secret keys, and other single-precision ring elements.
+///
+/// The type parameter `D` controls ownership: `Vec<u8>` for owned,
+/// `&[u8]` for shared borrows, `&mut [u8]` for mutable borrows.
 #[repr(C)]
 #[derive(PartialEq, Eq, Debug, Clone, Hash)]
 pub struct ScalarZnx<D: Data> {
@@ -84,6 +92,9 @@ impl<D: DataRef> ZnxView for ScalarZnx<D> {
 }
 
 impl<D: DataMut> ScalarZnx<D> {
+    /// Fills column `col` with ternary values `{-1, 0, 1}` where each
+    /// non-zero entry appears with total probability `prob` (split equally
+    /// between `-1` and `+1`).
     pub fn fill_ternary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 3] = [-1, 0, 1];
         let weights: [f64; 3] = [prob / 2.0, 1.0 - prob, prob / 2.0];
@@ -93,6 +104,12 @@ impl<D: DataMut> ScalarZnx<D> {
             .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
     }
 
+    /// Fills column `col` with exactly `hw` non-zero ternary values `{-1, +1}`
+    /// at uniformly random positions; the remaining `N - hw` coefficients are zero.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `hw > N`.
     pub fn fill_ternary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
         assert!(hw <= self.n());
         // Zero-initialize before setting non-zero entries, since shuffle will
@@ -104,6 +121,8 @@ impl<D: DataMut> ScalarZnx<D> {
         self.at_mut(col, 0).shuffle(source);
     }
 
+    /// Fills column `col` with binary values `{0, 1}` where each entry is `1`
+    /// with probability `prob`.
     pub fn fill_binary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 2] = [0, 1];
         let weights: [f64; 2] = [1.0 - prob, prob];
@@ -113,6 +132,12 @@ impl<D: DataMut> ScalarZnx<D> {
             .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
     }
 
+    /// Fills column `col` with exactly `hw` ones at uniformly random positions;
+    /// the remaining `N - hw` coefficients are zero.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `hw > N`.
     pub fn fill_binary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
         assert!(hw <= self.n());
         // Zero-initialize before setting non-zero entries, since shuffle will
@@ -124,6 +149,14 @@ impl<D: DataMut> ScalarZnx<D> {
         self.at_mut(col, 0).shuffle(source);
     }
 
+    /// Fills column `col` with a block-sparse binary pattern: the polynomial is
+    /// partitioned into blocks of `block_size` coefficients, and each block
+    /// independently receives at most one `1` at a uniformly random position
+    /// (or no `1` at all with probability `1 / (block_size + 1)`).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is not a multiple of `block_size`.
     pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
         assert!(self.n().is_multiple_of(block_size));
         // Zero-initialize: each block gets at most one non-zero entry.
@@ -140,15 +173,24 @@ impl<D: DataMut> ScalarZnx<D> {
 }
 
 impl ScalarZnx<Vec<u8>> {
+    /// Returns the number of bytes required to store a `ScalarZnx` with
+    /// ring degree `n` and `cols` columns: `n * cols * 8`.
     pub fn bytes_of(n: usize, cols: usize) -> usize {
         n * cols * size_of::<i64>()
     }
 
+    /// Allocates a zero-initialized `ScalarZnx` aligned to [`DEFAULTALIGN`](crate::DEFAULTALIGN).
     pub fn alloc(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self { data, n, cols }
     }
 
+    /// Wraps an existing byte buffer into a `ScalarZnx`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer length does not equal `bytes_of(n, cols)` or
+    /// the buffer is not aligned to [`DEFAULTALIGN`](crate::DEFAULTALIGN).
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::bytes_of(n, cols));
@@ -182,14 +224,17 @@ impl<D: DataMut> FillUniform for ScalarZnx<D> {
     }
 }
 
+/// Owned `ScalarZnx` backed by a `Vec<u8>`.
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
 impl<D: Data> ScalarZnx<D> {
+    /// Constructs a `ScalarZnx` from raw parts without validation.
     pub fn from_data(data: D, n: usize, cols: usize) -> Self {
         Self { data, n, cols }
     }
 }
 
+/// Borrow a `ScalarZnx` as a shared reference view.
 pub trait ScalarZnxToRef {
     fn to_ref(&self) -> ScalarZnx<&[u8]>;
 }
@@ -204,6 +249,7 @@ impl<D: DataRef> ScalarZnxToRef for ScalarZnx<D> {
     }
 }
 
+/// Borrow a `ScalarZnx` as a mutable reference view.
 pub trait ScalarZnxToMut {
     fn to_mut(&mut self) -> ScalarZnx<&mut [u8]>;
 }
@@ -219,6 +265,7 @@ impl<D: DataMut> ScalarZnxToMut for ScalarZnx<D> {
 }
 
 impl<D: DataRef> ScalarZnx<D> {
+    /// Views this `ScalarZnx` as a [`VecZnx`] with `size == 1`.
     pub fn as_vec_znx(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_ref(),
@@ -231,6 +278,7 @@ impl<D: DataRef> ScalarZnx<D> {
 }
 
 impl<D: DataMut> ScalarZnx<D> {
+    /// Mutably views this `ScalarZnx` as a [`VecZnx`] with `size == 1`.
     pub fn as_vec_znx_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut(),

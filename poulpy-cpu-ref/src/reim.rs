@@ -1,3 +1,19 @@
+//! Real/imaginary interleaved FFT primitives for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `Reim*` and `Reim4*` traits from `poulpy_hal::reference::fft64::reim`
+//! and `reim4`, covering:
+//!
+//! - **FFT/IFFT execution**: forward and inverse transforms using precomputed twiddle tables.
+//! - **Domain conversion**: `Z[X]/(X^n+1)` integer coefficients to/from `f64` REIM layout.
+//! - **Frequency-domain arithmetic**: pointwise add, sub, negate, mul, and fused multiply-add.
+//! - **4-block batch operations**: `Reim4` variants that process 4 interleaved coefficient
+//!   blocks in a single pass, used internally by convolution and VMP kernels. These include
+//!   block extraction/save, matrix-vector products, and convolution-by-constant.
+//! - **Integer block operations**: `I64` variants for constant-coefficient convolution
+//!   and block save/extract in the integer domain.
+//!
+//! All implementations delegate to the corresponding `_ref` functions.
+
 use poulpy_hal::reference::fft64::{
     convolution::{
         I64ConvolutionByConst1Coeff, I64ConvolutionByConst2Coeffs, I64Extract1BlkContiguous, I64Save1BlkContiguous,

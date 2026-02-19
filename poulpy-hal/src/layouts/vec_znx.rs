@@ -15,6 +15,21 @@ use crate::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rand::RngCore;
 
+/// A vector of polynomials in `Z[X]/(X^N + 1)` with limb-decomposed
+/// (base-2^k) representation.
+///
+/// This is the central data type of the crate. Each `VecZnx` contains
+/// `cols` independent polynomial columns, each decomposed into `size`
+/// limbs of `N` coefficients. Coefficients are `i64` values.
+///
+/// **Memory layout:** limb-major, column-minor. Limb `j` of column `i`
+/// starts at scalar offset `N * (j * cols + i)`.
+///
+/// The type parameter `D` controls ownership: `Vec<u8>` for owned,
+/// `&[u8]` for shared borrows, `&mut [u8]` for mutable borrows.
+///
+/// **Invariant:** `size <= max_size`. The `max_size` field records the
+/// allocated capacity; `size` can be reduced without reallocation.
 #[repr(C)]
 #[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct VecZnx<D: Data> {
@@ -26,6 +41,7 @@ pub struct VecZnx<D: Data> {
 }
 
 impl<D: DataRef> VecZnx<D> {
+    /// Returns a read-only [`ScalarZnx`] view of a single limb of a single column.
     pub fn as_scalar_znx_ref(&self, col: usize, limb: usize) -> ScalarZnx<&[u8]> {
         ScalarZnx {
             data: bytemuck::cast_slice(self.at(col, limb)),
@@ -36,6 +52,7 @@ impl<D: DataRef> VecZnx<D> {
 }
 
 impl<D: DataMut> VecZnx<D> {
+    /// Returns a mutable [`ScalarZnx`] view of a single limb of a single column.
     pub fn as_scalar_znx_mut(&mut self, col: usize, limb: usize) -> ScalarZnx<&mut [u8]> {
         ScalarZnx {
             n: self.n,
@@ -130,6 +147,7 @@ impl<D: DataRef> ZnxView for VecZnx<D> {
 }
 
 impl VecZnx<Vec<u8>> {
+    /// Returns the scratch space (in bytes) required by right-shift operations.
     pub fn rsh_tmp_bytes(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
     }
@@ -145,10 +163,13 @@ impl<D: DataMut> ZnxZero for VecZnx<D> {
 }
 
 impl VecZnx<Vec<u8>> {
+    /// Returns the number of bytes required: `n * cols * size * 8`.
     pub fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<i64>()
     }
 
+    /// Allocates a zero-initialized `VecZnx` aligned to [`DEFAULTALIGN`](crate::DEFAULTALIGN).
+    /// Sets `max_size = size`.
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
@@ -160,6 +181,12 @@ impl VecZnx<Vec<u8>> {
         }
     }
 
+    /// Wraps an existing byte buffer into a `VecZnx`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the buffer length does not equal `bytes_of(n, cols, size)` or
+    /// the buffer is not aligned to [`DEFAULTALIGN`](crate::DEFAULTALIGN).
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(
@@ -183,6 +210,8 @@ impl VecZnx<Vec<u8>> {
 }
 
 impl<D: Data> VecZnx<D> {
+    /// Constructs a `VecZnx` from raw parts without validation.
+    /// Sets `max_size = size`.
     pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
@@ -241,10 +270,14 @@ impl<D: DataMut> FillUniform for VecZnx<D> {
     }
 }
 
+/// Owned `VecZnx` backed by a `Vec<u8>`.
 pub type VecZnxOwned = VecZnx<Vec<u8>>;
+/// Mutably borrowed `VecZnx`.
 pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
+/// Immutably borrowed `VecZnx`.
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
 
+/// Borrow a `VecZnx` as a shared reference view.
 pub trait VecZnxToRef {
     fn to_ref(&self) -> VecZnx<&[u8]>;
 }
@@ -261,6 +294,7 @@ impl<D: DataRef> VecZnxToRef for VecZnx<D> {
     }
 }
 
+/// Borrow a `VecZnx` as a mutable reference view.
 pub trait VecZnxToMut {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]>;
 }

@@ -10,6 +10,16 @@ use crate::{
 };
 
 impl<D: DataMut> VecZnx<D> {
+    /// Encodes an `i64` slice into the limb-decomposed (base-2^k) representation.
+    ///
+    /// The input `data` (length `N`) is placed at the appropriate limb position
+    /// determined by `k` and `base2k`, then normalized across all limbs.
+    ///
+    /// # Panics (debug)
+    ///
+    /// - `k.div_ceil(base2k) > self.size()`
+    /// - `col >= self.cols()`
+    /// - `data.len() != N`
     pub fn encode_vec_i64(&mut self, base2k: usize, col: usize, k: usize, data: &[i64]) {
         let size: usize = k.div_ceil(base2k);
 
@@ -52,6 +62,10 @@ impl<D: DataMut> VecZnx<D> {
         }
     }
 
+    /// Encodes an `i128` slice into the limb-decomposed (base-2^k) representation.
+    ///
+    /// Analogous to [`encode_vec_i64`](VecZnx::encode_vec_i64) but accepts wider
+    /// input values.
     pub fn encode_vec_i128(&mut self, base2k: usize, col: usize, k: usize, data: &[i128]) {
         let size: usize = k.div_ceil(base2k);
 
@@ -103,6 +117,8 @@ impl<D: DataMut> VecZnx<D> {
         }
     }
 
+    /// Encodes a single coefficient at index `idx` into the limb-decomposed
+    /// representation, zeroing all other coefficients of column `col`.
     pub fn encode_coeff_i64(&mut self, base2k: usize, col: usize, k: usize, idx: usize, data: i64) {
         let size: usize = k.div_ceil(base2k);
 
@@ -146,6 +162,8 @@ impl<D: DataMut> VecZnx<D> {
 }
 
 impl<D: DataRef> VecZnx<D> {
+    /// Decodes column `col` from the limb-decomposed representation back into
+    /// an `i64` slice, reconstructing values up to `k` bits of precision.
     pub fn decode_vec_i64(&self, base2k: usize, col: usize, k: usize, data: &mut [i64]) {
         let size: usize = k.div_ceil(base2k);
         #[cfg(debug_assertions)]
@@ -183,6 +201,8 @@ impl<D: DataRef> VecZnx<D> {
         }
     }
 
+    /// Decodes a single coefficient at index `idx` from the limb-decomposed
+    /// representation back into an `i64`.
     pub fn decode_coeff_i64(&self, base2k: usize, col: usize, k: usize, idx: usize) -> i64 {
         #[cfg(debug_assertions)]
         {
@@ -208,6 +228,8 @@ impl<D: DataRef> VecZnx<D> {
         res
     }
 
+    /// Decodes column `col` into arbitrary-precision [`Float`] values by
+    /// evaluating `sum_j coeff[j] * 2^{-base2k * j}` using all limbs.
     pub fn decode_vec_float(&self, base2k: usize, col: usize, data: &mut [Float]) {
         #[cfg(debug_assertions)]
         {
@@ -245,6 +267,11 @@ impl<D: DataRef> VecZnx<D> {
     }
 }
 
+/// Integer division with rounding to nearest (ties away from zero).
+///
+/// # Panics
+///
+/// Panics if `b == 0`.
 #[inline]
 pub fn div_round(a: i64, b: i64) -> i64 {
     assert!(b != 0, "division by zero");

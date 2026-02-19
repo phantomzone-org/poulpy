@@ -7,8 +7,12 @@ use crate::{
 use bytemuck::Pod;
 use rand_distr::num_traits::Zero;
 
+/// Metadata trait providing the shape of a polynomial container.
+///
+/// Every layout type in this crate implements `ZnxInfos` to expose its
+/// ring degree, row/column counts, and limb count.
 pub trait ZnxInfos {
-    /// Returns the ring degree of the polynomials.
+    /// Returns the ring degree `N` of the polynomials in `Z[X]/(X^N + 1)`.
     fn n(&self) -> usize;
 
     /// Returns the base two logarithm of the ring dimension of the polynomials.
@@ -22,7 +26,7 @@ pub trait ZnxInfos {
     /// Returns the number of polynomials in each row.
     fn cols(&self) -> usize;
 
-    /// Returns the number of size per polynomial.
+    /// Returns the number of limbs per polynomial.
     fn size(&self) -> usize;
 
     /// Returns the total number of small polynomials.
@@ -31,25 +35,44 @@ pub trait ZnxInfos {
     }
 }
 
+/// Backend-specific slice size computation.
+///
+/// Implemented by backends to report the stride between consecutive limbs
+/// of the same column, which may differ from `n * cols` due to
+/// backend-specific padding or alignment.
 pub trait ZnxSliceSizeImpl<B: Backend> {
     fn slice_size(&self) -> usize;
 }
 
+/// Stride between consecutive limbs of the same column.
+///
+/// For coefficient-domain types (`VecZnx`, `MatZnx`, `ScalarZnx`) this is
+/// `n * cols`. Backend-specific types may override this value.
 pub trait ZnxSliceSize {
-    /// Returns the slice size, which is the offset between
-    /// two size of the same column.
+    /// Returns the stride (in number of scalars) between limb `j` and
+    /// limb `j+1` of the same column.
     fn sl(&self) -> usize;
 }
 
+/// Read-only access to the underlying data container of a layout type.
 pub trait DataView {
     type D: Data;
     fn data(&self) -> &Self::D;
 }
 
+/// Mutable access to the underlying data container of a layout type.
 pub trait DataViewMut: DataView {
     fn data_mut(&mut self) -> &mut Self::D;
 }
 
+/// Read-only view into a polynomial container's coefficient data.
+///
+/// Coefficients are stored in a **limb-major, column-minor** layout.
+/// For a container with `cols` columns and `size` limbs, limb `j` of
+/// column `i` starts at scalar offset `n * (j * cols + i)`.
+///
+/// The associated `Scalar` type is `i64` for coefficient-domain types
+/// and a backend-specific type for DFT/big representations.
 pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
     type Scalar: Copy + Zero + Display + Debug + Pod;
 
@@ -77,6 +100,9 @@ pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
     }
 }
 
+/// Mutable view into a polynomial container's coefficient data.
+///
+/// Extends [`ZnxView`] with mutable pointer and slice accessors.
 pub trait ZnxViewMut: ZnxView + DataViewMut<D: DataMut> {
     /// Returns a mutable pointer to the underlying coefficients array.
     fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
@@ -102,17 +128,29 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: DataMut> {
     }
 }
 
-//(Jay)Note: Can't provide blanket impl. of ZnxView because Scalar is not known
+// Note: Cannot provide blanket impl of ZnxView because Scalar is not known.
 impl<T> ZnxViewMut for T where T: ZnxView + DataViewMut<D: DataMut> {}
 
+/// Zero-fill operations for polynomial containers.
 pub trait ZnxZero
 where
     Self: Sized,
 {
+    /// Sets all coefficients across all columns and limbs to zero.
     fn zero(&mut self);
+    /// Sets all coefficients of limb `j` of column `i` to zero.
     fn zero_at(&mut self, i: usize, j: usize);
 }
 
+/// Fill a polynomial container with uniformly distributed random coefficients.
 pub trait FillUniform {
+    /// Fills all coefficients with values drawn uniformly from
+    /// `[-2^(log_bound-1), 2^(log_bound-1))`.
+    ///
+    /// When `log_bound == 64`, all 64 bits are used (full `i64` range).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `log_bound == 0`.
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source);
 }

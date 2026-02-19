@@ -1,35 +1,176 @@
+//! # poulpy-hal
+//!
+//! A trait-based Hardware Abstraction Layer (HAL) for lattice-based polynomial
+//! arithmetic over the cyclotomic ring `Z[X]/(X^N + 1)`.
+//!
+//! This crate provides backend-agnostic data layouts and a trait-based API for
+//! polynomial operations commonly used in lattice-based cryptography (LWE/RLWE
+//! ciphertexts, key-switching matrices, external products, etc.). It is designed
+//! so that cryptographic schemes can be written once against the [`api`] traits and
+//! then executed on any backend (CPU with AVX2/AVX-512, GPU, FPGA, ...) that
+//! implements the [`oep`] (Open Extension Point) traits.
+//!
+//! ## Core Concepts
+//!
+//! **Ring:** All polynomials live in `Z[X]/(X^N + 1)` where `N` is a power of
+//! two (the *ring degree*). A [`layouts::Module`] encapsulates `N` together with
+//! an optional backend-specific handle (e.g. precomputed FFT twiddle factors).
+//!
+//! **Limbed representation (base-2^k):** Large coefficients are decomposed into
+//! a vector of `size` limbs, each carrying at most `base2k` bits. This is the
+//! *bivariate* view `Z[X, Y]` with `Y = 2^{-k}`, central to gadget
+//! decomposition and normalization.
+//!
+//! **Layout types** ([`layouts`]):
+//! - [`layouts::ScalarZnx`] -- single polynomial with `i64` coefficients.
+//! - [`layouts::VecZnx`] -- vector of `cols` polynomials, each with `size` limbs.
+//! - [`layouts::MatZnx`] -- matrix of polynomials (`rows x cols_in`, each entry a [`layouts::VecZnx`] of `cols_out` polynomials).
+//! - [`layouts::VecZnxBig`] -- vector of polynomials with backend-specific large-coefficient scalars (result accumulator).
+//! - [`layouts::VecZnxDft`] -- vector of polynomials in DFT/NTT domain (backend-specific prepared scalars).
+//! - [`layouts::SvpPPol`] -- prepared scalar polynomial for scalar-vector products.
+//! - [`layouts::VmpPMat`] -- prepared matrix for vector-matrix products.
+//! - [`layouts::CnvPVecL`], [`layouts::CnvPVecR`] -- prepared left/right operands for bivariate convolution.
+//! - [`layouts::Scratch`], [`layouts::ScratchOwned`] -- aligned scratch memory for temporary workspace.
+//!
+//! All layout types are generic over a data container `D` (owned `Vec<u8>`, borrowed
+//! `&[u8]` / `&mut [u8]`), enabling zero-copy views and arena-style allocation via
+//! [`layouts::Scratch`].
+//!
+//! ## Architecture
+//!
+//! The crate is organized into a four-layer stack:
+//!
+//! 1. **[`api`]** -- Safe, user-facing trait definitions (e.g. [`api::VecZnxAdd`],
+//!    [`api::VmpApplyDftToDft`]). Scheme authors program against these.
+//! 2. **[`oep`]** -- Unsafe extension-point traits mirroring the API (e.g.
+//!    [`oep::VecZnxAddImpl`]). Backend crates implement these.
+//! 3. **[`delegates`]** -- Blanket `impl` glue that connects each [`api`] trait to
+//!    the corresponding [`oep`] trait on [`layouts::Module`].
+//! 4. **[`mod@reference`]** -- Pure-Rust reference implementations of all operations
+//!    (scalar arithmetic, FFT64). Used for testing and as a correctness oracle.
+//!
+//! ## Testing and Benchmarking
+//!
+//! The [`test_suite`] module provides fully generic, backend-parametric test
+//! functions. Backend crates instantiate these via the [`backend_test_suite!`] and
+//! [`cross_backend_test_suite!`] macros to validate correctness against the
+//! reference implementation.
+//!
+//! The [`bench_suite`] module provides analogous benchmark harnesses built on
+//! Criterion.
+//!
+//! ## Safety Contract
+//!
+//! All [`oep`] traits are `unsafe` to implement. Implementors must uphold the
+//! contract documented in [`doc::backend_safety`], covering memory domains,
+//! alignment, scratch lifetime, synchronization, aliasing, and numerical
+//! exactness.
+//!
+//! ## Non-Goals
+//!
+//! - This crate does **not** provide a complete cryptographic scheme. It is a
+//!   low-level arithmetic layer consumed by higher-level crates such as
+//!   `poulpy-core` and `poulpy-schemes`.
+//! - It does **not** perform constant-time enforcement. Side-channel resistance
+//!   is the responsibility of the backend and the caller.
+//!
+//! ## Compatibility
+//!
+//! - Requires **nightly** Rust (uses `#![feature(trait_alias)]`).
+//! - All memory allocations are aligned to [`DEFAULTALIGN`] (64 bytes).
+//! - Types matching the API of **spqlios-arithmetic**.
+
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![feature(trait_alias)]
 
+/// Safe, user-facing trait definitions for polynomial arithmetic operations.
+///
+/// Scheme authors program against these traits; the actual computation is
+/// dispatched to a backend via the [`oep`] extension points.
 pub mod api;
+
+/// Criterion-based benchmark harnesses, generic over any backend.
+///
+/// Backend crates call these functions to measure performance of their
+/// implementations.
 pub mod bench_suite;
+
+/// Blanket implementations connecting [`api`] traits to [`oep`] traits on
+/// [`layouts::Module`].
+///
+/// This module contains no user-facing logic; it exists solely to wire
+/// the safe API layer to the unsafe backend implementations.
 pub mod delegates;
+
+/// Backend-agnostic data layout types for polynomials, vectors, matrices,
+/// and prepared (DFT-domain) representations.
+///
+/// All types are generic over a data container `D` (`Vec<u8>`, `&[u8]`,
+/// `&mut [u8]`) enabling owned, borrowed, and scratch-backed usage.
 pub mod layouts;
+
+/// Open Extension Points: `unsafe` traits that backend crates implement.
+///
+/// Each trait mirrors a corresponding [`api`] trait and carries the `Impl`
+/// suffix. See [`doc::backend_safety`] for the safety contract.
 pub mod oep;
+
+/// Pure-Rust reference implementations of all operations.
+///
+/// Contains scalar polynomial arithmetic, vector-level operations, and an
+/// FFT64 implementation. Used as a correctness oracle for backend testing.
 pub mod reference;
+
+/// Deterministic pseudorandom number generation based on ChaCha8.
 pub mod source;
+
+/// Fully generic, backend-parametric test functions.
+///
+/// Backend crates instantiate these via the [`backend_test_suite!`] and
+/// [`cross_backend_test_suite!`] macros.
 pub mod test_suite;
 
+/// Embedded safety contract documentation for backend implementors.
 pub mod doc {
+    /// Safety contract that all [`crate::oep`] trait implementations must uphold.
+    ///
+    /// Covers memory domains, alignment, scratch lifetime, synchronization,
+    /// aliasing, and numerical exactness requirements.
     #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/backend_safety_contract.md"))]
     pub mod backend_safety {
         pub const _PLACEHOLDER: () = ();
     }
 }
 
+/// Default generator of the Galois group `(Z/2NZ)*` for the cyclotomic ring
+/// `Z[X]/(X^N + 1)`.
+///
+/// Used to compute Galois automorphisms `X -> X^{5^k}` and their inverses.
 pub const GALOISGENERATOR: u64 = 5;
+
+/// Default memory alignment in bytes for all allocated buffers.
+///
+/// Set to 64 bytes to match the cache-line size of modern x86 processors
+/// and the alignment required by AVX-512 instructions.
 pub const DEFAULTALIGN: usize = 64;
 
 fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize).is_multiple_of(align)
 }
 
+/// Returns `true` if `ptr` is aligned to [`DEFAULTALIGN`] bytes.
 pub fn is_aligned<T>(ptr: *const T) -> bool {
     is_aligned_custom(ptr, DEFAULTALIGN)
 }
 
+/// Panics if `ptr` is not aligned to [`DEFAULTALIGN`] bytes.
+///
+/// # Panics
+///
+/// Panics with a descriptive message when the pointer does not satisfy the
+/// default alignment requirement.
 pub fn assert_alignment<T>(ptr: *const T) {
     assert!(
         is_aligned(ptr),
@@ -37,7 +178,7 @@ pub fn assert_alignment<T>(ptr: *const T) {
     )
 }
 
-/// Deprecated spelling variant. Use [assert_alignment] instead.
+/// Deprecated spelling variant. Use [`assert_alignment`] instead.
 #[inline]
 pub fn assert_alignement<T>(ptr: *const T) {
     assert_alignment(ptr)
@@ -129,11 +270,16 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
     }
 }
 
-/// Allocates a block of T aligned with [DEFAULTALIGN].
-/// Size of T * size must be a multiple of [DEFAULTALIGN].
+/// Allocates a zero-initialized `Vec<T>` with custom alignment.
+///
+/// The total byte size (`size * size_of::<T>()`) must be a multiple of `align`,
+/// and `align` must be a power of two.
 ///
 /// # Panics
-/// Panics if `T` is zero-sized.
+///
+/// - If `T` is zero-sized.
+/// - If `align` is not a power of two.
+/// - If `size * size_of::<T>()` is not a multiple of `align`.
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert!(size_of::<T>() > 0, "alloc_aligned_custom: zero-sized types are not supported");
     assert!(
@@ -156,8 +302,15 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
 }
 
-/// Allocates an aligned vector of the given size.
-/// Padds until it is size in [u8] a multiple of [DEFAULTALIGN].
+/// Allocates a zero-initialized `Vec<T>` aligned to [`DEFAULTALIGN`] bytes.
+///
+/// The allocation is padded so that the total byte size is a multiple of
+/// [`DEFAULTALIGN`]. This is the primary allocation entry point for all
+/// layout types in the crate.
+///
+/// # Panics
+///
+/// Panics if `T` is zero-sized.
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(
         (size * size_of::<T>()).next_multiple_of(DEFAULTALIGN) / size_of::<T>(),

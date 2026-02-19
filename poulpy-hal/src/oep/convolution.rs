@@ -1,3 +1,5 @@
+//! Backend extension points for bivariate convolution operations.
+
 use crate::layouts::{
     Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxBigToMut,
     VecZnxDftToMut, VecZnxToRef, ZnxInfos,
@@ -5,7 +7,7 @@ use crate::layouts::{
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the TODO reference implementation.
-/// * See [crate::api::CnvPVecLAlloc] for corresponding public API.
+/// * See [crate::api::CnvPVecAlloc] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait CnvPVecLAllocImpl<BE: Backend> {
     fn cnv_pvec_left_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE>;
@@ -14,7 +16,7 @@ pub unsafe trait CnvPVecLAllocImpl<BE: Backend> {
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the TODO reference implementation.
-/// * See [crate::api::CnvPVecLBytesOf] for corresponding public API.
+/// * See [crate::api::CnvPVecBytesOf] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait CnvPVecBytesOfImpl {
     fn bytes_of_cnv_pvec_left_impl(n: usize, cols: usize, size: usize) -> usize;

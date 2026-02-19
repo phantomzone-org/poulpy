@@ -12,6 +12,15 @@ use crate::{
     oep::SvpPPolAllocBytesImpl,
 };
 
+/// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
+///
+/// An `SvpPPol` holds a single polynomial in the backend's prepared
+/// representation ([`Backend::ScalarPrep`]). It is used as the left
+/// operand in [`SvpApplyDft`](crate::api::SvpApplyDft) to efficiently
+/// multiply a scalar polynomial by each column of a [`VecZnxDft`](crate::layouts::VecZnxDft).
+///
+/// Create via [`SvpPrepare`](crate::api::SvpPrepare) from a
+/// coefficient-domain [`ScalarZnx`](crate::layouts::ScalarZnx).
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct SvpPPol<D: Data, B: Backend> {
@@ -99,8 +108,10 @@ where
     }
 }
 
+/// Owned `SvpPPol` backed by a `Vec<u8>`.
 pub type SvpPPolOwned<B> = SvpPPol<Vec<u8>, B>;
 
+/// Borrow an `SvpPPol` as a shared reference view.
 pub trait SvpPPolToRef<B: Backend> {
     fn to_ref(&self) -> SvpPPol<&[u8], B>;
 }
@@ -116,6 +127,7 @@ impl<D: DataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
     }
 }
 
+/// Borrow an `SvpPPol` as a mutable reference view.
 pub trait SvpPPolToMut<B: Backend> {
     fn to_mut(&mut self) -> SvpPPol<&mut [u8], B>;
 }

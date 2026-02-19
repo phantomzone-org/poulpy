@@ -2,22 +2,28 @@ use crate::layouts::{
     Backend, MatZnxToRef, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut, VmpPMatToRef,
 };
 
+/// Allocates a [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPMatAlloc<B: Backend> {
     fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
 }
 
+/// Returns the byte size required for a [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPMatBytesOf {
     fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
+/// Wraps a byte buffer into a [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPMatFromBytes<B: Backend> {
     fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B>;
 }
 
+/// Returns scratch bytes required for [`VmpPrepare`].
 pub trait VmpPrepareTmpBytes {
     fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
+/// Prepares a coefficient-domain [`MatZnx`](crate::layouts::MatZnx) into a
+/// DFT-domain [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPrepare<B: Backend> {
     fn vmp_prepare<R, A>(&self, pmat: &mut R, mat: &A, scratch: &mut Scratch<B>)
     where
@@ -26,6 +32,7 @@ pub trait VmpPrepare<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Returns scratch bytes required for [`VmpApplyDft`].
 pub trait VmpApplyDftTmpBytes {
     fn vmp_apply_dft_tmp_bytes(
         &self,
@@ -38,6 +45,7 @@ pub trait VmpApplyDftTmpBytes {
     ) -> usize;
 }
 
+/// Applies the vector-matrix product `VecZnx x VmpPMat -> VecZnxDft`.
 pub trait VmpApplyDft<B: Backend> {
     fn vmp_apply_dft<R, A, C>(&self, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<B>)
     where
@@ -47,6 +55,7 @@ pub trait VmpApplyDft<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Returns scratch bytes required for [`VmpApplyDftToDft`].
 pub trait VmpApplyDftToDftTmpBytes {
     fn vmp_apply_dft_to_dft_tmp_bytes(
         &self,
@@ -62,7 +71,7 @@ pub trait VmpApplyDftToDftTmpBytes {
 pub trait VmpApplyDftToDft<B: Backend> {
     /// Applies the vector matrix product [crate::layouts::VecZnxDft] x [crate::layouts::VmpPMat].
     ///
-    /// A vector matrix product numerically equivalent to a sum of [crate::api::SvpApply],
+    /// A vector matrix product numerically equivalent to a sum of [crate::api::SvpApplyDft],
     /// where each [crate::layouts::SvpPPol] is a limb of the input [crate::layouts::VecZnx] in DFT,
     /// and each vector a [crate::layouts::VecZnxDft] (row) of the [crate::layouts::VmpPMat].
     ///
@@ -83,7 +92,7 @@ pub trait VmpApplyDftToDft<B: Backend> {
     /// * `c`: the output of the vector matrix product, as a [crate::layouts::VecZnxDft].
     /// * `a`: the left operand [crate::layouts::VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [crate::layouts::VmpPMat] of the vector matrix product.
-    /// * `buf`: scratch space, the size can be obtained with [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
+    /// * `buf`: scratch space, the size can be obtained with [VmpApplyDftToDftTmpBytes::vmp_apply_dft_to_dft_tmp_bytes].
     fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
@@ -92,6 +101,7 @@ pub trait VmpApplyDftToDft<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Returns scratch bytes required for [`VmpApplyDftToDftAdd`].
 pub trait VmpApplyDftToDftAddTmpBytes {
     fn vmp_apply_dft_to_dft_add_tmp_bytes(
         &self,
@@ -104,6 +114,7 @@ pub trait VmpApplyDftToDftAddTmpBytes {
     ) -> usize;
 }
 
+/// Additive variant of [`VmpApplyDftToDft`]: `res += a x b` with a limb offset.
 pub trait VmpApplyDftToDftAdd<B: Backend> {
     fn vmp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, limb_offset: usize, scratch: &mut Scratch<B>)
     where
@@ -112,6 +123,7 @@ pub trait VmpApplyDftToDftAdd<B: Backend> {
         C: VmpPMatToRef<B>;
 }
 
+/// Zeroes all entries of a [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpZero<B: Backend> {
     fn vmp_zero<R>(&self, res: &mut R)
     where

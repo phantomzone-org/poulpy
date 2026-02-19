@@ -14,6 +14,15 @@ use std::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rand::RngCore;
 
+/// Matrix of polynomials in `Z[X]/(X^N + 1)`.
+///
+/// A `MatZnx` has `rows` rows, each containing `cols_in` entries.
+/// Each entry is itself a [`VecZnx`] with `cols_out` columns and `size` limbs.
+/// This gives a total of `rows * cols_in * cols_out * size` small polynomials.
+///
+/// Used primarily as the plaintext input to [`VmpPrepare`](crate::api::VmpPrepare),
+/// which converts a `MatZnx` into a prepared [`VmpPMat`](crate::layouts::VmpPMat)
+/// for vector-matrix products.
 #[repr(C)]
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub struct MatZnx<D: Data> {
@@ -104,20 +113,24 @@ impl<D: DataRef> ZnxView for MatZnx<D> {
 }
 
 impl<D: Data> MatZnx<D> {
+    /// Returns the number of input columns (first matrix dimension after rows).
     pub fn cols_in(&self) -> usize {
         self.cols_in
     }
 
+    /// Returns the number of output columns (the column count of each inner [`VecZnx`]).
     pub fn cols_out(&self) -> usize {
         self.cols_out
     }
 }
 
 impl MatZnx<Vec<u8>> {
+    /// Returns the number of bytes required to store the matrix.
     pub fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         rows * cols_in * VecZnx::<Vec<u8>>::bytes_of(n, cols_out, size)
     }
 
+    /// Allocates a zero-initialized `MatZnx` aligned to [`DEFAULTALIGN`](crate::DEFAULTALIGN).
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
@@ -146,6 +159,11 @@ impl MatZnx<Vec<u8>> {
 }
 
 impl<D: DataRef> MatZnx<D> {
+    /// Returns a shared [`VecZnx`] view of the entry at `(row, col)`.
+    ///
+    /// # Panics (debug)
+    ///
+    /// Debug-asserts that `row < rows` and `col < cols_in`.
     pub fn at(&self, row: usize, col: usize) -> VecZnx<&[u8]> {
         #[cfg(debug_assertions)]
         {
@@ -169,6 +187,11 @@ impl<D: DataRef> MatZnx<D> {
 }
 
 impl<D: DataMut> MatZnx<D> {
+    /// Returns a mutable [`VecZnx`] view of the entry at `(row, col)`.
+    ///
+    /// # Panics (debug)
+    ///
+    /// Debug-asserts that `row < rows` and `col < cols_in`.
     pub fn at_mut(&mut self, row: usize, col: usize) -> VecZnx<&mut [u8]> {
         #[cfg(debug_assertions)]
         {
@@ -212,10 +235,14 @@ impl<D: DataMut> FillUniform for MatZnx<D> {
     }
 }
 
+/// Owned `MatZnx` backed by a `Vec<u8>`.
 pub type MatZnxOwned = MatZnx<Vec<u8>>;
+/// Mutably borrowed `MatZnx`.
 pub type MatZnxMut<'a> = MatZnx<&'a mut [u8]>;
+/// Immutably borrowed `MatZnx`.
 pub type MatZnxRef<'a> = MatZnx<&'a [u8]>;
 
+/// Borrow a `MatZnx` as a shared reference view.
 pub trait MatZnxToRef {
     fn to_ref(&self) -> MatZnx<&[u8]>;
 }
@@ -233,6 +260,7 @@ impl<D: DataRef> MatZnxToRef for MatZnx<D> {
     }
 }
 
+/// Borrow a `MatZnx` as a mutable reference view.
 pub trait MatZnxToMut {
     fn to_mut(&mut self) -> MatZnx<&mut [u8]>;
 }

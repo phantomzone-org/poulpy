@@ -1,3 +1,21 @@
+//! Vector-of-ring-elements operations for [`FFT64Ref`](crate::FFT64Ref).
+//!
+//! Implements the `VecZnx*` OEP traits from `poulpy_hal::oep`, covering the full
+//! surface of operations on `VecZnx` (vectors of polynomials in `Z[X]/(X^n+1)`,
+//! stored in a base-2^k limb decomposition):
+//!
+//! - **Arithmetic**: add, sub, negate (with out-of-place, inplace, and scalar variants).
+//! - **Bit shifts**: left-shift (LSH) and right-shift (RSH) across limbs.
+//! - **Structural transforms**: rotation (`X^p * a`), automorphism (`X -> X^p`),
+//!   multiplication by `X^p - 1`.
+//! - **Ring operations**: split-ring, merge-rings, switch-ring, copy, zero.
+//! - **Normalization**: carry propagation across the base-2^k decomposition.
+//! - **Sampling**: uniform and normal (Gaussian) random fill.
+//!
+//! Operations that require temporary storage take a `&mut Scratch<Self>` parameter
+//! and call `scratch.take_slice(...)` to carve out aligned workspace. The required
+//! scratch size can be queried via the corresponding `*TmpBytes` trait methods.
+
 use poulpy_hal::{
     api::{
         TakeSlice, VecZnxAutomorphismInplaceTmpBytes, VecZnxLshTmpBytes, VecZnxMergeRingsTmpBytes,

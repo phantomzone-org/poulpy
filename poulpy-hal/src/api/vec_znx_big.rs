@@ -3,6 +3,8 @@ use crate::{
     source::Source,
 };
 
+/// Converts a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) column
+/// into a [`VecZnxBig`](crate::layouts::VecZnxBig) column.
 pub trait VecZnxBigFromSmall<B: Backend> {
     fn vec_znx_big_from_small<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -21,7 +23,7 @@ pub trait VecZnxBigBytesOf {
 }
 
 /// Consume a vector of bytes into a [crate::layouts::VecZnxBig].
-/// User must ensure that bytes is memory aligned and that it length is equal to [VecZnxBigAllocBytes].
+/// User must ensure that bytes is memory aligned and that its length is equal to [VecZnxBigBytesOf::bytes_of_vec_znx_big].
 pub trait VecZnxBigFromBytes<B: Backend> {
     fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
@@ -143,6 +145,7 @@ pub trait VecZnxBigSubSmallNegateInplace<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// Negates the selected column of `a` and stores the result in `res`.
 pub trait VecZnxBigNegate<B: Backend> {
     fn vec_znx_big_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -150,17 +153,21 @@ pub trait VecZnxBigNegate<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
+/// Negates the selected column of `res` in-place.
 pub trait VecZnxBigNegateInplace<B: Backend> {
     fn vec_znx_big_negate_inplace<R>(&self, res: &mut R, res_col: usize)
     where
         R: VecZnxBigToMut<B>;
 }
 
+/// Returns scratch bytes required for [`VecZnxBigNormalize`].
 pub trait VecZnxBigNormalizeTmpBytes {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Normalizes a [`VecZnxBig`](crate::layouts::VecZnxBig) into a coefficient-domain
+/// [`VecZnx`](crate::layouts::VecZnx) with the target base and offset.
 pub trait VecZnxBigNormalize<B: Backend> {
     fn vec_znx_big_normalize<R, A>(
         &self,
@@ -177,6 +184,7 @@ pub trait VecZnxBigNormalize<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
+/// Returns scratch bytes required for in-place automorphism on [`VecZnxBig`](crate::layouts::VecZnxBig).
 pub trait VecZnxBigAutomorphismInplaceTmpBytes {
     fn vec_znx_big_automorphism_inplace_tmp_bytes(&self) -> usize;
 }

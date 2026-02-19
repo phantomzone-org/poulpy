@@ -9,6 +9,16 @@ use crate::{
     oep::VmpPMatAllocBytesImpl,
 };
 
+/// Prepared (DFT-domain) polynomial matrix for vector-matrix products.
+///
+/// A `VmpPMat` stores a matrix of `rows * cols_in` entries, where each
+/// entry is a [`VecZnxDft`](crate::layouts::VecZnxDft) of `cols_out`
+/// columns and `size` limbs, all in the backend's prepared representation.
+///
+/// Used as the right operand in
+/// [`VmpApplyDftToDft`](crate::api::VmpApplyDftToDft). Create via
+/// [`VmpPrepare`](crate::api::VmpPrepare) from a coefficient-domain
+/// [`MatZnx`](crate::layouts::MatZnx).
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct VmpPMat<D: Data, B: Backend> {
@@ -74,10 +84,12 @@ impl<D: Data, B: Backend> DataViewMut for VmpPMat<D, B> {
 }
 
 impl<D: Data, B: Backend> VmpPMat<D, B> {
+    /// Returns the number of input columns.
     pub fn cols_in(&self) -> usize {
         self.cols_in
     }
 
+    /// Returns the number of output columns.
     pub fn cols_out(&self) -> usize {
         self.cols_out
     }
@@ -116,9 +128,12 @@ where
     }
 }
 
+/// Owned `VmpPMat` backed by a `Vec<u8>`.
 pub type VmpPMatOwned<B> = VmpPMat<Vec<u8>, B>;
+/// Immutably borrowed `VmpPMat`.
 pub type VmpPMatRef<'a, B> = VmpPMat<&'a [u8], B>;
 
+/// Borrow a `VmpPMat` as a shared reference view.
 pub trait VmpPMatToRef<B: Backend> {
     fn to_ref(&self) -> VmpPMat<&[u8], B>;
 }
@@ -137,6 +152,7 @@ impl<D: DataRef, B: Backend> VmpPMatToRef<B> for VmpPMat<D, B> {
     }
 }
 
+/// Borrow a `VmpPMat` as a mutable reference view.
 pub trait VmpPMatToMut<B: Backend> {
     fn to_mut(&mut self) -> VmpPMat<&mut [u8], B>;
 }

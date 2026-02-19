@@ -13,7 +13,7 @@ pub trait SvpPPolBytesOf {
 }
 
 /// Consume a vector of bytes into a [crate::layouts::MatZnx].
-/// User must ensure that bytes is memory aligned and that it length is equal to [SvpPPolAllocBytes].
+/// User must ensure that bytes is memory aligned and that its length is equal to [SvpPPolBytesOf::bytes_of_svp_ppol].
 pub trait SvpPPolFromBytes<B: Backend> {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B>;
 }

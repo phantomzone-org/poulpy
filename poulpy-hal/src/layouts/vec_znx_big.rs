@@ -14,6 +14,15 @@ use crate::{
     oep::VecZnxBigAllocBytesImpl,
 };
 
+/// Extended-precision polynomial vector used as a result accumulator.
+///
+/// `VecZnxBig` has the same structural shape as [`VecZnx`](crate::layouts::VecZnx)
+/// (`cols` columns, `size` limbs, ring degree `N`) but uses
+/// [`Backend::ScalarBig`] as its coefficient type instead of `i64`.
+/// The wider scalar type allows lossless accumulation of intermediate
+/// products before normalization back to `i64` limbs.
+///
+/// The exact scalar width and memory layout are backend-specific.
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct VecZnxBig<D: Data, B: Backend> {
@@ -135,8 +144,10 @@ impl<D: Data, B: Backend> VecZnxBig<D, B> {
     }
 }
 
+/// Owned `VecZnxBig` backed by a `Vec<u8>`.
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
 
+/// Borrow a `VecZnxBig` as a shared reference view.
 pub trait VecZnxBigToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxBig<&[u8], B>;
 }
@@ -154,6 +165,7 @@ impl<D: DataRef, B: Backend> VecZnxBigToRef<B> for VecZnxBig<D, B> {
     }
 }
 
+/// Borrow a `VecZnxBig` as a mutable reference view.
 pub trait VecZnxBigToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B>;
 }

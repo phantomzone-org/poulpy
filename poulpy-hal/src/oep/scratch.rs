@@ -1,3 +1,5 @@
+//! Backend extension points for [`Scratch`] memory allocation and management.
+
 use crate::layouts::{Backend, Scratch, ScratchOwned};
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

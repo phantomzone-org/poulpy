@@ -7,8 +7,8 @@ use crate::{
 };
 
 /// Maps between negacyclic rings by changing the polynomial degree.
-/// Up:  Z[X]/(X^N+1) -> Z[X]/(X^{2^d N}+1) via X ↦ X^{2^d}
-/// Down: Z[X]/(X^N+1) -> Z[X]/(X^{N/2^d}+1) by folding indices.
+/// Up:  Z\[X\]/(X^N+1) -> Z\[X\]/(X^{2^d N}+1) via X -> X^{2^d}
+/// Down: Z\[X\]/(X^N+1) -> Z\[X\]/(X^{N/2^d}+1) by folding indices.
 pub fn vec_znx_switch_ring<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
