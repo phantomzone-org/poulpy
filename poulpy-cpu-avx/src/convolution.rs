@@ -102,8 +102,14 @@ where
     {
         let res: &mut VecZnxBig<&mut [u8], Self> = &mut res.to_mut();
         let a: &VecZnx<&[u8]> = &a.to_ref();
-        let (tmp, _) =
-            scratch.take_slice(module.cnv_by_const_apply_tmp_bytes(res.size(), res_offset, a.size(), b.len()) / size_of::<i64>());
+        let byte_count = module.cnv_by_const_apply_tmp_bytes(res.size(), res_offset, a.size(), b.len());
+        assert!(
+            byte_count % size_of::<i64>() == 0,
+            "Scratch buffer size {} must be divisible by {}",
+            byte_count,
+            size_of::<i64>()
+        );
+        let (tmp, _) = scratch.take_slice(byte_count / size_of::<i64>());
         convolution_by_const_apply(res, res_offset, res_col, a, a_col, b, tmp);
     }
 

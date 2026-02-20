@@ -57,6 +57,28 @@ use crate::{
     },
 };
 
+/// Backend-specific handle storing precomputed FFT/IFFT twiddle factors.
+///
+/// This structure is allocated once during [`Module::new()`](poulpy_hal::layouts::Module::new)
+/// and persists for the lifetime of the module. It contains precomputed complex roots of unity
+/// (twiddle factors) required for efficient FFT and inverse FFT operations on ring elements
+/// of degree `n`.
+///
+/// # Memory layout
+///
+/// - **Alignment**: Natural alignment for `f64` arrays (8 bytes).
+/// - **Size**: `O(n)` storage for `n`-degree polynomial ring (twiddle tables scale linearly).
+/// - **Ownership**: Managed via `Box` and leaked to obtain a stable `NonNull` pointer stored in `Module`.
+///
+/// # Thread safety
+///
+/// Twiddle tables are **immutable** after construction, making this type safe to share across threads
+/// via `&Module<FFT64Avx>`. The `Module` type enforces `Send + Sync` bounds.
+///
+/// # Destruction
+///
+/// The handle is destroyed via [`Backend::destroy()`](poulpy_hal::layouts::Backend::destroy)
+/// when the module is dropped, which reconstructs the `Box` from the raw pointer and drops it.
 #[repr(C)]
 pub struct FFT64AvxHandle {
     table_fft: ReimFFTTable<f64>,
@@ -82,6 +104,23 @@ impl Backend for FFT64Avx {
     }
 }
 
+/// # Safety
+///
+/// This implementation is marked `unsafe` because it constructs a `Module` with a raw pointer
+/// to heap-allocated data. The caller (HAL) must ensure:
+/// - The returned module is used correctly according to HAL contracts.
+/// - The module's lifetime management calls `Backend::destroy()` exactly once.
+///
+/// # Panics
+///
+/// Panics if the runtime CPU does not support AVX2, AVX, or FMA instruction sets.
+/// This check is performed via `std::arch::is_x86_feature_detected!()`.
+///
+/// # CPU feature detection
+///
+/// The runtime check ensures that calling SIMD intrinsics does not result in `SIGILL`.
+/// This is necessary because compile-time target features may differ from runtime CPU capabilities
+/// (e.g., cross-compilation or running on heterogeneous clusters).
 unsafe impl ModuleNewImpl<Self> for FFT64Avx {
     fn new_impl(n: u64) -> Module<Self> {
         if !std::arch::is_x86_feature_detected!("avx")
@@ -101,8 +140,33 @@ unsafe impl ModuleNewImpl<Self> for FFT64Avx {
     }
 }
 
+/// Extension trait providing access to FFT/IFFT tables from a `Module<FFT64Avx>`.
+///
+/// This trait abstracts access to the backend-specific [`FFT64AvxHandle`] stored in
+/// the module, allowing internal functions to retrieve precomputed twiddle factors
+/// without unsafe pointer dereferencing at the call site.
+///
+/// # Safety
+///
+/// Implementations must ensure that:
+/// - The returned reference lifetime is tied to the module's lifetime.
+/// - The underlying handle pointer is valid and properly aligned.
+/// - The twiddle tables are immutable (no `&mut` access).
+///
+/// The `Module` type guarantees these invariants via its construction and lifetime management.
 pub trait FFT64ModuleHandle {
+    /// Returns a shared reference to the forward FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
     fn get_fft_table(&self) -> &ReimFFTTable<f64>;
+
+    /// Returns a shared reference to the inverse FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
     fn get_ifft_table(&self) -> &ReimIFFTTable<f64>;
 }
 

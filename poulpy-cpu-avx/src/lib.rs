@@ -1,3 +1,154 @@
+//! AVX2/FMA-accelerated CPU backend for the Poulpy lattice cryptography library.
+//!
+//! This crate provides [`FFT64Avx`], a high-performance backend implementation for [`poulpy_hal`]
+//! that leverages x86-64 SIMD instruction sets (AVX2 and FMA) to accelerate cryptographic operations
+//! in fully homomorphic encryption (FHE) schemes based on Ring-Learning-With-Errors (RLWE).
+//!
+//! # Architecture
+//!
+//! `poulpy_hal` defines a hardware abstraction layer (HAL) via the [`Backend`](poulpy_hal::layouts::Backend)
+//! trait and a family of _open extension point_ (OEP) traits in [`poulpy_hal::oep`]. This crate
+//! implements every OEP trait for the [`FFT64Avx`] backend using hand-optimized AVX2/FMA intrinsics
+//! and assembly kernels where profiling demonstrates performance benefits over compiler-generated code.
+//!
+//! The internal modules are organized by operation domain:
+//!
+//! | Module          | Domain                                                    |
+//! |-----------------|-----------------------------------------------------------|
+//! | `module`        | Backend handle lifecycle, FFT table management            |
+//! | `scratch`       | Temporary memory allocation and arena-style sub-allocation|
+//! | `znx_avx`       | Single ring element (`Z[X]/(X^n+1)`) SIMD arithmetic      |
+//! | `vec_znx`       | Vectors of ring elements (limb decomposition)             |
+//! | `vec_znx_big`   | Large-coefficient (multi-word) ring element vectors       |
+//! | `vec_znx_dft`   | Fourier-domain ring element vectors (forward/inverse DFT) |
+//! | `reim`          | Real/imaginary interleaved FFT primitives                 |
+//! | `convolution`   | Polynomial convolution via FFT, by-constant, and pairwise |
+//! | `svp`           | Scalar-vector product in frequency domain                 |
+//! | `vmp`           | Vector-matrix product in frequency domain                 |
+//!
+//! # Scalar types
+//!
+//! For the `FFT64Avx` backend:
+//!
+//! - `ScalarPrep = f64`: coefficients in the DFT / frequency domain.
+//! - `ScalarBig  = i64`: coefficients in the large-integer (multi-word) domain.
+//! - Both `layout_prep_word_count()` and `layout_big_word_count()` return `1`,
+//!   meaning each coefficient occupies exactly one scalar word.
+//!
+//! # CPU requirements
+//!
+//! This backend **requires** x86-64 CPUs with:
+//! - **AVX2**: 256-bit SIMD registers and operations
+//! - **FMA**: Fused multiply-add for reduced rounding error in FFT
+//!
+//! Runtime CPU feature detection is performed in [`Module::new()`](poulpy_hal::layouts::Module::new).
+//! If the required features are not present, the constructor panics with a descriptive error message.
+//!
+//! # Compile-time requirements
+//!
+//! To compile this crate, you must enable AVX2 and FMA target features:
+//!
+//! ```text
+//! RUSTFLAGS="-C target-cpu=native" cargo build --release
+//! ```
+//!
+//! Or explicitly:
+//!
+//! ```text
+//! RUSTFLAGS="-C target-feature=+avx2,+fma" cargo build --release
+//! ```
+//!
+//! Failure to enable these features at compile time will result in a compilation error.
+//!
+//! # Correctness guarantees
+//!
+//! ## Determinism
+//!
+//! All operations produce **bit-identical results** across different runs and different backends
+//! (when compared to `poulpy-cpu-ref`). Floating-point operations in FFT are constrained to
+//! maintain error < 0.5 ULP, ensuring correct rounding when converting back to integers.
+//!
+//! ## Overflow handling
+//!
+//! Integer overflow is **intentional** and managed through bivariate polynomial representation.
+//! The normalization functions (`znx_normalize_*`) use wrapping arithmetic to propagate carries
+//! correctly across limbs in base-2^k representation.
+//!
+//! ## Memory alignment
+//!
+//! All data layouts enforce 64-byte alignment (matching cache line size) as specified by
+//! `poulpy_hal::DEFAULTALIGN`. This alignment is verified at buffer allocation and enables
+//! the use of aligned SIMD loads/stores for maximum performance.
+//!
+//! ## Safety invariants
+//!
+//! Many functions are marked `unsafe` and require:
+//! - CPU features (AVX2/FMA) are present (verified at module creation)
+//! - Input slices have matching lengths where documented
+//! - Input values satisfy documented bounds (e.g., `|x| < 2^50` for IEEE 754 conversions)
+//! - Buffers are properly aligned (enforced by HAL allocators)
+//!
+//! Violating these invariants may result in:
+//! - Undefined behavior (e.g., invalid SIMD instructions, out-of-bounds memory access)
+//! - Silent incorrect results (e.g., exceeding numeric bounds in FP conversion)
+//! - Panics (in debug mode via assertions, or unconditionally for critical invariants)
+//!
+//! # Performance characteristics
+//!
+//! ## Asymptotic complexity
+//!
+//! - **FFT/IFFT**: O(n log n) for polynomial degree n
+//! - **Convolution**: O(n log n) via FFT-based approach
+//! - **Normalization**: O(n) per limb with vectorized digit extraction
+//!
+//! ## Typical speedup over reference backend
+//!
+//! - **Ring element arithmetic** (add/sub/negate): ~3-4× (memory bandwidth bound)
+//! - **FFT16 kernels** (hand-written assembly): ~2× over intrinsics
+//! - **Convolution** (large degree): ~3-5× depending on coefficient size
+//!
+//! ## Memory layout
+//!
+//! - **Vectorized storage**: Elements packed in groups of 4 (matching AVX2 register width for `i64`)
+//! - **Tail handling**: Scalar fallback for lengths not divisible by 4
+//! - **Cache-friendly**: 64-byte alignment ensures single cache line per vector load
+//!
+//! # Threading and concurrency
+//!
+//! - **`FFT64Avx` is `Send + Sync`**: Zero-sized marker type, no internal state.
+//! - **`Module<FFT64Avx>` is `Send + Sync`**: FFT tables are immutable after construction.
+//! - **Operations require `&mut` for outputs**: Prevents data races at the API level.
+//! - **No internal locking**: All synchronization is caller's responsibility.
+//!
+//! # Feature flags
+//!
+//! - `enable-avx` (optional): Historically used for conditional compilation, currently inactive.
+//!
+//! # Platform support
+//!
+//! - **Required**: x86-64 architecture with AVX2 and FMA
+//! - **Tested on**: Linux (x86_64), macOS (Intel), Windows (x86_64)
+//! - **Not supported**: ARM, RISC-V, or other architectures
+//!
+//! # Threat model
+//!
+//! This library assumes an **"honest but curious"** adversary model:
+//! - **No malicious inputs**: Callers are trusted to provide well-formed data within documented bounds.
+//! - **No timing attack mitigation**: Operations are not constant-time (performance is prioritized).
+//! - **Memory safety**: Bounds are validated to prevent crashes and corruption, but not for security.
+//!
+//! # Usage
+//!
+//! This crate exports a single public type, [`FFT64Avx`], which is used as a type parameter
+//! to the HAL generic types. Application code typically does not import this crate directly,
+//! but instead uses it via `poulpy_core` or `poulpy_schemes` with runtime backend selection.
+//!
+//! # Versioning and stability
+//!
+//! This crate follows semantic versioning. The public API consists solely of the [`FFT64Avx`]
+//! marker type and its trait implementations from `poulpy_hal::oep`. All other items are
+//! implementation details subject to change without notice.
+
 // ─────────────────────────────────────────────────────────────
 // Build the backend **only when ALL conditions are satisfied**
 // ─────────────────────────────────────────────────────────────
@@ -27,7 +178,56 @@ mod vec_znx_dft;
 mod vmp;
 mod znx_avx;
 
+/// AVX2/FMA-accelerated CPU backend for Poulpy HAL.
+///
+/// `FFT64Avx` is a zero-sized marker type that selects the AVX2-optimized CPU backend
+/// when used as the type parameter `B` in [`Module<B>`](poulpy_hal::layouts::Module)
+/// and related HAL types. It implements all open extension point (OEP) traits from
+/// `poulpy_hal::oep` using hand-tuned AVX2/FMA SIMD intrinsics and assembly kernels.
+///
+/// # Backend characteristics
+///
+/// - **ScalarPrep**: `f64` — DFT-domain coefficients are 64-bit IEEE 754 floats.
+/// - **ScalarBig**: `i64` — large-coefficient ring elements use 64-bit signed integers.
+/// - **Word counts**: both `layout_prep_word_count()` and `layout_big_word_count()` return `1`.
+/// - **FFT tables**: precomputed twiddle factors stored in the module handle
+///   ([`FFT64AvxHandle`]), shared across all operations on the same module.
+///
+/// # CPU feature requirements
+///
+/// **Runtime check**: [`Module::new()`](poulpy_hal::layouts::Module::new) verifies that
+/// the CPU supports AVX2, AVX, and FMA. If any feature is missing, the constructor panics.
+///
+/// **Compile-time requirement**: Code must be compiled with `-C target-feature=+avx2,+fma`.
+/// Failure to do so results in a compile error.
+///
+/// # Thread safety
+///
+/// `FFT64Avx` is `Send + Sync` (derived from being a zero-sized, field-less struct).
+/// The `Module<FFT64Avx>` that holds the FFT tables is also `Send + Sync`, so modules can
+/// be shared across threads. Individual operations require exclusive (`&mut`) access to their
+/// output buffers and scratch space, preventing data races at the API level.
+///
+/// # Performance notes
+///
+/// - Optimized for x86-64 CPUs with AVX2 (2013+) and FMA (Haswell and later).
+/// - Hand-written assembly FFT kernels outperform compiler-generated intrinsics by ~2×.
+/// - Memory layout is vectorized (4 × `i64` per AVX2 register) with 64-byte alignment.
+/// - Scalar fallback for non-multiple-of-4 lengths (negligible overhead for typical FHE parameters).
+///
+/// # Example usage pattern
+///
+/// This type is typically not used directly but via HAL generic code:
+///
+/// ```text
+/// use poulpy_hal::layouts::Module;
+/// use poulpy_cpu_avx::FFT64Avx;
+///
+/// let module: Module<FFT64Avx> = Module::new(1024);
+/// // Use module for FHE operations...
+/// ```
 pub struct FFT64Avx {}
+
 pub use reim::*;
 
 #[cfg(test)]

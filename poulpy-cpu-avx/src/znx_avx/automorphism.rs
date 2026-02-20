@@ -24,7 +24,7 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
     if n == 0 {
         return;
     }
-    debug_assert!(n.is_power_of_two(), "n must be power of two");
+    assert!(n.is_power_of_two(), "Polynomial degree {} must be power of 2", n);
     debug_assert!(p & 1 == 1, "p must be odd (invertible mod 2n)");
 
     if n < 4 {

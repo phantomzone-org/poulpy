@@ -66,10 +66,7 @@ pub unsafe fn znx_mul_power_of_two_avx(k: i64, res: &mut [i64], a: &[i64]) {
         //   t = x + bias
         //   y = t >> kp   (arithmetic)
         let kp = -k;
-        #[cfg(debug_assertions)]
-        {
-            debug_assert!((1..=63).contains(&kp));
-        }
+        assert!((1..=63).contains(&kp), "kp must be in [1, 63], got {}", kp);
 
         let cnt_right: __m128i = _mm_cvtsi32_si128(kp as i32);
         let bias_base: __m256i = _mm256_set1_epi64x(1_i64 << (kp - 1));
@@ -166,10 +163,7 @@ pub unsafe fn znx_mul_power_of_two_inplace_avx(k: i64, res: &mut [i64]) {
         //   t = x + bias
         //   y = t >> kp   (arithmetic)
         let kp = -k;
-        #[cfg(debug_assertions)]
-        {
-            debug_assert!((1..=63).contains(&kp));
-        }
+        assert!((1..=63).contains(&kp), "kp must be in [1, 63], got {}", kp);
 
         let cnt_right: __m128i = _mm_cvtsi32_si128(kp as i32);
         let bias_base: __m256i = _mm256_set1_epi64x(1_i64 << (kp - 1));
@@ -275,10 +269,7 @@ pub unsafe fn znx_mul_add_power_of_two_avx(k: i64, res: &mut [i64], a: &[i64]) {
         //   t = x + bias
         //   y = t >> kp   (arithmetic)
         let kp = -k;
-        #[cfg(debug_assertions)]
-        {
-            debug_assert!((1..=63).contains(&kp));
-        }
+        assert!((1..=63).contains(&kp), "kp must be in [1, 63], got {}", kp);
 
         let cnt_right: __m128i = _mm_cvtsi32_si128(kp as i32);
         let bias_base: __m256i = _mm256_set1_epi64x(1_i64 << (kp - 1));

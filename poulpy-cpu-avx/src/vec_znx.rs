@@ -65,7 +65,14 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        let byte_count = module.vec_znx_normalize_tmp_bytes();
+        assert!(
+            byte_count.is_multiple_of(size_of::<i64>()),
+            "Scratch buffer size {} must be divisible by {}",
+            byte_count,
+            size_of::<i64>()
+        );
+        let (carry, _) = scratch.take_slice(byte_count / size_of::<i64>());
         vec_znx_normalize::<R, A, Self>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 }
@@ -83,7 +90,14 @@ where
     ) where
         R: VecZnxToMut,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        let byte_count = module.vec_znx_normalize_tmp_bytes();
+        assert!(
+            byte_count.is_multiple_of(size_of::<i64>()),
+            "Scratch buffer size {} must be divisible by {}",
+            byte_count,
+            size_of::<i64>()
+        );
+        let (carry, _) = scratch.take_slice(byte_count / size_of::<i64>());
         vec_znx_normalize_inplace::<R, Self>(base2k, res, res_col, carry);
     }
 }
