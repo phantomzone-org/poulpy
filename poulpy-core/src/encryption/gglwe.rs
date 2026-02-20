@@ -142,7 +142,7 @@ where
         let base2k: usize = res.base2k().into();
         let rank_in: usize = res.rank_in().into();
 
-        let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(res);
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
         // For each input column (i.e. rank) produces a GGLWE of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
@@ -159,8 +159,8 @@ where
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
                 self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
-                self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
-                self.glwe_encrypt_sk(&mut res.at_mut(row_i, col_i), &tmp_pt, sk, source_xa, source_xe, scrach_1);
+                self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
+                self.glwe_encrypt_sk(&mut res.at_mut(row_i, col_i), &tmp_pt, sk, source_xa, source_xe, scratch_1);
             }
         }
     }

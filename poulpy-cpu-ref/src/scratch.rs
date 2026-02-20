@@ -71,7 +71,7 @@ where
 {
     fn take_slice_impl<T>(scratch: &mut Scratch<B>, len: usize) -> (&mut [T], &mut Scratch<B>) {
         debug_assert!(
-            DEFAULTALIGN % std::mem::align_of::<T>() == 0,
+            DEFAULTALIGN.is_multiple_of(std::mem::align_of::<T>()),
             "DEFAULTALIGN ({DEFAULTALIGN}) must be a multiple of align_of::<T>() ({})",
             std::mem::align_of::<T>()
         );

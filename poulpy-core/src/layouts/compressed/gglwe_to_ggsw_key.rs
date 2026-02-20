@@ -11,6 +11,11 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
+/// Seed-compressed GGLWE-to-GGSW key-switching key layout.
+///
+/// A vector of [`GGLWECompressed`] entries, one per rank element,
+/// used for GGLWE-to-GGSW conversion. The mask of each GGLWE is
+/// regenerated from its PRNG seed during decompression.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWEToGGSWKeyCompressed<D: Data> {
     pub(crate) keys: Vec<GGLWECompressed<D>>,
@@ -83,6 +88,7 @@ impl<D: DataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
 }
 
 impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
+    /// Allocates a new compressed GGLWE-to-GGSW key by copying parameters from an existing info provider.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -102,6 +108,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
         )
     }
 
+    /// Allocates a new compressed GGLWE-to-GGSW key with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GGLWEToGGSWKeyCompressed {
             keys: (0..rank.as_usize())
@@ -110,6 +117,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
         }
     }
 
+    /// Returns the serialized byte size by copying parameters from an existing info provider.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -129,6 +137,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
         )
     }
 
+    /// Returns the serialized byte size for a compressed GGLWE-to-GGSW key with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         rank.as_usize() * GGLWECompressed::bytes_of(n, base2k, k, rank, dnum, dsize)
     }
@@ -176,10 +185,12 @@ impl<D: DataRef> WriterTo for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
+/// Trait for decompressing a [`GGLWEToGGSWKeyCompressed`] into a standard [`GGLWEToGGSWKey`].
 pub trait GGLWEToGGSWKeyDecompress
 where
     Self: GGLWEDecompress,
 {
+    /// Decompresses `other` into `res` by decompressing each GGLWE entry.
     fn decompress_gglwe_to_ggsw_key<R, O>(&self, res: &mut R, other: &O)
     where
         R: GGLWEToGGSWKeyToMut,
@@ -197,6 +208,7 @@ where
 }
 
 impl<D: DataMut> GGLWEToGGSWKey<D> {
+    /// Decompresses a [`GGLWEToGGSWKeyCompressed`] into this standard key.
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         M: GGLWEToGGSWKeyDecompress,
@@ -206,7 +218,9 @@ impl<D: DataMut> GGLWEToGGSWKey<D> {
     }
 }
 
+/// Converts a compressed GGLWE-to-GGSW key to an immutably-borrowed variant.
 pub trait GGLWEToGGSWKeyCompressedToRef {
+    /// Returns an immutably-borrowed view.
     fn to_ref(&self) -> GGLWEToGGSWKeyCompressed<&[u8]>;
 }
 
@@ -221,7 +235,9 @@ where
     }
 }
 
+/// Converts a compressed GGLWE-to-GGSW key to a mutably-borrowed variant.
 pub trait GGLWEToGGSWKeyCompressedToMut {
+    /// Returns a mutably-borrowed view.
     fn to_mut(&mut self) -> GGLWEToGGSWKeyCompressed<&mut [u8]>;
 }
 

@@ -11,11 +11,21 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
+/// Provides lookup of automorphism keys by Galois element and access
+/// to the shared layout information.
 pub trait GLWEAutomorphismKeyHelper<K, BE: Backend> {
+    /// Returns the automorphism key associated with the Galois element `k`, if present.
     fn get_automorphism_key(&self, k: i64) -> Option<&K>;
+    /// Returns the [`GGLWELayout`] common to all stored automorphism keys.
     fn automorphism_key_infos(&self) -> GGLWELayout;
 }
 
+/// Plain-data descriptor for a [`GLWEAutomorphismKey`] carrying only the
+/// layout parameters (no backing buffer).
+///
+/// Implements [`LWEInfos`], [`GLWEInfos`] and [`GGLWEInfos`] so it can
+/// be passed to any generic constructor that needs layout information.
+/// For an automorphism key `rank_in == rank_out`.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEAutomorphismKeyLayout {
     pub n: Degree,
@@ -26,17 +36,28 @@ pub struct GLWEAutomorphismKeyLayout {
     pub dsize: Dsize,
 }
 
+/// GLWE automorphism (Galois) key.
+///
+/// Wraps a [`GGLWE`] together with the Galois element index `p` that
+/// identifies which automorphism this key materialises.
+///
+/// `D: Data` is the backing storage type (e.g. `Vec<u8>`, `&[u8]`,
+/// `&mut [u8]`).
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEAutomorphismKey<D: Data> {
     pub(crate) key: GGLWE<D>,
     pub(crate) p: i64,
 }
 
+/// Provides read access to the Galois element index `p`.
 pub trait GetGaloisElement {
+    /// Returns the Galois element index.
     fn p(&self) -> i64;
 }
 
+/// Provides write access to the Galois element index `p`.
 pub trait SetGaloisElement {
+    /// Sets the Galois element index.
     fn set_p(&mut self, p: i64);
 }
 
@@ -53,6 +74,7 @@ impl<D: DataRef> GetGaloisElement for GLWEAutomorphismKey<D> {
 }
 
 impl<D: Data> GLWEAutomorphismKey<D> {
+    /// Returns the Galois element index `p`.
     pub fn p(&self) -> i64 {
         self.p
     }
@@ -157,6 +179,7 @@ impl<D: DataRef> fmt::Display for GLWEAutomorphismKey<D> {
 }
 
 impl GLWEAutomorphismKey<Vec<u8>> {
+    /// Allocates a new [`GLWEAutomorphismKey`] with the given parameters.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -171,6 +194,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         )
     }
 
+    /// Allocates a new [`GLWEAutomorphismKey`] with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWEAutomorphismKey {
             key: GGLWE::alloc(n, base2k, k, rank, rank, dnum, dsize),
@@ -178,6 +202,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         }
     }
 
+    /// Returns the byte count required for a [`GLWEAutomorphismKey`] with the given parameters.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -197,36 +222,42 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         )
     }
 
+    /// Returns the byte count required for a [`GLWEAutomorphismKey`] with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         GGLWE::bytes_of(n, base2k, k, rank, rank, dnum, dsize)
     }
 }
 
 impl<D: DataMut> GGLWEToMut for GLWEAutomorphismKey<D> {
+    /// Borrows the data as `&mut [u8]`.
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
 impl<D: DataRef> GGLWEToRef for GLWEAutomorphismKey<D> {
+    /// Borrows the data as `&[u8]`.
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
     }
 }
 
 impl<D: DataRef> GLWEAutomorphismKey<D> {
+    /// Returns an immutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         self.key.at(row, col)
     }
 }
 
 impl<D: DataMut> GLWEAutomorphismKey<D> {
+    /// Returns a mutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }
 
 impl<D: DataMut> ReaderFrom for GLWEAutomorphismKey<D> {
+    /// Deserialises from little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.p = reader.read_u64::<LittleEndian>()? as i64;
         self.key.read_from(reader)
@@ -234,6 +265,7 @@ impl<D: DataMut> ReaderFrom for GLWEAutomorphismKey<D> {
 }
 
 impl<D: DataRef> WriterTo for GLWEAutomorphismKey<D> {
+    /// Serialises in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.p as u64)?;
         self.key.write_to(writer)

@@ -6,7 +6,7 @@ use crate::layouts::{
     prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory},
 };
 
-/// A special [GLWESwitchingKey] required to for the conversion from [LWE] to [GLWE].
+/// A special `GLWESwitchingKey` required for the conversion from `LWE` to `GLWE`.
 #[derive(PartialEq, Eq)]
 pub struct LWEToGLWEKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 

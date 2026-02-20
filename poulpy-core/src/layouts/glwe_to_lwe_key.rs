@@ -57,7 +57,7 @@ impl GGLWEInfos for GLWEToLWEKeyLayout {
     }
 }
 
-/// A special [GLWESwitchingKey] required to for the conversion from [GLWE] to [LWE].
+/// A special [`GLWESwitchingKey`] required for the conversion from `GLWE` to `LWE`.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWEKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 

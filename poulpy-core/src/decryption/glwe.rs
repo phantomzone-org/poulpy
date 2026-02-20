@@ -11,6 +11,7 @@ use crate::layouts::{
 };
 
 impl GLWE<Vec<u8>> {
+    /// Returns the number of scratch bytes required by [`GLWE::decrypt`].
     pub fn decrypt_tmp_bytes<A, M, BE: Backend>(module: &M, a_infos: &A) -> usize
     where
         A: GLWEInfos,
@@ -21,6 +22,14 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<DataSelf: DataRef> GLWE<DataSelf> {
+    /// Decrypts this GLWE ciphertext into a plaintext using the prepared secret key.
+    ///
+    /// Computes `pt = body + mask * secret`, where `body` is the first column
+    /// of the ciphertext and `mask` comprises the remaining columns. The result
+    /// is then normalized into the plaintext decomposition basis.
+    ///
+    /// The plaintext precision `k` is set to the minimum of the plaintext and
+    /// ciphertext precisions.
     pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
@@ -63,7 +72,7 @@ where
         A: GLWEInfos,
     {
         let size: usize = infos.size();
-        (self.vec_znx_normalize_tmp_bytes() | self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
+        self.vec_znx_normalize_tmp_bytes().max(self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
     }
 
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)

@@ -18,17 +18,33 @@ use crate::{
     },
 };
 
+/// Multiplication of a GLWE ciphertext by a constant polynomial.
+///
+/// Computes `res = a * b * 2^(res_offset * base2k)` where `b` is a
+/// small integer polynomial given as an `i64` slice. The result
+/// precision in `res` is truncated to `res.k()` bits.
+///
+/// Requires scratch space obtainable via [`GLWEMulConst::glwe_mul_const_tmp_bytes`].
 pub trait GLWEMulConst<BE: Backend> {
+    /// Returns the scratch buffer size in bytes needed by
+    /// [`GLWEMulConst::glwe_mul_const`] and [`GLWEMulConst::glwe_mul_const_inplace`].
     fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
 
+    /// Computes `res = a * b * 2^(res_offset * base2k)` out-of-place.
+    ///
+    /// `b` is a constant polynomial represented as an `i64` slice.
+    /// `res` and `a` must have the same rank.
     fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef;
 
+    /// Computes `res = res * b * 2^(res_offset * base2k)` in-place.
+    ///
+    /// `b` is a constant polynomial represented as an `i64` slice.
     fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
@@ -247,13 +263,24 @@ where
     }
 }
 
+/// Multiplication of a GLWE ciphertext by a plaintext polynomial.
+///
+/// Computes `res = a * b * 2^(res_offset * base2k)` where `b` is a
+/// [`GLWEPlaintext`]. Both `a` and `b` must share the same `base2k`.
+///
+/// Requires scratch space obtainable via [`GLWEMulPlain::glwe_mul_plain_tmp_bytes`].
 pub trait GLWEMulPlain<BE: Backend> {
+    /// Returns the scratch buffer size in bytes needed by
+    /// [`GLWEMulPlain::glwe_mul_plain`] and [`GLWEMulPlain::glwe_mul_plain_inplace`].
     fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
+    /// Computes `res = a * b * 2^(res_offset * base2k)` out-of-place.
+    ///
+    /// `a` and `b` must have the same `base2k`. `res` and `a` must have the same rank.
     fn glwe_mul_plain<R, A, B>(
         &self,
         res: &mut GLWE<R>,
@@ -266,27 +293,38 @@ pub trait GLWEMulPlain<BE: Backend> {
         A: DataRef,
         B: DataRef;
 
+    /// Computes `res = res * a * 2^(res_offset * base2k)` in-place.
+    ///
+    /// `res` and `a` must have the same `base2k` and rank.
     fn glwe_mul_plain_inplace<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWEPlaintext<A>, scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef;
 }
 
+/// Tensor product of two GLWE ciphertexts and relinearization.
+///
+/// The tensor product expands two rank-k GLWE ciphertexts into a
+/// [`GLWETensor`] of rank `(k+1)*(k+2)/2 - 1`, which can then be
+/// relinearized back to a rank-k GLWE using a tensor key.
+///
+/// Requires scratch space obtainable via the corresponding `_tmp_bytes` methods.
 pub trait GLWETensoring<BE: Backend> {
+    /// Returns the scratch buffer size in bytes needed by
+    /// [`GLWETensoring::glwe_tensor_apply`].
     fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
-    /// res = (a (x) b) * 2^{res_offset * a_base2k}
+    /// Computes `res = (a (x) b) * 2^(res_offset * a_base2k)`.
     ///
-    /// # Requires
-    /// * a.base2k() == b.base2k()
-    /// * a.rank() == b.rank()
+    /// Requires `a.base2k() == b.base2k()` and `a.rank() == b.rank()`.
+    /// The result precision is truncated to `res.max_k().min(a.max_k() + b.max_k() + k * a_base2k)`.
     ///
-    /// # Behavior
-    /// * res precision is truncated to res.max_k().min(a.max_k() + b.max_k() + k * a_base2k)
+    /// Uses Karatsuba-style pairwise convolution to reduce the number
+    /// of NTT multiplications.
     fn glwe_tensor_apply<R, A, B>(
         &self,
         res: &mut GLWETensor<R>,
@@ -299,6 +337,12 @@ pub trait GLWETensoring<BE: Backend> {
         A: DataRef,
         B: DataRef;
 
+    /// Relinearizes a tensor product back to a standard GLWE ciphertext.
+    ///
+    /// Computes `res = a * tsk` where `a` is the tensor product output
+    /// and `tsk` is the prepared tensor switching key. The cross-product
+    /// columns of `a` are multiplied by `tsk` via a GGLWE product, then
+    /// the standard columns are added back.
     fn glwe_tensor_relinearize<R, A, B>(
         &self,
         res: &mut GLWE<R>,
@@ -311,6 +355,8 @@ pub trait GLWETensoring<BE: Backend> {
         A: DataRef,
         B: DataRef;
 
+    /// Returns the scratch buffer size in bytes needed by
+    /// [`GLWETensoring::glwe_tensor_relinearize`].
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
     where
         R: GLWEInfos,
@@ -576,7 +622,7 @@ where
         B: GLWEToRef,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &mut GLWE<&[u8]> = &mut a.to_ref();
+        let a: &GLWE<&[u8]> = &a.to_ref();
         let b: &GLWE<&[u8]> = &b.to_ref();
 
         assert_eq!(a.n(), self.n() as u32);

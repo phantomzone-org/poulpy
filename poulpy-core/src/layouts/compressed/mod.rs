@@ -1,3 +1,15 @@
+//! Seed-compressed ciphertext and key layouts.
+//!
+//! Compressed variants store only the *body* component of a
+//! ciphertext or key; the pseudorandom mask is regenerated
+//! deterministically from a 32-byte PRNG seed. This typically
+//! halves (rank-1) the serialised size at the cost of a
+//! decompression step before use.
+//!
+//! Every compressed type has a `decompress` / `GLWEDecompress`
+//! method that expands it back into the corresponding standard
+//! layout.
+
 mod gglwe;
 mod gglwe_to_ggsw_key;
 mod ggsw;

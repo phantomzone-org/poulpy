@@ -9,6 +9,10 @@ use crate::layouts::{
 };
 use std::fmt;
 
+/// Seed-compressed GLWE tensor key layout.
+///
+/// A newtype wrapper around [`GGLWECompressed`] representing
+/// the seed-compressed form of a GLWE tensor key.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWETensorKeyCompressed<D: Data>(pub(crate) GGLWECompressed<D>);
 

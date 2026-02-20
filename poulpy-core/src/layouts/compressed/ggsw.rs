@@ -12,6 +12,11 @@ use crate::layouts::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
+/// Seed-compressed GGSW (gadget GSW) ciphertext layout.
+///
+/// Stores only the body components of a [`GGSW`] ciphertext; the mask
+/// polynomials are regenerated deterministically from 32-byte PRNG
+/// seeds during decompression.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGSWCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
@@ -22,7 +27,9 @@ pub struct GGSWCompressed<D: Data> {
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
+/// Provides mutable access to the PRNG seeds of a compressed GGSW.
 pub trait GGSWCompressedSeedMut {
+    /// Returns a mutable reference to the vector of 32-byte PRNG seeds.
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]>;
 }
 
@@ -32,7 +39,9 @@ impl<D: DataMut> GGSWCompressedSeedMut for GGSWCompressed<D> {
     }
 }
 
+/// Provides read access to the PRNG seeds of a compressed GGSW.
 pub trait GGSWCompressedSeed {
+    /// Returns a reference to the vector of 32-byte PRNG seeds.
     fn seed(&self) -> &Vec<[u8; 32]>;
 }
 
@@ -97,6 +106,7 @@ impl<D: DataMut> FillUniform for GGSWCompressed<D> {
 }
 
 impl GGSWCompressed<Vec<u8>> {
+    /// Allocates a new compressed GGSW by copying parameters from an existing info provider.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -111,6 +121,7 @@ impl GGSWCompressed<Vec<u8>> {
         )
     }
 
+    /// Allocates a new compressed GGSW with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
@@ -136,6 +147,7 @@ impl GGSWCompressed<Vec<u8>> {
         }
     }
 
+    /// Returns the serialized byte size by copying parameters from an existing info provider.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGSWInfos,
@@ -150,6 +162,7 @@ impl GGSWCompressed<Vec<u8>> {
         )
     }
 
+    /// Returns the serialized byte size for a compressed GGSW with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
@@ -170,6 +183,7 @@ impl GGSWCompressed<Vec<u8>> {
 }
 
 impl<D: DataRef> GGSWCompressed<D> {
+    /// Returns an immutably-borrowed compressed GLWE at the given row and column.
     pub fn at(&self, row: usize, col: usize) -> GLWECompressed<&[u8]> {
         let rank: usize = self.rank().into();
         GLWECompressed {
@@ -183,6 +197,7 @@ impl<D: DataRef> GGSWCompressed<D> {
 }
 
 impl<D: DataMut> GGSWCompressed<D> {
+    /// Returns a mutably-borrowed compressed GLWE at the given row and column.
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
         let rank: usize = self.rank().into();
         GLWECompressed {
@@ -224,10 +239,15 @@ impl<D: DataRef> WriterTo for GGSWCompressed<D> {
     }
 }
 
+/// Trait for decompressing a [`GGSWCompressed`] into a standard [`GGSW`].
+///
+/// Iterates over every (row, column) entry, decompressing each
+/// compressed GLWE individually via [`GLWEDecompress`].
 pub trait GGSWDecompress
 where
     Self: GLWEDecompress,
 {
+    /// Decompresses `other` into `res`.
     fn decompress_ggsw<R, O>(&self, res: &mut R, other: &O)
     where
         R: GGSWToMut,
@@ -251,6 +271,7 @@ where
 impl<B: Backend> GGSWDecompress for Module<B> where Self: GLWEDecompress {}
 
 impl<D: DataMut> GGSW<D> {
+    /// Decompresses a [`GGSWCompressed`] into this standard GGSW.
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGSWCompressedToRef,
@@ -260,7 +281,9 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
+/// Converts a compressed GGSW to a mutably-borrowed variant.
 pub trait GGSWCompressedToMut {
+    /// Returns a mutably-borrowed view of this compressed GGSW.
     fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]>;
 }
 
@@ -277,7 +300,9 @@ impl<D: DataMut> GGSWCompressedToMut for GGSWCompressed<D> {
     }
 }
 
+/// Converts a compressed GGSW to an immutably-borrowed variant.
 pub trait GGSWCompressedToRef {
+    /// Returns an immutably-borrowed view of this compressed GGSW.
     fn to_ref(&self) -> GGSWCompressed<&[u8]>;
 }
 

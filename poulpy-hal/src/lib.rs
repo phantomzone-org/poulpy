@@ -192,9 +192,9 @@ pub fn assert_alignement<T>(ptr: *const T) {
 /// - The total byte length must be a multiple of `size_of::<V>()`.
 pub fn cast<T, V>(data: &[T]) -> &[V] {
     assert!(size_of::<V>() > 0, "cast: target type V must not be zero-sized");
-    let byte_len: usize = data.len() * size_of::<T>();
+    let byte_len: usize = std::mem::size_of_val(data);
     assert!(
-        byte_len % size_of::<V>() == 0,
+        byte_len.is_multiple_of(size_of::<V>()),
         "cast: byte length {} is not a multiple of target size {}",
         byte_len,
         size_of::<V>()
@@ -218,9 +218,9 @@ pub fn cast<T, V>(data: &[T]) -> &[V] {
 /// - The total byte length must be a multiple of `size_of::<V>()`.
 pub fn cast_mut<T, V>(data: &mut [T]) -> &mut [V] {
     assert!(size_of::<V>() > 0, "cast_mut: target type V must not be zero-sized");
-    let byte_len: usize = data.len() * size_of::<T>();
+    let byte_len: usize = std::mem::size_of_val(data);
     assert!(
-        byte_len % size_of::<V>() == 0,
+        byte_len.is_multiple_of(size_of::<V>()),
         "cast_mut: byte length {} is not a multiple of target size {}",
         byte_len,
         size_of::<V>()
@@ -282,10 +282,7 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 /// - If `size * size_of::<T>()` is not a multiple of `align`.
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert!(size_of::<T>() > 0, "alloc_aligned_custom: zero-sized types are not supported");
-    assert!(
-        align.is_power_of_two(),
-        "Alignment must be a power of two but is {align}"
-    );
+    assert!(align.is_power_of_two(), "Alignment must be a power of two but is {align}");
 
     assert_eq!(
         (size * size_of::<T>()) % align,

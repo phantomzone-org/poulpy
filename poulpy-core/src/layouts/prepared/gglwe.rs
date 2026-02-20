@@ -7,6 +7,14 @@ use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
+/// DFT-domain (prepared) variant of [`GGLWE`].
+///
+/// Stores the gadget GLWE matrix with polynomials in the frequency domain
+/// of the backend's DFT/NTT transform, enabling O(N log N) polynomial
+/// multiplication. The underlying data is held as a [`VmpPMat`], which
+/// represents a prepared matrix suitable for vector-matrix products.
+///
+/// Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GGLWEPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
@@ -15,6 +23,7 @@ pub struct GGLWEPrepared<D: Data, B: Backend> {
     pub(crate) dsize: Dsize,
 }
 
+/// Provides LWE-level parameter accessors (degree, base2k, precision, size).
 impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
@@ -33,12 +42,14 @@ impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
     }
 }
 
+/// Provides the GLWE rank, derived from the output rank.
 impl<D: Data, B: Backend> GLWEInfos for GGLWEPrepared<D, B> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
+/// Provides GGLWE-specific parameter accessors (input/output rank, dsize, dnum).
 impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
@@ -57,10 +68,17 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
     }
 }
 
+/// Factory trait for allocating and preparing [`GGLWEPrepared`] instances.
+///
+/// Requires the backend module to support VMP prepared-matrix allocation,
+/// byte-size queries, and the prepare transform.
 pub trait GGLWEPreparedFactory<BE: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<BE> + VmpPMatBytesOf + VmpPrepare<BE> + VmpPrepareTmpBytes,
 {
+    /// Allocates a new [`GGLWEPrepared`] with the given parameters.
+    ///
+    /// Panics if `dnum * dsize > ceil(k / base2k)`.
     fn alloc_gglwe_prepared(
         &self,
         base2k: Base2K,
@@ -92,6 +110,7 @@ where
         }
     }
 
+    /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
     fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, BE>
     where
         A: GGLWEInfos,
@@ -107,6 +126,7 @@ where
         )
     }
 
+    /// Returns the byte size required to store a [`GGLWEPrepared`] with the given parameters.
     fn bytes_of_gglwe_prepared(
         &self,
         base2k: Base2K,
@@ -133,6 +153,7 @@ where
         self.bytes_of_vmp_pmat(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
     }
 
+    /// Returns the byte size required to store a [`GGLWEPrepared`] matching `infos`.
     fn bytes_of_gglwe_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -148,6 +169,7 @@ where
         )
     }
 
+    /// Returns the scratch-space bytes needed by [`prepare_gglwe`](Self::prepare_gglwe).
     fn prepare_gglwe_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -160,6 +182,9 @@ where
         )
     }
 
+    /// Transforms a standard [`GGLWE`] into the DFT domain, writing the result into `res`.
+    ///
+    /// Both `res` and `other` must share the same ring degree, base2k, precision, and dsize.
     fn prepare_gglwe<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
     where
         R: GGLWEPreparedToMut<BE>,
@@ -183,7 +208,9 @@ impl<BE: Backend> GGLWEPreparedFactory<BE> for Module<BE> where
 {
 }
 
+/// Convenience associated functions for owned (`Vec<u8>`) allocation and byte-size queries.
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+    /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -192,6 +219,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         module.alloc_gglwe_prepared_from_infos(infos)
     }
 
+    /// Allocates a new [`GGLWEPrepared`] with explicit parameters.
     pub fn alloc<M>(
         module: &M,
         base2k: Base2K,
@@ -207,6 +235,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         module.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
+    /// Returns the byte size for a [`GGLWEPrepared`] matching `infos`.
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -215,6 +244,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         module.bytes_of_gglwe_prepared_from_infos(infos)
     }
 
+    /// Returns the byte size for a [`GGLWEPrepared`] with explicit parameters.
     pub fn bytes_of<M>(
         module: &M,
         base2k: Base2K,
@@ -232,6 +262,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
 }
 
 impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
+    /// Transforms a standard [`GGLWE`] (`other`) into the DFT domain, writing into `self`.
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGLWEToRef,
@@ -242,6 +273,7 @@ impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
 }
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+    /// Returns the scratch-space bytes needed by [`prepare`](Self::prepare).
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where
         M: GGLWEPreparedFactory<B>,
@@ -250,7 +282,9 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     }
 }
 
+/// Conversion trait for obtaining a mutable borrowed [`GGLWEPrepared`].
 pub trait GGLWEPreparedToMut<B: Backend> {
+    /// Returns a [`GGLWEPrepared`] with a mutable borrow of the underlying data.
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B>;
 }
 
@@ -265,7 +299,9 @@ impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GGLWEPrepared<D, B> {
     }
 }
 
+/// Conversion trait for obtaining an immutably borrowed [`GGLWEPrepared`].
 pub trait GGLWEPreparedToRef<B: Backend> {
+    /// Returns a [`GGLWEPrepared`] with an immutable borrow of the underlying data.
     fn to_ref(&self) -> GGLWEPrepared<&[u8], B>;
 }
 

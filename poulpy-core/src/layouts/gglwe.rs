@@ -207,7 +207,7 @@ impl GGLWE<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0
@@ -259,7 +259,7 @@ impl GGLWE<Vec<u8>> {
         dsize: Dsize,
     ) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0

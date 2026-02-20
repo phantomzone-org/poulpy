@@ -97,11 +97,11 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
 
-        let scrach_needed: usize = self.glwe_keyswitch_tmp_bytes(res, a, key);
+        let scratch_needed: usize = self.glwe_keyswitch_tmp_bytes(res, a, key);
 
         assert!(
-            scratch.available() >= scrach_needed,
-            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scrach_needed}",
+            scratch.available() >= scratch_needed,
+            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scratch_needed}",
             scratch.available(),
         );
 
@@ -153,11 +153,11 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
 
-        let scrach_needed: usize = self.glwe_keyswitch_tmp_bytes(res, res, key);
+        let scratch_needed: usize = self.glwe_keyswitch_tmp_bytes(res, res, key);
 
         assert!(
-            scratch.available() >= scrach_needed,
-            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scrach_needed}",
+            scratch.available() >= scratch_needed,
+            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scratch_needed}",
             scratch.available(),
         );
 

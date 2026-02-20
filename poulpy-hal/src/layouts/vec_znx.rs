@@ -355,9 +355,10 @@ impl<D: DataRef> WriterTo for VecZnx<D> {
         writer.write_u64::<LittleEndian>(self.cols as u64)?;
         writer.write_u64::<LittleEndian>(self.size as u64)?;
         writer.write_u64::<LittleEndian>(self.max_size as u64)?;
+        let logical_len: usize = self.n * self.cols * self.size * size_of::<i64>();
         let buf: &[u8] = self.data.as_ref();
-        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
-        writer.write_all(buf)?;
+        writer.write_u64::<LittleEndian>(logical_len as u64)?;
+        writer.write_all(&buf[..logical_len])?;
         Ok(())
     }
 }

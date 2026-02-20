@@ -12,6 +12,10 @@ use crate::{
     },
 };
 
+/// DFT-domain (prepared) variant of a GLWE public key.
+///
+/// Wraps a [`GLWEPrepared`] with distribution metadata for public-key
+/// encryption. Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) key: GLWEPrepared<D, B>,

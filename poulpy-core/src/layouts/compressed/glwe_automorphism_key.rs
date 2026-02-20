@@ -11,6 +11,10 @@ use crate::layouts::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
+/// Seed-compressed GLWE automorphism key layout.
+///
+/// Wraps a [`GGLWECompressed`] with a Galois element `p` for applying
+/// automorphisms `X → X^p` on GLWE ciphertexts.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEAutomorphismKeyCompressed<D: Data> {
     pub(crate) key: GGLWECompressed<D>,

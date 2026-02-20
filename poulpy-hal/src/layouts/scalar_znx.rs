@@ -302,9 +302,7 @@ impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
         if expected_len != len {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!(
-                    "ScalarZnx metadata inconsistent: n={new_n} * cols={new_cols} * 8 = {expected_len} != data len={len}"
-                ),
+                format!("ScalarZnx metadata inconsistent: n={new_n} * cols={new_cols} * 8 = {expected_len} != data len={len}"),
             ));
         }
 

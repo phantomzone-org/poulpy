@@ -1,3 +1,12 @@
+//! Noise-variance estimation for parameter selection.
+//!
+//! This module provides closed-form noise formulas for the core
+//! homomorphic operations (external product, key-switching, etc.).
+//! These functions are intended for parameter-set design and
+//! noise-budget analysis, not for runtime use.
+//!
+//! Most helper functions are `pub(crate)`.
+
 mod gglwe;
 mod ggsw;
 mod glwe;

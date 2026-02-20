@@ -111,7 +111,7 @@ impl GLWEPacker {
     /// * `res`: space to append fully packed ciphertext. Only when the number
     ///   of packed ciphertexts reaches N/2^log_batch is a result written.
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
-    /// * `auto_keys`: an implementation of [GLWEAutomorphismKeyHelper], containing [GLWEAutomorphismKeyPrepared] with index of [Self::galois_elements].
+    /// * `auto_keys`: an implementation of [`GLWEAutomorphismKeyHelper`], containing `GLWEAutomorphismKeyPrepared` with index of [`Self::galois_elements`].
     /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
     pub fn add<A, K, H, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &H, scratch: &mut Scratch<BE>)
     where
@@ -163,13 +163,6 @@ impl<BE: Backend> GLWEPackerOps<BE> for Module<BE> where
         + GLWEAdd
         + GLWENormalize<BE>
         + GLWECopy
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
 {
 }
 
@@ -184,14 +177,7 @@ where
         + GLWEShift<BE>
         + GLWEAdd
         + GLWENormalize<BE>
-        + GLWECopy
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>,
+        + GLWECopy,
 {
     fn packer_add<A, K, H>(&self, packer: &mut GLWEPacker, a: Option<&A>, i: usize, auto_keys: &H, scratch: &mut Scratch<BE>)
     where
@@ -221,14 +207,7 @@ fn pack_core<A, K, H, M, BE: Backend>(
         + GLWEShift<BE>
         + GLWEAdd
         + GLWENormalize<BE>
-        + GLWECopy
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>,
+        + GLWECopy,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -281,7 +260,6 @@ fn combine<B, K, H, M, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     B: GLWEToRef + GLWEInfos,
-    B: GLWEToRef + GLWEInfos,
     M: ModuleLogN
         + GLWEAutomorphism<BE>
         + GaloisElement
@@ -290,14 +268,7 @@ fn combine<B, K, H, M, BE: Backend>(
         + GLWEShift<BE>
         + GLWEAdd
         + GLWENormalize<BE>
-        + GLWECopy
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>,
+        + GLWECopy,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     Scratch<BE>: ScratchTakeCore<BE>,

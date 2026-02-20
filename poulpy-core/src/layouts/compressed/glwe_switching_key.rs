@@ -11,6 +11,10 @@ use crate::layouts::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
+/// Seed-compressed GLWE switching key layout.
+///
+/// Wraps a [`GGLWECompressed`] with additional input/output degree metadata
+/// for key-switching between GLWE ciphertexts with different ring degrees.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKeyCompressed<D: Data> {
     pub(crate) key: GGLWECompressed<D>,
@@ -108,6 +112,7 @@ impl<D: DataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
 }
 
 impl GLWESwitchingKeyCompressed<Vec<u8>> {
+    /// Allocates a new compressed GLWE switching key by copying parameters from an existing info provider.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -123,6 +128,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
         )
     }
 
+    /// Allocates a new compressed GLWE switching key with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWESwitchingKeyCompressed {
             key: GGLWECompressed::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
@@ -131,6 +137,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
         }
     }
 
+    /// Returns the serialized byte size by copying parameters from an existing info provider.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -138,6 +145,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
         GGLWECompressed::bytes_of_from_infos(infos)
     }
 
+    /// Returns the serialized byte size for a compressed GLWE switching key with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize
 where {
         GGLWECompressed::bytes_of(n, base2k, k, rank_in, dnum, dsize)
@@ -160,10 +168,12 @@ impl<D: DataRef> WriterTo for GLWESwitchingKeyCompressed<D> {
     }
 }
 
+/// Trait for decompressing a [`GLWESwitchingKeyCompressed`] into a standard [`GLWESwitchingKey`].
 pub trait GLWESwitchingKeyDecompress
 where
     Self: GGLWEDecompress,
 {
+    /// Decompresses `other` into `res`, copying degree metadata.
     fn decompress_glwe_switching_key<R, O>(&self, res: &mut R, other: &O)
     where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
@@ -179,6 +189,7 @@ where
 impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecompress {}
 
 impl<D: DataMut> GLWESwitchingKey<D> {
+    /// Decompresses a [`GLWESwitchingKeyCompressed`] into this standard GLWE switching key.
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,

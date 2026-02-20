@@ -13,6 +13,11 @@ use crate::layouts::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
+/// Seed-compressed GGLWE (gadget GLWE) ciphertext layout.
+///
+/// Stores only the body components of a [`GGLWE`] ciphertext matrix;
+/// the mask polynomials are regenerated deterministically from 32-byte
+/// PRNG seeds during decompression.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
@@ -23,7 +28,9 @@ pub struct GGLWECompressed<D: Data> {
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
+/// Provides mutable access to the PRNG seeds of a compressed GGLWE.
 pub trait GGLWECompressedSeedMut {
+    /// Returns a mutable reference to the vector of 32-byte PRNG seeds.
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]>;
 }
 
@@ -33,7 +40,9 @@ impl<D: DataMut> GGLWECompressedSeedMut for GGLWECompressed<D> {
     }
 }
 
+/// Provides read access to the PRNG seeds of a compressed GGLWE.
 pub trait GGLWECompressedSeed {
+    /// Returns a reference to the vector of 32-byte PRNG seeds.
     fn seed(&self) -> &Vec<[u8; 32]>;
 }
 
@@ -106,6 +115,7 @@ impl<D: DataRef> fmt::Display for GGLWECompressed<D> {
 }
 
 impl GGLWECompressed<Vec<u8>> {
+    /// Allocates a new compressed GGLWE by copying parameters from an existing info provider.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -121,6 +131,7 @@ impl GGLWECompressed<Vec<u8>> {
         )
     }
 
+    /// Allocates a new compressed GGLWE with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
@@ -146,6 +157,7 @@ impl GGLWECompressed<Vec<u8>> {
         }
     }
 
+    /// Returns the serialized byte size by copying parameters from an existing info provider.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -160,6 +172,7 @@ impl GGLWECompressed<Vec<u8>> {
         )
     }
 
+    /// Returns the serialized byte size for a compressed GGLWE with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
@@ -234,10 +247,15 @@ impl<D: DataRef> WriterTo for GGLWECompressed<D> {
     }
 }
 
+/// Trait for decompressing a [`GGLWECompressed`] into a standard [`GGLWE`].
+///
+/// Iterates over every (row, column) entry, decompressing each
+/// compressed GLWE row individually via [`GLWEDecompress`].
 pub trait GGLWEDecompress
 where
     Self: GLWEDecompress,
 {
+    /// Decompresses `other` into `res`.
     fn decompress_gglwe<R, O>(&self, res: &mut R, other: &O)
     where
         R: GGLWEToMut,
@@ -262,6 +280,7 @@ where
 impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform + VecZnxCopy {}
 
 impl<D: DataMut> GGLWE<D> {
+    /// Decompresses a [`GGLWECompressed`] into this standard GGLWE.
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGLWECompressedToRef,
@@ -271,7 +290,9 @@ impl<D: DataMut> GGLWE<D> {
     }
 }
 
+/// Converts a compressed GGLWE to a mutably-borrowed variant.
 pub trait GGLWECompressedToMut {
+    /// Returns a mutably-borrowed view of this compressed GGLWE.
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]>;
 }
 
@@ -288,7 +309,9 @@ impl<D: DataMut> GGLWECompressedToMut for GGLWECompressed<D> {
     }
 }
 
+/// Converts a compressed GGLWE to an immutably-borrowed variant.
 pub trait GGLWECompressedToRef {
+    /// Returns an immutably-borrowed view of this compressed GGLWE.
     fn to_ref(&self) -> GGLWECompressed<&[u8]>;
 }
 

@@ -15,6 +15,16 @@ use crate::{
 };
 
 impl<D: DataMut> GGLWECompressed<D> {
+    /// Encrypts a plaintext under a secret key, producing a compressed GGLWE ciphertext.
+    ///
+    /// The plaintext is decomposed across the gadget rows, and each row is encrypted
+    /// as a compressed GLWE ciphertext with seeds derived from `seed` via branching.
+    ///
+    /// - `pt`: the scalar ZNX plaintext to encrypt.
+    /// - `sk`: the GLWE secret key in prepared form.
+    /// - `seed`: seed for deterministic mask generation (branched per row and column).
+    /// - `source_xe`: PRNG source for sampling encryption noise.
+    /// - `scratch`: scratch buffer (see [`GGLWECompressed::encrypt_sk_tmp_bytes`] for sizing).
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<M, P, S, BE: Backend>(
         &mut self,
@@ -34,6 +44,7 @@ impl<D: DataMut> GGLWECompressed<D> {
 }
 
 impl GGLWECompressed<Vec<u8>> {
+    /// Returns the scratch buffer size in bytes required by [`GGLWECompressed::encrypt_sk`].
     pub fn encrypt_sk_tmp_bytes<M, BE: Backend, A>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,

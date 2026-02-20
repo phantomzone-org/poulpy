@@ -9,6 +9,11 @@ use crate::{
     layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 
+/// DFT-domain (prepared) variant of [`GLWESecret`].
+///
+/// Stores the GLWE secret key with polynomials in the frequency domain
+/// for fast multiplication during encryption and decryption. Tied to a
+/// specific backend via `B: Backend`.
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) data: SvpPPol<D, B>,
     pub(crate) dist: Distribution,

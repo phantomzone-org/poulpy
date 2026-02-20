@@ -117,7 +117,9 @@ impl<B: Backend> Module<B> {
     #[allow(clippy::missing_safety_doc)]
     #[inline]
     pub unsafe fn ptr(&self) -> *mut <B as Backend>::Handle {
-        self.ptr.expect("called ptr() on a marker module (no backend handle)").as_ptr()
+        self.ptr
+            .expect("called ptr() on a marker module (no backend handle)")
+            .as_ptr()
     }
 
     /// Returns the ring degree `N`.
@@ -132,7 +134,9 @@ impl<B: Backend> Module<B> {
     /// Panics if this is a marker module (created via `new_marker`).
     #[inline]
     pub fn as_mut_ptr(&self) -> *mut B::Handle {
-        self.ptr.expect("called as_mut_ptr() on a marker module (no backend handle)").as_ptr()
+        self.ptr
+            .expect("called as_mut_ptr() on a marker module (no backend handle)")
+            .as_ptr()
     }
 
     /// Returns true if this module has a backend handle (not a marker).

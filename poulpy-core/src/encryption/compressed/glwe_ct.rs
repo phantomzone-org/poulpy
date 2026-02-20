@@ -13,6 +13,7 @@ use crate::{
 };
 
 impl GLWECompressed<Vec<u8>> {
+    /// Returns the scratch buffer size in bytes required by [`GLWECompressed::encrypt_sk`].
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
@@ -23,6 +24,16 @@ impl GLWECompressed<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWECompressed<D> {
+    /// Encrypts a plaintext under a secret key, producing a compressed GLWE ciphertext.
+    ///
+    /// The mask is deterministically generated from `seed_xa` rather than stored explicitly.
+    /// Only the ciphertext body and the seed are retained in the output.
+    ///
+    /// - `pt`: the plaintext to encrypt.
+    /// - `sk`: the GLWE secret key in prepared form.
+    /// - `seed_xa`: seed for deterministic mask generation.
+    /// - `source_xe`: PRNG source for sampling encryption noise.
+    /// - `scratch`: scratch buffer (see [`GLWECompressed::encrypt_sk_tmp_bytes`] for sizing).
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<M, P, S, BE: Backend>(
         &mut self,
@@ -41,11 +52,25 @@ impl<D: DataMut> GLWECompressed<D> {
     }
 }
 
+/// Compressed secret-key encryption of a GLWE ciphertext.
+///
+/// Produces a [`GLWECompressed`] where the mask is derived from a seed
+/// instead of being stored explicitly.
 pub trait GLWECompressedEncryptSk<BE: Backend> {
+    /// Returns the scratch buffer size in bytes required by
+    /// [`glwe_compressed_encrypt_sk`](Self::glwe_compressed_encrypt_sk).
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos;
 
+    /// Encrypts a plaintext under a GLWE secret key into a compressed GLWE ciphertext.
+    ///
+    /// - `res`: output compressed GLWE ciphertext.
+    /// - `pt`: the plaintext to encrypt.
+    /// - `sk`: the GLWE secret key in prepared form.
+    /// - `seed_xa`: seed for deterministic mask generation.
+    /// - `source_xe`: PRNG source for sampling encryption noise.
+    /// - `scratch`: scratch buffer.
     fn glwe_compressed_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,

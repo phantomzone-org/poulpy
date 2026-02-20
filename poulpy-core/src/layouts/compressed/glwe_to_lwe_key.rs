@@ -11,6 +11,10 @@ use crate::layouts::{
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 
+/// Seed-compressed GLWE-to-LWE switching key layout.
+///
+/// A newtype wrapper around [`GLWESwitchingKeyCompressed`] for converting
+/// GLWE ciphertexts to LWE ciphertexts via key-switching.
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GLWESwitchingKeyCompressed<D>);
 

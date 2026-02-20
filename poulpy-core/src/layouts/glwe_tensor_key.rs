@@ -9,6 +9,12 @@ use crate::layouts::{
 
 use std::fmt;
 
+/// Plain-data descriptor for a [`GLWETensorKey`] carrying only the
+/// layout parameters (no backing buffer).
+///
+/// Implements [`LWEInfos`], [`GLWEInfos`] and [`GGLWEInfos`] so it can
+/// be passed to any generic constructor that needs layout information.
+/// The `rank_in` is derived from `rank` as `max(1, rank*(rank+1)/2)`.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWETensorKeyLayout {
     pub n: Degree,
@@ -19,6 +25,13 @@ pub struct GLWETensorKeyLayout {
     pub dsize: Dsize,
 }
 
+/// GLWE tensor key used for relinearisation after a tensor product.
+///
+/// Wraps a [`GGLWE`] whose `rank_in` equals the number of unique
+/// pairs `max(1, rank*(rank+1)/2)` produced by the tensor product.
+///
+/// `D: Data` is the backing storage type (e.g. `Vec<u8>`, `&[u8]`,
+/// `&mut [u8]`).
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWETensorKey<D: Data>(pub(crate) GGLWE<D>);
 
@@ -127,6 +140,7 @@ impl<D: DataRef> fmt::Display for GLWETensorKey<D> {
 }
 
 impl GLWETensorKey<Vec<u8>> {
+    /// Allocates a new [`GLWETensorKey`] with the given parameters.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -141,11 +155,13 @@ impl GLWETensorKey<Vec<u8>> {
         )
     }
 
+    /// Allocates a new [`GLWETensorKey`] with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         GLWETensorKey(GGLWE::alloc(n, base2k, k, Rank(pairs), rank, dnum, dsize))
     }
 
+    /// Returns the byte count required for a [`GLWETensorKey`] with the given parameters.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -160,6 +176,7 @@ impl GLWETensorKey<Vec<u8>> {
         )
     }
 
+    /// Returns the byte count required for a [`GLWETensorKey`] with the given parameters.
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         GGLWE::bytes_of(n, base2k, k, Rank(pairs), rank, dnum, dsize)

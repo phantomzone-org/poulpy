@@ -6,6 +6,10 @@ use crate::layouts::{
     prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory},
 };
 
+/// DFT-domain (prepared) variant of a GLWE-to-LWE conversion key.
+///
+/// A newtype wrapper around [`GLWESwitchingKeyPrepared`] for converting
+/// GLWE to LWE. Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GLWEToLWEKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 

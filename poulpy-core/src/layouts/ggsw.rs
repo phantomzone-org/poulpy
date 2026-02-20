@@ -6,12 +6,21 @@ use std::fmt;
 
 use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
+/// Trait providing the parameter accessors for a GGSW (Gadget GSW) ciphertext.
+///
+/// A GGSW ciphertext is a matrix of [`GLWE`] ciphertexts with `rank_in = rank + 1`
+/// input columns and `rank_out = rank + 1` output columns. It is used as the
+/// left operand of external products.
+/// Extends [`GLWEInfos`] with gadget decomposition parameters.
 pub trait GGSWInfos
 where
     Self: GLWEInfos,
 {
+    /// Returns the number of decomposition rows.
     fn dnum(&self) -> Dnum;
+    /// Returns the decomposition digit size.
     fn dsize(&self) -> Dsize;
+    /// Returns a plain-data [`GGSWLayout`] snapshot of the current parameters.
     fn ggsw_layout(&self) -> GGSWLayout {
         GGSWLayout {
             n: self.n(),
@@ -24,13 +33,20 @@ where
     }
 }
 
+/// Plain-data snapshot of the parameters that describe a [`GGSW`] ciphertext.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GGSWLayout {
+    /// Ring degree.
     pub n: Degree,
+    /// Base-2-log of the limb width.
     pub base2k: Base2K,
+    /// Torus precision.
     pub k: TorusPrecision,
+    /// GLWE rank (number of mask polynomials per row).
     pub rank: Rank,
+    /// Number of decomposition rows.
     pub dnum: Dnum,
+    /// Decomposition digit size.
     pub dsize: Dsize,
 }
 
@@ -63,6 +79,13 @@ impl GGSWInfos for GGSWLayout {
     }
 }
 
+/// A GGSW (Gadget GSW) ciphertext.
+///
+/// Stored as a [`MatZnx`] matrix of [`GLWE`] ciphertexts with
+/// `rank_in = rank + 1` input columns and `rank_out = rank + 1` output columns.
+/// Used as the left operand of external products.
+///
+/// `D: Data` is the storage backend (e.g. `Vec<u8>`, `&[u8]`, `&mut [u8]`).
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGSW<D: Data> {
     pub(crate) data: MatZnx<D>,
@@ -167,7 +190,7 @@ impl GGSW<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0
@@ -210,7 +233,7 @@ impl GGSW<Vec<u8>> {
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0

@@ -6,6 +6,10 @@ use crate::layouts::{
     prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory},
 };
 
+/// DFT-domain (prepared) variant of an LWE switching key.
+///
+/// A newtype wrapper around [`GLWESwitchingKeyPrepared`] for LWE key-switching.
+/// Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct LWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 

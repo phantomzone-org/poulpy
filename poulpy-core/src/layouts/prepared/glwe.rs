@@ -5,6 +5,11 @@ use poulpy_hal::{
 
 use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToRef, GetDegree, LWEInfos, Rank, TorusPrecision};
 
+/// DFT-domain (prepared) variant of [`GLWE`].
+///
+/// Stores polynomials in the frequency domain of the backend's DFT/NTT
+/// transform, enabling O(N log N) polynomial multiplication.
+/// Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GLWEPrepared<D: Data, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
@@ -36,10 +41,12 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPrepared<D, B> {
     }
 }
 
+/// Trait for allocating and preparing DFT-domain GLWE ciphertexts.
 pub trait GLWEPreparedFactory<B: Backend>
 where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>,
 {
+    /// Allocates a new prepared GLWE with the given parameters.
     fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<Vec<u8>, B> {
         GLWEPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),

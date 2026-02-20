@@ -20,6 +20,7 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
+    /// Returns the scratch space (in bytes) required by [`GLWE::encrypt_sk`].
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
@@ -28,6 +29,7 @@ impl GLWE<Vec<u8>> {
         module.glwe_encrypt_sk_tmp_bytes(infos)
     }
 
+    /// Returns the scratch space (in bytes) required by [`GLWE::encrypt_pk`].
     pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
@@ -38,6 +40,16 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
+    /// Encrypts a plaintext under a GLWE secret key.
+    ///
+    /// Produces a GLWE ciphertext `ct = (c0, c1, ..., c_{rank})` such that
+    /// decryption under `sk` recovers the plaintext `pt`.
+    ///
+    /// - `pt`: the GLWE plaintext to encrypt.
+    /// - `sk`: the prepared GLWE secret key.
+    /// - `source_xa`: PRNG source for mask sampling.
+    /// - `source_xe`: PRNG source for error sampling.
+    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_sk_tmp_bytes`].
     pub fn encrypt_sk<P, S, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -55,6 +67,14 @@ impl<D: DataMut> GLWE<D> {
         module.glwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 
+    /// Encrypts a zero plaintext under a GLWE secret key.
+    ///
+    /// Equivalent to [`GLWE::encrypt_sk`] with a zero plaintext.
+    ///
+    /// - `sk`: the prepared GLWE secret key.
+    /// - `source_xa`: PRNG source for mask sampling.
+    /// - `source_xe`: PRNG source for error sampling.
+    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_sk_tmp_bytes`].
     pub fn encrypt_zero_sk<S, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -70,6 +90,16 @@ impl<D: DataMut> GLWE<D> {
         module.glwe_encrypt_zero_sk(self, sk, source_xa, source_xe, scratch);
     }
 
+    /// Encrypts a plaintext under a GLWE public key.
+    ///
+    /// Produces a GLWE ciphertext by sampling a uniform polynomial `u`,
+    /// multiplying it with the public key, and adding the plaintext and error.
+    ///
+    /// - `pt`: the GLWE plaintext to encrypt.
+    /// - `pk`: the prepared GLWE public key.
+    /// - `source_xu`: PRNG source for uniform sampling of `u`.
+    /// - `source_xe`: PRNG source for error sampling.
+    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_pk_tmp_bytes`].
     pub fn encrypt_pk<P, K, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -86,6 +116,14 @@ impl<D: DataMut> GLWE<D> {
         module.glwe_encrypt_pk(self, pt, pk, source_xu, source_xe, scratch);
     }
 
+    /// Encrypts a zero plaintext under a GLWE public key.
+    ///
+    /// Equivalent to [`GLWE::encrypt_pk`] with a zero plaintext.
+    ///
+    /// - `pk`: the prepared GLWE public key.
+    /// - `source_xu`: PRNG source for uniform sampling.
+    /// - `source_xe`: PRNG source for error sampling.
+    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_pk_tmp_bytes`].
     pub fn encrypt_zero_pk<K, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -101,11 +139,19 @@ impl<D: DataMut> GLWE<D> {
     }
 }
 
+/// Secret-key encryption of GLWE ciphertexts.
+///
+/// Encrypts a GLWE plaintext (or zero) under a prepared GLWE secret key,
+/// producing a GLWE ciphertext. The mask coefficients are sampled uniformly
+/// from `source_xa` and the error is sampled as a discrete Gaussian from
+/// `source_xe`.
 pub trait GLWEEncryptSk<BE: Backend> {
+    /// Returns the scratch space (in bytes) required by the encryption methods.
     fn glwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos;
 
+    /// Encrypts plaintext `pt` under secret key `sk`, writing the result to `res`.
     fn glwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,

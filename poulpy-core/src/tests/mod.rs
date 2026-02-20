@@ -1,3 +1,9 @@
+//! Test utilities and backend-parametrised integration test suites.
+//!
+//! The [`test_suite`] sub-module contains reusable test functions
+//! that are instantiated for each backend via the
+//! [`poulpy_hal::backend_test_suite!`] macro.
+
 pub mod test_suite;
 
 #[cfg(test)]

@@ -6,6 +6,11 @@ use crate::layouts::{
     prepared::{GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef},
 };
 
+/// DFT-domain (prepared) variant of a GLWE switching key.
+///
+/// Wraps a [`GGLWEPrepared`] with input/output degree metadata for
+/// key-switching between GLWE ciphertexts. Tied to a specific backend
+/// via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GLWESwitchingKeyPrepared<D: Data, B: Backend> {
     pub(crate) key: GGLWEPrepared<D, B>,

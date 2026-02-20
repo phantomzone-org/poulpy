@@ -5,6 +5,10 @@ use crate::layouts::{
     GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
+/// DFT-domain (prepared) variant of a GLWE tensor key.
+///
+/// A newtype wrapper around [`GGLWEPrepared`] for tensor operations.
+/// Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GLWETensorKeyPrepared<D: Data, B: Backend>(pub(crate) GGLWEPrepared<D, B>);
 

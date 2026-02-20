@@ -1,3 +1,68 @@
+//! Backend-agnostic RLWE-based homomorphic encryption primitives.
+//!
+//! `poulpy-core` implements the cryptographic building blocks of a
+//! Ring-LWE (RLWE) fully homomorphic encryption (FHE) scheme on top
+//! of the hardware-abstraction layer provided by [`poulpy_hal`].
+//! All operations are expressed as traits on [`poulpy_hal::layouts::Module<BE>`],
+//! making the crate portable across CPU, AVX, and future backends.
+//!
+//! # Architecture
+//!
+//! ## Three-layer layout system
+//!
+//! Every ciphertext and key type exists in three representations,
+//! defined in the [`layouts`] module:
+//!
+//! | Layer | Purpose | Generic params |
+//! |---|---|---|
+//! | **Standard** (`GLWE<D>`, `GGSW<D>`, ...) | Serializable, platform-independent | `D: Data` |
+//! | **Compressed** (`GLWECompressed<D>`, ...) | Reduced storage via seed-based mask regeneration | `D: Data` |
+//! | **Prepared** (`GLWEPrepared<D, B>`, ...) | DFT-domain, optimised for fast polynomial arithmetic | `D: Data, B: Backend` |
+//!
+//! `D: Data` abstracts ownership: `Vec<u8>` (owned), `&[u8]` (borrowed),
+//! or `&mut [u8]` (mutable borrow).
+//!
+//! ## Scratch-space allocation
+//!
+//! Operations never allocate on the heap internally. Instead, callers
+//! supply a [`poulpy_hal::layouts::Scratch`] buffer from which temporaries are
+//! arena-allocated via [`ScratchTakeCore`]. Every operation that needs
+//! scratch space has a companion `*_tmp_bytes` method returning the
+//! required byte count.
+//!
+//! ## Parameter newtypes
+//!
+//! Domain quantities are wrapped in [`u32`]-backed newtypes with
+//! saturating arithmetic: [`layouts::Degree`], [`layouts::Base2K`],
+//! [`layouts::TorusPrecision`], [`layouts::Rank`], [`layouts::Dnum`],
+//! [`layouts::Dsize`].
+//!
+//! # Ciphertext types
+//!
+//! * [`layouts::LWE`] -- Learning With Errors ciphertext (scalar ring element).
+//! * [`layouts::GLWE`] -- Generalised LWE ciphertext (polynomial ring).
+//! * [`layouts::GGLWE`] -- Gadget GLWE, a matrix of GLWE rows used for key-switching.
+//! * [`layouts::GGSW`] -- Gadget GSW ciphertext, used as the left operand of external products.
+//!
+//! # Module overview
+//!
+//! | Module | Responsibility |
+//! |---|---|
+//! | [`layouts`] | Type definitions for all ciphertext, key, plaintext, and secret layouts |
+//! | encryption | Secret-key, public-key, and compressed encryption |
+//! | decryption | Decryption of GLWE, LWE, and tensor ciphertexts |
+//! | operations | Ciphertext arithmetic (add, sub, rotate, shift, normalize, mul) |
+//! | external\_product | GGSW x GLWE external product (core HE multiplication) |
+//! | keyswitching | Key-switching for GLWE, GGLWE, GGSW, and LWE |
+//! | automorphism | Galois automorphisms on ciphertexts and keys |
+//! | conversion | LWE / GLWE and GGLWE -> GGSW conversions |
+//! | glwe\_packer | On-the-fly GLWE packing with O(log N) memory |
+//! | glwe\_packing | HashMap-based GLWE slot packing |
+//! | glwe\_trace | GLWE trace (sum of automorphisms) |
+//! | noise | Noise-variance estimation for parameter selection |
+//! | dist | Secret-key distribution descriptors |
+//! | scratch | Arena-style scratch allocation for ciphertext temporaries |
+
 mod automorphism;
 mod conversion;
 mod decryption;

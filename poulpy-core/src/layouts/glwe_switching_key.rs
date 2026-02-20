@@ -10,6 +10,11 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
+/// Plain-data descriptor for a [`GLWESwitchingKey`] carrying only the
+/// layout parameters (no backing buffer).
+///
+/// Implements [`LWEInfos`], [`GLWEInfos`] and [`GGLWEInfos`] so it can
+/// be passed to any generic constructor that needs layout information.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWESwitchingKeyLayout {
     pub n: Degree,
@@ -59,6 +64,13 @@ impl GGLWEInfos for GLWESwitchingKeyLayout {
     }
 }
 
+/// GLWE key-switching key.
+///
+/// Wraps a [`GGLWE`] and additionally stores the polynomial degrees of
+/// the input and output secret keys (`input_degree` / `output_degree`).
+///
+/// `D: Data` is the backing storage type (e.g. `Vec<u8>`, `&[u8]`,
+/// `&mut [u8]`).
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKey<D: Data> {
     pub(crate) key: GGLWE<D>,
@@ -66,8 +78,12 @@ pub struct GLWESwitchingKey<D: Data> {
     pub(crate) output_degree: Degree, // Degree of sk_out
 }
 
+/// Provides read access to the input and output secret-key degrees
+/// stored in a [`GLWESwitchingKey`].
 pub trait GLWESwitchingKeyDegrees {
+    /// Returns the polynomial degree of the input secret key.
     fn input_degree(&self) -> &Degree;
+    /// Returns the polynomial degree of the output secret key.
     fn output_degree(&self) -> &Degree;
 }
 
@@ -81,8 +97,12 @@ impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKey<D> {
     }
 }
 
+/// Provides mutable access to the input and output secret-key degrees
+/// stored in a [`GLWESwitchingKey`].
 pub trait GLWESwitchingKeyDegreesMut {
+    /// Returns a mutable reference to the input secret-key degree.
     fn input_degree(&mut self) -> &mut Degree;
+    /// Returns a mutable reference to the output secret-key degree.
     fn output_degree(&mut self) -> &mut Degree;
 }
 
@@ -163,6 +183,7 @@ impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
 }
 
 impl GLWESwitchingKey<Vec<u8>> {
+    /// Allocates a new [`GLWESwitchingKey`] with the given parameters.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -178,6 +199,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         )
     }
 
+    /// Allocates a new [`GLWESwitchingKey`] with the given parameters.
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWESwitchingKey {
             key: GGLWE::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
@@ -186,6 +208,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         }
     }
 
+    /// Returns the byte count required for a [`GLWESwitchingKey`] with the given parameters.
     pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -201,6 +224,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         )
     }
 
+    /// Returns the byte count required for a [`GLWESwitchingKey`] with the given parameters.
     pub fn bytes_of(
         n: Degree,
         base2k: Base2K,
@@ -215,30 +239,35 @@ impl GLWESwitchingKey<Vec<u8>> {
 }
 
 impl<D: DataMut> GGLWEToMut for GLWESwitchingKey<D> {
+    /// Borrows the data as `&mut [u8]`.
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
 impl<D: DataRef> GGLWEToRef for GLWESwitchingKey<D> {
+    /// Borrows the data as `&[u8]`.
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
     }
 }
 
 impl<D: DataRef> GLWESwitchingKey<D> {
+    /// Returns an immutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         self.key.at(row, col)
     }
 }
 
 impl<D: DataMut> GLWESwitchingKey<D> {
+    /// Returns a mutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }
 
 impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
+    /// Deserialises from little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.input_degree = Degree(reader.read_u32::<LittleEndian>()?);
         self.output_degree = Degree(reader.read_u32::<LittleEndian>()?);
@@ -247,6 +276,7 @@ impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
 }
 
 impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
+    /// Serialises in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.input_degree.into())?;
         writer.write_u32::<LittleEndian>(self.output_degree.into())?;

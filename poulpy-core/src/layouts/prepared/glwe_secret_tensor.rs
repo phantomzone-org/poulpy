@@ -12,6 +12,10 @@ use crate::{
     },
 };
 
+/// DFT-domain (prepared) variant of [`GLWESecretTensor`].
+///
+/// Stores the GLWE secret tensor with polynomials in the frequency domain
+/// for fast tensor operations. Tied to a specific backend via `B: Backend`.
 pub struct GLWESecretTensorPrepared<D: Data, B: Backend> {
     pub(crate) data: SvpPPol<D, B>,
     pub(crate) rank: Rank,

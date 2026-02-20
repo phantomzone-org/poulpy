@@ -11,6 +11,11 @@ use poulpy_hal::{
 
 use crate::layouts::{Base2K, Degree, LWE, LWEInfos, LWEToMut, TorusPrecision};
 
+/// Seed-compressed LWE ciphertext layout.
+///
+/// Stores only the body (constant term) of an [`LWE`] ciphertext; the
+/// mask coefficients are regenerated deterministically from a 32-byte
+/// PRNG seed during decompression.
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECompressed<D: Data> {
     pub(crate) data: VecZnx<D>,
@@ -63,6 +68,7 @@ impl<D: DataMut> FillUniform for LWECompressed<D> {
 }
 
 impl LWECompressed<Vec<u8>> {
+    /// Allocates a new compressed LWE by copying parameters from an existing info provider.
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: LWEInfos,
@@ -70,6 +76,10 @@ impl LWECompressed<Vec<u8>> {
         Self::alloc(infos.base2k(), infos.k())
     }
 
+    /// Allocates a new compressed LWE with the given parameters.
+    ///
+    /// The ring degree is fixed to 1 (scalar LWE). The number of limbs
+    /// is `ceil(k / base2k)`.
     pub fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
         LWECompressed {
             data: VecZnx::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),

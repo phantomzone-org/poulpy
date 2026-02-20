@@ -7,6 +7,11 @@ use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
+/// DFT-domain (prepared) variant of [`GGSW`].
+///
+/// Stores the GGSW gadget matrix with polynomials in the frequency domain
+/// of the backend's DFT/NTT transform, enabling O(N log N) polynomial
+/// operations. Tied to a specific backend via `B: Backend`.
 #[derive(PartialEq, Eq)]
 pub struct GGSWPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
@@ -49,10 +54,12 @@ impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
     }
 }
 
+/// Trait for allocating and preparing DFT-domain GGSW ciphertexts.
 pub trait GGSWPreparedFactory<B: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B> + VmpZero<B>,
 {
+    /// Allocates a new prepared GGSW with the given parameters.
     fn alloc_ggsw_prepared(
         &self,
         base2k: Base2K,

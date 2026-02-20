@@ -16,10 +16,28 @@ use crate::{
     },
 };
 
+/// Arena-style scratch allocator for ciphertext and key temporaries.
+///
+/// Extends [`ScratchTakeBasic`] (which provides raw polynomial buffer
+/// allocation) with typed `take_*` methods that return fully formed
+/// ciphertext, key, and secret structs backed by scratch memory.
+///
+/// Each `take_*` method carves a sub-region from the scratch buffer
+/// and returns the typed object together with the remaining scratch.
+/// This enables zero-heap-allocation operation pipelines:
+/// callers pre-compute the required byte count with the companion
+/// `*_tmp_bytes` methods, allocate a single [`poulpy_hal::layouts::ScratchOwned`],
+/// and pass `&mut Scratch<B>` into every operation.
+///
+/// # Panics
+///
+/// Every `take_*` method panics if the remaining scratch space is
+/// insufficient.
 pub trait ScratchTakeCore<B: Backend>
 where
     Self: ScratchTakeBasic + ScratchAvailable + ScratchFromBytes<B>,
 {
+    /// Allocates an [`LWE`] ciphertext from scratch space.
     fn take_lwe<A>(&mut self, infos: &A) -> (LWE<&mut [u8]>, &mut Self)
     where
         A: LWEInfos,
@@ -35,6 +53,7 @@ where
         )
     }
 
+    /// Allocates an [`LWEPlaintext`] from scratch space.
     fn take_lwe_plaintext<A>(&mut self, infos: &A) -> (LWEPlaintext<&mut [u8]>, &mut Self)
     where
         A: LWEInfos,
@@ -50,6 +69,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWE`] ciphertext from scratch space.
     fn take_glwe<A>(&mut self, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
@@ -65,6 +85,7 @@ where
         )
     }
 
+    /// Allocates a `Vec` of `size` [`GLWE`] ciphertexts from scratch space.
     fn take_glwe_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
     where
         A: GLWEInfos,
@@ -79,6 +100,7 @@ where
         (cts, scratch)
     }
 
+    /// Allocates a [`GLWEPlaintext`] from scratch space.
     fn take_glwe_plaintext<A>(&mut self, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
@@ -94,6 +116,7 @@ where
         )
     }
 
+    /// Allocates a [`GGLWE`] ciphertext from scratch space.
     fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWE<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
@@ -116,6 +139,7 @@ where
         )
     }
 
+    /// Allocates a [`GGLWEPrepared`] (DFT-domain GGLWE) from scratch space.
     fn take_gglwe_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GGLWEPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
@@ -140,6 +164,7 @@ where
         )
     }
 
+    /// Allocates a [`GGSW`] ciphertext from scratch space.
     fn take_ggsw<A>(&mut self, infos: &A) -> (GGSW<&mut [u8]>, &mut Self)
     where
         A: GGSWInfos,
@@ -162,6 +187,7 @@ where
         )
     }
 
+    /// Allocates a [`GGSWPrepared`] (DFT-domain GGSW) from scratch space.
     fn take_ggsw_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GGSWPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGSWInfos,
@@ -186,6 +212,7 @@ where
         )
     }
 
+    /// Allocates a `Vec` of `size` [`GGSW`] ciphertexts from scratch space.
     fn take_ggsw_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSW<&mut [u8]>>, &mut Self)
     where
         A: GGSWInfos,
@@ -200,6 +227,7 @@ where
         (cts, scratch)
     }
 
+    /// Allocates a `Vec` of `size` [`GGSWPrepared`] ciphertexts from scratch space.
     fn take_ggsw_prepared_slice<A, M>(
         &mut self,
         module: &M,
@@ -220,6 +248,7 @@ where
         (cts, scratch)
     }
 
+    /// Allocates a [`GLWEPublicKey`] from scratch space.
     fn take_glwe_public_key<A>(&mut self, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
@@ -234,6 +263,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWEPublicKeyPrepared`] (DFT-domain public key) from scratch space.
     fn take_glwe_public_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GLWEInfos,
@@ -249,6 +279,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWEPrepared`] (DFT-domain GLWE) from scratch space.
     fn take_glwe_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPrepared<&mut [u8], B>, &mut Self)
     where
         A: GLWEInfos,
@@ -266,6 +297,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWESecret`] from scratch space.
     fn take_glwe_secret(&mut self, n: Degree, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_scalar_znx(n.into(), rank.into());
         (
@@ -277,6 +309,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWESecretTensor`] from scratch space.
     fn take_glwe_secret_tensor(&mut self, n: Degree, rank: Rank) -> (GLWESecretTensor<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_scalar_znx(n.into(), GLWESecretTensor::pairs(rank.into()));
         (
@@ -289,6 +322,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWESecretPrepared`] (DFT-domain secret key) from scratch space.
     fn take_glwe_secret_prepared<M>(&mut self, module: &M, rank: Rank) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self)
     where
         M: ModuleN + SvpPPolBytesOf,
@@ -303,6 +337,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWESwitchingKey`] from scratch space.
     fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
@@ -318,6 +353,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWESwitchingKeyPrepared`] (DFT-domain switching key) from scratch space.
     fn take_glwe_switching_key_prepared<A, M>(
         &mut self,
         module: &M,
@@ -339,6 +375,7 @@ where
         )
     }
 
+    /// Allocates a [`GLWEAutomorphismKey`] from scratch space.
     fn take_glwe_automorphism_key<A>(&mut self, infos: &A) -> (GLWEAutomorphismKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
@@ -347,6 +384,7 @@ where
         (GLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 
+    /// Allocates a [`GLWEAutomorphismKeyPrepared`] (DFT-domain automorphism key) from scratch space.
     fn take_glwe_automorphism_key_prepared<A, M>(
         &mut self,
         module: &M,
@@ -361,6 +399,11 @@ where
         (GLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 
+    /// Allocates a [`GLWETensorKey`] from scratch space.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rank_in != rank_out` (asymmetric tensor keys are not supported).
     fn take_glwe_tensor_key<A, M>(&mut self, infos: &A) -> (GLWETensorKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
@@ -378,6 +421,11 @@ where
         (GLWETensorKey(data), scratch)
     }
 
+    /// Allocates a [`GLWETensorKeyPrepared`] (DFT-domain tensor key) from scratch space.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rank_in != rank_out` (asymmetric tensor keys are not supported).
     fn take_glwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,

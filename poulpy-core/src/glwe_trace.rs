@@ -1,3 +1,21 @@
+//! GLWE trace operation (sum of Galois automorphisms).
+//!
+//! The trace maps a GLWE ciphertext encrypting a polynomial `m(X)` to one
+//! encrypting the sum of its Galois conjugates:
+//!
+//! `Trace(ct) = sum_{i in S} phi_i(ct)`
+//!
+//! where `phi_i` are the Galois automorphisms `X -> X^{g^i}`.
+//! This is the dual operation of slot packing: it projects a ciphertext
+//! onto a smaller subspace of plaintext slots, effectively replicating
+//! a single slot value across multiple positions.
+//!
+//! The `skip` parameter controls how many initial automorphism levels
+//! are skipped, allowing partial traces that project onto larger subspaces.
+//!
+//! Requires automorphism keys indexed by the Galois elements returned
+//! from [`GLWETrace::glwe_trace_galois_elements`].
+
 use poulpy_hal::{
     api::{ModuleLogN, VecZnxNormalizeTmpBytes},
     layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
@@ -12,6 +30,10 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
+    /// Returns the Galois elements required by the trace operation.
+    ///
+    /// The caller must provide automorphism keys for each of these
+    /// elements before invoking [`GLWE::trace`] or [`GLWE::trace_inplace`].
     pub fn trace_galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
     where
         M: GLWETrace<BE>,
@@ -19,6 +41,7 @@ impl GLWE<Vec<u8>> {
         module.glwe_trace_galois_elements()
     }
 
+    /// Returns the number of scratch bytes required by [`GLWE::trace`].
     pub fn trace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GLWEInfos,
