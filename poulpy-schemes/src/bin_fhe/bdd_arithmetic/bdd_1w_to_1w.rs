@@ -12,6 +12,12 @@ use crate::bin_fhe::bdd_arithmetic::{ExecuteBDDCircuit, FheUint, FheUintPrepared
 impl<BE: Backend> ExecuteBDDCircuit1WTo1W<BE> for Module<BE> where Self: Sized + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy
 {}
 
+/// Backend-level executor for single-input BDD circuits (`Z → Z`).
+///
+/// Evaluates a BDD circuit that reads one encrypted integer and produces
+/// one encrypted integer.  After evaluating the per-bit BDD levels, the
+/// output bits are repacked into a single [`FheUint`] polynomial via
+/// [`GLWEPacking`].
 pub trait ExecuteBDDCircuit1WTo1W<BE: Backend>
 where
     Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy,
@@ -146,7 +152,13 @@ macro_rules! impl_bdd_1w_to_1w_trait {
         }
     };
 }
-define_bdd_1w_to_1w_trait!(pub Identity, identity);
+define_bdd_1w_to_1w_trait!(
+    /// Homomorphic identity function (`out = a`).
+    ///
+    /// Re-bootstraps all bits of `a` through the BDD circuit and repacks the
+    /// result into a fresh [`FheUint`].  Useful for noise refreshing without
+    /// computing any arithmetic.
+    pub Identity, identity);
 
 impl_bdd_1w_to_1w_trait!(
     Identity,

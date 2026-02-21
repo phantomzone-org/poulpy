@@ -13,9 +13,27 @@ use crate::bin_fhe::blind_rotation::{
     BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable,
 };
 
+/// Marker trait for blind-rotation algorithm variants.
+///
+/// Implementors act as phantom types that bind a specific algorithm identity
+/// to key and execution types.  This prevents accidental cross-algorithm key
+/// usage at the type level.  Currently the only implementation is [`CGGI`].
 pub trait BlindRotationAlgo: Sync {}
 
+/// Trait for executing the blind rotation algorithm.
+///
+/// Implemented for `Module<BE>` when the backend satisfies the required
+/// polynomial-arithmetic trait bounds.  Callers should prefer the convenience
+/// method on [`BlindRotationKeyPrepared::execute`] rather than calling these
+/// methods directly.
 pub trait BlindRotationExecute<BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`blind_rotation_execute`][Self::blind_rotation_execute].
+    ///
+    /// `block_size` is the number of LWE coefficients processed per GGSW
+    /// product (1 for standard CGGI, > 1 for block-binary).
+    /// `extension_factor` is the number of LUT polynomials (must be a power
+    /// of two; 1 for the classical single-polynomial LUT).
     fn blind_rotation_execute_tmp_bytes<G, B>(
         &self,
         block_size: usize,
@@ -27,6 +45,16 @@ pub trait BlindRotationExecute<BRA: BlindRotationAlgo, BE: Backend> {
         G: GLWEInfos,
         B: GGSWInfos;
 
+    /// Evaluates the lookup table `lut` at the index encrypted in `lwe`,
+    /// writing the result GLWE ciphertext into `res`.
+    ///
+    /// After a successful call, decrypting `res` and reading coefficient 0
+    /// yields `lut(dec(lwe))` (up to rounding noise from the decomposition).
+    ///
+    /// # Panics
+    ///
+    /// Panics in debug mode if dimension mismatches are detected between `res`,
+    /// `lwe`, `lut`, and `brk`.
     fn blind_rotation_execute<DR, DL, DB>(
         &self,
         res: &mut GLWE<DR>,
@@ -44,6 +72,9 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D
 where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    /// Performs blind rotation using `self` as the bootstrapping key.
+    ///
+    /// Convenience wrapper around [`BlindRotationExecute::blind_rotation_execute`].
     pub fn execute<DR: DataMut, DI: DataRef, M>(
         &self,
         module: &M,
@@ -59,6 +90,10 @@ where
 }
 
 impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA, BE> {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`BlindRotationKeyPrepared::execute`].
+    ///
+    /// See [`BlindRotationExecute::blind_rotation_execute_tmp_bytes`].
     pub fn execute_tmp_bytes<A, B, M>(
         module: &M,
         block_size: usize,
@@ -75,6 +110,24 @@ impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA,
     }
 }
 
+/// Modulus-switches the LWE ciphertext coefficients into the range `[0, 2n)`,
+/// writing them into `res`.
+///
+/// This function converts the multi-limb LWE representation (with base `2^k`)
+/// to a single-integer representation modulo `2n` (or its signed extension
+/// `[-n, n)` for the rotation index).  The conversion applies rounding to
+/// reduce the probability of switching errors.
+///
+/// `rot_dir` controls the sign convention: `Left` negates all coefficients
+/// (so that the rotation is `X^{-a_i}` in the accumulator), while `Right`
+/// keeps them as-is.
+///
+/// # Arguments
+///
+/// - `n`: The extended domain size `2 × extension_factor × n_glwe`.
+/// - `res`: Output slice of length `lwe.n() + 1` (b, a_0, …, a_{n-1}).
+/// - `lwe`: The LWE ciphertext to switch.
+/// - `rot_dir`: Rotation sign convention.
 pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWE<&[u8]>, rot_dir: LookUpTableRotationDirection) {
     let base2k: usize = lwe.base2k().into();
 

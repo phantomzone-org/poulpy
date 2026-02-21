@@ -9,8 +9,8 @@ use poulpy_hal::{
 use crate::bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout},
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
+        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
     },
 };
 
@@ -36,7 +36,7 @@ where
         + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
         + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
+        + CircuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
@@ -217,7 +217,7 @@ where
         + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
         + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
+        + CircuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>

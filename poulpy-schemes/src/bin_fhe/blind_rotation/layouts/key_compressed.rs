@@ -13,6 +13,29 @@ use poulpy_core::{
 
 use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
 
+/// Seed-compressed form of a blind rotation bootstrapping key.
+///
+/// Each GGSW element stores only the body component; the mask (the `A`
+/// polynomial) is deterministically regenerated from a per-key seed during
+/// preparation, halving the serialised size relative to `BlindRotationKey`.
+///
+/// ## Trade-offs vs. Standard Key
+///
+/// - **Storage**: Roughly half the size of the standard form.
+/// - **Preparation time**: Slower because masks must be regenerated from
+///   the seed on every call to the prepare step.
+/// - **On-line evaluation**: Identical to the standard form once prepared.
+///
+/// ## Invariants
+///
+/// - `keys.len() == n_lwe`.
+/// - `dist` records the LWE secret distribution; `Distribution::NONE` before
+///   encryption.
+///
+/// ## Serialisation
+///
+/// Implements [`ReaderFrom`] and [`WriterTo`].  The binary format is identical
+/// in structure to `BlindRotationKey` but each element is `GGSWCompressed`.
 #[derive(Clone)]
 pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) keys: Vec<GGSWCompressed<D>>,
@@ -20,6 +43,7 @@ pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
+/// Algorithm-specific factory for allocating a [`BlindRotationKeyCompressed`].
 pub trait BlindRotationKeyCompressedFactory<BRA: BlindRotationAlgo> {
     fn blind_rotation_key_compressed_alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
     where

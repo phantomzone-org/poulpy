@@ -25,8 +25,8 @@ use poulpy_schemes::bin_fhe::{
         BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
+        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
     },
 };
 
@@ -40,7 +40,7 @@ where
         + LWEEncryptSk<BE>
         + CircuitBootstrappingKeyEncryptSk<BRA, BE>
         + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-        + CirtuitBootstrappingExecute<BRA, BE>
+        + CircuitBootstrappingExecute<BRA, BE>
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
@@ -73,7 +73,7 @@ where
             + LWEEncryptSk<BE>
             + CircuitBootstrappingKeyEncryptSk<BRA, BE>
             + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
-            + CirtuitBootstrappingExecute<BRA, BE>
+            + CircuitBootstrappingExecute<BRA, BE>
             + GGSWPreparedFactory<BE>
             + GGSWNoise<BE>
             + GLWEEncryptSk<BE>

@@ -16,6 +16,13 @@ use crate::bin_fhe::bdd_arithmetic::{
 impl<BE: Backend> ExecuteBDDCircuit2WTo1W<BE> for Module<BE> where Self: Sized + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy
 {}
 
+/// Backend-level executor for two-input BDD circuits (`Z × Z → Z`).
+///
+/// Evaluates a BDD circuit that reads two encrypted integers and produces
+/// one encrypted integer.  The two input [`FheUintPrepared`] values are
+/// concatenated into a virtual bit-array, with `a` occupying bits
+/// `[0, T::BITS)` and `b` occupying `[T::BITS, 2*T::BITS)`.  After BDD
+/// evaluation the output bits are repacked into a single [`FheUint`].
 pub trait ExecuteBDDCircuit2WTo1W<BE: Backend>
 where
     Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy,
@@ -189,35 +196,43 @@ macro_rules! impl_bdd_2w_to_1w_trait {
     };
 }
 
-// a + b
-define_bdd_2w_to_1w_trait!(pub Add, add);
-
-// a - b
-define_bdd_2w_to_1w_trait!(pub Sub, sub);
-
-// a << b
-define_bdd_2w_to_1w_trait!(pub Sll, sll);
-
-// a >> b arithmetic
-define_bdd_2w_to_1w_trait!(pub Sra, sra);
-
-// a >> b logical
-define_bdd_2w_to_1w_trait!(pub Srl, srl);
-
-// signed a < signed b
-define_bdd_2w_to_1w_trait!(pub Slt, slt);
-
-// unsigned a < unsigned b
-define_bdd_2w_to_1w_trait!(pub Sltu, sltu);
-
-// a or b
-define_bdd_2w_to_1w_trait!(pub Or, or);
-
-// a and b
-define_bdd_2w_to_1w_trait!(pub And, and);
-
-// a xor b
-define_bdd_2w_to_1w_trait!(pub Xor, xor);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic addition (`out = a + b`).
+    pub Add, add);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic subtraction (`out = a - b`).
+    pub Sub, sub);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic logical left shift (`out = a << b`).
+    pub Sll, sll);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic arithmetic right shift (`out = a >> b`, sign-extending).
+    pub Sra, sra);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic logical right shift (`out = a >> b`, zero-extending).
+    pub Srl, srl);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic signed less-than comparison (`out = (a as signed) < (b as signed)`).
+    ///
+    /// The result is `1` (all-bits-set in the packed-GLWE encoding) when
+    /// the signed interpretation of `a` is strictly less than that of `b`,
+    /// and `0` otherwise.
+    pub Slt, slt);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic unsigned less-than comparison (`out = a < b`).
+    ///
+    /// The result is `1` when the unsigned value of `a` is strictly less than
+    /// that of `b`, and `0` otherwise.
+    pub Sltu, sltu);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic bitwise OR (`out = a | b`).
+    pub Or, or);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic bitwise AND (`out = a & b`).
+    pub And, and);
+define_bdd_2w_to_1w_trait!(
+    /// Homomorphic bitwise XOR (`out = a ^ b`).
+    pub Xor, xor);
 
 impl_bdd_2w_to_1w_trait!(
     Add,

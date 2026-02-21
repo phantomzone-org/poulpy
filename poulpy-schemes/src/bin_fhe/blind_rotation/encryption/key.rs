@@ -10,11 +10,33 @@ use poulpy_core::{
 
 use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey};
 
+/// Backend-level key-encryption trait for [`BlindRotationKey`].
+///
+/// Implemented for `Module<BE>` when the backend supports GGSW secret-key
+/// encryption.  The [`BlindRotationKey::encrypt_sk`] convenience method
+/// delegates to this trait.
+///
+/// Callers must supply:
+/// - `sk_glwe`: The GLWE secret key (in prepared / DFT form) used to encrypt
+///   each GGSW element.
+/// - `sk_lwe`: The LWE secret key whose individual bits are encrypted.  Its
+///   distribution must be one of `BinaryBlock`, `BinaryFixed`, `BinaryProb`,
+///   or `ZERO` (debugging only).
+/// - `source_xa`: Randomness source for GGSW mask components.
+/// - `source_xe`: Randomness source for GGSW error components.
+///
+/// # Panics
+///
+/// Panics if `sk_lwe.dist()` is not a supported binary distribution.
 pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`blind_rotation_key_encrypt_sk`][Self::blind_rotation_key_encrypt_sk].
     fn blind_rotation_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
 
+    /// Encrypts each bit of `sk_lwe` as a GGSW ciphertext under `sk_glwe`,
+    /// storing the result in `res`.
     #[allow(clippy::too_many_arguments)]
     fn blind_rotation_key_encrypt_sk<D, S0, S1>(
         &self,

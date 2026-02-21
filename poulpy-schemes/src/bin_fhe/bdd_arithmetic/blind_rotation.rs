@@ -16,10 +16,22 @@ where
 {
 }
 
+/// Extends [`GLWEBlindRotation`] to lift blind rotation to GGSW matrices and
+/// to construct a GGSW from a scalar test-vector via blind rotation.
+///
+/// A GGSW matrix is a `(dnum × (rank+1))` array of GLWE ciphertexts.  The two
+/// methods in this trait apply [`GLWEBlindRotation`] row-by-row:
+///
+/// - `ggsw_blind_rotation`: rotates each GLWE row of an existing GGSW by the
+///   encrypted exponent derived from `fhe_uint`.
+/// - `scalar_to_ggsw_blind_rotation`: constructs a fresh GGSW by first placing
+///   the scalar test-vector into each row of a temporary GLWE and then rotating.
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
 where
     Self: GLWEBlindRotation<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
 {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`ggsw_blind_rotation`][Self::ggsw_blind_rotation].
     fn ggsw_to_ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
@@ -154,10 +166,24 @@ where
 {
 }
 
+/// Homomorphic rotation of a GLWE ciphertext by an encrypted exponent.
+///
+/// Given a GLWE ciphertext `a` and a set of GGSW ciphertexts encoding the bits
+/// of an integer `k`, computes:
+///
+/// ```text
+/// res = a * X^{sign * ((k >> bit_rsh) % 2^bit_mask) << bit_lsh}
+/// ```
+///
+/// where `sign` controls whether the rotation is positive or negative.
+/// The operation is performed using `bit_mask` successive CMux gates, one per
+/// bit of the shift amount.
 pub trait GLWEBlindRotation<BE: Backend>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
 {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`glwe_blind_rotation`][Self::glwe_blind_rotation].
     fn glwe_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,

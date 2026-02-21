@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::bin_fhe::bdd_arithmetic::{BDDKeyPrepared, FheUint, FheUintPrepareDebug, ToBits};
 use crate::bin_fhe::{
-    bdd_arithmetic::UnsignedInteger, blind_rotation::BlindRotationAlgo, circuit_bootstrapping::CirtuitBootstrappingExecute,
+    bdd_arithmetic::UnsignedInteger, blind_rotation::BlindRotationAlgo, circuit_bootstrapping::CircuitBootstrappingExecute,
 };
 use poulpy_core::GGSWNoise;
 
@@ -16,6 +16,18 @@ use poulpy_core::{
 use poulpy_hal::api::{ModuleN, ScratchTakeBasic};
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, Stats, ZnxZero};
 
+/// A debug variant of `FheUintPrepared` that stores per-bit GGSW ciphertexts
+/// in standard (non-DFT) form.
+///
+/// Compared to `FheUintPrepared`, this variant cannot be used as a CMux
+/// selector directly, but it allows noise measurement via
+/// [`FheUintPreparedDebug::noise`] without a forward DFT transform.
+///
+/// ## Usage
+///
+/// Intended for testing and parameter validation.  Construct with
+/// [`FheUintPreparedDebug::alloc`] and populate with
+/// [`FheUintPreparedDebug::prepare`].
 pub struct FheUintPreparedDebug<D: Data, T: UnsignedInteger> {
     pub(crate) bits: Vec<GGSW<D>>,
     pub(crate) _phantom: PhantomData<T>,
@@ -102,7 +114,7 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintPreparedDebug<D, T> {
 
 impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepareDebug<BRA, T, BE> for Module<BE>
 where
-    Self: ModuleN + LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
+    Self: ModuleN + LWEFromGLWE<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn fhe_uint_debug_prepare<DM, DR0, DR1>(

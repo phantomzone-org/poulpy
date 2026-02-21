@@ -25,9 +25,33 @@ use crate::bin_fhe::bdd_arithmetic::{
 };
 use crate::bin_fhe::bdd_arithmetic::{Cmux, FromBits, ScratchTakeBDD, UnsignedInteger};
 use crate::bin_fhe::blind_rotation::BlindRotationAlgo;
-use crate::bin_fhe::circuit_bootstrapping::{CircuitBootstrappingKeyInfos, CirtuitBootstrappingExecute};
+use crate::bin_fhe::circuit_bootstrapping::{CircuitBootstrappingExecute, CircuitBootstrappingKeyInfos};
 
-/// A prepared FHE ciphertext encrypting the bits of an [UnsignedInteger].
+/// A DFT-prepared FHE ciphertext encoding each bit of a [`UnsignedInteger`]
+/// as a separate GGSW ciphertext.
+///
+/// Unlike [`FheUint`], where all bits share a single GLWE polynomial, each bit
+/// of an `FheUintPrepared` is stored as a full GGSW matrix in the DFT domain,
+/// making it immediately usable as a CMux selector without any additional
+/// forward transform.
+///
+/// ## Invariants
+///
+/// - `bits.len() == T::BITS`.
+/// - All GGSW entries share the same `n`, `base2k`, `k`, `dnum`, `dsize`, and
+///   `rank` parameters.
+///
+/// ## Lifecycle
+///
+/// 1. Allocate with [`FheUintPrepared::alloc`] or [`FheUintPrepared::alloc_from_infos`].
+/// 2. Populate from plaintext with [`FheUintPrepared::encrypt_sk`], or derive
+///    from a packed [`FheUint`] with [`FheUintPrepared::prepare`].
+/// 3. Use as input to BDD circuit evaluation (`ExecuteBDDCircuit`).
+///
+/// ## Thread Safety
+///
+/// `FheUintPrepared<&[u8], T, BE>` is `Sync`; multiple evaluation threads may
+/// access separate bits concurrently through [`GetGGSWBit`].
 pub struct FheUintPrepared<D: Data, T: UnsignedInteger, B: Backend> {
     pub(crate) bits: Vec<GGSWPrepared<D, B>>,
     pub(crate) _phantom: PhantomData<T>,
@@ -35,25 +59,58 @@ pub struct FheUintPrepared<D: Data, T: UnsignedInteger, B: Backend> {
 
 impl<T: UnsignedInteger, BE: Backend> FheUintPreparedFactory<T, BE> for Module<BE> where Self: Sized + GGSWPreparedFactory<BE> {}
 
+/// Read-only access to individual DFT-domain GGSW bit-ciphertexts.
+///
+/// Implemented by [`FheUintPrepared`] and by the internal `FheUintHelper`
+/// used during two-word BDD evaluation.  Required by `ExecuteBDDCircuit`
+/// and `GLWEBlindRotation`.
 pub trait GetGGSWBit<BE: Backend>: Sync {
+    /// Returns a shared reference view of the GGSW ciphertext for bit `bit`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bit >= self.bit_size()`.
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE>;
 }
 
 impl<D: DataRef, T: UnsignedInteger, BE: Backend> GetGGSWBit<BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE> {
-        assert!(bit <= self.bits.len());
+        assert!(
+            bit < self.bits.len(),
+            "bit index {bit} out of bounds, len={}",
+            self.bits.len()
+        );
         self.bits[bit].to_ref()
     }
 }
 
+/// Mutable access to individual DFT-domain GGSW bit-ciphertexts.
+///
+/// Used during [`FheUintPrepared::prepare`] and its multi-thread variant to
+/// write bootstrapped GGSW output into the prepared ciphertext in parallel.
 pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
+    /// Returns a mutable view of the GGSW ciphertext for bit `bit`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bit >= self.bit_size()`.
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE>;
+    /// Returns mutable views of `count` consecutive GGSW ciphertexts starting
+    /// at `start`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `start + count > self.bit_size()`.
     fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>>;
 }
 
 impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
-        assert!(bit <= self.bits.len());
+        assert!(
+            bit < self.bits.len(),
+            "bit index {bit} out of bounds, len={}",
+            self.bits.len()
+        );
         self.bits[bit].to_mut()
     }
     fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>> {
@@ -68,6 +125,11 @@ impl<D: Data, T: UnsignedInteger, BE: Backend> BitSize for FheUintPrepared<D, T,
     }
 }
 
+/// Backend-level factory for allocating [`FheUintPrepared`] values.
+///
+/// Implemented for `Module<BE>` when the backend supports DFT-domain GGSW
+/// preparation.  Callers should use the convenience methods on
+/// `FheUintPrepared` rather than calling these directly.
 pub trait FheUintPreparedFactory<T: UnsignedInteger, BE: Backend>
 where
     Self: Sized + GGSWPreparedFactory<BE>,
@@ -118,6 +180,12 @@ impl<T: UnsignedInteger + ToBits, BE: Backend> FheUintPreparedEncryptSk<T, BE> f
 {
 }
 
+/// Backend-level factory for directly encrypting a plaintext value into a
+/// [`FheUintPrepared`] without first creating an [`FheUint`].
+///
+/// Useful in testing and debugging scenarios where the packed-GLWE intermediate
+/// form is not needed.  Each bit is encrypted independently as a constant GGSW
+/// and then immediately DFT-prepared in place.
 pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
@@ -228,7 +296,19 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<D, BRA, BE>
     }
 }
 
+/// Backend-level factory for bootstrapping a packed [`FheUint`] into
+/// a [`FheUintPrepared`].
+///
+/// For each bit of the input word, extracts an LWE ciphertext from the packed
+/// GLWE, applies the circuit bootstrapping pipeline (blind rotation + trace +
+/// key-switch), and DFT-prepares the resulting GGSW in-place.
+///
+/// The `_custom` and `_multi_thread` variants allow partial updates (only a
+/// contiguous range of bits) and parallel execution across OS threads,
+/// respectively.
 pub trait FheUintPrepare<BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns the minimum scratch-space size in bytes required per thread for
+    /// [`fhe_uint_prepare`][Self::fhe_uint_prepare].
     fn fhe_uint_prepare_tmp_bytes<R, A, B>(
         &self,
         block_size: usize,
@@ -291,7 +371,7 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, BE: Backend> {
 
 impl<BRA: BlindRotationAlgo, BE: Backend> FheUintPrepare<BRA, BE> for Module<BE>
 where
-    Self: LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
+    Self: LWEFromGLWE<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn fhe_uint_prepare_tmp_bytes<R, A, B>(

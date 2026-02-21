@@ -99,6 +99,12 @@ where
         match brk.dist {
             Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
                 if lut.extension_factor() > 1 {
+                    assert!(
+                        matches!(brk.dist, Distribution::BinaryBlock(_)),
+                        "extended blind rotation (extension_factor={}) requires a BinaryBlock key distribution, got {:?}",
+                        lut.extension_factor(),
+                        brk.dist,
+                    );
                     execute_block_binary_extended(self, res, lwe, lut, brk, scratch)
                 } else if brk.block_size() > 1 {
                     execute_block_binary(self, res, lwe, lut, brk, scratch);

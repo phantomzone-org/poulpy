@@ -14,6 +14,23 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::bin_fhe::blind_rotation::BlindRotationAlgo;
 
+/// Plain-old-data descriptor for all dimensional parameters of a blind
+/// rotation key.
+///
+/// This struct aggregates the dimensions needed to allocate and interpret a
+/// [`BlindRotationKey`] without requiring access to the actual key data.  It
+/// can be constructed manually or extracted from an existing key via
+/// [`BlindRotationKeyInfos`].
+///
+/// # Fields
+///
+/// - `n_glwe`: Polynomial degree of the GLWE / GGSW ciphertext components.
+/// - `n_lwe`: Number of LWE ciphertext dimensions; equals the number of GGSW
+///   ciphertexts stored in the key.
+/// - `base2k`: Decomposition base (bits per limb).
+/// - `k`: Total torus precision (message bits).
+/// - `dnum`: Number of decomposition digits per GGSW row.
+/// - `rank`: GLWE rank (0 for plain LWE, ≥ 1 for RLWE).
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct BlindRotationKeyLayout {
     pub n_glwe: Degree,
@@ -64,20 +81,54 @@ impl LWEInfos for BlindRotationKeyLayout {
     }
 }
 
+/// Accessor trait for blind-rotation key dimensions.
+///
+/// Provides `n_glwe` and `n_lwe` on top of the [`GGSWInfos`] accessors
+/// common to all GGSW-based key types.  Implemented by
+/// [`BlindRotationKeyLayout`], [`BlindRotationKey`], and
+/// `BlindRotationKeyPrepared`.
 pub trait BlindRotationKeyInfos
 where
     Self: GGSWInfos,
 {
+    /// Polynomial degree of the GLWE ring used for the GGSW ciphertexts.
     fn n_glwe(&self) -> Degree;
+    /// Number of LWE dimensions; equals the number of GGSW elements in the key.
     fn n_lwe(&self) -> Degree;
 }
 
+/// Allocation trait for bootstrapping keys.
 pub trait BlindRotationKeyAlloc {
+    /// Allocates an uninitialised (zero-filled) key from a dimension descriptor.
     fn alloc<A>(infos: &A) -> Self
     where
         A: BlindRotationKeyInfos;
 }
 
+/// Standard (un-prepared) blind rotation bootstrapping key.
+///
+/// Stores one GGSW ciphertext per LWE coefficient encrypting the corresponding
+/// secret-key bit (or block of bits for the `BinaryBlock` distribution).  The
+/// key also records the distribution of the LWE secret key so the correct
+/// execution path can be selected at evaluation time.
+///
+/// ## Key Lifecycle
+///
+/// 1. Allocate with [`BlindRotationKey::alloc`] (requires `BRT: BlindRotationKeyFactory`).
+/// 2. Fill with [`BlindRotationKey::encrypt_sk`].
+/// 3. Prepare for evaluation with `BlindRotationKeyPrepared::prepare`.
+///
+/// ## Serialisation
+///
+/// Implements [`ReaderFrom`] and [`WriterTo`] for little-endian binary I/O.
+/// The serialised format prefixes the distribution tag and the key-element
+/// count before the individual GGSW payloads.
+///
+/// ## Invariants
+///
+/// - `keys.len() == n_lwe`.
+/// - `dist` is set to the distribution of the LWE secret after `encrypt_sk`;
+///   it is `Distribution::NONE` in a freshly allocated key.
 #[derive(Clone)]
 pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) keys: Vec<GGSW<D>>,
@@ -85,7 +136,12 @@ pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
+/// Algorithm-specific factory for allocating a [`BlindRotationKey`].
+///
+/// Implemented for `BlindRotationKey<Vec<u8>, BRA>` per algorithm variant.
+/// The [`BlindRotationKey::alloc`] convenience method delegates here.
 pub trait BlindRotationKeyFactory<BRA: BlindRotationAlgo> {
+    /// Allocates a zero-filled key using the dimension descriptor `infos`.
     fn blind_rotation_key_alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA>
     where
         A: BlindRotationKeyInfos;

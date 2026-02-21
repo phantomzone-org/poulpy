@@ -22,7 +22,19 @@ use crate::bin_fhe::{
     circuit_bootstrapping::{CircuitBootstrappingKeyInfos, CircuitBootstrappingKeyPrepared},
 };
 
-pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
+/// Trait for evaluating a complete circuit bootstrapping.
+///
+/// Implemented for `Module<BE>` when the backend satisfies the full set of
+/// required polynomial-arithmetic trait bounds.  Callers should use the
+/// convenience methods on [`CircuitBootstrappingKeyPrepared`] rather than
+/// invoking this trait directly.
+pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns the minimum scratch-space size (bytes) required by the circuit
+    /// bootstrapping evaluation methods.
+    ///
+    /// `block_size` and `extension_factor` are forwarded to the underlying
+    /// blind-rotation scratch estimator.  The total includes intermediate GLWE
+    /// and GGLWE allocations.
     fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
         &self,
         block_size: usize,
@@ -34,6 +46,11 @@ pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
         R: GGSWInfos,
         A: CircuitBootstrappingKeyInfos;
 
+    /// Bootstraps `lwe` into `res`, encoding the plaintext as the constant
+    /// term of each GGSW row polynomial.
+    ///
+    /// `log_domain` controls the number of discrete values representable (the
+    /// LUT has `2^log_domain` entries).
     fn circuit_bootstrapping_execute_to_constant<R, L, D>(
         &self,
         res: &mut R,
@@ -47,6 +64,11 @@ pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
         L: LWEToRef + LWEInfos,
         D: DataRef;
 
+    /// Bootstraps `lwe` into `res`, encoding the plaintext in the exponent of
+    /// the polynomial variable.
+    ///
+    /// `log_gap_out` controls the spacing of output coefficients (used in
+    /// post-processing to adjust the gap for downstream operations).
     #[allow(clippy::too_many_arguments)]
     fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
         &self,
@@ -64,6 +86,10 @@ pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<D, BRA, BE> {
+    /// Convenience method: bootstraps `lwe` into the GGSW ciphertext `res`
+    /// using the constant-term encoding.
+    ///
+    /// See [`CircuitBootstrappingExecute::circuit_bootstrapping_execute_to_constant`].
     pub fn execute_to_constant<M, L, R>(
         &self,
         module: &M,
@@ -73,13 +99,17 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         extension_factor: usize,
         scratch: &mut Scratch<BE>,
     ) where
-        M: CirtuitBootstrappingExecute<BRA, BE>,
+        M: CircuitBootstrappingExecute<BRA, BE>,
         R: GGSWToMut + GGSWInfos,
         L: LWEToRef + LWEInfos,
     {
         module.circuit_bootstrapping_execute_to_constant(res, lwe, self, log_domain, extension_factor, scratch);
     }
 
+    /// Convenience method: bootstraps `lwe` into `res` using the exponent
+    /// encoding.
+    ///
+    /// See [`CircuitBootstrappingExecute::circuit_bootstrapping_execute_to_exponent`].
     #[allow(clippy::too_many_arguments)]
     pub fn execute_to_exponent<R, L, M>(
         &self,
@@ -91,7 +121,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         extension_factor: usize,
         scratch: &mut Scratch<BE>,
     ) where
-        M: CirtuitBootstrappingExecute<BRA, BE>,
+        M: CircuitBootstrappingExecute<BRA, BE>,
         R: GGSWToMut + GGSWInfos,
         L: LWEToRef + LWEInfos,
     {
@@ -99,7 +129,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> CirtuitBootstrappingExecute<BRA, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingExecute<BRA, BE> for Module<BE>
 where
     Self: ModuleN
         + LookupTableFactory
@@ -226,6 +256,20 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
 
     let alpha: usize = dnum_res.next_power_of_two();
 
+    // Validate that LUT coefficient exponents fit in i64 before building the LUT.
+    // The maximum exponent is res_base2k * (dnum_res - 1); 1i64 << that value must not overflow.
+    assert!(
+        dnum_res == 0 || res_base2k * (dnum_res - 1) < i64::BITS as usize,
+        "LUT coefficient overflow: res_base2k={res_base2k} * (dnum_res-1)={} >= {} bits",
+        dnum_res.saturating_sub(1),
+        i64::BITS,
+    );
+    // For the constant-mode LUT the coefficient also scales by j < 2^log_domain.
+    assert!(
+        !to_exponent || log_domain + res_base2k * dnum_res.saturating_sub(1) < i64::BITS as usize,
+        "LUT coefficient overflow: log_domain={log_domain} + res_base2k*dnum_res would exceed i64"
+    );
+
     let mut f: Vec<i64> = vec![0i64; (1 << log_domain) * alpha];
 
     if to_exponent {
@@ -287,6 +331,13 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
+    assert!(
+        gap > 0,
+        "gap must be positive (lut.drift={}, extension_factor={}); ensure f_len <= domain_size",
+        lut.drift,
+        lut.extension_factor(),
+    );
+
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
     for i in 0..dnum_res {
@@ -308,7 +359,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
             module.glwe_trace(&mut res_row, 0, &res_glwe_atk_layout, &key.atk, scratch_1);
         }
 
-        if i < dnum_res {
+        if i + 1 < dnum_res {
             module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe_atk_layout, scratch_1);
         }
     }

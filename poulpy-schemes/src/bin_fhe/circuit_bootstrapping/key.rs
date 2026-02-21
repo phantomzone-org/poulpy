@@ -18,13 +18,33 @@ use crate::bin_fhe::blind_rotation::{
     BlindRotationKeyLayout,
 };
 
+/// Accessor trait for the dimensional parameters of a circuit bootstrapping
+/// key bundle.
+///
+/// Implemented by [`CircuitBootstrappingKeyLayout`], [`CircuitBootstrappingKey`],
+/// and `CircuitBootstrappingKeyPrepared`.
 pub trait CircuitBootstrappingKeyInfos {
+    /// Number of LWE coefficients processed together in each BRK product step
+    /// (1 for standard CGGI, > 1 for block-binary).
     fn block_size(&self) -> usize;
+    /// Dimensional layout of the blind rotation key component.
     fn brk_infos(&self) -> BlindRotationKeyLayout;
+    /// Dimensional layout of the automorphism (Galois) key component.
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout;
+    /// Dimensional layout of the tensor-switching key component.
     fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout;
 }
 
+/// Plain-old-data dimension descriptor for a circuit bootstrapping key bundle.
+///
+/// Contains the layouts for the three sub-keys:
+/// - `brk_layout`: Blind rotation key.
+/// - `atk_layout`: GLWE automorphism (trace / Galois) key.
+/// - `tsk_layout`: GGLWE-to-GGSW tensor-switching key.
+///
+/// Note: [`CircuitBootstrappingKeyInfos::block_size`] is not representable
+/// in this flat struct (it panics with `unimplemented!`); use an actual key
+/// instance to query it.
 #[derive(Debug, Clone, Copy)]
 pub struct CircuitBootstrappingKeyLayout {
     pub brk_layout: BlindRotationKeyLayout,
@@ -50,11 +70,25 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
     }
 }
 
+/// Backend-level trait for encrypting all sub-keys of a
+/// [`CircuitBootstrappingKey`] at once.
+///
+/// Implemented for `Module<BE>` when the backend supports GGSW, automorphism,
+/// and tensor-switching key encryption.  The module-level implementation
+/// derives a fresh intermediate GLWE secret, prepares it, and delegates to
+/// the individual sub-key encryption routines.
 pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns the minimum scratch-space size (in bytes) required by
+    /// [`circuit_bootstrapping_key_encrypt_sk`][Self::circuit_bootstrapping_key_encrypt_sk].
     fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: CircuitBootstrappingKeyInfos;
 
+    /// Encrypts all sub-keys of a circuit bootstrapping key bundle.
+    ///
+    /// The three sub-key components are encrypted in order: ATK, BRK, TSK.
+    /// Scratch space is reused across sub-key encryptions (peak is the maximum
+    /// of the three individual requirements).
     #[allow(clippy::too_many_arguments)]
     fn circuit_bootstrapping_key_encrypt_sk<D, S0, S1>(
         &self,
@@ -81,6 +115,12 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         let trk_infos: &GGLWEToGGSWKeyLayout = &infos.tsk_infos();
         let gal_els: Vec<i64> = trace_galois_elements(atk_infos.log_n(), 2 * atk_infos.n().as_usize() as i64);
 
+        assert!(
+            !gal_els.is_empty(),
+            "no Galois elements generated; log_n={} must be >= 1",
+            atk_infos.log_n()
+        );
+
         Self {
             brk: <BlindRotationKey<Vec<u8>, BRA> as BlindRotationKeyFactory<BRA>>::blind_rotation_key_alloc(brk_infos),
             atk: gal_els
@@ -95,6 +135,24 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
     }
 }
 
+/// Standard (un-prepared) circuit bootstrapping key bundle.
+///
+/// Bundles the three sub-keys required for a full circuit bootstrapping
+/// evaluation:
+///
+/// - `brk`: The blind rotation key — one GGSW per LWE dimension.
+/// - `atk`: A map of automorphism keys keyed by their Galois elements, used
+///   for the trace and packing steps.  The set of Galois elements is the full
+///   set of trace automorphisms of the cyclotomic ring (computed by
+///   `trace_galois_elements`).
+/// - `tsk`: The GGLWE-to-GGSW tensor-switching key, used in the final
+///   promotion step.
+///
+/// ## Key Lifecycle
+///
+/// 1. Allocate with [`CircuitBootstrappingKey::alloc_from_infos`].
+/// 2. Fill with [`CircuitBootstrappingKey::encrypt_sk`].
+/// 3. Prepare with `CircuitBootstrappingKeyPrepared::prepare`.
 pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
     pub(crate) brk: BlindRotationKey<D, BRA>,
     pub(crate) tsk: GGLWEToGGSWKey<Vec<u8>>,

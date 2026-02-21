@@ -8,12 +8,33 @@ use poulpy_hal::{
     reference::{vec_znx::vec_znx_rotate_inplace, znx::ZnxRef},
 };
 
+/// Specifies in which direction the LUT is rotated by the LWE constant term
+/// during blind rotation.
+///
+/// By default (`Left`) the rotation is by `X^{-dec(lwe)}`, which is the
+/// standard convention for blind rotation: decoding the result at the constant
+/// coefficient yields `f(dec(lwe))`.  Setting `Right` reverses the sign of the
+/// LWE constant-term contribution, which is useful when the encryption of the
+/// exponent is desired instead of the function value (as in circuit
+/// bootstrapping's `execute_to_exponent` mode).
 #[derive(Debug, Clone, Copy)]
 pub enum LookUpTableRotationDirection {
+    /// Rotate by `X^{-dec(lwe)}` (standard).
     Left,
+    /// Rotate by `X^{+dec(lwe)}` (reversed).
     Right,
 }
 
+/// Plain-old-data descriptor used to allocate a [`LookupTable`].
+///
+/// All fields are public and must be consistent:
+/// - `n` is the GLWE polynomial degree.
+/// - `extension_factor` must be a non-zero power of two; a value of 1
+///   yields the classical single-polynomial LUT, larger values split the
+///   table across `extension_factor` polynomials giving an effective domain
+///   size of `n × extension_factor`.
+/// - `k` is the torus precision (total number of message bits).
+/// - `base2k` is the decomposition base (number of bits per limb).
 pub struct LookUpTableLayout {
     pub n: Degree,
     pub extension_factor: usize,
@@ -21,11 +42,20 @@ pub struct LookUpTableLayout {
     pub base2k: Base2K,
 }
 
+/// Accessor trait for the dimensional parameters of a lookup table or its
+/// descriptor.
+///
+/// Implemented by both [`LookUpTableLayout`] and [`LookupTable`].
 pub trait LookupTableInfos {
+    /// GLWE polynomial degree `N`.
     fn n(&self) -> Degree;
+    /// Number of polynomials the LUT is split across (must be a power of two).
     fn extension_factor(&self) -> usize;
+    /// Total torus precision `k` (message bits).
     fn k(&self) -> TorusPrecision;
+    /// Decomposition base (bits per limb).
     fn base2k(&self) -> Base2K;
+    /// Number of limbs: `ceil(k / base2k)`.
     fn size(&self) -> usize;
 }
 
@@ -51,6 +81,32 @@ impl LookupTableInfos for LookUpTableLayout {
     }
 }
 
+/// An encoded lookup table ready for use in blind rotation.
+///
+/// A `LookupTable` stores a function `f : Z_{domain_size} -> T_q` encoded as
+/// one or more `VecZnx` polynomials in a representation compatible with the
+/// blind-rotation accumulator update.  When `extension_factor > 1` the domain
+/// is split across `extension_factor` polynomials of degree `n`, giving an
+/// effective domain of size `n × extension_factor`.
+///
+/// ## Construction
+///
+/// Use [`LookupTable::alloc`] to allocate storage, then [`LookupTable::set`]
+/// to encode the function values.  The `set` method handles scaling and
+/// polynomial-domain encoding internally; callers supply integer-valued
+/// function samples `f[i]`.
+///
+/// ## Rotation Direction
+///
+/// By default the table is configured for left rotation (standard decoding).
+/// Call [`LookupTable::set_rotation_direction`] before evaluation to switch
+/// to right rotation when the exponent encoding is needed.
+///
+/// ## Invariants
+///
+/// - `data` is non-empty; its length equals `extension_factor`.
+/// - All `VecZnx` elements share the same `n`, `base2k`, and `size`.
+/// - `drift` records the half-step pre-rotation applied during encoding.
 pub struct LookupTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
     pub(crate) rot_dir: LookUpTableRotationDirection,
@@ -81,24 +137,42 @@ impl LookupTableInfos for LookupTable {
     }
 }
 
+/// Backend-level operations for filling and rotating a [`LookupTable`].
+///
+/// This trait is implemented for `Module<BE>` when the backend supports the
+/// required polynomial operations.  Callers interact with the higher-level
+/// [`LookupTable::set`] and `rotate` methods rather than calling these
+/// directly.
 pub trait LookupTableFactory {
+    /// Encode the function `f` into `res`, scaling by the appropriate power of
+    /// the decomposition base so that the most significant limb carries the
+    /// message.
+    ///
+    /// `k` is the message-bit count (e.g., 1 for a binary-valued LUT).
+    /// `f` must have length at most `res.domain_size()`.
     fn lookup_table_set(&self, res: &mut LookupTable, f: &[i64], k: usize);
+
+    /// Rotate the lookup table in-place by `k` positions in the ring
+    /// `Z[X] / (X^{domain_size} + 1)`.
     fn lookup_table_rotate(&self, k: i64, res: &mut LookupTable);
 }
 
 impl LookupTable {
+    /// Allocates a zero-initialised `LookupTable` with dimensions taken from
+    /// `infos`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `infos.extension_factor()` is zero or not a power of two.
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: LookupTableInfos,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert!(
-                infos.extension_factor() & (infos.extension_factor() - 1) == 0,
-                "extension_factor must be a power of two but is: {}",
-                infos.extension_factor()
-            );
-        }
+        assert!(
+            infos.extension_factor() > 0 && infos.extension_factor().is_power_of_two(),
+            "extension_factor must be a non-zero power of two, got: {}",
+            infos.extension_factor()
+        );
         Self {
             data: (0..infos.extension_factor())
                 .map(|_| VecZnx::alloc(infos.n().into(), 1, infos.size()))
@@ -110,30 +184,42 @@ impl LookupTable {
         }
     }
 
+    /// Returns `log2(extension_factor)`.
     pub fn log_extension_factor(&self) -> usize {
         (usize::BITS - (self.extension_factor() - 1).leading_zeros()) as _
     }
 
+    /// Returns the number of polynomials in the table (the extension factor).
     pub fn extension_factor(&self) -> usize {
         self.data.len()
     }
 
+    /// Returns the total number of coefficients across all polynomials:
+    /// `extension_factor × n`.
     pub fn domain_size(&self) -> usize {
         self.data.len() * self.data[0].n()
     }
 
+    /// Returns the currently configured rotation direction.
     pub fn rotation_direction(&self) -> LookUpTableRotationDirection {
         self.rot_dir
     }
 
-    // By default X^{-dec(lwe)} is computed during the blind rotation.
-    // Setting [reverse_rotation] to true will reverse the sign of
-    // rotation of the LUT by instead evaluating X^{dec(lwe)} during
-    // the blind rotation.
+    /// Overrides the rotation direction used during blind rotation.
+    ///
+    /// By default (`Left`) the rotation is `X^{-dec(lwe)}`, which decodes the
+    /// function value at coefficient 0 of the result.  Set `Right` to compute
+    /// `X^{+dec(lwe)}` instead (used in circuit bootstrapping's exponent mode).
     pub fn set_rotation_direction(&mut self, rot_dir: LookUpTableRotationDirection) {
         self.rot_dir = rot_dir
     }
 
+    /// Encodes the function `f` into this lookup table using the given module.
+    ///
+    /// Delegates to [`LookupTableFactory::lookup_table_set`].
+    ///
+    /// `k` is the number of message bits to encode (e.g., `1` for a binary
+    /// outcome, `res.base2k * res.size()` for the full precision).
     pub fn set<M>(&mut self, module: &M, f: &[i64], k: usize)
     where
         M: LookupTableFactory,
@@ -193,7 +279,6 @@ where
 
         #[cfg(debug_assertions)]
         {
-            assert!(f.len() <= self.n());
             assert!(
                 (max_bit_size(f) + (k % base2k) as u32) < i64::BITS,
                 "overflow: max(|f|) << (k%base2k) > i64::BITS"

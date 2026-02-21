@@ -18,26 +18,58 @@ use poulpy_hal::{
 
 use crate::bin_fhe::bdd_arithmetic::GetGGSWBit;
 
+/// A single bit-output circuit stored as a flat node array.
+///
+/// Implementors provide the node sequence and the maximum intermediate state
+/// size required during evaluation.
 pub trait BitCircuitInfo: Sync {
+    /// Returns the node sequence and the maximum intermediate-state count
+    /// (`max_inter_state`) for this output bit.
     fn info(&self) -> (&[Node], usize);
 }
 
+/// A multi-output BDD circuit that maps encrypted inputs to encrypted output bits.
+///
+/// Provides the dimensional information and per-bit circuit access needed by
+/// [`ExecuteBDDCircuit`].
 pub trait GetBitCircuitInfo: Sync {
+    /// Number of input bits expected by this circuit (across all input words).
     fn input_size(&self) -> usize;
+    /// Number of output bits produced by this circuit.
     fn output_size(&self) -> usize;
+    /// Returns the node sequence and intermediate-state count for output bit `bit`.
     fn get_circuit(&self, bit: usize) -> (&[Node], usize);
 }
 
+/// A statically-sized BDD bit-circuit, produced by the code-generator.
+///
+/// `N` is the total number of [`Node`] entries in the circuit.
+/// `max_inter_state` is the width of the intermediate-state buffer required
+/// during evaluation (i.e. the maximum number of live GLWE values at any BDD
+/// level).
 pub struct BitCircuit<const N: usize> {
+    /// The flat node array encoding this circuit's BDD levels.
     pub nodes: [Node; N],
+    /// Maximum width of the BDD intermediate state.
     pub max_inter_state: usize,
 }
 
+/// Associates compile-time input/output bit counts with a family of [`BitCircuit`]s.
+///
+/// Implemented by code-generated circuit types.  Used by [`Circuit`] to satisfy
+/// the [`GetBitCircuitInfo`] bound.
 pub trait BitCircuitFamily {
+    /// Total number of input bits across all input words.
     const INPUT_BITS: usize;
+    /// Number of output bits produced by circuits in this family.
     const OUTPUT_BITS: usize;
 }
 
+/// An array of `N` per-output-bit circuits sharing the same `C` circuit type.
+///
+/// Implements [`GetBitCircuitInfo`] by delegating each output bit to the
+/// corresponding `C` entry.  The circuit type `C` must implement both
+/// [`BitCircuitInfo`] and [`BitCircuitFamily`] to supply input/output sizes.
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
 
 impl<C, const N: usize> GetBitCircuitInfo for Circuit<C, N>
@@ -55,12 +87,31 @@ where
     }
 }
 
+/// Backend-level BDD circuit evaluator.
+///
+/// Evaluates a multi-output BDD circuit on a set of encrypted input bits,
+/// producing one GLWE ciphertext per output bit.  The circuit is represented as
+/// a sequence of [`Node`] entries arranged in BDD levels; each level is evaluated
+/// using [`Cmux`] gates.
 pub trait ExecuteBDDCircuit<BE: Backend> {
+    /// Returns the minimum scratch-space size in bytes required by a single
+    /// thread of BDD circuit evaluation.
+    ///
+    /// `state_size` is the maximum number of live intermediate GLWE values
+    /// (i.e. `max_inter_state` from [`BitCircuit`]).
     fn execute_bdd_circuit_tmp_bytes<R, G>(&self, res_infos: &R, state_size: usize, ggsw_infos: &G) -> usize
     where
         R: GLWEInfos,
         G: GGSWInfos;
 
+    /// Single-threaded BDD circuit evaluation.
+    ///
+    /// Evaluates `circuit` on `inputs`, writing one GLWE ciphertext per output
+    /// bit into `out[0..circuit.output_size()]`.  Elements beyond
+    /// `output_size` are zeroed.
+    ///
+    /// Delegates to [`execute_bdd_circuit_multi_thread`][Self::execute_bdd_circuit_multi_thread]
+    /// with `threads = 1`.
     fn execute_bdd_circuit<C, G, O>(&self, out: &mut [GLWE<O>], inputs: &G, circuit: &C, scratch: &mut Scratch<BE>)
     where
         G: GetGGSWBit<BE> + BitSize,
@@ -70,6 +121,16 @@ pub trait ExecuteBDDCircuit<BE: Backend> {
         self.execute_bdd_circuit_multi_thread(1, out, inputs, circuit, scratch);
     }
 
+    /// Multi-threaded BDD circuit evaluation.
+    ///
+    /// Partitions the output bits across `threads` OS threads using
+    /// `std::thread::scope`.  Each thread receives a dedicated slice of the
+    /// scratch arena of size
+    /// [`execute_bdd_circuit_tmp_bytes`][Self::execute_bdd_circuit_tmp_bytes].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scratch.available() < threads * scratch_thread_size`.
     fn execute_bdd_circuit_multi_thread<C, G, O>(
         &self,
         threads: usize,
@@ -250,10 +311,19 @@ impl<const N: usize> BitCircuitInfo for BitCircuit<N> {
     }
 }
 
+/// A single node in a BDD circuit level.
+///
+/// Nodes are arranged in a flat array divided into chunks of `max_inter_state`
+/// entries, one chunk per BDD level.  Each chunk is processed left-to-right
+/// during evaluation; the outputs of one level become the inputs of the next.
 #[derive(Debug)]
 pub enum Node {
+    /// `Cmux(selector_bit, hi_index, lo_index)`: evaluates
+    /// `res = (hi - lo) * GGSW(selector_bit) + lo`.
     Cmux(usize, usize, usize),
+    /// Copy the corresponding entry from the previous level unchanged.
     Copy,
+    /// No-op; the corresponding state slot is unused at this level.
     None,
 }
 
@@ -273,6 +343,18 @@ impl<BE: Backend> Cswap<BE> for Module<BE> where
 {
 }
 
+/// Homomorphic conditional swap of two GLWE ciphertexts.
+///
+/// Given a GGSW ciphertext `s` encrypting a bit `b ∈ {0, 1}`, swaps the
+/// contents of `res_a` and `res_b` if `b = 1`, and leaves them unchanged if
+/// `b = 0`.  The operation is equivalent to:
+///
+/// ```text
+/// (new_res_a, new_res_b) = if b == 1 { (res_b, res_a) } else { (res_a, res_b) }
+/// ```
+///
+/// but is performed entirely in the ciphertext domain.  Used by
+/// `GLWEBlindRetrieval` to implement oblivious array access.
 pub trait Cswap<BE: Backend>
 where
     Self: Sized
@@ -289,6 +371,7 @@ where
         + VecZnxBigSubSmallA<BE>
         + VecZnxBigBytesOf,
 {
+    /// Returns the minimum scratch-space size in bytes required by [`cswap`][Self::cswap].
     fn cswap_tmp_bytes<R, A, S>(&self, res_a_infos: &R, res_b_infos: &A, s_infos: &S) -> usize
     where
         R: GLWEInfos,
@@ -423,6 +506,17 @@ where
     }
 }
 
+/// Homomorphic multiplexer (CMux) operation on GLWE ciphertexts.
+///
+/// Given two GLWE ciphertexts `t` (true branch) and `f` (false branch) and a
+/// GGSW ciphertext `s` encrypting a selector bit `b`, computes:
+///
+/// ```text
+/// res = (t - f) · s + f
+/// ```
+///
+/// so that `res` encrypts `t` when `b = 1` and `f` when `b = 0`.  This is the
+/// fundamental gate used throughout BDD circuit evaluation.
 pub trait Cmux<BE: Backend>
 where
     Self: Sized
@@ -434,6 +528,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes,
 {
+    /// Returns the minimum scratch-space size in bytes required by [`cmux`][Self::cmux].
     fn cmux_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, selector_infos: &B) -> usize
     where
         R: GLWEInfos,

@@ -16,7 +16,26 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use crate::bin_fhe::bdd_arithmetic::{Cmux, FheUintPrepared, FromBits, GetGGSWBit, ToBits, UnsignedInteger};
 
-/// An FHE ciphertext encrypting the bits of an [UnsignedInteger].
+/// A packed GLWE ciphertext encrypting the bits of a [`UnsignedInteger`].
+///
+/// All `T::BITS` bits of the plaintext integer are stored in the coefficient
+/// slots of a single GLWE polynomial using the interleaved layout defined by
+/// [`UnsignedInteger::bit_index`].  This layout allows individual bits or
+/// whole bytes to be extracted via a single rotate-and-trace operation.
+///
+/// ## Lifecycle
+///
+/// 1. Allocate with [`FheUint::alloc`] or [`FheUint::alloc_from_infos`].
+/// 2. Encrypt with [`FheUint::encrypt_sk`].
+/// 3. Call `FheUintPrepared::prepare` to convert
+///    each bit into a GGSW ciphertext ready for CMux-based circuit evaluation.
+/// 4. After BDD evaluation, fresh result bits are packed back into a new
+///    `FheUint` with [`FheUint::pack`].
+///
+/// ## Thread Safety
+///
+/// `FheUint<&[u8], T>` is `Sync`; shared references can be passed to multiple
+/// evaluation threads simultaneously.
 pub struct FheUint<D: Data, T: UnsignedInteger> {
     pub(crate) bits: GLWE<D>,
     pub(crate) _phantom: PhantomData<T>,
@@ -189,7 +208,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
-    /// Packs Vec<GLWE(bit[i])> into [FheUint].
+    /// Packs `Vec<GLWE(bit[i])>` into [`FheUint`].
     pub fn pack<G, M, K, H, BE: Backend>(&mut self, module: &M, mut bits: Vec<G>, keys: &H, scratch: &mut Scratch<BE>)
     where
         G: GLWEToMut + GLWEInfos,
@@ -289,10 +308,19 @@ impl<D: DataMut, T: UnsignedInteger> GLWEToMut for FheUint<D, T> {
     }
 }
 
+/// Extension of `ScratchTakeCore` that adds allocation of temporary
+/// [`FheUint`] values from the scratch arena.
+///
+/// Implemented for `Scratch<BE>` whenever `Scratch<BE>: ScratchTakeCore<BE>`.
+/// Callers use this to obtain short-lived `FheUint` temporaries on the hot
+/// path without heap allocation.
 pub trait ScratchTakeBDD<T: UnsignedInteger, BE: Backend>
 where
     Self: ScratchTakeCore<BE>,
 {
+    /// Carves a temporary [`FheUint`] from the scratch arena.
+    ///
+    /// Returns the temporary and the remaining scratch space.
     fn take_fhe_uint<A>(&mut self, infos: &A) -> (FheUint<&mut [u8], T>, &mut Self)
     where
         A: GLWEInfos,

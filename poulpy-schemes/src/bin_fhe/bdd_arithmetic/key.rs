@@ -26,16 +26,36 @@ use poulpy_hal::{
     source::Source,
 };
 
+/// Dimension descriptor for a complete BDD evaluation key bundle.
+///
+/// Provides the layout parameters for the three constituent keys:
+/// the circuit-bootstrapping key (`cbt`), the GLWE-to-LWE key-switching key
+/// (`ks_lwe`), and the optional GLWE-to-GLWE key-switching key (`ks_glwe`).
+///
+/// `ks_glwe` is `Some` when the input ciphertext's GLWE rank differs from the
+/// GLWE rank expected by the circuit-bootstrapping procedure, requiring an
+/// intermediate rank reduction.
 pub trait BDDKeyInfos {
+    /// Layout of the circuit-bootstrapping key.
     fn cbt_infos(&self) -> CircuitBootstrappingKeyLayout;
+    /// Layout of the GLWE-to-LWE key-switching key.
     fn ks_lwe_infos(&self) -> GLWEToLWEKeyLayout;
+    /// Layout of the optional GLWE-to-GLWE key-switching key, or `None` if
+    /// no intermediate rank reduction is needed.
     fn ks_glwe_infos(&self) -> Option<GLWESwitchingKeyLayout>;
 }
 
+/// Concrete dimension descriptor for a BDD evaluation key bundle.
+///
+/// Implements [`BDDKeyInfos`] and is suitable for use wherever a layout
+/// descriptor is required (e.g. allocation, scratch-size queries).
 #[derive(Debug, Clone, Copy)]
 pub struct BDDKeyLayout {
+    /// Layout of the circuit-bootstrapping key.
     pub cbt_layout: CircuitBootstrappingKeyLayout,
+    /// Layout of the optional GLWE-to-GLWE key-switching key.
     pub ks_glwe_layout: Option<GLWESwitchingKeyLayout>,
+    /// Layout of the GLWE-to-LWE key-switching key.
     pub ks_lwe_layout: GLWEToLWEKeyLayout,
 }
 
@@ -53,6 +73,27 @@ impl BDDKeyInfos for BDDKeyLayout {
     }
 }
 
+/// Raw BDD evaluation key bundle.
+///
+/// Contains the three sub-keys required to evaluate BDD circuits on encrypted
+/// [`FheUint`] values:
+///
+/// - `cbt`: circuit-bootstrapping key (blind rotation + trace + key-switch).
+/// - `ks_glwe`: optional GLWE-to-GLWE key-switching key for rank reduction before
+///   LWE extraction.  Present when the input ciphertext's GLWE rank differs from
+///   the bootstrapping GLWE rank.
+/// - `ks_lwe`: GLWE-to-LWE key-switching key; applied after optional rank
+///   reduction to produce LWE ciphertexts suitable for circuit bootstrapping.
+///
+/// ## Lifecycle
+///
+/// 1. Allocate with [`BDDKey::alloc_from_infos`].
+/// 2. Fill with [`BDDKey::encrypt_sk`].
+/// 3. Prepare into a [`BDDKeyPrepared`] before evaluation.
+///
+/// ## Thread Safety
+///
+/// `BDDKey` is `Sync`; multiple evaluation threads may hold shared references.
 pub struct BDDKey<D, BRA>
 where
     D: Data,
@@ -79,11 +120,28 @@ where
     }
 }
 
+/// Backend-level factory for encrypting a [`BDDKey`] under a secret key.
+///
+/// Implemented for `Module<BE>` when the backend supports circuit-bootstrapping
+/// and switching-key encryption.  Callers should prefer the convenience method
+/// [`BDDKey::encrypt_sk`].
 pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`bdd_key_encrypt_sk`][Self::bdd_key_encrypt_sk].
     fn bdd_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: BDDKeyInfos;
 
+    /// Fills `res` with key material encrypted under `sk_lwe` / `sk_glwe`.
+    ///
+    /// `source_xa` supplies mask randomness; `source_xe` supplies error
+    /// randomness.  The scratch arena must be at least
+    /// [`bdd_key_encrypt_sk_tmp_bytes`][Self::bdd_key_encrypt_sk_tmp_bytes]
+    /// bytes.
+    ///
+    /// When `res.ks_glwe` is `Some`, a fresh intermediate GLWE key is sampled
+    /// from `source_xe` and used as the bridging secret; `ks_lwe` is then
+    /// encrypted under that intermediate key rather than `sk_glwe` directly.
     fn bdd_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut BDDKey<D, BRA>,
@@ -156,6 +214,21 @@ impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
     }
 }
 
+/// DFT-prepared BDD evaluation key bundle, ready for on-line evaluation.
+///
+/// Mirrors the structure of [`BDDKey`] but stores all sub-keys in their
+/// DFT (frequency) domain representations for fast matrix-vector products
+/// during circuit bootstrapping and key-switching.
+///
+/// ## Invariants
+///
+/// - `ks_glwe` is `Some` if and only if the corresponding [`BDDKey`]'s
+///   `ks_glwe` was `Some`.
+///
+/// ## Thread Safety
+///
+/// `BDDKeyPrepared<&[u8], BRA, BE>` is `Sync`; evaluation threads may share
+/// a single prepared key while each holding their own scratch arena.
 pub struct BDDKeyPrepared<D, BRA, BE>
 where
     D: Data,
@@ -209,6 +282,11 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> GLWEAutomorphismKeyHelper<
     }
 }
 
+/// Backend-level factory for allocating and preparing [`BDDKeyPrepared`] values.
+///
+/// Implemented for `Module<BE>` when the backend supports preparation of all
+/// three constituent sub-keys.  Default method implementations delegate to
+/// the corresponding sub-key factories.
 pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>
 where
     Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>,
@@ -284,7 +362,15 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyHelper<D, BRA, BE> f
     }
 }
 
+/// Accessor trait for the constituent sub-keys of a prepared BDD key bundle.
+///
+/// Implemented by [`BDDKeyPrepared`].  Evaluation routines are generic over
+/// this trait so that callers can pass any type that exposes the three
+/// constituent prepared keys.
 pub trait BDDKeyHelper<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> {
+    /// Returns references to the three constituent prepared keys in order:
+    /// the circuit-bootstrapping key, the optional GLWE switching key, and
+    /// the GLWE-to-LWE switching key.
     #[allow(clippy::type_complexity)]
     fn get_cbt_key(
         &self,
@@ -295,7 +381,14 @@ pub trait BDDKeyHelper<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> {
     );
 }
 
+/// Backend-level factory for building [`FheUintPreparedDebug`] values.
+///
+/// Unlike `FheUintPrepare`, this variant stores the per-bit GGSW ciphertexts
+/// in standard (non-DFT) form, enabling noise inspection via
+/// [`FheUintPreparedDebug::noise`] without a forward DFT transform.
 pub trait FheUintPrepareDebug<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
+    /// Populates `res` by bootstrapping each bit of `bits` through `key`'s
+    /// circuit-bootstrapping pipeline, storing the output GGSW in standard form.
     fn fhe_uint_debug_prepare<DM, DR0, DR1>(
         &self,
         res: &mut FheUintPreparedDebug<DM, T>,

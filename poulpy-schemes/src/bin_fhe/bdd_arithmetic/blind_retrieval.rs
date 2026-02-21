@@ -3,10 +3,31 @@ use poulpy_core::{
     GLWECopy, ScratchTakeCore,
     layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut, GLWEToRef},
 };
-use poulpy_hal::layouts::{Backend, Module, Scratch};
+use poulpy_hal::layouts::{Backend, Module, Scratch, ZnxZero};
 
 use crate::bin_fhe::bdd_arithmetic::{Cmux, Cswap, GetGGSWBit};
 
+/// Stateful accumulator for oblivious retrieval of one GLWE ciphertext from a
+/// stream of inputs using an encrypted binary index.
+///
+/// Implements a binary-carry-save accumulation strategy that processes input
+/// ciphertexts one by one via [`add`][GLWEBlindRetriever::add], combining pairs
+/// with CMux at successive bit positions.  When all inputs have been added,
+/// [`flush`][GLWEBlindRetriever::flush] finalises the result.
+///
+/// The convenience method [`retrieve`][GLWEBlindRetriever::retrieve] combines
+/// `reset`, all `add` calls, and `flush` in a single step.
+///
+/// ## Capacity
+///
+/// `alloc(infos, size)` allocates enough internal state to accumulate up to
+/// `size` inputs.  Adding more than `size` inputs panics.
+///
+/// ## Scratch-Space
+///
+/// All methods that require scratch space accept a mutable `Scratch<BE>` arena.
+/// The required size is returned by
+/// [`retrieve_tmp_bytes`][GLWEBlindRetriever::retrieve_tmp_bytes].
 pub struct GLWEBlindRetriever {
     accumulators: Vec<Accumulator>,
     counter: usize,
@@ -79,11 +100,16 @@ impl GLWEBlindRetriever {
         M: GLWECopy + Cmux<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        if self.counter == 0 {
+            res.to_mut().data_mut().zero();
+            self.reset();
+            return;
+        }
         for i in 0..self.accumulators.len() - 1 {
             let (acc_prev, acc_next) = self.accumulators.split_at_mut(i + 1);
             if acc_prev[i].num != 0 {
                 add_core(module, &acc_prev[i].data, acc_next, i + 1, selector, offset, scratch);
-                acc_prev[0].num = 0
+                acc_prev[i].num = 0;
             }
         }
         module.glwe_copy(res, &self.accumulators.last().unwrap().data);
@@ -154,10 +180,24 @@ fn add_core<A, S, M, BE: Backend>(
 
 impl<BE: Backend> GLWEBlindRetrieval<BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + Cswap<BE> {}
 
+/// Oblivious in-place sorting / retrieval of a GLWE vector by an encrypted index.
+///
+/// Where `GLWEBlindSelection` extracts one element from a map given an encrypted
+/// key, `GLWEBlindRetrieval` operates on an ordered `Vec<R>` and performs a
+/// sorting-network-style rearrangement: after
+/// [`glwe_blind_retrieval_statefull`][Self::glwe_blind_retrieval_statefull],
+/// element `0` of the vector encrypts the input element whose index equals the
+/// encrypted selector.
+///
+/// The rearrangement uses conditional-swap ([`Cswap`]) operations, one per bit
+/// of the selector sub-field.  The `_rev` variant applies the operations in
+/// reverse, useful for undoing the permutation.
 pub trait GLWEBlindRetrieval<BE: Backend>
 where
     Self: GLWECopy + Cmux<BE> + Cswap<BE>,
 {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`glwe_blind_retrieval_statefull`][Self::glwe_blind_retrieval_statefull].
     fn glwe_blind_retrieval_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
@@ -166,6 +206,11 @@ where
         self.cswap_tmp_bytes(res_infos, res_infos, k_infos)
     }
 
+    /// Rearranges `res` in-place so that `res[0]` encrypts the element at the
+    /// encrypted index `(bits >> bit_rsh) % 2^bit_mask`.
+    ///
+    /// Uses a butterfly network of [`Cswap`] gates, iterating from the
+    /// most-significant to the least-significant bit of the selector sub-field.
     fn glwe_blind_retrieval_statefull<R, K>(
         &self,
         res: &mut Vec<R>,
@@ -190,6 +235,11 @@ where
         }
     }
 
+    /// Reverses the permutation applied by
+    /// [`glwe_blind_retrieval_statefull`][Self::glwe_blind_retrieval_statefull].
+    ///
+    /// Applies the same butterfly network in reverse order, restoring the original
+    /// element ordering after an oblivious retrieval.
     fn glwe_blind_retrieval_statefull_rev<R, K>(
         &self,
         res: &mut Vec<R>,

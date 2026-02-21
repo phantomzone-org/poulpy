@@ -10,10 +10,25 @@ use crate::bin_fhe::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend> GLWEBlindSelection<T, BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE> {}
 
+/// Oblivious selection of one GLWE ciphertext from an encrypted-indexed map.
+///
+/// Given a `HashMap` of GLWE ciphertexts keyed by integer index and a set of
+/// GGSW ciphertexts encoding a selection index `k`, selects:
+///
+/// ```text
+/// res = a[(k >> bit_rsh) % 2^bit_mask]
+/// ```
+///
+/// The selection is performed via a binary-tree reduction of CMux gates over the
+/// `bit_mask` most-significant bits of the selected index sub-field, traversing
+/// from MSB to LSB.  Indices absent from the map are treated as encryptions of
+/// zero.
 pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend>
 where
     Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>,
 {
+    /// Returns the minimum scratch-space size in bytes required by
+    /// [`glwe_blind_selection`][Self::glwe_blind_selection].
     fn glwe_blind_selection_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
