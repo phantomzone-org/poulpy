@@ -396,6 +396,7 @@ dependencies = [
 name = "poulpy-cpu-ref"
 version = "0.3.2"
 dependencies = [
+ "bytemuck",
  "byteorder",
  "criterion",
  "itertools 0.14.0",

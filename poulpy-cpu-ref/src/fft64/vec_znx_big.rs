@@ -13,7 +13,7 @@
 //! - **Automorphism**: Galois action `X -> X^p`, with out-of-place and inplace variants.
 //! - **Gaussian sampling**: add normally-distributed noise.
 
-use crate::FFT64Ref;
+use super::FFT64Ref;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
     layouts::{

@@ -33,7 +33,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::{FFT64Ref, module::FFT64ModuleHandle};
+use super::{FFT64Ref, module::FFT64ModuleHandle};
 
 unsafe impl VecZnxDftFromBytesImpl<Self> for FFT64Ref {
     fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<Self> {

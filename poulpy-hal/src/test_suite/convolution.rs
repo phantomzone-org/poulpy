@@ -3,8 +3,8 @@ use rand::RngCore;
 use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
-        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeInplace,
+        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
+        VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut, VecZnxToRef,
@@ -15,7 +15,7 @@ use crate::{
 
 pub fn test_convolution_by_const<M, BE: Backend>(module: &M)
 where
-    M: ModuleN + Convolution<BE> + VecZnxBigNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxBigAlloc<BE>,
+    M: ModuleN + Convolution<BE> + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeInplace<BE> + VecZnxBigAlloc<BE>,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
@@ -45,7 +45,11 @@ where
         b.at_mut(0, j)[0] = *x
     }
 
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+        module
+            .cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size)
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
+    );
 
     for a_col in 0..a.cols() {
         for offset in 0..res_size {
@@ -79,6 +83,7 @@ where
         + VecZnxDftApply<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>,
     Scratch<BE>: ScratchTakeBasic,
@@ -112,7 +117,8 @@ where
         module
             .cnv_apply_dft_tmp_bytes(res_size, 0, a_size, b_size)
             .max(module.cnv_prepare_left_tmp_bytes(res_size, a_size))
-            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size)),
+            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size))
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
     module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
@@ -154,6 +160,7 @@ where
         + VecZnxDftApply<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>
         + VecZnxAdd
@@ -190,7 +197,8 @@ where
         module
             .cnv_pairwise_apply_dft_tmp_bytes(res_size, 0, a_size, b_size)
             .max(module.cnv_prepare_left_tmp_bytes(res_size, a_size))
-            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size)),
+            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size))
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
     module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());

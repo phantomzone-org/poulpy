@@ -18,7 +18,7 @@ use poulpy_hal::{
     reference::fft64::svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
 };
 
-use crate::{FFT64Ref, module::FFT64ModuleHandle};
+use super::{FFT64Ref, module::FFT64ModuleHandle};
 
 unsafe impl SvpPPolFromBytesImpl<Self> for FFT64Ref {
     fn svp_ppol_from_bytes_impl(n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<Self> {

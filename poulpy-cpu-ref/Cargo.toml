@@ -11,6 +11,7 @@ documentation = "https://docs.rs/poulpy"
 
 [dependencies]
 poulpy-hal = {workspace = true}
+bytemuck = {workspace = true}
 rug = {workspace = true}
 criterion = {workspace = true}
 itertools = {workspace = true}

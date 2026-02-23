@@ -20,7 +20,7 @@ use poulpy_hal::{
     reference::fft64::reim::{ReimFFTTable, ReimIFFTTable},
 };
 
-use crate::FFT64Ref;
+use super::FFT64Ref;
 
 /// Opaque handle for the [`FFT64Ref`](crate::FFT64Ref) backend.
 ///

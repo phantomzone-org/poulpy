@@ -30,7 +30,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::{FFT64Ref, module::FFT64ModuleHandle};
+use super::{FFT64Ref, module::FFT64ModuleHandle};
 
 unsafe impl VmpPMatAllocBytesImpl<Self> for FFT64Ref {
     fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {

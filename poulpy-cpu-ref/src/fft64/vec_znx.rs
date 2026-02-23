@@ -48,7 +48,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::FFT64Ref;
+use super::FFT64Ref;
 
 unsafe impl VecZnxZeroImpl<Self> for FFT64Ref {
     fn vec_znx_zero_impl<R>(_module: &Module<Self>, res: &mut R, res_col: usize)

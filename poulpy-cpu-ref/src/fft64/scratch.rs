@@ -27,7 +27,7 @@ use poulpy_hal::{
     oep::{ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeSliceImpl},
 };
 
-use crate::FFT64Ref;
+use super::FFT64Ref;
 
 unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for FFT64Ref {
     fn scratch_owned_alloc_impl(size: usize) -> ScratchOwned<B> {

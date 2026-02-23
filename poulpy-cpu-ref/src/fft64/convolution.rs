@@ -30,7 +30,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::{FFT64Ref, module::FFT64ModuleHandle};
+use super::{FFT64Ref, module::FFT64ModuleHandle};
 
 unsafe impl CnvPVecLAllocImpl<Self> for FFT64Ref {
     fn cnv_pvec_left_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, Self> {
