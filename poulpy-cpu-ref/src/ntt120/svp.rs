@@ -16,8 +16,8 @@ use poulpy_hal::{
         SvpApplyDftToDftAddImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl,
         SvpPPolFromBytesImpl, SvpPrepareImpl,
     },
-    reference::ntt120::{
-        svp::{ntt120_svp_apply_dft_to_dft, ntt120_svp_apply_dft_to_dft_add, ntt120_svp_apply_dft_to_dft_inplace, ntt120_svp_prepare},
+    reference::ntt120::svp::{
+        ntt120_svp_apply_dft_to_dft, ntt120_svp_apply_dft_to_dft_add, ntt120_svp_apply_dft_to_dft_inplace, ntt120_svp_prepare,
     },
 };
 

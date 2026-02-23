@@ -45,6 +45,8 @@ where
         A: LWEInfos,
         K: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, key_infos.n());
+
         let max_k: TorusPrecision = a_infos.k().max(res_infos.k());
 
         let glwe_a_infos: GLWELayout = GLWELayout {
@@ -61,11 +63,11 @@ where
             rank: Rank(1),
         };
 
-        let glwe_in: usize = GLWE::bytes_of_from_infos(&glwe_a_infos);
-        let glwe_out: usize = GLWE::bytes_of_from_infos(&glwe_res_infos);
-        let ks: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
+        let lvl_0: usize = GLWE::bytes_of_from_infos(&glwe_a_infos);
+        let lvl_1: usize = GLWE::bytes_of_from_infos(&glwe_res_infos);
+        let lvl_2: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
 
-        glwe_in + glwe_out + ks
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn lwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
@@ -81,7 +83,12 @@ where
         assert!(res.n().as_usize() <= self.n());
         assert!(a.n().as_usize() <= self.n());
         assert_eq!(ksk.n(), self.n() as u32);
-        assert!(scratch.available() >= self.lwe_keyswitch_tmp_bytes(res, a, ksk));
+        assert!(
+            scratch.available() >= self.lwe_keyswitch_tmp_bytes(res, a, ksk),
+            "scratch.available(): {} < LWEKeySwitch::lwe_keyswitch_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_keyswitch_tmp_bytes(res, a, ksk)
+        );
 
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),

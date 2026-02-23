@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch},
+};
 
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
@@ -30,7 +33,7 @@ impl<D: DataMut> GGSW<D> {
     where
         A: GGSWToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
     {
@@ -40,7 +43,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn keyswitch_inplace<M, K, T, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
     {
@@ -62,19 +65,31 @@ where
         assert_eq!(key_infos.rank_in(), key_infos.rank_out());
         assert_eq!(tsk_infos.rank_in(), tsk_infos.rank_out());
         assert_eq!(key_infos.rank_in(), tsk_infos.rank_in());
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+        assert_eq!(self.n() as u32, tsk_infos.n());
 
-        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos))
+        let lvl_0: usize = self
+            .glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos));
+        lvl_0
     }
 
     fn ggsw_keyswitch_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        assert!(
+            scratch.available() >= self.ggsw_keyswitch_tmp_bytes(res, res, key, tsk),
+            "scratch.available(): {} < GGSWKeyswitch::ggsw_keyswitch_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_keyswitch_tmp_bytes(res, res, key, tsk)
+        );
 
         for row in 0..res.dnum().into() {
             // Key-switch column 0, i.e.
@@ -90,7 +105,7 @@ where
         R: GGSWToMut,
         A: GGSWToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
@@ -99,6 +114,12 @@ where
         assert!(res.dnum() <= a.dnum());
         assert_eq!(res.dsize(), a.dsize());
         assert_eq!(res.base2k(), a.base2k());
+        assert!(
+            scratch.available() >= self.ggsw_keyswitch_tmp_bytes(res, a, key, tsk),
+            "scratch.available(): {} < GGSWKeyswitch::ggsw_keyswitch_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_keyswitch_tmp_bytes(res, a, key, tsk)
+        );
 
         for row in 0..a.dnum().into() {
             // Key-switch column 0, i.e.
@@ -126,13 +147,13 @@ where
         R: GGSWToMut,
         A: GGSWToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>;
 
     fn ggsw_keyswitch_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>;
 }

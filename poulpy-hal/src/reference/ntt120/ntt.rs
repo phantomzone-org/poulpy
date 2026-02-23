@@ -261,7 +261,7 @@ impl<P: PrimeSet> NttTable<P> {
 
         // ── Level 0: first pass  a[i] *= ω^i ──────────────────────────────
         {
-            let half_bs = (bs + 1) / 2;
+            let half_bs = bs.div_ceil(2);
             let mask = (1u64 << half_bs) - 1;
             bs = half_bs + log_q + 1;
             level_metadata.push(NttStepMeta {
@@ -306,7 +306,7 @@ impl<P: PrimeSet> NttTable<P> {
 
             let (new_bs, half_bs, mask) = if nn >= 4 {
                 let bs1 = bs + 1; // bit-size after a+b or a-b
-                let half_bs = (bs1 + 1) / 2;
+                let half_bs = bs1.div_ceil(2);
                 let bs2 = half_bs + log_q + 1; // bit-size after (a-b)*ω
                 let new_bs = bs1.max(bs2);
                 assert!(new_bs <= 64, "NTT bit-size overflow at level nn={nn}");
@@ -443,7 +443,7 @@ impl<P: PrimeSet> NttTableInv<P> {
                 bs = bs_after_reduc;
             }
 
-            let half_bs = (bs + 1) / 2;
+            let half_bs = bs.div_ceil(2);
             let bs_mult = half_bs + log_q + 1; // bit-size of b*ω^k
             let new_bs = 1 + bs.max(bs_mult); // bit-size of a ± b*ω^k
             assert!(new_bs <= 64, "iNTT bit-size overflow at level nn={nn}");
@@ -486,7 +486,7 @@ impl<P: PrimeSet> NttTableInv<P> {
                 bs = bs_after_reduc;
             }
 
-            let half_bs = (bs + 1) / 2;
+            let half_bs = bs.div_ceil(2);
             let new_bs = half_bs + log_q + 1;
             assert!(new_bs <= 64, "iNTT bit-size overflow at last level");
 
@@ -547,7 +547,7 @@ impl<P: PrimeSet> NttTableInv<P> {
 #[inline(always)]
 pub fn split_precompmul(inp: u64, powomega_packed: u64, half_bs: u64, mask: u64) -> u64 {
     let inp_low = inp & mask;
-    let t = (powomega_packed & 0xFFFF_FFFF) as u64; // low 32 bits = ω mod Q (32-bit prime)
+    let t = powomega_packed & 0xFFFF_FFFF; // low 32 bits = ω mod Q (32-bit prime)
     let t1 = powomega_packed >> 32; // high 32 bits = (ω << half_bs) mod Q
     inp_low.wrapping_mul(t).wrapping_add((inp >> half_bs).wrapping_mul(t1))
 }
@@ -756,6 +756,7 @@ pub fn intt_ref<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
 /// For i=0: `(a, b) → (a+b, a + q2bs - b)` (no twiddle).
 /// For i=1..halfnn-1: `(a, b) → (a+b, split_precompmul(a + q2bs - b, ω^i, …))`.
 #[inline(always)]
+#[allow(clippy::too_many_arguments)]
 fn ntt_butterfly_block(
     data: &mut [u64],
     blk: usize,    // block start (coefficient index)
@@ -802,6 +803,7 @@ fn ntt_butterfly_block(
 /// For i=1..halfnn-1: twiddle is applied to `b` *before* the butterfly:
 ///   `bo = split_precompmul(b, ω^{-i}, …)`, then `(a, bo) → (a+bo, a + q2bs - bo)`.
 #[inline(always)]
+#[allow(clippy::too_many_arguments)]
 fn intt_butterfly_block(
     data: &mut [u64],
     blk: usize,

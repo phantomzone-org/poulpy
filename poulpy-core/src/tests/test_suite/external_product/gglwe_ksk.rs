@@ -146,18 +146,16 @@ where
                     rank_out as f64,
                     k_in,
                     k_ggsw,
-                );
+                ) + 0.5;
 
                 for row in 0..ct_gglwe_out.dnum().as_usize() {
                     for col in 0..ct_gglwe_out.rank_in().as_usize() {
-                        assert!(
-                            ct_gglwe_out
-                                .key
-                                .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
-                                .std()
-                                .log2()
-                                <= max_noise + 0.5
-                        )
+                        let noise_have: f64 = ct_gglwe_out
+                            .key
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
+                            .std()
+                            .log2();
+                        assert!(noise_have <= max_noise, "noise_have:{noise_have} > noise_max:{max_noise}")
                     }
                 }
             }
@@ -284,18 +282,16 @@ where
                     rank_out as f64,
                     k_out,
                     k_ggsw,
-                );
+                ) + 0.5;
 
                 for row in 0..ct_gglwe.dnum().as_usize() {
                     for col in 0..ct_gglwe.rank_in().as_usize() {
-                        assert!(
-                            ct_gglwe
-                                .key
-                                .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
-                                .std()
-                                .log2()
-                                <= max_noise + 0.5
-                        )
+                        let noise_have: f64 = ct_gglwe
+                            .key
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
+                            .std()
+                            .log2();
+                        assert!(noise_have <= max_noise, "noise_have:{noise_have} > noise_max:{max_noise}")
                     }
                 }
             }

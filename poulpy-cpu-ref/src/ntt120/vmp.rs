@@ -21,11 +21,9 @@ use poulpy_hal::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
         VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
-    reference::ntt120::{
-        vmp::{
-            ntt120_vmp_apply_dft_to_dft, ntt120_vmp_apply_dft_to_dft_add, ntt120_vmp_apply_dft_to_dft_tmp_bytes, ntt120_vmp_prepare,
-            ntt120_vmp_prepare_tmp_bytes, ntt120_vmp_zero,
-        },
+    reference::ntt120::vmp::{
+        ntt120_vmp_apply_dft_to_dft, ntt120_vmp_apply_dft_to_dft_add, ntt120_vmp_apply_dft_to_dft_tmp_bytes, ntt120_vmp_prepare,
+        ntt120_vmp_prepare_tmp_bytes, ntt120_vmp_zero,
     },
 };
 
@@ -150,7 +148,14 @@ where
             pmat_ref.cols_out(),
             pmat_ref.size(),
         ));
-        ntt120_vmp_apply_dft_to_dft_add::<_, _, _, Self>(module, &mut res_ref, &a_ref, &pmat_ref, limb_offset * pmat_ref.cols_out(), tmp);
+        ntt120_vmp_apply_dft_to_dft_add::<_, _, _, Self>(
+            module,
+            &mut res_ref,
+            &a_ref,
+            &pmat_ref,
+            limb_offset * pmat_ref.cols_out(),
+            tmp,
+        );
     }
 }
 

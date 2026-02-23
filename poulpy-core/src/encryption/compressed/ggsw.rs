@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
     layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
@@ -71,7 +71,9 @@ where
     where
         A: GGSWInfos,
     {
-        self.ggsw_encrypt_sk_tmp_bytes(infos)
+        assert_eq!(self.n() as u32, infos.n());
+        let lvl_0: usize = self.ggsw_encrypt_sk_tmp_bytes(infos);
+        lvl_0
     }
 
     fn ggsw_compressed_encrypt_sk<R, P, S>(
@@ -99,6 +101,12 @@ where
         assert_eq!(pt.n(), self.n());
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk.n(), self.n() as u32);
+        assert!(
+            scratch.available() >= self.ggsw_compressed_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GGSWCompressedEncryptSk::ggsw_compressed_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_compressed_encrypt_sk_tmp_bytes(res)
+        );
 
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.dnum().as_usize() * (res.rank().as_usize() + 1)];
 

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxAutomorphism, VecZnxAutomorphismInplace},
+    api::{ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
     layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch},
 };
 
@@ -46,7 +46,12 @@ impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
 
 impl<BE: Backend> GLWEAutomorphismKeyAutomorphism<BE> for Module<BE>
 where
-    Self: GaloisElement + GLWEKeyswitch<BE> + VecZnxAutomorphism + VecZnxAutomorphismInplace<BE> + CyclotomicOrder,
+    Self: GaloisElement
+        + GLWEKeyswitch<BE>
+        + VecZnxAutomorphism
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismInplaceTmpBytes
+        + CyclotomicOrder,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
@@ -55,11 +60,18 @@ where
         A: GGLWEInfos,
         K: GGLWEInfos,
     {
-        if res_infos.glwe_layout() == a_infos.glwe_layout() {
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
+        let lvl_0: usize = if res_infos.glwe_layout() == a_infos.glwe_layout() {
             self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
         } else {
             self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::bytes_of_from_infos(a_infos)
-        }
+        };
+        let lvl_1: usize = self.vec_znx_automorphism_inplace_tmp_bytes();
+
+        lvl_0.max(lvl_1)
     }
 
     fn glwe_automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -78,6 +90,12 @@ where
         assert_eq!(res.dsize(), a.dsize(), "res dnum: {} != a dnum: {}", res.dsize(), a.dsize());
 
         assert_eq!(res.base2k(), a.base2k());
+        assert!(
+            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEAutomorphismKeyAutomorphism::glwe_automorphism_key_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_key_automorphism_tmp_bytes(res, a, key)
+        );
 
         let cols_out: usize = (key.rank_out() + 1).into();
         let cols_in: usize = key.rank_in().into();
@@ -134,6 +152,12 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert_eq!(res.rank(), key.rank(), "key rank: {} != key rank: {}", res.rank(), key.rank());
+        assert!(
+            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEAutomorphismKeyAutomorphism::glwe_automorphism_key_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_key_automorphism_tmp_bytes(res, res, key)
+        );
 
         let cols_out: usize = (key.rank_out() + 1).into();
         let cols_in: usize = key.rank_in().into();

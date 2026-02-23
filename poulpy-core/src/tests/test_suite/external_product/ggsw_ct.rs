@@ -141,13 +141,12 @@ where
 
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
-                    assert!(
-                        ggsw_out
-                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise(col)
-                    )
+                    let noise = ggsw_out
+                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let max_noise = max_noise(col);
+                    assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
                 }
             }
         }
@@ -269,13 +268,12 @@ where
 
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
-                    assert!(
-                        ggsw_out
-                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise(col)
-                    )
+                    let noise = ggsw_out
+                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let max_noise = max_noise(col);
+                    assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
                 }
             }
         }

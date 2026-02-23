@@ -91,9 +91,9 @@ where
 ///
 /// - `res4`:      `&mut [u64; 4]` output (q120b)
 /// - `b_u32_ni`:  8-element u32 slice at position `n_i` in the q120b input
-///                (bytemuck view of a `Q120bScalar`).
+///   (bytemuck view of a `Q120bScalar`).
 /// - `a_u32_ni`:  8-element u32 slice at position `n_i` in the q120c prepared
-///                polynomial.
+///   polynomial.
 /// - `meta`:      precomputed `BbcMeta` for `Primes30`.
 #[inline(always)]
 fn pointwise_mul_bbc(meta: &BbcMeta<Primes30>, res4: &mut [u64], b_u32_ni: &[u32], a_u32_ni: &[u32]) {

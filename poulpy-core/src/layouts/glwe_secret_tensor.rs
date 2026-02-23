@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
         Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, Scratch, ZnxInfos, ZnxView,
@@ -166,14 +166,16 @@ where
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf
         + VecZnxBigNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize {
-        self.bytes_of_glwe_secret_prepared(rank)
-            + self.bytes_of_vec_znx_dft(rank.into(), 1)
-            + self.bytes_of_vec_znx_dft(1, 1)
-            + self.bytes_of_vec_znx_big(1, 1)
-            + self.vec_znx_big_normalize_tmp_bytes()
+        let lvl_0: usize = self.bytes_of_glwe_secret_prepared(rank);
+        let lvl_1: usize = self.bytes_of_vec_znx_dft(rank.into(), 1);
+        let lvl_2: usize = self.bytes_of_vec_znx_big(1, 1);
+        let lvl_3: usize = self.bytes_of_vec_znx_dft(1, 1);
+        let lvl_4: usize = self.vec_znx_big_normalize_tmp_bytes();
+
+        lvl_0 + lvl_1 + lvl_2 + lvl_3 + lvl_4
     }
 
     fn glwe_secret_tensor_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
@@ -187,6 +189,12 @@ where
         assert_eq!(res.rank(), GLWESecretTensor::pairs(a.rank().into()) as u32);
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
+        assert!(
+            scratch.available() >= self.glwe_secret_tensor_prepare_tmp_bytes(a.rank()),
+            "scratch.available(): {} < GLWESecretTensorFactory::glwe_secret_tensor_prepare_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_secret_tensor_prepare_tmp_bytes(a.rank())
+        );
 
         let rank: usize = a.rank().into();
 

@@ -180,7 +180,10 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for NTT120Ref {
 }
 
 unsafe impl VecZnxIdftApplyConsumeImpl<Self> for NTT120Ref {
-    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<NTT120Ref>, mut a: VecZnxDft<D, NTT120Ref>) -> VecZnxBig<D, NTT120Ref>
+    fn vec_znx_idft_apply_consume_impl<D: Data>(
+        module: &Module<NTT120Ref>,
+        mut a: VecZnxDft<D, NTT120Ref>,
+    ) -> VecZnxBig<D, NTT120Ref>
     where
         VecZnxDft<D, NTT120Ref>: VecZnxDftToMut<NTT120Ref>,
     {

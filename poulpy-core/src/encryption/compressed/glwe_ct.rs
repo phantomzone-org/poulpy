@@ -1,4 +1,5 @@
 use poulpy_hal::{
+    api::ScratchAvailable,
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
@@ -88,12 +89,15 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
 impl<BE: Backend> GLWECompressedEncryptSk<BE> for Module<BE>
 where
     Self: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
+    Scratch<BE>: ScratchAvailable,
 {
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(infos)
+        assert_eq!(self.n() as u32, infos.n());
+        let lvl_0: usize = self.glwe_encrypt_sk_tmp_bytes(infos);
+        lvl_0
     }
 
     fn glwe_compressed_encrypt_sk<R, P, S>(
@@ -113,6 +117,12 @@ where
             let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
             let mut source_xa: Source = Source::new(seed_xa);
             let cols: usize = (res.rank() + 1).into();
+            assert!(
+                scratch.available() >= self.glwe_compressed_encrypt_sk_tmp_bytes(res),
+                "scratch.available(): {} < GLWECompressedEncryptSk::glwe_compressed_encrypt_sk_tmp_bytes: {}",
+                scratch.available(),
+                self.glwe_compressed_encrypt_sk_tmp_bytes(res)
+            );
 
             self.glwe_encrypt_sk_internal(
                 res.base2k().into(),

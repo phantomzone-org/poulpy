@@ -1,11 +1,14 @@
 use poulpy_hal::{
-    api::{ScratchTakeBasic, SvpPPolBytesOf},
+    api::{ScratchAvailable, ScratchTakeBasic, SvpPPolBytesOf},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
 use crate::{
     GLWEDecrypt, ScratchTakeCore,
-    layouts::{GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared, GLWETensor},
+    layouts::{
+        GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared, GLWETensor,
+        prepared::GLWESecretPreparedFactory,
+    },
 };
 
 impl GLWETensor<Vec<u8>> {
@@ -57,14 +60,20 @@ pub trait GLWETensorDecrypt<BE: Backend> {
 
 impl<BE: Backend> GLWETensorDecrypt<BE> for Module<BE>
 where
-    Self: GLWEDecrypt<BE> + SvpPPolBytesOf,
+    Self: GLWEDecrypt<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_tensor_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.glwe_decrypt_tmp_bytes(infos)
+        assert_eq!(self.n() as u32, infos.n());
+
+        let rank: usize = infos.rank().into();
+        let lvl_0: usize = self.bytes_of_glwe_secret_prepared((GLWESecretTensor::pairs(rank) + rank).into());
+        let lvl_1: usize = self.glwe_decrypt_tmp_bytes(infos);
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_tensor_decrypt<R, P, S0, S1>(
@@ -80,6 +89,13 @@ where
         S0: DataRef,
         S1: DataRef,
     {
+        assert!(
+            scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes(res),
+            "scratch.available(): {} < GLWETensorDecrypt::glwe_tensor_decrypt_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_tensor_decrypt_tmp_bytes(res)
+        );
+
         let rank: usize = sk.rank().as_usize();
 
         let (mut sk_grouped, scratch_1) = scratch.take_glwe_secret_prepared(self, (GLWESecretTensor::pairs(rank) + rank).into());

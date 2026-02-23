@@ -136,9 +136,10 @@ where
                 rank as f64,
                 k_in,
                 k_ggsw,
-            );
+            ) + 1.0;
 
-            assert!(glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            let noise = glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2();
+            assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }
 }
@@ -259,9 +260,10 @@ where
                 rank as f64,
                 k_out,
                 k_ggsw,
-            );
+            ) + 1.0;
 
-            assert!(glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            let noise = glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+            assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }
 }

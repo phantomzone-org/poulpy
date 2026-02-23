@@ -1,6 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchTakeBasic, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+        ScratchAvailable, ScratchTakeBasic, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
+        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalize,
         VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxNormalize,
     },
     layouts::{Backend, DataMut, Module, Scratch, VecZnxBig},
@@ -197,7 +198,9 @@ where
         + GLWEKeySwitchInternal<BE>
         + VecZnxNormalize<BE>
         + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismInplaceTmpBytes
         + VecZnxBigAutomorphismInplace<BE>
+        + VecZnxBigAutomorphismInplaceTmpBytes
         + VecZnxBigSubSmallInplace<BE>
         + VecZnxBigSubSmallNegateInplace<BE>
         + VecZnxBigAddSmallInplace<BE>
@@ -211,7 +214,16 @@ where
         A: GLWEInfos,
         K: GGLWEInfos,
     {
-        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
+        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
+        let lvl_1: usize = self
+            .vec_znx_automorphism_inplace_tmp_bytes()
+            .max(self.vec_znx_big_automorphism_inplace_tmp_bytes());
+
+        lvl_0.max(lvl_1)
     }
 
     fn glwe_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -221,6 +233,13 @@ where
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, a, key)
+        );
+
         self.glwe_keyswitch(res, a, key, scratch);
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -236,6 +255,13 @@ where
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, res, key)
+        );
+
         self.glwe_keyswitch_inplace(res, key, scratch);
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -254,6 +280,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, a, key)
+        );
 
         let a_base2k: usize = a.base2k().into();
         let key_base2k: usize = key.base2k().into();
@@ -292,6 +324,12 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, res, key)
+        );
 
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
@@ -331,6 +369,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, a, key)
+        );
 
         let a_base2k: usize = a.base2k().into();
         let key_base2k: usize = key.base2k().into();
@@ -371,6 +415,12 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, a, key)
+        );
 
         let a_base2k: usize = a.base2k().into();
         let key_base2k: usize = key.base2k().into();
@@ -409,6 +459,12 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, res, key)
+        );
 
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
@@ -446,6 +502,12 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        assert!(
+            scratch.available() >= self.glwe_automorphism_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEAutomorphism::glwe_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_automorphism_tmp_bytes(res, res, key)
+        );
 
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();

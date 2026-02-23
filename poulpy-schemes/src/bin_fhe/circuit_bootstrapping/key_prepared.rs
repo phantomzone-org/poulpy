@@ -8,7 +8,10 @@ use poulpy_core::{
 };
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+};
 
 use crate::bin_fhe::{
     blind_rotation::{
@@ -33,6 +36,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
     where
         DR: DataRef,
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
+        Scratch<BE>: ScratchAvailable,
     {
         module.circuit_bootstrapping_key_prepare(self, other, scratch);
     }
@@ -100,6 +104,7 @@ where
     ) where
         DM: DataMut,
         DR: DataRef,
+        Scratch<BE>: ScratchAvailable,
     {
         res.brk.prepare(self, &other.brk, scratch);
         res.tsk.prepare(self, &other.tsk, scratch);

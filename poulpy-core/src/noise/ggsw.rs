@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
@@ -66,9 +66,14 @@ where
     where
         A: GGSWInfos,
     {
-        GLWEPlaintext::bytes_of_from_infos(infos)
-            + (self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes())
-                .max(self.glwe_noise_tmp_bytes(infos))
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_1_glwe_noise: usize = self.glwe_noise_tmp_bytes(infos);
+        let lvl_1_mul: usize = self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_1: usize = lvl_1_glwe_noise.max(lvl_1_mul);
+
+        lvl_0 + lvl_1
     }
 
     fn ggsw_noise<R, S, P>(
@@ -91,6 +96,12 @@ where
 
         let base2k: usize = res.base2k().into();
         let dsize: usize = res.dsize().into();
+        assert!(
+            scratch.available() >= self.ggsw_noise_tmp_bytes(res),
+            "scratch.available(): {} < GGSWNoise::ggsw_noise_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_noise_tmp_bytes(res)
+        );
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
         pt.data_mut().zero();

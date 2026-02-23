@@ -15,7 +15,12 @@ use crate::{
 
 pub fn test_convolution_by_const<M, BE: Backend>(module: &M)
 where
-    M: ModuleN + Convolution<BE> + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeInplace<BE> + VecZnxBigAlloc<BE>,
+    M: ModuleN
+        + Convolution<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxNormalizeInplace<BE>
+        + VecZnxBigAlloc<BE>,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {

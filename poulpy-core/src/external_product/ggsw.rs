@@ -21,7 +21,8 @@ where
         A: GGSWInfos,
         B: GGSWInfos,
     {
-        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
+        let lvl_0: usize = self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos);
+        lvl_0
     }
 
     fn ggsw_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
@@ -40,7 +41,12 @@ where
 
         assert_eq!(res.base2k(), a.base2k());
 
-        assert!(scratch.available() >= self.ggsw_external_product_tmp_bytes(res, a, b));
+        assert!(
+            scratch.available() >= self.ggsw_external_product_tmp_bytes(res, a, b),
+            "scratch.available(): {} < GGSWExternalProduct::ggsw_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_external_product_tmp_bytes(res, a, b)
+        );
 
         let min_dnum: usize = res.dnum().min(a.dnum()).into();
 
@@ -69,6 +75,12 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank(), "res rank: {} != a rank: {}", res.rank(), a.rank());
+        assert!(
+            scratch.available() >= self.ggsw_external_product_tmp_bytes(res, res, a),
+            "scratch.available(): {} < GGSWExternalProduct::ggsw_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_external_product_tmp_bytes(res, res, a)
+        );
 
         for row in 0..res.dnum().into() {
             for col in 0..(res.rank() + 1).into() {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::ModuleLogN,
+    api::{ModuleLogN, ScratchAvailable},
     layouts::{Backend, GaloisElement, Module, Scratch},
 };
 
@@ -56,11 +56,18 @@ where
         R: GLWEInfos,
         K: GGLWEInfos,
     {
-        self.glwe_rotate_tmp_bytes()
+        assert_eq!(self.n() as u32, res.n());
+        assert_eq!(self.n() as u32, key.n());
+
+        let lvl_0: usize = GLWE::bytes_of_from_infos(res);
+        let lvl_1: usize = self
+            .glwe_rotate_tmp_bytes()
             .max(self.glwe_rsh_tmp_byte())
             .max(self.glwe_normalize_tmp_bytes())
-            .max(self.glwe_automorphism_tmp_bytes(res, res, key))
-            + GLWE::bytes_of_from_infos(res)
+            .max(self.glwe_automorphism_tmp_bytes(res, res, key));
+
+        // pack_internal and glwe_trace are sequential calls on the same scratch
+        (lvl_0 + lvl_1).max(self.glwe_trace_tmp_bytes(res, res, key))
     }
 
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
@@ -79,6 +86,13 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         assert!(*a.keys().max().unwrap() < self.n());
+        let key_infos = keys.automorphism_key_infos();
+        assert!(
+            scratch.available() >= self.glwe_pack_tmp_bytes(res, &key_infos),
+            "scratch.available(): {} < GLWEPacking::glwe_pack_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_pack_tmp_bytes(res, &key_infos)
+        );
 
         let log_n: usize = self.log_n();
 

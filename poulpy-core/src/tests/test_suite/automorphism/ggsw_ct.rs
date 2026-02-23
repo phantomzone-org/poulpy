@@ -152,13 +152,12 @@ where
 
             for row in 0..ct_out.dnum().as_usize() {
                 for col in 0..ct_out.rank().as_usize() + 1 {
-                    assert!(
-                        ct_out
-                            .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise(col)
-                    )
+                    let noise = ct_out
+                        .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let max_noise = max_noise(col);
+                    assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
                 }
             }
         }
@@ -295,7 +294,7 @@ where
                         .std()
                         .log2();
                     let noise_max: f64 = max_noise(col);
-                    assert!(noise_have <= noise_max, "noise_have:{noise_have} > noise_max:{noise_max}",)
+                    assert!(noise_have <= noise_max, "noise_have:{noise_have} > noise_max:{noise_max}")
                 }
             }
         }

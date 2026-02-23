@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchTakeBasic, VecZnxCopy},
+    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxCopy},
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
@@ -66,11 +66,19 @@ where
     where
         A: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, infos.n());
+
         let sk_prepared: usize = GLWESecretPrepared::bytes_of(self, infos.rank());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
-        let gglwe_encrypt: usize = self.gglwe_compressed_encrypt_sk_tmp_bytes(infos);
-        let sk_ij = GLWESecret::bytes_of(self.n().into(), infos.rank());
-        (sk_prepared + sk_tensor + sk_ij) + gglwe_encrypt.max(self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank()))
+        let sk_ij: usize = GLWESecret::bytes_of(self.n().into(), infos.rank());
+        let lvl_0: usize = sk_prepared;
+        let lvl_1: usize = sk_tensor;
+        let lvl_2: usize = sk_ij;
+        let lvl_3_encrypt: usize = self.gglwe_compressed_encrypt_sk_tmp_bytes(infos);
+        let lvl_3_prepare: usize = self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank());
+        let lvl_3: usize = lvl_3_encrypt.max(lvl_3_prepare);
+
+        lvl_0 + lvl_1 + lvl_2 + lvl_3
     }
 
     fn gglwe_to_ggsw_key_encrypt_sk<R, S>(
@@ -86,6 +94,12 @@ where
     {
         assert_eq!(res.rank(), sk.rank());
         assert_eq!(res.n(), sk.n());
+        assert!(
+            scratch.available() >= self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GGLWEToGGSWKeyCompressedEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(res)
+        );
 
         let res: &mut GGLWEToGGSWKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let rank: usize = res.rank_out().as_usize();

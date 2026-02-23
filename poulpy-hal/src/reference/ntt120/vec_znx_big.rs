@@ -600,7 +600,10 @@ where
     }
     for j in a_cpy..b_cpy {
         let bj = b.at(b_col, j);
-        res.at_mut(res_col, j).iter_mut().zip(bj.iter()).for_each(|(r, &bi)| *r = bi as i128);
+        res.at_mut(res_col, j)
+            .iter_mut()
+            .zip(bj.iter())
+            .for_each(|(r, &bi)| *r = bi as i128);
     }
     for j in a_cpy.max(b_cpy)..res_size {
         res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
@@ -794,7 +797,10 @@ where
     }
     for j in a_cpy..b_cpy {
         let bj = b.at(b_col, j);
-        res.at_mut(res_col, j).iter_mut().zip(bj.iter()).for_each(|(r, &bi)| *r = -(bi as i128));
+        res.at_mut(res_col, j)
+            .iter_mut()
+            .zip(bj.iter())
+            .for_each(|(r, &bi)| *r = -(bi as i128));
     }
     for j in a_cpy.max(b_cpy)..res_size {
         res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
@@ -953,12 +959,12 @@ where
         let aj = a.at(a_col, limb);
         rj[0] = aj[0];
         let mut k: usize = 0;
-        for i in 1..n {
+        for &ai in &aj[1..] {
             k = (k + p_2n) & mask;
             if k < n {
-                rj[k] = aj[i];
+                rj[k] = ai;
             } else {
-                rj[k - n] = aj[i].wrapping_neg();
+                rj[k - n] = ai.wrapping_neg();
             }
         }
     }
@@ -988,12 +994,12 @@ where
         tmp[..n].copy_from_slice(rj);
         rj[0] = tmp[0];
         let mut k: usize = 0;
-        for i in 1..n {
+        for &ti in &tmp[1..n] {
             k = (k + p_2n) & mask;
             if k < n {
-                rj[k] = tmp[i];
+                rj[k] = ti;
             } else {
-                rj[k - n] = tmp[i].wrapping_neg();
+                rj[k - n] = ti.wrapping_neg();
             }
         }
     }

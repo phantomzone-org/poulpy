@@ -88,7 +88,12 @@ where
     where
         A: GGLWEInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes()) + GLWEPlaintext::bytes_of_from_infos(infos)
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_1: usize = self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes());
+
+        lvl_0 + lvl_1
     }
 
     fn gglwe_compressed_encrypt_sk<R, P, S>(
@@ -128,10 +133,10 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWECompressed::encrypt_sk_tmp_bytes(self, res),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes: {}",
+                scratch.available() >= self.gglwe_compressed_encrypt_sk_tmp_bytes(res),
+                "scratch.available(): {} < GGLWECompressedEncryptSk::gglwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                GGLWECompressed::encrypt_sk_tmp_bytes(self, res)
+                self.gglwe_compressed_encrypt_sk_tmp_bytes(res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,

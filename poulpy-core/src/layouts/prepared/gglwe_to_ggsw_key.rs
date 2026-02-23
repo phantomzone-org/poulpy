@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+};
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef,
@@ -102,7 +105,8 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
     fn prepare_gglwe_to_ggsw_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToGGSWKeyPreparedToMut<BE>,
-        O: GGLWEToGGSWKeyToRef;
+        O: GGLWEToGGSWKeyToRef,
+        Scratch<BE>: ScratchAvailable;
 }
 
 impl<BE: Backend> GGLWEToGGSWKeyPreparedFactory<BE> for Module<BE>
@@ -156,19 +160,28 @@ where
     where
         A: GGLWEInfos,
     {
-        self.prepare_gglwe_tmp_bytes(infos)
+        let lvl_0: usize = self.prepare_gglwe_tmp_bytes(infos);
+        lvl_0
     }
 
     fn prepare_gglwe_to_ggsw_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToGGSWKeyPreparedToMut<BE>,
         O: GGLWEToGGSWKeyToRef,
+        Scratch<BE>: ScratchAvailable,
     {
+        let res_infos = res.to_mut();
+        assert!(
+            scratch.available() >= self.prepare_gglwe_to_ggsw_key_tmp_bytes(&res_infos),
+            "scratch.available(): {} < GGLWEToGGSWKeyPreparedFactory::prepare_gglwe_to_ggsw_key_tmp_bytes: {}",
+            scratch.available(),
+            self.prepare_gglwe_to_ggsw_key_tmp_bytes(&res_infos)
+        );
+
         let res: &mut GGLWEToGGSWKeyPrepared<&mut [u8], BE> = &mut res.to_mut();
         let other: &GGLWEToGGSWKey<&[u8]> = &other.to_ref();
 
         assert_eq!(res.keys.len(), other.keys.len());
-
         for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
             self.prepare_gglwe(a, b, scratch);
         }
@@ -218,6 +231,7 @@ impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
     where
         M: GGLWEToGGSWKeyPreparedFactory<BE>,
         O: GGLWEToGGSWKeyToRef,
+        Scratch<BE>: ScratchAvailable,
     {
         module.prepare_gglwe_to_ggsw_key(self, other, scratch);
     }

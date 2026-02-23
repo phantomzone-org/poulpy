@@ -97,7 +97,7 @@ where
 
     let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
     let mat_i64: &[i64] = a.raw();
-    let pmat_u32: &mut [u32] = cast_slice_mut(res.data_mut().as_mut());
+    let pmat_u32: &mut [u32] = cast_slice_mut(res.data_mut());
 
     for row_i in 0..nrows {
         for col_i in 0..ncols {

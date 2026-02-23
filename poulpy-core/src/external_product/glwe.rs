@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft},
+    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, ZnxZero},
 };
 
 use crate::{
@@ -85,19 +85,25 @@ where
         B: GGSWInfos,
     {
         let cols: usize = res.rank().as_usize() + 1;
-        let size: usize = if a.base2k() != ggsw.base2k() {
-            let a_conv_infos = &GLWELayout {
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols, ggsw.size());
+        let lvl_1: usize = self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_2: usize = if a.base2k() != ggsw.base2k() {
+            let a_conv_infos: GLWELayout = GLWELayout {
                 n: a.n(),
                 base2k: ggsw.base2k(),
                 k: a.k(),
                 rank: a.rank(),
             };
-            self.glwe_external_product_internal_tmp_bytes(res, a_conv_infos, ggsw) + GLWE::bytes_of_from_infos(a_conv_infos)
+            let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
+            let lvl_2_1: usize = self
+                .glwe_normalize_tmp_bytes()
+                .max(self.glwe_external_product_internal_tmp_bytes(res, &a_conv_infos, ggsw));
+            lvl_2_0 + lvl_2_1
         } else {
             self.glwe_external_product_internal_tmp_bytes(res, a, ggsw)
         };
 
-        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, ggsw.size())
+        lvl_0 + lvl_1.max(lvl_2)
     }
 
     fn glwe_external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
@@ -108,12 +114,18 @@ where
     {
         assert_eq!(ggsw.rank(), res.rank());
         assert_eq!(ggsw.n(), res.n());
-        assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, res, ggsw));
+        assert!(
+            scratch.available() >= self.glwe_external_product_tmp_bytes(res, res, ggsw),
+            "scratch.available(): {} < GLWEExternalProduct::glwe_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_external_product_tmp_bytes(res, res, ggsw)
+        );
 
         let res_base2k: usize = res.base2k().as_usize();
         let ggsw_base2k: usize = ggsw.base2k().as_usize();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
+        res_dft.zero(); // TODO: REMOVE ONCE ABOVE TAKES CORRECT SIZE
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != ggsw_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -145,13 +157,19 @@ where
         assert_eq!(ggsw.rank(), res.rank());
         assert_eq!(ggsw.n(), res.n());
         assert_eq!(a.n(), res.n());
-        assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, a, ggsw));
+        assert!(
+            scratch.available() >= self.glwe_external_product_tmp_bytes(res, a, ggsw),
+            "scratch.available(): {} < GLWEExternalProduct::glwe_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_external_product_tmp_bytes(res, a, ggsw)
+        );
 
         let a_base2k: usize = a.base2k().into();
         let ggsw_base2k: usize = ggsw.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size()); // Todo optimise
+        res_dft.zero(); // TODO: REMOVE ONCE ABOVE TAKES CORRECT SIZE
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != ggsw_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -190,7 +208,7 @@ pub trait GLWEExternalProductInternal<BE: Backend> {
         DR: DataMut,
         A: GLWEToRef,
         G: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable;
 }
 
 impl<BE: Backend> GLWEExternalProductInternal<BE> for Module<BE>
@@ -218,8 +236,8 @@ where
         let in_size: usize = a_infos.k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
         let out_size: usize = res_infos.size();
         let ggsw_size: usize = b_infos.size();
-        let a_dft: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), in_size);
-        let vmp: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
+        let lvl_0: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), in_size);
+        let lvl_1: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
             in_size,
             in_size,                     // rows
@@ -227,9 +245,7 @@ where
             (b_infos.rank() + 1).into(), // cols out
             ggsw_size,
         );
-        let normalize_big: usize = self.vec_znx_normalize_tmp_bytes();
-
-        a_dft + vmp.max(normalize_big)
+        lvl_0 + lvl_1
     }
 
     fn glwe_external_product_internal<DR, A, G>(
@@ -243,12 +259,18 @@ where
         DR: DataMut,
         A: GLWEToRef,
         G: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
     {
         let a: &GLWE<&[u8]> = &a.to_ref();
         let ggsw: &GGSWPrepared<&[u8], BE> = &ggsw.to_ref();
 
         assert_eq!(a.base2k(), ggsw.base2k());
+        assert!(
+            scratch.available() >= self.glwe_external_product_internal_tmp_bytes(ggsw, a, ggsw),
+            "scratch.available(): {} < GLWEExternalProductInternal::glwe_external_product_internal_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_external_product_internal_tmp_bytes(ggsw, a, ggsw)
+        );
 
         let cols: usize = (ggsw.rank() + 1).into();
         let dsize: usize = ggsw.dsize().into();

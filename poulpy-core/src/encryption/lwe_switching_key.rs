@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAutomorphismInplace},
+    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
@@ -9,8 +9,7 @@ use crate::{
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef,
-        LWESwitchingKey, Rank,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
+        LWESwitchingKey, Rank, prepared::GLWESecretPreparedFactory,
     },
 };
 
@@ -63,7 +62,11 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
 
 impl<BE: Backend> LWESwitchingKeyEncrypt<BE> for Module<BE>
 where
-    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxAutomorphismInplace<BE>,
+    Self: ModuleN
+        + GLWESwitchingKeyEncryptSk<BE>
+        + GLWESecretPreparedFactory<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismInplaceTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -73,9 +76,15 @@ where
         assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
-        GLWESecret::bytes_of(self.n().into(), Rank(1))
-            + GLWESecretPrepared::bytes_of(self, Rank(1))
-            + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
+        let lvl_1: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
+        let lvl_2: usize = self
+            .vec_znx_automorphism_inplace_tmp_bytes()
+            .max(GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos));
+
+        lvl_0 + lvl_1 + lvl_2
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -98,6 +107,12 @@ where
         assert!(sk_lwe_in.n().0 <= res.n().0);
         assert!(sk_lwe_out.n().0 <= res.n().0);
         assert!(res.n() <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.lwe_switching_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < LWESwitchingKeyEncrypt::lwe_switching_key_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_switching_key_encrypt_sk_tmp_bytes(res)
+        );
 
         let (mut sk_glwe_in, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
         let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));

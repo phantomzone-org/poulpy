@@ -10,9 +10,7 @@
 use crate::NTT120Ref;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
-    layouts::{
-        Backend, Module, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
-    },
+    layouts::{Backend, Module, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
@@ -22,13 +20,13 @@ use poulpy_hal::{
         VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
     },
     reference::ntt120::vec_znx_big::{
-        ntt120_vec_znx_big_add, ntt120_vec_znx_big_add_inplace, ntt120_vec_znx_big_add_normal_ref,
-        ntt120_vec_znx_big_add_small, ntt120_vec_znx_big_add_small_inplace, ntt120_vec_znx_big_automorphism,
-        ntt120_vec_znx_big_automorphism_inplace, ntt120_vec_znx_big_automorphism_inplace_tmp_bytes,
-        ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate, ntt120_vec_znx_big_negate_inplace,
-        ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
-        ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace, ntt120_vec_znx_big_sub_small_a,
-        ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace, ntt120_vec_znx_big_sub_small_negate_inplace,
+        ntt120_vec_znx_big_add, ntt120_vec_znx_big_add_inplace, ntt120_vec_znx_big_add_normal_ref, ntt120_vec_znx_big_add_small,
+        ntt120_vec_znx_big_add_small_inplace, ntt120_vec_znx_big_automorphism, ntt120_vec_znx_big_automorphism_inplace,
+        ntt120_vec_znx_big_automorphism_inplace_tmp_bytes, ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate,
+        ntt120_vec_znx_big_negate_inplace, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes,
+        ntt120_vec_znx_big_sub, ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace,
+        ntt120_vec_znx_big_sub_small_a, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace,
+        ntt120_vec_znx_big_sub_small_negate_inplace,
     },
     source::Source,
 };

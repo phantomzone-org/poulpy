@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero},
+    api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
@@ -134,17 +134,19 @@ where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.vmp_prepare_tmp_bytes(
+        let lvl_0: usize = self.vmp_prepare_tmp_bytes(
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
-        )
+        );
+        lvl_0
     }
     fn ggsw_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGSWPreparedToMut<B>,
         O: GGSWToRef,
+        Scratch<B>: ScratchAvailable,
     {
         let mut res: GGSWPrepared<&mut [u8], B> = res.to_mut();
         let other: GGSW<&[u8]> = other.to_ref();
@@ -153,6 +155,12 @@ where
         assert_eq!(res.k, other.k);
         assert_eq!(res.base2k, other.base2k);
         assert_eq!(res.dsize, other.dsize);
+        assert!(
+            scratch.available() >= self.ggsw_prepare_tmp_bytes(&res),
+            "scratch.available(): {} < GGSWPreparedFactory::ggsw_prepare_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_prepare_tmp_bytes(&res)
+        );
         self.vmp_prepare(&mut res.data, &other.data, scratch);
     }
 }
@@ -215,6 +223,7 @@ impl<D: DataMut, B: Backend> GGSWPrepared<D, B> {
     where
         O: GGSWToRef,
         M: GGSWPreparedFactory<B>,
+        Scratch<B>: ScratchAvailable,
     {
         module.ggsw_prepare(self, other, scratch);
     }

@@ -118,9 +118,9 @@ fn add_bbb_inplace(n: usize, res: &mut [u64], a: &[u64]) {
     debug_assert!(res.len() >= 4 * n);
     debug_assert!(a.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = res[idx] % Q_SHIFTED[k] + a[idx] % Q_SHIFTED[k];
+            res[idx] = res[idx] % q_s + a[idx] % q_s;
         }
     }
 }
@@ -132,9 +132,9 @@ fn sub_bbb(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
     debug_assert!(a.len() >= 4 * n);
     debug_assert!(b.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = a[idx] % Q_SHIFTED[k] + (Q_SHIFTED[k] - b[idx] % Q_SHIFTED[k]);
+            res[idx] = a[idx] % q_s + (q_s - b[idx] % q_s);
         }
     }
 }
@@ -145,9 +145,9 @@ fn sub_bbb_inplace(n: usize, res: &mut [u64], a: &[u64]) {
     debug_assert!(res.len() >= 4 * n);
     debug_assert!(a.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = res[idx] % Q_SHIFTED[k] + (Q_SHIFTED[k] - a[idx] % Q_SHIFTED[k]);
+            res[idx] = res[idx] % q_s + (q_s - a[idx] % q_s);
         }
     }
 }
@@ -158,9 +158,9 @@ fn sub_negate_bbb_inplace(n: usize, res: &mut [u64], a: &[u64]) {
     debug_assert!(res.len() >= 4 * n);
     debug_assert!(a.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = a[idx] % Q_SHIFTED[k] + (Q_SHIFTED[k] - res[idx] % Q_SHIFTED[k]);
+            res[idx] = a[idx] % q_s + (q_s - res[idx] % q_s);
         }
     }
 }
@@ -171,9 +171,9 @@ fn negate_bbb(n: usize, res: &mut [u64], a: &[u64]) {
     debug_assert!(res.len() >= 4 * n);
     debug_assert!(a.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = Q_SHIFTED[k] - a[idx] % Q_SHIFTED[k];
+            res[idx] = q_s - a[idx] % q_s;
         }
     }
 }
@@ -183,9 +183,9 @@ fn negate_bbb(n: usize, res: &mut [u64], a: &[u64]) {
 fn negate_bbb_inplace(n: usize, res: &mut [u64]) {
     debug_assert!(res.len() >= 4 * n);
     for j in 0..n {
-        for k in 0..4 {
+        for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = Q_SHIFTED[k] - res[idx] % Q_SHIFTED[k];
+            res[idx] = q_s - res[idx] % q_s;
         }
     }
 }
@@ -211,20 +211,20 @@ fn zero_bbb(n: usize, res: &mut [u64]) {
 /// `at(col, limb)` returns `&[Q120bScalar]` of length `n`; we cast to
 /// `&[u64]` of length `4*n`.
 #[inline(always)]
-fn limb_u64<'a, D: crate::layouts::DataRef, BE: Backend<ScalarPrep = Q120bScalar>>(
-    v: &'a VecZnxDft<D, BE>,
+fn limb_u64<D: crate::layouts::DataRef, BE: Backend<ScalarPrep = Q120bScalar>>(
+    v: &VecZnxDft<D, BE>,
     col: usize,
     limb: usize,
-) -> &'a [u64] {
+) -> &[u64] {
     cast_slice(v.at(col, limb))
 }
 
 #[inline(always)]
-fn limb_u64_mut<'a, D: crate::layouts::DataMut, BE: Backend<ScalarPrep = Q120bScalar>>(
-    v: &'a mut VecZnxDft<D, BE>,
+fn limb_u64_mut<D: crate::layouts::DataMut, BE: Backend<ScalarPrep = Q120bScalar>>(
+    v: &mut VecZnxDft<D, BE>,
     col: usize,
     limb: usize,
-) -> &'a mut [u64] {
+) -> &mut [u64] {
     cast_slice_mut(v.at_mut(col, limb))
 }
 
@@ -395,7 +395,12 @@ where
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            add_bbb_ref::<Primes30>(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            add_bbb_ref::<Primes30>(
+                n,
+                limb_u64_mut(&mut res, res_col, j),
+                limb_u64(&a, a_col, j),
+                limb_u64(&b, b_col, j),
+            );
         }
         for j in sum_size..cpy_size {
             copy_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&b, b_col, j));
@@ -407,7 +412,12 @@ where
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            add_bbb_ref::<Primes30>(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            add_bbb_ref::<Primes30>(
+                n,
+                limb_u64_mut(&mut res, res_col, j),
+                limb_u64(&a, a_col, j),
+                limb_u64(&b, b_col, j),
+            );
         }
         for j in sum_size..cpy_size {
             copy_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
@@ -493,7 +503,12 @@ where
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            sub_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            sub_bbb(
+                n,
+                limb_u64_mut(&mut res, res_col, j),
+                limb_u64(&a, a_col, j),
+                limb_u64(&b, b_col, j),
+            );
         }
         for j in sum_size..cpy_size {
             negate_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&b, b_col, j));
@@ -505,7 +520,12 @@ where
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            sub_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            sub_bbb(
+                n,
+                limb_u64_mut(&mut res, res_col, j),
+                limb_u64(&a, a_col, j),
+                limb_u64(&b, b_col, j),
+            );
         }
         for j in sum_size..cpy_size {
             copy_bbb(n, limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));

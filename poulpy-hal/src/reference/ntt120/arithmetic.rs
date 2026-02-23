@@ -133,9 +133,9 @@ pub fn add_bbb_ref<P: PrimeSet>(nn: usize, res: &mut [u64], x: &[u64], y: &[u64]
     let q_shifted: [u64; 4] = P::Q.map(|qi| (qi as u64) << 33);
 
     for j in 0..nn {
-        for k in 0..4 {
+        for (k, &q_s) in q_shifted.iter().enumerate() {
             let idx = 4 * j + k;
-            res[idx] = x[idx] % q_shifted[k] + y[idx] % q_shifted[k];
+            res[idx] = x[idx] % q_s + y[idx] % q_s;
         }
     }
 }

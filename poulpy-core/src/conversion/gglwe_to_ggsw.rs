@@ -2,8 +2,9 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef, ZnxZero},
 };
 
 use crate::{
@@ -46,7 +47,8 @@ where
         R: GGSWInfos,
         A: GGLWEInfos,
     {
-        self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos)
+        let lvl_0: usize = self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos);
+        lvl_0
     }
 
     fn ggsw_from_gglwe<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
@@ -66,6 +68,12 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(tsk.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
+        assert!(
+            scratch.available() >= self.ggsw_from_gglwe_tmp_bytes(res, tsk),
+            "scratch.available(): {} < GGSWFromGGLWE::ggsw_from_gglwe_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_from_gglwe_tmp_bytes(res, tsk)
+        );
 
         for row in 0..res.dnum().into() {
             self.glwe_copy(&mut res.at_mut(row, 0), &a.at(row, 0));
@@ -111,6 +119,7 @@ where
         + VecZnxDftBytesOf
         + VecZnxDftApply<BE>
         + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + VecZnxBigAddSmallInplace<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxCopy,
@@ -120,6 +129,9 @@ where
         R: GGSWInfos,
         A: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, tsk_infos.n());
+
         let tsk_base2k: usize = tsk_infos.base2k().into();
 
         let rank: usize = res_infos.rank().into();
@@ -128,13 +140,18 @@ where
         let res_size: usize = res_infos.size();
         let a_size: usize = res_infos.max_k().as_usize().div_ceil(tsk_base2k);
 
-        let a_0: usize = VecZnx::bytes_of(self.n(), 1, a_size);
-        let a_dft: usize = self.bytes_of_vec_znx_dft(cols - 1, a_size);
-        let res_dft: usize = self.bytes_of_vec_znx_dft(cols, a_size);
-        let gglwe_prod: usize = self.gglwe_product_dft_tmp_bytes(res_size, a_size, tsk_infos);
-        let normalize: usize = self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols - 1, a_size) + VecZnx::bytes_of(self.n(), 1, a_size);
+        let lvl_1_res_dft: usize = self.bytes_of_vec_znx_dft(cols, a_size);
+        let lvl_1_gglwe_prod: usize = self.gglwe_product_dft_tmp_bytes(res_size, a_size, tsk_infos);
+        let lvl_1_norm_big: usize = self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_1: usize = lvl_1_res_dft + lvl_1_gglwe_prod.max(lvl_1_norm_big);
+        let lvl_2: usize = if res_infos.base2k() == tsk_infos.base2k() {
+            0
+        } else {
+            self.vec_znx_normalize_tmp_bytes()
+        };
 
-        (a_0 + a_dft + res_dft + gglwe_prod).max(normalize)
+        lvl_0 + lvl_1.max(lvl_2)
     }
 
     fn ggsw_expand_row<R, T>(&self, res: &mut R, tsk: &T, scratch: &mut Scratch<BE>)
@@ -149,7 +166,12 @@ where
         let res_base2k: usize = res.base2k().into();
         let tsk_base2k: usize = tsk.base2k().into();
 
-        assert!(scratch.available() >= self.ggsw_expand_rows_tmp_bytes(res, tsk));
+        assert!(
+            scratch.available() >= self.ggsw_expand_rows_tmp_bytes(res, tsk),
+            "scratch.available(): {} < GGSWExpandRows::ggsw_expand_rows_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_expand_rows_tmp_bytes(res, tsk)
+        );
 
         let rank: usize = res.rank().into();
         let cols: usize = rank + 1;
@@ -224,6 +246,7 @@ fn ggsw_expand_rows_internal<M, R, C, A, T, BE: Backend>(
     // col 3: (-(d0s0 + d1s1 + d2s2)       , d0       , d1       , d2 + M[i])
     for col in 1..cols {
         let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, tsk.size()); // Todo optimise
+        res_dft.zero(); // TODO: REMVE ONCE ABOVE TAKE CORRECT AMOUNT OF SIZE
 
         // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2
         //

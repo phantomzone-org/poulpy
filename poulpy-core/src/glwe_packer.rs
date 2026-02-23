@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ModuleLogN,
+    api::{ModuleLogN, ScratchAvailable},
     layouts::{Backend, GaloisElement, Module, Scratch},
 };
 
@@ -125,6 +125,12 @@ impl GLWEPacker {
             (self.counter as u32) < self.accumulators[0].data.n(),
             "Packing limit of {} reached",
             self.accumulators[0].data.n().0 as usize >> self.log_batch
+        );
+        assert!(
+            scratch.available() >= Self::tmp_bytes(module, &self.accumulators[0].data, &auto_keys.automorphism_key_infos()),
+            "scratch.available(): {} < GLWEPacker::tmp_bytes: {}",
+            scratch.available(),
+            Self::tmp_bytes(module, &self.accumulators[0].data, &auto_keys.automorphism_key_infos())
         );
 
         module.packer_add(self, a, self.log_batch, auto_keys, scratch);

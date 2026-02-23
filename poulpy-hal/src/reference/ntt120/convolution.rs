@@ -32,9 +32,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef,
-        VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut,
+        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnx, VecZnxBig,
+        VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         arithmetic::{b_from_znx64_ref, c_from_b_ref},
@@ -229,8 +228,7 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
                 // SAFETY: a.at and b.at return slices of length n, and 8*n_i+8 <= 8*n.
                 let ai: &[u32; 8] =
                     unsafe { &*(cast_slice::<_, u32>(a.at(a_col, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bi: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(b.at(b_col, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
+                let bi: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(b_col, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
                 accum_mul_q120_bc(&mut s, ai, bi);
             }
             let mut r4 = [0u64; 4];
@@ -289,7 +287,6 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
 {
     let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
-    let n = res.n();
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.len();
@@ -303,12 +300,12 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
         let j_min = k_abs.saturating_sub(a_size - 1);
         let j_max = (k_abs + 1).min(b_size);
         let res_limb: &mut [i128] = res.at_mut(res_col, k);
-        for n_i in 0..n {
+        for (n_i, r) in res_limb.iter_mut().enumerate() {
             let mut acc: i128 = 0;
-            for j in j_min..j_max {
-                acc += a.at(a_col, k_abs - j)[n_i] as i128 * b[j] as i128;
+            for (j, &b_j) in b.iter().enumerate().take(j_max).skip(j_min) {
+                acc += a.at(a_col, k_abs - j)[n_i] as i128 * b_j as i128;
             }
-            res_limb[n_i] = acc;
+            *r = acc;
         }
     }
 
@@ -406,10 +403,8 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
                     unsafe { &*(cast_slice::<_, u32>(a.at(col_i, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
                 let aj: &[u32; 8] =
                     unsafe { &*(cast_slice::<_, u32>(a.at(col_j, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bi: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(b.at(col_i, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bj: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(b.at(col_j, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
+                let bi: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(col_i, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
+                let bj: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(col_j, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
                 let mut a_sum = [0u32; 8];
                 let mut b_sum = [0u32; 8];
                 for k in 0..4 {

@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+};
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToRef, GLWEInfos,
@@ -87,18 +90,27 @@ where
         self.bytes_of_lwe_to_glwe_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
-    fn prepare_lwe_to_glwe_key_tmp_bytes<A>(&self, infos: &A)
+    fn prepare_lwe_to_glwe_key_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.prepare_glwe_switching_key_tmp_bytes(infos);
+        let lvl_0: usize = self.prepare_glwe_switching_key_tmp_bytes(infos);
+        lvl_0
     }
 
     fn prepare_lwe_to_glwe_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
+        Scratch<B>: ScratchAvailable,
     {
+        let res_infos = res.to_mut();
+        assert!(
+            scratch.available() >= self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos),
+            "scratch.available(): {} < LWEToGLWEKeyPreparedFactory::prepare_lwe_to_glwe_key_tmp_bytes: {}",
+            scratch.available(),
+            self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos)
+        );
         self.prepare_glwe_switching(res, other, scratch);
     }
 }
@@ -138,12 +150,12 @@ impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
 }
 
 impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A)
+    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
         M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.prepare_lwe_to_glwe_key_tmp_bytes(infos);
+        module.prepare_lwe_to_glwe_key_tmp_bytes(infos)
     }
 }
 
@@ -152,6 +164,7 @@ impl<D: DataMut, B: Backend> LWEToGLWEKeyPrepared<D, B> {
     where
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
         M: LWEToGLWEKeyPreparedFactory<B>,
+        Scratch<B>: ScratchAvailable,
     {
         module.prepare_lwe_to_glwe_key(self, other, scratch);
     }
