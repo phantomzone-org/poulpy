@@ -75,7 +75,7 @@ exact arithmetic at larger moduli.
 - `ntt120_vmp_apply_dft_to_dft_add`: accumulate variant
 - `ntt120_vmp_zero`: zero a VmpPMat
 
-## Backend Crate (`poulpy-cpu-ntt120/src/`)
+## Backend Crate (`poulpy-cpu-ref/ntt120/`)
 
 ### `module.rs`
 - `NTT120RefHandle { table_ntt, table_intt, meta_bbc }`

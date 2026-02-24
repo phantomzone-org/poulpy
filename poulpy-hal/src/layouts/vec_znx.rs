@@ -7,7 +7,7 @@ use crate::{
     alloc_aligned,
     layouts::{
         Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ScalarZnx, ToOwnedDeep, WriterTo,
-        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -120,12 +120,6 @@ impl<D: Data> ZnxInfos for VecZnx<D> {
 
     fn size(&self) -> usize {
         self.size
-    }
-}
-
-impl<D: Data> ZnxSliceSize for VecZnx<D> {
-    fn sl(&self) -> usize {
-        self.n() * self.cols()
     }
 }
 

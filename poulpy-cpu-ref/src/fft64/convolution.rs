@@ -1,7 +1,6 @@
 //! Polynomial convolution operations for [`FFT64Ref`](crate::FFT64Ref).
 //!
-//! Implements the `CnvPVecLAllocImpl`, `CnvPVecBytesOfImpl`, and `ConvolutionImpl`
-//! OEP traits, providing the full convolution pipeline:
+//! Implements the `ConvolutionImpl` OEP trait, providing the full convolution pipeline:
 //!
 //! - **Prepare left / right**: transform integer-domain polynomials into their
 //!   frequency-domain prepared representations (`CnvPVecL`, `CnvPVecR`).
@@ -19,10 +18,10 @@
 use poulpy_hal::{
     api::{Convolution, ModuleN, ScratchTakeBasic, TakeSlice, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnx,
-        VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
+        CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnx, VecZnxBig,
+        VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
     },
-    oep::{CnvPVecBytesOfImpl, CnvPVecLAllocImpl, ConvolutionImpl},
+    oep::ConvolutionImpl,
     reference::fft64::convolution::{
         convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_by_const_apply, convolution_by_const_apply_tmp_bytes,
         convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes, convolution_prepare_left,
@@ -31,26 +30,6 @@ use poulpy_hal::{
 };
 
 use super::{FFT64Ref, module::FFT64ModuleHandle};
-
-unsafe impl CnvPVecLAllocImpl<Self> for FFT64Ref {
-    fn cnv_pvec_left_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, Self> {
-        CnvPVecL::alloc(n, cols, size)
-    }
-
-    fn cnv_pvec_right_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, Self> {
-        CnvPVecR::alloc(n, cols, size)
-    }
-}
-
-unsafe impl CnvPVecBytesOfImpl for FFT64Ref {
-    fn bytes_of_cnv_pvec_left_impl(n: usize, cols: usize, size: usize) -> usize {
-        Self::layout_prep_word_count() * n * cols * size * size_of::<<FFT64Ref as Backend>::ScalarPrep>()
-    }
-
-    fn bytes_of_cnv_pvec_right_impl(n: usize, cols: usize, size: usize) -> usize {
-        Self::layout_prep_word_count() * n * cols * size * size_of::<<FFT64Ref as Backend>::ScalarPrep>()
-    }
-}
 
 unsafe impl ConvolutionImpl<Self> for FFT64Ref
 where

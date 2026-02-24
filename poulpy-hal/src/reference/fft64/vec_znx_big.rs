@@ -5,7 +5,6 @@ use crate::{
     layouts::{
         Backend, Module, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut,
     },
-    oep::VecZnxBigAllocBytesImpl,
     reference::{
         vec_znx::{
             vec_znx_add, vec_znx_add_inplace, vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_negate,
@@ -301,7 +300,7 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
 pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl,
+    B: Backend<ScalarBig = i64>,
 {
     let n: usize = module.n();
     let base2k: usize = 17;

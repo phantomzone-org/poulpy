@@ -3,8 +3,7 @@
 ## Goal
 
 Add an AVX2-accelerated variant of the NTT120 backend alongside the existing
-`FFT64AVX` in `poulpy-cpu-avx`, or as a new crate `poulpy-cpu-ntt120-avx`.
-The reference scalar implementation lives in `poulpy-cpu-ntt120/`.
+`FFT64AVX` in `poulpy-cpu-avx`.
 
 ---
 
@@ -171,7 +170,6 @@ This operates purely on `u64`/`u32` slices (q120b/q120c), no i128 involved.
 ### Phase 5: Wire into poulpy-cpu-avx backend
 
 Option A: new struct `NTT120AVX` in `poulpy-cpu-avx`.
-Option B: new crate `poulpy-cpu-ntt120-avx` (cleaner separation).
 
 Either way: implement `NttHandleProvider` for the AVX handle and add AVX
 dispatch in the OEP impls.
@@ -190,5 +188,3 @@ dispatch in the OEP impls.
 
 Re-use `poulpy_hal::test_suite` cross-backend helpers, comparing:
 - `Module<NTT120Ref>` (scalar) vs `Module<NTT120AVX>` (AVX2)
-
-All existing `poulpy-cpu-ntt120` tests serve as the correctness oracle.

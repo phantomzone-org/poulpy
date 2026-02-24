@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
 use crate::{
-    layouts::{Backend, Data, DataMut, DataRef},
+    layouts::{Data, DataMut, DataRef},
     source::Source,
 };
 use bytemuck::Pod;
@@ -33,25 +33,6 @@ pub trait ZnxInfos {
     fn poly_count(&self) -> usize {
         self.rows() * self.cols() * self.size()
     }
-}
-
-/// Backend-specific slice size computation.
-///
-/// Implemented by backends to report the stride between consecutive limbs
-/// of the same column, which may differ from `n * cols` due to
-/// backend-specific padding or alignment.
-pub trait ZnxSliceSizeImpl<B: Backend> {
-    fn slice_size(&self) -> usize;
-}
-
-/// Stride between consecutive limbs of the same column.
-///
-/// For coefficient-domain types (`VecZnx`, `MatZnx`, `ScalarZnx`) this is
-/// `n * cols`. Backend-specific types may override this value.
-pub trait ZnxSliceSize {
-    /// Returns the stride (in number of scalars) between limb `j` and
-    /// limb `j+1` of the same column.
-    fn sl(&self) -> usize;
 }
 
 /// Read-only access to the underlying data container of a layout type.

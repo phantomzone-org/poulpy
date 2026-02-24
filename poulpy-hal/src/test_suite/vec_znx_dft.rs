@@ -288,6 +288,8 @@ where
                 let steps: usize = params[0];
                 let offset: usize = params[1];
 
+                println!("steps: {} offset: {}", steps, offset);
+
                 let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
                 let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
 

@@ -8,10 +8,7 @@ use std::fmt;
 
 use crate::{
     alloc_aligned,
-    layouts::{
-        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
-    },
-    oep::VecZnxBigAllocBytesImpl,
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 /// Extended-precision polynomial vector used as a result accumulator.
@@ -43,12 +40,6 @@ impl<D: DataRef, B: Backend> DigestU64 for VecZnxBig<D, B> {
         h.write_usize(self.size);
         h.write_usize(self.max_size);
         h.finish()
-    }
-}
-
-impl<D: Data, B: Backend> ZnxSliceSize for VecZnxBig<D, B> {
-    fn sl(&self) -> usize {
-        B::layout_big_word_count() * self.n() * self.cols()
     }
 }
 
@@ -100,12 +91,9 @@ where
     }
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxBig<D, B>
-where
-    B: VecZnxBigAllocBytesImpl,
-{
+impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(B::vec_znx_big_bytes_of_impl(n, cols, size));
+        let data = alloc_aligned::<u8>(B::bytes_of_vec_znx_big(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -118,7 +106,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vec_znx_big_bytes_of_impl(n, cols, size));
+        assert!(data.len() == B::bytes_of_vec_znx_big(n, cols, size));
         crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),

@@ -69,10 +69,19 @@
 //! | [`NttToZnx128`] | CRT-reconstruct from q120b to `i128` coefficients |
 //! | [`NttAdd`] | Component-wise addition of two q120b vectors |
 //! | [`NttAddInplace`] | In-place component-wise addition |
+//! | [`NttSub`] | Component-wise subtraction of two q120b vectors |
+//! | [`NttSubInplace`] | In-place component-wise subtraction |
+//! | [`NttSubNegateInplace`] | In-place swap-subtract: `res = a - res` |
+//! | [`NttNegate`] | Component-wise negation |
+//! | [`NttNegateInplace`] | In-place component-wise negation |
 //! | [`NttZero`] | Zero a q120b vector |
 //! | [`NttCopy`] | Copy a q120b vector |
 //! | [`NttMulBbb`] | Lazy product: q120b × q120b → q120b |
-//! | [`NttMulBbc`] | Lazy product: q120b × q120c → q120b |
+//! | [`NttMulBbc`] | Pointwise product: q120b × q120c → q120b (overwrite) |
+//! | [`NttCFromB`] | Convert q120b → q120c (Montgomery-prepared form) |
+//! | [`NttMulBbc1ColX2`] | x2-block 1-column bbc product (VMP inner loop) |
+//! | [`NttMulBbc2ColsX2`] | x2-block 2-column bbc product (VMP inner loop) |
+//! | [`NttExtract1BlkContiguous`] | Extract one x2-block from a contiguous q120b array |
 
 pub mod arithmetic;
 pub mod convolution;
@@ -165,12 +174,99 @@ pub trait NttMulBbb {
     fn ntt_mul_bbb(ell: usize, res: &mut [u64], a: &[u64], b: &[u64]);
 }
 
-/// Lazy matrix–vector product: q120b × q120c → q120b.
+/// Pointwise product: q120b × q120c → q120b (overwrite).
 ///
 /// Like [`NttMulBbb`] but the right-hand operand `b` is in the
 /// **prepared** q120c format ([`types::Q120c`]: 8 × `u32` per element),
 /// which pre-stores `(r, r·2^32 mod Q)` pairs for faster multiply-accumulate.
+/// `meta` carries the precomputed lazy-reduction parameters for the prime set.
+///
+/// **Overwrites** `res` with the result (does not accumulate into `res`).
 pub trait NttMulBbc {
-    /// `res += a[0..ell] ⊙ b[0..ell]` with `b` in q120c layout.
-    fn ntt_mul_bbc(ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+    /// `res = sum_{i<ell} a[i] ⊙ b[i]` with `b` in q120c layout, using `meta`.
+    fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Sub / negate variants
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Component-wise subtraction of two q120b vectors.
+pub trait NttSub {
+    /// `res[i] = a[i] - b[i]` (lazy q120b arithmetic) for each CRT component.
+    fn ntt_sub(res: &mut [u64], a: &[u64], b: &[u64]);
+}
+
+/// In-place component-wise subtraction of a q120b vector.
+pub trait NttSubInplace {
+    /// `res[i] -= a[i]` (lazy q120b arithmetic) for each CRT component.
+    fn ntt_sub_inplace(res: &mut [u64], a: &[u64]);
+}
+
+/// In-place swap-subtract: `res = a - res`.
+///
+/// Equivalent to negating `res` then adding `a`, in lazy q120b arithmetic.
+pub trait NttSubNegateInplace {
+    /// `res[i] = a[i] - res[i]` (lazy q120b arithmetic).
+    fn ntt_sub_negate_inplace(res: &mut [u64], a: &[u64]);
+}
+
+/// Component-wise negation of a q120b vector.
+pub trait NttNegate {
+    /// `res[i] = -a[i]` (lazy q120b arithmetic).
+    fn ntt_negate(res: &mut [u64], a: &[u64]);
+}
+
+/// In-place component-wise negation of a q120b vector.
+pub trait NttNegateInplace {
+    /// `res[i] = -res[i]` (lazy q120b arithmetic).
+    fn ntt_negate_inplace(res: &mut [u64]);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// q120b → q120c conversion
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Convert a q120b vector to q120c (Montgomery-prepared) form.
+///
+/// For each element `j` and prime `k`:
+/// - `r = a[4*j+k] mod Q[k]`
+/// - `res[8*j + 2*k]     = r`
+/// - `res[8*j + 2*k + 1] = (r * 2^32) mod Q[k]`
+pub trait NttCFromB {
+    /// Encode `a` (q120b, length `4*n`) into `res` (q120c, length `8*n`).
+    fn ntt_c_from_b(n: usize, res: &mut [u32], a: &[u64]);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// VMP x2-block kernels
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// VMP inner loop: x2-block 1-column bbc product.
+///
+/// Computes the inner product of one x2-block from `a` (q120b, as u32)
+/// against one column of the prepared matrix `b` (q120c), producing 8 u64
+/// output values (two q120b coefficients).
+pub trait NttMulBbc1ColX2 {
+    /// `res[0..8] = sum_{i<ell} a_x2[i] ⊙ b_x2[i]`.
+    fn ntt_mul_bbc_1col_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+}
+
+/// VMP inner loop: x2-block 2-column bbc product.
+///
+/// Like [`NttMulBbc1ColX2`] but computes two output columns simultaneously,
+/// writing 16 u64 values: `res[0..8]` for col 0, `res[8..16]` for col 1.
+pub trait NttMulBbc2ColsX2 {
+    /// `res[0..16] = [sum_i a_x2[i] ⊙ b_col0_x2[i], sum_i a_x2[i] ⊙ b_col1_x2[i]]`.
+    fn ntt_mul_bbc_2cols_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+}
+
+/// Extract one x2-block from a contiguous q120b array.
+///
+/// Reads block `blk` (8 u64 values: two consecutive coefficients × 4 primes)
+/// from `src`, which holds `row_max` q120b polynomials of degree `n` in
+/// contiguous layout, and writes the extracted values into `dst`.
+pub trait NttExtract1BlkContiguous {
+    /// Copy x2-block `blk` from `src` into `dst`.
+    fn ntt_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]);
 }

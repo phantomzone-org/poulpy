@@ -34,11 +34,9 @@ use crate::{
         VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        arithmetic::{b_from_znx64_ref, c_from_b_ref},
-        mat_vec::{
-            BbcMeta, extract_1blk_from_contiguous_q120b_ref, vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref,
-        },
-        ntt::ntt_ref,
+        NttCFromB, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2,
+        mat_vec::BbcMeta,
+        ntt::NttTable,
         primes::{PrimeSet, Primes30},
         types::Q120bScalar,
         vec_znx_dft::NttModuleHandle,
@@ -67,15 +65,15 @@ pub fn ntt120_vmp_prepare_tmp_bytes(n: usize) -> usize {
 /// Encode a polynomial matrix into the q120c NTT-domain prepared format.
 ///
 /// For each `(row, col)` entry of the matrix:
-/// 1. Map i64 coefficients to q120b ([`b_from_znx64_ref`]).
-/// 2. Apply forward NTT ([`ntt_ref`]).
-/// 3. Convert q120b → q120c ([`c_from_b_ref`]).
+/// 1. Map i64 coefficients to q120b ([`NttFromZnx64`]).
+/// 2. Apply forward NTT ([`NttDFTExecute`]).
+/// 3. Convert q120b → q120c ([`NttCFromB`]).
 /// 4. Store in `res` in the block-interleaved layout (see module doc).
 ///
 /// `tmp` must be at least [`ntt120_vmp_prepare_tmp_bytes`]`(n)` bytes.
 pub fn ntt120_vmp_prepare<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u8])
 where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
     R: VmpPMatToMut<BE>,
     A: MatZnxToRef,
 {
@@ -104,14 +102,13 @@ where
             let pos = n * (row_i * ncols + col_i);
 
             // Step 1 & 2: i64 → q120b → NTT (in-place in tmp_u64)
-            b_from_znx64_ref::<Primes30>(n, tmp_u64, &mat_i64[pos..pos + n]);
-            ntt_ref(module.get_ntt_table(), tmp_u64);
+            BE::ntt_from_znx64(tmp_u64, &mat_i64[pos..pos + n]);
+            BE::ntt_dft_execute(module.get_ntt_table(), tmp_u64);
 
-            // Step 3: q120b → q120c (write into tmp_u32, same backing buffer)
-            // We use a local Vec to avoid aliasing between tmp_u64 and tmp_u32.
+            // Step 3: q120b → q120c (write into a local Vec to avoid aliasing).
             let tmp_q120c: Vec<u32> = {
                 let mut v = vec![0u32; 8 * n];
-                c_from_b_ref::<Primes30>(n, &mut v, tmp_u64);
+                BE::ntt_c_from_b(n, &mut v, tmp_u64);
                 v
             };
 
@@ -183,7 +180,7 @@ fn zero_blk(n: usize, blk: usize, dst: &mut [u64]) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 #[allow(clippy::too_many_arguments)]
-fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
+fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool, BE>(
     n: usize,
     res_u64: &mut [u64],
     a_u64: &[u64],
@@ -193,7 +190,9 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
     ncols: usize,
     meta: &BbcMeta<Primes30>,
     tmp: &mut [u64],
-) {
+) where
+    BE: NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
+{
     debug_assert!(n >= 2);
     debug_assert!(n.is_power_of_two());
 
@@ -220,20 +219,14 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
         let mat_blk_u32 = &pmat_u32[blk_j * offset..];
 
         // Extract one x2-block from each input row into extracted_blk.
-        extract_1blk_from_contiguous_q120b_ref(n, row_max, blk_j, extracted_blk, a_u64);
+        BE::ntt_extract_1blk_contiguous(n, row_max, blk_j, extracted_blk, a_u64);
         let extracted_u32: &[u32] = cast_slice(extracted_blk);
 
         if limb_offset.is_multiple_of(2) {
             // Process paired columns: limb_offset, limb_offset+2, limb_offset+4, ...
             for (col_res, col_pmat) in (0..).step_by(2).zip((limb_offset..col_max - 1).step_by(2)) {
                 let col_offset = col_pmat * (nrows * 16); // u32
-                vec_mat2cols_product_x2_bbc_ref::<Primes30>(
-                    meta,
-                    row_max,
-                    mat2cols_output,
-                    extracted_u32,
-                    &mat_blk_u32[col_offset..],
-                );
+                BE::ntt_mul_bbc_2cols_x2(meta, row_max, mat2cols_output, extracted_u32, &mat_blk_u32[col_offset..]);
 
                 let (res_col0, res_col1) = (col_res, col_res + 1);
                 let base0 = res_col0 * 4 * n;
@@ -249,13 +242,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
         } else {
             // Odd limb_offset: the first output col is the 2nd col of pair (limb_offset-1, limb_offset).
             let col_offset = (limb_offset - 1) * (nrows * 16);
-            vec_mat2cols_product_x2_bbc_ref::<Primes30>(
-                meta,
-                row_max,
-                mat2cols_output,
-                extracted_u32,
-                &mat_blk_u32[col_offset..],
-            );
+            BE::ntt_mul_bbc_2cols_x2(meta, row_max, mat2cols_output, extracted_u32, &mat_blk_u32[col_offset..]);
 
             // Only save the 2nd column result (mat2cols_output[8..16]) → col_res = 0
             if OVERWRITE {
@@ -267,13 +254,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
             // Process remaining paired columns.
             for (col_res, col_pmat) in (1..).step_by(2).zip((limb_offset + 1..col_max - 1).step_by(2)) {
                 let col_offset = col_pmat * (nrows * 16);
-                vec_mat2cols_product_x2_bbc_ref::<Primes30>(
-                    meta,
-                    row_max,
-                    mat2cols_output,
-                    extracted_u32,
-                    &mat_blk_u32[col_offset..],
-                );
+                BE::ntt_mul_bbc_2cols_x2(meta, row_max, mat2cols_output, extracted_u32, &mat_blk_u32[col_offset..]);
 
                 let base0 = col_res * 4 * n;
                 let base1 = (col_res + 1) * 4 * n;
@@ -292,7 +273,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
             let last_col = col_max - 1;
             if last_col >= limb_offset {
                 let col_offset = last_col * (nrows * 16);
-                vec_mat1col_product_x2_bbc_ref::<Primes30>(
+                BE::ntt_mul_bbc_1col_x2(
                     meta,
                     row_max,
                     &mut mat2cols_output[0..8],
@@ -333,7 +314,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool>(
 /// `tmp` must be at least [`ntt120_vmp_apply_dft_to_dft_tmp_bytes`]`(...)` bytes.
 pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, pmat: &M, tmp: &mut [u8])
 where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     M: VmpPMatToRef<BE>,
@@ -355,7 +336,7 @@ where
     let pmat_u32: &[u32] = cast_slice(pmat.raw());
     let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
 
-    vmp_apply_dft_to_dft_core::<true>(n, res_u64, a_u64, pmat_u32, 0, nrows, ncols, meta, tmp_u64);
+    vmp_apply_dft_to_dft_core::<true, BE>(n, res_u64, a_u64, pmat_u32, 0, nrows, ncols, meta, tmp_u64);
 }
 
 /// NTT-domain vector-matrix product (accumulate): `res += a · pmat[limb_offset..]`.
@@ -372,7 +353,7 @@ pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
     limb_offset: usize,
     tmp: &mut [u8],
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     M: VmpPMatToRef<BE>,
@@ -394,7 +375,7 @@ pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
     let pmat_u32: &[u32] = cast_slice(pmat.raw());
     let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
 
-    vmp_apply_dft_to_dft_core::<false>(n, res_u64, a_u64, pmat_u32, limb_offset, nrows, ncols, meta, tmp_u64);
+    vmp_apply_dft_to_dft_core::<false, BE>(n, res_u64, a_u64, pmat_u32, limb_offset, nrows, ncols, meta, tmp_u64);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -45,14 +45,6 @@ impl Backend for FFT64Ref {
             drop(Box::from_raw(handle.as_ptr()));
         }
     }
-
-    fn layout_big_word_count() -> usize {
-        1
-    }
-
-    fn layout_prep_word_count() -> usize {
-        1
-    }
 }
 
 /// # Safety

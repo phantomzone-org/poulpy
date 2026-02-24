@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::{TakeSlice, VmpPrepareTmpBytes},
     layouts::{
-        Backend, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatOwned,
-        VmpPMatToMut, VmpPMatToRef, ZnxInfos,
+        MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef,
+        ZnxInfos,
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
+        VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
     reference::fft64::vmp::{
         vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_add, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes,
@@ -15,18 +15,6 @@ use poulpy_hal::{
 };
 
 use crate::{FFT64Avx, module::FFT64ModuleHandle};
-
-unsafe impl VmpPMatAllocBytesImpl<Self> for FFT64Avx {
-    fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        Self::layout_prep_word_count() * n * rows * cols_in * cols_out * size * size_of::<f64>()
-    }
-}
-
-unsafe impl VmpPMatAllocImpl<Self> for FFT64Avx {
-    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<Self> {
-        VmpPMatOwned::alloc(n, rows, cols_in, cols_out, size)
-    }
-}
 
 unsafe impl VmpApplyDftToDftImpl<Self> for FFT64Avx
 where

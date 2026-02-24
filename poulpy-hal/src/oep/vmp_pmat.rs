@@ -2,39 +2,8 @@
 //! on [`VmpPMat`](crate::layouts::VmpPMat).
 
 use crate::layouts::{
-    Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut, VmpPMatToRef,
+    Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatToMut, VmpPMatToRef,
 };
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
-/// * See [crate::api::VmpPMatAlloc] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpPMatAllocImpl<B: Backend> {
-    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
-/// * See [crate::api::VmpPMatBytesOf] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpPMatAllocBytesImpl<B: Backend> {
-    fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
-/// * See [crate::api::VmpPMatFromBytes] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpPMatFromBytesImpl<B: Backend> {
-    fn vmp_pmat_from_bytes_impl(
-        n: usize,
-        rows: usize,
-        cols_in: usize,
-        cols_out: usize,
-        size: usize,
-        bytes: Vec<u8>,
-    ) -> VmpPMatOwned<B>;
-}
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.

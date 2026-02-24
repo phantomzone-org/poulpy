@@ -11,10 +11,8 @@
 
 use poulpy_hal::{
     api::TakeSlice,
-    layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecR, CnvPVecRToMut, Module, Scratch, VecZnxBigToMut, VecZnxDftToMut, VecZnxToRef,
-    },
-    oep::{CnvPVecBytesOfImpl, CnvPVecLAllocImpl, ConvolutionImpl},
+    layouts::{CnvPVecLToMut, CnvPVecRToMut, Module, Scratch, VecZnxBigToMut, VecZnxDftToMut, VecZnxToRef},
+    oep::ConvolutionImpl,
     reference::ntt120::convolution::{
         ntt120_cnv_apply_dft, ntt120_cnv_apply_dft_tmp_bytes, ntt120_cnv_by_const_apply, ntt120_cnv_by_const_apply_tmp_bytes,
         ntt120_cnv_pairwise_apply_dft, ntt120_cnv_pairwise_apply_dft_tmp_bytes, ntt120_cnv_prepare_left,
@@ -23,27 +21,6 @@ use poulpy_hal::{
 };
 
 use crate::NTT120Ref;
-
-unsafe impl CnvPVecLAllocImpl<Self> for NTT120Ref {
-    fn cnv_pvec_left_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, Self> {
-        CnvPVecL::alloc(n, cols, size)
-    }
-
-    fn cnv_pvec_right_alloc_impl(n: usize, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, Self> {
-        CnvPVecR::alloc(n, cols, size)
-    }
-}
-
-unsafe impl CnvPVecBytesOfImpl for NTT120Ref {
-    fn bytes_of_cnv_pvec_left_impl(n: usize, cols: usize, size: usize) -> usize {
-        // Same byte layout as VecZnxDft: one Q120bScalar per coefficient.
-        n * cols * size * size_of::<<NTT120Ref as Backend>::ScalarPrep>()
-    }
-
-    fn bytes_of_cnv_pvec_right_impl(n: usize, cols: usize, size: usize) -> usize {
-        n * cols * size * size_of::<<NTT120Ref as Backend>::ScalarPrep>()
-    }
-}
 
 unsafe impl ConvolutionImpl<Self> for NTT120Ref
 where

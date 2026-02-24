@@ -30,7 +30,6 @@
 //!
 //! - `ScalarPrep = f64`: coefficients in the DFT / frequency domain.
 //! - `ScalarBig  = i64`: coefficients in the large-integer (multi-word) domain.
-//! - Both `layout_prep_word_count()` and `layout_big_word_count()` return `1`,
 //!   meaning each coefficient occupies exactly one scalar word.
 
 mod convolution;
@@ -58,7 +57,6 @@ pub use module::FFT64ModuleHandle;
 ///
 /// - **ScalarPrep**: `f64` — DFT-domain coefficients are 64-bit IEEE 754 floats.
 /// - **ScalarBig**: `i64` — large-coefficient ring elements use 64-bit signed integers.
-/// - **Word counts**: both `layout_prep_word_count()` and `layout_big_word_count()` return `1`.
 /// - **FFT tables**: precomputed twiddle factors stored in the module handle
 ///   (`FFT64RefHandle`), shared across all operations on the same module.
 ///

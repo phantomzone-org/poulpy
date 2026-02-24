@@ -1,7 +1,6 @@
 use crate::{
     cast_mut,
     layouts::{DataViewMut, MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
-    oep::VecZnxDftAllocBytesImpl,
     reference::fft64::{
         reim::{ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimZero},
         reim4::{
@@ -104,7 +103,6 @@ pub fn vmp_apply_dft_tmp_bytes(n: usize, a_size: usize, prows: usize, pcols_in: 
 pub fn vmp_apply_dft<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
     BE: Backend<ScalarPrep = f64>
-        + VecZnxDftAllocBytesImpl<BE>
         + ReimDFTExecute<ReimFFTTable<f64>, f64>
         + ReimZero
         + Reim4Extract1BlkContiguous
@@ -131,7 +129,7 @@ where
         assert!(a.cols() <= cols);
     }
 
-    let (data, tmp_bytes) = tmp_bytes.split_at_mut(BE::vec_znx_dft_bytes_of_impl(n, cols, size));
+    let (data, tmp_bytes) = tmp_bytes.split_at_mut(BE::bytes_of_vec_znx_dft(n, cols, size));
 
     let mut a_dft: VecZnxDft<&mut [u8], BE> = VecZnxDft::from_data(cast_mut(data), n, cols, size);
 

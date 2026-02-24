@@ -151,6 +151,8 @@ where
         let limb: usize = offset + j * step;
         if limb < a.size() {
             BE::reim_copy(res.at_mut(res_col, j), a.at(a_col, limb));
+        } else {
+            BE::reim_zero(res.at_mut(res_col, j));
         }
     });
     (min_steps..res.size()).for_each(|j| {

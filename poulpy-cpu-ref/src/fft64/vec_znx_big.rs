@@ -17,16 +17,16 @@ use super::FFT64Ref;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
     layouts::{
-        Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView,
+        ZnxViewMut,
     },
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
-        VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
-        VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl,
-        VecZnxBigFromSmallImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl, VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl,
-        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
+        VecZnxBigAddSmallInplaceImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
+        VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromSmallImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl,
+        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl, VecZnxBigSubInplaceImpl,
+        VecZnxBigSubNegateInplaceImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl,
+        VecZnxBigSubSmallNegateInplaceImpl,
     },
     reference::{
         fft64::vec_znx_big::{
@@ -40,24 +40,6 @@ use poulpy_hal::{
     },
     source::Source,
 };
-
-unsafe impl VecZnxBigAllocBytesImpl for FFT64Ref {
-    fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize {
-        Self::layout_big_word_count() * n * cols * size * size_of::<<FFT64Ref as Backend>::ScalarBig>()
-    }
-}
-
-unsafe impl VecZnxBigAllocImpl<Self> for FFT64Ref {
-    fn vec_znx_big_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxBigOwned<Self> {
-        VecZnxBig::alloc(n, cols, size)
-    }
-}
-
-unsafe impl VecZnxBigFromBytesImpl<Self> for FFT64Ref {
-    fn vec_znx_big_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<Self> {
-        VecZnxBig::from_bytes(n, cols, size, bytes)
-    }
-}
 
 unsafe impl VecZnxBigFromSmallImpl<Self> for FFT64Ref {
     fn vec_znx_big_from_small_impl<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)

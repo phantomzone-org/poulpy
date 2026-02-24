@@ -30,22 +30,10 @@ use crate::{
         ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        arithmetic::{b_from_znx64_ref, c_from_b_ref},
-        mat_vec::{BbcMeta, vec_mat1col_product_bbc_ref},
-        ntt::ntt_ref,
-        primes::{PrimeSet, Primes30},
-        types::Q120bScalar,
-        vec_znx_dft::NttModuleHandle,
+        NttAddInplace, NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero, ntt::NttTable, primes::Primes30,
+        types::Q120bScalar, vec_znx_dft::NttModuleHandle,
     },
 };
-
-// Lazy-reduction bound: Q[k] << 33 is the modulus for q120b lazy arithmetic.
-const Q_SHIFTED: [u64; 4] = [
-    (Primes30::Q[0] as u64) << 33,
-    (Primes30::Q[1] as u64) << 33,
-    (Primes30::Q[2] as u64) << 33,
-    (Primes30::Q[3] as u64) << 33,
-];
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Prepare
@@ -54,16 +42,16 @@ const Q_SHIFTED: [u64; 4] = [
 /// Encode a scalar polynomial into the q120c NTT-domain prepared format.
 ///
 /// Steps:
-/// 1. Map i64 coefficients of `a` to q120b (via [`b_from_znx64_ref`]).
-/// 2. Apply the forward NTT (via [`ntt_ref`]).
-/// 3. Convert q120b → q120c (via [`c_from_b_ref`]) and store in `res`.
+/// 1. Map i64 coefficients of `a` to q120b (via [`NttFromZnx64`]).
+/// 2. Apply the forward NTT (via [`NttDFTExecute`]).
+/// 3. Convert q120b → q120c (via [`NttCFromB`]) and store in `res`.
 ///
 /// `res` must be a [`SvpPPol`] with `ScalarPrep = Q120bScalar`.
 /// A temporary heap buffer of `4 * n` u64 values is allocated internally
 /// (this is a setup/key-preparation function, not a hot path).
 pub fn ntt120_svp_prepare<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
     R: SvpPPolToMut<BE>,
     A: ScalarZnxToRef,
 {
@@ -73,31 +61,12 @@ where
 
     // Temporary q120b working buffer (heap-allocated; prepare is not hot).
     let mut tmp = vec![0u64; 4 * n];
-    b_from_znx64_ref::<Primes30>(n, &mut tmp, a.at(a_col, 0));
-    ntt_ref(module.get_ntt_table(), &mut tmp);
+    BE::ntt_from_znx64(&mut tmp, a.at(a_col, 0));
+    BE::ntt_dft_execute(module.get_ntt_table(), &mut tmp);
 
     // Write q120c into the SvpPPol buffer.
     let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(res_col, 0));
-    c_from_b_ref::<Primes30>(n, res_u32, &tmp);
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Private pointwise multiply helper
-// ──────────────────────────────────────────────────────────────────────────────
-
-/// Compute one q120b output coefficient = q120b input × q120c prepared coeff.
-///
-/// Calls `vec_mat1col_product_bbc_ref` with `ell = 1` (single-term product).
-///
-/// - `res4`:      `&mut [u64; 4]` output (q120b)
-/// - `b_u32_ni`:  8-element u32 slice at position `n_i` in the q120b input
-///   (bytemuck view of a `Q120bScalar`).
-/// - `a_u32_ni`:  8-element u32 slice at position `n_i` in the q120c prepared
-///   polynomial.
-/// - `meta`:      precomputed `BbcMeta` for `Primes30`.
-#[inline(always)]
-fn pointwise_mul_bbc(meta: &BbcMeta<Primes30>, res4: &mut [u64], b_u32_ni: &[u32], a_u32_ni: &[u32]) {
-    vec_mat1col_product_bbc_ref::<Primes30>(meta, 1, res4, b_u32_ni, a_u32_ni);
+    BE::ntt_c_from_b(n, res_u32, &tmp);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -124,7 +93,7 @@ pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
     b: &C,
     b_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttZero,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     C: VecZnxDftToRef<BE>,
@@ -142,13 +111,14 @@ pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
     // q120c view of the prepared polynomial (constant across all limbs).
     let a_u32: &[u32] = cast_slice(a.at(a_col, 0));
 
-    // Active limbs: pointwise multiply.
+    // Active limbs: pointwise multiply (overwrite).
     for j in 0..min_size {
         let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, j));
         let b_u32: &[u32] = cast_slice(b.at(b_col, j));
         for n_i in 0..n {
-            pointwise_mul_bbc(
+            BE::ntt_mul_bbc(
                 meta,
+                1,
                 &mut res_u64[4 * n_i..4 * n_i + 4],
                 &b_u32[8 * n_i..8 * n_i + 8],
                 &a_u32[8 * n_i..8 * n_i + 8],
@@ -158,9 +128,7 @@ pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
 
     // Remaining limbs: zero.
     for j in min_size..res_size {
-        for x in cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).iter_mut() {
-            *x = 0;
-        }
+        BE::ntt_zero(cast_slice_mut(res.at_mut(res_col, j)));
     }
 }
 
@@ -185,7 +153,7 @@ pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
     b: &C,
     b_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttAddInplace + NttZero,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     C: VecZnxDftToRef<BE>,
@@ -207,19 +175,20 @@ pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
         let b_u32: &[u32] = cast_slice(b.at(b_col, j));
         let mut product = [0u64; 4];
         for n_i in 0..n {
-            pointwise_mul_bbc(meta, &mut product, &b_u32[8 * n_i..8 * n_i + 8], &a_u32[8 * n_i..8 * n_i + 8]);
-            for k in 0..4 {
-                let idx = 4 * n_i + k;
-                res_u64[idx] = res_u64[idx] % Q_SHIFTED[k] + product[k] % Q_SHIFTED[k];
-            }
+            BE::ntt_mul_bbc(
+                meta,
+                1,
+                &mut product,
+                &b_u32[8 * n_i..8 * n_i + 8],
+                &a_u32[8 * n_i..8 * n_i + 8],
+            );
+            BE::ntt_add_inplace(&mut res_u64[4 * n_i..4 * n_i + 4], &product);
         }
     }
 
     // Limbs beyond b.size(): zero out (clear any stale data).
     for j in min_size..res_size {
-        for x in cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).iter_mut() {
-            *x = 0;
-        }
+        BE::ntt_zero(cast_slice_mut(res.at_mut(res_col, j)));
     }
 }
 
@@ -243,7 +212,7 @@ pub fn ntt120_svp_apply_dft_to_dft_inplace<R, A, BE>(
     a: &A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
 {
@@ -264,7 +233,7 @@ pub fn ntt120_svp_apply_dft_to_dft_inplace<R, A, BE>(
             // Copy the coefficient (Q120bScalar is Copy) so we can reborrow res_slice.
             let x_elem: Q120bScalar = res_slice[n_i];
             let x_u32: &[u32] = cast_slice(std::slice::from_ref(&x_elem));
-            pointwise_mul_bbc(meta, &mut product, x_u32, &a_u32[8 * n_i..8 * n_i + 8]);
+            BE::ntt_mul_bbc(meta, 1, &mut product, x_u32, &a_u32[8 * n_i..8 * n_i + 8]);
             res_slice[n_i] = Q120bScalar(product);
         }
     }

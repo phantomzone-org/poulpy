@@ -32,8 +32,6 @@
 //!
 //! - `ScalarPrep = Q120bScalar`: coefficients in the NTT / frequency domain (32 bytes = 4 × u64).
 //! - `ScalarBig  = i128`: coefficients in the large-integer (CRT-reconstructed) domain.
-//! - `layout_prep_word_count()` returns `1` (one Q120bScalar per coefficient slot).
-//! - `layout_big_word_count()`  returns `1` (one i128 per coefficient slot).
 //!
 //! # Usage
 //!
@@ -48,6 +46,7 @@
 
 mod convolution;
 mod module;
+mod prim;
 mod scratch;
 mod svp;
 mod vec_znx;
@@ -70,8 +69,6 @@ pub use module::NTT120RefHandle;
 ///
 /// - **ScalarPrep**: `Q120bScalar` — NTT-domain coefficients stored as 4 × u64 CRT residues.
 /// - **ScalarBig**: `i128` — large-coefficient ring elements use 128-bit signed integers.
-/// - **layout_prep_word_count**: `1` (one `Q120bScalar` per coefficient).
-/// - **layout_big_word_count**: `1` (one `i128` per coefficient).
 /// - **Prime set**: `Primes30` (four ~30-bit primes, Q ≈ 2^120).
 /// - **NTT tables**: precomputed twiddle factors stored in the module handle
 ///   (`NTT120RefHandle`), shared across all operations on the same module.

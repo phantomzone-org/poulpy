@@ -6,10 +6,7 @@ use std::{
 
 use crate::{
     alloc_aligned,
-    layouts::{
-        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxSliceSize, ZnxView,
-    },
-    oep::SvpPPolAllocBytesImpl,
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxView},
 };
 
 /// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
@@ -37,12 +34,6 @@ impl<D: DataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
         h.write_usize(self.n);
         h.write_usize(self.cols);
         h.finish()
-    }
-}
-
-impl<D: Data, B: Backend> ZnxSliceSize for SvpPPol<D, B> {
-    fn sl(&self) -> usize {
-        B::layout_prep_word_count() * self.n()
     }
 }
 
@@ -81,12 +72,9 @@ impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
     }
 }
 
-impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B>
-where
-    B: SvpPPolAllocBytesImpl<B>,
-{
+impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B> {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::svp_ppol_bytes_of_impl(n, cols));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_svp_ppol(n, cols));
         Self {
             data: data.into(),
             n,
@@ -97,7 +85,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::svp_ppol_bytes_of_impl(n, cols));
+        assert!(data.len() == B::bytes_of_svp_ppol(n, cols));
         crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),

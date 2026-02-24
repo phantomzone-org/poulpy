@@ -1,25 +1,8 @@
 //! Backend extension points for DFT-domain [`VecZnxDft`](crate::layouts::VecZnxDft) operations.
 
 use crate::layouts::{
-    Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
-    VecZnxToRef,
+    Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
 };
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
-/// * See [crate::api::VecZnxDftAlloc] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDftAllocImpl<B: Backend> {
-    fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B>;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
-/// * See [crate::api::VecZnxDftFromBytes] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDftFromBytesImpl<B: Backend> {
-    fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
-}
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
@@ -37,14 +20,6 @@ pub unsafe trait VecZnxDftApplyImpl<B: Backend> {
     ) where
         R: VecZnxDftToMut<B>,
         A: VecZnxToRef;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
-/// * See [crate::api::VecZnxDftBytesOf] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
-    fn vec_znx_dft_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

@@ -24,14 +24,13 @@ use bytemuck::cast_slice_mut;
 use poulpy_hal::{
     api::TakeSlice,
     layouts::{
-        Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
-        VecZnxToRef, ZnxInfos, ZnxViewMut,
+        Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos,
+        ZnxViewMut,
     },
     oep::{
-        TakeSliceImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftAllocBytesImpl,
-        VecZnxDftAllocImpl, VecZnxDftApplyImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl,
-        VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl,
-        VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        TakeSliceImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftApplyImpl,
+        VecZnxDftCopyImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl,
+        VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::ntt120::{
         ntt::{NttTableInv, intt_ref},
@@ -120,24 +119,6 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
 // ──────────────────────────────────────────────────────────────────────────────
 // Allocation
 // ──────────────────────────────────────────────────────────────────────────────
-
-unsafe impl VecZnxDftFromBytesImpl<Self> for NTT120Ref {
-    fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<Self> {
-        VecZnxDft::<Vec<u8>, Self>::from_bytes(n, cols, size, bytes)
-    }
-}
-
-unsafe impl VecZnxDftAllocBytesImpl<Self> for NTT120Ref {
-    fn vec_znx_dft_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize {
-        Self::layout_prep_word_count() * n * cols * size * size_of::<<NTT120Ref as Backend>::ScalarPrep>()
-    }
-}
-
-unsafe impl VecZnxDftAllocImpl<Self> for NTT120Ref {
-    fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<Self> {
-        VecZnxDftOwned::alloc(n, cols, size)
-    }
-}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Inverse NTT

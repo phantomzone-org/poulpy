@@ -4,32 +4,26 @@ use crate::{
         Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxBigToMut,
         VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
     },
-    oep::{CnvPVecBytesOfImpl, CnvPVecLAllocImpl, ConvolutionImpl},
+    oep::ConvolutionImpl,
 };
 
-impl<BE: Backend> CnvPVecAlloc<BE> for Module<BE>
-where
-    BE: CnvPVecLAllocImpl<BE>,
-{
+impl<BE: Backend> CnvPVecAlloc<BE> for Module<BE> {
     fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE> {
-        BE::cnv_pvec_left_alloc_impl(self.n(), cols, size)
+        CnvPVecL::alloc(self.n(), cols, size)
     }
 
     fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, BE> {
-        BE::cnv_pvec_right_alloc_impl(self.n(), cols, size)
+        CnvPVecR::alloc(self.n(), cols, size)
     }
 }
 
-impl<BE: Backend> CnvPVecBytesOf for Module<BE>
-where
-    BE: CnvPVecBytesOfImpl,
-{
+impl<BE: Backend> CnvPVecBytesOf for Module<BE> {
     fn bytes_of_cnv_pvec_left(&self, cols: usize, size: usize) -> usize {
-        BE::bytes_of_cnv_pvec_left_impl(self.n(), cols, size)
+        BE::bytes_of_cnv_pvec_left(self.n(), cols, size)
     }
 
     fn bytes_of_cnv_pvec_right(&self, cols: usize, size: usize) -> usize {
-        BE::bytes_of_cnv_pvec_right_impl(self.n(), cols, size)
+        BE::bytes_of_cnv_pvec_right(self.n(), cols, size)
     }
 }
 

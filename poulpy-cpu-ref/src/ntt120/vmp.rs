@@ -14,12 +14,12 @@
 use poulpy_hal::{
     api::{TakeSlice, VmpPrepareTmpBytes},
     layouts::{
-        MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatOwned, VmpPMatToMut,
-        VmpPMatToRef, ZnxInfos,
+        MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef,
+        ZnxInfos,
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
+        VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
     reference::ntt120::vmp::{
         ntt120_vmp_apply_dft_to_dft, ntt120_vmp_apply_dft_to_dft_add, ntt120_vmp_apply_dft_to_dft_tmp_bytes, ntt120_vmp_prepare,
@@ -28,20 +28,6 @@ use poulpy_hal::{
 };
 
 use crate::NTT120Ref;
-
-unsafe impl VmpPMatAllocBytesImpl<Self> for NTT120Ref {
-    fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        // Each of the n * rows * cols_in * cols_out * size coefficients is stored as a
-        // Q120bScalar (32 bytes = 4 × u64 = 8 × u32 in q120c view).
-        n * rows * cols_in * cols_out * size * size_of::<<NTT120Ref as poulpy_hal::layouts::Backend>::ScalarPrep>()
-    }
-}
-
-unsafe impl VmpPMatAllocImpl<Self> for NTT120Ref {
-    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<Self> {
-        VmpPMatOwned::alloc(n, rows, cols_in, cols_out, size)
-    }
-}
 
 unsafe impl VmpPrepareTmpBytesImpl<Self> for NTT120Ref {
     fn vmp_prepare_tmp_bytes_impl(module: &Module<Self>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize {

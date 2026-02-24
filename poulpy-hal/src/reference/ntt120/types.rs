@@ -31,7 +31,7 @@ use std::{fmt, ops::Add};
 /// - The same 32-byte layout can be reinterpreted as `[u32; 8]` (q120c)
 ///   for prepared-constant SVP/VMP multiply–accumulate operations.
 ///
-/// Used as `Backend::ScalarPrep` for `NTT120Ref`; `layout_prep_word_count = 1`.
+/// Used as `Backend::ScalarPrep` for `NTT120Ref`.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Q120bScalar(pub [u64; 4]);
