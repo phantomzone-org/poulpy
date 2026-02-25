@@ -304,7 +304,7 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
 
     // Zero bottom res limbs that will not receive a value.
     for j in res_start..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|x| *x = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 
     let mid_range: usize = a_start.saturating_sub(a_end);
@@ -322,7 +322,7 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
 
     // Propagate carry to remaining lower res limbs (which were zeroed above).
     for j in 0..res_end {
-        res.at_mut(res_col, res_end - j - 1).iter_mut().for_each(|x| *x = 0);
+        res.at_mut(res_col, res_end - j - 1).fill(0);
         if j == res_end - 1 {
             nfc_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
@@ -387,7 +387,7 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
 
     // Zero all res limbs.
     for j in 0..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|x| *x = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 
     if res_start == 0 {

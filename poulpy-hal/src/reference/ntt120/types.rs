@@ -19,6 +19,8 @@ use bytemuck::{Pod, Zeroable};
 use rand_distr::num_traits::Zero;
 use std::{fmt, ops::Add};
 
+use super::primes::{PrimeSet, Primes30};
+
 /// A single NTT-domain coefficient in the q120b representation.
 ///
 /// Stores four `u64` residues — one per CRT prime — in a packed
@@ -118,3 +120,18 @@ pub type Q120x2b = [u64; 8];
 ///
 /// Memory layout: 16 consecutive `u32` values, matching spqlios `q120x2c`.
 pub type Q120x2c = [u32; 16];
+
+/// Lazy-reduction bound used when adding two q120b values pointwise.
+///
+/// `Q_SHIFTED[k] = Q[k] << 33`.  Any q120b residue produced by
+/// `accum_to_q120b` satisfies `x < 2·Q_SHIFTED[k]`, so reducing
+/// modulo `Q_SHIFTED[k]` before adding two such values keeps the result
+/// below `4·Q_SHIFTED[k]`, which is safe for a subsequent NTT.
+///
+/// Shared by [`super::vmp`] and [`super::convolution`].
+pub const Q_SHIFTED: [u64; 4] = [
+    (Primes30::Q[0] as u64) << 33,
+    (Primes30::Q[1] as u64) << 33,
+    (Primes30::Q[2] as u64) << 33,
+    (Primes30::Q[3] as u64) << 33,
+];

@@ -86,7 +86,7 @@ impl<P: PrimeSet> Default for BaaMeta<P> {
 /// Precomputed metadata for the q120b × q120b → q120b dot product.
 pub struct BbbMeta<P: PrimeSet> {
     pub h: u64,
-    pub s1h_pow_red: [u64; 4], // 2^h
+    pub s1h_pow_red: u64,      // 2^h (prime-independent)
     pub s2l_pow_red: [u64; 4], // 2^32 mod Q[k]
     pub s2h_pow_red: [u64; 4], // 2^(32+h) mod Q[k]
     pub s3l_pow_red: [u64; 4], // 2^64 mod Q[k]
@@ -128,11 +128,11 @@ impl<P: PrimeSet> BbbMeta<P> {
             }
         }
 
-        let s1h_pow_red: [u64; 4] = std::array::from_fn(|_| 1u64 << min_h);
+        let s1h_pow_red: u64 = 1u64 << min_h; // prime-independent: 2^h is the same for all primes
         let s2l_pow_red: [u64; 4] = std::array::from_fn(|k| pow2_mod(32, P::Q[k] as u64));
         let s2h_pow_red: [u64; 4] = std::array::from_fn(|k| {
             let q = P::Q[k] as u64;
-            (s2l_pow_red[k] * s1h_pow_red[k]) % q
+            (s2l_pow_red[k] * s1h_pow_red) % q
         });
         let s3l_pow_red: [u64; 4] = std::array::from_fn(|k| {
             let q = P::Q[k] as u64;
@@ -140,7 +140,7 @@ impl<P: PrimeSet> BbbMeta<P> {
         });
         let s3h_pow_red: [u64; 4] = std::array::from_fn(|k| {
             let q = P::Q[k] as u64;
-            (s3l_pow_red[k] * s1h_pow_red[k]) % q
+            (s3l_pow_red[k] * s1h_pow_red) % q
         });
         let s4l_pow_red: [u64; 4] = std::array::from_fn(|k| {
             let q = P::Q[k] as u64;
@@ -148,7 +148,7 @@ impl<P: PrimeSet> BbbMeta<P> {
         });
         let s4h_pow_red: [u64; 4] = std::array::from_fn(|k| {
             let q = P::Q[k] as u64;
-            (s4l_pow_red[k] * s1h_pow_red[k]) % q
+            (s4l_pow_red[k] * s1h_pow_red) % q
         });
 
         Self {
@@ -220,6 +220,12 @@ impl<P: PrimeSet> Default for BbcMeta<P> {
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Dot-product kernels
+//
+// PERF POLICY: `assert!` guards appear at public function entry where an
+// incorrect slice length would silently access out-of-bounds memory in a
+// release build.  Pure arithmetic inner loops (no slice indexing beyond the
+// entry check) use `debug_assert!` to avoid redundant bounds work per
+// iteration.
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// Computes `res = sum_{i=0}^{ell-1} x[i] * y[i]` in Q120b format,
@@ -230,9 +236,9 @@ impl<P: PrimeSet> Default for BbcMeta<P> {
 /// Inputs: `x` and `y` as flat `u32` slices with stride 4 (one group
 /// of 4 per ring element), `res` as a `u64` slice of length 4.
 pub fn vec_mat1col_product_baa_ref<P: PrimeSet>(meta: &BaaMeta<P>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    debug_assert!(res.len() >= 4);
-    debug_assert!(x.len() >= 4 * ell);
-    debug_assert!(y.len() >= 4 * ell);
+    assert!(res.len() >= 4);
+    assert!(x.len() >= 4 * ell);
+    assert!(y.len() >= 4 * ell);
 
     let h = meta.h;
     let mask = (1u64 << h) - 1;
@@ -260,9 +266,9 @@ pub fn vec_mat1col_product_baa_ref<P: PrimeSet>(meta: &BaaMeta<P>, ell: usize, r
 ///
 /// Both inputs and output are flat `u64` slices with stride 4.
 pub fn vec_mat1col_product_bbb_ref<P: PrimeSet>(meta: &BbbMeta<P>, ell: usize, res: &mut [u64], x: &[u64], y: &[u64]) {
-    debug_assert!(res.len() >= 4);
-    debug_assert!(x.len() >= 4 * ell);
-    debug_assert!(y.len() >= 4 * ell);
+    assert!(res.len() >= 4);
+    assert!(x.len() >= 4 * ell);
+    assert!(y.len() >= 4 * ell);
 
     const MASK1: u64 = u32::MAX as u64; // lower 32 bits
 
@@ -317,7 +323,7 @@ pub fn vec_mat1col_product_bbb_ref<P: PrimeSet>(meta: &BbbMeta<P>, ell: usize, r
         let s4h = s4[k] >> h2;
 
         let mut t = s1l;
-        t += s1h * meta.s1h_pow_red[k];
+        t += s1h * meta.s1h_pow_red;
         t += s2l * meta.s2l_pow_red[k];
         t += s2h * meta.s2h_pow_red[k];
         t += s3l * meta.s3l_pow_red[k];
@@ -366,17 +372,17 @@ pub(crate) fn accum_to_q120b<P: PrimeSet>(res: &mut [u64; 4], s: &[u64; 8], meta
 ///
 /// `ell` must be < 10 000.
 pub fn vec_mat1col_product_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    debug_assert!(res.len() >= 4);
-    debug_assert!(x.len() >= 8 * ell);
-    debug_assert!(y.len() >= 8 * ell);
+    assert!(res.len() >= 4);
+    assert!(x.len() >= 8 * ell);
+    assert!(y.len() >= 8 * ell);
 
     let mut s = [0u64; 8];
     for i in 0..ell {
-        let xi: &[u32; 8] = unsafe { &*(x[8 * i..].as_ptr() as *const [u32; 8]) };
-        let yi: &[u32; 8] = unsafe { &*(y[8 * i..].as_ptr() as *const [u32; 8]) };
+        let xi: &[u32; 8] = x[8 * i..8 * i + 8].try_into().unwrap();
+        let yi: &[u32; 8] = y[8 * i..8 * i + 8].try_into().unwrap();
         accum_mul_q120_bc(&mut s, xi, yi);
     }
-    let res4: &mut [u64; 4] = unsafe { &mut *(res.as_mut_ptr() as *mut [u64; 4]) };
+    let res4: &mut [u64; 4] = (&mut res[..4]).try_into().unwrap();
     accum_to_q120b::<P>(res4, &s, meta);
 }
 
@@ -386,25 +392,26 @@ pub fn vec_mat1col_product_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usize, r
 /// and `y` contains two interleaved q120c vectors.
 /// Both output q120b values are written into `res` (8 contiguous u64s).
 pub fn vec_mat1col_product_x2_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    debug_assert!(res.len() >= 8);
-    debug_assert!(x.len() >= 16 * ell);
-    debug_assert!(y.len() >= 16 * ell);
+    assert!(res.len() >= 8);
+    assert!(x.len() >= 16 * ell);
+    assert!(y.len() >= 16 * ell);
 
     let mut s = [[0u64; 8]; 2];
 
     for i in 0..ell {
         // Each element: 2 × q120b (16 u32) in x, 2 × q120c (16 u32) in y
-        let x0: &[u32; 8] = unsafe { &*(x[16 * i..].as_ptr() as *const [u32; 8]) };
-        let x1: &[u32; 8] = unsafe { &*(x[16 * i + 8..].as_ptr() as *const [u32; 8]) };
-        let y0: &[u32; 8] = unsafe { &*(y[16 * i..].as_ptr() as *const [u32; 8]) };
-        let y1: &[u32; 8] = unsafe { &*(y[16 * i + 8..].as_ptr() as *const [u32; 8]) };
+        let x0: &[u32; 8] = x[16 * i..16 * i + 8].try_into().unwrap();
+        let x1: &[u32; 8] = x[16 * i + 8..16 * i + 16].try_into().unwrap();
+        let y0: &[u32; 8] = y[16 * i..16 * i + 8].try_into().unwrap();
+        let y1: &[u32; 8] = y[16 * i + 8..16 * i + 16].try_into().unwrap();
         accum_mul_q120_bc(&mut s[0], x0, y0);
         accum_mul_q120_bc(&mut s[1], x1, y1);
     }
 
-    let r0: &mut [u64; 4] = unsafe { &mut *(res.as_mut_ptr() as *mut [u64; 4]) };
+    let (res0, res1) = res.split_at_mut(4);
+    let r0: &mut [u64; 4] = res0.try_into().unwrap();
     accum_to_q120b::<P>(r0, &s[0], meta);
-    let r1: &mut [u64; 4] = unsafe { &mut *(res[4..].as_mut_ptr() as *mut [u64; 4]) };
+    let r1: &mut [u64; 4] = (&mut res1[..4]).try_into().unwrap();
     accum_to_q120b::<P>(r1, &s[1], meta);
 }
 
@@ -414,19 +421,19 @@ pub fn vec_mat1col_product_x2_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usize
 /// two different column slices of `y`, accumulating into `res[0..8]`
 /// and `res[8..16]` respectively.
 pub fn vec_mat2cols_product_x2_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    debug_assert!(res.len() >= 16);
-    debug_assert!(x.len() >= 16 * ell);
-    debug_assert!(y.len() >= 32 * ell);
+    assert!(res.len() >= 16);
+    assert!(x.len() >= 16 * ell);
+    assert!(y.len() >= 32 * ell);
 
     let mut s = [[0u64; 8]; 4];
 
     for i in 0..ell {
-        let x0: &[u32; 8] = unsafe { &*(x[16 * i..].as_ptr() as *const [u32; 8]) };
-        let x1: &[u32; 8] = unsafe { &*(x[16 * i + 8..].as_ptr() as *const [u32; 8]) };
-        let y0: &[u32; 8] = unsafe { &*(y[32 * i..].as_ptr() as *const [u32; 8]) };
-        let y1: &[u32; 8] = unsafe { &*(y[32 * i + 8..].as_ptr() as *const [u32; 8]) };
-        let y2: &[u32; 8] = unsafe { &*(y[32 * i + 16..].as_ptr() as *const [u32; 8]) };
-        let y3: &[u32; 8] = unsafe { &*(y[32 * i + 24..].as_ptr() as *const [u32; 8]) };
+        let x0: &[u32; 8] = x[16 * i..16 * i + 8].try_into().unwrap();
+        let x1: &[u32; 8] = x[16 * i + 8..16 * i + 16].try_into().unwrap();
+        let y0: &[u32; 8] = y[32 * i..32 * i + 8].try_into().unwrap();
+        let y1: &[u32; 8] = y[32 * i + 8..32 * i + 16].try_into().unwrap();
+        let y2: &[u32; 8] = y[32 * i + 16..32 * i + 24].try_into().unwrap();
+        let y3: &[u32; 8] = y[32 * i + 24..32 * i + 32].try_into().unwrap();
         accum_mul_q120_bc(&mut s[0], x0, y0);
         accum_mul_q120_bc(&mut s[1], x1, y1);
         accum_mul_q120_bc(&mut s[2], x0, y2);
@@ -434,7 +441,7 @@ pub fn vec_mat2cols_product_x2_bbc_ref<P: PrimeSet>(meta: &BbcMeta<P>, ell: usiz
     }
 
     for (out_idx, si) in s.iter().enumerate() {
-        let r: &mut [u64; 4] = unsafe { &mut *(res[4 * out_idx..].as_mut_ptr() as *mut [u64; 4]) };
+        let r: &mut [u64; 4] = (&mut res[4 * out_idx..4 * out_idx + 4]).try_into().unwrap();
         accum_to_q120b::<P>(r, si, meta);
     }
 }
@@ -455,9 +462,7 @@ pub fn extract_1blk_from_q120b_ref(nn: usize, blk: usize, dst: &mut [u64], src: 
     debug_assert!(dst.len() >= 8);
     debug_assert!(src.len() >= 4 * nn);
 
-    for i in 0..8 {
-        dst[i] = src[8 * blk + i];
-    }
+    dst[..8].copy_from_slice(&src[8 * blk..8 * blk + 8]);
 }
 
 /// Extracts one block from a contiguous array of `nrows` q120b NTT
@@ -476,9 +481,7 @@ pub fn extract_1blk_from_contiguous_q120b_ref(nn: usize, nrows: usize, blk: usiz
     for row in 0..nrows {
         let src_base = 4 * nn * row;
         let dst_base = 8 * row;
-        for i in 0..8 {
-            dst[dst_base + i] = src[src_base + 8 * blk + i];
-        }
+        dst[dst_base..dst_base + 8].copy_from_slice(&src[src_base + 8 * blk..src_base + 8 * blk + 8]);
     }
 }
 
@@ -491,32 +494,14 @@ pub fn save_1blk_to_q120b_ref(nn: usize, blk: usize, dst: &mut [u64], src: &[u64
     debug_assert!(src.len() >= 8);
     debug_assert!(dst.len() >= 4 * nn);
 
-    for i in 0..8 {
-        dst[8 * blk + i] = src[i];
-    }
+    dst[8 * blk..8 * blk + 8].copy_from_slice(&src[..8]);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Computes `2^exp mod q` for 64-bit `q`.
-fn pow2_mod(exp: u64, q: u64) -> u64 {
-    // Use 128-bit to avoid overflow for large exp.
-    // 2^exp mod q = (2^(exp % (q-1))) mod q  by Fermat (q prime, q-1 divides exp mod q-1)
-    // But simpler: just do repeated squaring directly mod q.
-    let mut result: u64 = 1;
-    let mut base: u64 = 2 % q;
-    let mut e = exp;
-    while e > 0 {
-        if e & 1 != 0 {
-            result = ((result as u128 * base as u128) % q as u128) as u64;
-        }
-        base = ((base as u128 * base as u128) % q as u128) as u64;
-        e >>= 1;
-    }
-    result
-}
+use super::pow2_mod;
 
 /// `ceil(log2(x))` for x ≥ 1 encoded as bit-size estimate.
 ///

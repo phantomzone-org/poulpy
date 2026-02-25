@@ -106,6 +106,27 @@ pub use vec_znx_dft::*;
 pub use vmp::*;
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Shared internal utilities
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// `2^exp mod q` using 128-bit intermediate arithmetic.
+///
+/// Shared by [`mat_vec`] and [`ntt`] to avoid duplicating this function.
+pub(super) fn pow2_mod(exp: u64, q: u64) -> u64 {
+    let mut result: u64 = 1;
+    let mut base: u64 = 2 % q;
+    let mut e = exp;
+    while e > 0 {
+        if e & 1 != 0 {
+            result = ((result as u128 * base as u128) % q as u128) as u64;
+        }
+        base = ((base as u128 * base as u128) % q as u128) as u64;
+        e >>= 1;
+    }
+    result
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // NTT-domain operation traits
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -182,6 +203,11 @@ pub trait NttMulBbb {
 /// `meta` carries the precomputed lazy-reduction parameters for the prime set.
 ///
 /// **Overwrites** `res` with the result (does not accumulate into `res`).
+///
+/// <!-- DOCUMENTED EXCEPTION: Primes30 hardcoded for spqlios compatibility.
+///   The generalisation path is to add an associated type PrimeSet to
+///   NttModuleHandle; until then every bbc/VMP/SVP/convolution trait method
+///   is intentionally fixed to Primes30. -->
 pub trait NttMulBbc {
     /// `res = sum_{i<ell} a[i] ⊙ b[i]` with `b` in q120c layout, using `meta`.
     fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);

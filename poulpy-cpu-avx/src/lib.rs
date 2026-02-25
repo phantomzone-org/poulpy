@@ -167,6 +167,7 @@ compile_error!("feature `enable-avx` requires FMA. Build with RUSTFLAGS=\"-C tar
 
 mod convolution;
 mod module;
+mod ntt120;
 mod reim;
 mod reim4;
 mod scratch;
@@ -176,6 +177,8 @@ mod vec_znx_big;
 mod vec_znx_dft;
 mod vmp;
 mod znx_avx;
+
+pub use ntt120::NTT120Avx;
 
 /// AVX2/FMA-accelerated CPU backend for Poulpy HAL.
 ///

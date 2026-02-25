@@ -45,19 +45,6 @@ use crate::{
     },
 };
 
-/// Lazy-reduction bound used when adding two q120b values pointwise.
-///
-/// `Q_SHIFTED[k] = Q[k] << 33`.  Any q120b residue produced by
-/// [`accum_to_q120b`] satisfies `x < 2·Q_SHIFTED[k]`, so reducing
-/// modulo `Q_SHIFTED[k]` before adding two such values keeps the result
-/// below `4·Q_SHIFTED[k]`, which is safe for a subsequent NTT.
-const Q_SHIFTED: [u64; 4] = [
-    (Primes30::Q[0] as u64) << 33,
-    (Primes30::Q[1] as u64) << 33,
-    (Primes30::Q[2] as u64) << 33,
-    (Primes30::Q[3] as u64) << 33,
-];
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Prepare left  (VecZnx → CnvPVecL, q120b)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -99,9 +86,7 @@ where
             ntt_ref(table, res_u64);
         }
         for j in min_size..res_size {
-            for x in cast_slice_mut::<_, u64>(res.at_mut(col, j)).iter_mut() {
-                *x = 0;
-            }
+            cast_slice_mut::<_, u64>(res.at_mut(col, j)).fill(0);
         }
     }
 }
@@ -125,10 +110,9 @@ pub fn ntt120_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
 /// 2. Apply the forward NTT in-place via [`ntt_ref`].
 /// 3. Convert q120b → q120c via [`c_from_b_ref`] into `res[col, j]`.
 ///
-/// `tmp` must hold at least [`ntt120_cnv_prepare_right_tmp_bytes`]`(n)` bytes,
-/// properly aligned to `u64` (8 bytes).
+/// `tmp` must hold at least `ntt120_cnv_prepare_right_tmp_bytes(n) / size_of::<u64>()` elements.
 /// Limbs of `res` beyond `a.size()` are zeroed.
-pub fn ntt120_cnv_prepare_right<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u8])
+pub fn ntt120_cnv_prepare_right<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar>,
     R: CnvPVecRToMut<BE>,
@@ -138,22 +122,19 @@ where
     let a: VecZnx<&[u8]> = a.to_ref();
     let n = res.n();
     let table = module.get_ntt_table();
-    let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
     let cols = res.cols();
     let res_size = res.size();
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
         for j in 0..min_size {
-            b_from_znx64_ref::<Primes30>(n, tmp_u64, a.at(col, j));
-            ntt_ref(table, tmp_u64);
+            b_from_znx64_ref::<Primes30>(n, tmp, a.at(col, j));
+            ntt_ref(table, tmp);
             let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, j));
-            c_from_b_ref::<Primes30>(n, res_u32, tmp_u64);
+            c_from_b_ref::<Primes30>(n, res_u32, tmp);
         }
         for j in min_size..res_size {
-            for x in cast_slice_mut::<_, u32>(res.at_mut(col, j)).iter_mut() {
-                *x = 0;
-            }
+            cast_slice_mut::<_, u32>(res.at_mut(col, j)).fill(0);
         }
     }
 }
@@ -225,10 +206,10 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
         for n_i in 0..n {
             let mut s = [0u64; 8];
             for j in j_min..j_max {
-                // SAFETY: a.at and b.at return slices of length n, and 8*n_i+8 <= 8*n.
-                let ai: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(a.at(a_col, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bi: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(b_col, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
+                let ai: &[u32; 8] = cast_slice::<_, u32>(a.at(a_col, k_abs - j))[8 * n_i..8 * n_i + 8]
+                    .try_into()
+                    .unwrap();
+                let bi: &[u32; 8] = cast_slice::<_, u32>(b.at(b_col, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
                 accum_mul_q120_bc(&mut s, ai, bi);
             }
             let mut r4 = [0u64; 4];
@@ -238,9 +219,7 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
     }
 
     for j in min_size..res_size {
-        for x in cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).iter_mut() {
-            *x = 0;
-        }
+        cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).fill(0);
     }
 }
 
@@ -310,9 +289,7 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
     }
 
     for j in min_size..res_size {
-        for x in res.at_mut(res_col, j).iter_mut() {
-            *x = 0i128;
-        }
+        res.at_mut(res_col, j).fill(0i128);
     }
 }
 
@@ -398,13 +375,14 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
             // The u32 sums stay below 2*Q_k < 2^31 and do not overflow.
             let mut s = [0u64; 8];
             for j in j_min..j_max {
-                // SAFETY: at() slices have length n, and 8*n_i+8 <= 8*n.
-                let ai: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(a.at(col_i, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let aj: &[u32; 8] =
-                    unsafe { &*(cast_slice::<_, u32>(a.at(col_j, k_abs - j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bi: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(col_i, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
-                let bj: &[u32; 8] = unsafe { &*(cast_slice::<_, u32>(b.at(col_j, j))[8 * n_i..].as_ptr() as *const [u32; 8]) };
+                let ai: &[u32; 8] = cast_slice::<_, u32>(a.at(col_i, k_abs - j))[8 * n_i..8 * n_i + 8]
+                    .try_into()
+                    .unwrap();
+                let aj: &[u32; 8] = cast_slice::<_, u32>(a.at(col_j, k_abs - j))[8 * n_i..8 * n_i + 8]
+                    .try_into()
+                    .unwrap();
+                let bi: &[u32; 8] = cast_slice::<_, u32>(b.at(col_i, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
+                let bj: &[u32; 8] = cast_slice::<_, u32>(b.at(col_j, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
                 let mut a_sum = [0u32; 8];
                 let mut b_sum = [0u32; 8];
                 for k in 0..4 {
@@ -426,8 +404,6 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     }
 
     for j in min_size..res_size {
-        for x in cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).iter_mut() {
-            *x = 0;
-        }
+        cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).fill(0);
     }
 }

@@ -37,19 +37,13 @@ use crate::{
         NttCFromB, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2,
         mat_vec::BbcMeta,
         ntt::NttTable,
-        primes::{PrimeSet, Primes30},
+        primes::Primes30,
         types::Q120bScalar,
         vec_znx_dft::NttModuleHandle,
     },
 };
 
-// Lazy-reduction bound for q120b addition.
-const Q_SHIFTED: [u64; 4] = [
-    (Primes30::Q[0] as u64) << 33,
-    (Primes30::Q[1] as u64) << 33,
-    (Primes30::Q[2] as u64) << 33,
-    (Primes30::Q[3] as u64) << 33,
-];
+use crate::reference::ntt120::types::Q_SHIFTED;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Prepare
@@ -70,8 +64,8 @@ pub fn ntt120_vmp_prepare_tmp_bytes(n: usize) -> usize {
 /// 3. Convert q120b → q120c ([`NttCFromB`]).
 /// 4. Store in `res` in the block-interleaved layout (see module doc).
 ///
-/// `tmp` must be at least [`ntt120_vmp_prepare_tmp_bytes`]`(n)` bytes.
-pub fn ntt120_vmp_prepare<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u8])
+/// `tmp` must hold at least `ntt120_vmp_prepare_tmp_bytes(n) / size_of::<u64>()` elements.
+pub fn ntt120_vmp_prepare<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
     R: VmpPMatToMut<BE>,
@@ -86,14 +80,13 @@ where
     debug_assert_eq!(res.rows(), a.rows());
     debug_assert_eq!(res.cols_out(), a.cols_out());
     debug_assert_eq!(res.size(), a.size());
-    debug_assert!(tmp.len() >= ntt120_vmp_prepare_tmp_bytes(n));
+    debug_assert!(std::mem::size_of_val(tmp) >= ntt120_vmp_prepare_tmp_bytes(n));
 
     let nrows: usize = a.cols_in() * a.rows();
     let ncols: usize = a.cols_out() * a.size();
     let n_blks: usize = n / 2;
     let offset: usize = nrows * ncols * 16; // u32 stride between blocks
 
-    let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
     let mat_i64: &[i64] = a.raw();
     let pmat_u32: &mut [u32] = cast_slice_mut(res.data_mut());
 
@@ -101,14 +94,14 @@ where
         for col_i in 0..ncols {
             let pos = n * (row_i * ncols + col_i);
 
-            // Step 1 & 2: i64 → q120b → NTT (in-place in tmp_u64)
-            BE::ntt_from_znx64(tmp_u64, &mat_i64[pos..pos + n]);
-            BE::ntt_dft_execute(module.get_ntt_table(), tmp_u64);
+            // Step 1 & 2: i64 → q120b → NTT (in-place in tmp)
+            BE::ntt_from_znx64(tmp, &mat_i64[pos..pos + n]);
+            BE::ntt_dft_execute(module.get_ntt_table(), tmp);
 
             // Step 3: q120b → q120c (write into a local Vec to avoid aliasing).
             let tmp_q120c: Vec<u32> = {
                 let mut v = vec![0u32; 8 * n];
-                BE::ntt_c_from_b(n, &mut v, tmp_u64);
+                BE::ntt_c_from_b(n, &mut v, tmp);
                 v
             };
 
@@ -150,9 +143,7 @@ pub fn ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_size: usize, b_rows: usize, b_col
 fn save_blk_overwrite(n: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
     debug_assert!(src.len() >= 8);
     debug_assert!(dst.len() >= 4 * n);
-    for i in 0..8 {
-        dst[8 * blk + i] = src[i];
-    }
+    dst[8 * blk..8 * blk + 8].copy_from_slice(&src[..8]);
 }
 
 /// Save an x2-block (8 u64) into a q120b vector with lazy accumulation.
@@ -170,9 +161,7 @@ fn save_blk_add(n: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
 #[inline(always)]
 fn zero_blk(n: usize, blk: usize, dst: &mut [u64]) {
     debug_assert!(dst.len() >= 4 * n);
-    for i in 0..8 {
-        dst[8 * blk + i] = 0;
-    }
+    dst[8 * blk..8 * blk + 8].fill(0);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -311,8 +300,8 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool, BE>(
 /// inner product of the input vector `a` with the corresponding column
 /// of `pmat` using lazy q120b × q120c accumulation.
 ///
-/// `tmp` must be at least [`ntt120_vmp_apply_dft_to_dft_tmp_bytes`]`(...)` bytes.
-pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, pmat: &M, tmp: &mut [u8])
+/// `tmp` must hold at least `ntt120_vmp_apply_dft_to_dft_tmp_bytes(...) / size_of::<u64>()` elements.
+pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, pmat: &M, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
     R: VecZnxDftToMut<BE>,
@@ -334,9 +323,8 @@ where
     let res_u64: &mut [u64] = cast_slice_mut(res.raw_mut());
     let a_u64: &[u64] = cast_slice(a.raw());
     let pmat_u32: &[u32] = cast_slice(pmat.raw());
-    let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
 
-    vmp_apply_dft_to_dft_core::<true, BE>(n, res_u64, a_u64, pmat_u32, 0, nrows, ncols, meta, tmp_u64);
+    vmp_apply_dft_to_dft_core::<true, BE>(n, res_u64, a_u64, pmat_u32, 0, nrows, ncols, meta, tmp);
 }
 
 /// NTT-domain vector-matrix product (accumulate): `res += a · pmat[limb_offset..]`.
@@ -344,14 +332,14 @@ where
 /// Like [`ntt120_vmp_apply_dft_to_dft`] but accumulates into `res` with
 /// lazy q120b addition, starting from column `limb_offset` of `pmat`.
 ///
-/// `tmp` must be at least [`ntt120_vmp_apply_dft_to_dft_tmp_bytes`]`(...)` bytes.
+/// `tmp` must hold at least `ntt120_vmp_apply_dft_to_dft_tmp_bytes(...) / size_of::<u64>()` elements.
 pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
     module: &impl NttModuleHandle,
     res: &mut R,
     a: &A,
     pmat: &M,
     limb_offset: usize,
-    tmp: &mut [u8],
+    tmp: &mut [u64],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
     R: VecZnxDftToMut<BE>,
@@ -373,9 +361,8 @@ pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
     let res_u64: &mut [u64] = cast_slice_mut(res.raw_mut());
     let a_u64: &[u64] = cast_slice(a.raw());
     let pmat_u32: &[u32] = cast_slice(pmat.raw());
-    let tmp_u64: &mut [u64] = cast_slice_mut(tmp);
 
-    vmp_apply_dft_to_dft_core::<false, BE>(n, res_u64, a_u64, pmat_u32, limb_offset, nrows, ncols, meta, tmp_u64);
+    vmp_apply_dft_to_dft_core::<false, BE>(n, res_u64, a_u64, pmat_u32, limb_offset, nrows, ncols, meta, tmp);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

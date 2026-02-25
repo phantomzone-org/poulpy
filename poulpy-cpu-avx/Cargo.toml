@@ -13,6 +13,7 @@ documentation = "https://docs.rs/poulpy"
 enable-avx = []
 
 [dependencies]
+bytemuck = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 rug = {workspace = true}

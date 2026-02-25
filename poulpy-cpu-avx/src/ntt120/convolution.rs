@@ -1,4 +1,4 @@
-//! Polynomial convolution operations for [`NTT120Ref`](crate::NTT120Ref).
+//! Polynomial convolution operations for [`NTT120Avx`](super::NTT120Avx).
 //!
 //! Delegates to the reference HAL functions in
 //! `poulpy_hal::reference::ntt120::convolution`.  The pipeline:
@@ -22,9 +22,9 @@ use poulpy_hal::{
 
 use std::mem::size_of;
 
-use crate::NTT120Ref;
+use super::NTT120Avx;
 
-unsafe impl ConvolutionImpl<Self> for NTT120Ref
+unsafe impl ConvolutionImpl<Self> for NTT120Avx
 where
     Scratch<Self>: TakeSlice,
 {

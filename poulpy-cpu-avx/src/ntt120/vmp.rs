@@ -1,4 +1,4 @@
-//! Vector-matrix product (VMP) operations for [`NTT120Ref`](crate::NTT120Ref).
+//! Vector-matrix product (VMP) operations for [`NTT120Avx`](super::NTT120Avx).
 //!
 //! Implements the `VmpPMat*` and `VmpApply*` OEP traits. VMP computes the product
 //! of a `VecZnxDft` (q120b, row vector) with a `VmpPMat` (prepared matrix in q120c
@@ -29,15 +29,15 @@ use poulpy_hal::{
 
 use std::mem::size_of;
 
-use crate::NTT120Ref;
+use super::NTT120Avx;
 
-unsafe impl VmpPrepareTmpBytesImpl<Self> for NTT120Ref {
+unsafe impl VmpPrepareTmpBytesImpl<Self> for NTT120Avx {
     fn vmp_prepare_tmp_bytes_impl(module: &Module<Self>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize {
         ntt120_vmp_prepare_tmp_bytes(module.n())
     }
 }
 
-unsafe impl VmpPrepareImpl<Self> for NTT120Ref {
+unsafe impl VmpPrepareImpl<Self> for NTT120Avx {
     fn vmp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
     where
         R: VmpPMatToMut<Self>,
@@ -50,7 +50,7 @@ unsafe impl VmpPrepareImpl<Self> for NTT120Ref {
     }
 }
 
-unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for NTT120Ref {
+unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for NTT120Avx {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
         _module: &Module<Self>,
         _res_size: usize,
@@ -64,7 +64,7 @@ unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for NTT120Ref {
     }
 }
 
-unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for NTT120Ref {
+unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for NTT120Avx {
     fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
         _module: &Module<Self>,
         _res_size: usize,
@@ -78,10 +78,10 @@ unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for NTT120Ref {
     }
 }
 
-unsafe impl VmpApplyDftToDftImpl<Self> for NTT120Ref
+unsafe impl VmpApplyDftToDftImpl<Self> for NTT120Avx
 where
     Scratch<Self>: TakeSlice,
-    NTT120Ref: VmpApplyDftToDftTmpBytesImpl<Self>,
+    NTT120Avx: VmpApplyDftToDftTmpBytesImpl<Self>,
 {
     fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<Self>, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<Self>)
     where
@@ -107,10 +107,10 @@ where
     }
 }
 
-unsafe impl VmpApplyDftToDftAddImpl<Self> for NTT120Ref
+unsafe impl VmpApplyDftToDftAddImpl<Self> for NTT120Avx
 where
     Scratch<Self>: TakeSlice,
-    NTT120Ref: VmpApplyDftToDftTmpBytesImpl<Self>,
+    NTT120Avx: VmpApplyDftToDftTmpBytesImpl<Self>,
 {
     fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
         module: &Module<Self>,
@@ -149,7 +149,7 @@ where
     }
 }
 
-unsafe impl VmpZeroImpl<Self> for NTT120Ref {
+unsafe impl VmpZeroImpl<Self> for NTT120Avx {
     fn vmp_zero_impl<R>(_module: &Module<Self>, res: &mut R)
     where
         R: VmpPMatToMut<Self>,

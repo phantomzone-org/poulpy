@@ -50,6 +50,10 @@ use crate::{
 /// [`NttHandleProvider`].  Backend crates (e.g. `poulpy-cpu-ref`) implement
 /// `NttHandleProvider` for their concrete handle type; they do *not* implement
 /// this trait directly (which would violate the orphan rule).
+///
+/// <!-- DOCUMENTED EXCEPTION: Primes30 hardcoded for spqlios compatibility.
+///   Generalisation path: add `type PrimeSet: PrimeSet` as an associated type here,
+///   then parameterise NttTable/NttTableInv/BbcMeta accordingly. -->
 pub trait NttModuleHandle {
     /// Precomputed forward NTT twiddle table (Primes30, size `n`).
     fn get_ntt_table(&self) -> &NttTable<Primes30>;
@@ -228,7 +232,7 @@ pub fn ntt120_vec_znx_idft_apply<R, A, BE>(
     }
 
     for j in min_size..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|x| *x = 0i128);
+        res.at_mut(res_col, j).fill(0i128);
     }
 }
 
@@ -263,7 +267,7 @@ pub fn ntt120_vec_znx_idft_apply_tmpa<R, A, BE>(
     }
 
     for j in min_size..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|x| *x = 0i128);
+        res.at_mut(res_col, j).fill(0i128);
     }
 }
 

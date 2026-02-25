@@ -168,8 +168,9 @@ fn fill_omegas<P: PrimeSet>(n: usize) -> [u32; 4] {
 ///
 /// Given that inputs have `bs_start` bits, finds `h ∈ [bs_start/2, bs_start)`
 /// that minimises the output bit-size after reduction.
-/// Returns `(bs_after_reduc, h, mask, modulo_red_cst)`.
-fn fill_reduction_meta<P: PrimeSet>(bs_start: u64) -> NttReducMeta {
+///
+/// Returns `(NttReducMeta, bs_after_reduc)`.
+fn fill_reduction_meta<P: PrimeSet>(bs_start: u64) -> (NttReducMeta, u64) {
     let mut bs_after_reduc = u64::MAX;
     let mut min_h = bs_start / 2;
 
@@ -178,7 +179,7 @@ fn fill_reduction_meta<P: PrimeSet>(bs_start: u64) -> NttReducMeta {
         for k in 0..4 {
             let q = P::Q[k] as u64;
             // (2^h) mod Q[k]
-            let pow_h_mod_q = pow2_mod_u64(h, q);
+            let pow_h_mod_q = pow2_mod(h, q);
             let pow_h_bs = if pow_h_mod_q <= 1 { 0u64 } else { ceil_log2_u64(pow_h_mod_q) };
             let t1 = bs_start - h + pow_h_bs;
             let t2 = 1 + t1.max(h);
@@ -193,13 +194,16 @@ fn fill_reduction_meta<P: PrimeSet>(bs_start: u64) -> NttReducMeta {
     }
 
     let mask = (1u64 << min_h) - 1;
-    let modulo_red_cst: [u64; 4] = std::array::from_fn(|k| pow2_mod_u64(min_h, P::Q[k] as u64));
+    let modulo_red_cst: [u64; 4] = std::array::from_fn(|k| pow2_mod(min_h, P::Q[k] as u64));
 
-    NttReducMeta {
-        modulo_red_cst,
-        mask,
-        h: min_h,
-    }
+    (
+        NttReducMeta {
+            modulo_red_cst,
+            mask,
+            h: min_h,
+        },
+        bs_after_reduc,
+    )
 }
 
 /// Pack a twiddle factor into the 64-bit encoding `(t1 << 32) | t`.
@@ -223,21 +227,7 @@ impl<P: PrimeSet> NttTable<P> {
         let log_q = P::LOG_Q;
         let mut bs = 64u64; // input_bit_size
 
-        let reduc_metadata = fill_reduction_meta::<P>(bs);
-        let bs_after_reduc = {
-            // Re-derive the output bit size from the reduc_metadata
-            let h = reduc_metadata.h;
-            let mut t = 0u64;
-            for k in 0..4 {
-                let q = P::Q[k] as u64;
-                let pow_h = pow2_mod_u64(h, q);
-                let pow_h_bs = if pow_h <= 1 { 0u64 } else { ceil_log2_u64(pow_h) };
-                let t1 = bs - h + pow_h_bs;
-                let t2 = 1 + t1.max(h);
-                t = t.max(t2);
-            }
-            t
-        };
+        let (reduc_metadata, bs_after_reduc) = fill_reduction_meta::<P>(bs);
 
         let input_bit_size = bs;
 
@@ -380,20 +370,7 @@ impl<P: PrimeSet> NttTableInv<P> {
         let log_q = P::LOG_Q;
         let mut bs = 64u64;
 
-        let reduc_metadata = fill_reduction_meta::<P>(bs);
-        let bs_after_reduc = {
-            let h = reduc_metadata.h;
-            let mut t = 0u64;
-            for k in 0..4 {
-                let q = P::Q[k] as u64;
-                let pow_h = pow2_mod_u64(h, q);
-                let pow_h_bs = if pow_h <= 1 { 0u64 } else { ceil_log2_u64(pow_h) };
-                let t1 = bs - h + pow_h_bs;
-                let t2 = 1 + t1.max(h);
-                t = t.max(t2);
-            }
-            t
-        };
+        let (reduc_metadata, bs_after_reduc) = fill_reduction_meta::<P>(bs);
 
         let input_bit_size = bs;
         let powomega_capacity = alloc_aligned::<u64>(4 * 2 * n.max(1));
@@ -608,26 +585,11 @@ pub fn ntt_ref<P: PrimeSet>(table: &NttTable<P>, data: &mut [u64]) {
     while nn >= 2 {
         let halfnn = nn / 2;
         let meta = &table.level_metadata[meta_idx];
-        let h = meta.half_bs;
-        let mask = meta.mask;
-        let do_reduce = meta.reduce;
-        let q2bs = meta.q2bs;
 
         // Process all blocks of size nn.
         let mut blk = 0;
         while blk < n {
-            ntt_butterfly_block(
-                data,
-                blk,
-                halfnn,
-                do_reduce,
-                &table.reduc_metadata,
-                q2bs,
-                h,
-                mask,
-                &table.powomega,
-                po_off,
-            );
+            ntt_butterfly_block(data, blk, halfnn, meta, &table.reduc_metadata, &table.powomega, po_off);
             blk += nn;
         }
 
@@ -664,25 +626,12 @@ pub fn intt_ref<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
     // ── Butterfly levels: nn = 2, 4, …, n ────────────────────────────────
     let log_n = n.trailing_zeros() as usize;
 
-    // Level 0 → nn=2 (no twiddles, po_off unchanged)
+    // Level 0 → nn=2 (no twiddles, po_off unchanged; meta.half_bs = 0, meta.mask = 0)
     {
         let meta = &table.level_metadata[meta_idx];
-        let do_reduce = meta.reduce;
-        let q2bs = meta.q2bs;
         let mut blk = 0;
         while blk < n {
-            intt_butterfly_block(
-                data,
-                blk,
-                1,
-                do_reduce,
-                &table.reduc_metadata,
-                q2bs,
-                0,
-                0,
-                &table.powomega,
-                po_off,
-            );
+            intt_butterfly_block(data, blk, 1, meta, &table.reduc_metadata, &table.powomega, po_off);
             blk += 2;
         }
         // po_off unchanged (halfnn-1 = 0 entries)
@@ -694,25 +643,10 @@ pub fn intt_ref<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
     for _ in 1..log_n {
         let halfnn = nn / 2;
         let meta = &table.level_metadata[meta_idx];
-        let h = meta.half_bs;
-        let mask = meta.mask;
-        let do_reduce = meta.reduce;
-        let q2bs = meta.q2bs;
 
         let mut blk = 0;
         while blk < n {
-            intt_butterfly_block(
-                data,
-                blk,
-                halfnn,
-                do_reduce,
-                &table.reduc_metadata,
-                q2bs,
-                h,
-                mask,
-                &table.powomega,
-                po_off,
-            );
+            intt_butterfly_block(data, blk, halfnn, meta, &table.reduc_metadata, &table.powomega, po_off);
             blk += nn;
         }
 
@@ -756,43 +690,58 @@ pub fn intt_ref<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
 /// For i=0: `(a, b) → (a+b, a + q2bs - b)` (no twiddle).
 /// For i=1..halfnn-1: `(a, b) → (a+b, split_precompmul(a + q2bs - b, ω^i, …))`.
 #[inline(always)]
-#[allow(clippy::too_many_arguments)]
 fn ntt_butterfly_block(
     data: &mut [u64],
     blk: usize,    // block start (coefficient index)
     halfnn: usize, // half the block size
-    do_reduce: bool,
+    meta: &NttStepMeta,
     reduc: &NttReducMeta,
-    q2bs: [u64; 4],
-    h: u64,
-    mask: u64,
     powomega: &[u64],
     po_off: usize, // offset to the first twiddle entry for this level
 ) {
-    for i in 0..halfnn {
-        for k in 0..4 {
-            let idx_a = 4 * (blk + i) + k;
-            let idx_b = 4 * (blk + halfnn + i) + k;
+    let q2bs = meta.q2bs;
+    let h = meta.half_bs;
+    let mask = meta.mask;
+    let do_reduce = meta.reduce;
 
-            let a = if do_reduce {
-                modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
-            } else {
-                data[idx_a]
-            };
-            let b = if do_reduce {
-                modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
-            } else {
-                data[idx_b]
-            };
+    // i = 0: no twiddle factor.
+    for (k, &q2bs_k) in q2bs.iter().enumerate() {
+        let idx_a = 4 * blk + k;
+        let idx_b = 4 * (blk + halfnn) + k;
+        let a = if do_reduce {
+            modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+        } else {
+            data[idx_a]
+        };
+        let b = if do_reduce {
+            modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+        } else {
+            data[idx_b]
+        };
+        data[idx_a] = a.wrapping_add(b);
+        data[idx_b] = a.wrapping_add(q2bs_k).wrapping_sub(b);
+    }
 
-            data[idx_a] = a.wrapping_add(b);
-            let b1 = a.wrapping_add(q2bs[k]).wrapping_sub(b);
-
-            data[idx_b] = if i == 0 || halfnn == 1 {
-                b1 // no twiddle for i=0 or last level (halfnn=1)
-            } else {
-                split_precompmul(b1, powomega[po_off + 4 * (i - 1) + k], h, mask)
-            };
+    // i = 1..halfnn: with twiddle factor (only if halfnn > 1).
+    if halfnn > 1 {
+        for i in 1..halfnn {
+            for k in 0..4 {
+                let idx_a = 4 * (blk + i) + k;
+                let idx_b = 4 * (blk + halfnn + i) + k;
+                let a = if do_reduce {
+                    modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+                } else {
+                    data[idx_a]
+                };
+                let b = if do_reduce {
+                    modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+                } else {
+                    data[idx_b]
+                };
+                data[idx_a] = a.wrapping_add(b);
+                let b1 = a.wrapping_add(q2bs[k]).wrapping_sub(b);
+                data[idx_b] = split_precompmul(b1, powomega[po_off + 4 * (i - 1) + k], h, mask);
+            }
         }
     }
 }
@@ -803,43 +752,58 @@ fn ntt_butterfly_block(
 /// For i=1..halfnn-1: twiddle is applied to `b` *before* the butterfly:
 ///   `bo = split_precompmul(b, ω^{-i}, …)`, then `(a, bo) → (a+bo, a + q2bs - bo)`.
 #[inline(always)]
-#[allow(clippy::too_many_arguments)]
 fn intt_butterfly_block(
     data: &mut [u64],
     blk: usize,
     halfnn: usize,
-    do_reduce: bool,
+    meta: &NttStepMeta,
     reduc: &NttReducMeta,
-    q2bs: [u64; 4],
-    h: u64,
-    mask: u64,
     powomega: &[u64],
     po_off: usize,
 ) {
-    for i in 0..halfnn {
-        for k in 0..4 {
-            let idx_a = 4 * (blk + i) + k;
-            let idx_b = 4 * (blk + halfnn + i) + k;
+    let q2bs = meta.q2bs;
+    let h = meta.half_bs;
+    let mask = meta.mask;
+    let do_reduce = meta.reduce;
 
-            let a = if do_reduce {
-                modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
-            } else {
-                data[idx_a]
-            };
-            let b_raw = if do_reduce {
-                modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
-            } else {
-                data[idx_b]
-            };
+    // i = 0: no twiddle factor.
+    for (k, &q2bs_k) in q2bs.iter().enumerate() {
+        let idx_a = 4 * blk + k;
+        let idx_b = 4 * (blk + halfnn) + k;
+        let a = if do_reduce {
+            modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+        } else {
+            data[idx_a]
+        };
+        let bo = if do_reduce {
+            modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+        } else {
+            data[idx_b]
+        };
+        data[idx_a] = a.wrapping_add(bo);
+        data[idx_b] = a.wrapping_add(q2bs_k).wrapping_sub(bo);
+    }
 
-            let bo = if i == 0 || halfnn == 1 {
-                b_raw
-            } else {
-                split_precompmul(b_raw, powomega[po_off + 4 * (i - 1) + k], h, mask)
-            };
-
-            data[idx_a] = a.wrapping_add(bo);
-            data[idx_b] = a.wrapping_add(q2bs[k]).wrapping_sub(bo);
+    // i = 1..halfnn: apply twiddle to b before the butterfly (only if halfnn > 1).
+    if halfnn > 1 {
+        for i in 1..halfnn {
+            for k in 0..4 {
+                let idx_a = 4 * (blk + i) + k;
+                let idx_b = 4 * (blk + halfnn + i) + k;
+                let a = if do_reduce {
+                    modq_red(data[idx_a], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+                } else {
+                    data[idx_a]
+                };
+                let b_raw = if do_reduce {
+                    modq_red(data[idx_b], reduc.h, reduc.mask, reduc.modulo_red_cst[k])
+                } else {
+                    data[idx_b]
+                };
+                let bo = split_precompmul(b_raw, powomega[po_off + 4 * (i - 1) + k], h, mask);
+                data[idx_a] = a.wrapping_add(bo);
+                data[idx_b] = a.wrapping_add(q2bs[k]).wrapping_sub(bo);
+            }
         }
     }
 }
@@ -848,6 +812,8 @@ fn intt_butterfly_block(
 // Internal helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
+use super::pow2_mod;
+
 /// `ceil(log2(x))` for `x ≥ 1`.
 fn ceil_log2_u64(x: u64) -> u64 {
     if x <= 1 {
@@ -855,21 +821,6 @@ fn ceil_log2_u64(x: u64) -> u64 {
     }
     let floor_log2 = 63 - x.leading_zeros() as u64;
     if x.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
-}
-
-/// `2^exp mod q` using 128-bit intermediate arithmetic.
-fn pow2_mod_u64(exp: u64, q: u64) -> u64 {
-    let mut result: u64 = 1;
-    let mut base: u64 = 2 % q;
-    let mut e = exp;
-    while e > 0 {
-        if e & 1 != 0 {
-            result = ((result as u128 * base as u128) % q as u128) as u64;
-        }
-        base = ((base as u128 * base as u128) % q as u128) as u64;
-        e >>= 1;
-    }
-    result
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
