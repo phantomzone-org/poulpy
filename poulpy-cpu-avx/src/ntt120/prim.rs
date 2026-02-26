@@ -4,23 +4,21 @@
 //! [`NTT120Avx`](super::NTT120Avx).
 //!
 //! NTT forward/inverse execution uses the AVX2-accelerated kernels from
-//! [`super::ntt_avx`].  All other primitives (domain conversion, ring arithmetic,
-//! mat-vec products) still delegate to the scalar reference implementations;
-//! Phase 4 (AVX2 mat-vec BBC) will replace the mat-vec calls here.
+//! [`super::ntt`].  BBC mat-vec products use the AVX2-accelerated kernels
+//! from [`super::mat_vec_avx`].  All other primitives (domain conversion,
+//! ring arithmetic) delegate to the scalar reference implementations.
 
 use poulpy_hal::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
     NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128,
     NttZero,
     arithmetic::{add_bbb_ref, b_from_znx64_ref, b_to_znx128_ref, c_from_b_ref},
-    mat_vec::{
-        BbbMeta, BbcMeta, extract_1blk_from_contiguous_q120b_ref, vec_mat1col_product_bbb_ref, vec_mat1col_product_bbc_ref,
-        vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref,
-    },
+    mat_vec::{BbbMeta, BbcMeta, extract_1blk_from_contiguous_q120b_ref, vec_mat1col_product_bbb_ref},
     ntt::{NttTable, NttTableInv},
     primes::{PrimeSet, Primes30},
 };
 
+use super::mat_vec_avx::{vec_mat1col_product_bbc_avx2, vec_mat1col_product_x2_bbc_avx2, vec_mat2cols_product_x2_bbc_avx2};
 use super::ntt::{intt_avx2, ntt_avx2};
 
 use super::NTT120Avx;
@@ -175,7 +173,7 @@ impl NttCopy for NTT120Avx {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Multiply-accumulate (Phase 4: replace with AVX2 mat_vec BBC)
+// Multiply-accumulate
 // ──────────────────────────────────────────────────────────────────────────────
 
 impl NttMulBbb for NTT120Avx {
@@ -189,7 +187,8 @@ impl NttMulBbb for NTT120Avx {
 impl NttMulBbc for NTT120Avx {
     #[inline(always)]
     fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
-        vec_mat1col_product_bbc_ref::<Primes30>(meta, ell, res, a, b);
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { vec_mat1col_product_bbc_avx2(meta, ell, res, a, b) }
     }
 }
 
@@ -205,20 +204,22 @@ impl NttCFromB for NTT120Avx {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// VMP x2-block kernels (Phase 4: replace with AVX2)
+// VMP x2-block kernels
 // ──────────────────────────────────────────────────────────────────────────────
 
 impl NttMulBbc1ColX2 for NTT120Avx {
     #[inline(always)]
     fn ntt_mul_bbc_1col_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
-        vec_mat1col_product_x2_bbc_ref::<Primes30>(meta, ell, res, a, b);
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { vec_mat1col_product_x2_bbc_avx2(meta, ell, res, a, b) }
     }
 }
 
 impl NttMulBbc2ColsX2 for NTT120Avx {
     #[inline(always)]
     fn ntt_mul_bbc_2cols_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
-        vec_mat2cols_product_x2_bbc_ref::<Primes30>(meta, ell, res, a, b);
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { vec_mat2cols_product_x2_bbc_avx2(meta, ell, res, a, b) }
     }
 }
 

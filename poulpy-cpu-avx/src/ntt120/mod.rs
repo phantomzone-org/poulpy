@@ -10,10 +10,10 @@
 //! | Domain | Status |
 //! |-|-|
 //! | Coefficient-domain (`Znx*`) | AVX2 (reuses `crate::znx_avx`) |
-//! | NTT forward/inverse | Scalar (Phase 1: future work) |
-//! | VecZnxBig add/sub/negate | Scalar (Phase 2: future work) |
-//! | VecZnxBig normalization | Scalar (Phase 3: future work) |
-//! | mat_vec BBC product | Scalar (Phase 4: future work) |
+//! | NTT forward/inverse | AVX2 (`ntt` module) |
+//! | mat_vec BBC product (SVP/VMP hot path) | AVX2 (`mat_vec_avx` module) |
+//! | VecZnxBig add/sub/negate | Scalar (future work) |
+//! | VecZnxBig normalization | Scalar (future work) |
 //!
 //! # Scalar types
 //!
@@ -21,6 +21,7 @@
 //! - `ScalarBig  = i128` — CRT-reconstructed large coefficients.
 
 mod convolution;
+pub(crate) mod mat_vec_avx;
 mod module;
 pub(crate) mod ntt;
 mod prim;
