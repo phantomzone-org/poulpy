@@ -4,7 +4,7 @@ use poulpy_hal::{
     reference::fft64::svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
 };
 
-use crate::{FFT64Avx, module::FFT64ModuleHandle};
+use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
 
 unsafe impl SvpPrepareImpl<Self> for FFT64Avx {
     fn svp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)

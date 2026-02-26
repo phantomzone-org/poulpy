@@ -34,12 +34,8 @@ use crate::{
         VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        NttCFromB, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2,
-        mat_vec::BbcMeta,
-        ntt::NttTable,
-        primes::Primes30,
-        types::Q120bScalar,
-        vec_znx_dft::NttModuleHandle,
+        NttCFromB, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2, mat_vec::BbcMeta,
+        ntt::NttTable, primes::Primes30, types::Q120bScalar, vec_znx_dft::NttModuleHandle,
     },
 };
 

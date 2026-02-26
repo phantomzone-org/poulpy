@@ -20,7 +20,7 @@ use std::arch::x86_64::{
     _mm256_permute2f128_pd, _mm256_set_m128d, _mm256_storeu_pd, _mm256_sub_pd, _mm256_unpackhi_pd, _mm256_unpacklo_pd,
 };
 
-use crate::reim::{as_arr, as_arr_mut};
+use crate::fft64::reim::{as_arr, as_arr_mut};
 
 #[target_feature(enable = "avx2,fma")]
 pub(crate) fn fft_avx2_fma(m: usize, omg: &[f64], data: &mut [f64]) {

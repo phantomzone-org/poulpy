@@ -12,7 +12,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::{FFT64Avx, module::FFT64ModuleHandle};
+use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
 
 unsafe impl VecZnxIdftApplyTmpBytesImpl<Self> for FFT64Avx {
     fn vec_znx_idft_apply_tmp_bytes_impl(_module: &Module<Self>) -> usize {

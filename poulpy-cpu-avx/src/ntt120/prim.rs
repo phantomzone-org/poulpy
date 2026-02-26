@@ -1,10 +1,12 @@
 //! Trait implementations for [`NTT120Avx`](super::NTT120Avx) — primitive NTT-domain operations.
 //!
 //! Implements all `Ntt*` traits from [`poulpy_hal::reference::ntt120`] for
-//! [`NTT120Avx`](super::NTT120Avx), delegating to the scalar `*_ref` functions.
+//! [`NTT120Avx`](super::NTT120Avx).
 //!
-//! Phase 1 (AVX2 NTT butterfly) and Phase 4 (AVX2 mat_vec BBC) will replace
-//! the scalar calls here with AVX2-accelerated kernels.
+//! NTT forward/inverse execution uses the AVX2-accelerated kernels from
+//! [`super::ntt_avx`].  All other primitives (domain conversion, ring arithmetic,
+//! mat-vec products) still delegate to the scalar reference implementations;
+//! Phase 4 (AVX2 mat-vec BBC) will replace the mat-vec calls here.
 
 use poulpy_hal::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
@@ -15,9 +17,11 @@ use poulpy_hal::reference::ntt120::{
         BbbMeta, BbcMeta, extract_1blk_from_contiguous_q120b_ref, vec_mat1col_product_bbb_ref, vec_mat1col_product_bbc_ref,
         vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref,
     },
-    ntt::{NttTable, NttTableInv, intt_ref, ntt_ref},
+    ntt::{NttTable, NttTableInv},
     primes::{PrimeSet, Primes30},
 };
+
+use super::ntt::{intt_avx2, ntt_avx2};
 
 use super::NTT120Avx;
 
@@ -30,20 +34,22 @@ const Q_SHIFTED: [u64; 4] = [
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
-// NTT execution (Phase 1: replace with AVX2 butterfly)
+// NTT execution — AVX2 butterfly
 // ──────────────────────────────────────────────────────────────────────────────
 
 impl NttDFTExecute<NttTable<Primes30>> for NTT120Avx {
     #[inline(always)]
     fn ntt_dft_execute(table: &NttTable<Primes30>, data: &mut [u64]) {
-        ntt_ref::<Primes30>(table, data);
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { ntt_avx2::<Primes30>(table, data) }
     }
 }
 
 impl NttDFTExecute<NttTableInv<Primes30>> for NTT120Avx {
     #[inline(always)]
     fn ntt_dft_execute(table: &NttTableInv<Primes30>, data: &mut [u64]) {
-        intt_ref::<Primes30>(table, data);
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { intt_avx2::<Primes30>(table, data) }
     }
 }
 

@@ -31,21 +31,23 @@ use poulpy_hal::{
 
 use crate::{
     FFT64Avx,
-    convolution::{
-        i64_convolution_by_const_1coeff_avx, i64_convolution_by_real_const_2coeffs_avx, i64_extract_1blk_contiguous_avx,
-        i64_save_1blk_contiguous_avx,
-    },
-    reim::{
-        ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_inplace_avx2_fma, reim_addmul_avx2_fma, reim_from_znx_i64_bnd50_fma,
-        reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma, reim_negate_inplace_avx2_fma, reim_sub_avx2_fma,
-        reim_sub_inplace_avx2_fma, reim_sub_negate_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
-    },
-    reim_to_znx_i64_bnd63_avx2_fma,
-    reim4::{
-        reim4_convolution_1coeff_avx, reim4_convolution_2coeffs_avx, reim4_convolution_by_real_const_1coeff_avx,
-        reim4_convolution_by_real_const_2coeffs_avx, reim4_extract_1blk_from_reim_contiguous_avx, reim4_save_1blk_to_reim_avx,
-        reim4_save_1blk_to_reim_contiguous_avx, reim4_save_2blk_to_reim_avx, reim4_vec_mat1col_product_avx,
-        reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
+    fft64::{
+        convolution::{
+            i64_convolution_by_const_1coeff_avx, i64_convolution_by_real_const_2coeffs_avx, i64_extract_1blk_contiguous_avx,
+            i64_save_1blk_contiguous_avx,
+        },
+        reim::{
+            ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_inplace_avx2_fma, reim_addmul_avx2_fma,
+            reim_from_znx_i64_bnd50_fma, reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma,
+            reim_negate_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_inplace_avx2_fma, reim_sub_negate_inplace_avx2_fma,
+            reim_to_znx_i64_bnd63_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
+        },
+        reim4::{
+            reim4_convolution_1coeff_avx, reim4_convolution_2coeffs_avx, reim4_convolution_by_real_const_1coeff_avx,
+            reim4_convolution_by_real_const_2coeffs_avx, reim4_extract_1blk_from_reim_contiguous_avx,
+            reim4_save_1blk_to_reim_avx, reim4_save_1blk_to_reim_contiguous_avx, reim4_save_2blk_to_reim_avx,
+            reim4_vec_mat1col_product_avx, reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
+        },
     },
     znx_avx::{
         znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,

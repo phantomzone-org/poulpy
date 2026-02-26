@@ -33,5 +33,5 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 
 [[bench]]
-name = "convolution"
+name = "ntt"
 harness = false

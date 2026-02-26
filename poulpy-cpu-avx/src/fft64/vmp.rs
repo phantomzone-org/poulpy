@@ -14,7 +14,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::{FFT64Avx, module::FFT64ModuleHandle};
+use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
 
 unsafe impl VmpApplyDftToDftImpl<Self> for FFT64Avx
 where

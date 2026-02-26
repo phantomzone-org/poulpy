@@ -22,6 +22,7 @@
 
 mod convolution;
 mod module;
+pub(crate) mod ntt;
 mod prim;
 mod scratch;
 mod svp;
@@ -54,3 +55,7 @@ mod znx;
 /// `NTT120Avx` is `Send + Sync` (derived from being a zero-sized, field-less struct).
 #[derive(Debug, Clone, Copy)]
 pub struct NTT120Avx;
+
+
+#[cfg(test)]
+mod tests;
