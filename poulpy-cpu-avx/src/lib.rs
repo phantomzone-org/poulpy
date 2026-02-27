@@ -171,4 +171,3 @@ mod znx_avx;
 
 pub use fft64::{FFT64Avx, ReimFFTAvx, ReimIFFTAvx};
 pub use ntt120::NTT120Avx;
-

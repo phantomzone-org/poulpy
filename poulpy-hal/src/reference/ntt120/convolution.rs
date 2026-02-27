@@ -8,7 +8,7 @@
 //! | 1a | [`ntt120_cnv_prepare_left`]  | Encode `VecZnx` → `CnvPVecL` (q120b, NTT domain) |
 //! | 1b | [`ntt120_cnv_prepare_right`] | Encode `VecZnx` → `CnvPVecR` (q120c, NTT domain) |
 //! | 2  | [`ntt120_cnv_apply_dft`]     | `res[k] = Σ a[j] ⊙ b[k−j]` (bbc product) |
-//! | 2p | [`ntt120_cnv_pairwise_apply_dft`] | `res = a[:,i]⊙b[:,i] + a[:,j]⊙b[:,j]` |
+//! | 2p | [`ntt120_cnv_pairwise_apply_dft`] | `res = (a[:,i]+a[:,j]) ⊙ (b[:,i]+b[:,j])` |
 //! | 3  | [`ntt120_cnv_by_const_apply`] | Coefficient-domain negacyclic convolution into i128 |
 //!
 //! # Prepared-format asymmetry
@@ -36,9 +36,10 @@ use crate::{
         VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
+        NttDFTExecute, NttFromZnx64,
         arithmetic::{b_from_znx64_ref, c_from_b_ref},
         mat_vec::{accum_mul_q120_bc, accum_to_q120b},
-        ntt::ntt_ref,
+        ntt::{NttTable, ntt_ref},
         primes::{PrimeSet, Primes30},
         types::Q120bScalar,
         vec_znx_dft::NttModuleHandle,
@@ -59,21 +60,20 @@ pub fn ntt120_cnv_prepare_left_tmp_bytes(_n: usize) -> usize {
 /// Encode a `VecZnx` (i64 coefficients) into a `CnvPVecL` (q120b, NTT domain).
 ///
 /// For each column `col` and each limb `j` of the input `a`:
-/// 1. Map i64 coefficients → q120b via [`b_from_znx64_ref`].
-/// 2. Apply the forward NTT in-place via [`ntt_ref`].
+/// 1. Map i64 coefficients → q120b via `BE::ntt_from_znx64`.
+/// 2. Apply the forward NTT in-place via `BE::ntt_dft_execute`.
 /// 3. Store the result directly in `res[col, j]` as q120b.
 ///
 /// Limbs of `res` beyond `a.size()` are zeroed.
 /// No scratch buffer is needed; `_tmp` is unused.
 pub fn ntt120_cnv_prepare_left<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, _tmp: &mut [u8])
 where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
     R: CnvPVecLToMut<BE>,
     A: VecZnxToRef,
 {
     let mut res: CnvPVecL<&mut [u8], BE> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
-    let n = res.n();
     let table = module.get_ntt_table();
     let cols = res.cols();
     let res_size = res.size();
@@ -82,8 +82,8 @@ where
     for col in 0..cols {
         for j in 0..min_size {
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, j));
-            b_from_znx64_ref::<Primes30>(n, res_u64, a.at(col, j));
-            ntt_ref(table, res_u64);
+            BE::ntt_from_znx64(res_u64, a.at(col, j));
+            BE::ntt_dft_execute(table, res_u64);
         }
         for j in min_size..res_size {
             cast_slice_mut::<_, u64>(res.at_mut(col, j)).fill(0);
@@ -304,18 +304,21 @@ pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize,
     0
 }
 
-/// Compute the sum of two DFT-domain convolutions:
-/// `res = a[:,col_i] ⊙ b[:,col_i]  +  a[:,col_j] ⊙ b[:,col_j]`.
+/// Compute the pairwise DFT-domain convolution:
+/// `res = (a[:,col_i] + a[:,col_j]) ⊙ (b[:,col_i] + b[:,col_j])`.
+///
+/// This mirrors the FFT64 reference: both `a` columns are summed first,
+/// both `b` columns are summed first, then a single bbc convolution is
+/// performed on the sums. This is **not** the same as
+/// `a[:,i]⊙b[:,i] + a[:,j]⊙b[:,j]` — cross-terms are present by design.
 ///
 /// When `col_i == col_j` this delegates to [`ntt120_cnv_apply_dft`].
 ///
-/// Otherwise, for each output limb `k` and NTT coefficient `n_i`, two
-/// independent `accum_mul_q120_bc` accumulations are run in parallel.
-/// Their q120b results are added with the lazy-reduction bound
-/// `Q_SHIFTED[k] = Q[k] << 33` to keep residues in range:
-///
+/// For each output limb `k` and NTT coefficient `n_i`:
 /// ```text
-/// res[res_col, k, n_i] = (r0[crt] % Q_SHIFTED[crt]) + (r1[crt] % Q_SHIFTED[crt])
+/// a_sum = (a[col_i, k_abs-j] + a[col_j, k_abs-j])  mod Q
+/// b_sum =  b[col_i, j]       + b[col_j, j]          (lazy)
+/// res[res_col, k, n_i] = Σ_j accum_mul_q120_bc(a_sum, b_sum)
 /// ```
 ///
 /// Output limbs `min_size..res.size()` are zeroed.

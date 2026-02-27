@@ -161,7 +161,8 @@ pub fn modq_pow(x: u32, n: i64, q: u32) -> u32 {
 
 /// Returns the primitive `2n`-th roots of unity for each prime.
 fn fill_omegas<P: PrimeSet>(n: usize) -> [u32; 4] {
-    std::array::from_fn(|k| modq_pow(P::OMEGA[k], (1 << 16) / n as i64, P::Q[k]))
+    debug_assert!((1..=(1 << 16)).contains(&n), "n must be a power of two in [1, 2^16], got {n}");
+    std::array::from_fn(|k| modq_pow(P::OMEGA[k], (1i64 << 16) / n as i64, P::Q[k]))
 }
 
 /// Finds the optimal `h` for the lazy Barrett reduction step.

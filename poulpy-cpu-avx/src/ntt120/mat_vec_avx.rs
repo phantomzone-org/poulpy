@@ -42,8 +42,8 @@
 //! | [`vec_mat2cols_product_x2_bbc_avx2`] | `q120x2_vec_mat2cols_product_bbc_avx2` | [`NttMulBbc2ColsX2`] |
 
 use core::arch::x86_64::{
-    __m256i, _mm256_add_epi64, _mm256_and_si256, _mm256_loadu_si256, _mm256_mul_epu32, _mm256_set1_epi64x,
-    _mm256_setzero_si256, _mm256_srl_epi64, _mm256_srli_epi64, _mm256_storeu_si256, _mm_cvtsi64_si128,
+    __m256i, _mm_cvtsi64_si128, _mm256_add_epi64, _mm256_and_si256, _mm256_loadu_si256, _mm256_mul_epu32, _mm256_set1_epi64x,
+    _mm256_setzero_si256, _mm256_srl_epi64, _mm256_srli_epi64, _mm256_storeu_si256,
 };
 
 use poulpy_hal::reference::ntt120::{mat_vec::BbcMeta, primes::Primes30};

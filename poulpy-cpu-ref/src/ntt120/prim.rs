@@ -15,18 +15,11 @@ use poulpy_hal::reference::ntt120::{
         vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref,
     },
     ntt::{NttTable, NttTableInv, intt_ref, ntt_ref},
-    primes::{PrimeSet, Primes30},
+    primes::Primes30,
+    types::Q_SHIFTED,
 };
 
 use crate::NTT120Ref;
-
-// Lazy-reduction bound: Q[k] << 33 for each prime.
-const Q_SHIFTED: [u64; 4] = [
-    (Primes30::Q[0] as u64) << 33,
-    (Primes30::Q[1] as u64) << 33,
-    (Primes30::Q[2] as u64) << 33,
-    (Primes30::Q[3] as u64) << 33,
-];
 
 // ──────────────────────────────────────────────────────────────────────────────
 // NTT execution
@@ -127,6 +120,8 @@ impl NttSubNegateInplace for NTT120Ref {
     }
 }
 
+/// **Output range:** For a zero input the result is `Q_SHIFTED[k]` (≡ 0 mod Q[k]), not `0`.
+/// Output range is `(0, Q_SHIFTED[k]]`. Use `val % Q[k] == 0`, not `val == 0`, to test for zero.
 impl NttNegate for NTT120Ref {
     #[inline(always)]
     fn ntt_negate(res: &mut [u64], a: &[u64]) {
@@ -140,6 +135,8 @@ impl NttNegate for NTT120Ref {
     }
 }
 
+/// **Output range:** For a zero input the result is `Q_SHIFTED[k]` (≡ 0 mod Q[k]), not `0`.
+/// Output range is `(0, Q_SHIFTED[k]]`. Use `val % Q[k] == 0`, not `val == 0`, to test for zero.
 impl NttNegateInplace for NTT120Ref {
     #[inline(always)]
     fn ntt_negate_inplace(res: &mut [u64]) {
@@ -173,16 +170,15 @@ impl NttCopy for NTT120Ref {
 
 impl NttMulBbb for NTT120Ref {
     #[inline(always)]
-    fn ntt_mul_bbb(ell: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
-        let meta = BbbMeta::<Primes30>::new();
-        vec_mat1col_product_bbb_ref::<Primes30>(&meta, ell, res, a, b);
+    fn ntt_mul_bbb(meta: &BbbMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
+        vec_mat1col_product_bbb_ref::<Primes30>(meta, ell, res, a, b);
     }
 }
 
 impl NttMulBbc for NTT120Ref {
     #[inline(always)]
-    fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
-        vec_mat1col_product_bbc_ref::<Primes30>(meta, ell, res, a, b);
+    fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
+        vec_mat1col_product_bbc_ref::<Primes30>(meta, ell, res, ntt_coeff, prepared);
     }
 }
 

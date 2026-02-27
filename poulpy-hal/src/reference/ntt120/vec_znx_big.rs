@@ -261,7 +261,7 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
 ) where
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
 {
     let mut res = res.to_mut();
     let a = a.to_ref();
@@ -311,7 +311,7 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
 
     // Normalize overlapping a→res limbs.
     for j in 0..mid_range {
-        nfc_middle_step(
+        BE::nfc_middle_step(
             base2k,
             lsh_pos,
             res.at_mut(res_col, res_start - j - 1),
@@ -324,9 +324,9 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
     for j in 0..res_end {
         res.at_mut(res_col, res_end - j - 1).fill(0);
         if j == res_end - 1 {
-            nfc_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::nfc_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
-            nfc_middle_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::nfc_middle_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         }
     }
 }
@@ -348,7 +348,7 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
 ) where
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
 {
     let mut res = res.to_mut();
     let a = a.to_ref();
@@ -449,7 +449,7 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
                         let scale: usize = res_base2k - res_acc_left;
                         nfc_extract_digit_addmul(res_acc_left, scale, res_slice, a_carry);
                     }
-                    nfc_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
+                    BE::nfc_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
                     nfc_add_inplace(res_carry, a_carry);
                     break 'outer;
                 }
@@ -474,10 +474,210 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
         let carry_to_use = if a_start == a_end { a_carry } else { res_carry };
         for j in 0..res_end {
             if j == res_end - 1 {
-                nfc_final_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::nfc_final_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             } else {
-                nfc_middle_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::nfc_middle_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             }
+        }
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Per-slice i128 arithmetic dispatch trait
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Per-slice `i128` arithmetic kernels, dispatched via the backend type parameter.
+///
+/// All methods have scalar default implementations.  `NTT120Ref` and other
+/// scalar backends implement this trait with an empty body to use the defaults.
+/// `NTT120Avx` (or any future SIMD backend) overrides the methods it can
+/// accelerate; the outer loop logic in `ntt120_vec_znx_big_*` is unaffected.
+///
+/// This is the `i128`-equivalent of the `NttAdd` / `NttSub` / … dispatch traits
+/// for q120b (NTT-domain) element operations.
+pub trait I128BigOps {
+    /// `res[i] = a[i].wrapping_add(b[i])` for each `i`.
+    #[inline(always)]
+    fn i128_add(res: &mut [i128], a: &[i128], b: &[i128]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .zip(b.iter())
+            .for_each(|((r, &ai), &bi)| *r = ai.wrapping_add(bi));
+    }
+    /// `res[i] = res[i].wrapping_add(a[i])` for each `i`.
+    #[inline(always)]
+    fn i128_add_inplace(res: &mut [i128], a: &[i128]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = r.wrapping_add(ai));
+    }
+    /// `res[i] = a[i].wrapping_add(b[i] as i128)` for each `i`.
+    #[inline(always)]
+    fn i128_add_small(res: &mut [i128], a: &[i128], b: &[i64]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .zip(b.iter())
+            .for_each(|((r, &ai), &bi)| *r = ai.wrapping_add(bi as i128));
+    }
+    /// `res[i] = res[i].wrapping_add(a[i] as i128)` for each `i`.
+    #[inline(always)]
+    fn i128_add_small_inplace(res: &mut [i128], a: &[i64]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .for_each(|(r, &ai)| *r = r.wrapping_add(ai as i128));
+    }
+    /// `res[i] = a[i].wrapping_sub(b[i])` for each `i`.
+    #[inline(always)]
+    fn i128_sub(res: &mut [i128], a: &[i128], b: &[i128]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .zip(b.iter())
+            .for_each(|((r, &ai), &bi)| *r = ai.wrapping_sub(bi));
+    }
+    /// `res[i] = res[i].wrapping_sub(a[i])` for each `i`.
+    #[inline(always)]
+    fn i128_sub_inplace(res: &mut [i128], a: &[i128]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = r.wrapping_sub(ai));
+    }
+    /// `res[i] = a[i].wrapping_sub(res[i])` for each `i`.
+    #[inline(always)]
+    fn i128_sub_negate_inplace(res: &mut [i128], a: &[i128]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = ai.wrapping_sub(*r));
+    }
+    /// `res[i] = (a[i] as i128).wrapping_sub(b[i])` for each `i`.
+    #[inline(always)]
+    fn i128_sub_small_a(res: &mut [i128], a: &[i64], b: &[i128]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .zip(b.iter())
+            .for_each(|((r, &ai), &bi)| *r = (ai as i128).wrapping_sub(bi));
+    }
+    /// `res[i] = a[i].wrapping_sub(b[i] as i128)` for each `i`.
+    #[inline(always)]
+    fn i128_sub_small_b(res: &mut [i128], a: &[i128], b: &[i64]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .zip(b.iter())
+            .for_each(|((r, &ai), &bi)| *r = ai.wrapping_sub(bi as i128));
+    }
+    /// `res[i] = res[i].wrapping_sub(a[i] as i128)` for each `i`.
+    #[inline(always)]
+    fn i128_sub_small_inplace(res: &mut [i128], a: &[i64]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .for_each(|(r, &ai)| *r = r.wrapping_sub(ai as i128));
+    }
+    /// `res[i] = (a[i] as i128).wrapping_sub(res[i])` for each `i`.
+    #[inline(always)]
+    fn i128_sub_small_negate_inplace(res: &mut [i128], a: &[i64]) {
+        res.iter_mut()
+            .zip(a.iter())
+            .for_each(|(r, &ai)| *r = (ai as i128).wrapping_sub(*r));
+    }
+    /// `res[i] = a[i].wrapping_neg()` for each `i`.
+    #[inline(always)]
+    fn i128_negate(res: &mut [i128], a: &[i128]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = ai.wrapping_neg());
+    }
+    /// `res[i] = res[i].wrapping_neg()` for each `i`.
+    #[inline(always)]
+    fn i128_negate_inplace(res: &mut [i128]) {
+        res.iter_mut().for_each(|r| *r = r.wrapping_neg());
+    }
+    /// `res[i] = -(a[i] as i128)` for each `i`.
+    #[inline(always)]
+    fn i128_neg_from_small(res: &mut [i128], a: &[i64]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = -(ai as i128));
+    }
+    /// `res[i] = a[i] as i128` for each `i`.
+    #[inline(always)]
+    fn i128_from_small(res: &mut [i128], a: &[i64]) {
+        res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = ai as i128);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Normalization hot-path dispatch trait
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Per-slice `i128→i64` normalization kernels, dispatched via the backend type parameter.
+///
+/// The three hot-path helpers used inside [`ntt120_vec_znx_big_normalize`] are expressed
+/// as trait methods so that SIMD backends can override them without duplicating the outer
+/// loop logic.  All methods have scalar default implementations.
+///
+/// This is the normalization-specific counterpart of [`I128BigOps`].
+pub trait I128NormalizeOps {
+    /// Convert `i128` input + carry into `i64` output, updating carry in place.
+    ///
+    /// Equivalent to the private `nfc_middle_step` helper.
+    #[inline(always)]
+    fn nfc_middle_step(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+        if lsh == 0 {
+            izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+                let digit = get_digit_i128(base2k, ai);
+                let co = get_carry_i128(base2k, ai, digit);
+                let d_plus_c = digit + *c;
+                let out = get_digit_i128(base2k, d_plus_c);
+                *r = out as i64;
+                *c = co + get_carry_i128(base2k, d_plus_c, out);
+            });
+        } else {
+            let base2k_lsh = base2k - lsh;
+            izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+                let digit = get_digit_i128(base2k_lsh, ai);
+                let co = get_carry_i128(base2k_lsh, ai, digit);
+                let d_plus_c = (digit << lsh) + *c;
+                let out = get_digit_i128(base2k, d_plus_c);
+                *r = out as i64;
+                *c = co + get_carry_i128(base2k, d_plus_c, out);
+            });
+        }
+    }
+
+    /// Update an existing `i64` res limb using `i128` carry, updating carry in place.
+    ///
+    /// Equivalent to the private `nfc_middle_step_inplace` helper.
+    #[inline(always)]
+    fn nfc_middle_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        if lsh == 0 {
+            res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+                let ri = *r as i128;
+                let digit = get_digit_i128(base2k, ri);
+                let co = get_carry_i128(base2k, ri, digit);
+                let d_plus_c = digit + *c;
+                let out = get_digit_i128(base2k, d_plus_c);
+                *r = out as i64;
+                *c = co + get_carry_i128(base2k, d_plus_c, out);
+            });
+        } else {
+            let base2k_lsh = base2k - lsh;
+            res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+                let ri = *r as i128;
+                let digit = get_digit_i128(base2k_lsh, ri);
+                let co = get_carry_i128(base2k_lsh, ri, digit);
+                let d_plus_c = (digit << lsh) + *c;
+                let out = get_digit_i128(base2k, d_plus_c);
+                *r = out as i64;
+                *c = co + get_carry_i128(base2k, d_plus_c, out);
+            });
+        }
+    }
+
+    /// Flush `i128` carry into the last `i64` res limb.
+    ///
+    /// Equivalent to the private `nfc_final_step_inplace` helper.
+    #[inline(always)]
+    fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        if lsh == 0 {
+            res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+                let ri = *r as i128;
+                *r = get_digit_i128(base2k, get_digit_i128(base2k, ri) + *c) as i64;
+            });
+        } else {
+            let base2k_lsh = base2k - lsh;
+            res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+                let ri = *r as i128;
+                *r = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, ri) << lsh) + *c) as i64;
+            });
         }
     }
 }
@@ -503,7 +703,7 @@ pub fn ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(n: usize) -> usize {
 /// extra res limbs beyond both are zeroed.
 pub fn ntt120_vec_znx_big_add<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxBigToRef<BE>,
@@ -518,31 +718,26 @@ where
     let sum_size = a_size.min(b_size).min(res_size);
 
     for j in 0..sum_size {
-        izip!(
-            res.at_mut(res_col, j).iter_mut(),
-            a.at(a_col, j).iter(),
-            b.at(b_col, j).iter()
-        )
-        .for_each(|(r, &ai, &bi)| *r = ai.wrapping_add(bi));
+        BE::i128_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
     }
 
     if a_size <= b_size {
         let b_cpy = b_size.min(res_size);
         for j in sum_size..b_cpy {
             let bj = b.at(b_col, j);
-            res.at_mut(res_col, j).iter_mut().zip(bj.iter()).for_each(|(r, &bi)| *r = bi);
+            res.at_mut(res_col, j).copy_from_slice(bj);
         }
         for j in b_cpy..res_size {
-            res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+            res.at_mut(res_col, j).fill(0);
         }
     } else {
         let a_cpy = a_size.min(res_size);
         for j in sum_size..a_cpy {
             let aj = a.at(a_col, j);
-            res.at_mut(res_col, j).iter_mut().zip(aj.iter()).for_each(|(r, &ai)| *r = ai);
+            res.at_mut(res_col, j).copy_from_slice(aj);
         }
         for j in a_cpy..res_size {
-            res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+            res.at_mut(res_col, j).fill(0);
         }
     }
 }
@@ -551,7 +746,7 @@ where
 /// limbs.
 pub fn ntt120_vec_znx_big_add_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -559,10 +754,7 @@ where
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(a.at(a_col, j).iter())
-            .for_each(|(r, &ai)| *r = r.wrapping_add(ai));
+        BE::i128_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
@@ -570,7 +762,7 @@ where
 /// `res[res_col] = a[a_col] + b[b_col]`.
 pub fn ntt120_vec_znx_big_add_small<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxToRef,
@@ -587,33 +779,23 @@ where
     let b_cpy = b_size.min(res_size);
 
     for j in 0..sum_size {
-        izip!(
-            res.at_mut(res_col, j).iter_mut(),
-            a.at(a_col, j).iter(),
-            b.at(b_col, j).iter()
-        )
-        .for_each(|(r, &ai, &bi)| *r = ai.wrapping_add(bi as i128));
+        BE::i128_add_small(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
     }
     for j in sum_size..a_cpy {
-        let aj = a.at(a_col, j);
-        res.at_mut(res_col, j).iter_mut().zip(aj.iter()).for_each(|(r, &ai)| *r = ai);
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
     }
     for j in a_cpy..b_cpy {
-        let bj = b.at(b_col, j);
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(bj.iter())
-            .for_each(|(r, &bi)| *r = bi as i128);
+        BE::i128_from_small(res.at_mut(res_col, j), b.at(b_col, j));
     }
     for j in a_cpy.max(b_cpy)..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 }
 
 /// In-place: `res[res_col] += a[a_col]` where `a` is a `VecZnx` (i64 limbs).
 pub fn ntt120_vec_znx_big_add_small_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -621,17 +803,14 @@ where
     let a = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(a.at(a_col, j).iter())
-            .for_each(|(r, &ai)| *r = r.wrapping_add(ai as i128));
+        BE::i128_add_small_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
 /// Subtraction: `res[res_col] = a[a_col] - b[b_col]`.
 pub fn ntt120_vec_znx_big_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxBigToRef<BE>,
@@ -646,34 +825,24 @@ where
     let sum_size = a_size.min(b_size).min(res_size);
 
     for j in 0..sum_size {
-        izip!(
-            res.at_mut(res_col, j).iter_mut(),
-            a.at(a_col, j).iter(),
-            b.at(b_col, j).iter()
-        )
-        .for_each(|(r, &ai, &bi)| *r = ai.wrapping_sub(bi));
+        BE::i128_sub(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
     }
 
     if a_size >= b_size {
         let a_cpy = a_size.min(res_size);
         for j in sum_size..a_cpy {
-            let aj = a.at(a_col, j);
-            res.at_mut(res_col, j).iter_mut().zip(aj.iter()).for_each(|(r, &ai)| *r = ai);
+            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
         }
         for j in a_cpy..res_size {
-            res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+            res.at_mut(res_col, j).fill(0);
         }
     } else {
         let b_cpy = b_size.min(res_size);
         for j in sum_size..b_cpy {
-            let bj = b.at(b_col, j);
-            res.at_mut(res_col, j)
-                .iter_mut()
-                .zip(bj.iter())
-                .for_each(|(r, &bi)| *r = bi.wrapping_neg());
+            BE::i128_negate(res.at_mut(res_col, j), b.at(b_col, j));
         }
         for j in b_cpy..res_size {
-            res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+            res.at_mut(res_col, j).fill(0);
         }
     }
 }
@@ -681,7 +850,7 @@ where
 /// In-place subtraction: `res[res_col] -= a[a_col]`.
 pub fn ntt120_vec_znx_big_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -689,17 +858,14 @@ where
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(a.at(a_col, j).iter())
-            .for_each(|(r, &ai)| *r = r.wrapping_sub(ai));
+        BE::i128_sub_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
 /// Swap-subtract in-place: `res[res_col] = a[a_col] - res[res_col]`.
 pub fn ntt120_vec_znx_big_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -709,17 +875,17 @@ where
     let sum_size = res_size.min(a.size());
 
     for j in 0..sum_size {
-        izip!(res.at_mut(res_col, j).iter_mut(), a.at(a_col, j).iter()).for_each(|(r, &ai)| *r = ai.wrapping_sub(*r));
+        BE::i128_sub_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in a.size()..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = r.wrapping_neg());
+        BE::i128_negate_inplace(res.at_mut(res_col, j));
     }
 }
 
 /// `res = a - b` where `a` is `VecZnx` (i64) and `b` is `VecZnxBig` (i128).
 pub fn ntt120_vec_znx_big_sub_small_a<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
     B: VecZnxBigToRef<BE>,
@@ -736,38 +902,25 @@ where
     let b_cpy = b_size.min(res_size);
 
     for j in 0..sum_size {
-        izip!(
-            res.at_mut(res_col, j).iter_mut(),
-            a.at(a_col, j).iter(),
-            b.at(b_col, j).iter()
-        )
-        .for_each(|(r, &ai, &bi)| *r = (ai as i128).wrapping_sub(bi));
+        BE::i128_sub_small_a(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
     }
     for j in sum_size..a_cpy {
-        let aj: &[i64] = a.at(a_col, j);
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(aj.iter())
-            .for_each(|(r, &ai)| *r = ai as i128);
+        BE::i128_from_small(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in sum_size..b_cpy {
         if j >= a_cpy {
-            let bj = b.at(b_col, j);
-            res.at_mut(res_col, j)
-                .iter_mut()
-                .zip(bj.iter())
-                .for_each(|(r, &bi)| *r = bi.wrapping_neg());
+            BE::i128_negate(res.at_mut(res_col, j), b.at(b_col, j));
         }
     }
     for j in a_cpy.max(b_cpy)..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 }
 
 /// `res = a - b` where `a` is `VecZnxBig` (i128) and `b` is `VecZnx` (i64).
 pub fn ntt120_vec_znx_big_sub_small_b<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxToRef,
@@ -784,33 +937,23 @@ where
     let b_cpy = b_size.min(res_size);
 
     for j in 0..sum_size {
-        izip!(
-            res.at_mut(res_col, j).iter_mut(),
-            a.at(a_col, j).iter(),
-            b.at(b_col, j).iter()
-        )
-        .for_each(|(r, &ai, &bi)| *r = ai.wrapping_sub(bi as i128));
+        BE::i128_sub_small_b(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
     }
     for j in sum_size..a_cpy {
-        let aj = a.at(a_col, j);
-        res.at_mut(res_col, j).iter_mut().zip(aj.iter()).for_each(|(r, &ai)| *r = ai);
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
     }
     for j in a_cpy..b_cpy {
-        let bj = b.at(b_col, j);
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(bj.iter())
-            .for_each(|(r, &bi)| *r = -(bi as i128));
+        BE::i128_neg_from_small(res.at_mut(res_col, j), b.at(b_col, j));
     }
     for j in a_cpy.max(b_cpy)..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 }
 
 /// In-place: `res[res_col] -= a[a_col]` where `a` is a `VecZnx` (i64).
 pub fn ntt120_vec_znx_big_sub_small_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -818,17 +961,14 @@ where
     let a = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(a.at(a_col, j).iter())
-            .for_each(|(r, &ai)| *r = r.wrapping_sub(ai as i128));
+        BE::i128_sub_small_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
 /// In-place: `res[res_col] = a[a_col] - res[res_col]` where `a` is a `VecZnx` (i64).
 pub fn ntt120_vec_znx_big_sub_small_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -838,17 +978,17 @@ where
     let sum_size = res_size.min(a.size());
 
     for j in 0..sum_size {
-        izip!(res.at_mut(res_col, j).iter_mut(), a.at(a_col, j).iter()).for_each(|(r, &ai)| *r = (ai as i128).wrapping_sub(*r));
+        BE::i128_sub_small_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in a.size()..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = r.wrapping_neg());
+        BE::i128_negate_inplace(res.at_mut(res_col, j));
     }
 }
 
 /// Negate: `res[res_col] = -a[a_col]`.
 pub fn ntt120_vec_znx_big_negate<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -859,26 +999,22 @@ where
     let cpy_size = a.size().min(res_size);
 
     for j in 0..cpy_size {
-        let aj = a.at(a_col, j);
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(aj.iter())
-            .for_each(|(r, &ai)| *r = ai.wrapping_neg());
+        BE::i128_negate(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in cpy_size..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 }
 
 /// In-place negation: `res[res_col] = -res[res_col]`.
 pub fn ntt120_vec_znx_big_negate_inplace<R, BE>(res: &mut R, res_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
 {
     let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     for j in 0..res.size() {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = r.wrapping_neg());
+        BE::i128_negate_inplace(res.at_mut(res_col, j));
     }
 }
 
@@ -887,7 +1023,7 @@ where
 /// Limbs beyond `a.size()` are zeroed.
 pub fn ntt120_vec_znx_big_from_small<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -897,14 +1033,10 @@ where
     let min_size = res_size.min(a.size());
 
     for j in 0..min_size {
-        let aj: &[i64] = a.at(a_col, j);
-        res.at_mut(res_col, j)
-            .iter_mut()
-            .zip(aj.iter())
-            .for_each(|(r, &ai)| *r = ai as i128);
+        BE::i128_from_small(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in min_size..res_size {
-        res.at_mut(res_col, j).iter_mut().for_each(|r| *r = 0);
+        res.at_mut(res_col, j).fill(0);
     }
 }
 
@@ -928,7 +1060,7 @@ pub fn ntt120_vec_znx_big_normalize<R, A, BE>(
 ) where
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
-    BE: Backend<ScalarBig = i128>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
 {
     if res_base2k == a_base2k {
         ntt120_vec_znx_big_normalize_inter(res_base2k, res, res_offset, res_col, a, a_col, carry);

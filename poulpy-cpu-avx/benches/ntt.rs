@@ -1,6 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-
 #[cfg(not(all(
     feature = "enable-avx",
     target_arch = "x86_64",
@@ -29,9 +28,8 @@ pub fn bench_intt_avx2_fma(c: &mut Criterion) {
 
     if std::is_x86_feature_detected!("avx2") {
         fn runner(n: usize) -> impl FnMut() {
-            let mut values: Vec<u64> = vec![0u64; 4*n];
+            let mut values: Vec<u64> = vec![0u64; 4 * n];
 
-            
             values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
 
             let table: NttTableInv<Primes30> = NttTableInv::<Primes30>::new(n);
@@ -83,9 +81,8 @@ pub fn bench_ntt_avx2_fma(c: &mut Criterion) {
 
     if std::is_x86_feature_detected!("avx2") {
         fn runner(n: usize) -> impl FnMut() {
-            let mut values: Vec<u64> = vec![0u64; 4*n];
+            let mut values: Vec<u64> = vec![0u64; 4 * n];
 
-            
             values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
 
             let table: NttTable<Primes30> = NttTable::<Primes30>::new(n);

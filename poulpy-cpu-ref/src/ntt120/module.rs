@@ -17,7 +17,7 @@ use poulpy_hal::{
     layouts::{Backend, Module},
     oep::ModuleNewImpl,
     reference::ntt120::{
-        mat_vec::BbcMeta,
+        mat_vec::{BbbMeta, BbcMeta},
         ntt::{NttTable, NttTableInv},
         primes::Primes30,
         types::Q120bScalar,
@@ -30,7 +30,8 @@ use crate::NTT120Ref;
 /// Opaque handle for the [`NTT120Ref`](crate::NTT120Ref) backend.
 ///
 /// Holds precomputed twiddle-factor tables for the forward NTT and inverse NTT
-/// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` products.
+/// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` and
+/// `q120b × q120b` products.
 ///
 /// This struct is heap-allocated during module creation and freed when the
 /// `Module<NTT120Ref>` is dropped (via [`Backend::destroy`]).
@@ -39,6 +40,7 @@ pub struct NTT120RefHandle {
     table_ntt: NttTable<Primes30>,
     table_intt: NttTableInv<Primes30>,
     meta_bbc: BbcMeta<Primes30>,
+    meta_bbb: BbbMeta<Primes30>,
 }
 
 impl Backend for NTT120Ref {
@@ -64,6 +66,7 @@ unsafe impl ModuleNewImpl<Self> for NTT120Ref {
             table_ntt: NttTable::new(n as usize),
             table_intt: NttTableInv::new(n as usize),
             meta_bbc: BbcMeta::new(),
+            meta_bbb: BbbMeta::new(),
         };
         let ptr: NonNull<NTT120RefHandle> = NonNull::from(Box::leak(Box::new(handle)));
         unsafe { Module::from_nonnull(ptr, n) }
@@ -85,5 +88,9 @@ unsafe impl NttHandleProvider for NTT120RefHandle {
 
     fn get_bbc_meta(&self) -> &BbcMeta<Primes30> {
         &self.meta_bbc
+    }
+
+    fn get_bbb_meta(&self) -> &BbbMeta<Primes30> {
+        &self.meta_bbb
     }
 }

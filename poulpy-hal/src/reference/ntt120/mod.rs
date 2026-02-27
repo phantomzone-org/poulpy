@@ -189,10 +189,11 @@ pub trait NttCopy {
 ///
 /// Multiplies each of the `ell` rows of a column vector `b` (in q120b
 /// format) by the corresponding entry in `a` (also q120b), accumulating
-/// the results into `res`.
+/// the results into `res`. `meta` carries the precomputed lazy-reduction
+/// constants and should be obtained via [`vec_znx_dft::NttModuleHandle::get_bbb_meta`].
 pub trait NttMulBbb {
     /// `res += a[0..ell] ⊙ b[0..ell]` using lazy modular arithmetic.
-    fn ntt_mul_bbb(ell: usize, res: &mut [u64], a: &[u64], b: &[u64]);
+    fn ntt_mul_bbb(meta: &BbbMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u64], b: &[u64]);
 }
 
 /// Pointwise product: q120b × q120c → q120b (overwrite).
@@ -209,8 +210,8 @@ pub trait NttMulBbb {
 ///   NttModuleHandle; until then every bbc/VMP/SVP/convolution trait method
 ///   is intentionally fixed to Primes30. -->
 pub trait NttMulBbc {
-    /// `res = sum_{i<ell} a[i] ⊙ b[i]` with `b` in q120c layout, using `meta`.
-    fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+    /// `res = sum_{i<ell} ntt_coeff[i] ⊙ prepared[i]` with `prepared` in q120c layout, using `meta`.
+    fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

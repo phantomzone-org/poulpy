@@ -143,7 +143,8 @@ pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
 /// res[res_col, j, n_i]  +=  a[a_col, n_i]  ×  b[b_col, j, n_i]   (mod Q, lazy)
 /// ```
 /// Addition uses the Q120b lazy-reduction bound `Q[k] << 33`.
-/// Limbs of `res` beyond `b.size()` are zeroed (not accumulated).
+/// Limbs of `res` beyond `min(b.size(), res.size())` are left untouched —
+/// the caller is responsible for initialization.
 pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
     module: &impl NttModuleHandle,
     res: &mut R,
@@ -153,7 +154,7 @@ pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
     b: &C,
     b_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttAddInplace + NttZero,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttAddInplace,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     C: VecZnxDftToRef<BE>,
@@ -184,11 +185,6 @@ pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
             );
             BE::ntt_add_inplace(&mut res_u64[4 * n_i..4 * n_i + 4], &product);
         }
-    }
-
-    // Limbs beyond b.size(): zero out (clear any stale data).
-    for j in min_size..res_size {
-        BE::ntt_zero(cast_slice_mut(res.at_mut(res_col, j)));
     }
 }
 

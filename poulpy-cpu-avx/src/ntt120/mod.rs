@@ -20,6 +20,7 @@
 //! - `ScalarPrep = Q120bScalar` — NTT-domain coefficients (4 × u64, 32 bytes/coeff).
 //! - `ScalarBig  = i128` — CRT-reconstructed large coefficients.
 
+pub(crate) mod arithmetic_avx;
 mod convolution;
 pub(crate) mod mat_vec_avx;
 mod module;
@@ -29,6 +30,7 @@ mod scratch;
 mod svp;
 mod vec_znx;
 mod vec_znx_big;
+mod vec_znx_big_avx;
 mod vec_znx_dft;
 mod vmp;
 mod znx;
@@ -56,7 +58,6 @@ mod znx;
 /// `NTT120Avx` is `Send + Sync` (derived from being a zero-sized, field-less struct).
 #[derive(Debug, Clone, Copy)]
 pub struct NTT120Avx;
-
 
 #[cfg(test)]
 mod tests;

@@ -32,7 +32,7 @@ use crate::{
     reference::ntt120::{
         NttAdd, NttAddInplace, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateInplace, NttSub, NttSubInplace,
         NttSubNegateInplace, NttToZnx128, NttZero,
-        mat_vec::BbcMeta,
+        mat_vec::{BbbMeta, BbcMeta},
         ntt::{NttTable, NttTableInv},
         primes::Primes30,
         types::Q120bScalar,
@@ -42,6 +42,9 @@ use crate::{
 // ──────────────────────────────────────────────────────────────────────────────
 // NttModuleHandle trait + NttHandleProvider blanket impl
 // ──────────────────────────────────────────────────────────────────────────────
+
+// TODO(ntt120): Associate PrimeSet with NttModuleHandle (add associated type)
+//               to enable Primes29/Primes31 dispatch through the public API.
 
 /// Access to the precomputed NTT/iNTT tables and lazy-accumulation metadata
 /// stored inside a `Module<B>` handle.
@@ -61,6 +64,8 @@ pub trait NttModuleHandle {
     fn get_intt_table(&self) -> &NttTableInv<Primes30>;
     /// Precomputed metadata for `q120b × q120c` lazy multiply–accumulate.
     fn get_bbc_meta(&self) -> &BbcMeta<Primes30>;
+    /// Precomputed metadata for `q120b × q120b` lazy multiply–accumulate.
+    fn get_bbb_meta(&self) -> &BbbMeta<Primes30>;
 }
 
 /// Implemented by backend `Handle` types that store NTT/iNTT tables and BBC
@@ -74,13 +79,20 @@ pub trait NttModuleHandle {
 ///
 /// Implementors must ensure the returned references are valid for the lifetime
 /// of `&self` and that the tables were fully initialised before first use.
+///
+/// The blanket `impl<B> NttModuleHandle for Module<B>` assumes the handle is
+/// fully initialised before `Module::new()` returns.  This invariant is
+/// established in `ModuleNewImpl::new_impl`.  There is no runtime check in
+/// release builds.
 pub unsafe trait NttHandleProvider {
     /// Returns a reference to the forward NTT twiddle table.
     fn get_ntt_table(&self) -> &NttTable<Primes30>;
     /// Returns a reference to the inverse NTT twiddle table.
     fn get_intt_table(&self) -> &NttTableInv<Primes30>;
-    /// Returns a reference to the lazy multiply–accumulate metadata.
+    /// Returns a reference to the `q120b × q120c` lazy multiply–accumulate metadata.
     fn get_bbc_meta(&self) -> &BbcMeta<Primes30>;
+    /// Returns a reference to the `q120b × q120b` lazy multiply–accumulate metadata.
+    fn get_bbb_meta(&self) -> &BbbMeta<Primes30>;
 }
 
 /// Blanket impl: any `Module<B>` whose handle implements `NttHandleProvider`
@@ -103,6 +115,10 @@ where
 
     fn get_bbc_meta(&self) -> &BbcMeta<Primes30> {
         unsafe { (&*self.ptr()).get_bbc_meta() }
+    }
+
+    fn get_bbb_meta(&self) -> &BbbMeta<Primes30> {
+        unsafe { (&*self.ptr()).get_bbb_meta() }
     }
 }
 

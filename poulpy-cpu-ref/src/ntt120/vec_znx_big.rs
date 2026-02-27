@@ -28,8 +28,12 @@ use poulpy_hal::{
         ntt120_vec_znx_big_sub_small_a, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace,
         ntt120_vec_znx_big_sub_small_negate_inplace,
     },
+    reference::ntt120::{I128BigOps, I128NormalizeOps},
     source::Source,
 };
+
+impl I128BigOps for NTT120Ref {}
+impl I128NormalizeOps for NTT120Ref {}
 
 unsafe impl VecZnxBigFromSmallImpl<Self> for NTT120Ref {
     fn vec_znx_big_from_small_impl<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)

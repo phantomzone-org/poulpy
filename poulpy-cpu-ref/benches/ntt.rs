@@ -1,9 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-
-
-
-
 pub fn bench_intt_ref(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ref::NTT120Ref;
@@ -15,9 +11,8 @@ pub fn bench_intt_ref(c: &mut Criterion) {
     let mut group = c.benchmark_group(group_name);
 
     fn runner(n: usize) -> impl FnMut() {
-        let mut values: Vec<u64> = vec![0u64; 4*n];
+        let mut values: Vec<u64> = vec![0u64; 4 * n];
 
-        
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
 
         let table: NttTableInv<Primes30> = NttTableInv::<Primes30>::new(n);
@@ -37,7 +32,6 @@ pub fn bench_intt_ref(c: &mut Criterion) {
     group.finish();
 }
 
-
 pub fn bench_ntt_ref(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ref::NTT120Ref;
@@ -49,9 +43,8 @@ pub fn bench_ntt_ref(c: &mut Criterion) {
     let mut group = c.benchmark_group(group_name);
 
     fn runner(n: usize) -> impl FnMut() {
-        let mut values: Vec<u64> = vec![0u64; 4*n];
+        let mut values: Vec<u64> = vec![0u64; 4 * n];
 
-        
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
 
         let table: NttTable<Primes30> = NttTable::<Primes30>::new(n);

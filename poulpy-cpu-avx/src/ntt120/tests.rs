@@ -120,6 +120,53 @@ mod poulpy_cpu_avx {
             test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
         }
     }
+
+    // NTT CHANGE_MODE_N boundary tests.
+    // CHANGE_MODE_N = 1024: for n <= 1024 the AVX NTT runs fully by-block;
+    // for n > 1024 it first completes upper levels by-level then switches to
+    // by-block for the remaining levels. These suites ensure both modes are
+    // exercised and agree with the reference backend.
+
+    // n = 1024: last size that uses by-block only.
+    cross_backend_test_suite! {
+        mod ntt_n1024,
+        backend_ref =  poulpy_cpu_ref::NTT120Ref,
+        backend_test = crate::NTT120Avx,
+        size = 1<<10,
+        base2k = 50,
+        tests = {
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
+        }
+    }
+
+    // n = 2048: first size that uses the by-level phase.
+    cross_backend_test_suite! {
+        mod ntt_n2048,
+        backend_ref =  poulpy_cpu_ref::NTT120Ref,
+        backend_test = crate::NTT120Avx,
+        size = 1<<11,
+        base2k = 50,
+        tests = {
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
+        }
+    }
+
+    // n = 65536: large size exercising many by-level stages.
+    cross_backend_test_suite! {
+        mod ntt_n65536,
+        backend_ref =  poulpy_cpu_ref::NTT120Ref,
+        backend_test = crate::NTT120Avx,
+        size = 1<<16,
+        base2k = 50,
+        tests = {
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+        }
+    }
 }
 
 #[test]

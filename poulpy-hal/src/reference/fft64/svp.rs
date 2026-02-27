@@ -78,9 +78,11 @@ where
     }
 }
 
+/// Limbs of `res` beyond `min(b.size(), res.size())` are left untouched —
+/// the caller is responsible for initialization.
 pub fn svp_apply_dft_to_dft_add<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimAddMul + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimAddMul,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     B: VecZnxDftToRef<BE>,
@@ -96,10 +98,6 @@ where
     let ppol: &[f64] = a.at(a_col, 0);
     for j in 0..min_size {
         BE::reim_addmul(res.at_mut(res_col, j), ppol, b.at(b_col, j));
-    }
-
-    for j in min_size..res_size {
-        BE::reim_zero(res.at_mut(res_col, j));
     }
 }
 
