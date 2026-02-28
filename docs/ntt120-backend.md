@@ -12,11 +12,12 @@ exact arithmetic at larger moduli.
 `Primes30`: four primes, each ~30 bits, product Q ≈ 2^120.
 - Accessed via the `PrimeSet` trait: `Primes30::Q: [u32; 4]`, `Primes30::CRT_CST: [u32; 4]`
 - **`PrimeSet` must be in scope** to use associated constants on `Primes30`.
+- Also available: `Primes29`, `Primes31` for other bit-width requirements.
 
 ## Memory Layouts
 
 | Poulpy type | Bytes/coeff | Format |
-|-------------|-------------|--------|
+|-|-|-|
 | `VecZnx`    | 8 (i64)     | coefficient domain |
 | `VecZnxBig` | 16 (i128)   | CRT-reconstructed exact value |
 | `VecZnxDft` | 32 (Q120bScalar = 4×u64) | NTT domain, one u64 per prime |
@@ -26,22 +27,26 @@ exact arithmetic at larger moduli.
 ## HAL Reference Files (`poulpy-hal/src/reference/ntt120/`)
 
 ### `primes.rs`
-- `PrimeSet` trait: associated consts `Q`, `CRT_CST`, `N_PRIMES`
+- `PrimeSet` trait: associated consts `Q`, `CRT_CST`, `OMEGA`, `LOG_Q`, `N_PRIMES`
 - `Primes29`, `Primes30`, `Primes31` structs
 
 ### `types.rs`
 - `Q120aScalar`, `Q120bScalar`, `Q120cScalar` newtype wrappers
 - `Q120x2bScalar`, `Q120x2cScalar` paired variants
+- `Q_SHIFTED` constant array
 
 ### `arithmetic.rs`
 - `b_from_znx64_ref`: i64 poly → q120b (4 u64 CRT residues per coeff)
 - `c_from_znx64_ref`: i64 poly → q120c (Montgomery form)
 - `b_to_znx128_ref`: q120b → i128 (CRT reconstruction)
 - `add_bbb_ref`: q120b + q120b → q120b
+- `add_ccc_ref`: q120c + q120c → q120c
 - `c_from_b_ref`: q120b → q120c
 
 ### `mat_vec.rs`
-- `BbbMeta<P>`, `BbcMeta<P>`: precomputed lazy-reduction metadata
+- `BaaMeta<P>`, `BbbMeta<P>`, `BbcMeta<P>`: precomputed lazy-reduction metadata
+- `vec_mat1col_product_baa_ref`: q120a × q120a → q120a (1 column)
+- `vec_mat1col_product_bbb_ref`: q120b × q120b → q120b (1 column)
 - `vec_mat1col_product_bbc_ref`: q120c × q120b → q120b (1 column)
 - `vec_mat1col_product_x2_bbc_ref`: 2-coefficient block version
 - `vec_mat2cols_product_x2_bbc_ref`: 2-column × 2-coeff block
@@ -50,6 +55,15 @@ exact arithmetic at larger moduli.
 - `NttTable<P>`, `NttTableInv<P>`: precomputed twiddle tables
 - `ntt_ref<P>`: in-place forward NTT (modifies slice)
 - `intt_ref<P>`: in-place inverse NTT (modifies slice)
+
+### `vec_znx_big.rs`
+- `ntt120_vec_znx_big_add`, `_add_inplace`, `_add_small`, `_add_small_inplace`
+- `ntt120_vec_znx_big_sub`, `_sub_inplace`, `_sub_negate_inplace`, `_sub_small_a`, `_sub_small_b`
+- `ntt120_vec_znx_big_negate`, `_negate_inplace`
+- `ntt120_vec_znx_big_from_small`: sign-extend i64 VecZnx → i128 VecZnxBig
+- `ntt120_vec_znx_big_normalize_tmp_bytes(n)`, `ntt120_vec_znx_big_normalize`: extract base-2k digits
+- `ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(n)`, `ntt120_vec_znx_big_automorphism`, `_automorphism_inplace`: apply X→X^p
+- `ntt120_vec_znx_big_add_normal_ref`: add rounded Gaussian noise to limb
 
 ### `vec_znx_dft.rs`
 - `NttModuleHandle` trait: `get_ntt_table`, `get_intt_table`, `get_bbc_meta`
@@ -69,16 +83,16 @@ exact arithmetic at larger moduli.
 
 ### `vmp.rs`
 - `ntt120_vmp_prepare_tmp_bytes(n) = 4*n*8`
-- `ntt120_vmp_prepare`: i64 MatZnx rows → q120c VmpPMat
+- `ntt120_vmp_prepare`: i64 MatZnx rows → q120c VmpPMat (block-interleaved layout)
 - `ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)`
 - `ntt120_vmp_apply_dft_to_dft`: q120b vector × q120c matrix → q120b
 - `ntt120_vmp_apply_dft_to_dft_add`: accumulate variant
 - `ntt120_vmp_zero`: zero a VmpPMat
 
-## Backend Crate (`poulpy-cpu-ref/ntt120/`)
+## Reference Backend (`poulpy-cpu-ref/src/ntt120/`)
 
 ### `module.rs`
-- `NTT120RefHandle { table_ntt, table_intt, meta_bbc }`
+- `NTT120RefHandle { table_ntt, table_intt, meta_bbc, meta_bbb }`
 - `unsafe impl NttHandleProvider for NTT120RefHandle` (wires into blanket impl)
 - `impl Backend for NTT120Ref` with `ScalarPrep = Q120bScalar`, `ScalarBig = i128`
 
@@ -91,19 +105,55 @@ Processing blocks in order k=0,1,...,n_blocks-1 is safe because:
 ### `convolution.rs`
 Runtime stub — all methods panic with `unimplemented!()`. Future work.
 
+## AVX Backend (`poulpy-cpu-avx/src/ntt120/`)
+
+All OEP traits are fully AVX2-accelerated. Requires `enable-avx` feature and
+`RUSTFLAGS="-C target-feature=+avx2,+fma"`.
+
+### `module.rs`
+- `NTT120AvxHandle { table_ntt, table_intt, meta_bbc, meta_bbb }` — same fields as `NTT120RefHandle`
+- `unsafe impl NttHandleProvider for NTT120AvxHandle`
+- `ModuleNewImpl` includes AVX2 runtime CPUID check
+
+### `ntt_avx.rs`
+- AVX2 NTT butterfly kernels; variable bit-shifts via `_mm256_srl_epi64(x, _mm_cvtsi64_si128(h))`
+- Ported from spqlios-arithmetic (carries DISCLAIMER block)
+
+### `mat_vec_avx.rs`
+- `NttMulBbc`, `NttMulBbc1ColX2`, `NttMulBbc2ColsX2` traits
+- BBC mat-vec via `_mm256_mul_epu32`; ~8 mul_epu32 reductions per output element
+
+### `arithmetic_avx.rs`
+- `b_from_znx64_avx2`: broadcast i64 + sign-check, ~5 instr/element
+- `c_from_b_avx2`: Barrett reduction with `mu=floor(2^61/Q[k]) < 2^32`; conditional subtract pattern
+- `vec_mat1col_product_bbb_avx2`: 4-bin (s1–s4) accumulation + BbbMeta collapse
+- `b_to_znx128_avx2`: hybrid — AVX2 for `xk%Q` and `(xk*CRT)%Q`, scalar i128 for final CRT accumulation
+
+### `vec_znx_big_avx.rs`
+- AVX2-accelerated `VecZnxBig` operations (add, sub, negate, normalize, automorphism)
+
+### `vec_znx_dft.rs`, `svp.rs`, `vmp.rs`
+- All delegate to AVX2 NTT kernels and mat-vec traits
+
+### `convolution.rs`
+Runtime stub — all methods panic with `unimplemented!()`. Future work.
+
 ## Test Suite Available
 
 `poulpy_hal::test_suite` provides cross-backend correctness tests.
-All helpers compare `Module<FFT64Ref>` (reference) vs `Module<NTT120Ref>` (test).
+All helpers compare `Module<FFT64Ref>` (reference) vs `Module<NTT120Ref>` (test) or
+`Module<NTT120AvxHandle>` (AVX test).
 Signature: `test_foo(base2k: usize, module_ref: &Module<FFT64Ref>, module_test: &Module<NTT120Ref>)`
 
 Available:
+- `vec_znx`: add, sub, shift, negate, rotate, automorphism, normalize, copy (~24 tests)
+- `vec_znx_big`: add, sub, negate variants; automorphism, normalize (~16 tests)
 - `vec_znx_dft`: add, add_inplace, sub, sub_inplace, sub_negate_inplace, copy,
   idft_apply, idft_apply_tmpa, idft_apply_consume
 - `svp`: apply_dft, apply_dft_to_dft, apply_dft_to_dft_add, apply_dft_to_dft_inplace
 - `vmp`: apply_dft, apply_dft_to_dft, apply_dft_to_dft_add
-- `vec_znx`: (various coefficient-domain tests)
-- `vec_znx_big`: (large-coefficient tests)
+- `sampling`: fill_uniform, fill_normal, add_normal
 - `convolution`: test_convolution, test_convolution_by_const, test_convolution_pairwise
+- Boundary suites: `ntt_n1024`, `ntt_n8192` (n=1024/8192, base2k boundary testing)
 
-See `poulpy-cpu-ref/src/tests.rs` for usage examples.
+See `poulpy-cpu-ref/src/tests.rs` and `poulpy-cpu-avx/src/ntt120/tests.rs` for usage examples.
