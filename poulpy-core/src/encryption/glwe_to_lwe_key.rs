@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
@@ -57,7 +57,7 @@ pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
-        R: GGLWEToMut;
+        R: GGLWEToMut + GGLWEInfos;
 }
 
 impl<BE: Backend> GLWEToLWESwitchingKeyEncryptSk<BE> for Module<BE>
@@ -73,9 +73,14 @@ where
     where
         A: GGLWEInfos,
     {
-        GLWESecretPrepared::bytes_of(self, infos.rank_in())
-            + GGLWE::encrypt_sk_tmp_bytes(self, infos)
-                .max(GLWESecret::bytes_of(self.n().into(), infos.rank_in()) + self.vec_znx_automorphism_inplace_tmp_bytes())
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWESecretPrepared::bytes_of(self, infos.rank_in());
+        let lvl_1_sk_lwe_as_glwe: usize =
+            GLWESecret::bytes_of(self.n().into(), infos.rank_in()) + self.vec_znx_automorphism_inplace_tmp_bytes();
+        let lvl_1_encrypt: usize = GGLWE::encrypt_sk_tmp_bytes(self, infos);
+
+        lvl_0 + lvl_1_sk_lwe_as_glwe.max(lvl_1_encrypt)
     }
 
     fn glwe_to_lwe_key_encrypt_sk<R, S1, S2>(
@@ -89,12 +94,18 @@ where
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
-        R: GGLWEToMut,
+        R: GGLWEToMut + GGLWEInfos,
     {
         let sk_lwe: &LWESecret<&[u8]> = &sk_lwe.to_ref();
         let sk_glwe: &GLWESecret<&[u8]> = &sk_glwe.to_ref();
 
         assert!(sk_lwe.n().0 <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.glwe_to_lwe_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GLWEToLWESwitchingKeyEncryptSk::glwe_to_lwe_key_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_to_lwe_key_encrypt_sk_tmp_bytes(res)
+        );
 
         let (mut sk_lwe_as_glwe_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, Rank(1));
 

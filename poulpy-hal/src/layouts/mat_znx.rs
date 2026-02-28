@@ -2,7 +2,7 @@ use crate::{
     alloc_aligned,
     layouts::{
         Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo,
-        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -12,7 +12,7 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use rand::RngCore;
+use rand::Rng;
 
 /// Matrix of polynomials in `Z[X]/(X^N + 1)`.
 ///
@@ -86,12 +86,6 @@ impl<D: Data> ZnxInfos for MatZnx<D> {
 
     fn poly_count(&self) -> usize {
         self.rows() * self.cols_in() * self.cols_out() * self.size()
-    }
-}
-
-impl<D: Data> ZnxSliceSize for MatZnx<D> {
-    fn sl(&self) -> usize {
-        self.n() * self.cols_out()
     }
 }
 

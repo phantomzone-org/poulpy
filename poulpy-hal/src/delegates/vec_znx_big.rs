@@ -6,14 +6,13 @@ use crate::{
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
-    layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, Module, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl, VecZnxBigAddSmallInplaceImpl,
-        VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
-        VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl, VecZnxBigFromSmallImpl, VecZnxBigNegateImpl,
-        VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl,
-        VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl,
-        VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
+        VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl,
+        VecZnxBigFromSmallImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
+        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl, VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl,
+        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
     },
     source::Source,
 };
@@ -31,30 +30,21 @@ where
     }
 }
 
-impl<B> VecZnxBigAlloc<B> for Module<B>
-where
-    B: Backend + VecZnxBigAllocImpl<B>,
-{
+impl<B: Backend> VecZnxBigAlloc<B> for Module<B> {
     fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B> {
-        B::vec_znx_big_alloc_impl(self.n(), cols, size)
+        VecZnxBigOwned::alloc(self.n(), cols, size)
     }
 }
 
-impl<B> VecZnxBigFromBytes<B> for Module<B>
-where
-    B: Backend + VecZnxBigFromBytesImpl<B>,
-{
+impl<B: Backend> VecZnxBigFromBytes<B> for Module<B> {
     fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B> {
-        B::vec_znx_big_from_bytes_impl(self.n(), cols, size, bytes)
+        VecZnxBig::<Vec<u8>, B>::from_bytes(self.n(), cols, size, bytes)
     }
 }
 
-impl<B> VecZnxBigBytesOf for Module<B>
-where
-    B: Backend + VecZnxBigAllocBytesImpl,
-{
+impl<B: Backend> VecZnxBigBytesOf for Module<B> {
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_big_bytes_of_impl(self.n(), cols, size)
+        B::bytes_of_vec_znx_big(self.n(), cols, size)
     }
 }
 

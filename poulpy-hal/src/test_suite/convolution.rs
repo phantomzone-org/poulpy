@@ -1,10 +1,10 @@
-use rand::RngCore;
+use rand::Rng;
 
 use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
-        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeInplace,
+        VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
+        VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut, VecZnxToRef,
@@ -13,15 +13,18 @@ use crate::{
     source::Source,
 };
 
-pub fn test_convolution_by_const<M, BE: Backend>(module: &M)
+pub fn test_convolution_by_const<M, BE: Backend>(module: &M, base2k: usize)
 where
-    M: ModuleN + Convolution<BE> + VecZnxBigNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxBigAlloc<BE>,
+    M: ModuleN
+        + Convolution<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxNormalizeInplace<BE>
+        + VecZnxBigAlloc<BE>,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     let mut source: Source = Source::new([0u8; 32]);
-
-    let base2k: usize = 12;
 
     let a_cols: usize = 2;
     let a_size: usize = 15;
@@ -35,17 +38,21 @@ where
     let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
     let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
 
-    a.fill_uniform(base2k, &mut source);
+    a.fill_uniform(17, &mut source);
 
     let mut b_const = vec![0i64; b_size];
     let mask = (1 << base2k) - 1;
     for (j, x) in b_const[..1].iter_mut().enumerate() {
         let r = source.next_u64() & mask;
-        *x = ((r << (64 - base2k)) as i64) >> (64 - base2k);
+        *x = ((r << (64 - 17)) as i64) >> (64 - 17);
         b.at_mut(0, j)[0] = *x
     }
 
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+        module
+            .cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size)
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
+    );
 
     for a_col in 0..a.cols() {
         for offset in 0..res_size {
@@ -70,7 +77,7 @@ where
     }
 }
 
-pub fn test_convolution<M, BE: Backend>(module: &M)
+pub fn test_convolution<M, BE: Backend>(module: &M, base2k: usize)
 where
     M: ModuleN
         + Convolution<BE>
@@ -79,14 +86,13 @@ where
         + VecZnxDftApply<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     let mut source: Source = Source::new([0u8; 32]);
-
-    let base2k: usize = 12;
 
     let a_cols: usize = 2;
     let b_cols: usize = 2;
@@ -102,8 +108,8 @@ where
     let mut res_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, res_size);
     let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
 
-    a.fill_uniform(base2k, &mut source);
-    b.fill_uniform(base2k, &mut source);
+    a.fill_uniform(17, &mut source);
+    b.fill_uniform(17, &mut source);
 
     let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(a_cols, a_size);
     let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(b_cols, b_size);
@@ -112,7 +118,8 @@ where
         module
             .cnv_apply_dft_tmp_bytes(res_size, 0, a_size, b_size)
             .max(module.cnv_prepare_left_tmp_bytes(res_size, a_size))
-            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size)),
+            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size))
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
     module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
@@ -145,7 +152,7 @@ where
     }
 }
 
-pub fn test_convolution_pairwise<M, BE: Backend>(module: &M)
+pub fn test_convolution_pairwise<M, BE: Backend>(module: &M, base2k: usize)
 where
     M: ModuleN
         + Convolution<BE>
@@ -154,6 +161,7 @@ where
         + VecZnxDftApply<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>
         + VecZnxAdd
@@ -163,9 +171,7 @@ where
 {
     let mut source: Source = Source::new([0u8; 32]);
 
-    let base2k: usize = 12;
-
-    let cols = 2;
+    let cols: usize = 2;
     let a_size: usize = 15;
     let b_size: usize = 15;
     let res_size: usize = a_size + b_size;
@@ -180,8 +186,8 @@ where
     let mut res_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, res_size);
     let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
 
-    a.fill_uniform(base2k, &mut source);
-    b.fill_uniform(base2k, &mut source);
+    a.fill_uniform(17, &mut source);
+    b.fill_uniform(17, &mut source);
 
     let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(cols, a_size);
     let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(cols, b_size);
@@ -190,7 +196,8 @@ where
         module
             .cnv_pairwise_apply_dft_tmp_bytes(res_size, 0, a_size, b_size)
             .max(module.cnv_prepare_left_tmp_bytes(res_size, a_size))
-            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size)),
+            .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size))
+            .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
     module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());

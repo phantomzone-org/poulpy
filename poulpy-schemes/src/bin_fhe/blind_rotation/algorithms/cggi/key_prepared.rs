@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{SvpPPolAlloc, SvpPrepare},
+    api::{ScratchAvailable, SvpPPolAlloc, SvpPrepare},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, SvpPPol},
 };
 
@@ -18,6 +18,7 @@ use crate::bin_fhe::blind_rotation::{
 impl<BE: Backend> BlindRotationKeyPreparedFactory<CGGI, BE> for Module<BE>
 where
     Self: GGSWPreparedFactory<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE>,
+    Scratch<BE>: ScratchAvailable,
 {
     fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<Vec<u8>, CGGI, BE>
     where

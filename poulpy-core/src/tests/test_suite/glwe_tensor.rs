@@ -5,9 +5,10 @@ use poulpy_hal::{
     },
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned, VecZnx, ZnxViewMut},
     source::Source,
+    test_suite::TestParams,
     test_suite::convolution::bivariate_convolution_naive,
 };
-use rand::RngCore;
+use rand::Rng;
 use std::f64::consts::SQRT_2;
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
     },
 };
 
-pub fn test_glwe_tensoring<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_tensoring<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
@@ -36,10 +37,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 16;
-    let out_base2k: usize = 13;
-    let tsk_base2k: usize = 15;
-    let k: usize = 128;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let out_base2k: usize = base2k - 2;
+    let tsk_base2k: usize = base2k;
+    let k: usize = 8 * base2k + 1;
 
     for rank in 1_usize..=3 {
         let n: usize = module.n();
@@ -169,7 +171,7 @@ where
     }
 }
 
-pub fn test_glwe_mul_plain<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_mul_plain<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -183,9 +185,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 16;
-    let out_base2k: usize = 13;
-    let k: usize = 128;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k;
+    let out_base2k: usize = base2k - 1;
+    let k: usize = 8 * base2k + 1;
 
     for rank in 1_usize..=3 {
         let n: usize = module.n();
@@ -230,8 +233,8 @@ where
 
         let scale: usize = 2 * in_base2k;
 
-        pt_b.data_mut().fill_uniform(in_base2k, &mut source_xa);
-        pt_a.data_mut().fill_uniform(in_base2k, &mut source_xa);
+        pt_b.data_mut().fill_uniform(17, &mut source_xa);
+        pt_a.data_mut().fill_uniform(17, &mut source_xa);
 
         let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_a.size() + pt_b.size());
         bivariate_convolution_naive(
@@ -275,7 +278,7 @@ where
     }
 }
 
-pub fn test_glwe_mul_const<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_mul_const<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -289,10 +292,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 16;
-    let out_base2k: usize = 13;
-    let k: usize = 128;
-    let b_size = 3;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k;
+    let out_base2k: usize = base2k;
+    let k: usize = 8 * base2k + 1;
+    let b_size: usize = 3;
 
     for rank in 1_usize..=3 {
         let n: usize = module.n();
@@ -337,13 +341,13 @@ where
 
         let scale: usize = 2 * in_base2k;
 
-        pt_a.data_mut().fill_uniform(in_base2k, &mut source_xa);
+        pt_a.data_mut().fill_uniform(17, &mut source_xa);
 
         let mut b_const = vec![0i64; b_size];
         let mask = (1 << in_base2k) - 1;
         for (j, x) in b_const[..1].iter_mut().enumerate() {
             let r = source_xa.next_u64() & mask;
-            *x = ((r << (64 - in_base2k)) as i64) >> (64 - in_base2k);
+            *x = ((r << (64 - 17)) as i64) >> (64 - 17);
             pt_b.data_mut().at_mut(0, j)[0] = *x
         }
 

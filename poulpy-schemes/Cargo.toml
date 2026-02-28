@@ -18,10 +18,10 @@ poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 criterion = {workspace = true}
-itertools = "0.14.0"
-byteorder = "1.5.0"
-rand = "0.9.2"
-paste = "1.0.15"
+itertools = {workspace = true}
+byteorder = {workspace = true}
+rand = {workspace = true}
+paste = {workspace = true}
 
 [[bench]]
 name = "circuit_bootstrapping"

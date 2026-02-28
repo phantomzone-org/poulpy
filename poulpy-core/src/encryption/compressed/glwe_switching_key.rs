@@ -71,10 +71,13 @@ where
     where
         A: GGLWEInfos,
     {
-        self.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
-            .max(ScalarZnx::bytes_of(self.n(), 1))
-            + ScalarZnx::bytes_of(self.n(), infos.rank_in().into())
-            + GLWESecretPrepared::bytes_of(self, infos.rank_out())
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = ScalarZnx::bytes_of(self.n(), infos.rank_in().into());
+        let lvl_1: usize = GLWESecretPrepared::bytes_of(self, infos.rank_out());
+        let lvl_2: usize = ScalarZnx::bytes_of(self.n(), 1).max(self.gglwe_compressed_encrypt_sk_tmp_bytes(infos));
+
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2>(
@@ -96,10 +99,10 @@ where
         assert!(sk_in.n().0 <= self.n() as u32);
         assert!(sk_out.n().0 <= self.n() as u32);
         assert!(
-            scratch.available() >= self.gglwe_compressed_encrypt_sk_tmp_bytes(res),
-            "scratch.available()={} < GLWESwitchingKey::encrypt_sk_tmp_bytes={}",
+            scratch.available() >= self.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GLWESwitchingKeyCompressedEncryptSk::glwe_switching_key_compressed_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_compressed_encrypt_sk_tmp_bytes(res)
+            self.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(res)
         );
 
         let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self.n(), sk_in.rank().into());

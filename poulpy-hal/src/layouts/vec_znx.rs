@@ -7,13 +7,13 @@ use crate::{
     alloc_aligned,
     layouts::{
         Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ScalarZnx, ToOwnedDeep, WriterTo,
-        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use rand::RngCore;
+use rand::Rng;
 
 /// A vector of polynomials in `Z[X]/(X^N + 1)` with limb-decomposed
 /// (base-2^k) representation.
@@ -120,12 +120,6 @@ impl<D: Data> ZnxInfos for VecZnx<D> {
 
     fn size(&self) -> usize {
         self.size
-    }
-}
-
-impl<D: Data> ZnxSliceSize for VecZnx<D> {
-    fn sl(&self) -> usize {
-        self.n() * self.cols()
     }
 }
 

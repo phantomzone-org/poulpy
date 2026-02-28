@@ -8,7 +8,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
 };
-use rand::RngCore;
+use rand::Rng;
 
 use crate::bin_fhe::{
     bdd_arithmetic::{

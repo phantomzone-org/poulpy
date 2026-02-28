@@ -31,10 +31,39 @@ pub trait Backend: Sized + Sync + Send {
     type ScalarPrep: Copy + Zero + Display + Debug + Pod;
     /// Opaque backend handle type (e.g. precomputed FFT twiddle factors).
     type Handle: 'static;
-    /// Number of `ScalarPrep` words per ring element in DFT representation.
-    fn layout_prep_word_count() -> usize;
-    /// Number of `ScalarBig` words per ring element in big representation.
-    fn layout_big_word_count() -> usize;
+    /// Bytes size of `ScalarBig`.
+    fn size_of_scalar_big() -> usize {
+        size_of::<Self::ScalarBig>()
+    }
+    /// Bytes size of `ScalarPrep`.
+    fn size_of_scalar_prep() -> usize {
+        size_of::<Self::ScalarPrep>()
+    }
+
+    /// Byte size of a [`crate::layouts::VecZnxDft`] buffer.
+    fn bytes_of_vec_znx_dft(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * Self::size_of_scalar_prep()
+    }
+    /// Byte size of a [`crate::layouts::VecZnxBig`] buffer.
+    fn bytes_of_vec_znx_big(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * Self::size_of_scalar_big()
+    }
+    /// Byte size of a [`crate::layouts::SvpPPol`] buffer.
+    fn bytes_of_svp_ppol(n: usize, cols: usize) -> usize {
+        n * cols * Self::size_of_scalar_prep()
+    }
+    /// Byte size of a [`crate::layouts::VmpPMat`] buffer.
+    fn bytes_of_vmp_pmat(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        n * rows * cols_in * cols_out * size * Self::size_of_scalar_prep()
+    }
+    /// Byte size of a [`crate::layouts::CnvPVecL`] buffer.
+    fn bytes_of_cnv_pvec_left(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * Self::size_of_scalar_prep()
+    }
+    /// Byte size of a [`crate::layouts::CnvPVecR`] buffer.
+    fn bytes_of_cnv_pvec_right(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * Self::size_of_scalar_prep()
+    }
     /// Deallocates a backend handle.
     ///
     /// # Safety

@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use crate::{
     alloc_aligned,
     layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxView},
-    oep::CnvPVecBytesOfImpl,
 };
 
 /// Prepared right operand for bivariate convolution.
@@ -55,12 +54,9 @@ impl<D: DataRef, BE: Backend> ZnxView for CnvPVecR<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecR<D, B>
-where
-    B: CnvPVecBytesOfImpl,
-{
+impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecR<D, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_right_impl(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_right(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -72,7 +68,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::bytes_of_cnv_pvec_right_impl(n, cols, size));
+        assert!(data.len() == B::bytes_of_cnv_pvec_right(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -144,12 +140,9 @@ impl<D: DataRef, BE: Backend> ZnxView for CnvPVecL<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecL<D, B>
-where
-    B: CnvPVecBytesOfImpl,
-{
+impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecL<D, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_left_impl(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_left(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -161,7 +154,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::bytes_of_cnv_pvec_left_impl(n, cols, size));
+        assert!(data.len() == B::bytes_of_cnv_pvec_left(n, cols, size));
         Self {
             data: data.into(),
             n,

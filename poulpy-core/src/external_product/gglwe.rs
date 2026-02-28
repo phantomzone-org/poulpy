@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
+};
 
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
@@ -57,7 +60,8 @@ where
         A: GGLWEInfos,
         B: GGSWInfos,
     {
-        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
+        let lvl_0: usize = self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos);
+        lvl_0
     }
 
     fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
@@ -89,6 +93,12 @@ where
             b.rank()
         );
         assert_eq!(res.base2k(), a.base2k());
+        assert!(
+            scratch.available() >= self.gglwe_external_product_tmp_bytes(res, a, b),
+            "scratch.available(): {} < GGLWEExternalProduct::gglwe_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_external_product_tmp_bytes(res, a, b)
+        );
 
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GGLWE<&[u8]> = &a.to_ref();
@@ -122,6 +132,12 @@ where
             "res output rank: {} != a rank: {}",
             res.rank_out(),
             a.rank()
+        );
+        assert!(
+            scratch.available() >= self.gglwe_external_product_tmp_bytes(res, res, a),
+            "scratch.available(): {} < GGLWEExternalProduct::gglwe_external_product_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_external_product_tmp_bytes(res, res, a)
         );
 
         for row in 0..res.dnum().into() {

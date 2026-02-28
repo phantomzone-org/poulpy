@@ -4,40 +4,30 @@ use crate::{
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
-        Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
+        Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMat, VmpPMatOwned, VmpPMatToMut,
         VmpPMatToRef,
     },
     oep::{
         VmpApplyDftImpl, VmpApplyDftTmpBytesImpl, VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl,
-        VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl,
-        VmpPrepareTmpBytesImpl, VmpZeroImpl,
+        VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
 };
 
-impl<B> VmpPMatAlloc<B> for Module<B>
-where
-    B: Backend + VmpPMatAllocImpl<B>,
-{
+impl<B: Backend> VmpPMatAlloc<B> for Module<B> {
     fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B> {
-        B::vmp_pmat_alloc_impl(self.n(), rows, cols_in, cols_out, size)
+        VmpPMatOwned::alloc(self.n(), rows, cols_in, cols_out, size)
     }
 }
 
-impl<B> VmpPMatBytesOf for Module<B>
-where
-    B: Backend + VmpPMatAllocBytesImpl<B>,
-{
+impl<B: Backend> VmpPMatBytesOf for Module<B> {
     fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_pmat_bytes_of_impl(self.n(), rows, cols_in, cols_out, size)
+        B::bytes_of_vmp_pmat(self.n(), rows, cols_in, cols_out, size)
     }
 }
 
-impl<B> VmpPMatFromBytes<B> for Module<B>
-where
-    B: Backend + VmpPMatFromBytesImpl<B>,
-{
+impl<B: Backend> VmpPMatFromBytes<B> for Module<B> {
     fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B> {
-        B::vmp_pmat_from_bytes_impl(self.n(), rows, cols_in, cols_out, size, bytes)
+        VmpPMat::<Vec<u8>, B>::from_bytes(self.n(), rows, cols_in, cols_out, size, bytes)
     }
 }
 

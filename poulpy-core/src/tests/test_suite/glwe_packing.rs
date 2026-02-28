@@ -5,6 +5,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     },
 };
 
-pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_packing<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
@@ -35,10 +36,11 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let n: usize = module.n();
-    let out_base2k: usize = 15;
-    let key_base2k: usize = 10;
-    let k_ct: usize = 36;
-    let pt_k: usize = out_base2k;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_ct: usize = 4 * base2k + 1;
+    let pt_k: usize = 2 * base2k + 1;
     let rank: usize = 3;
     let dsize: usize = 1;
     let k_ksk: usize = k_ct + key_base2k * dsize;

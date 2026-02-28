@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf,
-        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataRef, DataViewMut, Module, Scratch},
 };
@@ -65,14 +65,19 @@ where
         + VecZnxBigAddInplace<BE>
         + VecZnxBigAddSmallInplace<BE>
         + VecZnxBigNormalize<BE>,
-    Scratch<BE>: ScratchTakeBasic,
+    Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
 {
     fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         let size: usize = infos.size();
-        self.vec_znx_normalize_tmp_bytes().max(self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = self.bytes_of_vec_znx_big(1, size);
+        let lvl_1: usize = self.bytes_of_vec_znx_dft(1, size).max(self.vec_znx_normalize_tmp_bytes());
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
@@ -90,6 +95,12 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n(), sk.n());
         }
+        assert!(
+            scratch.available() >= self.glwe_decrypt_tmp_bytes(res),
+            "scratch.available(): {} < GLWEDecrypt::glwe_decrypt_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_decrypt_tmp_bytes(res)
+        );
 
         let cols: usize = (res.rank() + 1).into();
 

@@ -1,13 +1,9 @@
 use crate::{
     cast_mut,
     layouts::{DataViewMut, MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
-    oep::VecZnxDftAllocBytesImpl,
     reference::fft64::{
-        reim::{ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimZero},
-        reim4::{
-            Reim4Extract1BlkContiguous, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk,
-            Reim4Save2Blks,
-        },
+        reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
+        reim4::Reim4BlkMatVec,
         vec_znx_dft::vec_znx_dft_apply,
     },
 };
@@ -20,7 +16,7 @@ pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
 
 pub fn vmp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, pmat: &mut R, mat: &A, tmp: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64> + ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimFromZnx + Reim4Extract1BlkContiguous,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: VmpPMatToMut<BE>,
     A: MatZnxToRef,
 {
@@ -61,7 +57,7 @@ pub(crate) fn vmp_prepare_core<REIM>(
     ncols: usize,
     tmp: &mut [f64],
 ) where
-    REIM: ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimFromZnx + Reim4Extract1BlkContiguous,
+    REIM: ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
 {
     let m: usize = table.m();
     let n: usize = m << 1;
@@ -103,17 +99,7 @@ pub fn vmp_apply_dft_tmp_bytes(n: usize, a_size: usize, prows: usize, pcols_in: 
 
 pub fn vmp_apply_dft<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64>
-        + VecZnxDftAllocBytesImpl<BE>
-        + ReimDFTExecute<ReimFFTTable<f64>, f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + Reim4Mat1ColProd
-        + Reim4Mat2Cols2ndColProd
-        + Reim4Mat2ColsProd
-        + Reim4Save2Blks
-        + Reim4Save1Blk
-        + ReimFromZnx,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
     M: VmpPMatToRef<BE>,
@@ -131,7 +117,7 @@ where
         assert!(a.cols() <= cols);
     }
 
-    let (data, tmp_bytes) = tmp_bytes.split_at_mut(BE::vec_znx_dft_bytes_of_impl(n, cols, size));
+    let (data, tmp_bytes) = tmp_bytes.split_at_mut(BE::bytes_of_vec_znx_dft(n, cols, size));
 
     let mut a_dft: VecZnxDft<&mut [u8], BE> = VecZnxDft::from_data(cast_mut(data), n, cols, size);
 
@@ -157,14 +143,7 @@ where
 
 pub fn vmp_apply_dft_to_dft<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + Reim4Mat1ColProd
-        + Reim4Mat2Cols2ndColProd
-        + Reim4Mat2ColsProd
-        + Reim4Save2Blks
-        + Reim4Save1Blk,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     M: VmpPMatToRef<BE>,
@@ -196,14 +175,7 @@ where
 
 pub fn vmp_apply_dft_to_dft_add<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, limb_offset: usize, tmp_bytes: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + Reim4Mat1ColProd
-        + Reim4Mat2Cols2ndColProd
-        + Reim4Mat2ColsProd
-        + Reim4Save2Blks
-        + Reim4Save1Blk,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     M: VmpPMatToRef<BE>,
@@ -244,13 +216,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool, REIM>(
     ncols: usize,
     tmp_bytes: &mut [f64],
 ) where
-    REIM: ReimZero
-        + Reim4Extract1BlkContiguous
-        + Reim4Mat1ColProd
-        + Reim4Mat2Cols2ndColProd
-        + Reim4Mat2ColsProd
-        + Reim4Save2Blks
-        + Reim4Save1Blk,
+    REIM: ReimArith + Reim4BlkMatVec,
 {
     #[cfg(debug_assertions)]
     {

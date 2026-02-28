@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_glwe_keyswitch<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_keyswitch<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: VecZnxFillUniform
         + GLWESwitchingKeyEncryptSk<BE>
@@ -29,10 +30,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let out_base2k: usize = 15;
-    let k_in: usize = 102;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let out_base2k: usize = base2k - 2;
+    let k_in: usize = 4 * in_base2k + 1;
     let max_dsize: usize = k_in.div_ceil(key_base2k);
 
     for rank_in in 1_usize..3 {
@@ -115,7 +117,7 @@ where
 
                 glwe_out.keyswitch(module, &glwe_in, &ksk_prepared, scratch.borrow());
 
-                let max_noise: f64 = var_noise_gglwe_product_v2(
+                let noise_max: f64 = var_noise_gglwe_product_v2(
                     module.n() as f64,
                     k_ksk,
                     dnum,
@@ -129,23 +131,23 @@ where
                     rank_in as f64,
                 )
                 .sqrt()
-                .log2();
+                .log2()
+                    + 1.0;
 
                 module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
 
-                assert!(
-                    glwe_out
-                        .noise(module, &pt_out, &sk_out_prepared, scratch.borrow())
-                        .std()
-                        .log2()
-                        <= max_noise + 1.0
-                )
+                let noise_have = glwe_out
+                    .noise(module, &pt_out, &sk_out_prepared, scratch.borrow())
+                    .std()
+                    .log2();
+
+                assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}");
             }
         }
     }
 }
 
-pub fn test_glwe_keyswitch_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_keyswitch_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: VecZnxFillUniform
         + GLWESwitchingKeyEncryptSk<BE>
@@ -157,10 +159,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 17;
-    let key_base2k: usize = 13;
-
-    let k_out: usize = 102;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_out: usize = 4 * out_base2k + 1;
     let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     for rank in 1_usize..3 {
@@ -231,7 +233,7 @@ where
 
             glwe_out.keyswitch_inplace(module, &ksk_prepared, scratch.borrow());
 
-            let max_noise: f64 = var_noise_gglwe_product_v2(
+            let noise_max: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,
                 k_ksk,
                 dnum,
@@ -245,15 +247,15 @@ where
                 rank as f64,
             )
             .sqrt()
-            .log2();
+            .log2()
+                + 1.0;
 
-            assert!(
-                glwe_out
-                    .noise(module, &pt_want, &sk_out_prepared, scratch.borrow())
-                    .std()
-                    .log2()
-                    <= max_noise + 1.0
-            )
+            let noise_have = glwe_out
+                .noise(module, &pt_want, &sk_out_prepared, scratch.borrow())
+                .std()
+                .log2();
+
+            assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}");
         }
     }
 }

@@ -4,6 +4,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxSubInplace},
     layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -18,7 +19,7 @@ use crate::{
     noise::var_noise_gglwe_product,
 };
 
-pub fn test_glwe_trace_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_trace_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWETrace<BE>
         + GLWEEncryptSk<BE>
@@ -32,9 +33,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 15;
-    let key_base2k: usize = 10;
-    let k: usize = 54;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k;
+    let key_base2k: usize = base2k - 1;
+    let k: usize = 4 * base2k + 1;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();

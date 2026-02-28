@@ -67,62 +67,64 @@ pub trait ReimDFTExecute<D, T> {
     fn reim_dft_execute(table: &D, data: &mut [T]);
 }
 
-pub trait ReimFromZnx {
-    fn reim_from_znx(res: &mut [f64], a: &[i64]);
-}
+pub trait ReimArith {
+    fn reim_from_znx(res: &mut [f64], a: &[i64]) {
+        reim_from_znx_i64_ref(res, a)
+    }
 
-pub trait ReimToZnx {
-    fn reim_to_znx(res: &mut [i64], divisor: f64, a: &[f64]);
-}
+    fn reim_to_znx(res: &mut [i64], divisor: f64, a: &[f64]) {
+        reim_to_znx_i64_ref(res, divisor, a)
+    }
 
-pub trait ReimToZnxInplace {
-    fn reim_to_znx_inplace(res: &mut [f64], divisor: f64);
-}
+    fn reim_to_znx_inplace(res: &mut [f64], divisor: f64) {
+        reim_to_znx_i64_inplace_ref(res, divisor)
+    }
 
-pub trait ReimAdd {
-    fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]);
-}
+    fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_add_ref(res, a, b)
+    }
 
-pub trait ReimAddInplace {
-    fn reim_add_inplace(res: &mut [f64], a: &[f64]);
-}
+    fn reim_add_inplace(res: &mut [f64], a: &[f64]) {
+        reim_add_inplace_ref(res, a)
+    }
 
-pub trait ReimSub {
-    fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]);
-}
+    fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_sub_ref(res, a, b)
+    }
 
-pub trait ReimSubInplace {
-    fn reim_sub_inplace(res: &mut [f64], a: &[f64]);
-}
+    fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_inplace_ref(res, a)
+    }
 
-pub trait ReimSubNegateInplace {
-    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]);
-}
+    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_negate_inplace_ref(res, a)
+    }
 
-pub trait ReimNegate {
-    fn reim_negate(res: &mut [f64], a: &[f64]);
-}
+    fn reim_negate(res: &mut [f64], a: &[f64]) {
+        reim_negate_ref(res, a)
+    }
 
-pub trait ReimNegateInplace {
-    fn reim_negate_inplace(res: &mut [f64]);
-}
+    fn reim_negate_inplace(res: &mut [f64]) {
+        reim_negate_inplace_ref(res)
+    }
 
-pub trait ReimMul {
-    fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]);
-}
+    fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_mul_ref(res, a, b)
+    }
 
-pub trait ReimMulInplace {
-    fn reim_mul_inplace(res: &mut [f64], a: &[f64]);
-}
+    fn reim_mul_inplace(res: &mut [f64], a: &[f64]) {
+        reim_mul_inplace_ref(res, a)
+    }
 
-pub trait ReimAddMul {
-    fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]);
-}
+    fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_addmul_ref(res, a, b)
+    }
 
-pub trait ReimCopy {
-    fn reim_copy(res: &mut [f64], a: &[f64]);
-}
+    fn reim_copy(res: &mut [f64], a: &[f64]) {
+        reim_copy_ref(res, a)
+    }
 
-pub trait ReimZero {
-    fn reim_zero(res: &mut [f64]);
+    fn reim_zero(res: &mut [f64]) {
+        reim_zero_ref(res)
+    }
 }

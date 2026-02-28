@@ -4,38 +4,27 @@ use crate::{
         SvpPPolFromBytes, SvpPrepare,
     },
     layouts::{
-        Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+        Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
+        VecZnxToRef,
     },
-    oep::{
-        SvpApplyDftImpl, SvpApplyDftToDftAddImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPPolAllocBytesImpl,
-        SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl,
-    },
+    oep::{SvpApplyDftImpl, SvpApplyDftToDftAddImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
 };
 
-impl<B> SvpPPolFromBytes<B> for Module<B>
-where
-    B: Backend + SvpPPolFromBytesImpl<B>,
-{
+impl<B: Backend> SvpPPolFromBytes<B> for Module<B> {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        B::svp_ppol_from_bytes_impl(self.n(), cols, bytes)
+        SvpPPol::<Vec<u8>, B>::from_bytes(self.n(), cols, bytes)
     }
 }
 
-impl<B> SvpPPolAlloc<B> for Module<B>
-where
-    B: Backend + SvpPPolAllocImpl<B>,
-{
+impl<B: Backend> SvpPPolAlloc<B> for Module<B> {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {
-        B::svp_ppol_alloc_impl(self.n(), cols)
+        SvpPPolOwned::alloc(self.n(), cols)
     }
 }
 
-impl<B> SvpPPolBytesOf for Module<B>
-where
-    B: Backend + SvpPPolAllocBytesImpl<B>,
-{
+impl<B: Backend> SvpPPolBytesOf for Module<B> {
     fn bytes_of_svp_ppol(&self, cols: usize) -> usize {
-        B::svp_ppol_bytes_of_impl(self.n(), cols)
+        B::bytes_of_svp_ppol(self.n(), cols)
     }
 }
 

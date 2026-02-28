@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace},
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_glwe_external_product<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_external_product<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
@@ -29,10 +30,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let out_base2k: usize = 15;
-    let k_in: usize = 102;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let out_base2k: usize = base2k - 2;
+    let k_in: usize = 4 * in_base2k + 1;
     let max_dsize: usize = k_in.div_ceil(key_base2k);
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
@@ -136,15 +138,16 @@ where
                 rank as f64,
                 k_in,
                 k_ggsw,
-            );
+            ) + 1.0;
 
-            assert!(glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            let noise = glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2();
+            assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_glwe_external_product_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_external_product_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
@@ -157,9 +160,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let k_out: usize = 102;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_out: usize = 4 * out_base2k + 1;
     let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     for rank in 1_usize..3 {
@@ -259,9 +263,10 @@ where
                 rank as f64,
                 k_out,
                 k_ggsw,
-            );
+            ) + 1.0;
 
-            assert!(glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            let noise = glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+            assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }
 }

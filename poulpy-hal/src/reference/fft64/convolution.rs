@@ -4,23 +4,15 @@ use crate::{
         VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
-        reim::{ReimAdd, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimZero},
-        reim4::{
-            Reim4Convolution, Reim4Convolution1Coeff, Reim4Convolution2Coeffs, Reim4Extract1BlkContiguous,
-            Reim4Save1BlkContiguous,
-        },
+        reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
+        reim4::{Reim4BlkMatVec, Reim4Convolution},
         vec_znx_dft::vec_znx_dft_apply,
     },
 };
 
 pub fn convolution_prepare_left<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + ReimDFTExecute<ReimFFTTable<f64>, f64>
-        + ReimFromZnx
-        + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -30,12 +22,7 @@ where
 
 pub fn convolution_prepare_right<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + ReimDFTExecute<ReimFFTTable<f64>, f64>
-        + ReimFromZnx
-        + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -45,12 +32,7 @@ where
 
 fn convolution_prepare<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + Reim4Extract1BlkContiguous
-        + ReimDFTExecute<ReimFFTTable<f64>, f64>
-        + ReimFromZnx
-        + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -97,11 +79,7 @@ pub fn convolution_by_const_apply<R, A, BE>(
     b: &[i64],
     tmp: &mut [i64],
 ) where
-    BE: Backend<ScalarBig = i64>
-        + I64ConvolutionByConst1Coeff
-        + I64ConvolutionByConst2Coeffs
-        + I64Extract1BlkContiguous
-        + I64Save1BlkContiguous,
+    BE: Backend<ScalarBig = i64> + I64Ops,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -157,7 +135,7 @@ pub fn convolution_apply_dft<R, A, B, BE>(
     b_col: usize,
     tmp: &mut [f64],
 ) where
-    BE: Backend<ScalarPrep = f64> + Reim4Save1BlkContiguous + Reim4Convolution1Coeff + Reim4Convolution2Coeffs,
+    BE: Backend<ScalarPrep = f64> + Reim4BlkMatVec + Reim4Convolution,
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
@@ -214,13 +192,7 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     col_j: usize,
     tmp: &mut [f64],
 ) where
-    BE: Backend<ScalarPrep = f64>
-        + ReimZero
-        + ReimAdd
-        + ReimCopy
-        + Reim4Save1BlkContiguous
-        + Reim4Convolution1Coeff
-        + Reim4Convolution2Coeffs,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + Reim4Convolution,
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
@@ -291,12 +263,35 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     }
 }
 
-pub trait I64Extract1BlkContiguous {
-    fn i64_extract_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]);
-}
+pub trait I64Ops {
+    fn i64_extract_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+        i64_extract_1blk_contiguous_ref(n, offset, rows, blk, dst, src)
+    }
 
-pub trait I64Save1BlkContiguous {
-    fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]);
+    fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+        i64_save_1blk_contiguous_ref(n, offset, rows, blk, dst, src)
+    }
+
+    fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
+        i64_convolution_by_const_1coeff_ref(k, dst, a, a_size, b)
+    }
+
+    fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
+        i64_convolution_by_const_2coeffs_ref(k, dst, a, a_size, b)
+    }
+
+    fn i64_convolution_by_const(dst: &mut [i64], dst_size: usize, offset: usize, a: &[i64], a_size: usize, b: &[i64]) {
+        assert!(a_size > 0);
+
+        for k in (0..dst_size - 1).step_by(2) {
+            Self::i64_convolution_by_const_2coeffs(k + offset, as_arr_i64_mut(&mut dst[8 * k..]), a, a_size, b);
+        }
+
+        if !dst_size.is_multiple_of(2) {
+            let k: usize = dst_size - 1;
+            Self::i64_convolution_by_const_1coeff(k + offset, as_arr_i64_mut(&mut dst[8 * k..]), a, a_size, b);
+        }
+    }
 }
 
 #[inline(always)]
@@ -329,10 +324,6 @@ pub fn i64_save_1blk_contiguous_ref(n: usize, offset: usize, rows: usize, blk: u
     for (dst_row, src_chunk) in dst_rows.zip(src_chunks) {
         dst_row[offset..offset + 8].copy_from_slice(src_chunk);
     }
-}
-
-pub trait I64ConvolutionByConst1Coeff {
-    fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]);
 }
 
 #[inline(always)]
@@ -374,32 +365,8 @@ pub(crate) fn as_arr_i64_mut<const size: usize>(x: &mut [i64]) -> &mut [i64; siz
     unsafe { &mut *(x.as_mut_ptr() as *mut [i64; size]) }
 }
 
-pub trait I64ConvolutionByConst2Coeffs {
-    fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]);
-}
-
 #[inline(always)]
 pub fn i64_convolution_by_const_2coeffs_ref(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
     i64_convolution_by_const_1coeff_ref(k, as_arr_i64_mut(&mut dst[..8]), a, a_size, b);
     i64_convolution_by_const_1coeff_ref(k + 1, as_arr_i64_mut(&mut dst[8..]), a, a_size, b);
-}
-
-impl<BE: Backend> I64ConvolutionByConst<BE> for BE where Self: I64ConvolutionByConst1Coeff + I64ConvolutionByConst2Coeffs {}
-
-pub trait I64ConvolutionByConst<BE: Backend>
-where
-    BE: I64ConvolutionByConst1Coeff + I64ConvolutionByConst2Coeffs,
-{
-    fn i64_convolution_by_const(dst: &mut [i64], dst_size: usize, offset: usize, a: &[i64], a_size: usize, b: &[i64]) {
-        assert!(a_size > 0);
-
-        for k in (0..dst_size - 1).step_by(2) {
-            BE::i64_convolution_by_const_2coeffs(k + offset, as_arr_i64_mut(&mut dst[8 * k..]), a, a_size, b);
-        }
-
-        if !dst_size.is_multiple_of(2) {
-            let k: usize = dst_size - 1;
-            BE::i64_convolution_by_const_1coeff(k + offset, as_arr_i64_mut(&mut dst[8 * k..]), a, a_size, b);
-        }
-    }
 }

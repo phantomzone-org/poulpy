@@ -68,9 +68,12 @@ where
         A: GGLWEInfos,
     {
         assert_eq!(self.n() as u32, infos.n());
-        self.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
-            .max(GLWESecret::bytes_of_from_infos(infos))
-            + GLWESecretPrepared::bytes_of_from_infos(self, infos)
+        let lvl_0: usize = GLWESecretPrepared::bytes_of_from_infos(self, infos);
+        let lvl_1: usize = self
+            .gglwe_compressed_encrypt_sk_tmp_bytes(infos)
+            .max(GLWESecret::bytes_of_from_infos(infos));
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
@@ -90,10 +93,10 @@ where
         assert_eq!(res.rank_out(), res.rank_in());
         assert_eq!(sk.rank(), res.rank_out());
         assert!(
-            scratch.available() >= GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(self, res),
-            "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {}",
+            scratch.available() >= self.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GLWEAutomorphismKeyCompressedEncryptSk::glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(self, res)
+            self.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(res)
         );
 
         let (mut sk_out_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, sk.rank());

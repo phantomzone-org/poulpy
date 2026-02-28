@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{ScratchAvailable, VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
@@ -40,7 +40,10 @@ where
     where
         A: LWEInfos,
     {
-        self.vec_znx_normalize_tmp_bytes() + LWEPlaintext::bytes_of(infos.size())
+        let lvl_0: usize = LWEPlaintext::bytes_of(infos.size());
+        let lvl_1: usize = self.vec_znx_normalize_tmp_bytes();
+
+        lvl_0 + lvl_1
     }
 
     fn lwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
@@ -57,6 +60,12 @@ where
         {
             assert_eq!(res.n(), sk.n());
         }
+        assert!(
+            scratch.available() >= self.lwe_decrypt_tmp_bytes(res),
+            "scratch.available(): {} < LWEDecrypt::lwe_decrypt_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_decrypt_tmp_bytes(res)
+        );
 
         let (mut tmp, scratch_1) = scratch.take_lwe_plaintext(res);
         for i in 0..res.size() {

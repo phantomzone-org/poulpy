@@ -9,37 +9,27 @@ use crate::{
         VecZnxToRef,
     },
     oep::{
-        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl,
-        VecZnxDftApplyImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl,
-        VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl,
-        VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftApplyImpl, VecZnxDftCopyImpl,
+        VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl,
+        VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
 };
 
-impl<B> VecZnxDftFromBytes<B> for Module<B>
-where
-    B: Backend + VecZnxDftFromBytesImpl<B>,
-{
+impl<B: Backend> VecZnxDftFromBytes<B> for Module<B> {
     fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_from_bytes_impl(self.n(), cols, size, bytes)
+        VecZnxDft::<Vec<u8>, B>::from_bytes(self.n(), cols, size, bytes)
     }
 }
 
-impl<B> VecZnxDftBytesOf for Module<B>
-where
-    B: Backend + VecZnxDftAllocBytesImpl<B>,
-{
+impl<B: Backend> VecZnxDftBytesOf for Module<B> {
     fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_dft_bytes_of_impl(self.n(), cols, size)
+        B::bytes_of_vec_znx_dft(self.n(), cols, size)
     }
 }
 
-impl<B> VecZnxDftAlloc<B> for Module<B>
-where
-    B: Backend + VecZnxDftAllocImpl<B>,
-{
+impl<B: Backend> VecZnxDftAlloc<B> for Module<B> {
     fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_alloc_impl(self.n(), cols, size)
+        VecZnxDftOwned::alloc(self.n(), cols, size)
     }
 }
 

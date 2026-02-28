@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
@@ -76,7 +76,12 @@ where
     where
         A: GGSWInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes()) + GLWEPlaintext::bytes_of_from_infos(infos)
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_1: usize = self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes());
+
+        lvl_0 + lvl_1
     }
 
     fn ggsw_encrypt_sk<R, P, S>(
@@ -100,6 +105,12 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(pt.n(), self.n());
         assert_eq!(sk.n(), self.n() as u32);
+        assert!(
+            scratch.available() >= self.ggsw_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GGSWEncryptSk::ggsw_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_encrypt_sk_tmp_bytes(res)
+        );
 
         let k: usize = res.k().into();
         let base2k: usize = res.base2k().into();

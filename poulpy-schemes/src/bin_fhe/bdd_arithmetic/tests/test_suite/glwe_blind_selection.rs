@@ -12,7 +12,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use rand::RngCore;
+use rand::Rng;
 
 use crate::bin_fhe::{
     bdd_arithmetic::{

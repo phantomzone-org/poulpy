@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::VecZnxAddScalarInplace,
+    api::{ScratchAvailable, VecZnxAddScalarInplace},
     layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
 
@@ -43,7 +43,7 @@ pub trait GGLWENoise<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Stats
     where
-        R: GGLWEToRef,
+        R: GGLWEToRef + GGLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         P: ScalarZnxToRef;
 }
@@ -57,7 +57,10 @@ where
     where
         A: GGLWEInfos,
     {
-        GLWEPlaintext::bytes_of_from_infos(infos) + self.glwe_noise_tmp_bytes(infos)
+        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_1: usize = self.glwe_noise_tmp_bytes(infos);
+
+        lvl_0 + lvl_1
     }
 
     fn gglwe_noise<R, S, P>(
@@ -70,10 +73,17 @@ where
         scratch: &mut Scratch<BE>,
     ) -> Stats
     where
-        R: GGLWEToRef,
+        R: GGLWEToRef + GGLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
     {
+        assert!(
+            scratch.available() >= self.gglwe_noise_tmp_bytes(res),
+            "scratch.available(): {} < GGLWENoise::gglwe_noise_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_noise_tmp_bytes(res)
+        );
+
         let res: &GGLWE<&[u8]> = &res.to_ref();
         let dsize: usize = res.dsize().into();
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);

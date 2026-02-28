@@ -2,8 +2,8 @@ use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
     layouts::{Backend, DataMut, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, VecZnxToMut, ZnxInfos, ZnxZero},
     source::Source,
@@ -179,7 +179,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptSk<BE> for Module<BE>
 where
-    Self: Sized + ModuleN + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + GLWEEncryptSkInternal<BE>,
+    Self: Sized + ModuleN + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxDftBytesOf + GLWEEncryptSkInternal<BE>,
     Scratch<BE>: ScratchAvailable,
 {
     fn glwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -188,7 +188,13 @@ where
     {
         let size: usize = infos.size();
         assert_eq!(self.n() as u32, infos.n());
-        self.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(self.n(), 1, size) + self.bytes_of_vec_znx_dft(1, size)
+
+        let lvl_0: usize = VecZnx::bytes_of(self.n(), 1, size).max(self.vec_znx_normalize_tmp_bytes());
+        let lvl_1: usize = VecZnx::bytes_of(self.n(), 1, size);
+        let lvl_2: usize = self.bytes_of_vec_znx_dft(1, size);
+        let lvl_3: usize = self.vec_znx_normalize_tmp_bytes().max(self.vec_znx_big_normalize_tmp_bytes());
+
+        lvl_0 + lvl_1 + lvl_2 + lvl_3
     }
 
     fn glwe_encrypt_sk<R, P, S>(
@@ -290,7 +296,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos;
 
@@ -302,13 +308,14 @@ pub trait GLWEEncryptPk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos;
 }
 
 impl<BE: Backend> GLWEEncryptPk<BE> for Module<BE>
 where
     Self: GLWEEncryptPkInternal<BE> + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
+    Scratch<BE>: ScratchAvailable,
 {
     fn glwe_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -316,9 +323,12 @@ where
     {
         let size: usize = infos.size();
         assert_eq!(self.n() as u32, infos.n());
-        ((self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size)).max(ScalarZnx::bytes_of(self.n(), 1)))
-            + self.bytes_of_svp_ppol(1)
-            + self.vec_znx_normalize_tmp_bytes()
+        let lvl_0: usize = self.bytes_of_svp_ppol(1);
+        let lvl_1: usize =
+            (self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size)).max(ScalarZnx::bytes_of(self.n(), 1));
+        let lvl_2: usize = self.vec_znx_normalize_tmp_bytes();
+
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn glwe_encrypt_pk<R, P, K>(
@@ -330,10 +340,16 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
     {
+        assert!(
+            scratch.available() >= self.glwe_encrypt_pk_tmp_bytes(res),
+            "scratch.available(): {} < GLWEEncryptPk::glwe_encrypt_pk_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_encrypt_pk_tmp_bytes(res)
+        );
         self.glwe_encrypt_pk_internal(res, Some((pt, 0)), pk, source_xu, source_xe, scratch);
     }
 
@@ -345,9 +361,15 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
     {
+        assert!(
+            scratch.available() >= self.glwe_encrypt_pk_tmp_bytes(res),
+            "scratch.available(): {} < GLWEEncryptPk::glwe_encrypt_pk_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_encrypt_pk_tmp_bytes(res)
+        );
         self.glwe_encrypt_pk_internal(
             res,
             None::<(&GLWEPlaintext<Vec<u8>>, usize)>,
@@ -500,8 +522,9 @@ where
         + VecZnxNormalizeInplace<BE>
         + VecZnxAddNormal
         + VecZnxNormalize<BE>
-        + VecZnxSub,
-    Scratch<BE>: ScratchTakeBasic,
+        + VecZnxSub
+        + VecZnxBigNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
 {
     fn glwe_encrypt_sk_internal<R, P, S>(
         &self,

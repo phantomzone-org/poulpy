@@ -67,8 +67,10 @@ where
         K: GGLWEInfos,
         T: GGLWEInfos,
     {
-        self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
-            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos))
+        let lvl_0: usize = self
+            .glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
+            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos));
+        lvl_0
     }
 
     fn ggsw_automorphism<R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
@@ -82,7 +84,12 @@ where
         assert_eq!(res.dsize(), a.dsize());
         assert_eq!(res.base2k(), a.base2k());
         assert!(res.dnum() <= a.dnum());
-        assert!(scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk));
+        assert!(
+            scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk),
+            "scratch.available(): {} < GGSWAutomorphism::ggsw_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_automorphism_tmp_bytes(res, a, key, tsk)
+        );
 
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
@@ -107,6 +114,12 @@ where
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let tsk: &GGLWEToGGSWKeyPrepared<&[u8], BE> = &tsk.to_ref();
+        assert!(
+            scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, res, key, tsk),
+            "scratch.available(): {} < GGSWAutomorphism::ggsw_automorphism_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_automorphism_tmp_bytes(res, res, key, tsk)
+        );
 
         // Keyswitch the j-th row of the col 0
         for row in 0..res.dnum().as_usize() {

@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, Module, Scratch},
+};
 
 use crate::{
     GLWERotate, ScratchTakeCore,
@@ -39,8 +42,14 @@ where
     fn ggsw_rotate_inplace<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
     {
+        assert!(
+            scratch.available() >= self.ggsw_rotate_tmp_bytes(),
+            "scratch.available(): {} < GGSWRotate::ggsw_rotate_tmp_bytes: {}",
+            scratch.available(),
+            self.ggsw_rotate_tmp_bytes()
+        );
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
 
         let rows: usize = res.dnum().into();

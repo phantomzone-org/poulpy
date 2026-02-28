@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
+    api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
@@ -174,12 +174,13 @@ where
     where
         A: GGLWEInfos,
     {
-        self.vmp_prepare_tmp_bytes(
+        let lvl_0: usize = self.vmp_prepare_tmp_bytes(
             infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank() + 1).into(),
             infos.size(),
-        )
+        );
+        lvl_0
     }
 
     /// Transforms a standard [`GGLWE`] into the DFT domain, writing the result into `res`.
@@ -189,6 +190,7 @@ where
     where
         R: GGLWEPreparedToMut<BE>,
         O: GGLWEToRef,
+        Scratch<BE>: ScratchAvailable,
     {
         let mut res: GGLWEPrepared<&mut [u8], BE> = res.to_mut();
         let other: GGLWE<&[u8]> = other.to_ref();
@@ -198,7 +200,12 @@ where
         assert_eq!(res.base2k, other.base2k);
         assert_eq!(res.k, other.k);
         assert_eq!(res.dsize, other.dsize);
-
+        assert!(
+            scratch.available() >= self.prepare_gglwe_tmp_bytes(&res),
+            "scratch.available(): {} < GGLWEPreparedFactory::prepare_gglwe_tmp_bytes: {}",
+            scratch.available(),
+            self.prepare_gglwe_tmp_bytes(&res)
+        );
         self.vmp_prepare(&mut res.data, &other.data, scratch);
     }
 }
@@ -267,6 +274,7 @@ impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
     where
         O: GGLWEToRef,
         M: GGLWEPreparedFactory<B>,
+        Scratch<B>: ScratchAvailable,
     {
         module.prepare_gglwe(self, other, scratch);
     }

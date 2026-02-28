@@ -1,7 +1,7 @@
 //! Backend extension points for extended-precision [`VecZnxBig`](crate::layouts::VecZnxBig) operations.
 
 use crate::{
-    layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, Module, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -14,30 +14,6 @@ pub unsafe trait VecZnxBigFromSmallImpl<B: Backend> {
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
-/// * See [crate::api::VecZnxBigAlloc] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigAllocImpl<B: Backend> {
-    fn vec_znx_big_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxBigOwned<B>;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
-/// * See [crate::api::VecZnxBigFromBytes] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
-    fn vec_znx_big_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
-/// * See [crate::api::VecZnxBigBytesOf] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigAllocBytesImpl {
-    fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 #[allow(clippy::too_many_arguments)]

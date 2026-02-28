@@ -1,4 +1,5 @@
-use rand::RngCore;
+use super::TestParams;
+use rand::Rng;
 
 use crate::{
     api::{
@@ -10,7 +11,7 @@ use crate::{
     source::Source,
 };
 
-pub fn test_vec_znx_dft_add<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_dft_add<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxDftAdd<BR>
         + VecZnxDftAlloc<BR>
@@ -27,6 +28,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -132,8 +134,11 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_add_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_dft_add_inplace<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: VecZnxDftAddInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -149,6 +154,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -239,7 +245,7 @@ where
     }
 }
 
-pub fn test_vec_znx_copy<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_copy<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxDftCopy<BR>
         + VecZnxDftAlloc<BR>
@@ -256,6 +262,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -287,6 +294,8 @@ where
             for params in [[1, 0], [1, 1], [1, 2], [2, 2]] {
                 let steps: usize = params[0];
                 let offset: usize = params[1];
+
+                println!("steps: {} offset: {}", steps, offset);
 
                 let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
                 let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
@@ -345,7 +354,7 @@ where
     }
 }
 
-pub fn test_vec_znx_idft_apply<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_idft_apply<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxDftAlloc<BR>
@@ -362,6 +371,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -442,8 +452,11 @@ where
     }
 }
 
-pub fn test_vec_znx_idft_apply_tmpa<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_idft_apply_tmpa<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxBigAlloc<BR>
@@ -459,6 +472,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -534,8 +548,11 @@ where
     }
 }
 
-pub fn test_vec_znx_idft_apply_consume<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_idft_apply_consume<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxIdftApplyTmpBytes
         + VecZnxDftAlloc<BR>
@@ -551,6 +568,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -623,7 +641,7 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_sub<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_dft_sub<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxDftSub<BR>
         + VecZnxDftAlloc<BR>
@@ -640,6 +658,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -745,8 +764,11 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: VecZnxDftSubInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -762,6 +784,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -853,7 +876,7 @@ where
 }
 
 pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
-    base2k: usize,
+    params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
@@ -872,6 +895,7 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 

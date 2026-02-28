@@ -17,7 +17,7 @@
 //! from [`GLWETrace::glwe_trace_galois_elements`].
 
 use poulpy_hal::{
-    api::{ModuleLogN, VecZnxNormalizeTmpBytes},
+    api::{ModuleLogN, ScratchAvailable, VecZnxNormalizeTmpBytes},
     layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
@@ -111,23 +111,27 @@ where
         A: GLWEInfos,
         K: GGLWEInfos,
     {
-        let trace: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
+        let lvl_0: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
         if a_infos.base2k() != key_infos.base2k() {
-            let glwe_conv: usize = VecZnx::bytes_of(
+            let lvl_1: usize = VecZnx::bytes_of(
                 self.n(),
                 (key_infos.rank_out() + 1).into(),
                 res_infos.k().min(a_infos.k()).div_ceil(key_infos.base2k()) as usize,
             ) + self.vec_znx_normalize_tmp_bytes();
-            return glwe_conv + trace;
+            return lvl_0 + lvl_1;
         }
 
-        let tmp = if res_infos.k() > a_infos.k() {
+        let lvl_1: usize = if res_infos.k() > a_infos.k() {
             GLWE::bytes_of_from_infos(res_infos)
         } else {
             GLWE::bytes_of_from_infos(a_infos)
         };
 
-        trace + tmp
+        lvl_0 + lvl_1
     }
 
     fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
@@ -138,6 +142,12 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         let atk_layout: &GGLWELayout = &keys.automorphism_key_infos();
+        assert!(
+            scratch.available() >= self.glwe_trace_tmp_bytes(res, a, atk_layout),
+            "scratch.available(): {} < GLWETrace::glwe_trace_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_trace_tmp_bytes(res, a, atk_layout)
+        );
 
         let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: res.n(),
@@ -177,6 +187,12 @@ where
         assert!(skip <= log_n);
         assert_eq!(ksk_infos.rank_in(), res.rank());
         assert_eq!(ksk_infos.rank_out(), res.rank());
+        assert!(
+            scratch.available() >= self.glwe_trace_tmp_bytes(res, res, ksk_infos),
+            "scratch.available(): {} < GLWETrace::glwe_trace_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_trace_tmp_bytes(res, res, ksk_infos)
+        );
 
         if res.base2k() != ksk_infos.base2k() {
             let (mut res_conv, scratch_1) = scratch.take_glwe(&GLWELayout {

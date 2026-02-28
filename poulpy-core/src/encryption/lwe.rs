@@ -1,5 +1,7 @@
 use poulpy_hal::{
-    api::{ScratchTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace},
+    api::{
+        ScratchAvailable, ScratchTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+    },
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
@@ -9,6 +11,17 @@ use crate::{
     encryption::{SIGMA, SIGMA_BOUND},
     layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
 };
+
+impl LWE<Vec<u8>> {
+    /// Returns the scratch space (in bytes) required by [`LWE::encrypt_sk`].
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
+    where
+        A: LWEInfos,
+        M: LWEEncryptSk<BE>,
+    {
+        module.lwe_encrypt_sk_tmp_bytes(infos)
+    }
+}
 
 impl<DataSelf: DataMut> LWE<DataSelf> {
     pub fn encrypt_sk<P, S, M, BE: Backend>(
@@ -30,6 +43,11 @@ impl<DataSelf: DataMut> LWE<DataSelf> {
 }
 
 pub trait LWEEncryptSk<BE: Backend> {
+    /// Returns the scratch space (in bytes) required by [`LWE::encrypt_sk`].
+    fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: LWEInfos;
+
     fn lwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -47,9 +65,21 @@ pub trait LWEEncryptSk<BE: Backend> {
 
 impl<BE: Backend> LWEEncryptSk<BE> for Module<BE>
 where
-    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE>,
-    Scratch<BE>: ScratchTakeBasic,
+    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
 {
+    fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: LWEInfos,
+    {
+        let size: usize = infos.size();
+
+        let lvl_0: usize = LWEPlaintext::bytes_of(size);
+        let lvl_1: usize = self.vec_znx_normalize_tmp_bytes();
+
+        lvl_0 + lvl_1
+    }
+
     fn lwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -72,6 +102,13 @@ where
         {
             assert_eq!(res.n(), sk.n())
         }
+
+        assert!(
+            scratch.available() >= self.lwe_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < LWEEncryptSk::lwe_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_encrypt_sk_tmp_bytes(res)
+        );
 
         let base2k: usize = res.base2k().into();
         let k: usize = res.k().into();

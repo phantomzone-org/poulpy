@@ -82,10 +82,14 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESecretPrepared::bytes_of_from_infos(self, infos)
-            + self
-                .gglwe_encrypt_sk_tmp_bytes(infos)
-                .max(GLWESecret::bytes_of_from_infos(infos))
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWESecretPrepared::bytes_of_from_infos(self, infos);
+        let lvl_1_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
+        let lvl_1_sk: usize = GLWESecret::bytes_of_from_infos(infos);
+        let lvl_1: usize = lvl_1_encrypt.max(lvl_1_sk);
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_automorphism_key_encrypt_sk<R, S>(
@@ -107,7 +111,7 @@ where
         assert_eq!(sk.rank(), res.rank_out());
         assert!(
             scratch.available() >= self.glwe_automorphism_key_encrypt_sk_tmp_bytes(res),
-            "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
+            "scratch.available(): {} < GLWEAutomorphismKeyEncryptSk::glwe_automorphism_key_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
             self.glwe_automorphism_key_encrypt_sk_tmp_bytes(res)
         );

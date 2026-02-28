@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ScratchTakeBasic,
+    api::{ScratchAvailable, ScratchTakeBasic},
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
@@ -65,6 +65,8 @@ where
     where
         A: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, infos.n());
+
         let sk_prepared: usize = GLWESecretPrepared::bytes_of(self, infos.rank_out());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
 
@@ -78,9 +80,13 @@ where
             dsize: infos.dsize(),
         };
 
-        let gglwe_encrypt: usize = self.gglwe_compressed_encrypt_sk_tmp_bytes(&tensor_infos);
+        let lvl_0: usize = sk_prepared;
+        let lvl_1: usize = sk_tensor;
+        let lvl_2_encrypt: usize = self.gglwe_compressed_encrypt_sk_tmp_bytes(&tensor_infos);
+        let lvl_2_prepare: usize = self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank());
+        let lvl_2: usize = lvl_2_encrypt.max(lvl_2_prepare);
 
-        (sk_prepared + sk_tensor) + gglwe_encrypt.max(self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank()))
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn glwe_tensor_key_compressed_encrypt_sk<R, S>(
@@ -96,6 +102,12 @@ where
     {
         assert_eq!(res.rank_out(), sk.rank());
         assert_eq!(res.n(), sk.n());
+        assert!(
+            scratch.available() >= self.glwe_tensor_key_compressed_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < GLWETensorKeyCompressedEncryptSk::glwe_tensor_key_compressed_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_tensor_key_compressed_encrypt_sk_tmp_bytes(res)
+        );
 
         let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
         let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());

@@ -1,86 +1,23 @@
 //! Reference (portable) CPU backend for the Poulpy lattice cryptography library.
 //!
-//! This crate provides [`FFT64Ref`], a backend implementation for [`poulpy_hal`] that uses
-//! scalar `f64` FFT arithmetic. It is the canonical reference implementation: portable across
-//! all CPU architectures, prioritizing correctness and debuggability over throughput.
+//! This crate provides two backend implementations for [`poulpy_hal`]:
 //!
-//! # Architecture
+//! - [`FFT64Ref`]: scalar `f64` FFT arithmetic — see the [`fft64`] module.
+//! - [`NTT120Ref`]: scalar Q120 NTT arithmetic (CRT over four ~30-bit primes) — see the [`ntt120`] module.
 //!
-//! `poulpy-hal` defines a hardware abstraction layer (HAL) via the [`Backend`](poulpy_hal::layouts::Backend)
-//! trait and a family of _open extension point_ (OEP) traits in [`poulpy_hal::oep`]. This crate
-//! implements every OEP trait for the [`FFT64Ref`] backend by delegating to the reference
-//! functions provided by `poulpy_hal::reference`.
-//!
-//! The internal modules are organized by operation domain:
-//!
-//! | Module          | Domain                                                    |
-//! |-----------------|-----------------------------------------------------------|
-//! | `module`        | Backend handle lifecycle, FFT table management            |
-//! | `scratch`       | Temporary memory allocation and arena-style sub-allocation|
-//! | `znx`           | Single ring element (`Z[X]/(X^n+1)`) arithmetic           |
-//! | `vec_znx`       | Vectors of ring elements (limb decomposition)             |
-//! | `vec_znx_big`   | Large-coefficient (multi-word) ring element vectors        |
-//! | `vec_znx_dft`   | Fourier-domain ring element vectors (forward/inverse DFT) |
-//! | `reim`          | Real/imaginary interleaved FFT primitives                 |
-//! | `convolution`   | Polynomial convolution via FFT, by-constant, and pairwise |
-//! | `svp`           | Scalar-vector product in frequency domain                 |
-//! | `vmp`           | Vector-matrix product in frequency domain                 |
-//!
-//! # Scalar types
-//!
-//! For the `FFT64Ref` backend:
-//!
-//! - `ScalarPrep = f64`: coefficients in the DFT / frequency domain.
-//! - `ScalarBig  = i64`: coefficients in the large-integer (multi-word) domain.
-//! - Both `layout_prep_word_count()` and `layout_big_word_count()` return `1`,
-//!   meaning each coefficient occupies exactly one scalar word.
-//!
-//! # Usage
-//!
-//! This crate exports a single public type, [`FFT64Ref`], which is used as a type parameter
-//! to the HAL generic types. All functionality is accessed through the trait methods defined
-//! in `poulpy_hal::api`.
+//! Both are canonical reference implementations: portable across all CPU architectures,
+//! prioritising correctness and debuggability over throughput.
 //!
 //! # Platform support
 //!
 //! Compiles and runs on any target supported by the Rust standard library.
 //! No platform-specific intrinsics or assembly are used.
 
-mod convolution;
-mod module;
-mod reim;
-mod scratch;
-mod svp;
-mod vec_znx;
-mod vec_znx_big;
-mod vec_znx_dft;
-mod vmp;
-mod znx;
+pub mod fft64;
+pub mod ntt120;
 
 #[cfg(test)]
 mod tests;
 
-/// Reference (portable) CPU backend using f64 FFT.
-///
-/// `FFT64Ref` is a zero-sized marker type that selects the reference CPU backend
-/// when used as the type parameter `B` in [`poulpy_hal::layouts::Module<B>`](poulpy_hal::layouts::Module)
-/// and related HAL types. It implements all open extension point (OEP) traits from
-/// `poulpy_hal::oep` by delegating to the portable reference functions in
-/// `poulpy_hal::reference::fft64`.
-///
-/// # Backend characteristics
-///
-/// - **ScalarPrep**: `f64` — DFT-domain coefficients are 64-bit IEEE 754 floats.
-/// - **ScalarBig**: `i64` — large-coefficient ring elements use 64-bit signed integers.
-/// - **Word counts**: both `layout_prep_word_count()` and `layout_big_word_count()` return `1`.
-/// - **FFT tables**: precomputed twiddle factors stored in the module handle
-///   (`FFT64RefHandle`), shared across all operations on the same module.
-///
-/// # Thread safety
-///
-/// `FFT64Ref` is `Send + Sync` (derived from being a zero-sized, field-less struct).
-/// The `Module<FFT64Ref>` that holds the FFT tables is also `Send + Sync`, so modules can
-/// be shared across threads. Individual operations require exclusive (`&mut`) access to their
-/// output buffers and scratch space, preventing data races at the API level.
-#[derive(Debug, Clone, Copy)]
-pub struct FFT64Ref;
+pub use fft64::FFT64Ref;
+pub use ntt120::{NTT120Ref, NTT120RefHandle};

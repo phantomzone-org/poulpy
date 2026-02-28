@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_external_product<BE: Backend>(module: &Module<BE>)
+pub fn test_ggsw_external_product<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
@@ -26,10 +27,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 17;
-    let key_base2k: usize = 13;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
     let out_base2k: usize = in_base2k; // MUST BE SAME
-    let k_in: usize = 102;
+    let k_in: usize = 4 * in_base2k + 1;
     let max_dsize: usize = k_in.div_ceil(key_base2k);
 
     for rank in 1_usize..3 {
@@ -141,13 +143,12 @@ where
 
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
-                    assert!(
-                        ggsw_out
-                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise(col)
-                    )
+                    let noise = ggsw_out
+                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let max_noise = max_noise(col);
+                    assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
                 }
             }
         }
@@ -155,7 +156,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_external_product_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_ggsw_external_product_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
@@ -166,9 +167,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let k_out: usize = 102;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_out: usize = 4 * out_base2k + 1;
     let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     for rank in 1_usize..3 {
@@ -269,13 +271,12 @@ where
 
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
-                    assert!(
-                        ggsw_out
-                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise(col)
-                    )
+                    let noise = ggsw_out
+                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let max_noise = max_noise(col);
+                    assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
                 }
             }
         }

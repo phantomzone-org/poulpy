@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ModuleN,
+    api::{ModuleN, ScratchAvailable},
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
@@ -49,6 +49,9 @@ where
         A: GLWEInfos,
         K: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, glwe_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
         let res_infos: GLWELayout = GLWELayout {
             n: self.n().into(),
             base2k: lwe_infos.base2k(),
@@ -56,9 +59,11 @@ where
             rank: Rank(1),
         };
 
-        GLWE::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.k(), 1u32.into())
-            + GLWE::bytes_of_from_infos(glwe_infos)
-            + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
+        let lvl_0: usize = GLWE::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.k(), 1u32.into());
+        let lvl_1: usize = self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos);
+        let lvl_2: usize = GLWE::bytes_of_from_infos(glwe_infos);
+
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn lwe_from_glwe<R, A, K>(&self, res: &mut R, a: &A, a_idx: usize, key: &K, scratch: &mut Scratch<BE>)
@@ -74,6 +79,12 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
         assert!(res.n() <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.lwe_from_glwe_tmp_bytes(res, a, key),
+            "scratch.available(): {} < LWEFromGLWE::lwe_from_glwe_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_from_glwe_tmp_bytes(res, a, key)
+        );
 
         let glwe_layout: GLWELayout = GLWELayout {
             n: self.n().into(),

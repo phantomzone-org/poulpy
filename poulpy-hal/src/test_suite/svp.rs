@@ -1,4 +1,5 @@
-use rand::RngCore;
+use super::TestParams;
+use rand::Rng;
 
 use crate::{
     api::{
@@ -10,7 +11,7 @@ use crate::{
     source::Source,
 };
 
-pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDft<BR>
@@ -29,6 +30,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -99,7 +101,7 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_svp_apply_dft_to_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDft<BR>
@@ -120,6 +122,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -205,8 +208,11 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_svp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDftAdd<BR>
         + SvpPPolAlloc<BR>
@@ -226,6 +232,7 @@ where
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -317,7 +324,7 @@ where
 }
 
 pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
-    base2k: usize,
+    params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
@@ -340,6 +347,7 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 

@@ -1,5 +1,5 @@
 use rand_chacha::{ChaCha8Rng, rand_core::SeedableRng};
-use rand_core::RngCore;
+use rand_core::{Infallible, Rng, TryRng};
 
 /// 2^53, the number of distinct values representable in the 53-bit significand
 /// of an IEEE-754 `f64`. Used as the denominator when converting a random
@@ -96,21 +96,24 @@ impl Source {
     }
 }
 
-/// Delegates to the inner [`ChaCha8Rng`], allowing `Source` to be used
-/// anywhere a generic [`RngCore`] is required.
-impl RngCore for Source {
+/// Implements [`TryRng`] by delegating to the inner [`ChaCha8Rng`].
+/// The blanket `impl<R: TryRng<Error = Infallible>> Rng for R` in `rand_core`
+/// then provides [`Rng`] automatically.
+impl TryRng for Source {
+    type Error = Infallible;
+
     #[inline(always)]
-    fn next_u32(&mut self) -> u32 {
-        self.source.next_u32()
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        self.source.try_next_u32()
     }
 
     #[inline(always)]
-    fn next_u64(&mut self) -> u64 {
-        self.source.next_u64()
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        self.source.try_next_u64()
     }
 
     #[inline(always)]
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        self.source.fill_bytes(bytes)
+    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), Self::Error> {
+        self.source.try_fill_bytes(bytes)
     }
 }

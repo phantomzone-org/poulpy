@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
@@ -57,7 +57,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToRef<BE>,
-        R: GGLWEToMut;
+        R: GGLWEToMut + GGLWEInfos;
 }
 
 impl<BE: Backend> LWEToGLWESwitchingKeyEncryptSk<BE> for Module<BE>
@@ -78,8 +78,12 @@ where
             Rank(1),
             "rank_in != 1 is not supported for LWEToGLWEKeyPrepared"
         );
-        GLWESecret::bytes_of(self.n().into(), infos.rank_in())
-            + GGLWE::encrypt_sk_tmp_bytes(self, infos).max(self.vec_znx_automorphism_inplace_tmp_bytes())
+        assert_eq!(self.n() as u32, infos.n());
+
+        let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), infos.rank_in());
+        let lvl_1: usize = GGLWE::encrypt_sk_tmp_bytes(self, infos).max(self.vec_znx_automorphism_inplace_tmp_bytes());
+
+        lvl_0 + lvl_1
     }
 
     fn lwe_to_glwe_key_encrypt_sk<R, S1, S2>(
@@ -93,11 +97,17 @@ where
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToRef<BE>,
-        R: GGLWEToMut,
+        R: GGLWEToMut + GGLWEInfos,
     {
         let sk_lwe: &LWESecret<&[u8]> = &sk_lwe.to_ref();
 
         assert!(sk_lwe.n().0 <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.lwe_to_glwe_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < LWEToGLWESwitchingKeyEncryptSk::lwe_to_glwe_key_encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            self.lwe_to_glwe_key_encrypt_sk_tmp_bytes(res)
+        );
 
         let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
         sk_lwe_as_glwe.dist = sk_lwe.dist;

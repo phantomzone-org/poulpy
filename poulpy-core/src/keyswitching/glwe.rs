@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos, ZnxZero},
 };
 
 use crate::{
@@ -56,20 +56,30 @@ where
         A: GLWEInfos,
         B: GGLWEInfos,
     {
+        assert_eq!(self.n() as u32, res_infos.n());
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
         let cols: usize = res_infos.rank().as_usize() + 1;
-        let size: usize = if a_infos.base2k() != key_infos.base2k() {
-            let a_conv_infos = &GLWELayout {
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols, key_infos.size());
+        let lvl_1: usize = self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_2: usize = if a_infos.base2k() != key_infos.base2k() {
+            let a_conv_infos: GLWELayout = GLWELayout {
                 n: a_infos.n(),
                 base2k: key_infos.base2k(),
                 k: a_infos.k(),
                 rank: a_infos.rank(),
             };
-            self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_conv_infos, key_infos) + GLWE::bytes_of_from_infos(a_conv_infos)
+            let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
+            let lvl_2_1: usize =
+                self.glwe_normalize_tmp_bytes()
+                    .max(self.glwe_keyswitch_internal_tmp_bytes(res_infos, &a_conv_infos, key_infos));
+            lvl_2_0 + lvl_2_1
         } else {
             self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
         };
 
-        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, key_infos.size())
+        lvl_0 + lvl_1.max(lvl_2)
     }
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -97,19 +107,19 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
 
-        let scratch_needed: usize = self.glwe_keyswitch_tmp_bytes(res, a, key);
-
         assert!(
-            scratch.available() >= scratch_needed,
-            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scratch_needed}",
+            scratch.available() >= self.glwe_keyswitch_tmp_bytes(res, a, key),
+            "scratch.available(): {} < GLWEKeyswitch::glwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
+            self.glwe_keyswitch_tmp_bytes(res, a, key)
         );
 
         let a_base2k: usize = a.base2k().into();
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+        res_dft.zero(); // TODO: remove once the above has the correct size
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -153,18 +163,18 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
 
-        let scratch_needed: usize = self.glwe_keyswitch_tmp_bytes(res, res, key);
-
         assert!(
-            scratch.available() >= scratch_needed,
-            "scratch.available()={} < glwe_keyswitch_tmp_bytes={scratch_needed}",
+            scratch.available() >= self.glwe_keyswitch_tmp_bytes(res, res, key),
+            "scratch.available(): {} < GLWEKeyswitch::glwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
+            self.glwe_keyswitch_tmp_bytes(res, res, key)
         );
 
         let res_base2k: usize = res.base2k().as_usize();
         let key_base2k: usize = key.base2k().as_usize();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise
+        res_dft.zero(); // TODO: remove once the above has the correct size
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -233,7 +243,10 @@ where
     {
         let cols: usize = (a_infos.rank() + 1).into();
         let a_size: usize = a_infos.size();
-        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols - 1, a_size)
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols - 1, a_size);
+        let lvl_1: usize = self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos);
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_keyswitch_internal<DR, A, K>(
@@ -247,11 +260,17 @@ where
         DR: DataMut,
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
     {
         let a: &GLWE<&[u8]> = &a.to_ref();
         let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
         assert_eq!(a.base2k(), key.base2k());
+        assert!(
+            scratch.available() >= self.glwe_keyswitch_internal_tmp_bytes(key, a, key),
+            "scratch.available(): {} < GLWEKeySwitchInternal::glwe_keyswitch_internal_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_keyswitch_internal_tmp_bytes(key, a, key)
+        );
         let cols: usize = (a.rank() + 1).into();
         let a_size: usize = a.size();
         let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols - 1, a_size);
@@ -293,20 +312,20 @@ where
         let dsize: usize = key_infos.dsize().as_usize();
 
         if dsize == 1 {
-            self.vmp_apply_dft_to_dft_tmp_bytes(
+            let lvl_0: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
                 res_size,
                 a_size,
                 key_infos.dnum().into(),
                 (key_infos.rank_in()).into(),
                 (key_infos.rank_out() + 1).into(),
                 key_infos.size(),
-            )
+            );
+            lvl_0
         } else {
             let dnum: usize = key_infos.dnum().into();
             let a_size: usize = a_size.div_ceil(dsize).min(dnum);
-            let ai_dft: usize = self.bytes_of_vec_znx_dft(key_infos.rank_in().into(), a_size);
-
-            let vmp: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
+            let lvl_0: usize = self.bytes_of_vec_znx_dft(key_infos.rank_in().into(), a_size);
+            let lvl_1: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
                 res_size,
                 a_size,
                 dnum,
@@ -315,7 +334,7 @@ where
                 key_infos.size(),
             );
 
-            ai_dft + vmp
+            lvl_0 + lvl_1
         }
     }
 
@@ -323,7 +342,7 @@ where
     where
         DR: DataMut,
         A: VecZnxDftToRef<BE>,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let a: &VecZnxDft<&[u8], BE> = &a.to_ref();
@@ -332,6 +351,12 @@ where
         let cols: usize = a.cols();
         let a_size: usize = a.size();
         let pmat: &VmpPMat<&[u8], BE> = &key.data;
+        assert!(
+            scratch.available() >= self.gglwe_product_dft_tmp_bytes(res.size(), a_size, key),
+            "scratch.available(): {} < GGLWEProduct::gglwe_product_dft_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_product_dft_tmp_bytes(res.size(), a_size, key)
+        );
 
         // If dsize == 1, then the digit decomposition is equal to Base2K and we can simply
         // can the vmp API.
@@ -353,7 +378,7 @@ where
 
             // We bound ai_dft size by the number of rows of the matrix
             let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize).min(dnum));
-            ai_dft.data_mut().fill(0);
+            ai_dft.zero();
 
             for di in 0..dsize {
                 // Sets ai_dft size according to the current digit (if dsize does not divides a_size),

@@ -3,12 +3,12 @@ use crate::{
         Backend, ScalarZnx, ScalarZnxToRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut,
         VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
-    reference::fft64::reim::{ReimAddMul, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimMul, ReimMulInplace, ReimZero},
+    reference::fft64::reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
 };
 
 pub fn svp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimFromZnx,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: SvpPPolToMut<BE>,
     A: ScalarZnxToRef,
 {
@@ -27,7 +27,7 @@ pub fn svp_apply_dft<R, A, B, BE>(
     b: &B,
     b_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimZero + ReimFromZnx + ReimMulInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     B: VecZnxToRef,
@@ -55,7 +55,7 @@ pub fn svp_apply_dft<R, A, B, BE>(
 
 pub fn svp_apply_dft_to_dft<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimMul + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     B: VecZnxDftToRef<BE>,
@@ -78,9 +78,11 @@ where
     }
 }
 
+/// Limbs of `res` beyond `min(b.size(), res.size())` are left untouched —
+/// the caller is responsible for initialization.
 pub fn svp_apply_dft_to_dft_add<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimAddMul + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     B: VecZnxDftToRef<BE>,
@@ -97,15 +99,11 @@ where
     for j in 0..min_size {
         BE::reim_addmul(res.at_mut(res_col, j), ppol, b.at(b_col, j));
     }
-
-    for j in min_size..res_size {
-        BE::reim_zero(res.at_mut(res_col, j));
-    }
 }
 
 pub fn svp_apply_dft_to_dft_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimMulInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
 {

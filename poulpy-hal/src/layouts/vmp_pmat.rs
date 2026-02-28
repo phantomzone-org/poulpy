@@ -6,7 +6,6 @@ use std::{
 use crate::{
     alloc_aligned,
     layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxView},
-    oep::VmpPMatAllocBytesImpl,
 };
 
 /// Prepared (DFT-domain) polynomial matrix for vector-matrix products.
@@ -95,12 +94,9 @@ impl<D: Data, B: Backend> VmpPMat<D, B> {
     }
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B>
-where
-    B: VmpPMatAllocBytesImpl<B>,
-{
+impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B> {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size));
+        let data: Vec<u8> = alloc_aligned(B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
             n,
@@ -114,7 +110,7 @@ where
 
     pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size));
+        assert!(data.len() == B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
         crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),

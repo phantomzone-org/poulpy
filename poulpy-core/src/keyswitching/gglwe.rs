@@ -1,4 +1,7 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch},
+};
 
 use crate::{
     ScratchTakeCore,
@@ -117,7 +120,8 @@ where
         A: GGLWEInfos,
         K: GGLWEInfos,
     {
-        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
+        lvl_0
     }
 
     fn gglwe_keyswitch<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
@@ -151,6 +155,12 @@ where
         assert!(res.dnum() <= a.dnum(), "res.dnum()={} > a.dnum()={}", res.dnum(), a.dnum());
         assert_eq!(res.dsize(), a.dsize(), "res dsize: {} != a dsize: {}", res.dsize(), a.dsize());
         assert_eq!(res.base2k(), a.base2k());
+        assert!(
+            scratch.available() >= self.gglwe_keyswitch_tmp_bytes(res, a, b),
+            "scratch.available(): {} < GGLWEKeyswitch::gglwe_keyswitch_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_keyswitch_tmp_bytes(res, a, b)
+        );
 
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GGLWE<&[u8]> = &a.to_ref();
@@ -176,6 +186,12 @@ where
             "res output rank: {} != a output rank: {}",
             res.rank_out(),
             a.rank_out()
+        );
+        assert!(
+            scratch.available() >= self.gglwe_keyswitch_tmp_bytes(res, res, a),
+            "scratch.available(): {} < GGLWEKeyswitch::gglwe_keyswitch_tmp_bytes: {}",
+            scratch.available(),
+            self.gglwe_keyswitch_tmp_bytes(res, res, a)
         );
 
         for row in 0..res.dnum().into() {

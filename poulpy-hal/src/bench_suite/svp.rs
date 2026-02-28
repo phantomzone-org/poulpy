@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
-use rand::RngCore;
+use rand::Rng;
 
 use crate::{
     api::{

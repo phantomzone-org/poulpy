@@ -13,6 +13,7 @@ documentation = "https://docs.rs/poulpy"
 enable-avx = []
 
 [dependencies]
+bytemuck = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 rug = {workspace = true}
@@ -32,5 +33,5 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 
 [[bench]]
-name = "convolution"
+name = "ntt"
 harness = false

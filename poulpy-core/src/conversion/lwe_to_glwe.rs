@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{ScratchAvailable, ScratchTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
@@ -19,20 +19,26 @@ where
         A: LWEInfos,
         K: GGLWEInfos,
     {
-        let ct: usize = GLWE::bytes_of(
+        assert_eq!(self.n() as u32, glwe_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
+        let lvl_0: usize = GLWE::bytes_of(
             self.n().into(),
             key_infos.base2k(),
             lwe_infos.k().max(glwe_infos.k()),
             1u32.into(),
         );
 
-        let ks: usize = self.glwe_keyswitch_tmp_bytes(glwe_infos, glwe_infos, key_infos);
-        if lwe_infos.base2k() == key_infos.base2k() {
-            ct + ks
+        let lvl_1_ks: usize = self.glwe_keyswitch_tmp_bytes(glwe_infos, glwe_infos, key_infos);
+        let lvl_1_a_conv: usize = if lwe_infos.base2k() == key_infos.base2k() {
+            0
         } else {
-            let a_conv = VecZnx::bytes_of(self.n(), 1, lwe_infos.size()) + self.vec_znx_normalize_tmp_bytes();
-            ct + a_conv + ks
-        }
+            VecZnx::bytes_of(self.n(), 1, lwe_infos.size()) + self.vec_znx_normalize_tmp_bytes()
+        };
+
+        let lvl_1: usize = lvl_1_ks.max(lvl_1_a_conv);
+
+        lvl_0 + lvl_1
     }
 
     fn glwe_from_lwe<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
@@ -47,6 +53,12 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(lwe.n() <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.glwe_from_lwe_tmp_bytes(res, lwe, ksk),
+            "scratch.available(): {} < GLWEFromLWE::glwe_from_lwe_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_from_lwe_tmp_bytes(res, lwe, ksk)
+        );
 
         let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),

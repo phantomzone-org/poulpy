@@ -1,3 +1,4 @@
+use super::TestParams;
 use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc,
@@ -7,11 +8,11 @@ use crate::{
     layouts::{DataViewMut, DigestU64, FillUniform, MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig},
     source::Source,
 };
-use rand::RngCore;
+use rand::Rng;
 
 use crate::layouts::{Backend, VecZnxDft, VmpPMat};
 
-pub fn test_vmp_apply_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vmp_apply_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: ModuleNew<BR>
         + VmpApplyDftTmpBytes
@@ -34,6 +35,7 @@ where
         + VecZnxBigNormalize<BT>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -121,7 +123,7 @@ where
     }
 }
 
-pub fn test_vmp_apply_dft_to_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vmp_apply_dft_to_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: ModuleNew<BR>
         + VmpApplyDftToDftTmpBytes
@@ -148,6 +150,7 @@ where
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 
@@ -252,8 +255,11 @@ where
     }
 }
 
-pub fn test_vmp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vmp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
     Module<BR>: ModuleNew<BR>
         + VmpApplyDftToDftAddTmpBytes
         + VmpApplyDftToDftAdd<BR>
@@ -279,6 +285,7 @@ where
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
+    let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
 

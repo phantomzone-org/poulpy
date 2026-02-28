@@ -21,7 +21,7 @@ use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
-use rand::Rng;
+use rand::RngExt;
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
 use poulpy_cpu_avx::FFT64Avx;
