@@ -861,3 +861,141 @@ pub(super) unsafe fn vi128_neg_from_small_avx2(n: usize, res: &mut [i128], a: &[
             .for_each(|(r, &ai)| *r = -(ai as i128));
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use super::{
+        nfc_final_step_inplace_avx2, nfc_final_step_inplace_scalar, nfc_middle_step_avx2, nfc_middle_step_inplace_avx2,
+        nfc_middle_step_inplace_scalar, nfc_middle_step_scalar, vi128_add_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2,
+        vi128_negate_avx2, vi128_sub_avx2,
+    };
+
+    fn i128_data(n: usize, seed: i128) -> Vec<i128> {
+        (0..n).map(|i| (i as i128 * seed + seed / 3) % (1i128 << 80)).collect()
+    }
+
+    fn i64_data(n: usize, seed: i64) -> Vec<i64> {
+        (0..n).map(|i| i as i64 * seed - seed / 2).collect()
+    }
+
+    #[test]
+    fn vi128_add_avx2_vs_scalar() {
+        let n = 64usize;
+        let a = i128_data(n, 0x1_0000_0001i128);
+        let b = i128_data(n, 0x0_FFFF_FFFFi128);
+        let expected: Vec<i128> = a.iter().zip(b.iter()).map(|(x, y)| x + y).collect();
+
+        let mut res = vec![0i128; n];
+        unsafe { vi128_add_avx2(n, &mut res, &a, &b) };
+        assert_eq!(res, expected, "vi128_add_avx2 mismatch");
+    }
+
+    #[test]
+    fn vi128_sub_avx2_vs_scalar() {
+        let n = 64usize;
+        let a = i128_data(n, 0x2_0000_0003i128);
+        let b = i128_data(n, 0x1_0000_0001i128);
+        let expected: Vec<i128> = a.iter().zip(b.iter()).map(|(x, y)| x - y).collect();
+
+        let mut res = vec![0i128; n];
+        unsafe { vi128_sub_avx2(n, &mut res, &a, &b) };
+        assert_eq!(res, expected, "vi128_sub_avx2 mismatch");
+    }
+
+    #[test]
+    fn vi128_negate_avx2_vs_scalar() {
+        let n = 64usize;
+        let a = i128_data(n, 0x1_2345_6789i128);
+        let expected: Vec<i128> = a.iter().map(|x| -x).collect();
+
+        let mut res = vec![0i128; n];
+        unsafe { vi128_negate_avx2(n, &mut res, &a) };
+        assert_eq!(res, expected, "vi128_negate_avx2 mismatch");
+    }
+
+    #[test]
+    fn vi128_from_small_avx2_vs_scalar() {
+        let n = 64usize;
+        let a = i64_data(n, 12345);
+        let expected: Vec<i128> = a.iter().map(|&x| x as i128).collect();
+
+        let mut res = vec![0i128; n];
+        unsafe { vi128_from_small_avx2(n, &mut res, &a) };
+        assert_eq!(res, expected, "vi128_from_small_avx2 mismatch");
+    }
+
+    #[test]
+    fn vi128_neg_from_small_avx2_vs_scalar() {
+        let n = 64usize;
+        let a = i64_data(n, 99);
+        let expected: Vec<i128> = a.iter().map(|&x| -(x as i128)).collect();
+
+        let mut res = vec![0i128; n];
+        unsafe { vi128_neg_from_small_avx2(n, &mut res, &a) };
+        assert_eq!(res, expected, "vi128_neg_from_small_avx2 mismatch");
+    }
+
+    #[test]
+    fn nfc_middle_step_avx2_vs_scalar() {
+        let n = 64usize;
+        let base2k = 16usize;
+        let lsh = 0usize;
+        let a = i128_data(n, 37i128);
+        let carry_init: Vec<i128> = (0..n).map(|i| (i as i128 * 3) % (1i128 << 20)).collect();
+
+        let mut res_avx = vec![0i64; n];
+        let mut carry_avx = carry_init.clone();
+        let mut res_ref = vec![0i64; n];
+        let mut carry_ref = carry_init.clone();
+
+        unsafe { nfc_middle_step_avx2(base2k as u32, lsh as u32, n, &mut res_avx, &a, &mut carry_avx) };
+        nfc_middle_step_scalar(base2k, lsh, &mut res_ref, &a, &mut carry_ref);
+
+        assert_eq!(res_avx, res_ref, "nfc_middle_step res mismatch");
+        assert_eq!(carry_avx, carry_ref, "nfc_middle_step carry mismatch");
+    }
+
+    #[test]
+    fn nfc_middle_step_inplace_avx2_vs_scalar() {
+        let n = 64usize;
+        let base2k = 16usize;
+        let lsh = 8usize;
+        let init: Vec<i64> = (0..n).map(|i| (i as i64 * 5) % (1i64 << 20)).collect();
+        let carry_init: Vec<i128> = (0..n).map(|i| (i as i128 * 7) % (1i128 << 20)).collect();
+
+        let mut res_avx = init.clone();
+        let mut carry_avx = carry_init.clone();
+        let mut res_ref = init.clone();
+        let mut carry_ref = carry_init.clone();
+
+        unsafe { nfc_middle_step_inplace_avx2(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
+        nfc_middle_step_inplace_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
+
+        assert_eq!(res_avx, res_ref, "nfc_middle_step_inplace res mismatch");
+        assert_eq!(carry_avx, carry_ref, "nfc_middle_step_inplace carry mismatch");
+    }
+
+    #[test]
+    fn nfc_final_step_inplace_avx2_vs_scalar() {
+        let n = 64usize;
+        let base2k = 16usize;
+        let lsh = 0usize;
+        let init: Vec<i64> = (0..n).map(|i| (i as i64 * 3) % (1i64 << 20)).collect();
+        let carry_init: Vec<i128> = (0..n).map(|i| (i as i128 * 11) % (1i128 << 20)).collect();
+
+        let mut res_avx = init.clone();
+        let mut carry_avx = carry_init.clone();
+        let mut res_ref = init.clone();
+        let mut carry_ref = carry_init.clone();
+
+        unsafe { nfc_final_step_inplace_avx2(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
+        nfc_final_step_inplace_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
+
+        assert_eq!(res_avx, res_ref, "nfc_final_step_inplace res mismatch");
+        assert_eq!(carry_avx, carry_ref, "nfc_final_step_inplace carry mismatch");
+    }
+}

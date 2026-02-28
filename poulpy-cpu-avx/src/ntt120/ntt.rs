@@ -542,3 +542,112 @@ pub(crate) unsafe fn intt_avx2<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [
         }
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use super::*;
+    use poulpy_hal::reference::ntt120::{
+        arithmetic::{b_from_znx64_ref, b_to_znx128_ref},
+        ntt::{NttTable, NttTableInv, ntt_ref},
+        primes::Primes30,
+    };
+
+    /// AVX2 NTT followed by AVX2 iNTT is the identity — mirrors the ref test.
+    #[test]
+    fn ntt_intt_identity_avx2() {
+        for log_n in 1..=8usize {
+            let n = 1 << log_n;
+            let fwd = NttTable::<Primes30>::new(n);
+            let inv = NttTableInv::<Primes30>::new(n);
+
+            let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
+
+            let mut data = vec![0u64; 4 * n];
+            b_from_znx64_ref::<Primes30>(n, &mut data, &coeffs);
+
+            let data_orig = data.clone();
+
+            unsafe {
+                ntt_avx2::<Primes30>(&fwd, &mut data);
+                intt_avx2::<Primes30>(&inv, &mut data);
+            }
+
+            for i in 0..n {
+                for k in 0..4 {
+                    let orig = data_orig[4 * i + k] % Primes30::Q[k] as u64;
+                    let got = data[4 * i + k] % Primes30::Q[k] as u64;
+                    assert_eq!(orig, got, "n={n} i={i} k={k}: mismatch after AVX2 NTT+iNTT round-trip");
+                }
+            }
+        }
+    }
+
+    /// AVX2 NTT-based convolution matches known result.
+    ///
+    /// a = [1, 2, 0, …], b = [3, 4, 0, …]; a*b mod (X^8+1) = [3, 10, 8, 0, …]
+    #[test]
+    fn ntt_convolution_avx2() {
+        let n = 8usize;
+        let fwd = NttTable::<Primes30>::new(n);
+        let inv = NttTableInv::<Primes30>::new(n);
+
+        let a: Vec<i64> = [1, 2, 0, 0, 0, 0, 0, 0].to_vec();
+        let b: Vec<i64> = [3, 4, 0, 0, 0, 0, 0, 0].to_vec();
+
+        let mut da = vec![0u64; 4 * n];
+        let mut db = vec![0u64; 4 * n];
+        b_from_znx64_ref::<Primes30>(n, &mut da, &a);
+        b_from_znx64_ref::<Primes30>(n, &mut db, &b);
+
+        unsafe {
+            ntt_avx2::<Primes30>(&fwd, &mut da);
+            ntt_avx2::<Primes30>(&fwd, &mut db);
+        }
+
+        // Pointwise multiply (mod each Q[k])
+        let mut dc = vec![0u64; 4 * n];
+        for i in 0..n {
+            for k in 0..4 {
+                let q = Primes30::Q[k] as u64;
+                dc[4 * i + k] = (da[4 * i + k] % q * (db[4 * i + k] % q)) % q;
+            }
+        }
+
+        unsafe {
+            intt_avx2::<Primes30>(&inv, &mut dc);
+        }
+
+        let mut result = vec![0i128; n];
+        b_to_znx128_ref::<Primes30>(n, &mut result, &dc);
+
+        let expected: Vec<i128> = [3, 10, 8, 0, 0, 0, 0, 0].to_vec();
+        assert_eq!(result, expected, "AVX2 NTT convolution mismatch");
+    }
+
+    /// AVX2 NTT output matches reference NTT output.
+    #[test]
+    fn ntt_avx2_vs_ref() {
+        for log_n in 1..=8usize {
+            let n = 1 << log_n;
+            let fwd = NttTable::<Primes30>::new(n);
+
+            let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 13 + 5) % 201 - 100).collect();
+
+            let mut data_avx = vec![0u64; 4 * n];
+            let mut data_ref = vec![0u64; 4 * n];
+            b_from_znx64_ref::<Primes30>(n, &mut data_avx, &coeffs);
+            b_from_znx64_ref::<Primes30>(n, &mut data_ref, &coeffs);
+
+            unsafe { ntt_avx2::<Primes30>(&fwd, &mut data_avx) };
+            ntt_ref::<Primes30>(&fwd, &mut data_ref);
+
+            for i in 0..4 * n {
+                assert_eq!(data_avx[i], data_ref[i], "n={n} idx={i}: NTT AVX2 vs ref mismatch");
+            }
+        }
+    }
+}

@@ -425,3 +425,93 @@ pub(crate) unsafe fn b_to_znx128_avx2(nn: usize, res: &mut [i128], a: &[u64]) {
         }
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use super::*;
+    use poulpy_hal::reference::ntt120::{
+        arithmetic::{b_from_znx64_ref, b_to_znx128_ref, c_from_b_ref},
+        mat_vec::{BbbMeta, vec_mat1col_product_bbb_ref},
+        primes::Primes30,
+    };
+
+    /// AVX2 `b_from_znx64` matches reference for arbitrary i64 inputs.
+    #[test]
+    fn b_from_znx64_avx2_vs_ref() {
+        let n = 64usize;
+        let coeffs: Vec<i64> = (0..n as i64).map(|i| i * 17 - 500).collect();
+
+        let mut res_avx = vec![0u64; 4 * n];
+        let mut res_ref = vec![0u64; 4 * n];
+
+        unsafe { b_from_znx64_avx2(n, &mut res_avx, &coeffs) };
+        b_from_znx64_ref::<Primes30>(n, &mut res_ref, &coeffs);
+
+        assert_eq!(res_avx, res_ref, "b_from_znx64: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `c_from_b` (Barrett reduction to Montgomery u32) matches reference.
+    #[test]
+    fn c_from_b_avx2_vs_ref() {
+        let n = 64usize;
+        let coeffs: Vec<i64> = (0..n as i64).map(|i| i * 11 + 3).collect();
+
+        let mut b = vec![0u64; 4 * n];
+        b_from_znx64_ref::<Primes30>(n, &mut b, &coeffs);
+
+        let mut res_avx = vec![0u32; 8 * n];
+        let mut res_ref = vec![0u32; 8 * n];
+
+        unsafe { c_from_b_avx2(n, &mut res_avx, &b) };
+        c_from_b_ref::<Primes30>(n, &mut res_ref, &b);
+
+        assert_eq!(res_avx, res_ref, "c_from_b: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `vec_mat1col_product_bbb` matches reference.
+    #[test]
+    fn vec_mat1col_product_bbb_avx2_vs_ref() {
+        let ell = 16usize;
+        let n = 64usize;
+        let meta = BbbMeta::<Primes30>::new();
+
+        // Build two q120b matrices (ell * 4*n u64 values)
+        let x_i64: Vec<i64> = (0..ell * n).map(|i| (i as i64 * 7 + 1) % 100).collect();
+        let y_i64: Vec<i64> = (0..ell * n).map(|i| (i as i64 * 13 + 2) % 100).collect();
+
+        let mut x = vec![0u64; 4 * ell * n];
+        let mut y = vec![0u64; 4 * ell * n];
+        b_from_znx64_ref::<Primes30>(ell * n, &mut x, &x_i64);
+        b_from_znx64_ref::<Primes30>(ell * n, &mut y, &y_i64);
+
+        let mut res_avx = vec![0u64; 4 * n];
+        let mut res_ref = vec![0u64; 4 * n];
+
+        unsafe { vec_mat1col_product_bbb_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        vec_mat1col_product_bbb_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
+
+        assert_eq!(res_avx, res_ref, "vec_mat1col_product_bbb: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `b_to_znx128` matches reference for valid q120b input.
+    #[test]
+    fn b_to_znx128_avx2_vs_ref() {
+        let n = 64usize;
+        let coeffs: Vec<i64> = (0..n as i64).map(|i| i * 5 - 160).collect();
+
+        let mut b = vec![0u64; 4 * n];
+        b_from_znx64_ref::<Primes30>(n, &mut b, &coeffs);
+
+        let mut res_avx = vec![0i128; n];
+        let mut res_ref = vec![0i128; n];
+
+        unsafe { b_to_znx128_avx2(n, &mut res_avx, &b) };
+        b_to_znx128_ref::<Primes30>(n, &mut res_ref, &b);
+
+        assert_eq!(res_avx, res_ref, "b_to_znx128: AVX2 vs ref mismatch");
+    }
+}

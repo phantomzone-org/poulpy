@@ -645,3 +645,142 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_avx(k: usize, dst: &mut [f
         _mm256_storeu_pd(dst_ptr.add(12), acc_im_k1);
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use poulpy_hal::reference::fft64::reim4::{
+        reim4_convolution_1coeff_ref, reim4_convolution_2coeffs_ref, reim4_extract_1blk_from_reim_contiguous_ref,
+        reim4_save_1blk_to_reim_contiguous_ref, reim4_vec_mat1col_product_ref, reim4_vec_mat2cols_product_ref,
+    };
+
+    use super::*;
+
+    fn reim4_data(size: usize, seed: f64) -> Vec<f64> {
+        (0..size * 8).map(|i| (i as f64 * seed + 0.5) / size as f64).collect()
+    }
+
+    /// AVX extract+save round-trip matches reference.
+    #[test]
+    fn reim4_extract_save_1blk_avx_vs_ref() {
+        let m = 8usize; // multiple of 4
+        let rows = 2usize;
+        let blk = 0usize;
+
+        let src: Vec<f64> = (0..2 * rows * m).map(|i| i as f64 + 1.0).collect();
+        let mut dst_avx = vec![0f64; 2 * rows * 4];
+        let mut dst_ref = vec![0f64; 2 * rows * 4];
+
+        unsafe { reim4_extract_1blk_from_reim_contiguous_avx(m, rows, blk, &mut dst_avx, &src) };
+        reim4_extract_1blk_from_reim_contiguous_ref(m, rows, blk, &mut dst_ref, &src);
+
+        assert_eq!(dst_avx, dst_ref, "reim4_extract_1blk: AVX vs ref mismatch");
+
+        // Also verify save round-trip
+        let mut out_avx = vec![0f64; 2 * rows * m];
+        let mut out_ref = vec![0f64; 2 * rows * m];
+        unsafe { reim4_save_1blk_to_reim_contiguous_avx(m, rows, blk, &mut out_avx, &dst_avx) };
+        reim4_save_1blk_to_reim_contiguous_ref(m, rows, blk, &mut out_ref, &dst_ref);
+
+        assert_eq!(out_avx, out_ref, "reim4_save_1blk: AVX vs ref mismatch");
+    }
+
+    /// AVX `reim4_vec_mat1col_product` matches reference.
+    #[test]
+    fn reim4_vec_mat1col_product_avx_vs_ref() {
+        let nrows = 8usize;
+        let u = reim4_data(nrows, 1.3);
+        let v = reim4_data(nrows, 2.7);
+        let mut dst_avx = vec![0f64; 8];
+        let mut dst_ref = vec![0f64; 8];
+
+        unsafe { reim4_vec_mat1col_product_avx(nrows, &mut dst_avx, &u, &v) };
+        reim4_vec_mat1col_product_ref(nrows, &mut dst_ref, &u, &v);
+
+        let tol = 1e-12f64;
+        for i in 0..8 {
+            assert!(
+                (dst_avx[i] - dst_ref[i]).abs() <= tol,
+                "mat1col idx={i}: AVX={} ref={}",
+                dst_avx[i],
+                dst_ref[i]
+            );
+        }
+    }
+
+    /// AVX `reim4_vec_mat2cols_product` matches reference.
+    #[test]
+    fn reim4_vec_mat2cols_product_avx_vs_ref() {
+        let nrows = 8usize;
+        let u = reim4_data(nrows, 1.1);
+        let v: Vec<f64> = (0..nrows * 16).map(|i| i as f64 * 0.07 + 0.1).collect();
+        let mut dst_avx = vec![0f64; 16];
+        let mut dst_ref = vec![0f64; 16];
+
+        unsafe { reim4_vec_mat2cols_product_avx(nrows, &mut dst_avx, &u, &v) };
+        reim4_vec_mat2cols_product_ref(nrows, &mut dst_ref, &u, &v);
+
+        let tol = 1e-12f64;
+        for i in 0..16 {
+            assert!(
+                (dst_avx[i] - dst_ref[i]).abs() <= tol,
+                "mat2cols idx={i}: AVX={} ref={}",
+                dst_avx[i],
+                dst_ref[i]
+            );
+        }
+    }
+
+    /// AVX `reim4_convolution_1coeff` matches reference for all k values.
+    #[test]
+    fn reim4_convolution_1coeff_avx_vs_ref() {
+        let a_size = 4usize;
+        let b_size = 4usize;
+        let a = reim4_data(a_size, 1.5);
+        let b = reim4_data(b_size, 2.1);
+
+        for k in 0..a_size + b_size + 1 {
+            let mut dst_avx = [0f64; 8];
+            let mut dst_ref = [0f64; 8];
+            unsafe { reim4_convolution_1coeff_avx(k, &mut dst_avx, &a, a_size, &b, b_size) };
+            reim4_convolution_1coeff_ref(k, &mut dst_ref, &a, a_size, &b, b_size);
+            let tol = 1e-12f64;
+            for i in 0..8 {
+                assert!(
+                    (dst_avx[i] - dst_ref[i]).abs() <= tol,
+                    "conv1coeff k={k} i={i}: AVX={} ref={}",
+                    dst_avx[i],
+                    dst_ref[i]
+                );
+            }
+        }
+    }
+
+    /// AVX `reim4_convolution_2coeffs` matches reference for all k values.
+    #[test]
+    fn reim4_convolution_2coeffs_avx_vs_ref() {
+        let a_size = 4usize;
+        let b_size = 4usize;
+        let a = reim4_data(a_size, 1.7);
+        let b = reim4_data(b_size, 2.3);
+
+        for k in 0..a_size + b_size + 1 {
+            let mut dst_avx = [0f64; 16];
+            let mut dst_ref = [0f64; 16];
+            unsafe { reim4_convolution_2coeffs_avx(k, &mut dst_avx, &a, a_size, &b, b_size) };
+            reim4_convolution_2coeffs_ref(k, &mut dst_ref, &a, a_size, &b, b_size);
+            let tol = 1e-12f64;
+            for i in 0..16 {
+                assert!(
+                    (dst_avx[i] - dst_ref[i]).abs() <= tol,
+                    "conv2coeffs k={k} i={i}: AVX={} ref={}",
+                    dst_avx[i],
+                    dst_ref[i]
+                );
+            }
+        }
+    }
+}

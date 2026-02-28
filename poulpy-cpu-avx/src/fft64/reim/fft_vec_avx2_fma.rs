@@ -355,3 +355,108 @@ pub fn reim_mul_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
         }
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use poulpy_hal::reference::fft64::reim::{
+        reim_add_ref, reim_addmul_ref, reim_mul_ref, reim_negate_ref, reim_sub_negate_inplace_ref, reim_sub_ref,
+    };
+
+    use super::*;
+
+    fn reim_data(n: usize, seed: f64) -> Vec<f64> {
+        (0..n).map(|i| (i as f64 * seed + 0.5) / n as f64).collect()
+    }
+
+    #[test]
+    fn reim_add_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 1.7);
+        let b = reim_data(n, 2.3);
+        let mut res_avx = vec![0f64; n];
+        let mut res_ref = vec![0f64; n];
+        unsafe { reim_add_avx2_fma(&mut res_avx, &a, &b) };
+        reim_add_ref(&mut res_ref, &a, &b);
+        assert_eq!(res_avx, res_ref, "reim_add: AVX2 vs ref mismatch");
+    }
+
+    #[test]
+    fn reim_sub_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 3.1);
+        let b = reim_data(n, 1.4);
+        let mut res_avx = vec![0f64; n];
+        let mut res_ref = vec![0f64; n];
+        unsafe { reim_sub_avx2_fma(&mut res_avx, &a, &b) };
+        reim_sub_ref(&mut res_ref, &a, &b);
+        assert_eq!(res_avx, res_ref, "reim_sub: AVX2 vs ref mismatch");
+    }
+
+    #[test]
+    fn reim_negate_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 2.9);
+        let mut res_avx = vec![0f64; n];
+        let mut res_ref = vec![0f64; n];
+        unsafe { reim_negate_avx2_fma(&mut res_avx, &a) };
+        reim_negate_ref(&mut res_ref, &a);
+        assert_eq!(res_avx, res_ref, "reim_negate: AVX2 vs ref mismatch");
+    }
+
+    #[test]
+    fn reim_mul_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 1.3);
+        let b = reim_data(n, 2.7);
+        let mut res_avx = vec![0f64; n];
+        let mut res_ref = vec![0f64; n];
+        unsafe { reim_mul_avx2_fma(&mut res_avx, &a, &b) };
+        reim_mul_ref(&mut res_ref, &a, &b);
+        let tol = 1e-14f64;
+        for i in 0..n {
+            assert!(
+                (res_avx[i] - res_ref[i]).abs() <= tol,
+                "reim_mul idx={i}: AVX2={} ref={}",
+                res_avx[i],
+                res_ref[i]
+            );
+        }
+    }
+
+    #[test]
+    fn reim_addmul_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 1.1);
+        let b = reim_data(n, 2.2);
+        let init = reim_data(n, 0.9);
+        let mut res_avx = init.clone();
+        let mut res_ref = init.clone();
+        unsafe { reim_addmul_avx2_fma(&mut res_avx, &a, &b) };
+        reim_addmul_ref(&mut res_ref, &a, &b);
+        let tol = 1e-14f64;
+        for i in 0..n {
+            assert!(
+                (res_avx[i] - res_ref[i]).abs() <= tol,
+                "reim_addmul idx={i}: AVX2={} ref={}",
+                res_avx[i],
+                res_ref[i]
+            );
+        }
+    }
+
+    #[test]
+    fn reim_sub_negate_inplace_avx2_fma_vs_ref() {
+        let n = 64usize;
+        let a = reim_data(n, 1.8);
+        let init = reim_data(n, 3.3);
+        let mut res_avx = init.clone();
+        let mut res_ref = init.clone();
+        unsafe { reim_sub_negate_inplace_avx2_fma(&mut res_avx, &a) };
+        reim_sub_negate_inplace_ref(&mut res_ref, &a);
+        assert_eq!(res_avx, res_ref, "reim_sub_negate_inplace: AVX2 vs ref mismatch");
+    }
+}

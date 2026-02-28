@@ -226,6 +226,95 @@ fn bitwiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: &[f64; 
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef, ReimIFFTTable};
+
+    use crate::fft64::reim::{ReimFFTAvx, ReimIFFTAvx};
+
+    /// AVX2 FFT → IFFT round-trip matches reference FFT → IFFT (same residual error).
+    #[test]
+    fn fft_ifft_roundtrip_avx2() {
+        let m = 64usize;
+        let fwd = ReimFFTTable::<f64>::new(m);
+        let inv = ReimIFFTTable::<f64>::new(m);
+
+        let data: Vec<f64> = (0..2 * m).map(|i| (i + 1) as f64 / m as f64).collect();
+
+        let mut avx = data.clone();
+        ReimFFTAvx::reim_dft_execute(&fwd, &mut avx);
+        ReimIFFTAvx::reim_dft_execute(&inv, &mut avx);
+
+        let mut reference = data.clone();
+        ReimFFTRef::reim_dft_execute(&fwd, &mut reference);
+        ReimIFFTRef::reim_dft_execute(&inv, &mut reference);
+
+        let tol = 1e-10f64;
+        for i in 0..2 * m {
+            let diff = (avx[i] - reference[i]).abs();
+            assert!(
+                diff <= tol,
+                "idx={i}: AVX2 round-trip={} ref round-trip={} diff={diff}",
+                avx[i],
+                reference[i]
+            );
+        }
+    }
+
+    /// AVX2 FFT-based convolution matches reference convolution.
+    ///
+    /// a = [1, 2, 0, …] (real), b = [3, 4, 0, …] (real).
+    /// Multiplies in frequency domain (complex pointwise) and IFFTs.
+    #[test]
+    fn fft_convolution_avx2() {
+        let m = 32usize;
+        let fwd = ReimFFTTable::<f64>::new(m);
+        let inv = ReimIFFTTable::<f64>::new(m);
+
+        // Build reim input: real[0..m] then imag[0..m], purely real poly [1,2,0...]
+        let mut a_avx = vec![0f64; 2 * m];
+        a_avx[0] = 1.0;
+        a_avx[1] = 2.0;
+        let mut b_avx = vec![0f64; 2 * m];
+        b_avx[0] = 3.0;
+        b_avx[1] = 4.0;
+
+        let a_ref = a_avx.clone();
+        let b_ref = b_avx.clone();
+
+        ReimFFTAvx::reim_dft_execute(&fwd, &mut a_avx);
+        ReimFFTAvx::reim_dft_execute(&fwd, &mut b_avx);
+
+        let mut a_ref2 = a_ref;
+        let mut b_ref2 = b_ref;
+        ReimFFTRef::reim_dft_execute(&fwd, &mut a_ref2);
+        ReimFFTRef::reim_dft_execute(&fwd, &mut b_ref2);
+
+        // Pointwise complex multiply: reim format = real[0..m], imag[m..2m]
+        let mut c_avx = vec![0f64; 2 * m];
+        let mut c_ref = vec![0f64; 2 * m];
+        for k in 0..m {
+            c_avx[k] = a_avx[k] * b_avx[k] - a_avx[k + m] * b_avx[k + m];
+            c_avx[k + m] = a_avx[k] * b_avx[k + m] + a_avx[k + m] * b_avx[k];
+            c_ref[k] = a_ref2[k] * b_ref2[k] - a_ref2[k + m] * b_ref2[k + m];
+            c_ref[k + m] = a_ref2[k] * b_ref2[k + m] + a_ref2[k + m] * b_ref2[k];
+        }
+
+        ReimIFFTAvx::reim_dft_execute(&inv, &mut c_avx);
+        ReimIFFTRef::reim_dft_execute(&inv, &mut c_ref);
+
+        let tol = 1e-8f64;
+        for i in 0..2 * m {
+            let diff = (c_avx[i] - c_ref[i]).abs();
+            assert!(diff <= tol, "idx={i}: AVX2={} ref={} diff={diff}", c_avx[i], c_ref[i]);
+        }
+    }
+}
+
 #[test]
 fn test_fft_avx2_fma() {
     use super::*;

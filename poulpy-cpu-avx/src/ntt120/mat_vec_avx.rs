@@ -323,3 +323,135 @@ pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_avx2(
         _mm256_storeu_si256(res_ptr.add(3), reduce_bbc(s6, s7, mask_h2, meta.h, s2l_pow_red, s2h_pow_red));
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use super::*;
+    use poulpy_hal::reference::ntt120::{
+        arithmetic::{b_from_znx64_ref, c_from_b_ref},
+        mat_vec::{BbcMeta, vec_mat1col_product_bbc_ref, vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref},
+        primes::Primes30,
+    };
+
+    /// Cast a q120b `[u64]` slice to `[u32]` for bbc functions.
+    /// Each u64 limb fits in u32 (< 2^30), so upper 32 bits are 0.
+    fn b_to_u32(b: &[u64]) -> Vec<u32> {
+        b.iter().flat_map(|&v| [v as u32, (v >> 32) as u32]).collect()
+    }
+
+    /// Build a q120b slice (as u32) from small i64 coefficients.
+    fn make_q120b_u32(ell: usize, n: usize, seed: i64) -> Vec<u32> {
+        let coeffs: Vec<i64> = (0..ell * n).map(|i| (i as i64 * seed + 1) % 50 + 1).collect();
+        let mut b = vec![0u64; 4 * ell * n];
+        b_from_znx64_ref::<Primes30>(ell * n, &mut b, &coeffs);
+        b_to_u32(&b)
+    }
+
+    /// Build a q120c slice (as u32) from a q120b u64 slice.
+    fn make_q120c_u32(ell: usize, n: usize, seed: i64) -> Vec<u32> {
+        let coeffs: Vec<i64> = (0..ell * n).map(|i| (i as i64 * seed + 2) % 50 + 1).collect();
+        let mut b = vec![0u64; 4 * ell * n];
+        b_from_znx64_ref::<Primes30>(ell * n, &mut b, &coeffs);
+        let mut c = vec![0u32; 8 * ell * n];
+        c_from_b_ref::<Primes30>(ell * n, &mut c, &b);
+        c
+    }
+
+    /// AVX2 `vec_mat1col_product_bbc` matches reference (single column, single output).
+    #[test]
+    fn vec_mat1col_product_bbc_avx2_vs_ref() {
+        let ell = 8usize;
+        let n = 1usize; // one element per row
+        let meta = BbcMeta::<Primes30>::new();
+
+        let x = make_q120b_u32(ell, n, 7); // ell × 8 u32
+        let y = make_q120c_u32(ell, n, 13); // ell × 8 u32
+
+        let mut res_avx = vec![0u64; 4];
+        let mut res_ref = vec![0u64; 4];
+
+        unsafe { vec_mat1col_product_bbc_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        vec_mat1col_product_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
+
+        assert_eq!(res_avx, res_ref, "vec_mat1col_product_bbc: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `vec_mat1col_product_x2_bbc` matches reference (single column, two simultaneous outputs).
+    #[test]
+    fn vec_mat1col_product_x2_bbc_avx2_vs_ref() {
+        let ell = 8usize;
+        let n = 1usize;
+        let meta = BbcMeta::<Primes30>::new();
+
+        // x: 2 interleaved q120b (16 u32 per row)
+        let x: Vec<u32> = {
+            let a = make_q120b_u32(ell, n, 5);
+            let b = make_q120b_u32(ell, n, 11);
+            (0..ell)
+                .flat_map(|i| a[8 * i..8 * i + 8].iter().chain(b[8 * i..8 * i + 8].iter()).cloned())
+                .collect()
+        };
+        // y: 2 interleaved q120c (16 u32 per row)
+        let y: Vec<u32> = {
+            let a = make_q120c_u32(ell, n, 3);
+            let b = make_q120c_u32(ell, n, 17);
+            (0..ell)
+                .flat_map(|i| a[8 * i..8 * i + 8].iter().chain(b[8 * i..8 * i + 8].iter()).cloned())
+                .collect()
+        };
+
+        let mut res_avx = vec![0u64; 8];
+        let mut res_ref = vec![0u64; 8];
+
+        unsafe { vec_mat1col_product_x2_bbc_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        vec_mat1col_product_x2_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
+
+        assert_eq!(res_avx, res_ref, "vec_mat1col_product_x2_bbc: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `vec_mat2cols_product_x2_bbc` matches reference (two columns, two simultaneous outputs).
+    #[test]
+    fn vec_mat2cols_product_x2_bbc_avx2_vs_ref() {
+        let ell = 8usize;
+        let n = 1usize;
+        let meta = BbcMeta::<Primes30>::new();
+
+        // x: 2 interleaved q120b (16 u32 per row)
+        let x: Vec<u32> = {
+            let a = make_q120b_u32(ell, n, 7);
+            let b = make_q120b_u32(ell, n, 19);
+            (0..ell)
+                .flat_map(|i| a[8 * i..8 * i + 8].iter().chain(b[8 * i..8 * i + 8].iter()).cloned())
+                .collect()
+        };
+        // y: 4 interleaved q120c (32 u32 per row: col0_a, col0_b, col1_a, col1_b)
+        let y: Vec<u32> = {
+            let c0a = make_q120c_u32(ell, n, 2);
+            let c0b = make_q120c_u32(ell, n, 9);
+            let c1a = make_q120c_u32(ell, n, 23);
+            let c1b = make_q120c_u32(ell, n, 31);
+            (0..ell)
+                .flat_map(|i| {
+                    c0a[8 * i..8 * i + 8]
+                        .iter()
+                        .chain(c0b[8 * i..8 * i + 8].iter())
+                        .chain(c1a[8 * i..8 * i + 8].iter())
+                        .chain(c1b[8 * i..8 * i + 8].iter())
+                        .cloned()
+                })
+                .collect()
+        };
+
+        let mut res_avx = vec![0u64; 16];
+        let mut res_ref = vec![0u64; 16];
+
+        unsafe { vec_mat2cols_product_x2_bbc_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        vec_mat2cols_product_x2_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
+
+        assert_eq!(res_avx, res_ref, "vec_mat2cols_product_x2_bbc: AVX2 vs ref mismatch");
+    }
+}

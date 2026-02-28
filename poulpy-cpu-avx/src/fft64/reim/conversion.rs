@@ -329,3 +329,46 @@ pub fn reim_to_znx_i64_avx2_bnd50_fma(res: &mut [i64], divisor: f64, a: &[f64]) 
         }
     }
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tests
+// ──────────────────────────────────────────────────────────────────────────────
+
+#[cfg(all(test, target_feature = "avx2"))]
+mod tests {
+    use poulpy_hal::reference::fft64::reim::{reim_from_znx_i64_ref, reim_to_znx_i64_ref};
+
+    use super::*;
+
+    /// AVX2 `reim_from_znx_i64_bnd50_fma` matches reference for bounded i64 inputs.
+    #[test]
+    fn reim_from_znx_i64_avx2_vs_ref() {
+        let n = 64usize;
+        let a: Vec<i64> = (0..n as i64).map(|i| i * 997 - 32000).collect();
+
+        let mut res_avx = vec![0f64; n];
+        let mut res_ref = vec![0f64; n];
+
+        unsafe { reim_from_znx_i64_bnd50_fma(&mut res_avx, &a) };
+        reim_from_znx_i64_ref(&mut res_ref, &a);
+
+        assert_eq!(res_avx, res_ref, "reim_from_znx_i64: AVX2 vs ref mismatch");
+    }
+
+    /// AVX2 `reim_to_znx_i64_bnd63_avx2_fma` matches reference for exact-float inputs.
+    #[test]
+    fn reim_to_znx_i64_avx2_vs_ref() {
+        let n = 64usize;
+        let divisor = 4.0f64;
+        // Exact multiples of divisor so rounding is unambiguous
+        let a: Vec<f64> = (0..n).map(|i| (i as f64 * 100.0 - 3000.0) * divisor).collect();
+
+        let mut res_avx = vec![0i64; n];
+        let mut res_ref = vec![0i64; n];
+
+        unsafe { reim_to_znx_i64_bnd63_avx2_fma(&mut res_avx, divisor, &a) };
+        reim_to_znx_i64_ref(&mut res_ref, divisor, &a);
+
+        assert_eq!(res_avx, res_ref, "reim_to_znx_i64: AVX2 vs ref mismatch");
+    }
+}
