@@ -6,17 +6,14 @@ use crate::{
         ZnxView, ZnxViewMut,
     },
     reference::{
-        fft64::reim::{
-            ReimAdd, ReimAddInplace, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimNegate,
-            ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx, ReimToZnxInplace, ReimZero,
-        },
+        fft64::reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable},
         znx::ZnxZero,
     },
 };
 
 pub fn vec_znx_dft_add<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimAdd + ReimCopy + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     B: VecZnxDftToRef<BE>,
@@ -70,7 +67,7 @@ where
 
 pub fn vec_znx_dft_add_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimAddInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -95,7 +92,7 @@ where
 /// res = res + a * 2^{a_scale * base2k}.
 pub fn vec_znx_dft_add_scaled_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
 where
-    BE: Backend<ScalarPrep = f64> + ReimAddInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -132,7 +129,7 @@ where
 
 pub fn vec_znx_dft_copy<R, A, BE>(step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimCopy + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -169,7 +166,7 @@ pub fn vec_znx_dft_apply<R, A, BE>(
     a: &A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimFromZnx + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
 {
@@ -204,11 +201,7 @@ pub fn vec_znx_dft_apply<R, A, BE>(
 
 pub fn vec_znx_idft_apply<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64>
-        + ReimDFTExecute<ReimIFFTTable<f64>, f64>
-        + ReimCopy
-        + ReimToZnxInplace
-        + ZnxZero,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -240,7 +233,7 @@ where
 
 pub fn vec_znx_idft_apply_tmpa<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ReimToZnx + ZnxZero,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToMut<BE>,
 {
@@ -270,7 +263,7 @@ where
 
 pub fn vec_znx_idft_apply_consume<D: Data, BE>(table: &ReimIFFTTable<f64>, mut res: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ReimToZnxInplace,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64>,
     VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
 {
     {
@@ -296,7 +289,7 @@ where
 
 pub fn vec_znx_dft_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimSub + ReimNegate + ReimZero + ReimCopy,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     B: VecZnxDftToRef<BE>,
@@ -350,7 +343,7 @@ where
 
 pub fn vec_znx_dft_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimSubInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -374,7 +367,7 @@ where
 
 pub fn vec_znx_dft_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimSubNegateInplace + ReimNegateInplace,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -403,7 +396,7 @@ where
 pub fn vec_znx_dft_zero<R, BE>(res: &mut R, res_col: usize)
 where
     R: VecZnxDftToMut<BE>,
-    BE: Backend<ScalarPrep = f64> + ReimZero,
+    BE: Backend<ScalarPrep = f64> + ReimArith,
 {
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     for j in 0..res.size() {

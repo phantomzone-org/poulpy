@@ -5,19 +5,9 @@ use poulpy_hal::{
     oep::ModuleNewImpl,
     reference::{
         fft64::{
-            convolution::{
-                I64ConvolutionByConst1Coeff, I64ConvolutionByConst2Coeffs, I64Extract1BlkContiguous, I64Save1BlkContiguous,
-            },
-            reim::{
-                ReimAdd, ReimAddInplace, ReimAddMul, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimMul,
-                ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx,
-                ReimToZnxInplace, ReimZero, reim_copy_ref, reim_zero_ref,
-            },
-            reim4::{
-                Reim4Convolution1Coeff, Reim4Convolution2Coeffs, Reim4ConvolutionByRealConst1Coeff,
-                Reim4ConvolutionByRealConst2Coeffs, Reim4Extract1BlkContiguous, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd,
-                Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save1BlkContiguous, Reim4Save2Blks,
-            },
+            convolution::I64Ops,
+            reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
+            reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
@@ -408,267 +398,160 @@ impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for FFT64Avx {
     }
 }
 
-impl ReimFromZnx for FFT64Avx {
+impl ReimArith for FFT64Avx {
     #[inline(always)]
     fn reim_from_znx(res: &mut [f64], a: &[i64]) {
-        unsafe {
-            reim_from_znx_i64_bnd50_fma(res, a);
-        }
+        unsafe { reim_from_znx_i64_bnd50_fma(res, a) }
     }
-}
 
-impl ReimToZnx for FFT64Avx {
     #[inline(always)]
     fn reim_to_znx(res: &mut [i64], divisor: f64, a: &[f64]) {
-        unsafe {
-            reim_to_znx_i64_bnd63_avx2_fma(res, divisor, a);
-        }
+        unsafe { reim_to_znx_i64_bnd63_avx2_fma(res, divisor, a) }
     }
-}
 
-impl ReimToZnxInplace for FFT64Avx {
     #[inline(always)]
     fn reim_to_znx_inplace(res: &mut [f64], divisor: f64) {
-        unsafe {
-            reim_to_znx_i64_inplace_bnd63_avx2_fma(res, divisor);
-        }
+        unsafe { reim_to_znx_i64_inplace_bnd63_avx2_fma(res, divisor) }
     }
-}
 
-impl ReimAdd for FFT64Avx {
     #[inline(always)]
     fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]) {
-        unsafe {
-            reim_add_avx2_fma(res, a, b);
-        }
+        unsafe { reim_add_avx2_fma(res, a, b) }
     }
-}
 
-impl ReimAddInplace for FFT64Avx {
     #[inline(always)]
     fn reim_add_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe {
-            reim_add_inplace_avx2_fma(res, a);
-        }
+        unsafe { reim_add_inplace_avx2_fma(res, a) }
     }
-}
 
-impl ReimSub for FFT64Avx {
     #[inline(always)]
     fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]) {
-        unsafe {
-            reim_sub_avx2_fma(res, a, b);
-        }
+        unsafe { reim_sub_avx2_fma(res, a, b) }
     }
-}
 
-impl ReimSubInplace for FFT64Avx {
     #[inline(always)]
     fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe {
-            reim_sub_inplace_avx2_fma(res, a);
-        }
+        unsafe { reim_sub_inplace_avx2_fma(res, a) }
     }
-}
 
-impl ReimSubNegateInplace for FFT64Avx {
     #[inline(always)]
     fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe {
-            reim_sub_negate_inplace_avx2_fma(res, a);
-        }
+        unsafe { reim_sub_negate_inplace_avx2_fma(res, a) }
     }
-}
 
-impl ReimNegate for FFT64Avx {
     #[inline(always)]
     fn reim_negate(res: &mut [f64], a: &[f64]) {
-        unsafe {
-            reim_negate_avx2_fma(res, a);
-        }
+        unsafe { reim_negate_avx2_fma(res, a) }
     }
-}
 
-impl ReimNegateInplace for FFT64Avx {
     #[inline(always)]
     fn reim_negate_inplace(res: &mut [f64]) {
-        unsafe {
-            reim_negate_inplace_avx2_fma(res);
-        }
+        unsafe { reim_negate_inplace_avx2_fma(res) }
     }
-}
 
-impl ReimMul for FFT64Avx {
     #[inline(always)]
     fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]) {
-        unsafe {
-            reim_mul_avx2_fma(res, a, b);
-        }
+        unsafe { reim_mul_avx2_fma(res, a, b) }
     }
-}
 
-impl ReimMulInplace for FFT64Avx {
     #[inline(always)]
     fn reim_mul_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe {
-            reim_mul_inplace_avx2_fma(res, a);
-        }
+        unsafe { reim_mul_inplace_avx2_fma(res, a) }
     }
-}
 
-impl ReimAddMul for FFT64Avx {
     #[inline(always)]
     fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]) {
-        unsafe {
-            reim_addmul_avx2_fma(res, a, b);
-        }
+        unsafe { reim_addmul_avx2_fma(res, a, b) }
     }
-}
 
-impl ReimCopy for FFT64Avx {
     #[inline(always)]
     fn reim_copy(res: &mut [f64], a: &[f64]) {
-        reim_copy_ref(res, a);
+        reim_copy_ref(res, a)
     }
-}
 
-impl ReimZero for FFT64Avx {
     #[inline(always)]
     fn reim_zero(res: &mut [f64]) {
-        reim_zero_ref(res);
+        reim_zero_ref(res)
     }
 }
 
-impl Reim4Convolution1Coeff for FFT64Avx {
-    #[inline(always)]
-    fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-        unsafe {
-            reim4_convolution_1coeff_avx(k, dst, a, a_size, b, b_size);
-        }
-    }
-}
-
-impl Reim4Convolution2Coeffs for FFT64Avx {
-    #[inline(always)]
-    fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-        unsafe {
-            reim4_convolution_2coeffs_avx(k, dst, a, a_size, b, b_size);
-        }
-    }
-}
-
-impl Reim4ConvolutionByRealConst1Coeff for FFT64Avx {
-    #[inline(always)]
-    fn reim4_convolution_by_real_const_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
-        unsafe {
-            reim4_convolution_by_real_const_1coeff_avx(k, dst, a, a_size, b);
-        }
-    }
-}
-
-impl Reim4ConvolutionByRealConst2Coeffs for FFT64Avx {
-    #[inline(always)]
-    fn reim4_convolution_by_real_const_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
-        unsafe {
-            reim4_convolution_by_real_const_2coeffs_avx(k, dst, a, a_size, b);
-        }
-    }
-}
-
-impl Reim4Extract1BlkContiguous for FFT64Avx {
+impl Reim4BlkMatVec for FFT64Avx {
     #[inline(always)]
     fn reim4_extract_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe {
-            reim4_extract_1blk_from_reim_contiguous_avx(m, rows, blk, dst, src);
-        }
+        unsafe { reim4_extract_1blk_from_reim_contiguous_avx(m, rows, blk, dst, src) }
     }
-}
 
-impl Reim4Save1BlkContiguous for FFT64Avx {
+    #[inline(always)]
     fn reim4_save_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe {
-            reim4_save_1blk_to_reim_contiguous_avx(m, rows, blk, dst, src);
-        }
+        unsafe { reim4_save_1blk_to_reim_contiguous_avx(m, rows, blk, dst, src) }
     }
-}
 
-impl Reim4Save1Blk for FFT64Avx {
     #[inline(always)]
     fn reim4_save_1blk<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe {
-            reim4_save_1blk_to_reim_avx::<OVERWRITE>(m, blk, dst, src);
-        }
+        unsafe { reim4_save_1blk_to_reim_avx::<OVERWRITE>(m, blk, dst, src) }
     }
-}
 
-impl Reim4Save2Blks for FFT64Avx {
     #[inline(always)]
     fn reim4_save_2blks<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe {
-            reim4_save_2blk_to_reim_avx::<OVERWRITE>(m, blk, dst, src);
-        }
+        unsafe { reim4_save_2blk_to_reim_avx::<OVERWRITE>(m, blk, dst, src) }
     }
-}
 
-impl Reim4Mat1ColProd for FFT64Avx {
     #[inline(always)]
     fn reim4_mat1col_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe {
-            reim4_vec_mat1col_product_avx(nrows, dst, u, v);
-        }
+        unsafe { reim4_vec_mat1col_product_avx(nrows, dst, u, v) }
     }
-}
 
-impl Reim4Mat2ColsProd for FFT64Avx {
     #[inline(always)]
     fn reim4_mat2cols_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe {
-            reim4_vec_mat2cols_product_avx(nrows, dst, u, v);
-        }
+        unsafe { reim4_vec_mat2cols_product_avx(nrows, dst, u, v) }
     }
-}
 
-impl Reim4Mat2Cols2ndColProd for FFT64Avx {
     #[inline(always)]
     fn reim4_mat2cols_2ndcol_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe {
-            reim4_vec_mat2cols_2ndcol_product_avx(nrows, dst, u, v);
-        }
+        unsafe { reim4_vec_mat2cols_2ndcol_product_avx(nrows, dst, u, v) }
     }
 }
 
-impl I64ConvolutionByConst1Coeff for FFT64Avx {
+impl Reim4Convolution for FFT64Avx {
     #[inline(always)]
-    fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
-        unsafe {
-            i64_convolution_by_const_1coeff_avx(k, dst, a, a_size, b);
-        }
+    fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        unsafe { reim4_convolution_1coeff_avx(k, dst, a, a_size, b, b_size) }
     }
-}
 
-impl I64ConvolutionByConst2Coeffs for FFT64Avx {
     #[inline(always)]
-    fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
-        unsafe {
-            i64_convolution_by_real_const_2coeffs_avx(k, dst, a, a_size, b);
-        }
+    fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        unsafe { reim4_convolution_2coeffs_avx(k, dst, a, a_size, b, b_size) }
     }
-}
 
-impl I64Save1BlkContiguous for FFT64Avx {
     #[inline(always)]
-    fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
-        unsafe {
-            i64_save_1blk_contiguous_avx(n, offset, rows, blk, dst, src);
-        }
+    fn reim4_convolution_by_real_const_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
+        unsafe { reim4_convolution_by_real_const_1coeff_avx(k, dst, a, a_size, b) }
+    }
+
+    #[inline(always)]
+    fn reim4_convolution_by_real_const_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
+        unsafe { reim4_convolution_by_real_const_2coeffs_avx(k, dst, a, a_size, b) }
     }
 }
 
-impl I64Extract1BlkContiguous for FFT64Avx {
+impl I64Ops for FFT64Avx {
     #[inline(always)]
     fn i64_extract_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
-        unsafe {
-            i64_extract_1blk_contiguous_avx(n, offset, rows, blk, dst, src);
-        }
+        unsafe { i64_extract_1blk_contiguous_avx(n, offset, rows, blk, dst, src) }
+    }
+
+    #[inline(always)]
+    fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+        unsafe { i64_save_1blk_contiguous_avx(n, offset, rows, blk, dst, src) }
+    }
+
+    #[inline(always)]
+    fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
+        unsafe { i64_convolution_by_const_1coeff_avx(k, dst, a, a_size, b) }
+    }
+
+    #[inline(always)]
+    fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
+        unsafe { i64_convolution_by_real_const_2coeffs_avx(k, dst, a, a_size, b) }
     }
 }

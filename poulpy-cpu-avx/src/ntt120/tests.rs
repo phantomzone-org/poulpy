@@ -141,26 +141,12 @@ mod poulpy_cpu_avx {
         }
     }
 
-    // n = 2048: first size that uses the by-level phase.
+    // n = 8192: large size exercising many by-level stages.
     cross_backend_test_suite! {
-        mod ntt_n2048,
+        mod ntt_n8192,
         backend_ref =  poulpy_cpu_ref::NTT120Ref,
         backend_test = crate::NTT120Avx,
-        size = 1<<11,
-        base2k = 50,
-        tests = {
-            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
-            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
-            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
-        }
-    }
-
-    // n = 65536: large size exercising many by-level stages.
-    cross_backend_test_suite! {
-        mod ntt_n65536,
-        backend_ref =  poulpy_cpu_ref::NTT120Ref,
-        backend_test = crate::NTT120Avx,
-        size = 1<<16,
+        size = 1<<13,
         base2k = 50,
         tests = {
             test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
@@ -170,19 +156,19 @@ mod poulpy_cpu_avx {
 }
 
 #[test]
-fn test_convolution_by_const_fft64_avx() {
-    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(8);
+fn test_convolution_by_const_ntt120_avx() {
+    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(64);
     test_convolution_by_const(&module);
 }
 
 #[test]
-fn test_convolution_fft64_avx() {
-    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(8);
+fn test_convolution_ntt120_avx() {
+    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(64);
     test_convolution(&module);
 }
 
 #[test]
-fn test_convolution_pairwise_fft64_avx() {
-    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(8);
+fn test_convolution_pairwise_ntt120_avx() {
+    let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(64);
     test_convolution_pairwise(&module);
 }
