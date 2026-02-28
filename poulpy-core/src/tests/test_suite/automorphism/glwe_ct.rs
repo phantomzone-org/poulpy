@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
     var_noise_gglwe_product_v2,
 };
 
-pub fn test_glwe_automorphism<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_automorphism<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -30,10 +31,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let out_base2k: usize = 15;
-    let k_in: usize = 102;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let out_base2k: usize = base2k - 2;
+    let k_in: usize = 4 * in_base2k + 1;
     let max_dsize: usize = k_in.div_ceil(key_base2k);
     let p: i64 = -5;
     for rank in 1_usize..3 {
@@ -127,7 +129,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_glwe_automorphism_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_automorphism_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -141,9 +143,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let k_out: usize = 102;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_out: usize = 4 * out_base2k + 1;
     let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     let p: i64 = -5;

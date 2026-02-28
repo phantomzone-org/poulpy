@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxFillUniform},
     layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     noise::GGLWENoise,
 };
 
-pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -30,8 +31,8 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_ksk: usize = 60;
+    let base2k: usize = params.base2k;
+    let k_ksk: usize = 4 * base2k + 1;
     let dsize: usize = k_ksk.div_ceil(base2k) - 1;
     for rank in 1_usize..3 {
         for di in 1..dsize + 1 {
@@ -93,7 +94,7 @@ where
     }
 }
 
-pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEAutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -107,8 +108,8 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_ksk: usize = 60;
+    let base2k: usize = params.base2k;
+    let k_ksk: usize = 4 * base2k + 1;
     let max_dsize: usize = k_ksk.div_ceil(base2k) - 1;
     for rank in 2_usize..3 {
         for dsize in 1..max_dsize + 1 {

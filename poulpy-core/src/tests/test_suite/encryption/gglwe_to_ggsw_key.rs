@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy},
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
     },
 };
 
-pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretTensorFactory<BE>
@@ -26,8 +27,8 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
-    let k: usize = 54;
+    let base2k: usize = params.base2k;
+    let k: usize = 4 * base2k + 1;
 
     for rank in 2_usize..3 {
         let n: usize = module.n();
@@ -84,7 +85,7 @@ where
     }
 }
 
-pub fn test_gglwe_to_ggsw_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_to_ggsw_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGLWEToGGSWKeyCompressedEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -96,8 +97,9 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k = 8;
-    let k = 54;
+    let base2k: usize = params.base2k;
+    let k: usize = 4 * base2k + 1;
+
     for rank in 1_usize..3 {
         let n: usize = module.n();
         let dnum: usize = k / base2k;

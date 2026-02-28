@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -13,14 +14,14 @@ use crate::{
     },
 };
 
-pub fn test_ggsw_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_ggsw_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
     Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE>,
 {
-    let base2k: usize = 12;
-    let k: usize = 54;
+    let base2k: usize = params.base2k;
+    let k: usize = 4 * base2k + 1;
     let dsize: usize = k / base2k;
     for rank in 1_usize..3 {
         for di in 1..dsize + 1 {
@@ -79,14 +80,14 @@ where
     }
 }
 
-pub fn test_ggsw_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_ggsw_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
     Module<BE>: GGSWCompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE> + GGSWDecompress,
 {
-    let base2k: usize = 12;
-    let k: usize = 54;
+    let base2k: usize = params.base2k;
+    let k: usize = 4 * base2k + 1;
     let dsize: usize = k / base2k;
     for rank in 1_usize..3 {
         for di in 1..dsize + 1 {

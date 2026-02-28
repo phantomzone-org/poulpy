@@ -12,7 +12,7 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use rand::RngCore;
+use rand::Rng;
 
 /// Matrix of polynomials in `Z[X]/(X^N + 1)`.
 ///

@@ -13,7 +13,7 @@ use crate::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use rand::RngCore;
+use rand::Rng;
 
 /// A vector of polynomials in `Z[X]/(X^N + 1)` with limb-decomposed
 /// (base-2^k) representation.

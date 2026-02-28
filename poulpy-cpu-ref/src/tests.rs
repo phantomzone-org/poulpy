@@ -9,37 +9,37 @@ use crate::{FFT64Ref, NTT120Ref};
 #[test]
 fn test_convolution_by_const_fft64_ref() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(8);
-    test_convolution_by_const(&module);
+    test_convolution_by_const(&module, 17);
 }
 
 #[test]
 fn test_convolution_fft64_ref() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(8);
-    test_convolution(&module);
+    test_convolution(&module, 17);
 }
 
 #[test]
 fn test_convolution_pairwise_fft64_ref() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(8);
-    test_convolution_pairwise(&module);
+    test_convolution_pairwise(&module, 17);
 }
 
 #[test]
 fn test_convolution_by_const_ntt120_ref() {
     let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(8);
-    test_convolution_by_const(&module);
+    test_convolution_by_const(&module, 50);
 }
 
 #[test]
 fn test_convolution_ntt120_ref() {
     let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(8);
-    test_convolution(&module);
+    test_convolution(&module, 50);
 }
 
 #[test]
 fn test_convolution_pairwise_ntt120_ref() {
     let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(8);
-    test_convolution_pairwise(&module);
+    test_convolution_pairwise(&module, 50);
 }
 
 #[cfg(test)]
@@ -50,8 +50,7 @@ mod poulpy_cpu_ntt120 {
         mod vec_znx,
         backend_ref =  crate::FFT64Ref,
         backend_test = crate::NTT120Ref,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_add => poulpy_hal::test_suite::vec_znx::test_vec_znx_add,
             test_vec_znx_add_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_inplace,
@@ -85,8 +84,7 @@ mod poulpy_cpu_ntt120 {
         mod svp,
         backend_ref =  crate::FFT64Ref,
         backend_test = crate::NTT120Ref,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
             test_svp_apply_dft_to_dft_inplace => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft_inplace,
@@ -96,8 +94,7 @@ mod poulpy_cpu_ntt120 {
         mod vec_znx_big,
         backend_ref =  crate::FFT64Ref,
         backend_test = crate::NTT120Ref,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_big_add => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add,
             test_vec_znx_big_add_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_inplace,
@@ -121,8 +118,7 @@ mod poulpy_cpu_ntt120 {
         mod vec_znx_dft,
         backend_ref =  crate::FFT64Ref,
         backend_test = crate::NTT120Ref,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_dft_add => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add,
             test_vec_znx_dft_add_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_inplace,
@@ -139,8 +135,7 @@ mod poulpy_cpu_ntt120 {
         mod vmp,
         backend_ref =  crate::FFT64Ref,
         backend_test = crate::NTT120Ref,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
             test_vmp_apply_dft_to_dft_add => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft_add,
@@ -150,7 +145,7 @@ mod poulpy_cpu_ntt120 {
     backend_test_suite! {
         mod sampling,
         backend = crate::NTT120Ref,
-        size = 1<<12,
+        params = TestParams { size: 1<<12, base2k: 12 },
         tests = {
             test_vec_znx_fill_uniform => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_uniform,
             test_vec_znx_fill_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_normal,

@@ -33,7 +33,7 @@ pub fn vec_znx_fill_normal_ref<R>(
     );
 
     let limb: usize = k.div_ceil(base2k) - 1;
-    let scale: f64 = (1 << ((limb + 1) * base2k - k)) as f64;
+    let scale: f64 = (1u64 << ((limb + 1) * base2k - k)) as f64;
     znx_fill_normal_f64_ref(res.at_mut(res_col, limb), sigma * scale, bound * scale, source)
 }
 
@@ -56,6 +56,6 @@ pub fn vec_znx_add_normal_ref<R>(
     );
 
     let limb: usize = k.div_ceil(base2k) - 1;
-    let scale: f64 = (1 << ((limb + 1) * base2k - k)) as f64;
+    let scale: f64 = (1u64 << ((limb + 1) * base2k - k)) as f64;
     znx_add_normal_f64_ref(res.at_mut(res_col, limb), sigma * scale, bound * scale, source)
 }

@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -17,7 +18,7 @@ use crate::{
     noise::GGLWENoise,
 };
 
-pub fn test_gglwe_switching_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_switching_key_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
@@ -31,8 +32,8 @@ where
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let base2k: usize = 12;
-    let k_ksk: usize = 54;
+    let base2k: usize = params.base2k;
+    let k_ksk: usize = 4 * base2k + 1;
     let dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
@@ -90,7 +91,7 @@ where
     }
 }
 
-pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
@@ -106,8 +107,8 @@ where
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let base2k: usize = 12;
-    let k_ksk: usize = 54;
+    let base2k: usize = params.base2k;
+    let k_ksk: usize = 4 * base2k + 1;
     let max_dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
@@ -170,7 +171,7 @@ where
     }
 }
 
-pub fn test_gglwe_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
@@ -186,8 +187,8 @@ where
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let base2k: usize = 12;
-    let k_ksk: usize = 54;
+    let base2k: usize = params.base2k;
+    let k_ksk: usize = 4 * base2k + 1;
     let max_dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {

@@ -14,8 +14,7 @@ mod poulpy_cpu_avx {
         mod vec_znx,
         backend_ref =  poulpy_cpu_ref::FFT64Ref,
         backend_test = crate::FFT64Avx,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_add => poulpy_hal::test_suite::vec_znx::test_vec_znx_add,
             test_vec_znx_add_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_inplace,
@@ -49,8 +48,7 @@ mod poulpy_cpu_avx {
         mod svp,
         backend_ref =  poulpy_cpu_ref::FFT64Ref,
         backend_test = crate::FFT64Avx,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
             test_svp_apply_dft_to_dft_inplace => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft_inplace,
@@ -60,8 +58,7 @@ mod poulpy_cpu_avx {
         mod vec_znx_big,
         backend_ref =  poulpy_cpu_ref::FFT64Ref,
         backend_test = crate::FFT64Avx,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_big_add => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add,
             test_vec_znx_big_add_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_inplace,
@@ -85,8 +82,7 @@ mod poulpy_cpu_avx {
         mod vec_znx_dft,
         backend_ref =  poulpy_cpu_ref::FFT64Ref,
         backend_test = crate::FFT64Avx,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vec_znx_dft_add => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add,
             test_vec_znx_dft_add_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_inplace,
@@ -102,8 +98,7 @@ mod poulpy_cpu_avx {
         mod vmp,
         backend_ref =  poulpy_cpu_ref::FFT64Ref,
         backend_test = crate::FFT64Avx,
-        size = 1<<8,
-        base2k = 12,
+        params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
             test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
             test_vmp_apply_dft_to_dft_add => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft_add,
@@ -113,7 +108,7 @@ mod poulpy_cpu_avx {
     backend_test_suite! {
         mod sampling,
         backend = crate::FFT64Avx,
-        size = 1<<12,
+        params = TestParams { size: 1<<12, base2k: 12 },
         tests = {
             test_vec_znx_fill_uniform => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_uniform,
             test_vec_znx_fill_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_normal,
@@ -125,17 +120,17 @@ mod poulpy_cpu_avx {
 #[test]
 fn test_convolution_by_const_fft64_avx() {
     let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
-    test_convolution_by_const(&module);
+    test_convolution_by_const(&module, 17);
 }
 
 #[test]
 fn test_convolution_fft64_avx() {
     let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
-    test_convolution(&module);
+    test_convolution(&module, 17);
 }
 
 #[test]
 fn test_convolution_pairwise_fft64_avx() {
     let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(8);
-    test_convolution_pairwise(&module);
+    test_convolution_pairwise(&module, 17);
 }

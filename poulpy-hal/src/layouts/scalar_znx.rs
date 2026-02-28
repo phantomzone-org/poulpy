@@ -1,7 +1,7 @@
 use std::hash::{DefaultHasher, Hasher};
 
 use rand::seq::SliceRandom;
-use rand_core::RngCore;
+use rand_core::Rng;
 use rand_distr::{Distribution, weighted::WeightedIndex};
 
 use crate::{

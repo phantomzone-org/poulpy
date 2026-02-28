@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     var_noise_gglwe_product_v2,
 };
 
-pub fn test_gglwe_switching_key_keyswitch<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_switching_key_keyswitch<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -26,10 +27,11 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let in_base2k: usize = 17;
-    let key_base2k: usize = 13;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
     let out_base2k: usize = in_base2k; // MUST BE SAME
-    let k_in: usize = 102;
+    let k_in: usize = 4 * in_base2k + 1;
     let max_dsize: usize = k_in.div_ceil(key_base2k);
 
     for rank_in_s0s1 in 1_usize..2 {
@@ -87,12 +89,10 @@ where
                             | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos)
                             | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s2_infos),
                     );
-                    let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_tmp_bytes(
-                        module,
-                        &gglwe_s0s2_infos,
-                        &gglwe_s0s1_infos,
-                        &gglwe_s1s2_infos,
-                    ));
+                    let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(
+                        GLWESwitchingKey::keyswitch_tmp_bytes(module, &gglwe_s0s2_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
+                            | module.gglwe_noise_tmp_bytes(&gglwe_s0s2_infos),
+                    );
 
                     let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in_s0s1.into());
                     sk0.fill_ternary_prob(0.5, &mut source_xs);
@@ -153,7 +153,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_gglwe_switching_key_keyswitch_inplace<BE: Backend>(module: &Module<BE>)
+pub fn test_gglwe_switching_key_keyswitch_inplace<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -163,9 +163,10 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let out_base2k: usize = 17;
-    let key_base2k: usize = 13;
-    let k_out: usize = 102;
+    let base2k: usize = params.base2k;
+    let out_base2k: usize = base2k - 1;
+    let key_base2k: usize = base2k;
+    let k_out: usize = 4 * out_base2k + 1;
     let max_dsize: usize = k_out.div_ceil(key_base2k);
 
     for rank_in in 1_usize..3 {
@@ -210,12 +211,10 @@ where
                     GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s1_infos)
                         | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos),
                 );
-                let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_tmp_bytes(
-                    module,
-                    &gglwe_s0s1_infos,
-                    &gglwe_s0s1_infos,
-                    &gglwe_s1s2_infos,
-                ));
+                let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(
+                    GLWESwitchingKey::keyswitch_tmp_bytes(module, &gglwe_s0s1_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
+                        | module.gglwe_noise_tmp_bytes(&gglwe_s0s1_infos),
+                );
 
                 let var_xs: f64 = 0.5;
 

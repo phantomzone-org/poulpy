@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize},
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
+    test_suite::TestParams,
 };
 use rug::Float;
 
@@ -16,7 +17,7 @@ use crate::{
     },
 };
 
-pub fn test_glwe_base2k_conversion<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_base2k_conversion<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -33,19 +34,21 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
+    let base2k: usize = params.base2k;
+
     for rank in 1_usize..3 {
-        for bases in [[12, 8], [8, 12]] {
+        for bases in [[base2k, base2k - 3], [base2k - 3, base2k]] {
             let glwe_infos_in: GLWELayout = GLWELayout {
                 n: n_glwe,
-                base2k: Base2K(bases[0]),
-                k: TorusPrecision(34),
+                base2k: Base2K(bases[0] as u32),
+                k: TorusPrecision((4 * bases[0] + 1) as u32),
                 rank: Rank(rank as u32),
             };
 
             let glwe_infos_out: GLWELayout = GLWELayout {
                 n: n_glwe,
-                base2k: Base2K(bases[1]),
-                k: TorusPrecision(34),
+                base2k: Base2K(bases[1] as u32),
+                k: TorusPrecision((4 * bases[0] + 1) as u32),
                 rank: Rank(rank as u32),
             };
 
@@ -76,15 +79,15 @@ where
             let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
             ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
-            assert!(
-                ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2()
-                    <= -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.50
-            )
+            let noise_have = ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2();
+            let noise_max = -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.50;
+
+            assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}")
         }
     }
 }
 
-pub fn test_lwe_to_glwe<BE: Backend>(module: &Module<BE>)
+pub fn test_lwe_to_glwe<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEFromLWE<BE>
         + LWEToGLWESwitchingKeyEncryptSk<BE>
@@ -98,6 +101,7 @@ where
 {
     let n_glwe: Degree = Degree(module.n() as u32);
     let n_lwe: Degree = Degree(22);
+    let base2k: usize = params.base2k;
 
     let rank: Rank = Rank(2);
     let k_lwe_pt: TorusPrecision = TorusPrecision(8);
@@ -108,23 +112,23 @@ where
 
     let lwe_to_glwe_infos: LWEToGLWEKeyLayout = LWEToGLWEKeyLayout {
         n: n_glwe,
-        base2k: Base2K(13),
-        k: TorusPrecision(92),
+        base2k: Base2K(base2k as u32),
+        k: TorusPrecision((5 * base2k + 1) as u32),
         dnum: Dnum(2),
         rank_out: rank,
     };
 
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
-        base2k: Base2K(15),
-        k: TorusPrecision(75),
+        base2k: Base2K(base2k as u32 - 1),
+        k: TorusPrecision((4 * base2k + 1) as u32),
         rank,
     };
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(75),
+        base2k: Base2K(base2k as u32 - 2),
+        k: TorusPrecision((4 * base2k + 1) as u32),
     };
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -187,7 +191,7 @@ where
     assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt_conv.data.at(0, 0)[0]);
 }
 
-pub fn test_glwe_to_lwe<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_to_lwe<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEFromLWE<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
@@ -204,29 +208,30 @@ where
 {
     let n_glwe: Degree = Degree(module.n() as u32);
     let n_lwe: Degree = Degree(22);
+    let base2k: usize = params.base2k;
 
     let rank: Rank = Rank(2);
     let k_lwe_pt: TorusPrecision = TorusPrecision(8);
 
     let glwe_to_lwe_infos: GLWEToLWEKeyLayout = GLWEToLWEKeyLayout {
         n: n_glwe,
-        base2k: Base2K(13),
-        k: TorusPrecision(91),
+        base2k: Base2K(base2k as u32),
+        k: TorusPrecision((5 * base2k + 1) as u32),
         dnum: Dnum(2),
         rank_in: rank,
     };
 
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(72),
+        base2k: Base2K(base2k as u32 - 1),
+        k: TorusPrecision((4 * base2k + 1) as u32),
         rank,
     };
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,
-        base2k: Base2K(15),
-        k: TorusPrecision(72),
+        base2k: Base2K(base2k as u32 - 2),
+        k: TorusPrecision((4 * base2k + 1) as u32),
     };
 
     let mut source_xs: Source = Source::new([0u8; 32]);

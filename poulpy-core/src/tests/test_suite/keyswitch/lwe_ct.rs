@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
     layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     },
 };
 
-pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
+pub fn test_lwe_keyswitch<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: LWEKeySwitch<BE>
         + LWESwitchingKeyEncrypt<BE>
@@ -24,13 +25,14 @@ where
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let in_base2k: usize = 17;
-    let out_base2k: usize = 15;
-    let key_base2k: usize = 13;
+    let base2k: usize = params.base2k;
+    let in_base2k: usize = base2k - 1;
+    let out_base2k: usize = base2k - 2;
+    let key_base2k: usize = base2k;
 
     let n_lwe_in: usize = module.n() >> 1;
     let n_lwe_out: usize = module.n() >> 1;
-    let k_lwe_ct: usize = 102;
+    let k_lwe_ct: usize = 4 * base2k + 1;
     let k_lwe_pt: usize = 8;
 
     let k_ksk: usize = k_lwe_ct + key_base2k;

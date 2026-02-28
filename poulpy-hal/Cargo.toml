@@ -18,9 +18,9 @@ rand_distr = {workspace = true}
 rand_core = {workspace = true}
 byteorder = {workspace = true}
 once_cell = {workspace = true}
-rand_chacha = "0.9.0"
+rand_chacha = {workspace = true}
 bytemuck = {workspace = true}
-paste = "1.0.15"
+paste = {workspace = true}
 
 
 [build-dependencies]

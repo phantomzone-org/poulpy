@@ -2,6 +2,7 @@ use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
+    test_suite::TestParams,
 };
 
 use crate::{
@@ -15,15 +16,15 @@ use crate::{
     },
 };
 
-pub fn test_glwe_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
-    let k_ct: usize = 54;
-    let k_pt: usize = 30;
+    let base2k: usize = params.base2k;
+    let k_ct: usize = base2k * 4 + 1;
+    let k_pt: usize = base2k * 2 + 1;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
@@ -75,15 +76,15 @@ where
     }
 }
 
-pub fn test_glwe_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_compressed_encrypt_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWECompressedEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
-    let k_ct: usize = 54;
-    let k_pt: usize = 30;
+    let base2k: usize = params.base2k;
+    let k_ct: usize = base2k * 4 + 1;
+    let k_pt: usize = base2k * 2 + 1;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
@@ -134,14 +135,14 @@ where
     }
 }
 
-pub fn test_glwe_encrypt_zero_sk<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_encrypt_zero_sk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
-    let k_ct: usize = 54;
+    let base2k: usize = params.base2k;
+    let k_ct: usize = base2k * 4 + 1;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
@@ -181,7 +182,7 @@ where
     }
 }
 
-pub fn test_glwe_encrypt_pk<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_encrypt_pk<BE: Backend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptPk<BE>
         + GLWEPublicKeyPreparedFactory<BE>
@@ -193,8 +194,8 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
-    let k_ct: usize = 54;
+    let base2k: usize = params.base2k;
+    let k_ct: usize = base2k * 4 + 1;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
