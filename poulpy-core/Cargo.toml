@@ -1,6 +1,6 @@
 [package]
 name = "poulpy-core"
-version = "0.3.2"
+version = "0.4.4"
 edition = "2024"
 license = "Apache-2.0"
 description = "A backend agnostic crate implementing RLWE-based encryption & arithmetic."

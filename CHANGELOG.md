@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## [0.4.4] - 2026-02-28
+
+### `poulpy-hal`
+- Add NTT120 reference primitives: primes, types, arithmetic, NTT butterfly, mat-vec, SVP, VMP, `VecZnxBig`, `VecZnxDft`, and convolution.
+- Refactor byte size helpers: centralize scratch/layout size computations into `Module`.
+- Consolidate FFT64 trait implementations to eliminate duplication between ref and AVX.
+
+### `poulpy-cpu-ref`
+- Add `NTT120Ref` backend: scalar Q120 NTT over CRT of four ~30-bit primes.
+  - Full OEP coverage: `VecZnx`, `VecZnxBig`, `VecZnxDft`, `SvpPPol`, `VmpPMat`.
+- Reorganize FFT64 sources into `fft64/` submodule.
+- Add NTT120 benchmarks.
+
+### `poulpy-cpu-avx`
+- Add `NTT120Avx` backend: AVX2-accelerated NTT120.
+  - AVX2 NTT butterfly with variable-shift accumulation.
+  - AVX2 BBC mat-vec (`NttMulBbc`, x2, 2-column variants).
+  - AVX2 arithmetic primitives: `b_from_znx64`, `c_from_b` (Barrett), `vec_mat1col_product_bbb`, `b_to_znx128` (hybrid AVX2/scalar CRT).
+  - AVX2 `VecZnxBig` accumulation and normalization.
+- Reorganize FFT64 sources into `fft64/` submodule.
+- Add NTT120 benchmarks and unit tests for all AVX subroutines.
+
+### `poulpy-core`
+- Add NTT120 backend support across all operations: encryption, decryption, automorphisms, external products, keyswitching, and noise analysis.
+- Extend test suite to cover `NTT120Ref` and `NTT120Avx`.
+
 ## [0.4.3] - 2026-01-16
 
 - Fix [#131](https://github.com/phantomzone-org/poulpy/issues/131)
@@ -7,7 +33,7 @@
 
 ## [0.4.2] - 2025-12-21
 
-## `poulpy-core`
+### `poulpy-core`
 - Add `GLWEMulPlain` trait:
   - `glwe_mul_plain_tmp_bytes`
   - `glwe_mul_plain`
@@ -24,7 +50,7 @@
 - Add method tests:
   - `test_glwe_tensoring`
 
-## `poulpy-hal`
+### `poulpy-hal`
 - Removed `Backend` generic from `VecZnxBigAllocBytesImpl`.
 - Add `CnvPVecL` and `CnvPVecR` structs.
 - Add `CnvPVecBytesOf` and `CnvPVecAlloc` traits.
@@ -78,12 +104,12 @@
   - `VecZnxBigNormalize` & `VecZnxBigNormalizeImpl`
   This change completes the road to unlocking full support for cross-base2k normalization, along with arbitrary positive/negative offset. Code is not ensured to be optimal, but correctness is ensured. 
 
-## `poulpy-cpu-ref`
+### `poulpy-cpu-ref`
 - Implemented `ConvolutionImpl` OPE on `FFT64Ref` backend.
 - Add benchmark for convolution.
 - Add test for convolution.
 
-## `poulpy-cpu-avx`
+### `poulpy-cpu-avx`
 - Implemented `ConvolutionImpl` OPE on `FFT64Avx` backend.
 - Add benchmark for convolution.
 - Add test for convolution.

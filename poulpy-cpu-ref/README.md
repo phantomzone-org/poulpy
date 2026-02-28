@@ -32,15 +32,22 @@ No additional configuration is required to use it.
 
 ## 🧪 Basic Usage
 
+This crate exposes two backends:
+
 ```rust
-use poulpy_cpu_ref::FFT64Ref;
+use poulpy_cpu_ref::{FFT64Ref, NTT120Ref};
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 let log_n: usize = 10;
+
+// f64 FFT backend
 let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << log_n);
+
+// Q120 NTT backend (CRT over four ~30-bit primes)
+let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(1 << log_n);
 ```
 
-This works on **all supported platforms and architectures**.
+Both work on **all supported platforms and architectures**.
 
 ---
 
@@ -68,6 +75,8 @@ use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 ```
 
+The same pattern applies to NTT120 backends (`NTT120Ref` / `NTT120Avx`).
+
 ---
 
 ## 🤝 Contributors
@@ -89,5 +98,3 @@ No modifications to those crates are necessary — the HAL provides the extensio
 ---
 
 For questions or guidance, feel free to open an issue or discussion in the repository.
-
-```

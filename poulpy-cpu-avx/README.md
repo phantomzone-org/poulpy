@@ -47,15 +47,22 @@ cargo bench --features enable-avx
 
 ## Basic Usage
 
+This crate exposes two AVX2-accelerated backends:
+
 ```rust
-use poulpy_backend_cpu_avx::FFT64Avx;
+use poulpy_cpu_avx::{FFT64Avx, NTT120Avx};
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 let log_n: usize = 10;
-let module = Module<FFT64Avx> = Module<FFT64Avx>::new(1<<log_n);
+
+// f64 FFT backend (AVX2 + FMA)
+let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(1 << log_n);
+
+// Q120 NTT backend (AVX2, CRT over four ~30-bit primes)
+let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(1 << log_n);
 ```
 
-Once compiled with `enable-avx`, the backend is usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-schemes`).
+Once compiled with `enable-avx`, both backends are usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-schemes`).
 
 ## 🤝 Contributors
 
