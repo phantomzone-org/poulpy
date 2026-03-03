@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos, ZnxZero},
 };
@@ -290,7 +290,7 @@ impl<BE: Backend> GGLWEProduct<BE> for Module<BE> where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
+        + VecZnxDftAddInplace<BE>
         + VecZnxDftCopy<BE>
 {
 }
@@ -302,7 +302,7 @@ where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
+        + VecZnxDftAddInplace<BE>
         + VecZnxDftCopy<BE>,
 {
     fn gglwe_product_dft_tmp_bytes<K>(&self, res_size: usize, a_size: usize, key_infos: &K) -> usize
@@ -324,8 +324,10 @@ where
         } else {
             let dnum: usize = key_infos.dnum().into();
             let a_size: usize = a_size.div_ceil(dsize).min(dnum);
+            let cols_out: usize = (key_infos.rank_out() + 1).into();
             let lvl_0: usize = self.bytes_of_vec_znx_dft(key_infos.rank_in().into(), a_size);
-            let lvl_1: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
+            let lvl_1: usize = self.bytes_of_vec_znx_dft(cols_out, key_infos.size());
+            let lvl_2: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
                 res_size,
                 a_size,
                 dnum,
@@ -334,7 +336,7 @@ where
                 key_infos.size(),
             );
 
-            lvl_0 + lvl_1
+            lvl_0 + lvl_1 + lvl_2
         }
     }
 
@@ -361,7 +363,7 @@ where
         // If dsize == 1, then the digit decomposition is equal to Base2K and we can simply
         // can the vmp API.
         if key.dsize() == 1 {
-            self.vmp_apply_dft_to_dft(res, a, pmat, scratch);
+            self.vmp_apply_dft_to_dft(res, a, pmat, 0, scratch);
         // If dsize != 1, then the digit decomposition is k * Base2K with k > 1.
         // As such we need to perform a bivariate polynomial convolution in (X, Y) / (X^{N}+1) with Y = 2^-K
         // (instead of yn univariate one in X).
@@ -375,10 +377,16 @@ where
         } else {
             let dsize: usize = key.dsize().into();
             let dnum: usize = key.dnum().into();
+            let cols_out: usize = res.cols();
 
             // We bound ai_dft size by the number of rows of the matrix
             let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize).min(dnum));
             ai_dft.zero();
+
+            // Tmp buffer: vmp result for di > 0 before folding into res.
+            // Writing to a fresh sequential buffer avoids scattered-write cache thrashing.
+            let (mut res_dft_tmp, scratch_2) = scratch_1.take_vec_znx_dft(self, cols_out, pmat.size());
+            res_dft_tmp.zero();
 
             for di in 0..dsize {
                 // Sets ai_dft size according to the current digit (if dsize does not divides a_size),
@@ -400,10 +408,15 @@ where
 
                 if di == 0 {
                     // res = pmat * ai_dft
-                    self.vmp_apply_dft_to_dft(res, &ai_dft, pmat, scratch_1);
+                    self.vmp_apply_dft_to_dft(res, &ai_dft, pmat, 0, scratch_2);
                 } else {
-                    // res = (pmat * ai_dft) * 2^{di * Base2k}
-                    self.vmp_apply_dft_to_dft_add(res, &ai_dft, pmat, di, scratch_1);
+                    // Overwrite tmp with shifted product, then fold into res.
+                    // This avoids scattered read-add-write on the res DFT buffer.
+                    res_dft_tmp.set_size(res.size());
+                    self.vmp_apply_dft_to_dft(&mut res_dft_tmp, &ai_dft, pmat, di, scratch_2);
+                    for col in 0..cols_out {
+                        self.vec_znx_dft_add_inplace(res, col, &res_dft_tmp, col);
+                    }
                 }
             }
 

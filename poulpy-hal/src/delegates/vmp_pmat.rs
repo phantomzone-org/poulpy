@@ -1,15 +1,15 @@
 use crate::{
     api::{
-        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftAddTmpBytes,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
+        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf,
+        VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMat, VmpPMatOwned, VmpPMatToMut,
         VmpPMatToRef,
     },
     oep::{
-        VmpApplyDftImpl, VmpApplyDftTmpBytesImpl, VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl,
-        VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
+        VmpApplyDftImpl, VmpApplyDftTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl,
+        VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
 };
 
@@ -105,44 +105,13 @@ impl<B> VmpApplyDftToDft<B> for Module<B>
 where
     B: Backend + VmpApplyDftToDftImpl<B>,
 {
-    fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
+    fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, b: &C, limb_offset: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>,
     {
-        B::vmp_apply_dft_to_dft_impl(self, res, a, b, scratch);
-    }
-}
-
-impl<B> VmpApplyDftToDftAddTmpBytes for Module<B>
-where
-    B: Backend + VmpApplyDftToDftAddTmpBytesImpl<B>,
-{
-    fn vmp_apply_dft_to_dft_add_tmp_bytes(
-        &self,
-        res_size: usize,
-        a_size: usize,
-        b_rows: usize,
-        b_cols_in: usize,
-        b_cols_out: usize,
-        b_size: usize,
-    ) -> usize {
-        B::vmp_apply_dft_to_dft_add_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
-    }
-}
-
-impl<B> VmpApplyDftToDftAdd<B> for Module<B>
-where
-    B: Backend + VmpApplyDftToDftAddImpl<B>,
-{
-    fn vmp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
-    where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxDftToRef<B>,
-        C: VmpPMatToRef<B>,
-    {
-        B::vmp_apply_dft_to_dft_add_impl(self, res, a, b, scale, scratch);
+        B::vmp_apply_dft_to_dft_impl(self, res, a, b, limb_offset, scratch);
     }
 }
 

@@ -31,7 +31,8 @@
 //! must have verified CPU support at module construction time.
 
 use core::arch::x86_64::{
-    __m256i, _mm_cvtsi64_si128, _mm256_add_epi64, _mm256_and_si256, _mm256_andnot_si256, _mm256_cmpgt_epi64, _mm256_loadu_si256,
+    __m256i, _mm_add_epi64, _mm_cvtsi64_si128, _mm_cvtsi128_si64, _mm_unpackhi_epi64, _mm256_add_epi64, _mm256_and_si256,
+    _mm256_andnot_si256, _mm256_castsi256_si128, _mm256_cmpgt_epi64, _mm256_extracti128_si256, _mm256_loadu_si256,
     _mm256_mul_epu32, _mm256_or_si256, _mm256_set1_epi64x, _mm256_setzero_si256, _mm256_slli_epi64, _mm256_srl_epi64,
     _mm256_srli_epi64, _mm256_storeu_si256, _mm256_sub_epi64,
 };
@@ -46,7 +47,7 @@ use poulpy_hal::reference::ntt120::{
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// `Q[k]` as `u64`, one per prime, for use in AVX2 lanes.
-const Q_VEC: [u64; 4] = [
+pub(crate) const Q_VEC: [u64; 4] = [
     Primes30::Q[0] as u64,
     Primes30::Q[1] as u64,
     Primes30::Q[2] as u64,
@@ -57,7 +58,7 @@ const Q_VEC: [u64; 4] = [
 ///
 /// Used by `b_from_znx64_avx2`: for a negative input `x`, each prime lane
 /// receives `(x as u64 & i64::MAX) + oq[k]`, which equals `x mod Q[k]` as u64.
-const OQ: [u64; 4] = {
+pub(crate) const OQ: [u64; 4] = {
     let mut oq = [0u64; 4];
     let mut k = 0usize;
     while k < 4 {
@@ -70,9 +71,9 @@ const OQ: [u64; 4] = {
 
 /// Barrett multiplier: `mu[k] = floor(2^61 / Q[k])`.
 ///
-/// Used for Barrett reduction of values `x < 2^60` mod `Q[k]`.
+/// Used for Barrett reduction of values `x < 2^61` mod `Q[k]`.
 /// Since `Q[k] > 2^29` for Primes30, `mu[k] < 2^32` (fits in u32 / lower 32 bits of u64).
-const BARRETT_MU: [u64; 4] = {
+pub(crate) const BARRETT_MU: [u64; 4] = {
     let mut mu = [0u64; 4];
     let mut k = 0usize;
     while k < 4 {
@@ -87,7 +88,7 @@ const BARRETT_MU: [u64; 4] = {
 /// Used in `c_from_b_avx2` and `b_to_znx128_avx2`:
 /// - Combines `x_hi_r * pow32 + x_lo` to reduce a 63-bit q120b value.
 /// - Computes `r_shift = r * pow32 mod Q[k]` (i.e., `r * 2^32 mod Q[k]`).
-const POW32: [u64; 4] = {
+pub(crate) const POW32: [u64; 4] = {
     let mut p = [0u64; 4];
     let mut k = 0usize;
     while k < 4 {
@@ -98,12 +99,98 @@ const POW32: [u64; 4] = {
 };
 
 /// `CRT_CST[k]` as u64, for `b_to_znx128_avx2`.
-const CRT_VEC: [u64; 4] = [
+pub(crate) const CRT_VEC: [u64; 4] = [
     Primes30::CRT_CST[0] as u64,
     Primes30::CRT_CST[1] as u64,
     Primes30::CRT_CST[2] as u64,
     Primes30::CRT_CST[3] as u64,
 ];
+
+/// `pow32_crt[k] = (pow32[k] * CRT_CST[k]) mod Q[k]`.
+///
+/// Used by [`reduce_b_and_apply_crt`]: folds the high-word Barrett step and CRT multiply into
+/// a single constant, so the contribution of `x_hi_r` (upper 32 bits of a q120b value, reduced
+/// mod Q) directly maps to a CRT-weighted residue without an intermediate Barrett pass.
+pub(crate) const POW32_CRT: [u64; 4] = {
+    let mut r = [0u64; 4];
+    let mut k = 0usize;
+    while k < 4 {
+        r[k] = (POW32[k] * CRT_VEC[k]) % Q_VEC[k];
+        k += 1;
+    }
+    r
+};
+
+/// `pow16_crt[k] = (2^16 mod Q[k]) * CRT_CST[k] mod Q[k]`.
+///
+/// Used by [`reduce_b_and_apply_crt`]: handles the middle 16 bits of `x_lo` when the full
+/// `x_lo * CRT_CST` product would exceed `2^61` (the Barrett bound). Since `Q > 2^29 > 2^16`,
+/// `2^16 mod Q[k] = 2^16` exactly, so this is just `(65536 * CRT_CST[k]) mod Q[k]`.
+pub(crate) const POW16_CRT: [u64; 4] = {
+    let mut r = [0u64; 4];
+    let mut k = 0usize;
+    while k < 4 {
+        // Q[k] > 2^29 > 2^16, so 2^16 mod Q[k] = 2^16 exactly.
+        r[k] = ((1u64 << 16) * CRT_VEC[k]) % Q_VEC[k];
+        k += 1;
+    }
+    r
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRT accumulation constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// `qm[k] = total_q / Q[k]` as u128 (product of the three complementary primes).
+const QM: [u128; 4] = {
+    let q0 = Primes30::Q[0] as u128;
+    let q1 = Primes30::Q[1] as u128;
+    let q2 = Primes30::Q[2] as u128;
+    let q3 = Primes30::Q[3] as u128;
+    [q1 * q2 * q3, q0 * q2 * q3, q0 * q1 * q3, q0 * q1 * q2]
+};
+
+/// High 64-bit limb of `qm[k]`: `QM_HI[k] = qm[k] >> 64`.
+///
+/// `qm[k] < (2^30)^3 = 2^90`, so `QM_HI[k] < 2^26` — fits in 32 bits,
+/// enabling `_mm256_mul_epu32(t, QM_HI_VEC)` without overflow.
+pub(crate) const QM_HI: [u64; 4] = [
+    (QM[0] >> 64) as u64,
+    (QM[1] >> 64) as u64,
+    (QM[2] >> 64) as u64,
+    (QM[3] >> 64) as u64,
+];
+
+/// Middle 32-bit limb of `qm[k]`: `(qm[k] >> 32) & 0xFFFF_FFFF`.
+pub(crate) const QM_MID: [u64; 4] = [
+    ((QM[0] >> 32) & 0xFFFF_FFFF) as u64,
+    ((QM[1] >> 32) & 0xFFFF_FFFF) as u64,
+    ((QM[2] >> 32) & 0xFFFF_FFFF) as u64,
+    ((QM[3] >> 32) & 0xFFFF_FFFF) as u64,
+];
+
+/// Low 32-bit limb of `qm[k]`: `qm[k] & 0xFFFF_FFFF`.
+pub(crate) const QM_LO: [u64; 4] = [
+    (QM[0] & 0xFFFF_FFFF) as u64,
+    (QM[1] & 0xFFFF_FFFF) as u64,
+    (QM[2] & 0xFFFF_FFFF) as u64,
+    (QM[3] & 0xFFFF_FFFF) as u64,
+];
+
+/// `total_q = Q[0] * Q[1] * Q[2] * Q[3]` as u128.
+pub(crate) const TOTAL_Q: u128 = {
+    let q0 = Primes30::Q[0] as u128;
+    let q1 = Primes30::Q[1] as u128;
+    let q2 = Primes30::Q[2] as u128;
+    let q3 = Primes30::Q[3] as u128;
+    q0 * q1 * q2 * q3
+};
+
+/// `[0, total_q, 2·total_q, 3·total_q]` — lookup table for table-based modular reduction.
+///
+/// Replaces 3 conditional subtracts with 1 shift + 1 table load + 1 unconditional subtract
+/// + at most 1 correction subtract (proved: `q_real - q_approx ≤ 1` for Primes30).
+pub(crate) const TOTAL_Q_MULT: [u128; 4] = [0, TOTAL_Q, TOTAL_Q * 2, TOTAL_Q * 3];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AVX2 helpers
@@ -113,7 +200,7 @@ const CRT_VEC: [u64; 4] = [
 ///
 /// Valid when both `x < 2^63` and `q < 2^63` (signed cmpgt gives correct unsigned order).
 #[inline(always)]
-unsafe fn cond_sub(x: __m256i, q: __m256i) -> __m256i {
+pub(crate) unsafe fn cond_sub(x: __m256i, q: __m256i) -> __m256i {
     unsafe {
         // lt = all-ones in lanes where q > x (i.e., x < q — no subtract needed)
         let lt = _mm256_cmpgt_epi64(q, x);
@@ -127,7 +214,7 @@ unsafe fn cond_sub(x: __m256i, q: __m256i) -> __m256i {
 /// The quotient approximation may underestimate the true quotient by up to 2,
 /// so two conditional subtracts bring the remainder into `[0, Q)`.
 #[inline(always)]
-unsafe fn barrett_reduce(tmp: __m256i, q: __m256i, mu: __m256i) -> __m256i {
+pub(crate) unsafe fn barrett_reduce(tmp: __m256i, q: __m256i, mu: __m256i) -> __m256i {
     unsafe {
         let mask32 = _mm256_set1_epi64x(u32::MAX as i64);
         // Split tmp at bit 32: tmp_hi < 2^29, tmp_lo < 2^32
@@ -145,6 +232,54 @@ unsafe fn barrett_reduce(tmp: __m256i, q: __m256i, mu: __m256i) -> __m256i {
         // r < 3*Q after the approximation; two subtracts bring it into [0, Q)
         let r = cond_sub(r, q);
         cond_sub(r, q)
+    }
+}
+
+/// Horizontal sum of 4 × u64 lanes in a `__m256i`.
+///
+/// Returns `lane[0] + lane[1] + lane[2] + lane[3]` as u64.
+/// Uses `_mm256_extracti128_si256` (AVX2) and SSE2 add/unpack/extract.
+#[inline(always)]
+unsafe fn hadd64(v: __m256i) -> u64 {
+    unsafe {
+        let lo128 = _mm256_castsi256_si128(v);
+        let hi128 = _mm256_extracti128_si256::<1>(v);
+        let sum2 = _mm_add_epi64(lo128, hi128); // [l0+l2, l1+l3]
+        let sum2h = _mm_unpackhi_epi64(sum2, sum2); // [l1+l3, l1+l3]
+        let sum1 = _mm_add_epi64(sum2, sum2h); // [total, total]
+        _mm_cvtsi128_si64(sum1) as u64
+    }
+}
+
+/// Vectorized CRT weighted accumulation: `v = Σ_k t[k] * qm[k]` in u128.
+///
+/// Decomposes each `qm[k]` into three 32-bit limbs (HI/MID/LO) and uses
+/// `_mm256_mul_epu32` for all four lane products simultaneously.
+/// Replaces 8 scalar `MUL r64` + 1 `vmovdqu` store with 3 × `_mm256_mul_epu32`.
+///
+/// **Bounds** (ensures no u64 overflow in horizontal sums):
+/// - `s_hi  < 4 · (Q_max - 1) · 2^26 < 2^59`  → fits in u64
+/// - `s_mid < 4 · (Q_max - 1) · 2^32 < 2^64`  → fits in u64
+/// - `s_lo  < 4 · (Q_max - 1) · 2^32 < 2^64`  → fits in u64
+/// - `v = s_hi * 2^64 + s_mid * 2^32 + s_lo < 4 · total_q < 2^122` → fits in u128
+///
+/// # Safety
+///
+/// `t` must hold values `< Q[k]` in each lane (output of [`reduce_b_and_apply_crt`]).
+/// Caller must ensure AVX2 support.
+#[inline(always)]
+pub(crate) unsafe fn crt_accumulate_avx2(t: __m256i, qm_hi: __m256i, qm_mid: __m256i, qm_lo: __m256i) -> u128 {
+    unsafe {
+        let p_hi = _mm256_mul_epu32(t, qm_hi); // t[k] * QM_HI[k]  < 2^57/lane
+        let p_mid = _mm256_mul_epu32(t, qm_mid); // t[k] * QM_MID[k] < 2^62/lane
+        let p_lo = _mm256_mul_epu32(t, qm_lo); // t[k] * QM_LO[k]  < 2^62/lane
+
+        let s_hi = hadd64(p_hi); // < 4 · 2^57 = 2^59          ✓
+        let s_mid = hadd64(p_mid); // < 4 · (Q-1) · 2^32 < 2^64  ✓
+        let s_lo = hadd64(p_lo); // < 4 · (Q-1) · 2^32 < 2^64  ✓
+
+        // v = s_hi·2^64 + s_mid·2^32 + s_lo  (no u128 overflow: v < 4·total_q < 2^122)
+        ((s_hi as u128) << 64) + ((s_mid as u128) << 32) + (s_lo as u128)
     }
 }
 
@@ -202,7 +337,7 @@ pub(crate) unsafe fn b_from_znx64_avx2(nn: usize, res: &mut [u64], x: &[i64]) {
 /// Input `x` holds values in `[0, Q[k] << 33)`, so `x < 2^63`.
 /// Returns the residue in the lower 32 bits of each 64-bit lane.
 #[inline(always)]
-unsafe fn reduce_b_to_canonical(x: __m256i, q: __m256i, mu: __m256i, pow32: __m256i) -> __m256i {
+pub(crate) unsafe fn reduce_b_to_canonical(x: __m256i, q: __m256i, mu: __m256i, pow32: __m256i) -> __m256i {
     unsafe {
         let mask32 = _mm256_set1_epi64x(u32::MAX as i64);
         // x_hi = x >> 32 < 2 * Q[k] (since x < Q << 33)
@@ -213,6 +348,54 @@ unsafe fn reduce_b_to_canonical(x: __m256i, q: __m256i, mu: __m256i, pow32: __m2
         // tmp = x_hi_r * pow32 + x_lo  (<  Q * Q + 2^32 < 2^60 + 2^32 < 2^61)
         let tmp = _mm256_add_epi64(_mm256_mul_epu32(x_hi_r, pow32), x_lo);
         // Barrett-reduce tmp to [0, Q)
+        barrett_reduce(tmp, q, mu)
+    }
+}
+
+/// Fused q120b reduce + CRT multiply in a single Barrett pass.
+///
+/// Computes `t[k] = (x[k] * CRT_CST[k]) mod Q[k]` for all four prime lanes simultaneously,
+/// starting from a q120b value `x[k] < Q[k] << 33`, using **one** Barrett reduction instead
+/// of the two-step `reduce_b_to_canonical` + `barrett(x * CRT)` sequence.
+///
+/// The key identity is:
+/// ```text
+/// x * CRT ≡ x_hi_r * POW32_CRT + x_lo_hi * POW16_CRT + x_lo_lo * CRT  (mod Q)
+/// ```
+/// where `x = x_hi * 2^32 + x_lo_hi * 2^16 + x_lo_lo`, `x_hi_r = cond_sub(x_hi, Q)`.
+///
+/// The three-part split keeps every sub-product below `2^61`:
+/// - `x_hi_r * POW32_CRT < Q^2 < 2^60`
+/// - `x_lo_hi * POW16_CRT < 2^16 * Q < 2^46`
+/// - `x_lo_lo * CRT       < 2^16 * Q < 2^46`
+/// - `sum < 2^60 + 2^47 < 2^61` ✓
+///
+/// Saves one Barrett pass (and two conditional subtracts) vs the two-step approach.
+#[inline(always)]
+pub(crate) unsafe fn reduce_b_and_apply_crt(
+    x: __m256i,
+    q: __m256i,
+    mu: __m256i,
+    pow32_crt: __m256i,
+    pow16_crt: __m256i,
+    crt: __m256i,
+) -> __m256i {
+    unsafe {
+        let mask32 = _mm256_set1_epi64x(u32::MAX as i64);
+        let mask16 = _mm256_set1_epi64x(0xFFFF_i64);
+        // x_hi = x >> 32 < 2*Q  (x < Q << 33)
+        let x_hi = _mm256_srli_epi64::<32>(x);
+        // x_hi_r < Q after one conditional subtract
+        let x_hi_r = cond_sub(x_hi, q);
+        // x_lo_hi and x_lo_lo split the lower 32 bits at bit 16
+        let x_lo = _mm256_and_si256(x, mask32);
+        let x_lo_hi = _mm256_srli_epi64::<16>(x_lo);
+        let x_lo_lo = _mm256_and_si256(x_lo, mask16);
+        // tmp = x_hi_r * POW32_CRT + x_lo_hi * POW16_CRT + x_lo_lo * CRT < 2^61
+        let p1 = _mm256_mul_epu32(x_hi_r, pow32_crt);
+        let p2 = _mm256_mul_epu32(x_lo_hi, pow16_crt);
+        let p3 = _mm256_mul_epu32(x_lo_lo, crt);
+        let tmp = _mm256_add_epi64(_mm256_add_epi64(p1, p2), p3);
         barrett_reduce(tmp, q, mu)
     }
 }
@@ -387,39 +570,37 @@ pub(crate) unsafe fn vec_mat1col_product_bbb_avx2(meta: &BbbMeta<Primes30>, ell:
 pub(crate) unsafe fn b_to_znx128_avx2(nn: usize, res: &mut [i128], a: &[u64]) {
     assert!(res.len() >= nn, "b_to_znx128_avx2: res.len()={} < nn={}", res.len(), nn);
     assert!(a.len() >= 4 * nn, "b_to_znx128_avx2: a.len()={} < 4*nn={}", a.len(), 4 * nn);
-    // Scalar CRT reconstruction constants (same as b_to_znx128_ref)
-    let q: [i128; 4] = Primes30::Q.map(|qi| qi as i128);
-    let total_q: i128 = q[0] * q[1] * q[2] * q[3];
-    let qm: [i128; 4] = [q[1] * q[2] * q[3], q[0] * q[2] * q[3], q[0] * q[1] * q[3], q[0] * q[1] * q[2]];
-    let half = (total_q + 1) / 2;
+    let half_q: u128 = TOTAL_Q.div_ceil(2);
 
     unsafe {
         let q_vec = _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i);
         let mu_vec = _mm256_loadu_si256(BARRETT_MU.as_ptr() as *const __m256i);
-        let pow32_vec = _mm256_loadu_si256(POW32.as_ptr() as *const __m256i);
+        let pow32_crt_vec = _mm256_loadu_si256(POW32_CRT.as_ptr() as *const __m256i);
+        let pow16_crt_vec = _mm256_loadu_si256(POW16_CRT.as_ptr() as *const __m256i);
         let crt_vec = _mm256_loadu_si256(CRT_VEC.as_ptr() as *const __m256i);
+        let qm_hi_vec = _mm256_loadu_si256(QM_HI.as_ptr() as *const __m256i);
+        let qm_mid_vec = _mm256_loadu_si256(QM_MID.as_ptr() as *const __m256i);
+        let qm_lo_vec = _mm256_loadu_si256(QM_LO.as_ptr() as *const __m256i);
 
         let mut a_ptr = a.as_ptr() as *const __m256i;
 
         for r in &mut res[..nn] {
             let xv = _mm256_loadu_si256(a_ptr);
 
-            // Step 1+2 (AVX2): xk = x % Q,  t = (xk * CRT_CST) % Q
-            let xk = reduce_b_to_canonical(xv, q_vec, mu_vec, pow32_vec);
-            let crt_prod = _mm256_mul_epu32(xk, crt_vec); // xk * CRT_CST < Q^2 < 2^60
-            let t = barrett_reduce(crt_prod, q_vec, mu_vec);
+            // Fused: t[k] = (x[k] * CRT_CST[k]) mod Q[k] in one Barrett pass.
+            let t = reduce_b_and_apply_crt(xv, q_vec, mu_vec, pow32_crt_vec, pow16_crt_vec, crt_vec);
 
-            // Extract t[0..4] to stack for scalar accumulation
-            let mut t_arr = [0u64; 4];
-            _mm256_storeu_si256(t_arr.as_mut_ptr() as *mut __m256i, t);
+            // Vectorized CRT accumulation: v = Σ t[k] * qm[k] (no store-to-stack round-trip).
+            let mut v = crt_accumulate_avx2(t, qm_hi_vec, qm_mid_vec, qm_lo_vec);
 
-            // Step 3 (scalar): CRT accumulation in i128
-            let mut tmp: i128 = 0;
-            for k in 0..4 {
-                tmp += t_arr[k] as i128 * qm[k];
+            // Table-based modular reduction: q_approx = floor(v / 2^120) ∈ {0,1,2,3}.
+            let q_approx = (v >> 120) as usize;
+            v -= TOTAL_Q_MULT[q_approx]; // unconditional subtract (never underflows)
+            if v >= TOTAL_Q {
+                v -= TOTAL_Q; // at most 1 correction (proved: q_real - q_approx ≤ 1)
             }
-            tmp %= total_q;
-            *r = if tmp >= half { tmp - total_q } else { tmp };
+
+            *r = if v >= half_q { v as i128 - TOTAL_Q as i128 } else { v as i128 };
 
             a_ptr = a_ptr.add(1);
         }
@@ -495,6 +676,37 @@ mod tests {
         vec_mat1col_product_bbb_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_avx, res_ref, "vec_mat1col_product_bbb: AVX2 vs ref mismatch");
+    }
+
+    /// Fused `reduce_b_and_apply_crt` matches two-step `reduce_b_to_canonical` + barrett.
+    #[test]
+    fn reduce_b_and_apply_crt_vs_two_step() {
+        use poulpy_hal::reference::ntt120::arithmetic::b_from_znx64_ref;
+        let n = 64usize;
+        let coeffs: Vec<i64> = (0..n as i64).map(|i| i * 5 - 160).collect();
+        let mut b = vec![0u64; 4 * n];
+        b_from_znx64_ref::<Primes30>(n, &mut b, &coeffs);
+
+        let q = unsafe { _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i) };
+        let mu = unsafe { _mm256_loadu_si256(BARRETT_MU.as_ptr() as *const __m256i) };
+        let pow32 = unsafe { _mm256_loadu_si256(POW32.as_ptr() as *const __m256i) };
+        let crt = unsafe { _mm256_loadu_si256(CRT_VEC.as_ptr() as *const __m256i) };
+        let pow32_crt = unsafe { _mm256_loadu_si256(POW32_CRT.as_ptr() as *const __m256i) };
+        let pow16_crt = unsafe { _mm256_loadu_si256(POW16_CRT.as_ptr() as *const __m256i) };
+
+        for j in 0..n {
+            let xv = unsafe { _mm256_loadu_si256(b[4 * j..].as_ptr() as *const __m256i) };
+            let mut two_step = [0u64; 4];
+            let mut fused = [0u64; 4];
+            unsafe {
+                let xk = reduce_b_to_canonical(xv, q, mu, pow32);
+                let t = barrett_reduce(_mm256_mul_epu32(xk, crt), q, mu);
+                _mm256_storeu_si256(two_step.as_mut_ptr() as *mut __m256i, t);
+                let t2 = reduce_b_and_apply_crt(xv, q, mu, pow32_crt, pow16_crt, crt);
+                _mm256_storeu_si256(fused.as_mut_ptr() as *mut __m256i, t2);
+            }
+            assert_eq!(fused, two_step, "reduce_b_and_apply_crt mismatch at j={j}");
+        }
     }
 
     /// AVX2 `b_to_znx128` matches reference for valid q120b input.

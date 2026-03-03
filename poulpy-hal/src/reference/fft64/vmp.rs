@@ -126,7 +126,7 @@ where
         vec_znx_dft_apply(table, 1, 0, &mut a_dft, j, &a, offset + j);
     }
 
-    vmp_apply_dft_to_dft(res, &a_dft, &pmat, tmp_bytes);
+    vmp_apply_dft_to_dft(res, &a_dft, &pmat, 0, tmp_bytes);
 }
 
 pub fn vmp_apply_dft_to_dft_tmp_bytes(a_size: usize, prows: usize, pcols_in: usize) -> usize {
@@ -141,7 +141,7 @@ where
     res.to_mut().data_mut().fill(0);
 }
 
-pub fn vmp_apply_dft_to_dft<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
+pub fn vmp_apply_dft_to_dft<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, limb_offset: usize, tmp_bytes: &mut [f64])
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
     R: VecZnxDftToMut<BE>,
@@ -170,39 +170,16 @@ where
     let a_raw: &[f64] = a.raw();
     let res_raw: &mut [f64] = res.raw_mut();
 
-    vmp_apply_dft_to_dft_core::<true, BE>(n, res_raw, a_raw, pmat_raw, 0, nrows, ncols, tmp_bytes)
-}
-
-pub fn vmp_apply_dft_to_dft_add<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, limb_offset: usize, tmp_bytes: &mut [f64])
-where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    M: VmpPMatToRef<BE>,
-{
-    use crate::layouts::{ZnxView, ZnxViewMut};
-
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let pmat: VmpPMat<&[u8], BE> = pmat.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), pmat.n());
-        assert_eq!(a.n(), pmat.n());
-        assert_eq!(res.cols(), pmat.cols_out());
-        assert_eq!(a.cols(), pmat.cols_in());
-    }
-
-    let n: usize = res.n();
-    let nrows: usize = pmat.cols_in() * pmat.rows();
-    let ncols: usize = pmat.cols_out() * pmat.size();
-
-    let pmat_raw: &[f64] = pmat.raw();
-    let a_raw: &[f64] = a.raw();
-    let res_raw: &mut [f64] = res.raw_mut();
-
-    vmp_apply_dft_to_dft_core::<false, BE>(n, res_raw, a_raw, pmat_raw, limb_offset, nrows, ncols, tmp_bytes)
+    vmp_apply_dft_to_dft_core::<true, BE>(
+        n,
+        res_raw,
+        a_raw,
+        pmat_raw,
+        limb_offset * pmat.cols_out(),
+        nrows,
+        ncols,
+        tmp_bytes,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]

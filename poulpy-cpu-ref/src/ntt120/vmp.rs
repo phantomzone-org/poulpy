@@ -7,7 +7,7 @@
 //! - **Allocate / zero**: create and initialize prepared matrices.
 //! - **Prepare**: NTT each row of an integer-domain `MatZnx` into a `VmpPMat`.
 //! - **Apply DFT-to-DFT**: multiply a frequency-domain vector by the prepared
-//!   matrix. The `_add` variant accumulates into an existing result.
+//!   matrix, with optional `limb_offset` to select which digit to accumulate.
 //!
 //! All apply and prepare operations require scratch space.
 
@@ -17,13 +17,10 @@ use poulpy_hal::{
         MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef,
         ZnxInfos,
     },
-    oep::{
-        VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
-    },
+    oep::{VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl},
     reference::ntt120::vmp::{
-        ntt120_vmp_apply_dft_to_dft, ntt120_vmp_apply_dft_to_dft_add, ntt120_vmp_apply_dft_to_dft_tmp_bytes, ntt120_vmp_prepare,
-        ntt120_vmp_prepare_tmp_bytes, ntt120_vmp_zero,
+        ntt120_vmp_apply_dft_to_dft, ntt120_vmp_apply_dft_to_dft_tmp_bytes, ntt120_vmp_prepare, ntt120_vmp_prepare_tmp_bytes,
+        ntt120_vmp_zero,
     },
 };
 
@@ -64,55 +61,12 @@ unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for NTT120Ref {
     }
 }
 
-unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for NTT120Ref {
-    fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
-        _module: &Module<Self>,
-        _res_size: usize,
-        a_size: usize,
-        b_rows: usize,
-        b_cols_in: usize,
-        _b_cols_out: usize,
-        _b_size: usize,
-    ) -> usize {
-        ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
-    }
-}
-
 unsafe impl VmpApplyDftToDftImpl<Self> for NTT120Ref
 where
     Scratch<Self>: TakeSlice,
     NTT120Ref: VmpApplyDftToDftTmpBytesImpl<Self>,
 {
-    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<Self>, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<Self>)
-    where
-        R: VecZnxDftToMut<Self>,
-        A: VecZnxDftToRef<Self>,
-        C: VmpPMatToRef<Self>,
-    {
-        let mut res_ref: VecZnxDft<&mut [u8], Self> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], Self> = a.to_ref();
-        let pmat_ref: VmpPMat<&[u8], Self> = pmat.to_ref();
-
-        let bytes = Self::vmp_apply_dft_to_dft_tmp_bytes_impl(
-            module,
-            res_ref.size(),
-            a_ref.size(),
-            pmat_ref.rows(),
-            pmat_ref.cols_in(),
-            pmat_ref.cols_out(),
-            pmat_ref.size(),
-        );
-        let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
-        ntt120_vmp_apply_dft_to_dft::<_, _, _, Self>(module, &mut res_ref, &a_ref, &pmat_ref, tmp);
-    }
-}
-
-unsafe impl VmpApplyDftToDftAddImpl<Self> for NTT120Ref
-where
-    Scratch<Self>: TakeSlice,
-    NTT120Ref: VmpApplyDftToDftTmpBytesImpl<Self>,
-{
-    fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
+    fn vmp_apply_dft_to_dft_impl<R, A, C>(
         module: &Module<Self>,
         res: &mut R,
         a: &A,
@@ -138,14 +92,7 @@ where
             pmat_ref.size(),
         );
         let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
-        ntt120_vmp_apply_dft_to_dft_add::<_, _, _, Self>(
-            module,
-            &mut res_ref,
-            &a_ref,
-            &pmat_ref,
-            limb_offset * pmat_ref.cols_out(),
-            tmp,
-        );
+        ntt120_vmp_apply_dft_to_dft::<_, _, _, Self>(module, &mut res_ref, &a_ref, &pmat_ref, limb_offset, tmp);
     }
 }
 

@@ -1,13 +1,10 @@
 use crate::{
-    api::{
-        SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
-        SvpPPolFromBytes, SvpPrepare,
-    },
+    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPPolFromBytes, SvpPrepare},
     layouts::{
         Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
-    oep::{SvpApplyDftImpl, SvpApplyDftToDftAddImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
+    oep::{SvpApplyDftImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
 };
 
 impl<B: Backend> SvpPPolFromBytes<B> for Module<B> {
@@ -66,20 +63,6 @@ where
         C: VecZnxDftToRef<B>,
     {
         B::svp_apply_dft_to_dft_impl(self, res, res_col, a, a_col, b, b_col);
-    }
-}
-
-impl<B> SvpApplyDftToDftAdd<B> for Module<B>
-where
-    B: Backend + SvpApplyDftToDftAddImpl<B>,
-{
-    fn svp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
-    where
-        R: VecZnxDftToMut<B>,
-        A: SvpPPolToRef<B>,
-        C: VecZnxDftToRef<B>,
-    {
-        B::svp_apply_dft_to_dft_add_impl(self, res, res_col, a, a_col, b, b_col);
     }
 }
 

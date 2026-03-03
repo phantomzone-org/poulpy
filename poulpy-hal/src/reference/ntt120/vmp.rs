@@ -8,7 +8,7 @@
 //!    [`ntt120_vmp_prepare`].
 //! 2. **Apply** — multiply a [`VecZnxDft`] (q120b) by a prepared
 //!    [`VmpPMat`] (q120c) to obtain a new [`VecZnxDft`] (q120b) via
-//!    [`ntt120_vmp_apply_dft_to_dft`] or [`ntt120_vmp_apply_dft_to_dft_add`].
+//!    [`ntt120_vmp_apply_dft_to_dft`].
 //!
 //! # Layout
 //!
@@ -297,39 +297,7 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool, BE>(
 /// of `pmat` using lazy q120b × q120c accumulation.
 ///
 /// `tmp` must hold at least `ntt120_vmp_apply_dft_to_dft_tmp_bytes(...) / size_of::<u64>()` elements.
-pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, pmat: &M, tmp: &mut [u64])
-where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    M: VmpPMatToRef<BE>,
-{
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let pmat: VmpPMat<&[u8], BE> = pmat.to_ref();
-
-    debug_assert_eq!(res.n(), pmat.n());
-    debug_assert_eq!(a.n(), pmat.n());
-
-    let n = res.n();
-    let nrows = pmat.cols_in() * pmat.rows();
-    let ncols = pmat.cols_out() * pmat.size();
-    let meta = module.get_bbc_meta();
-
-    let res_u64: &mut [u64] = cast_slice_mut(res.raw_mut());
-    let a_u64: &[u64] = cast_slice(a.raw());
-    let pmat_u32: &[u32] = cast_slice(pmat.raw());
-
-    vmp_apply_dft_to_dft_core::<true, BE>(n, res_u64, a_u64, pmat_u32, 0, nrows, ncols, meta, tmp);
-}
-
-/// NTT-domain vector-matrix product (accumulate): `res += a · pmat[limb_offset..]`.
-///
-/// Like [`ntt120_vmp_apply_dft_to_dft`] but accumulates into `res` with
-/// lazy q120b addition, starting from column `limb_offset` of `pmat`.
-///
-/// `tmp` must hold at least `ntt120_vmp_apply_dft_to_dft_tmp_bytes(...) / size_of::<u64>()` elements.
-pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
+pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(
     module: &impl NttModuleHandle,
     res: &mut R,
     a: &A,
@@ -358,7 +326,17 @@ pub fn ntt120_vmp_apply_dft_to_dft_add<R, A, M, BE>(
     let a_u64: &[u64] = cast_slice(a.raw());
     let pmat_u32: &[u32] = cast_slice(pmat.raw());
 
-    vmp_apply_dft_to_dft_core::<false, BE>(n, res_u64, a_u64, pmat_u32, limb_offset, nrows, ncols, meta, tmp);
+    vmp_apply_dft_to_dft_core::<true, BE>(
+        n,
+        res_u64,
+        a_u64,
+        pmat_u32,
+        limb_offset * pmat.cols_out(),
+        nrows,
+        ncols,
+        meta,
+        tmp,
+    );
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

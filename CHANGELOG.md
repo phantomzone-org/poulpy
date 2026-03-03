@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## [0.4.5] - UNRELEASED
+
+### `poulpy-hal`
+- Remove `VmpApplyDftToDftAdd` and `SvpApplyDftToDftAdd` traits; merge additive variant into `VmpApplyDftToDft` / `SvpApplyDftToDft` via a new `limb_offset` parameter.
+  These traits accumulated VMP results directly into a scattered output buffer, causing severe cache misses. Writing into a contiguous temporary buffer and folding with `VecZnxDftAddInplace` is ~2× faster.
+- Remove all associated OEP (`VmpApplyDftToDftAddImpl`, `VmpApplyDftToDftAddTmpBytesImpl`, `SvpApplyDftToDftAddImpl`), delegate, and bench-suite plumbing.
+
+### `poulpy-cpu-ref` / `poulpy-cpu-avx`
+- Update FFT64 and NTT120 `vmp_apply_dft_to_dft` implementations to accept `limb_offset` directly, replacing the separate `_add` codepath.
+- NTT120 AVX2 (`arithmetic_avx.rs`): add `reduce_b_and_apply_crt` that fuses the CRT multiply into the Barrett reduction pass, using new compile-time constants `POW32_CRT` and `POW16_CRT`; apply to `compact_all_blocks` to reduce instruction count by a factor of ~2x.
+
+### `poulpy-core`
+- Rewrite external product (`glwe_external_product_internal`) and GLWE keyswitching inner loops to write intermediate per-digit VMP results into a dedicated temporary buffer before accumulating with `VecZnxDftAddInplace`, avoiding scattered-write cache thrashing. `where` bounds updated accordingly.
+- Add `bench_suite::keyswitch::gglwe` module and `keyswitch_glwe` criterion benchmark targeting the NTT120 backend; remove the old FFT64-specific `keyswitch_glwe_fft64` benchmark.
+
 ## [0.4.4] - 2026-02-28
 
 ### `poulpy-hal`

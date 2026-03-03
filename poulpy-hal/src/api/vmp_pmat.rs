@@ -93,30 +93,7 @@ pub trait VmpApplyDftToDft<B: Backend> {
     /// * `a`: the left operand [crate::layouts::VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [crate::layouts::VmpPMat] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyDftToDftTmpBytes::vmp_apply_dft_to_dft_tmp_bytes].
-    fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<B>)
-    where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxDftToRef<B>,
-        C: VmpPMatToRef<B>;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// Returns scratch bytes required for [`VmpApplyDftToDftAdd`].
-pub trait VmpApplyDftToDftAddTmpBytes {
-    fn vmp_apply_dft_to_dft_add_tmp_bytes(
-        &self,
-        res_size: usize,
-        a_size: usize,
-        b_rows: usize,
-        b_cols_in: usize,
-        b_cols_out: usize,
-        b_size: usize,
-    ) -> usize;
-}
-
-/// Additive variant of [`VmpApplyDftToDft`]: `res += a x b` with a limb offset.
-pub trait VmpApplyDftToDftAdd<B: Backend> {
-    fn vmp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, limb_offset: usize, scratch: &mut Scratch<B>)
+    fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, pmat: &C, limb_offset: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,

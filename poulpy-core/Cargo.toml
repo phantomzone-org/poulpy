@@ -25,10 +25,7 @@ once_cell = {workspace = true}
 paste = {workspace = true}
 rand = {workspace = true}
 
-[[bench]]
-name = "external_product_glwe_fft64"
-harness = false
 
 [[bench]]
-name = "keyswitch_glwe_fft64"
+name = "keyswitch_glwe"
 harness = false
