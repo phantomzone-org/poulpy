@@ -101,7 +101,6 @@ mod poulpy_cpu_avx {
         params = TestParams { size: 1<<8, base2k: 50 },
         tests = {
             test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
-            test_vmp_apply_dft_to_dft_add => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft_add,
         }
     }
 

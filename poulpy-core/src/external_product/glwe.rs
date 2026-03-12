@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, ZnxZero},
+    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, ZnxInfos, ZnxZero},
 };
 
 use crate::{
@@ -219,7 +219,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxDftApply<BE>
         + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
+        + VecZnxDftAddInplace<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
@@ -236,16 +236,20 @@ where
         let in_size: usize = a_infos.k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
         let out_size: usize = res_infos.size();
         let ggsw_size: usize = b_infos.size();
-        let lvl_0: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), in_size);
-        let lvl_1: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
-            out_size,
-            in_size,
-            in_size,                     // rows
-            (b_infos.rank() + 1).into(), // cols in
-            (b_infos.rank() + 1).into(), // cols out
+        let cols: usize = (b_infos.rank() + 1).into();
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols, in_size);
+        let lvl_1: usize = if b_infos.dsize() > 1 {
+            self.bytes_of_vec_znx_dft(cols, ggsw_size)
+        } else {
+            0
+        };
+        let lvl_2: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
+            out_size, in_size, in_size, // rows
+            cols,    // cols in
+            cols,    // cols out
             ggsw_size,
         );
-        lvl_0 + lvl_1
+        lvl_0 + lvl_1 + lvl_2
     }
 
     fn glwe_external_product_internal<DR, A, G>(
@@ -279,27 +283,45 @@ where
         let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize));
         a_dft.data_mut().fill(0);
 
-        for di in 0..dsize {
-            // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
-            a_dft.set_size((a.size() + di) / dsize);
-
-            // Small optimization for dsize > 2
-            // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-            // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
-            // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
-            // It is possible to further ignore the last dsize-1 limbs, but this introduce
-            // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
-            // noise is kept with respect to the ideal functionality.
-            res_dft.set_size(ggsw.size() - ((dsize - di) as isize - 2).max(0) as usize);
-
+        if dsize == 1 {
+            a_dft.set_size(a_size);
+            res_dft.set_size(ggsw.size());
             for j in 0..cols {
-                self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &a.data, j);
+                self.vec_znx_dft_apply(1, 0, &mut a_dft, j, &a.data, j);
             }
+            self.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &ggsw.data, 0, scratch_1);
+        } else {
+            // Tmp buffer: vmp result for di > 0 before folding into res_dft.
+            // Writing to a fresh sequential buffer avoids scattered-write cache thrashing.
+            let (mut res_dft_tmp, scratch_2) = scratch_1.take_vec_znx_dft(self, res_dft.cols(), ggsw.size());
 
-            if di == 0 {
-                self.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &ggsw.data, scratch_1);
-            } else {
-                self.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &ggsw.data, di, scratch_1);
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((a.size() + di) / dsize);
+
+                // Small optimization for dsize > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                res_dft.set_size(ggsw.size() - ((dsize - di) as isize - 2).max(0) as usize);
+
+                for j in 0..cols {
+                    self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &a.data, j);
+                }
+
+                if di == 0 {
+                    self.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &ggsw.data, 0, scratch_2);
+                } else {
+                    // Overwrite tmp with shifted product, then fold into res_dft.
+                    res_dft_tmp.set_size(res_dft.size());
+                    self.vmp_apply_dft_to_dft(&mut res_dft_tmp, &a_dft, &ggsw.data, di, scratch_2);
+                    for col in 0..cols {
+                        self.vec_znx_dft_add_inplace(&mut res_dft, col, &res_dft_tmp, col);
+                    }
+                }
             }
         }
 

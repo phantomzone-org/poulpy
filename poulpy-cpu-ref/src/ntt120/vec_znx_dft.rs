@@ -50,20 +50,53 @@ use crate::NTT120Ref;
 // In-place Q120b → i128 compaction helper
 // ──────────────────────────────────────────────────────────────────────────────
 
+/// Barrett reduction: `x < 2^61`, `q < 2^30`, `mu = floor(2^61 / q)` → `x mod q` in `[0, q)`.
+///
+/// Two conditional subtracts correct the quotient approximation error (≤ 2).
+#[inline(always)]
+fn barrett_u61(x: u64, q: u64, mu: u64) -> u64 {
+    let q_approx = ((x as u128 * mu as u128) >> 61) as u64;
+    let r = x - q_approx * q;
+    let r = if r >= q { r - q } else { r };
+    if r >= q { r - q } else { r }
+}
+
+/// Fused q120b reduce + CRT multiply: `(x mod Q) * CRT_CST mod Q` in one Barrett pass.
+///
+/// Instead of two separate Barrett reductions (`reduce_q120b` then `barrett(x * CRT)`),
+/// this splits `x = x_hi * 2^32 + x_lo_hi * 2^16 + x_lo_lo` and uses precomputed combined
+/// constants so the full computation collapses to a single Barrett pass.
+///
+/// # Bounds
+/// `tmp < Q^2 + 2 * 2^16 * Q < 2^60 + 2^47 < 2^61` ✓ — one Barrett pass suffices.
+#[inline(always)]
+fn reduce_q120b_crt(x: u64, q: u64, mu: u64, pow32_crt: u64, pow16_crt: u64, crt: u64) -> u64 {
+    let x_hi = x >> 32;
+    let x_hi_r = if x_hi >= q { x_hi - q } else { x_hi };
+    let x_lo = x & 0xFFFF_FFFF;
+    let x_lo_hi = x_lo >> 16;
+    let x_lo_lo = x_lo & 0xFFFF;
+    let tmp = x_hi_r
+        .wrapping_mul(pow32_crt)
+        .wrapping_add(x_lo_hi.wrapping_mul(pow16_crt))
+        .wrapping_add(x_lo_lo.wrapping_mul(crt));
+    barrett_u61(tmp, q, mu)
+}
+
 /// In-place CRT-compact all NTT blocks from Q120b (32 bytes/coeff) to i128 (16 bytes/coeff).
 ///
 /// For each block `k` in `0..n_blocks`, in order:
 ///
-/// 1. Applies the inverse NTT to the Q120b block in-place (4n u64 values).
-/// 2. CRT-reconstructs each coefficient from 4 CRT residues to one `i128` and
-///    writes it to the destination offset (`2*n*k` in u64 units = `16*n*k` in bytes).
+/// 1. Applies the inverse NTT to the Q120b block in-place.
+/// 2. For each coefficient, uses scalar Barrett reduction (no division) to compute
+///    `t[j] = (x[j] % Q[j] * CRT[j]) % Q[j]` for each prime `j`, then accumulates
+///    the CRT weighted sum in u128 and reduces with bounded conditional subtractions.
 ///
 /// # Ordering invariant
 ///
-/// Blocks must be processed in order `k = 0, 1, ..., n_blocks-1`. For `k ≥ 1`
-/// the destination range `[16nk, 16n(k+1))` never overlaps the source range
-/// `[32nk, 32n(k+1))`.  For `k = 0` all four residues of each coefficient are
-/// read into locals before the i128 is written.
+/// Blocks are processed in order `k = 0, 1, ..., n_blocks-1`.  For `k ≥ 1` the
+/// destination `[16nk, 16n(k+1))` never overlaps the source `[32nk, 32n(k+1))`.
+/// For `k = 0` all four residues are read before the i128 is written.
 ///
 /// # Safety
 ///
@@ -71,22 +104,36 @@ use crate::NTT120Ref;
 /// - The backing allocation must be at least 16-byte aligned (guaranteed by `DEFAULTALIGN = 64`).
 /// - No other references to the same memory may be live during this call.
 unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
-    // Precompute CRT reconstruction constants once for all blocks.
-    let q: [i128; 4] = Primes30::Q.map(|qi| qi as i128);
-    let total_q: i128 = q[0] * q[1] * q[2] * q[3];
-    let qm: [i128; 4] = [q[1] * q[2] * q[3], q[0] * q[2] * q[3], q[0] * q[1] * q[3], q[0] * q[1] * q[2]];
-    let crt: [i128; 4] = Primes30::CRT_CST.map(|c| c as i128);
-    let half: i128 = (total_q + 1) / 2;
+    // Barrett constants: mu[k] = floor(2^61 / Q[k]).
+    let q_u64: [u64; 4] = Primes30::Q.map(|qi| qi as u64);
+    let mu: [u64; 4] = q_u64.map(|qi| (1u64 << 61) / qi);
+    let crt: [u64; 4] = Primes30::CRT_CST.map(|c| c as u64);
+
+    // Fused CRT constants: pow32_crt[k] = (2^32 mod Q[k]) * CRT[k] mod Q[k],
+    // pow16_crt[k] = 2^16 * CRT[k] mod Q[k]  (2^16 < Q for all Primes30).
+    let pow32_crt: [u64; 4] = std::array::from_fn(|k| {
+        let pow32 = ((1u128 << 32) % q_u64[k] as u128) as u64;
+        barrett_u61(pow32 * crt[k], q_u64[k], mu[k])
+    });
+    let pow16_crt: [u64; 4] = std::array::from_fn(|k| barrett_u61((1u64 << 16) * crt[k], q_u64[k], mu[k]));
+
+    // CRT reconstruction constants in u128 (no i128 sign issues).
+    let q: [u128; 4] = q_u64.map(|qi| qi as u128);
+    let total_q: u128 = q[0] * q[1] * q[2] * q[3];
+    let qm: [u128; 4] = [q[1] * q[2] * q[3], q[0] * q[2] * q[3], q[0] * q[1] * q[3], q[0] * q[1] * q[2]];
+    let half_q: u128 = total_q.div_ceil(2);
+    // Table-based modular reduction: precomputed once, reused across all blocks.
+    let total_q_mult: [u128; 4] = [0, total_q, total_q * 2, total_q * 3];
 
     for k in 0..n_blocks {
-        let src_start = 4 * n * k; // index into u64 array: start of DFT block k
-        let dst_start = 2 * n * k; // index into u64 array: start of Big block k
+        let src_start = 4 * n * k; // u64 index: start of DFT block k
+        let dst_start = 2 * n * k; // u64 index: start of Big block k
 
-        // Step 1: inverse NTT in-place on the Q120b block.
+        // Step 1: inverse NTT in-place.
         {
             let blk: &mut [u64] = unsafe { std::slice::from_raw_parts_mut(u64_ptr.add(src_start), 4 * n) };
             intt_ref::<Primes30>(table, blk);
-        } // mutable borrow ends here
+        }
 
         // Step 2: CRT-compact 4n u64s → n i128s.
         for c in 0..n {
@@ -100,17 +147,25 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
                 )
             };
 
-            // CRT reconstruction (matches b_to_znx128_ref).
-            // v = Σ_k  ((x_k % Q[k]) * CRT_CST[k]) % Q[k]  *  QM[k]
-            let mut v: i128 = 0;
-            v += (x0 % Primes30::Q[0] as u64) as i128 * crt[0] % q[0] * qm[0];
-            v += (x1 % Primes30::Q[1] as u64) as i128 * crt[1] % q[1] * qm[1];
-            v += (x2 % Primes30::Q[2] as u64) as i128 * crt[2] % q[2] * qm[2];
-            v += (x3 % Primes30::Q[3] as u64) as i128 * crt[3] % q[3] * qm[3];
-            v %= total_q;
-            let val: i128 = if v >= half { v - total_q } else { v };
+            // Fused: t[k] = (x[k] * CRT[k]) mod Q[k] in one Barrett pass (no div).
+            let t0 = reduce_q120b_crt(x0, q_u64[0], mu[0], pow32_crt[0], pow16_crt[0], crt[0]);
+            let t1 = reduce_q120b_crt(x1, q_u64[1], mu[1], pow32_crt[1], pow16_crt[1], crt[1]);
+            let t2 = reduce_q120b_crt(x2, q_u64[2], mu[2], pow32_crt[2], pow16_crt[2], crt[2]);
+            let t3 = reduce_q120b_crt(x3, q_u64[3], mu[3], pow32_crt[3], pow16_crt[3], crt[3]);
 
-            // Write i128 to destination offset (16-byte aligned by DEFAULTALIGN=64).
+            // CRT weighted sum in u128 (t[k] < Q[k] ≤ 2^30, qm[k] < 2^90).
+            let mut v: u128 = t0 as u128 * qm[0] + t1 as u128 * qm[1] + t2 as u128 * qm[2] + t3 as u128 * qm[3];
+
+            // Table-based reduction: q_approx = floor(v / 2^120) ∈ {0,1,2,3}.
+            let q_approx = (v >> 120) as usize;
+            v -= total_q_mult[q_approx]; // unconditional subtract (never underflows)
+            if v >= total_q {
+                v -= total_q; // at most 1 correction (proved: q_real - q_approx ≤ 1)
+            }
+
+            // Symmetric lift to (-total_q/2, total_q/2].
+            let val: i128 = if v >= half_q { v as i128 - total_q as i128 } else { v as i128 };
+
             unsafe { (u64_ptr.add(dst_start + 2 * c) as *mut i128).write_unaligned(val) };
         }
     }

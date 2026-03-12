@@ -206,7 +206,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch_5);
+                module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], skii.data(), 0, scratch_5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -344,7 +344,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, skii.data(), scratch_4);
+            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, skii.data(), 0, scratch_4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {

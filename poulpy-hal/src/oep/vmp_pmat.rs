@@ -75,42 +75,12 @@ pub unsafe trait VmpApplyDftToDftTmpBytesImpl<B: Backend> {
 /// * See [crate::api::VmpApplyDftToDft] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftToDftImpl<B: Backend> {
-    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
-    where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxDftToRef<B>,
-        C: VmpPMatToRef<B>;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
-/// * See [crate::api::VmpApplyDftToDftAddTmpBytes] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyDftToDftAddTmpBytesImpl<B: Backend> {
-    fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
-        module: &Module<B>,
-        res_size: usize,
-        a_size: usize,
-        b_rows: usize,
-        b_cols_in: usize,
-        b_cols_out: usize,
-        b_size: usize,
-    ) -> usize;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
-/// * See [crate::api::VmpApplyDftToDftAdd] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyDftToDftAddImpl<B: Backend> {
-    // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
-    fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
+    fn vmp_apply_dft_to_dft_impl<R, A, C>(
         module: &Module<B>,
         res: &mut R,
         a: &A,
         b: &C,
-        scale: usize,
+        limb_offset: usize,
         scratch: &mut Scratch<B>,
     ) where
         R: VecZnxDftToMut<B>,

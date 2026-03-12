@@ -21,6 +21,7 @@
 use std::mem::size_of;
 
 use bytemuck::cast_slice_mut;
+use core::arch::x86_64::__m256i;
 use poulpy_hal::{
     api::TakeSlice,
     layouts::{
@@ -33,8 +34,8 @@ use poulpy_hal::{
         VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::ntt120::{
-        ntt::{NttTableInv, intt_ref},
-        primes::{PrimeSet, Primes30},
+        ntt::NttTableInv,
+        primes::Primes30,
         vec_znx_dft::{
             NttModuleHandle, ntt120_vec_znx_dft_add, ntt120_vec_znx_dft_add_inplace, ntt120_vec_znx_dft_add_scaled_inplace,
             ntt120_vec_znx_dft_apply, ntt120_vec_znx_dft_copy, ntt120_vec_znx_dft_sub, ntt120_vec_znx_dft_sub_inplace,
@@ -50,67 +51,80 @@ use super::NTT120Avx;
 // In-place Q120b → i128 compaction helper
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// In-place CRT-compact all NTT blocks from Q120b (32 bytes/coeff) to i128 (16 bytes/coeff).
+/// AVX2-accelerated in-place CRT-compact: Q120b (32 bytes/coeff) → i128 (16 bytes/coeff).
 ///
 /// For each block `k` in `0..n_blocks`, in order:
 ///
-/// 1. Applies the inverse NTT to the Q120b block in-place (4n u64 values).
-/// 2. CRT-reconstructs each coefficient from 4 CRT residues to one `i128` and
-///    writes it to the destination offset (`2*n*k` in u64 units = `16*n*k` in bytes).
+/// 1. Applies the inverse NTT (AVX2) to the Q120b block in-place.
+/// 2. For each coefficient, uses [`reduce_b_and_apply_crt`] to compute
+///    `t[j] = (x[j] * CRT[j]) mod Q[j]` for all four prime lanes in a single Barrett pass,
+///    then accumulates the CRT weighted sum in scalar u128 with bounded conditional subtracts.
 ///
 /// # Ordering invariant
 ///
-/// Blocks must be processed in order `k = 0, 1, ..., n_blocks-1`. For `k ≥ 1`
-/// the destination range `[16nk, 16n(k+1))` never overlaps the source range
-/// `[32nk, 32n(k+1))`.  For `k = 0` all four residues of each coefficient are
-/// read into locals before the i128 is written.
+/// Blocks are processed in order `k = 0, 1, ..., n_blocks-1`.  For `k ≥ 1` the
+/// destination `[16nk, 16n(k+1))` never overlaps the source `[32nk, 32n(k+1))`.
+/// For `k = 0` each AVX load (32 bytes) precedes the i128 write (16 bytes).
 ///
 /// # Safety
 ///
 /// - `u64_ptr` must be valid for reads and writes of at least `4 * n * n_blocks` u64 values.
-/// - The backing allocation must be at least 16-byte aligned (guaranteed by `DEFAULTALIGN = 64`).
+/// - Caller must guarantee AVX2 support (ensured by `Module::<NTT120Avx>::new()`).
 /// - No other references to the same memory may be live during this call.
+#[target_feature(enable = "avx2")]
 unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
-    // Precompute CRT reconstruction constants once for all blocks.
-    let q: [i128; 4] = Primes30::Q.map(|qi| qi as i128);
-    let total_q: i128 = q[0] * q[1] * q[2] * q[3];
-    let qm: [i128; 4] = [q[1] * q[2] * q[3], q[0] * q[2] * q[3], q[0] * q[1] * q[3], q[0] * q[1] * q[2]];
-    let crt: [i128; 4] = Primes30::CRT_CST.map(|c| c as i128);
-    let half: i128 = (total_q + 1) / 2;
+    use super::arithmetic_avx::{
+        BARRETT_MU, CRT_VEC, POW16_CRT, POW32_CRT, Q_VEC, QM_HI, QM_LO, QM_MID, TOTAL_Q, TOTAL_Q_MULT, crt_accumulate_avx2,
+        reduce_b_and_apply_crt,
+    };
+    use super::ntt::intt_avx2;
+    use core::arch::x86_64::_mm256_loadu_si256;
+
+    let half_q: u128 = TOTAL_Q.div_ceil(2);
+
+    // Load all AVX2 constants once before the block loop.
+    let q_avx = unsafe { _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i) };
+    let mu_avx = unsafe { _mm256_loadu_si256(BARRETT_MU.as_ptr() as *const __m256i) };
+    let pow32_crt_avx = unsafe { _mm256_loadu_si256(POW32_CRT.as_ptr() as *const __m256i) };
+    let pow16_crt_avx = unsafe { _mm256_loadu_si256(POW16_CRT.as_ptr() as *const __m256i) };
+    let crt_avx = unsafe { _mm256_loadu_si256(CRT_VEC.as_ptr() as *const __m256i) };
+    let qm_hi_avx = unsafe { _mm256_loadu_si256(QM_HI.as_ptr() as *const __m256i) };
+    let qm_mid_avx = unsafe { _mm256_loadu_si256(QM_MID.as_ptr() as *const __m256i) };
+    let qm_lo_avx = unsafe { _mm256_loadu_si256(QM_LO.as_ptr() as *const __m256i) };
 
     for k in 0..n_blocks {
-        let src_start = 4 * n * k; // index into u64 array: start of DFT block k
-        let dst_start = 2 * n * k; // index into u64 array: start of Big block k
+        let src_start = 4 * n * k; // u64 index: start of DFT block k
+        let dst_start = 2 * n * k; // u64 index: start of Big block k
 
-        // Step 1: inverse NTT in-place on the Q120b block.
+        // Step 1: inverse NTT in-place (AVX2).
         {
             let blk: &mut [u64] = unsafe { std::slice::from_raw_parts_mut(u64_ptr.add(src_start), 4 * n) };
-            intt_ref::<Primes30>(table, blk);
-        } // mutable borrow ends here
+            unsafe { intt_avx2::<Primes30>(table, blk) };
+        }
 
         // Step 2: CRT-compact 4n u64s → n i128s.
         for c in 0..n {
-            // Read all four residues before any write (critical for k=0, c=0).
-            let (x0, x1, x2, x3) = unsafe {
-                (
-                    *u64_ptr.add(src_start + 4 * c),
-                    *u64_ptr.add(src_start + 4 * c + 1),
-                    *u64_ptr.add(src_start + 4 * c + 2),
-                    *u64_ptr.add(src_start + 4 * c + 3),
-                )
-            };
+            // Load all four residues for coefficient c as one __m256i (32 bytes).
+            // This read precedes any write, so the k=0 overlap is safe.
+            let xv: __m256i = unsafe { _mm256_loadu_si256(u64_ptr.add(src_start + 4 * c) as *const __m256i) };
 
-            // CRT reconstruction (matches b_to_znx128_ref).
-            // v = Σ_k  ((x_k % Q[k]) * CRT_CST[k]) % Q[k]  *  QM[k]
-            let mut v: i128 = 0;
-            v += (x0 % Primes30::Q[0] as u64) as i128 * crt[0] % q[0] * qm[0];
-            v += (x1 % Primes30::Q[1] as u64) as i128 * crt[1] % q[1] * qm[1];
-            v += (x2 % Primes30::Q[2] as u64) as i128 * crt[2] % q[2] * qm[2];
-            v += (x3 % Primes30::Q[3] as u64) as i128 * crt[3] % q[3] * qm[3];
-            v %= total_q;
-            let val: i128 = if v >= half { v - total_q } else { v };
+            // Fused AVX2: t[j] = (x[j] * CRT[j]) mod Q[j] in one Barrett pass.
+            let t = unsafe { reduce_b_and_apply_crt(xv, q_avx, mu_avx, pow32_crt_avx, pow16_crt_avx, crt_avx) };
 
-            // Write i128 to destination offset (16-byte aligned by DEFAULTALIGN=64).
+            // Vectorized CRT accumulation: v = Σ t[k] * qm[k] (no store-to-stack round-trip).
+            let mut v = unsafe { crt_accumulate_avx2(t, qm_hi_avx, qm_mid_avx, qm_lo_avx) };
+
+            // Table-based modular reduction: q_approx = floor(v / 2^120) ∈ {0,1,2,3}.
+            let q_approx = (v >> 120) as usize;
+            v -= TOTAL_Q_MULT[q_approx]; // unconditional subtract (never underflows)
+            if v >= TOTAL_Q {
+                v -= TOTAL_Q; // at most 1 correction (proved: q_real - q_approx ≤ 1)
+            }
+
+            // Symmetric lift to (-total_q/2, total_q/2].
+            let val: i128 = if v >= half_q { v as i128 - TOTAL_Q as i128 } else { v as i128 };
+
+            // Write i128 (16 bytes) to the compacted destination.
             unsafe { (u64_ptr.add(dst_start + 2 * c) as *mut i128).write_unaligned(val) };
         }
     }

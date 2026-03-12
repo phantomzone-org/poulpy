@@ -30,8 +30,8 @@ use crate::{
         ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        NttAddInplace, NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero, ntt::NttTable, primes::Primes30,
-        types::Q120bScalar, vec_znx_dft::NttModuleHandle,
+        NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero, ntt::NttTable, primes::Primes30, types::Q120bScalar,
+        vec_znx_dft::NttModuleHandle,
     },
 };
 
@@ -129,62 +129,6 @@ pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
     // Remaining limbs: zero.
     for j in min_size..res_size {
         BE::ntt_zero(cast_slice_mut(res.at_mut(res_col, j)));
-    }
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Apply: accumulate
-// ──────────────────────────────────────────────────────────────────────────────
-
-/// Pointwise DFT-domain multiply-accumulate: `res += a ⊙ b`.
-///
-/// For each active limb `j` and each NTT coefficient index `n_i`:
-/// ```text
-/// res[res_col, j, n_i]  +=  a[a_col, n_i]  ×  b[b_col, j, n_i]   (mod Q, lazy)
-/// ```
-/// Addition uses the Q120b lazy-reduction bound `Q[k] << 33`.
-/// Limbs of `res` beyond `min(b.size(), res.size())` are left untouched —
-/// the caller is responsible for initialization.
-pub fn ntt120_svp_apply_dft_to_dft_add<R, A, C, BE>(
-    module: &impl NttModuleHandle,
-    res: &mut R,
-    res_col: usize,
-    a: &A,
-    a_col: usize,
-    b: &C,
-    b_col: usize,
-) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttAddInplace,
-    R: VecZnxDftToMut<BE>,
-    A: SvpPPolToRef<BE>,
-    C: VecZnxDftToRef<BE>,
-{
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
-    let meta = module.get_bbc_meta();
-    let n = res.n();
-    let res_size = res.size();
-    let b_size = b.size();
-    let min_size = res_size.min(b_size);
-
-    let a_u32: &[u32] = cast_slice(a.at(a_col, 0));
-
-    for j in 0..min_size {
-        let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, j));
-        let b_u32: &[u32] = cast_slice(b.at(b_col, j));
-        let mut product = [0u64; 4];
-        for n_i in 0..n {
-            BE::ntt_mul_bbc(
-                meta,
-                1,
-                &mut product,
-                &b_u32[8 * n_i..8 * n_i + 8],
-                &a_u32[8 * n_i..8 * n_i + 8],
-            );
-            BE::ntt_add_inplace(&mut res_u64[4 * n_i..4 * n_i + 4], &product);
-        }
     }
 }
 
