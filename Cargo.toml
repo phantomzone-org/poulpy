@@ -1,5 +1,5 @@
 [workspace]
-members = ["poulpy-hal", "poulpy-core", "poulpy-cpu-avx", "poulpy-schemes", "poulpy-cpu-ref"]
+members = ["poulpy-hal", "poulpy-core", "poulpy-cpu-avx", "poulpy-schemes", "poulpy-cpu-ref", "poulpy-bench"]
 resolver = "3"
 
 [workspace.dependencies]

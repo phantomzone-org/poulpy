@@ -464,6 +464,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "poulpy-bench"
+version = "0.4.4"
+dependencies = [
+ "criterion",
+ "poulpy-core",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "poulpy-schemes",
+]
+
+[[package]]
 name = "poulpy-core"
 version = "0.4.4"
 dependencies = [
@@ -486,7 +498,6 @@ version = "0.4.4"
 dependencies = [
  "bytemuck",
  "byteorder",
- "criterion",
  "itertools 0.14.0",
  "once_cell",
  "paste",
@@ -505,7 +516,6 @@ version = "0.4.4"
 dependencies = [
  "bytemuck",
  "byteorder",
- "criterion",
  "itertools 0.14.0",
  "once_cell",
  "poulpy-hal",
@@ -539,7 +549,6 @@ name = "poulpy-schemes"
 version = "0.4.4"
 dependencies = [
  "byteorder",
- "criterion",
  "itertools 0.14.0",
  "paste",
  "poulpy-core",

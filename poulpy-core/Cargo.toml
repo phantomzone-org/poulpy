@@ -24,8 +24,3 @@ bytemuck = {workspace = true}
 once_cell = {workspace = true}
 paste = {workspace = true}
 rand = {workspace = true}
-
-
-[[bench]]
-name = "keyswitch_glwe"
-harness = false
