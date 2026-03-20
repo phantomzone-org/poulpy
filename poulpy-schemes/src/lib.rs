@@ -91,3 +91,4 @@
 //! guaranteed across minor versions.
 
 pub mod bin_fhe;
+pub mod ckks;
