@@ -15,15 +15,15 @@ pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
 pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
-use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned},
-    source::Source,
-};
 use poulpy_bin_fhe::bin_fhe::blind_rotation::{
     BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory,
     BlindRotationKeyLayout, BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, CGGI, LookUpTableLayout, LookupTable,
     LookupTableFactory,
+};
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned},
+    source::Source,
 };
 
 pub fn benc_blind_rotate<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)

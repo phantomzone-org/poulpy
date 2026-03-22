@@ -7,4 +7,5 @@
 
 pub mod bootstrapping;
 pub mod encoding;
+pub mod layouts;
 pub mod leveled;

@@ -16,11 +16,6 @@ pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
 pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
-use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
-    source::Source,
-};
 use poulpy_bin_fhe::bin_fhe::{
     bdd_arithmetic::{
         BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, FheUintPrepare, FheUintPrepared,
@@ -29,6 +24,11 @@ use poulpy_bin_fhe::bin_fhe::{
         BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },
     circuit_bootstrapping::{CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout},
+};
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
+    source::Source,
 };
 
 pub fn benc_bdd_prepare<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)

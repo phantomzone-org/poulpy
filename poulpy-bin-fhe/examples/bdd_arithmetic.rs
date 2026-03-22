@@ -1,5 +1,13 @@
 use std::collections::HashMap;
 
+use poulpy_bin_fhe::bin_fhe::{
+    bdd_arithmetic::{
+        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
+        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
+    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout, CGGI},
+    circuit_bootstrapping::CircuitBootstrappingKeyLayout,
+};
 use poulpy_core::{
     GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
@@ -12,14 +20,6 @@ use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
-};
-use poulpy_bin_fhe::bin_fhe::{
-    bdd_arithmetic::{
-        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
-    },
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout, CGGI},
-    circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 use rand::RngExt;
 
