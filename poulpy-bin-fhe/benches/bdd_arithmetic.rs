@@ -21,7 +21,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::bin_fhe::{
     bdd_arithmetic::{
         Add, And, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
         FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,

@@ -20,7 +20,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::bin_fhe::{
     blind_rotation::{
         BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },

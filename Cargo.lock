@@ -464,6 +464,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "poulpy-bin-fhe"
+version = "0.4.4"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "itertools 0.14.0",
+ "paste",
+ "poulpy-core",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "rand",
+]
+
+[[package]]
+name = "poulpy-ckks"
+version = "0.4.4"
+dependencies = [
+ "poulpy-core",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "rand",
+]
+
+[[package]]
 name = "poulpy-core"
 version = "0.4.4"
 dependencies = [
@@ -532,21 +558,6 @@ dependencies = [
  "rand_core",
  "rand_distr",
  "rug",
-]
-
-[[package]]
-name = "poulpy-schemes"
-version = "0.4.4"
-dependencies = [
- "byteorder",
- "criterion",
- "itertools 0.14.0",
- "paste",
- "poulpy-core",
- "poulpy-cpu-avx",
- "poulpy-cpu-ref",
- "poulpy-hal",
- "rand",
 ]
 
 [[package]]

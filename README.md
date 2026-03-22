@@ -17,7 +17,7 @@
 
 - **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations other than the layouts (e.g. `VecZnx`, `VmpPmat`).
 - **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**.
+- **`poulpy-bin-fhe`, `poulpy-ckks`**: backend agnostic crates implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**.
 - **`poulpy-cpu-ref`**: the reference CPU implementation of **`poulpy-hal`**.
 - **`poulpy-cpu-avx`**: an AVX accelerated CPU implementation of **`poulpy-hal`**.
 
@@ -43,7 +43,7 @@ This provides the following benefits:
 
 - **`poulpy-hal`**: https://crates.io/crates/poulpy-hal
 - **`poulpy-core`**: https://crates.io/crates/poulpy-core
-- **`poulpy-schemes`**: https://crates.io/crates/poulpy-schemes
+- **`poulpy-bin-fhe`, `poulpy-ckks`**: https://crates.io/crates/poulpy-schemes
 - **`poulpy-cpu-ref`**: https://crates.io/crates/poulpy-cpu-ref
 - **`poulpy-cpu-avx`**: https://crates.io/crates/poulpy-cpu-avx
 

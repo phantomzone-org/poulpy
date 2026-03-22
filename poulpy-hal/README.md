@@ -54,14 +54,14 @@ A `scratch` is a backend agnostic scratch space manager which allows to borrow b
 
 ### **poulpy-hal/api**
 
-This module provides the user facing traits-based API of the hardware acceleration layer. These are the traits used to implement **`poulpy-core`** and **`poulpy-schemes`**. These currently include the `module` instantiation, arithmetic over `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat` and scratch space management.
+This module provides the user facing traits-based API of the hardware acceleration layer. These are the traits used to implement **`poulpy-core`** and **`poulpy-bin-fhe`, `poulpy-ckks`**. These currently include the `module` instantiation, arithmetic over `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat` and scratch space management.
 
 
 ---------
 
 ### **poulpy-hal/oep**
 
-This module provides open extension points that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`** and **`poulpy-schemes`** or any other project/application.
+This module provides open extension points that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`** and **`poulpy-bin-fhe`, `poulpy-ckks`** or any other project/application.
 
 
 ---------

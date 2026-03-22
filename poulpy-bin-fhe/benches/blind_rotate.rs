@@ -20,7 +20,7 @@ use poulpy_hal::{
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use poulpy_schemes::bin_fhe::blind_rotation::{
+use poulpy_bin_fhe::bin_fhe::blind_rotation::{
     BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory,
     BlindRotationKeyLayout, BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, CGGI, LookUpTableLayout, LookupTable,
     LookupTableFactory,

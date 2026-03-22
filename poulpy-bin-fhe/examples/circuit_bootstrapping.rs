@@ -30,7 +30,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::bin_fhe::{
     blind_rotation::{BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared},
 };

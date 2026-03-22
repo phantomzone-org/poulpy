@@ -6,7 +6,7 @@ This backend implements the Poulpy HAL extension traits and can be used by:
 
 - [`poulpy-hal`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-hal)
 - [`poulpy-core`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-core)
-- [`poulpy-schemes`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-schemes)
+- [`poulpy-bin-fhe`, `poulpy-ckks`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-schemes)
 
 ## 🚩 Safety and Requirements
 
@@ -62,7 +62,7 @@ let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(1 << log_n);
 let module: Module<NTT120Avx> = Module::<NTT120Avx>::new(1 << log_n);
 ```
 
-Once compiled with `enable-avx`, both backends are usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-schemes`).
+Once compiled with `enable-avx`, both backends are usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-bin-fhe`, `poulpy-ckks`).
 
 ## 🤝 Contributors
 
@@ -76,7 +76,7 @@ Your backend will automatically integrate with:
 
 * `poulpy-hal`
 * `poulpy-core`
-* `poulpy-schemes`
+* `poulpy-bin-fhe`, `poulpy-ckks`
 
 No modifications to those crates are required — the HAL provides the extension points.
 
