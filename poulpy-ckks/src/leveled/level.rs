@@ -11,8 +11,6 @@ use crate::layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext};
 use poulpy_core::layouts::{LWEInfos, SetGLWEInfos, TorusPrecision};
 use poulpy_hal::layouts::DataMut;
 
-// --- Plaintext ----------------------------------------------------------------
-
 /// Drops `n` least-significant limbs from a CKKS plaintext.
 ///
 /// Each limb is `base2k` bits wide, so this removes `n * base2k` bits of
@@ -44,8 +42,6 @@ pub fn drop_bits_pt(pt: &mut CKKSPlaintext<impl DataMut>, b: u32) {
     pt.inner.k.0 -= b;
 }
 
-// --- Ciphertext ---------------------------------------------------------------
-
 /// Drops `n` least-significant limbs from a CKKS ciphertext.
 ///
 /// Each limb is `base2k` bits wide, so this removes `n * base2k` bits of
@@ -70,11 +66,7 @@ pub fn drop_limbs_ct(ct: &mut CKKSCiphertext<impl DataMut>, n: usize) {
 pub fn drop_bits_ct(ct: &mut CKKSCiphertext<impl DataMut>, b: u32) {
     let base2k = ct.inner.base2k().0;
     let k = ct.inner.k();
-    assert!(
-        b <= k.0,
-        "cannot drop {b} bits: exceeds precision k={}",
-        k.0
-    );
+    assert!(b <= k.0, "cannot drop {b} bits: exceeds precision k={}", k.0);
     ct.inner.data_mut().size -= (b / base2k) as usize;
     ct.inner.set_k(TorusPrecision(k.0 - b));
 }

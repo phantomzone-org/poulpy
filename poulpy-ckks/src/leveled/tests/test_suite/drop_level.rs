@@ -22,7 +22,6 @@ use poulpy_hal::{
     source::Source,
 };
 
-// Shared bounds alias to avoid repetition across test functions.
 pub trait TestBounds: Backend<ScalarPrep = f64, ScalarBig = i64> {}
 impl<BE: Backend<ScalarPrep = f64, ScalarBig = i64>> TestBounds for BE {}
 
@@ -53,10 +52,14 @@ fn run_drop<BE: TestBounds>(
     let n = module.n();
     let m = n / 2;
     let base2k = Base2K(BASE2K);
-    // Allocate with several extra limbs so drops leave ample precision remaining.
     let k = TorusPrecision(17 * BASE2K);
 
-    let glwe_infos = GLWELayout { n: Degree(n as u32), base2k, k, rank: Rank(1) };
+    let glwe_infos = GLWELayout {
+        n: Degree(n as u32),
+        base2k,
+        k,
+        rank: Rank(1),
+    };
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -82,7 +85,15 @@ fn run_drop<BE: TestBounds>(
     let im_in: Vec<f64> = (0..m).map(|i| 0.1 * (i as f64) / (m as f64)).collect();
 
     encode(module, &mut pt, &re_in, &im_in, scratch.borrow());
-    encrypt_sk(module, &mut ct, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+    encrypt_sk(
+        module,
+        &mut ct,
+        &pt,
+        &sk_prepared,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     // Apply the same drop to the ciphertext and the output plaintext buffer so
     // that decrypt receives consistent metadata on both sides.
