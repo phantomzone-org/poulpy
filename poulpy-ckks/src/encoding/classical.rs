@@ -4,6 +4,15 @@
 //! encoding via inverse canonical embedding.
 
 use crate::layouts::plaintext::CKKSPlaintext;
+
+/// Maximum log_delta allowed for encoding with an f64-based FFT backend.
+///
+/// FFT64 backends (both reference and AVX2) use IEEE-754 double precision
+/// arithmetic internally. Their integer-to-float conversion routines require
+/// polynomial coefficients to satisfy |x| < 2^50 (see `reim_from_znx_i64_bnd50`).
+/// Choosing log_delta >= 50 would cause the scaled values delta * v to overflow
+/// that bound, producing silent wrong results.
+const F64_FFT_MAX_LOG_DELTA: u32 = 50;
 use poulpy_hal::{
     api::{ModuleN, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxInfos, ZnxView, ZnxViewMut},
@@ -30,6 +39,12 @@ pub fn encode<BE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     let n = module.n();
     let m = n / 2;
 
+    assert!(
+        pt.log_delta <= F64_FFT_MAX_LOG_DELTA,
+        "log_delta ({}) exceeds the f64 FFT precision limit of {} bits",
+        pt.log_delta,
+        F64_FFT_MAX_LOG_DELTA
+    );
     assert!(
         re.len() <= m,
         "Real part length {} exceeds the number of slots ({})",
@@ -68,6 +83,13 @@ pub fn decode<BE: Backend<ScalarPrep = f64>>(module: &Module<BE>, pt: &CKKSPlain
 where
     Module<BE>: ModuleN + VecZnxDftAlloc<BE> + VecZnxDftApply<BE>,
 {
+    assert!(
+        pt.inner.k.0 >= pt.log_delta,
+        "total precision k={} is less than log_delta ({}): \
+         not enough limbs to represent the scaling factor",
+        pt.inner.k.0,
+        pt.log_delta
+    );
     let n = module.n();
     let m = n / 2;
     let base2k: usize = pt.inner.base2k.into();
