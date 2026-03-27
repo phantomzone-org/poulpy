@@ -25,9 +25,6 @@ use poulpy_hal::{
 pub trait TestBounds: Backend<ScalarPrep = f64, ScalarBig = i64> {}
 impl<BE: Backend<ScalarPrep = f64, ScalarBig = i64>> TestBounds for BE {}
 
-// Encode -> encrypt -> apply drop -> decrypt -> decode, then check accuracy.
-// Dropping limbs/bits removes LSB precision from the polynomial representation
-// but does not change the scaling factor log_delta; tolerance is unchanged.
 fn run_drop<BE: TestBounds>(
     module: &Module<BE>,
     drop_ct: impl Fn(&mut CKKSCiphertext<Vec<u8>>),
@@ -72,8 +69,6 @@ fn run_drop<BE: TestBounds>(
 
     let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    // Allocate the output buffer at full size; the drop closure trims it to
-    // match the ciphertext metadata before decryption.
     let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
 
     let scratch_size = encode_tmp_bytes(module)
@@ -95,8 +90,6 @@ fn run_drop<BE: TestBounds>(
         scratch.borrow(),
     );
 
-    // Apply the same drop to the ciphertext and the output plaintext buffer so
-    // that decrypt receives consistent metadata on both sides.
     drop_ct(&mut ct);
     drop_pt(&mut pt_out);
 
@@ -144,7 +137,6 @@ where
 
     run_drop(module, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
 
-    // Verify that metadata was updated correctly.
     let n = module.n();
     let base2k = Base2K(BASE2K);
     let k_init = TorusPrecision(17 * BASE2K);
@@ -174,7 +166,6 @@ where
 
     run_drop(module, |ct| drop_bits_ct(ct, DROP_BITS), |pt| drop_bits_pt(pt, DROP_BITS));
 
-    // Verify metadata: k reduced by DROP_BITS, no full limb removed.
     let n = module.n();
     let base2k = Base2K(BASE2K);
     let k_init = TorusPrecision(17 * BASE2K);
@@ -201,12 +192,10 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     const BASE2K: u32 = 52;
-    // Drop one full limb (52 bits) plus 8 extra bits.
     const DROP_BITS: u32 = BASE2K + 8;
 
     run_drop(module, |ct| drop_bits_ct(ct, DROP_BITS), |pt| drop_bits_pt(pt, DROP_BITS));
 
-    // Verify metadata: exactly 1 full limb removed, k reduced by DROP_BITS.
     let n = module.n();
     let base2k = Base2K(BASE2K);
     let k_init = TorusPrecision(17 * BASE2K);

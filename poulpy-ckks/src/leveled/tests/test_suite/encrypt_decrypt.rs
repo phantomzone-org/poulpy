@@ -52,18 +52,15 @@ where
     let mut source_xa: Source = Source::new([1u8; 32]);
     let mut source_xe: Source = Source::new([2u8; 32]);
 
-    // Generate and prepare the GLWE secret key.
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk.fill_ternary_hw(HW, &mut source_xs);
     let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_prepared.prepare(module, &sk);
 
-    // Allocate plaintext and ciphertext buffers.
     let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
     let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
 
-    // Size scratch for the largest of the three operations.
     let scratch_size = encode_tmp_bytes(module)
         .max(encrypt_sk_tmp_bytes(module, &ct))
         .max(decrypt_tmp_bytes(module, &ct));

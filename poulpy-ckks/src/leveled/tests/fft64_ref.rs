@@ -2,7 +2,9 @@ use poulpy_cpu_ref::FFT64Ref;
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::leveled::tests::test_suite::{
-    arithmetic::{test_add_cleartext_ct, test_add_ct_ct, test_add_pt_ct},
+    arithmetic::{
+        test_add_const_ct, test_add_ct_ct, test_add_pt_ct, test_neg_ct, test_sub_const_ct, test_sub_ct_ct, test_sub_pt_ct,
+    },
     drop_level::{test_drop_bits_crosslimb, test_drop_bits_sublimb, test_drop_limbs},
     encrypt_decrypt::test_encrypt_decrypt,
 };
@@ -44,7 +46,31 @@ fn add_pt_ct() {
 }
 
 #[test]
-fn add_cleartext_ct() {
+fn add_const_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(32768);
-    test_add_cleartext_ct(&module);
+    test_add_const_ct(&module);
+}
+
+#[test]
+fn sub_ct_ct() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(32768);
+    test_sub_ct_ct(&module);
+}
+
+#[test]
+fn sub_pt_ct() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(32768);
+    test_sub_pt_ct(&module);
+}
+
+#[test]
+fn sub_const_ct() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(32768);
+    test_sub_const_ct(&module);
+}
+
+#[test]
+fn neg_ct() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(32768);
+    test_neg_ct(&module);
 }

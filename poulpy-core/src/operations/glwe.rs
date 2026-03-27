@@ -704,7 +704,7 @@ where
         }
 
         let min_col: usize = (a.rank().min(b.rank()) + 1).into();
-        let max_col: usize = (a.rank().max(b.rank() + 1)).into();
+        let max_col: usize = (a.rank().max(b.rank()) + 1).into();
         let self_col: usize = (res.rank() + 1).into();
 
         for i in 0..min_col {
@@ -782,7 +782,7 @@ where
         }
 
         let min_col: usize = (a.rank().min(b.rank()) + 1).into();
-        let max_col: usize = (a.rank().max(b.rank() + 1)).into();
+        let max_col: usize = (a.rank().max(b.rank()) + 1).into();
         let self_col: usize = (res.rank() + 1).into();
 
         for i in 0..min_col {
