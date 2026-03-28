@@ -58,7 +58,7 @@ const FFT64_PARAMS: Params = Params {
     hw: 192,
     base2k: 19,
     log_delta: 40,
-    k: 46 * 19,
+    k: 38 * 19, // 722 bits
 };
 
 const NTT120_PARAMS: Params = Params {
@@ -67,7 +67,7 @@ const NTT120_PARAMS: Params = Params {
     hw: 192,
     base2k: 52,
     log_delta: 40,
-    k: 17 * 52,
+    k: 14 * 52, // 728 bits
 };
 
 struct BenchSetup<BE: Backend> {
@@ -88,8 +88,10 @@ fn random_slots(n: usize, seed: u64) -> (Vec<f64>, Vec<f64>) {
     (re, im)
 }
 
-fn setup_benchmark<BE: Backend, CE: Backend>(params: Params) -> BenchSetup<BE>
+fn setup_benchmark<BE, CE>(params: Params) -> BenchSetup<BE>
 where
+    BE: Backend,
+    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     Module<BE>: ModuleNew<BE> + ModuleN + GLWESecretPreparedFactory<BE> + GLWEEncryptSk<BE>,
     Module<CE>: ModuleNew<CE>
         + ModuleN
@@ -100,7 +102,6 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
-    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
 {
     let module = Module::<BE>::new(params.n as u64);
     let codec = Module::<CE>::new(params.n as u64);
@@ -170,8 +171,10 @@ fn reset_ct(dst: &mut CKKSCiphertext<Vec<u8>>, src: &CKKSCiphertext<Vec<u8>>) {
     dst.inner.data_mut().raw_mut().copy_from_slice(src.inner.data().raw());
 }
 
-fn bench_suite<BE: Backend, CE: Backend>(c: &mut Criterion, params: Params)
+fn bench_suite<BE, CE>(c: &mut Criterion, params: Params)
 where
+    BE: Backend,
+    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
@@ -189,7 +192,6 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
-    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
 {
     let mut group = c.benchmark_group(params.label);
     let BenchSetup {

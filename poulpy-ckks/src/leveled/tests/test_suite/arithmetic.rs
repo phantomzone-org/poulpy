@@ -99,17 +99,21 @@ where
     (scratch_be, scratch_ce)
 }
 
-fn encrypt<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
+struct EncryptEnv<'a, BE: Backend, CE: Backend> {
+    module: &'a Module<BE>,
+    codec: &'a Module<CE>,
     params: CKKSTestParams,
+    scratch_be: &'a mut ScratchOwned<BE>,
+    scratch_ce: &'a mut ScratchOwned<CE>,
+}
+
+fn encrypt<BE: ArithBounds, CE: CodecBounds>(
+    env: &mut EncryptEnv<'_, BE, CE>,
     sk: &GLWESecretPrepared<Vec<u8>, BE>,
     re: &[f64],
     im: &[f64],
-    scratch_be: &mut ScratchOwned<BE>,
-    scratch_ce: &mut ScratchOwned<CE>,
-    source_xa: &mut Source,
-    source_xe: &mut Source,
+    source_xa_seed: [u8; 32],
+    source_xe_seed: [u8; 32],
 ) -> CKKSCiphertext<Vec<u8>>
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE>,
@@ -118,13 +122,23 @@ where
     ScratchOwned<CE>: ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    let n = module.n();
-    let base2k = Base2K(params.base2k);
-    let k = TorusPrecision(params.k);
-    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
-    encode(codec, &mut pt, re, im, scratch_ce.borrow());
-    encrypt_sk(module, &mut ct, &pt, sk, source_xa, source_xe, scratch_be.borrow());
+    let n = env.module.n();
+    let base2k = Base2K(env.params.base2k);
+    let k = TorusPrecision(env.params.k);
+    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, env.params.log_delta);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, env.params.log_delta);
+    let mut source_xa = Source::new(source_xa_seed);
+    let mut source_xe = Source::new(source_xe_seed);
+    encode(env.codec, &mut pt, re, im, env.scratch_ce.borrow());
+    encrypt_sk(
+        env.module,
+        &mut ct,
+        &pt,
+        sk,
+        &mut source_xa,
+        &mut source_xe,
+        env.scratch_be.borrow(),
+    );
     ct
 }
 
@@ -173,28 +187,32 @@ where
     let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     let ct2 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re2,
         &im2,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([3u8; 32]),
-        &mut Source::new([4u8; 32]),
+        [3u8; 32],
+        [4u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -220,16 +238,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     add_ct_ct_inplace(module, &mut ct_ip, &ct2);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -258,16 +278,18 @@ where
     let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -286,16 +308,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     add_pt_ct_inplace(module, &mut ct_ip, &pt2);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -327,16 +351,18 @@ where
     let c_im = -0.05;
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -362,16 +388,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     add_const_ct_inplace(module, &mut ct_ip, c_re, c_im);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -400,28 +428,32 @@ where
     let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     let ct2 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re2,
         &im2,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([3u8; 32]),
-        &mut Source::new([4u8; 32]),
+        [3u8; 32],
+        [4u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -447,16 +479,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     sub_ct_ct_inplace(module, &mut ct_ip, &ct2);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -485,16 +519,18 @@ where
     let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -513,16 +549,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     sub_pt_ct_inplace(module, &mut ct_ip, &pt2);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -554,16 +592,18 @@ where
     let c_im = -0.05;
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -589,16 +629,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     sub_const_ct_inplace(module, &mut ct_ip, c_re, c_im);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
@@ -633,16 +675,18 @@ where
     let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
 
     let base2k = Base2K(params.base2k);
@@ -658,16 +702,18 @@ where
     }
 
     let mut ct_ip = encrypt(
-        module,
-        codec,
-        params,
+        &mut EncryptEnv {
+            module,
+            codec,
+            params,
+            scratch_be: &mut scratch_be,
+            scratch_ce: &mut scratch_ce,
+        },
         &sk,
         &re1,
         &im1,
-        &mut scratch_be,
-        &mut scratch_ce,
-        &mut Source::new([1u8; 32]),
-        &mut Source::new([2u8; 32]),
+        [1u8; 32],
+        [2u8; 32],
     );
     neg_ct_inplace(module, &mut ct_ip);
     let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);

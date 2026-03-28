@@ -482,6 +482,7 @@ dependencies = [
 name = "poulpy-ckks"
 version = "0.4.4"
 dependencies = [
+ "criterion",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",
