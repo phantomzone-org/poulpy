@@ -115,8 +115,7 @@ pub fn test_drop_limbs<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig =
     module: &Module<BE>,
     codec: &Module<CE>,
     params: CKKSTestParams,
-)
-where
+) where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
@@ -130,7 +129,13 @@ where
 {
     const DROP: usize = 2;
 
-    run_drop(module, codec, params, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
+    run_drop(
+        module,
+        codec,
+        params,
+        |ct| drop_limbs_ct(ct, DROP),
+        |pt| drop_limbs_pt(pt, DROP),
+    );
 
     let n = module.n();
     let base2k = Base2K(params.base2k);
@@ -145,8 +150,7 @@ pub fn test_drop_bits_sublimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, Scal
     module: &Module<BE>,
     codec: &Module<CE>,
     params: CKKSTestParams,
-)
-where
+) where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
@@ -181,8 +185,7 @@ pub fn test_drop_bits_crosslimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, Sc
     module: &Module<BE>,
     codec: &Module<CE>,
     params: CKKSTestParams,
-)
-where
+) where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>

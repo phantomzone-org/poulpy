@@ -2,12 +2,12 @@ use poulpy_cpu_avx::{FFT64Avx, NTT120Avx};
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::leveled::tests::test_suite::{
+    NTT120_PARAMS,
     arithmetic::{
         test_add_const_ct, test_add_ct_ct, test_add_pt_ct, test_neg_ct, test_sub_const_ct, test_sub_ct_ct, test_sub_pt_ct,
     },
     drop_level::{test_drop_bits_crosslimb, test_drop_bits_sublimb, test_drop_limbs},
     encrypt_decrypt::test_encrypt_decrypt,
-    NTT120_PARAMS,
 };
 
 #[test]

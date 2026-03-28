@@ -154,11 +154,7 @@ fn tol(n: usize, log_delta: u32) -> f64 {
     2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << log_delta) as f64
 }
 
-pub fn test_add_ct_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_add_ct_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -209,8 +205,18 @@ where
 
     let t = 2.0 * tol(n, params.log_delta);
     for j in 0..m {
-        assert!((re_out[j] - (re1[j] + re2[j])).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] + re2[j]);
-        assert!((im_out[j] - (im1[j] + im2[j])).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] + im2[j]);
+        assert!(
+            (re_out[j] - (re1[j] + re2[j])).abs() < t,
+            "re[{j}]: {} vs {}",
+            re_out[j],
+            re1[j] + re2[j]
+        );
+        assert!(
+            (im_out[j] - (im1[j] + im2[j])).abs() < t,
+            "im[{j}]: {} vs {}",
+            im_out[j],
+            im1[j] + im2[j]
+        );
     }
 
     let mut ct_ip = encrypt(
@@ -233,11 +239,7 @@ where
     }
 }
 
-pub fn test_add_pt_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_add_pt_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -303,11 +305,7 @@ where
     }
 }
 
-pub fn test_add_const_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_add_const_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -349,8 +347,18 @@ where
 
     let t = tol(n, params.log_delta);
     for j in 0..m {
-        assert!((re_out[j] - (re1[j] + c_re)).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] + c_re);
-        assert!((im_out[j] - (im1[j] + c_im)).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] + c_im);
+        assert!(
+            (re_out[j] - (re1[j] + c_re)).abs() < t,
+            "re[{j}]: {} vs {}",
+            re_out[j],
+            re1[j] + c_re
+        );
+        assert!(
+            (im_out[j] - (im1[j] + c_im)).abs() < t,
+            "im[{j}]: {} vs {}",
+            im_out[j],
+            im1[j] + c_im
+        );
     }
 
     let mut ct_ip = encrypt(
@@ -373,11 +381,7 @@ where
     }
 }
 
-pub fn test_sub_ct_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_sub_ct_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -428,8 +432,18 @@ where
 
     let t = 2.0 * tol(n, params.log_delta);
     for j in 0..m {
-        assert!((re_out[j] - (re1[j] - re2[j])).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] - re2[j]);
-        assert!((im_out[j] - (im1[j] - im2[j])).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] - im2[j]);
+        assert!(
+            (re_out[j] - (re1[j] - re2[j])).abs() < t,
+            "re[{j}]: {} vs {}",
+            re_out[j],
+            re1[j] - re2[j]
+        );
+        assert!(
+            (im_out[j] - (im1[j] - im2[j])).abs() < t,
+            "im[{j}]: {} vs {}",
+            im_out[j],
+            im1[j] - im2[j]
+        );
     }
 
     let mut ct_ip = encrypt(
@@ -452,11 +466,7 @@ where
     }
 }
 
-pub fn test_sub_pt_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_sub_pt_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -522,11 +532,7 @@ where
     }
 }
 
-pub fn test_sub_const_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_sub_const_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -568,8 +574,18 @@ where
 
     let t = tol(n, params.log_delta);
     for j in 0..m {
-        assert!((re_out[j] - (re1[j] - c_re)).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] - c_re);
-        assert!((im_out[j] - (im1[j] - c_im)).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] - c_im);
+        assert!(
+            (re_out[j] - (re1[j] - c_re)).abs() < t,
+            "re[{j}]: {} vs {}",
+            re_out[j],
+            re1[j] - c_re
+        );
+        assert!(
+            (im_out[j] - (im1[j] - c_im)).abs() < t,
+            "im[{j}]: {} vs {}",
+            im_out[j],
+            im1[j] - c_im
+        );
     }
 
     let mut ct_ip = encrypt(
@@ -592,13 +608,15 @@ where
     }
 }
 
-pub fn test_neg_ct<BE: ArithBounds, CE: CodecBounds>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-)
+pub fn test_neg_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>, params: CKKSTestParams)
 where
-    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + VecZnxNegate + VecZnxNegateInplace,
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + VecZnxNegate
+        + VecZnxNegateInplace,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
         + VecZnxDftApply<CE>

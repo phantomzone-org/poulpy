@@ -23,8 +23,7 @@ pub fn test_encrypt_decrypt<BE: Backend, CE: Backend<ScalarPrep = f64, ScalarBig
     module: &Module<BE>,
     codec: &Module<CE>,
     params: CKKSTestParams,
-)
-where
+) where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
