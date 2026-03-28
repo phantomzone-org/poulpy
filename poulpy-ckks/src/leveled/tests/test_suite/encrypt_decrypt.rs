@@ -18,20 +18,21 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub fn test_encrypt_decrypt<BE: Backend<ScalarPrep = f64, ScalarBig = i64>>(module: &Module<BE>)
+pub fn test_encrypt_decrypt<BE: Backend, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(module: &Module<BE>, codec: &Module<CE>)
 where
-    Module<BE>: ModuleN
-        + VecZnxDftAlloc<BE>
-        + VecZnxDftApply<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxBigNormalizeTmpBytes
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>,
+    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
+    Module<CE>: ModuleN
+        + VecZnxDftAlloc<CE>
+        + VecZnxDftApply<CE>
+        + VecZnxIdftApplyConsume<CE>
+        + VecZnxBigNormalize<CE>
+        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    assert_eq!(module.n(), codec.n(), "module/codec ring degree mismatch");
+
     const BASE2K: u32 = 52;
     const LOG_DELTA: u32 = 40;
     const HW: usize = 192;
@@ -61,15 +62,13 @@ where
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
     let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
 
-    let scratch_size = encode_tmp_bytes(module)
-        .max(encrypt_sk_tmp_bytes(module, &ct))
-        .max(decrypt_tmp_bytes(module, &ct));
-    let mut scratch = ScratchOwned::<BE>::alloc(scratch_size);
+    let mut scratch_codec = ScratchOwned::<CE>::alloc(encode_tmp_bytes(codec));
+    let mut scratch = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(module, &ct).max(decrypt_tmp_bytes(module, &ct)));
 
     let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64) - 0.5).collect();
     let im_in: Vec<f64> = (0..m).map(|i| 0.1 * (i as f64) / (m as f64)).collect();
 
-    encode(module, &mut pt, &re_in, &im_in, scratch.borrow());
+    encode(codec, &mut pt, &re_in, &im_in, scratch_codec.borrow());
     encrypt_sk(
         module,
         &mut ct,
@@ -80,7 +79,7 @@ where
         scratch.borrow(),
     );
     decrypt(module, &mut pt_out, &ct, &sk_prepared, scratch.borrow());
-    let (re_out, im_out) = decode(module, &pt_out);
+    let (re_out, im_out) = decode(codec, &pt_out);
 
     // Worst-case per-slot error: DFT sums n coefficients each bounded by
     // SIGMA_BOUND = 6 * SIGMA, so |error_j| <= n * 6 * SIGMA / delta.

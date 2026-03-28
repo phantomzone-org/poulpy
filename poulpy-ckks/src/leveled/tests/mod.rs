@@ -5,7 +5,7 @@
     target_feature = "avx2",
     target_feature = "fma"
 )))]
-mod fft64_ref;
+mod ntt120_ref;
 
 #[cfg(test)]
 #[cfg(all(
@@ -14,7 +14,7 @@ mod fft64_ref;
     target_feature = "avx2",
     target_feature = "fma"
 ))]
-mod fft64_avx;
+mod ntt120_avx;
 
 #[cfg(test)]
 pub mod test_suite;
