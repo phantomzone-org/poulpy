@@ -1,3 +1,4 @@
+use super::CKKSTestParams;
 use crate::{
     encoding::classical::{decode, encode, encode_tmp_bytes},
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
@@ -18,7 +19,11 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub fn test_encrypt_decrypt<BE: Backend, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_encrypt_decrypt<BE: Backend, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
@@ -33,14 +38,10 @@ where
 {
     assert_eq!(module.n(), codec.n(), "module/codec ring degree mismatch");
 
-    const BASE2K: u32 = 52;
-    const LOG_DELTA: u32 = 40;
-    const HW: usize = 192;
-
     let n = module.n();
     let m = n / 2;
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
 
     let glwe_infos = GLWELayout {
         n: Degree(n as u32),
@@ -49,18 +50,18 @@ where
         rank: Rank(1),
     };
 
-    let mut source_xs: Source = Source::new([0u8; 32]);
-    let mut source_xa: Source = Source::new([1u8; 32]);
-    let mut source_xe: Source = Source::new([2u8; 32]);
+    let mut source_xs = Source::new([0u8; 32]);
+    let mut source_xa = Source::new([1u8; 32]);
+    let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
-    sk.fill_ternary_hw(HW, &mut source_xs);
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
+    let mut sk = GLWESecret::alloc_from_infos(&glwe_infos);
+    sk.fill_ternary_hw(params.hw, &mut source_xs);
+    let mut sk_prepared = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_prepared.prepare(module, &sk);
 
-    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
+    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
 
     let mut scratch_codec = ScratchOwned::<CE>::alloc(encode_tmp_bytes(codec));
     let mut scratch = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(module, &ct).max(decrypt_tmp_bytes(module, &ct)));
@@ -81,10 +82,7 @@ where
     decrypt(module, &mut pt_out, &ct, &sk_prepared, scratch.borrow());
     let (re_out, im_out) = decode(codec, &pt_out);
 
-    // Worst-case per-slot error: DFT sums n coefficients each bounded by
-    // SIGMA_BOUND = 6 * SIGMA, so |error_j| <= n * 6 * SIGMA / delta.
-    // A 2x safety margin is added.
-    let tol = 2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << LOG_DELTA) as f64;
+    let tol = 2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << params.log_delta) as f64;
     for j in 0..m {
         assert!(
             (re_out[j] - re_in[j]).abs() < tol,

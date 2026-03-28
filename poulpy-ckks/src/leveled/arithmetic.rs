@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, VecZnxNegate, VecZnxNegateInplace},
-    layouts::{Backend, DataMut, DataRef, Module, ZnxViewMut},
+    layouts::{Backend, DataMut, DataRef, Module},
 };
 
 /// Computes `res = a + b`.
@@ -221,18 +221,9 @@ where
     Module<BE>: ModuleN,
 {
     let n = module.n();
+    let delta = (2.0f64).powi(ct.log_delta as i32);
     let base2k = ct.inner.base2k().0 as usize;
     let log_delta = ct.log_delta as usize;
-
-    assert!(
-        log_delta <= base2k,
-        "const_pt: log_delta ({}) > base2k ({})",
-        log_delta,
-        base2k
-    );
-
-    let delta = (2.0f64).powi(ct.log_delta as i32);
-    let res_offset = (base2k - log_delta) as u32;
     let v_re = (delta * re).round() as i64;
     let v_im = (delta * im).round() as i64;
 
@@ -242,7 +233,7 @@ where
         TorusPrecision(ct.inner.k().0),
         ct.log_delta,
     );
-    pt.inner.data.at_mut(0, 0)[0] = v_re << res_offset;
-    pt.inner.data.at_mut(0, 0)[n / 2] = v_im << res_offset;
+    pt.inner.data.encode_coeff_i64(base2k, 0, log_delta, 0, v_re);
+    pt.inner.data.encode_coeff_i64(base2k, 0, log_delta, n / 2, v_im);
     pt
 }

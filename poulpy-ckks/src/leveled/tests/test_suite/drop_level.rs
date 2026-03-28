@@ -1,3 +1,4 @@
+use super::CKKSTestParams;
 use crate::{
     encoding::classical::{decode, encode, encode_tmp_bytes},
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
@@ -28,6 +29,7 @@ impl<BE: Backend> TestBounds for BE {}
 fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     module: &Module<BE>,
     codec: &Module<CE>,
+    params: CKKSTestParams,
     drop_ct: impl Fn(&mut CKKSCiphertext<Vec<u8>>),
     drop_pt: impl Fn(&mut CKKSPlaintext<Vec<u8>>),
 ) where
@@ -44,14 +46,10 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
 {
     assert_eq!(module.n(), codec.n(), "module/codec ring degree mismatch");
 
-    const BASE2K: u32 = 52;
-    const LOG_DELTA: u32 = 40;
-    const HW: usize = 192;
-
     let n = module.n();
     let m = n / 2;
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
 
     let glwe_infos = GLWELayout {
         n: Degree(n as u32),
@@ -60,18 +58,18 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
         rank: Rank(1),
     };
 
-    let mut source_xs: Source = Source::new([0u8; 32]);
-    let mut source_xa: Source = Source::new([1u8; 32]);
-    let mut source_xe: Source = Source::new([2u8; 32]);
+    let mut source_xs = Source::new([0u8; 32]);
+    let mut source_xa = Source::new([1u8; 32]);
+    let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
-    sk.fill_ternary_hw(HW, &mut source_xs);
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
+    let mut sk = GLWESecret::alloc_from_infos(&glwe_infos);
+    sk.fill_ternary_hw(params.hw, &mut source_xs);
+    let mut sk_prepared = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_prepared.prepare(module, &sk);
 
-    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
+    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
 
     let mut scratch_codec = ScratchOwned::<CE>::alloc(encode_tmp_bytes(codec));
     let mut scratch = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(module, &ct).max(decrypt_tmp_bytes(module, &ct)));
@@ -96,11 +94,7 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     decrypt(module, &mut pt_out, &ct, &sk_prepared, scratch.borrow());
     let (re_out, im_out) = decode(codec, &pt_out);
 
-    // Dropping LSB limbs does not change log_delta, so the tolerance is the
-    // same as for a plain encrypt/decrypt round. The residual polynomial
-    // precision is still >> log_delta, so quantization error is negligible.
-    // Worst-case per-slot error: n * 6 * SIGMA / delta, plus 2x safety margin.
-    let tol = 2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << LOG_DELTA) as f64;
+    let tol = 2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << params.log_delta) as f64;
     for j in 0..m {
         assert!(
             (re_out[j] - re_in[j]).abs() < tol,
@@ -117,8 +111,11 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     }
 }
 
-/// Drop 2 full limbs (2 * base2k = 104 bits removed from the LSB side).
-pub fn test_drop_limbs<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_drop_limbs<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
@@ -131,25 +128,25 @@ where
     ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    const BASE2K: u32 = 52;
     const DROP: usize = 2;
 
-    run_drop(module, codec, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
+    run_drop(module, codec, params, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
 
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k_init = TorusPrecision(17 * BASE2K);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, 40);
+    let base2k = Base2K(params.base2k);
+    let k_init = TorusPrecision(params.k);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
     drop_limbs_ct(&mut ct, DROP);
-    assert_eq!(ct.inner.k().0, k_init.0 - DROP as u32 * BASE2K);
-    assert_eq!(ct.inner.size(), 17 - DROP);
+    assert_eq!(ct.inner.k().0, k_init.0 - DROP as u32 * params.base2k);
+    assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize - DROP);
 }
 
-/// Drop 8 bits - a sub-limb drop (8 < base2k = 52), so no full limb is removed.
 pub fn test_drop_bits_sublimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     module: &Module<BE>,
     codec: &Module<CE>,
-) where
+    params: CKKSTestParams,
+)
+where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
@@ -161,31 +158,31 @@ pub fn test_drop_bits_sublimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, Scal
     ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    const BASE2K: u32 = 52;
     const DROP_BITS: u32 = 8;
 
     run_drop(
         module,
         codec,
+        params,
         |ct| drop_bits_ct(ct, DROP_BITS),
         |pt| drop_bits_pt(pt, DROP_BITS),
     );
 
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k_init = TorusPrecision(17 * BASE2K);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, 40);
+    let base2k = Base2K(params.base2k);
+    let k_init = TorusPrecision(params.k);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
     drop_bits_ct(&mut ct, DROP_BITS);
     assert_eq!(ct.inner.k().0, k_init.0 - DROP_BITS);
-    // DROP_BITS < BASE2K: no full limb should have been removed.
-    assert_eq!(ct.inner.size(), 17);
+    assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize);
 }
 
-/// Drop base2k + 8 bits - spans one full limb plus a sub-limb remainder.
 pub fn test_drop_bits_crosslimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     module: &Module<BE>,
     codec: &Module<CE>,
-) where
+    params: CKKSTestParams,
+)
+where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
@@ -197,21 +194,21 @@ pub fn test_drop_bits_crosslimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, Sc
     ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    const BASE2K: u32 = 52;
-    const DROP_BITS: u32 = BASE2K + 8;
+    let drop_bits = params.base2k + 8;
 
     run_drop(
         module,
         codec,
-        |ct| drop_bits_ct(ct, DROP_BITS),
-        |pt| drop_bits_pt(pt, DROP_BITS),
+        params,
+        |ct| drop_bits_ct(ct, drop_bits),
+        |pt| drop_bits_pt(pt, drop_bits),
     );
 
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k_init = TorusPrecision(17 * BASE2K);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, 40);
-    drop_bits_ct(&mut ct, DROP_BITS);
-    assert_eq!(ct.inner.k().0, k_init.0 - DROP_BITS);
-    assert_eq!(ct.inner.size(), 16);
+    let base2k = Base2K(params.base2k);
+    let k_init = TorusPrecision(params.k);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
+    drop_bits_ct(&mut ct, drop_bits);
+    assert_eq!(ct.inner.k().0, k_init.0 - drop_bits);
+    assert_eq!(ct.inner.size(), (params.k - drop_bits).div_ceil(params.base2k) as usize);
 }

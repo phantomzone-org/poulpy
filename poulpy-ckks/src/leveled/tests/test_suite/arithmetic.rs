@@ -1,3 +1,4 @@
+use super::CKKSTestParams;
 use crate::{
     encoding::classical::{decode, encode, encode_tmp_bytes},
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
@@ -24,10 +25,6 @@ use poulpy_hal::{
     source::Source,
 };
 
-const BASE2K: u32 = 52;
-const LOG_DELTA: u32 = 40;
-const HW: usize = 192;
-
 pub trait ArithBounds: Backend {}
 impl<BE: Backend> ArithBounds for BE {}
 
@@ -42,14 +39,14 @@ struct SetupResult<BE: Backend> {
     im2: Vec<f64>,
 }
 
-fn setup<BE: ArithBounds>(module: &Module<BE>) -> SetupResult<BE>
+fn setup<BE: ArithBounds>(module: &Module<BE>, params: CKKSTestParams) -> SetupResult<BE>
 where
     Module<BE>: ModuleN + GLWESecretPreparedFactory<BE>,
 {
     let n = module.n();
     let m = n / 2;
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
 
     let glwe_infos = GLWELayout {
         n: Degree(n as u32),
@@ -61,7 +58,7 @@ where
     let mut source_xs = Source::new([0u8; 32]);
 
     let mut sk = GLWESecret::alloc_from_infos(&glwe_infos);
-    sk.fill_ternary_hw(HW, &mut source_xs);
+    sk.fill_ternary_hw(params.hw, &mut source_xs);
     let mut sk_prepared = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_prepared.prepare(module, &sk);
 
@@ -82,6 +79,7 @@ where
 fn alloc_scratches<BE: ArithBounds, CE: CodecBounds>(
     module: &Module<BE>,
     codec: &Module<CE>,
+    params: CKKSTestParams,
 ) -> (ScratchOwned<BE>, ScratchOwned<CE>)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE>,
@@ -92,9 +90,9 @@ where
     assert_eq!(module.n(), codec.n(), "module/codec ring degree mismatch");
 
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
 
     let scratch_be = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(module, &ct).max(decrypt_tmp_bytes(module, &ct)));
     let scratch_ce = ScratchOwned::<CE>::alloc(encode_tmp_bytes(codec));
@@ -104,6 +102,7 @@ where
 fn encrypt<BE: ArithBounds, CE: CodecBounds>(
     module: &Module<BE>,
     codec: &Module<CE>,
+    params: CKKSTestParams,
     sk: &GLWESecretPrepared<Vec<u8>, BE>,
     re: &[f64],
     im: &[f64],
@@ -120,10 +119,10 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
-    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
+    let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     encode(codec, &mut pt, re, im, scratch_ce.borrow());
     encrypt_sk(module, &mut ct, &pt, sk, source_xa, source_xe, scratch_be.borrow());
     ct
@@ -132,6 +131,7 @@ where
 fn decrypt_decode<BE: ArithBounds, CE: CodecBounds>(
     module: &Module<BE>,
     codec: &Module<CE>,
+    params: CKKSTestParams,
     ct: &CKKSCiphertext<Vec<u8>>,
     sk: &GLWESecretPrepared<Vec<u8>, BE>,
     scratch_be: &mut ScratchOwned<BE>,
@@ -143,18 +143,22 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n = module.n();
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     decrypt(module, &mut pt_out, ct, sk, scratch_be.borrow());
     decode(codec, &pt_out)
 }
 
-fn tol(n: usize) -> f64 {
-    2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << LOG_DELTA) as f64
+fn tol(n: usize, log_delta: u32) -> f64 {
+    2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << log_delta) as f64
 }
 
-pub fn test_add_ct_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_add_ct_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -169,12 +173,13 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, re2, im2 } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, re2, im2 } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -186,6 +191,7 @@ where
     let ct2 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re2,
         &im2,
@@ -195,31 +201,22 @@ where
         &mut Source::new([4u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     add_ct_ct(module, &mut ct_res, &ct1, &ct2);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = 2.0 * tol(n);
+    let t = 2.0 * tol(n, params.log_delta);
     for j in 0..m {
-        assert!(
-            (re_out[j] - (re1[j] + re2[j])).abs() < t,
-            "re[{j}]: {} vs {}",
-            re_out[j],
-            re1[j] + re2[j]
-        );
-        assert!(
-            (im_out[j] - (im1[j] + im2[j])).abs() < t,
-            "im[{j}]: {} vs {}",
-            im_out[j],
-            im1[j] + im2[j]
-        );
+        assert!((re_out[j] - (re1[j] + re2[j])).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] + re2[j]);
+        assert!((im_out[j] - (im1[j] + im2[j])).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] + im2[j]);
     }
 
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -229,14 +226,18 @@ where
         &mut Source::new([2u8; 32]),
     );
     add_ct_ct_inplace(module, &mut ct_ip, &ct2);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] + re2[j])).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] + im2[j])).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_add_pt_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_add_pt_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -251,12 +252,13 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, re2, im2 } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, re2, im2 } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -266,16 +268,16 @@ where
         &mut Source::new([2u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut pt2 = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut pt2 = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     encode(codec, &mut pt2, &re2, &im2, scratch_ce.borrow());
 
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     add_pt_ct(module, &mut ct_res, &ct1, &pt2);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = tol(n);
+    let t = tol(n, params.log_delta);
     for j in 0..m {
         assert!((re_out[j] - (re1[j] + re2[j])).abs() < t, "re[{j}]");
         assert!((im_out[j] - (im1[j] + im2[j])).abs() < t, "im[{j}]");
@@ -284,6 +286,7 @@ where
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -293,14 +296,18 @@ where
         &mut Source::new([2u8; 32]),
     );
     add_pt_ct_inplace(module, &mut ct_ip, &pt2);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] + re2[j])).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] + im2[j])).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_add_const_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_add_const_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd,
     Module<CE>: ModuleN
@@ -315,8 +322,8 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, .. } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, .. } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let c_re = 0.1;
     let c_im = -0.05;
@@ -324,6 +331,7 @@ where
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -333,31 +341,22 @@ where
         &mut Source::new([2u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     add_const_ct(module, &mut ct_res, &ct1, c_re, c_im);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = tol(n);
+    let t = tol(n, params.log_delta);
     for j in 0..m {
-        assert!(
-            (re_out[j] - (re1[j] + c_re)).abs() < t,
-            "re[{j}]: {} vs {}",
-            re_out[j],
-            re1[j] + c_re
-        );
-        assert!(
-            (im_out[j] - (im1[j] + c_im)).abs() < t,
-            "im[{j}]: {} vs {}",
-            im_out[j],
-            im1[j] + c_im
-        );
+        assert!((re_out[j] - (re1[j] + c_re)).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] + c_re);
+        assert!((im_out[j] - (im1[j] + c_im)).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] + c_im);
     }
 
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -367,14 +366,18 @@ where
         &mut Source::new([2u8; 32]),
     );
     add_const_ct_inplace(module, &mut ct_ip, c_re, c_im);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] + c_re)).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] + c_im)).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_sub_ct_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_sub_ct_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -389,12 +392,13 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, re2, im2 } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, re2, im2 } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -406,6 +410,7 @@ where
     let ct2 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re2,
         &im2,
@@ -415,31 +420,22 @@ where
         &mut Source::new([4u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     sub_ct_ct(module, &mut ct_res, &ct1, &ct2);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = 2.0 * tol(n);
+    let t = 2.0 * tol(n, params.log_delta);
     for j in 0..m {
-        assert!(
-            (re_out[j] - (re1[j] - re2[j])).abs() < t,
-            "re[{j}]: {} vs {}",
-            re_out[j],
-            re1[j] - re2[j]
-        );
-        assert!(
-            (im_out[j] - (im1[j] - im2[j])).abs() < t,
-            "im[{j}]: {} vs {}",
-            im_out[j],
-            im1[j] - im2[j]
-        );
+        assert!((re_out[j] - (re1[j] - re2[j])).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] - re2[j]);
+        assert!((im_out[j] - (im1[j] - im2[j])).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] - im2[j]);
     }
 
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -449,14 +445,18 @@ where
         &mut Source::new([2u8; 32]),
     );
     sub_ct_ct_inplace(module, &mut ct_ip, &ct2);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] - re2[j])).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] - im2[j])).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_sub_pt_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_sub_pt_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -471,12 +471,13 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, re2, im2 } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, re2, im2 } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -486,16 +487,16 @@ where
         &mut Source::new([2u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut pt2 = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut pt2 = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     encode(codec, &mut pt2, &re2, &im2, scratch_ce.borrow());
 
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     sub_pt_ct(module, &mut ct_res, &ct1, &pt2);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = tol(n);
+    let t = tol(n, params.log_delta);
     for j in 0..m {
         assert!((re_out[j] - (re1[j] - re2[j])).abs() < t, "re[{j}]");
         assert!((im_out[j] - (im1[j] - im2[j])).abs() < t, "im[{j}]");
@@ -504,6 +505,7 @@ where
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -513,14 +515,18 @@ where
         &mut Source::new([2u8; 32]),
     );
     sub_pt_ct_inplace(module, &mut ct_ip, &pt2);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] - re2[j])).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] - im2[j])).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_sub_const_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_sub_const_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWESub,
     Module<CE>: ModuleN
@@ -535,8 +541,8 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, .. } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, .. } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let c_re = 0.1;
     let c_im = -0.05;
@@ -544,6 +550,7 @@ where
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -553,31 +560,22 @@ where
         &mut Source::new([2u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     sub_const_ct(module, &mut ct_res, &ct1, c_re, c_im);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = tol(n);
+    let t = tol(n, params.log_delta);
     for j in 0..m {
-        assert!(
-            (re_out[j] - (re1[j] - c_re)).abs() < t,
-            "re[{j}]: {} vs {}",
-            re_out[j],
-            re1[j] - c_re
-        );
-        assert!(
-            (im_out[j] - (im1[j] - c_im)).abs() < t,
-            "im[{j}]: {} vs {}",
-            im_out[j],
-            im1[j] - c_im
-        );
+        assert!((re_out[j] - (re1[j] - c_re)).abs() < t, "re[{j}]: {} vs {}", re_out[j], re1[j] - c_re);
+        assert!((im_out[j] - (im1[j] - c_im)).abs() < t, "im[{j}]: {} vs {}", im_out[j], im1[j] - c_im);
     }
 
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -587,22 +585,20 @@ where
         &mut Source::new([2u8; 32]),
     );
     sub_const_ct_inplace(module, &mut ct_ip, c_re, c_im);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] - (re1[j] - c_re)).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] - (im1[j] - c_im)).abs() < t, "inplace im[{j}]");
     }
 }
 
-pub fn test_neg_ct<BE: ArithBounds, CE: CodecBounds>(module: &Module<BE>, codec: &Module<CE>)
+pub fn test_neg_ct<BE: ArithBounds, CE: CodecBounds>(
+    module: &Module<BE>,
+    codec: &Module<CE>,
+    params: CKKSTestParams,
+)
 where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEAdd
-        + VecZnxNegate
-        + VecZnxNegateInplace,
+    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEAdd + VecZnxNegate + VecZnxNegateInplace,
     Module<CE>: ModuleN
         + VecZnxDftAlloc<CE>
         + VecZnxDftApply<CE>
@@ -615,12 +611,13 @@ where
 {
     let n = module.n();
     let m = n / 2;
-    let SetupResult { sk, re1, im1, .. } = setup(module);
-    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec);
+    let SetupResult { sk, re1, im1, .. } = setup(module, params);
+    let (mut scratch_be, mut scratch_ce) = alloc_scratches(module, codec, params);
 
     let ct1 = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -630,13 +627,13 @@ where
         &mut Source::new([2u8; 32]),
     );
 
-    let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, LOG_DELTA);
+    let base2k = Base2K(params.base2k);
+    let k = TorusPrecision(params.k);
+    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     neg_ct(module, &mut ct_res, &ct1);
-    let (re_out, im_out) = decrypt_decode(module, codec, &ct_res, &sk, &mut scratch_be);
+    let (re_out, im_out) = decrypt_decode(module, codec, params, &ct_res, &sk, &mut scratch_be);
 
-    let t = tol(n);
+    let t = tol(n, params.log_delta);
     for j in 0..m {
         assert!((re_out[j] + re1[j]).abs() < t, "re[{j}]: {} vs {}", re_out[j], -re1[j]);
         assert!((im_out[j] + im1[j]).abs() < t, "im[{j}]: {} vs {}", im_out[j], -im1[j]);
@@ -645,6 +642,7 @@ where
     let mut ct_ip = encrypt(
         module,
         codec,
+        params,
         &sk,
         &re1,
         &im1,
@@ -654,7 +652,7 @@ where
         &mut Source::new([2u8; 32]),
     );
     neg_ct_inplace(module, &mut ct_ip);
-    let (re_ip, im_ip) = decrypt_decode(module, codec, &ct_ip, &sk, &mut scratch_be);
+    let (re_ip, im_ip) = decrypt_decode(module, codec, params, &ct_ip, &sk, &mut scratch_be);
     for j in 0..m {
         assert!((re_ip[j] + re1[j]).abs() < t, "inplace re[{j}]");
         assert!((im_ip[j] + im1[j]).abs() < t, "inplace im[{j}]");
