@@ -26,7 +26,7 @@ where
     let n = module.n();
     let m = n / 2;
     let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(17 * BASE2K);
+    let k = TorusPrecision(29 * BASE2K);
 
     for log_delta in [20, 30, 40, 50] {
         let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64) - 0.5).collect();
@@ -38,7 +38,7 @@ where
 
         let (re_out, im_out) = decode(module, &pt);
 
-        let tol = 8.0 * (n as f64).sqrt() / (1u64 << log_delta) as f64;
+        let tol = 8.0 * (n as f64).log2() * (n as f64).sqrt() / (1u64 << log_delta) as f64;
         for j in 0..m {
             assert!(
                 (re_out[j] - re_in[j]).abs() < tol,

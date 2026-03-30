@@ -54,20 +54,20 @@ struct Params {
 
 const FFT64_PARAMS: Params = Params {
     label: "fft64",
-    n: 32768,
-    hw: 192,
+    n: 65536,
+    hw: 256,
     base2k: 19,
     log_delta: 40,
-    k: 38 * 19, // 722 bits
+    k: 81 * 19, // 1539 bits
 };
 
 const NTT120_PARAMS: Params = Params {
     label: "ntt120",
-    n: 32768,
-    hw: 192,
+    n: 65536,
+    hw: 256,
     base2k: 52,
     log_delta: 40,
-    k: 14 * 52, // 728 bits
+    k: 29 * 52, // 1508 bits
 };
 
 struct BenchSetup<BE: Backend> {

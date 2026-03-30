@@ -5,6 +5,6 @@ use crate::encoding::tests::test_suite::encode_decode::test_encode_decode;
 
 #[test]
 fn encode_decode() {
-    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(32768);
+    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(65536);
     test_encode_decode(&module);
 }
