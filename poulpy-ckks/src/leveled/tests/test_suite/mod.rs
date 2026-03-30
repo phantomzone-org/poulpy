@@ -23,3 +23,4 @@ pub const FFT64_PARAMS: CKKSTestParams = CKKSTestParams {
 pub mod arithmetic;
 pub mod drop_level;
 pub mod encrypt_decrypt;
+pub mod precision;

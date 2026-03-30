@@ -1,6 +1,6 @@
 use super::CKKSTestParams;
 use crate::{
-    encoding::classical::{decode, encode, encode_tmp_bytes},
+    encoding::classical::{decode, encode},
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
@@ -15,37 +15,21 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{
-        ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc,
-        VecZnxDftApply, VecZnxIdftApplyConsume,
-    },
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
-pub trait TestBounds: Backend {}
-impl<BE: Backend> TestBounds for BE {}
-
-fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
+fn run_drop<BE: Backend>(
     module: &Module<BE>,
-    codec: &Module<CE>,
     params: CKKSTestParams,
     drop_ct: impl Fn(&mut CKKSCiphertext<Vec<u8>>),
     drop_pt: impl Fn(&mut CKKSPlaintext<Vec<u8>>),
 ) where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
-    Module<CE>: ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxDftApply<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    assert_eq!(module.n(), codec.n(), "module/codec ring degree mismatch");
-
     let n = module.n();
     let m = n / 2;
     let base2k = Base2K(params.base2k);
@@ -71,13 +55,12 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
     let mut pt_out = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, params.log_delta);
 
-    let mut scratch_codec = ScratchOwned::<CE>::alloc(encode_tmp_bytes(codec));
     let mut scratch = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(module, &ct).max(decrypt_tmp_bytes(module, &ct)));
 
     let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64) - 0.5).collect();
     let im_in: Vec<f64> = (0..m).map(|i| 0.1 * (i as f64) / (m as f64)).collect();
 
-    encode(codec, &mut pt, &re_in, &im_in, scratch_codec.borrow());
+    encode(&mut pt, &re_in, &im_in);
     encrypt_sk(
         module,
         &mut ct,
@@ -92,7 +75,7 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     drop_pt(&mut pt_out);
 
     decrypt(module, &mut pt_out, &ct, &sk_prepared, scratch.borrow());
-    let (re_out, im_out) = decode(codec, &pt_out);
+    let (re_out, im_out) = decode(&pt_out);
 
     let tol = 2.0 * (n as f64) * 6.0 * SIGMA / (1u64 << params.log_delta) as f64;
     for j in 0..m {
@@ -111,31 +94,15 @@ fn run_drop<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
     }
 }
 
-pub fn test_drop_limbs<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-) where
+pub fn test_drop_limbs<BE: Backend>(module: &Module<BE>, params: CKKSTestParams)
+where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
-    Module<CE>: ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxDftApply<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     const DROP: usize = 2;
 
-    run_drop(
-        module,
-        codec,
-        params,
-        |ct| drop_limbs_ct(ct, DROP),
-        |pt| drop_limbs_pt(pt, DROP),
-    );
+    run_drop(module, params, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
 
     let n = module.n();
     let base2k = Base2K(params.base2k);
@@ -146,27 +113,16 @@ pub fn test_drop_limbs<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig =
     assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize - DROP);
 }
 
-pub fn test_drop_bits_sublimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-) where
+pub fn test_drop_bits_sublimb<BE: Backend>(module: &Module<BE>, params: CKKSTestParams)
+where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
-    Module<CE>: ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxDftApply<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     const DROP_BITS: u32 = 8;
 
     run_drop(
         module,
-        codec,
         params,
         |ct| drop_bits_ct(ct, DROP_BITS),
         |pt| drop_bits_pt(pt, DROP_BITS),
@@ -181,27 +137,16 @@ pub fn test_drop_bits_sublimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, Scal
     assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize);
 }
 
-pub fn test_drop_bits_crosslimb<BE: TestBounds, CE: Backend<ScalarPrep = f64, ScalarBig = i64>>(
-    module: &Module<BE>,
-    codec: &Module<CE>,
-    params: CKKSTestParams,
-) where
+pub fn test_drop_bits_crosslimb<BE: Backend>(module: &Module<BE>, params: CKKSTestParams)
+where
     Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE>,
-    Module<CE>: ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxDftApply<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let drop_bits = params.base2k + 8;
 
     run_drop(
         module,
-        codec,
         params,
         |ct| drop_bits_ct(ct, drop_bits),
         |pt| drop_bits_pt(pt, drop_bits),

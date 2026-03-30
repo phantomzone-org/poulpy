@@ -13,65 +13,65 @@ use crate::leveled::tests::test_suite::{
 #[test]
 fn encrypt_decrypt() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_encrypt_decrypt(&module, &module, FFT64_PARAMS);
+    test_encrypt_decrypt(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn drop_limbs() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_drop_limbs(&module, &module, FFT64_PARAMS);
+    test_drop_limbs(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn drop_bits_sublimb() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_drop_bits_sublimb(&module, &module, FFT64_PARAMS);
+    test_drop_bits_sublimb(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn drop_bits_crosslimb() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_drop_bits_crosslimb(&module, &module, FFT64_PARAMS);
+    test_drop_bits_crosslimb(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn add_ct_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_add_ct_ct(&module, &module, FFT64_PARAMS);
+    test_add_ct_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn add_pt_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_add_pt_ct(&module, &module, FFT64_PARAMS);
+    test_add_pt_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn add_const_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_add_const_ct(&module, &module, FFT64_PARAMS);
+    test_add_const_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn sub_ct_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_sub_ct_ct(&module, &module, FFT64_PARAMS);
+    test_sub_ct_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn sub_pt_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_sub_pt_ct(&module, &module, FFT64_PARAMS);
+    test_sub_pt_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn sub_const_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_sub_const_ct(&module, &module, FFT64_PARAMS);
+    test_sub_const_ct(&module, FFT64_PARAMS);
 }
 
 #[test]
 fn neg_ct() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(65536);
-    test_neg_ct(&module, &module, FFT64_PARAMS);
+    test_neg_ct(&module, FFT64_PARAMS);
 }

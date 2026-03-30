@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_ckks::{
-    encoding::classical::{encode, encode_tmp_bytes},
+    encoding::classical::encode,
     layouts::{
         ciphertext::{CKKSCiphertext, CKKSCiphertextToRef},
         plaintext::CKKSPlaintext,
@@ -23,19 +23,11 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{
-        ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAlloc, VecZnxIdftApplyConsume, VecZnxNegate, VecZnxNegateInplace,
-    },
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNegate, VecZnxNegateInplace},
     layouts::{Backend, Module, Scratch, ScratchOwned, ToOwnedDeep, ZnxView, ZnxViewMut},
     source::Source,
 };
 use rand::{RngExt, SeedableRng, rngs::StdRng};
-
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-type FFTBackendImpl = poulpy_cpu_avx::FFT64Avx;
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-type FFTBackendImpl = poulpy_cpu_ref::FFT64Ref;
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
 type NTTBackendImpl = poulpy_cpu_avx::NTT120Avx;
@@ -51,15 +43,6 @@ struct Params {
     log_delta: u32,
     k: u32,
 }
-
-const FFT64_PARAMS: Params = Params {
-    label: "fft64",
-    n: 65536,
-    hw: 256,
-    base2k: 19,
-    log_delta: 40,
-    k: 81 * 19, // 1539 bits
-};
 
 const NTT120_PARAMS: Params = Params {
     label: "ntt120",
@@ -88,23 +71,14 @@ fn random_slots(n: usize, seed: u64) -> (Vec<f64>, Vec<f64>) {
     (re, im)
 }
 
-fn setup_benchmark<BE, CE>(params: Params) -> BenchSetup<BE>
+fn setup_benchmark<BE>(params: Params) -> BenchSetup<BE>
 where
     BE: Backend,
-    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     Module<BE>: ModuleNew<BE> + ModuleN + GLWESecretPreparedFactory<BE> + GLWEEncryptSk<BE>,
-    Module<CE>: ModuleNew<CE>
-        + ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let module = Module::<BE>::new(params.n as u64);
-    let codec = Module::<CE>::new(params.n as u64);
     let n = Degree(params.n as u32);
     let base2k = Base2K(params.base2k);
     let k = TorusPrecision(params.k);
@@ -130,12 +104,11 @@ where
     let mut ct_b = CKKSCiphertext::alloc(n, base2k, k, params.log_delta);
 
     let mut scratch_be = ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(&module, &ct_a));
-    let mut scratch_ce = ScratchOwned::<CE>::alloc(encode_tmp_bytes(&codec));
 
     let (re_a, im_a) = random_slots(params.n, 0xA5A5_0001);
     let (re_b, im_b) = random_slots(params.n, 0x5A5A_0002);
-    encode(&codec, &mut pt_a, &re_a, &im_a, scratch_ce.borrow());
-    encode(&codec, &mut pt_b, &re_b, &im_b, scratch_ce.borrow());
+    encode(&mut pt_a, &re_a, &im_a);
+    encode(&mut pt_b, &re_b, &im_b);
     encrypt_sk(
         &module,
         &mut ct_a,
@@ -171,10 +144,9 @@ fn reset_ct(dst: &mut CKKSCiphertext<Vec<u8>>, src: &CKKSCiphertext<Vec<u8>>) {
     dst.inner.data_mut().raw_mut().copy_from_slice(src.inner.data().raw());
 }
 
-fn bench_suite<BE, CE>(c: &mut Criterion, params: Params)
+fn bench_suite<BE>(c: &mut Criterion, params: Params)
 where
     BE: Backend,
-    CE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
@@ -183,14 +155,7 @@ where
         + GLWESub
         + VecZnxNegate
         + VecZnxNegateInplace,
-    Module<CE>: ModuleNew<CE>
-        + ModuleN
-        + VecZnxDftAlloc<CE>
-        + VecZnxIdftApplyConsume<CE>
-        + VecZnxBigNormalize<CE>
-        + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    ScratchOwned<CE>: ScratchOwnedAlloc<CE> + ScratchOwnedBorrow<CE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let mut group = c.benchmark_group(params.label);
@@ -202,7 +167,7 @@ where
         pt_b,
         const_re,
         const_im,
-    } = setup_benchmark::<BE, CE>(params);
+    } = setup_benchmark::<BE>(params);
 
     let mut ct_out = CKKSCiphertext {
         inner: ct_a.to_ref().inner.to_owned_deep(),
@@ -334,12 +299,8 @@ where
     group.finish();
 }
 
-fn fft64(c: &mut Criterion) {
-    bench_suite::<FFTBackendImpl, FFTBackendImpl>(c, FFT64_PARAMS);
-}
-
 fn ntt120(c: &mut Criterion) {
-    bench_suite::<NTTBackendImpl, FFTBackendImpl>(c, NTT120_PARAMS);
+    bench_suite::<NTTBackendImpl>(c, NTT120_PARAMS);
 }
 
 fn criterion_config() -> Criterion {
@@ -349,6 +310,6 @@ fn criterion_config() -> Criterion {
 criterion_group! {
     name = benches;
     config = criterion_config();
-    targets = fft64, ntt120
+    targets = ntt120
 }
 criterion_main!(benches);
