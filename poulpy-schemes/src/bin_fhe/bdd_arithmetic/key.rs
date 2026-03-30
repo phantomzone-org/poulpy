@@ -2,7 +2,7 @@ use crate::bin_fhe::bdd_arithmetic::FheUintPreparedDebug;
 use crate::bin_fhe::circuit_bootstrapping::CircuitBootstrappingKeyInfos;
 use crate::bin_fhe::{
     bdd_arithmetic::{FheUint, UnsignedInteger},
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
+    blind_rotation::BlindRotationAlgo,
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
         CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
@@ -104,14 +104,8 @@ where
     pub(crate) ks_lwe: GLWEToLWEKey<D>,
 }
 
-impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA>
-where
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
-{
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
-    where
-        A: BDDKeyInfos,
-    {
+impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA> {
+    pub fn alloc_from_infos<A: BDDKeyInfos>(infos: &A) -> Self {
         Self {
             cbt: CircuitBootstrappingKey::alloc_from_infos(&infos.cbt_infos()),
             ks_glwe: infos.ks_glwe_infos().as_ref().map(GLWESwitchingKey::alloc_from_infos),

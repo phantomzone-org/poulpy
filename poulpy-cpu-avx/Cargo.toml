@@ -16,7 +16,6 @@ enable-avx = []
 bytemuck = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
-rug = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}
 rand_distr = {workspace = true}

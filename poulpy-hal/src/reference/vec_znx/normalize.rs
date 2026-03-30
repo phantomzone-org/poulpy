@@ -1,6 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
+use dashu_float::ops::EstimatedLog2;
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
@@ -434,10 +435,32 @@ fn test_vec_znx_normalize_cross_base2k() {
     let mut carry: Vec<i64> = vec![0i64; vec_znx_normalize_tmp_bytes(n) / size_of::<i64>()];
 
     use crate::reference::znx::ZnxRef;
-    use rug::ops::SubAssignRound;
-    use rug::{Float, float::Round};
+    use dashu_float::{FBig, ops::Abs, round::mode::HalfEven};
 
     let prec: usize = 128;
+
+    // Returns 2^exp as an FBig for any exp.
+    let pow2 = |exp: u32| -> FBig<HalfEven> {
+        let mut result = FBig::<HalfEven>::ONE;
+        let chunk = FBig::<HalfEven>::from(1u64 << 63);
+        let rem = exp % 63;
+        let full = exp / 63;
+        for _ in 0..full {
+            result = result * chunk.clone();
+        }
+        result * FBig::from(1u64 << rem)
+    };
+
+    // Reduces x modulo 1 toward zero (result in (-1, 1)), then adjusts to [-0.5, 0.5).
+    // Using floor-based frac [0,1) + >= 0.5 subtract is equivalent to C fmod + adjust.
+    let reduce = |x: FBig<HalfEven>| -> FBig<HalfEven> {
+        let fl = x.floor();
+        let mut r = x - fl; // now in [0, 1)
+        if r >= FBig::<HalfEven>::from(1u64) / FBig::from(2u64) {
+            r = r - FBig::<HalfEven>::from(1u64);
+        }
+        r
+    };
 
     for in_base2k in 1..=51 {
         for out_base2k in 1..=51 {
@@ -464,7 +487,6 @@ fn test_vec_znx_normalize_cross_base2k() {
                 // Ensures no loss of precision (mostly for testing purpose)
                 let out_size: usize = (in_prec as usize).div_ceil(out_base2k);
 
-                let out_prec: u32 = (out_size * out_base2k) as u32;
                 let min_prec: u32 = (in_size * in_base2k).min(out_size * out_base2k) as u32;
                 let mut want: VecZnx<Vec<u8>> = VecZnx::alloc(n, 1, in_size);
                 want.fill_uniform(60, &mut source);
@@ -473,54 +495,44 @@ fn test_vec_znx_normalize_cross_base2k() {
                 have.fill_uniform(60, &mut source);
                 vec_znx_normalize_cross_base2k::<_, _, ZnxRef>(&mut have, out_base2k, offset, 0, &want, in_base2k, 0, &mut carry);
 
-                let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
-                let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(in_prec + 60, 0)).collect();
+                let mut data_have: Vec<FBig<HalfEven>> = (0..n).map(|_| FBig::ZERO).collect();
+                let mut data_want: Vec<FBig<HalfEven>> = (0..n).map(|_| FBig::ZERO).collect();
 
                 have.decode_vec_float(out_base2k, 0, &mut data_have);
                 want.decode_vec_float(in_base2k, 0, &mut data_want);
 
-                let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
+                let scale: FBig<HalfEven> = pow2(offset.unsigned_abs() as u32);
 
                 if offset > 0 {
                     for x in &mut data_want {
-                        *x *= &scale;
-                        *x %= 1;
+                        *x = reduce(x.clone() * scale.clone());
                     }
                 } else if offset < 0 {
                     for x in &mut data_want {
-                        *x /= &scale;
-                        *x %= 1;
+                        *x = reduce(x.clone() / scale.clone());
                     }
                 } else {
                     for x in &mut data_want {
-                        *x %= 1;
+                        *x = reduce(x.clone());
                     }
                 }
 
+                // Adjust data_have to [-0.5, 0.5) (values already near torus domain)
+                let half: FBig<HalfEven> = FBig::from(1u64) / FBig::from(2u64);
+                let neg_half: FBig<HalfEven> = -FBig::from(1u64) / FBig::from(2u64);
                 for x in &mut data_have {
-                    if *x >= 0.5 {
-                        *x -= 1;
-                    } else if *x < -0.5 {
-                        *x += 1;
-                    }
-                }
-
-                for x in &mut data_want {
-                    if *x >= 0.5 {
-                        *x -= 1;
-                    } else if *x < -0.5 {
-                        *x += 1;
+                    if *x >= half {
+                        *x = x.clone() - FBig::from(1u64);
+                    } else if *x < neg_half {
+                        *x = x.clone() + FBig::from(1u64);
                     }
                 }
 
                 for i in 0..n {
                     //println!("i:{i:02} {} {}", data_want[i], data_have[i]);
 
-                    let mut err: Float = data_have[i].clone();
-                    err.sub_assign_round(&data_want[i], Round::Nearest);
-                    err = err.abs();
-
-                    let err_log2: f64 = err.clone().max(&Float::with_val(prec as u32, 1e-60)).log2().to_f64();
+                    let err = (data_have[i].clone() - data_want[i].clone()).abs();
+                    let err_log2: f64 = f64::try_from(err).unwrap_or(0.0).max(1e-60_f64).log2();
 
                     assert!(err_log2 <= -(min_prec as f64) + 1.0, "{} {}", err_log2, -(min_prec as f64))
                 }
@@ -536,13 +548,34 @@ fn test_vec_znx_normalize_inter_base2k() {
     let mut carry: Vec<i64> = vec![0i64; vec_znx_normalize_tmp_bytes(n) / size_of::<i64>()];
 
     use crate::reference::znx::ZnxRef;
-    use rug::ops::SubAssignRound;
-    use rug::{Float, float::Round};
+    use dashu_float::{FBig, ops::Abs, round::mode::HalfEven};
 
     let mut source: Source = Source::new([1u8; 32]);
 
     let prec: usize = 128;
     let offset_range: i64 = prec as i64;
+
+    // Returns 2^exp as an FBig for any exp.
+    let pow2 = |exp: u32| -> FBig<HalfEven> {
+        let mut result = FBig::<HalfEven>::ONE;
+        let chunk = FBig::<HalfEven>::from(1u64 << 63);
+        let rem = exp % 63;
+        let full = exp / 63;
+        for _ in 0..full {
+            result = result * chunk.clone();
+        }
+        result * FBig::from(1u64 << rem)
+    };
+
+    // Reduces x modulo 1 toward zero (result in (-1, 1)), then adjusts to [-0.5, 0.5).
+    let reduce = |x: FBig<HalfEven>| -> FBig<HalfEven> {
+        let fl = x.floor();
+        let mut r = x - fl; // now in [0, 1)
+        if r >= FBig::<HalfEven>::from(1u64) / FBig::from(2u64) {
+            r = r - FBig::<HalfEven>::from(1u64);
+        }
+        r
+    };
 
     for base2k in 1..=51 {
         for offset in (-offset_range..=offset_range).step_by(base2k + 1) {
@@ -558,54 +591,44 @@ fn test_vec_znx_normalize_inter_base2k() {
             have.fill_uniform(60, &mut source);
             vec_znx_normalize_inter_base2k::<_, _, ZnxRef>(base2k, &mut have, offset, 0, &want, 0, &mut carry);
 
-            let mut data_have: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
-            let mut data_want: Vec<Float> = (0..n).map(|_| Float::with_val(out_prec + 60, 0)).collect();
+            let mut data_have: Vec<FBig<HalfEven>> = (0..n).map(|_| FBig::ZERO).collect();
+            let mut data_want: Vec<FBig<HalfEven>> = (0..n).map(|_| FBig::ZERO).collect();
 
             have.decode_vec_float(base2k, 0, &mut data_have);
             want.decode_vec_float(base2k, 0, &mut data_want);
 
-            let scale: Float = Float::with_val(out_prec + 60, Float::u_pow_u(2, offset.unsigned_abs() as u32));
+            let scale: FBig<HalfEven> = pow2(offset.unsigned_abs() as u32);
 
             if offset > 0 {
                 for x in &mut data_want {
-                    *x *= &scale;
-                    *x %= 1;
+                    *x = reduce(x.clone() * scale.clone());
                 }
             } else if offset < 0 {
                 for x in &mut data_want {
-                    *x /= &scale;
-                    *x %= 1;
+                    *x = reduce(x.clone() / scale.clone());
                 }
             } else {
                 for x in &mut data_want {
-                    *x %= 1;
+                    *x = reduce(x.clone());
                 }
             }
 
+            // Adjust data_have to [-0.5, 0.5) (values already near torus domain)
+            let half: FBig<HalfEven> = FBig::from(1u64) / FBig::from(2u64);
+            let neg_half: FBig<HalfEven> = -FBig::from(1u64) / FBig::from(2u64);
             for x in &mut data_have {
-                if *x >= 0.5 {
-                    *x -= 1;
-                } else if *x < -0.5 {
-                    *x += 1;
-                }
-            }
-
-            for x in &mut data_want {
-                if *x >= 0.5 {
-                    *x -= 1;
-                } else if *x < -0.5 {
-                    *x += 1;
+                if *x >= half {
+                    *x = x.clone() - FBig::from(1u64);
+                } else if *x < neg_half {
+                    *x = x.clone() + FBig::from(1u64);
                 }
             }
 
             for i in 0..n {
                 //println!("i:{i:02} {} {}", data_want[i], data_have[i]);
 
-                let mut err: Float = data_have[i].clone();
-                err.sub_assign_round(&data_want[i], Round::Nearest);
-                err = err.abs();
-
-                let err_log2: f64 = err.clone().max(&Float::with_val(prec as u32, 1e-60)).log2().to_f64();
+                let err = (data_have[i].clone() - data_want[i].clone()).abs();
+                let err_log2: f64 = f64::try_from(err).unwrap_or(0.0).max(1e-60_f64).log2();
 
                 assert!(err_log2 <= -(out_prec as f64), "{} {}", err_log2, -(out_prec as f64))
             }

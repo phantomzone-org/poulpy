@@ -14,8 +14,7 @@ use poulpy_hal::{
 };
 
 use crate::bin_fhe::blind_rotation::{
-    BlindRotationAlgo, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory, BlindRotationKeyInfos,
-    BlindRotationKeyLayout,
+    BlindRotationAlgo, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyInfos, BlindRotationKeyLayout,
 };
 
 /// Accessor trait for the dimensional parameters of a circuit bootstrapping
@@ -105,11 +104,7 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> 
 }
 
 impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
-    where
-        A: CircuitBootstrappingKeyInfos,
-        BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
-    {
+    pub fn alloc_from_infos<A: CircuitBootstrappingKeyInfos>(infos: &A) -> Self {
         let atk_infos: &GLWEAutomorphismKeyLayout = &infos.atk_infos();
         let brk_infos: &BlindRotationKeyLayout = &infos.brk_infos();
         let trk_infos: &GGLWEToGGSWKeyLayout = &infos.tsk_infos();
@@ -122,7 +117,7 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         );
 
         Self {
-            brk: <BlindRotationKey<Vec<u8>, BRA> as BlindRotationKeyFactory<BRA>>::blind_rotation_key_alloc(brk_infos),
+            brk: BRA::alloc_key(brk_infos),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {

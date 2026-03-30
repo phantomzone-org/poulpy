@@ -8,7 +8,7 @@ poulpy-core = {path = "poulpy-core"}
 poulpy-cpu-avx = {path = "poulpy-cpu-avx"}
 poulpy-cpu-ref = {path = "poulpy-cpu-ref"}
 poulpy-schemes = {path = "poulpy-schemes"}
-rug = "1.28.1"
+dashu-float = "0.4"
 rand = "0.10.0"
 rand_chacha = "0.10.0"
 rand_core = "0.10.0"

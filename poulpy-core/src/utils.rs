@@ -1,6 +1,6 @@
 use crate::layouts::{GLWEPlaintext, LWEInfos, LWEPlaintext, TorusPrecision};
+use dashu_float::{FBig, round::mode::HalfEven};
 use poulpy_hal::layouts::{DataMut, DataRef, Stats};
-use rug::Float;
 
 impl<D: DataMut> GLWEPlaintext<D> {
     /// Encodes a slice of `i64` values into the plaintext's coefficient slots.
@@ -32,7 +32,7 @@ impl<D: DataRef> GLWEPlaintext<D> {
     }
 
     /// Decodes the plaintext coefficients into arbitrary-precision floats.
-    pub fn decode_vec_float(&self, data: &mut [Float]) {
+    pub fn decode_vec_float(&self, data: &mut [FBig<HalfEven>]) {
         self.data.decode_vec_float(self.base2k().into(), 0, data);
     }
 
@@ -57,8 +57,8 @@ impl<D: DataRef> LWEPlaintext<D> {
     }
 
     /// Decodes the LWE plaintext scalar as an arbitrary-precision float.
-    pub fn decode_float(&self) -> Float {
-        let mut out: [Float; 1] = [Float::new(self.k().as_u32())];
+    pub fn decode_float(&self) -> FBig<HalfEven> {
+        let mut out = [FBig::<HalfEven>::ZERO];
         self.data.decode_vec_float(self.base2k().into(), 0, &mut out);
         out[0].clone()
     }
