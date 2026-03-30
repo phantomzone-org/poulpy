@@ -58,6 +58,93 @@ The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_
 
 The `standard` binary uses a single parameter set (`N=4096`, `base2k=18`, `k=54`, `rank=1`) for all HAL and core benchmarks, and the standard parameter sets embedded in `poulpy-schemes` for the scheme-level benchmarks. Its results can be saved as named baselines for direct comparison across releases (see [Save and compare baselines](#save-and-compare-baselines)).
 
+## Configuring parameters via JSON
+
+All sweep ranges and layout parameters are overridable at runtime through the `POULPY_BENCH_PARAMS` environment variable. Set it to either a **path to a JSON file** or an **inline JSON string**. Any field omitted from the JSON falls back to the built-in default.
+
+### JSON schema
+
+```json
+{
+  "run": ["vec_znx_big", "vmp", "external_product"],
+  "hal": {
+    "sweeps": [[10,2,2],[11,2,4],[12,2,8],[13,2,16],[14,2,32]]
+  },
+  "cnv": {
+    "sweeps": [[10,1],[11,2],[12,4],[13,8],[14,16],[15,32],[16,64]]
+  },
+  "vmp": {
+    "sweeps": [[10,2,1,2,3],[11,4,1,2,5],[12,7,1,2,8],[13,15,1,2,16],[14,31,1,2,32]]
+  },
+  "svp_prepare": {
+    "log_n": [10,11,12,13,14]
+  },
+  "core": {
+    "n": 4096, "base2k": 18, "k": 54, "rank": 1, "dsize": 1
+  }
+}
+```
+
+Field reference:
+
+| Section | Field | Applies to | Description |
+|---|---|---|---|
+| `backends` | `["label", ...]` | shell script | Backends to run: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`. AVX feature is auto-enabled when an AVX backend is listed. Omit to run all compiled-in backends. |
+| `run` | `["name", ...]` | shell script | What to run. Binary names (e.g. `"vec_znx_big"`) run the whole binary; function names (e.g. `"vec_znx_big_add"`) are used as a Criterion filter across the default binary set. Mix freely. Omit or leave empty to run the default set in full. |
+| `hal.sweeps` | `[[log_n, cols, size], ...]` | `vec_znx_big`, `vec_znx_dft`, `svp` | Sweep points for generic HAL ops |
+| `cnv.sweeps` | `[[log_n, size], ...]` | `convolution` | Sweep points for convolution |
+| `vmp.sweeps` | `[[log_n, rows, cols_in, cols_out, size], ...]` | `vmp` | Sweep points for VMP |
+| `svp_prepare.log_n` | `[log_n, ...]` | `svp` prepare | Ring degrees for SVP prepare |
+| `core.n` | power of two | all core/scheme/standard | Ring degree `N` |
+| `core.base2k` | integer | all core/scheme/standard | Limb bit-width |
+| `core.k` | integer | all core/scheme/standard | Total torus precision |
+| `core.rank` | integer | all core/scheme/standard | GLWE rank |
+| `core.dsize` | integer | all core/scheme/standard | Decomposition size |
+
+### Examples
+
+**Single ring degree — benchmark `vec_znx_big` only at N=4096:**
+
+```sh
+POULPY_BENCH_PARAMS='{"hal":{"sweeps":[[12,2,8]]}}' \
+  cargo bench -p poulpy-bench --bench vec_znx_big
+```
+
+**Custom core params — run `standard` at a smaller parameter set:**
+
+```sh
+POULPY_BENCH_PARAMS='{"core":{"n":1024,"base2k":14,"k":42,"rank":1,"dsize":1}}' \
+  cargo bench -p poulpy-bench --bench standard
+```
+
+**From a file — full custom sweep for a profiling run:**
+
+```sh
+# bench_params.json
+cat > bench_params.json <<'EOF'
+{
+  "hal":  { "sweeps": [[10,2,2],[12,2,8],[14,2,32]] },
+  "cnv":  { "sweeps": [[10,1],[12,4],[14,16]] },
+  "vmp":  { "sweeps": [[10,2,1,2,3],[12,7,1,2,8]] },
+  "core": { "n": 4096, "base2k": 18, "k": 54, "rank": 1, "dsize": 1 }
+}
+EOF
+
+POULPY_BENCH_PARAMS=bench_params.json \
+  cargo bench -p poulpy-bench --features enable-avx
+```
+
+**Regression baseline at a specific parameter set:**
+
+```sh
+POULPY_BENCH_PARAMS='{"core":{"n":4096,"base2k":18,"k":54,"rank":1,"dsize":1}}' \
+  cargo bench -p poulpy-bench --bench standard -- --save-baseline v0.4.4
+
+# later, compare against it with the same params
+POULPY_BENCH_PARAMS='{"core":{"n":4096,"base2k":18,"k":54,"rank":1,"dsize":1}}' \
+  cargo bench -p poulpy-bench --bench standard -- --baseline v0.4.4
+```
+
 ## Running benchmarks
 
 ### All benchmarks, reference backends only

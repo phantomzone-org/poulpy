@@ -10,7 +10,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
-use std::{hint::black_box, time::Duration};
+use std::{hint::black_box};
 
 use criterion::Criterion;
 
@@ -57,7 +57,6 @@ where
 
     let group_name = format!("glwe_external_product::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(40));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
@@ -109,7 +108,6 @@ where
 
     let group_name = format!("glwe_external_product_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(40));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             ct_glwe.external_product_inplace(&module, &ggsw_prepared, scratch.borrow());

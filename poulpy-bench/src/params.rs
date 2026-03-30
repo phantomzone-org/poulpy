@@ -79,12 +79,12 @@ impl Default for VmpSweepParams {
 /// Sweep parameters for `svp_prepare` (just a list of `log_n` values).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SvpPrepareParams {
-    pub log_n_values: Vec<usize>,
+    pub log_n: Vec<usize>,
 }
 
 impl Default for SvpPrepareParams {
     fn default() -> Self {
-        Self { log_n_values: vec![10, 11, 12, 13, 14] }
+        Self { log_n: vec![10, 11, 12, 13, 14] }
     }
 }
 
@@ -113,6 +113,23 @@ impl CoreParams {
 /// Top-level container for all configurable benchmark parameters.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BenchParams {
+    /// Backend labels to benchmark (used by the shell wrapper script).
+    ///
+    /// Available: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`.
+    /// If any AVX backend is listed, `--features enable-avx` is added
+    /// automatically. Omit or leave empty to run all compiled-in backends.
+    #[serde(default)]
+    pub backends: Vec<String>,
+    /// List of bench binaries to run (used by the shell wrapper script).
+    ///
+    /// When empty or absent, the script runs its built-in default set.
+    /// Available names: `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `convolution`,
+    /// `svp`, `vmp`, `fft`, `ntt`, `operations`, `encryption`, `decryption`,
+    /// `automorphism`, `external_product`, `keyswitch`,
+    /// `blind_rotate`, `circuit_bootstrapping`, `bdd_prepare`, `bdd_arithmetic`,
+    /// `standard`.
+    #[serde(default)]
+    pub run: Vec<String>,
     #[serde(default)]
     pub hal: HalSweepParams,
     #[serde(default)]

@@ -38,7 +38,7 @@ where
         }
     }
 
-    for &log_n in &params.log_n_values {
+    for &log_n in &params.log_n {
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}", 1 << log_n));
         let mut runner = runner::<B>(log_n);
         group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));

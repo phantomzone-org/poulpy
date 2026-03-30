@@ -65,10 +65,11 @@ fn bench_glwe_automorphism_key_encrypt_sk(c: &mut Criterion) {
     );
 }
 
-criterion_group!(
-    benches,
-    bench_glwe_encrypt_sk,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_glwe_encrypt_sk,
     bench_ggsw_encrypt_sk,
-    bench_glwe_automorphism_key_encrypt_sk,
-);
+    bench_glwe_automorphism_key_encrypt_sk
+}
 criterion_main!(benches);

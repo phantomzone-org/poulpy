@@ -16,5 +16,9 @@ fn bench_glwe_decrypt(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, bench_glwe_decrypt,);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_glwe_decrypt
+}
 criterion_main!(benches);

@@ -25,7 +25,7 @@ where
     where
         Module<B>: VecZnxDftAdd<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -70,7 +70,7 @@ where
     where
         Module<B>: VecZnxDftAddInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -114,7 +114,7 @@ where
     where
         Module<B>: VecZnxDftApply<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -158,7 +158,7 @@ where
         Module<B>: VecZnxIdftApply<B> + ModuleNew<B> + VecZnxIdftApplyTmpBytes + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -243,7 +243,7 @@ where
     where
         Module<B>: VecZnxDftSub<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -288,7 +288,7 @@ where
     where
         Module<B>: VecZnxDftSubInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -332,7 +332,7 @@ where
     where
         Module<B>: VecZnxDftSubNegateInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 

@@ -6,7 +6,7 @@ use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
-use std::{hint::black_box, time::Duration};
+use std::{hint::black_box};
 
 use criterion::Criterion;
 
@@ -23,7 +23,6 @@ where
 
     let group_name = format!("glwe_add::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_add(&mut res, &a, &b);
@@ -45,7 +44,6 @@ where
 
     let group_name = format!("glwe_add_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_add_inplace(&mut res, &b);
@@ -68,7 +66,6 @@ where
 
     let group_name = format!("glwe_sub::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_sub(&mut res, &a, &b);
@@ -90,7 +87,6 @@ where
 
     let group_name = format!("glwe_sub_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_sub_inplace(&mut res, &b);
@@ -115,7 +111,6 @@ where
 
     let group_name = format!("glwe_normalize::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_normalize(&mut res, &a, scratch.borrow());
@@ -139,7 +134,6 @@ where
 
     let group_name = format!("glwe_normalize_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_normalize_inplace(&mut res, scratch.borrow());
@@ -165,7 +159,6 @@ where
 
     let group_name = format!("glwe_mul_plain::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_mul_plain(&mut ct_out, 0, &ct_in, &pt, scratch.borrow());
@@ -190,7 +183,6 @@ where
 
     let group_name = format!("glwe_mul_plain_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             module.glwe_mul_plain_inplace(&mut ct, 0, &pt, scratch.borrow());

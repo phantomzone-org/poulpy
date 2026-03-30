@@ -157,27 +157,28 @@ fn std_circuit_bootstrapping(c: &mut Criterion) {
     );
 }
 
-criterion_group!(
-    benches,
-    // Layer 1 – HAL FFT-domain
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = // Layer 1 – HAL FFT-domain,
     std_vec_znx_dft_apply,
     std_vec_znx_idft_apply,
     std_vmp_apply_dft_to_dft,
     std_svp_apply_dft_to_dft,
-    // Layer 1 – HAL coefficient-domain
+    // Layer 1 – HAL coefficient-domain,
     std_vec_znx_add,
     std_vec_znx_normalize,
     std_vec_znx_big_add,
     std_vec_znx_big_normalize,
-    // Layer 2 – Core
+    // Layer 2 – Core,
     std_glwe_encrypt_sk,
     std_ggsw_encrypt_sk,
     std_glwe_external_product,
     std_glwe_automorphism,
     std_glwe_keyswitch,
     std_glwe_decrypt,
-    // Layer 3 – Scheme
+    // Layer 3 – Scheme,
     std_blind_rotate,
-    std_circuit_bootstrapping,
-);
+    std_circuit_bootstrapping
+}
 criterion_main!(benches);

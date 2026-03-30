@@ -35,15 +35,16 @@ fn bench_glwe_mul_plain_inplace(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_mul_plain_inplace, &infos(); c);
 }
 
-criterion_group!(
-    benches,
-    bench_glwe_add,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_glwe_add,
     bench_glwe_add_inplace,
     bench_glwe_sub,
     bench_glwe_sub_inplace,
     bench_glwe_normalize,
     bench_glwe_normalize_inplace,
     bench_glwe_mul_plain,
-    bench_glwe_mul_plain_inplace,
-);
+    bench_glwe_mul_plain_inplace
+}
 criterion_main!(benches);

@@ -43,9 +43,10 @@ fn bench_vec_znx_big_sub_small_b(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_sub_small_b, &poulpy_bench::params::BenchParams::get().hal; c);
 }
 
-criterion_group!(
-    benches,
-    bench_vec_znx_big_add,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_vec_znx_big_add,
     bench_vec_znx_big_add_inplace,
     bench_vec_znx_big_add_small,
     bench_vec_znx_big_add_small_inplace,
@@ -58,6 +59,6 @@ criterion_group!(
     bench_vec_znx_big_sub_inplace,
     bench_vec_znx_big_sub_negate_inplace,
     bench_vec_znx_big_sub_small_a,
-    bench_vec_znx_big_sub_small_b,
-);
+    bench_vec_znx_big_sub_small_b
+}
 criterion_main!(benches);

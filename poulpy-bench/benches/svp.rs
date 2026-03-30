@@ -10,10 +10,11 @@ fn bench_svp_apply_dft_to_dft_inplace(c: &mut Criterion) {
     poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::svp::bench_svp_apply_dft_to_dft_inplace, &poulpy_bench::params::BenchParams::get().hal; c);
 }
 
-criterion_group!(
-    benches,
-    bench_svp_prepare,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_svp_prepare,
     bench_svp_apply_dft_to_dft,
-    bench_svp_apply_dft_to_dft_inplace,
-);
+    bench_svp_apply_dft_to_dft_inplace
+}
 criterion_main!(benches);

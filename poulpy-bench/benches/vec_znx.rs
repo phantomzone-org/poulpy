@@ -58,9 +58,10 @@ fn bench_vec_znx_mul_xp_minus_one_inplace(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_mul_xp_minus_one_inplace; c);
 }
 
-criterion_group!(
-    benches,
-    bench_vec_znx_add,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_vec_znx_add,
     bench_vec_znx_add_inplace,
     bench_vec_znx_sub,
     bench_vec_znx_sub_inplace,
@@ -78,6 +79,6 @@ criterion_group!(
     bench_vec_znx_rsh,
     bench_vec_znx_rsh_inplace,
     bench_vec_znx_mul_xp_minus_one,
-    bench_vec_znx_mul_xp_minus_one_inplace,
-);
+    bench_vec_znx_mul_xp_minus_one_inplace
+}
 criterion_main!(benches);

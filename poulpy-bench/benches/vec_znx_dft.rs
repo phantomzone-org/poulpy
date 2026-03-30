@@ -25,15 +25,16 @@ fn bench_vec_znx_dft_sub_negate_inplace(c: &mut Criterion) {
     poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::vec_znx_dft::bench_vec_znx_dft_sub_negate_inplace, &poulpy_bench::params::BenchParams::get().hal; c);
 }
 
-criterion_group!(
-    benches,
-    bench_vec_znx_dft_add,
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_vec_znx_dft_add,
     bench_vec_znx_dft_add_inplace,
     bench_vec_znx_dft_apply,
     bench_vec_znx_idft_apply,
     bench_vec_znx_idft_apply_tmpa,
     bench_vec_znx_dft_sub,
     bench_vec_znx_dft_sub_inplace,
-    bench_vec_znx_dft_sub_negate_inplace,
-);
+    bench_vec_znx_dft_sub_negate_inplace
+}
 criterion_main!(benches);

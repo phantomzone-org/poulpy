@@ -197,5 +197,9 @@ fn bench_bdd_prepare(c: &mut Criterion) {
     benc_bdd_prepare::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_bdd_prepare);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_bdd_prepare
+}
 criterion_main!(benches);

@@ -27,7 +27,7 @@ where
     where
         Module<B>: VecZnxBigAdd<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -73,7 +73,7 @@ where
     where
         Module<B>: VecZnxBigAddInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -117,7 +117,7 @@ where
     where
         Module<B>: VecZnxBigAddSmall<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -163,7 +163,7 @@ where
     where
         Module<B>: VecZnxBigAddSmallInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -207,7 +207,7 @@ where
     where
         Module<B>: VecZnxBigAutomorphism<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -253,7 +253,7 @@ where
         Module<B>: VecZnxBigAutomorphismInplace<B> + ModuleNew<B> + VecZnxBigAutomorphismInplaceTmpBytes + VecZnxBigAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 
@@ -383,7 +383,7 @@ where
         Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
-        let n: usize = sweep[0];
+        let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
         let size: usize = sweep[2];
 

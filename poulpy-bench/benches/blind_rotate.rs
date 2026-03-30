@@ -7,5 +7,9 @@ fn bench_blind_rotate(c: &mut Criterion) {
     poulpy_bench::bench_suite::schemes::blind_rotation::bench_blind_rotate::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_blind_rotate);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_blind_rotate
+}
 criterion_main!(benches);

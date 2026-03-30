@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use std::{hint::black_box, time::Duration};
+use std::{hint::black_box};
 
 use criterion::Criterion;
 
@@ -40,7 +40,6 @@ where
 
     let group_name = format!("glwe_decrypt::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(10));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             ct.decrypt(&module, &mut pt, &sk_prepared, scratch.borrow());

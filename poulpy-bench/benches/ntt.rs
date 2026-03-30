@@ -148,5 +148,12 @@ pub fn bench_intt_avx(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_ntt_ref, bench_intt_ref, bench_ntt_avx, bench_intt_avx,);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_ntt_ref,
+    bench_intt_ref,
+    bench_ntt_avx,
+    bench_intt_avx
+}
 criterion_main!(benches);

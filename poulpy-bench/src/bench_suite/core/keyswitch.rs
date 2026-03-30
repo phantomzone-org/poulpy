@@ -11,7 +11,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use std::{hint::black_box, time::Duration};
+use std::{hint::black_box};
 
 use criterion::Criterion;
 
@@ -61,7 +61,6 @@ where
 
     let group_name = format!("glwe_keyswitch::{label}");
     let mut group = c.benchmark_group(group_name);
-    group.measurement_time(Duration::from_secs(40));
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             ct_out.keyswitch(&module, &ct_in, &ksk_prepared, scratch.borrow());

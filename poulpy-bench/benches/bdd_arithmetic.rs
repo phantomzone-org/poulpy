@@ -356,5 +356,9 @@ fn bench_bdd_arithmetic(c: &mut Criterion) {
     benc_bdd_arithmetic::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_bdd_arithmetic);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_bdd_arithmetic
+}
 criterion_main!(benches);

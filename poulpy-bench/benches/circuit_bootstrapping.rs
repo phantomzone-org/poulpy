@@ -11,5 +11,9 @@ fn bench_circuit_bootstrapping(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, bench_circuit_bootstrapping);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_circuit_bootstrapping
+}
 criterion_main!(benches);

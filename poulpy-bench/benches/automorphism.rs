@@ -32,5 +32,9 @@ fn bench_glwe_automorphism(c: &mut Criterion) {
     );
 }
 
-criterion_group!(benches, bench_glwe_automorphism,);
+criterion_group! {
+    name = benches;
+    config = poulpy_bench::criterion_config();
+    targets = bench_glwe_automorphism
+}
 criterion_main!(benches);

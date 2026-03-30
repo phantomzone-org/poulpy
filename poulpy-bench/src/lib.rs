@@ -31,6 +31,19 @@
 pub mod bench_suite;
 pub mod params;
 
+/// Return the shared Criterion configuration used by all bench binaries.
+///
+/// Uses 100 samples with a 5-second measurement budget per benchmark.
+/// Fast benchmarks complete in ~5 s; for slow benchmarks whose single
+/// iteration exceeds the per-sample budget Criterion automatically extends
+/// the run to collect at least a few samples (it will never cut a sample
+/// short), so scheme-level benchmarks (blind rotate, CBS) may take longer.
+pub fn criterion_config() -> criterion::Criterion {
+    criterion::Criterion::default()
+        .sample_size(100)
+        .measurement_time(std::time::Duration::from_secs(5))
+}
+
 /// Private: expands to every FFT64 backend in tier order (ref → avx → gpu).
 #[doc(hidden)]
 #[macro_export]
