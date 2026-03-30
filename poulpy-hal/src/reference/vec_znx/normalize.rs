@@ -1,7 +1,6 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
-use dashu_float::ops::EstimatedLog2;
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},

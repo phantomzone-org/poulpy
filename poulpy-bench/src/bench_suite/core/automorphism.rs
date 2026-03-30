@@ -1,4 +1,4 @@
-use crate::{
+use poulpy_core::{
     GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,

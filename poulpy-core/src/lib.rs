@@ -78,7 +78,6 @@ mod operations;
 mod scratch;
 mod utils;
 
-pub mod bench_suite;
 pub use operations::*;
 pub mod layouts;
 pub use automorphism::*;

@@ -93,9 +93,7 @@ pub mod api;
 
 /// Criterion-based benchmark harnesses, generic over any backend.
 ///
-/// Backend crates call these functions to measure performance of their
-/// implementations.
-pub mod bench_suite;
+
 
 /// Blanket implementations connecting [`api`] traits to [`oep`] traits on
 /// [`layouts::Module`].

@@ -1,36 +1,38 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use poulpy_core::layouts::GLWELayout;
 
-const INFOS: GLWELayout = GLWELayout {
-    n: poulpy_core::layouts::Degree(1 << 12),
-    base2k: poulpy_core::layouts::Base2K(18),
-    k: poulpy_core::layouts::TorusPrecision(54),
-    rank: poulpy_core::layouts::Rank(1),
-};
+fn infos() -> poulpy_core::layouts::GLWELayout {
+    let p = &poulpy_bench::params::BenchParams::get().core;
+    poulpy_core::layouts::GLWELayout {
+        n: p.n.into(),
+        base2k: p.base2k.into(),
+        k: p.k.into(),
+        rank: p.rank.into(),
+    }
+}
 
 fn bench_glwe_add(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_add, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add, &infos(); c);
 }
 fn bench_glwe_add_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_add_inplace, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add_inplace, &infos(); c);
 }
 fn bench_glwe_sub(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_sub, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_sub, &infos(); c);
 }
 fn bench_glwe_sub_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_sub_inplace, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_sub_inplace, &infos(); c);
 }
 fn bench_glwe_normalize(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_normalize, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_normalize, &infos(); c);
 }
 fn bench_glwe_normalize_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_normalize_inplace, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_normalize_inplace, &infos(); c);
 }
 fn bench_glwe_mul_plain(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_mul_plain, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_mul_plain, &infos(); c);
 }
 fn bench_glwe_mul_plain_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_core::bench_suite::operations::bench_glwe_mul_plain_inplace, &INFOS; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_mul_plain_inplace, &infos(); c);
 }
 
 criterion_group!(

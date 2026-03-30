@@ -1,4 +1,4 @@
-use crate::{
+use poulpy_core::{
     GGSWEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
@@ -33,8 +33,8 @@ where
     let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
-    let mut ct = crate::layouts::GLWE::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(crate::layouts::GLWE::encrypt_sk_tmp_bytes(&module, infos));
+    let mut ct = poulpy_core::layouts::GLWE::alloc_from_infos(infos);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(poulpy_core::layouts::GLWE::encrypt_sk_tmp_bytes(&module, infos));
 
     let group_name = format!("glwe_encrypt_sk::{label}");
     let mut group = c.benchmark_group(group_name);

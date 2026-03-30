@@ -1,4 +1,4 @@
-use crate::{
+use poulpy_core::{
     GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore,
     layouts::{GLWE, GLWEInfos, GLWEPlaintext},
 };

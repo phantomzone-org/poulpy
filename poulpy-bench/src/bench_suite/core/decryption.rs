@@ -1,4 +1,4 @@
-use crate::{
+use poulpy_core::{
     GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };

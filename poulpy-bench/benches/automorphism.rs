@@ -2,30 +2,31 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_core::layouts::{Dnum, Dsize, GLWEAutomorphismKeyLayout, GLWELayout};
 
 fn bench_glwe_automorphism(c: &mut Criterion) {
-    let n: u32 = 1 << 12;
-    let base2k: u32 = 18;
-    let k_ct: u32 = 54;
-    let k_atk: u32 = 54;
-    let dsize = Dsize(1);
-    let dnum = Dnum(k_ct.div_ceil(dsize.0 * base2k));
+    let p = &poulpy_bench::params::BenchParams::get().core;
+    let n = p.n;
+    let base2k = p.base2k;
+    let k_ct = p.k;
+    let k_atk = p.k;
+    let dsize = Dsize(p.dsize);
+    let dnum = Dnum(p.dnum());
 
     let glwe_infos = GLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_ct.into(),
-        rank: 1_u32.into(),
+        rank: p.rank.into(),
     };
     let atk_infos = GLWEAutomorphismKeyLayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_atk.into(),
-        rank: 1_u32.into(),
+        rank: p.rank.into(),
         dnum,
         dsize,
     };
 
-    poulpy_bench::for_each_fft_backend!(
-        poulpy_core::bench_suite::automorphism::bench_glwe_automorphism,
+    poulpy_bench::for_each_backend!(
+        poulpy_bench::bench_suite::core::automorphism::bench_glwe_automorphism,
         &glwe_infos, &atk_infos, 3;
         c
     );
