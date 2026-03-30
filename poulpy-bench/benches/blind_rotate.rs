@@ -9,21 +9,14 @@ use poulpy_core::{
     },
 };
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
-
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
-
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::blind_rotation::{
-    BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory,
-    BlindRotationKeyLayout, BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, CGGI, LookUpTableLayout, LookupTable,
-    LookupTableFactory,
+    BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyLayout,
+    BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, CGGI, LookUpTableLayout, LookupTable, LookupTableFactory,
 };
 
 pub fn benc_blind_rotate<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
@@ -37,7 +30,6 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -137,13 +129,11 @@ where
     group.finish();
 }
 
-fn bench_blind_rotate_fft64(c: &mut Criterion) {
+fn bench_blind_rotate(c: &mut Criterion) {
+    benc_blind_rotate::<poulpy_cpu_ref::FFT64Ref, CGGI>(c, "fft64-ref");
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-    let label = "fft64_avx";
-    #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-    let label = "fft64_ref";
-    benc_blind_rotate::<BackendImpl, CGGI>(c, label);
+    benc_blind_rotate::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_blind_rotate_fft64);
+criterion_group!(benches, bench_blind_rotate);
 criterion_main!(benches);

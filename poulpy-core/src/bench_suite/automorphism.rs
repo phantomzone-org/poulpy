@@ -1,8 +1,7 @@
 use crate::{
     GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWESecret,
-        GLWESecretPreparedFactory,
+        GGLWEInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecretPrepared},
     },
 };
@@ -20,13 +19,8 @@ use criterion::Criterion;
 /// `glwe_infos` describes the input/output GLWE layout.
 /// `atk_infos` describes the automorphism key layout.
 /// `p` is the Galois element (e.g. 3 for X -> X^3).
-pub fn bench_glwe_automorphism<BE: Backend, A, B>(
-    glwe_infos: &A,
-    atk_infos: &B,
-    p: i64,
-    c: &mut Criterion,
-    label: &str,
-) where
+pub fn bench_glwe_automorphism<BE: Backend, A, B>(glwe_infos: &A, atk_infos: &B, p: i64, c: &mut Criterion, label: &str)
+where
     A: GLWEInfos,
     B: GGLWEInfos,
     Module<BE>: ModuleNew<BE>
@@ -48,8 +42,7 @@ pub fn bench_glwe_automorphism<BE: Backend, A, B>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(atk_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> =
-        GLWESecretPrepared::alloc(&module, atk_infos.rank_out());
+    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, atk_infos.rank_out());
     sk_prepared.prepare(&module, &sk);
 
     let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
@@ -61,8 +54,7 @@ pub fn bench_glwe_automorphism<BE: Backend, A, B>(
 
     atk.encrypt_sk(&module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
-        GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
+    let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
     module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
 
     let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);

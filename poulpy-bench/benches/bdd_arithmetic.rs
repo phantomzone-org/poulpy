@@ -10,12 +10,6 @@ use poulpy_core::{
     },
 };
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
-
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
-
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -26,9 +20,7 @@ use poulpy_schemes::bin_fhe::{
         Add, And, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
         FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,
     },
-    blind_rotation::{
-        BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
-    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
     },
@@ -65,7 +57,6 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -208,7 +199,6 @@ fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
     F: Fn(
@@ -240,7 +230,6 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -361,13 +350,11 @@ where
     group.finish();
 }
 
-fn bench_bdd_arithmetic_fft64(c: &mut Criterion) {
+fn bench_bdd_arithmetic(c: &mut Criterion) {
+    benc_bdd_arithmetic::<poulpy_cpu_ref::FFT64Ref, CGGI>(c, "fft64-ref");
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-    let label = "fft64_avx";
-    #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-    let label = "fft64_ref";
-    benc_bdd_arithmetic::<BackendImpl, CGGI>(c, label);
+    benc_bdd_arithmetic::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_bdd_arithmetic_fft64);
+criterion_group!(benches, bench_bdd_arithmetic);
 criterion_main!(benches);

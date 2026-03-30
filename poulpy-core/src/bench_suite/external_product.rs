@@ -7,19 +7,15 @@ use crate::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScalarZnx, ScratchOwned},
+    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 use std::{hint::black_box, time::Duration};
 
 use criterion::Criterion;
 
-pub fn bench_glwe_external_product<BE: Backend, A, B>(
-    glwe_infos: &A,
-    ggsw_infos: &B,
-    c: &mut Criterion,
-    label: &str,
-) where
+pub fn bench_glwe_external_product<BE: Backend, A, B>(glwe_infos: &A, ggsw_infos: &B, c: &mut Criterion, label: &str)
+where
     A: GLWEInfos,
     B: GGSWInfos,
     Module<BE>: ModuleNew<BE>
@@ -41,8 +37,7 @@ pub fn bench_glwe_external_product<BE: Backend, A, B>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(ggsw_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> =
-        GLWESecretPrepared::alloc(&module, ggsw_infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, ggsw_infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
@@ -59,8 +54,7 @@ pub fn bench_glwe_external_product<BE: Backend, A, B>(
     ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
     ct_glwe_in.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> =
-        GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product::{label}");
@@ -75,11 +69,8 @@ pub fn bench_glwe_external_product<BE: Backend, A, B>(
     group.finish();
 }
 
-pub fn bench_glwe_external_product_inplace<BE: Backend, A>(
-    infos: &A,
-    c: &mut Criterion,
-    label: &str,
-) where
+pub fn bench_glwe_external_product_inplace<BE: Backend, A>(infos: &A, c: &mut Criterion, label: &str)
+where
     A: GGSWInfos + GLWEInfos,
     Module<BE>: ModuleNew<BE>
         + GLWEExternalProduct<BE>
@@ -100,8 +91,7 @@ pub fn bench_glwe_external_product_inplace<BE: Backend, A>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> =
-        GLWESecretPrepared::alloc(&module, infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
@@ -117,8 +107,7 @@ pub fn bench_glwe_external_product_inplace<BE: Backend, A>(
     ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
     ct_glwe.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> =
-        GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product_inplace::{label}");

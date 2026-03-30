@@ -1,9 +1,6 @@
 use crate::{
     GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{
-        GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory,
-        prepared::GLWESecretPrepared,
-    },
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -17,10 +14,7 @@ use criterion::Criterion;
 pub fn bench_glwe_decrypt<BE: Backend, A>(infos: &A, c: &mut Criterion, label: &str)
 where
     A: GLWEInfos,
-    Module<BE>: ModuleNew<BE>
-        + GLWEDecrypt<BE>
-        + GLWEEncryptSk<BE>
-        + GLWESecretPreparedFactory<BE>,
+    Module<BE>: ModuleNew<BE> + GLWEDecrypt<BE> + GLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -34,16 +28,14 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> =
-        GLWESecretPrepared::alloc(&module, infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
 
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWE::encrypt_sk_tmp_bytes(&module, infos) | GLWE::decrypt_tmp_bytes(&module, infos),
-    );
+    let mut scratch: ScratchOwned<BE> =
+        ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(&module, infos) | GLWE::decrypt_tmp_bytes(&module, infos));
 
     ct.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 

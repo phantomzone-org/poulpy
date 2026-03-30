@@ -1,12 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_core::layouts::{Base2K, Degree, Dnum, Dsize, GLWELayout, GLWESwitchingKeyLayout, Rank, TorusPrecision};
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-pub use poulpy_cpu_avx::NTT120Avx as BackendImpl;
-
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-pub use poulpy_cpu_ref::NTT120Ref as BackendImpl;
-
 fn bench_glwe_keyswitch(c: &mut Criterion) {
     let n: u32 = 1 << 16;
     let base2k: u32 = 52;
@@ -37,8 +31,10 @@ fn bench_glwe_keyswitch(c: &mut Criterion) {
         dsize: Dsize(dsize),
     };
 
-    poulpy_core::bench_suite::keyswitch::bench_glwe_keyswitch::<BackendImpl, _, _, _>(
-        &glwe_in, &glwe_out, &gglwe, c, "ntt120",
+    poulpy_bench::for_each_ntt_backend!(
+        poulpy_core::bench_suite::keyswitch::bench_glwe_keyswitch,
+        &glwe_in, &glwe_out, &gglwe;
+        c
     );
 }
 

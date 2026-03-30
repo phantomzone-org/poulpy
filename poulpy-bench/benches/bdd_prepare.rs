@@ -10,12 +10,6 @@ use poulpy_core::{
     },
 };
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
-
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
-
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -25,9 +19,7 @@ use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
         BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, FheUintPrepare, FheUintPrepared,
     },
-    blind_rotation::{
-        BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
-    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout},
 };
 
@@ -43,7 +35,6 @@ where
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -71,7 +62,6 @@ where
             + BDDKeyEncryptSk<BRA, BE>
             + BDDKeyPreparedFactory<BRA, BE>
             + FheUintPrepare<BRA, BE>,
-        BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, /* TODO find a way to remove this bound or move it to CBT KEY */
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -201,13 +191,11 @@ where
     group.finish();
 }
 
-fn bench_bdd_prepare_fft64(c: &mut Criterion) {
+fn bench_bdd_prepare(c: &mut Criterion) {
+    benc_bdd_prepare::<poulpy_cpu_ref::FFT64Ref, CGGI>(c, "fft64-ref");
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-    let label = "fft64_avx";
-    #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-    let label = "fft64_ref";
-    benc_bdd_prepare::<BackendImpl, CGGI>(c, label);
+    benc_bdd_prepare::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
 }
 
-criterion_group!(benches, bench_bdd_prepare_fft64);
+criterion_group!(benches, bench_bdd_prepare);
 criterion_main!(benches);

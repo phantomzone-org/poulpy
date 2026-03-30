@@ -1,16 +1,18 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_core::layouts::{Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout};
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
-pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
-
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
-pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
-
 fn bench_glwe_encrypt_sk(c: &mut Criterion) {
-    let infos =
-        GLWELayout { n: (1_u32 << 12).into(), base2k: 18_u32.into(), k: 54_u32.into(), rank: 1_u32.into() };
-    poulpy_core::bench_suite::encryption::bench_glwe_encrypt_sk::<BackendImpl, _>(&infos, c, "fft64");
+    let infos = GLWELayout {
+        n: (1_u32 << 12).into(),
+        base2k: 18_u32.into(),
+        k: 54_u32.into(),
+        rank: 1_u32.into(),
+    };
+    poulpy_bench::for_each_fft_backend!(
+        poulpy_core::bench_suite::encryption::bench_glwe_encrypt_sk,
+        &infos;
+        c
+    );
 }
 
 fn bench_ggsw_encrypt_sk(c: &mut Criterion) {
@@ -19,9 +21,19 @@ fn bench_ggsw_encrypt_sk(c: &mut Criterion) {
     let k: u32 = 44;
     let dsize = Dsize(1);
     let dnum = Dnum(2);
-    let infos =
-        GGSWLayout { n: n.into(), base2k: base2k.into(), k: k.into(), rank: 1_u32.into(), dnum, dsize };
-    poulpy_core::bench_suite::encryption::bench_ggsw_encrypt_sk::<BackendImpl, _>(&infos, c, "fft64");
+    let infos = GGSWLayout {
+        n: n.into(),
+        base2k: base2k.into(),
+        k: k.into(),
+        rank: 1_u32.into(),
+        dnum,
+        dsize,
+    };
+    poulpy_bench::for_each_fft_backend!(
+        poulpy_core::bench_suite::encryption::bench_ggsw_encrypt_sk,
+        &infos;
+        c
+    );
 }
 
 fn bench_glwe_automorphism_key_encrypt_sk(c: &mut Criterion) {
@@ -40,13 +52,17 @@ fn bench_glwe_automorphism_key_encrypt_sk(c: &mut Criterion) {
         dsize,
     };
 
-    poulpy_core::bench_suite::encryption::bench_glwe_automorphism_key_encrypt_sk::<BackendImpl, _>(
-        &atk_infos,
-        3,
-        c,
-        "fft64",
+    poulpy_bench::for_each_fft_backend!(
+        poulpy_core::bench_suite::encryption::bench_glwe_automorphism_key_encrypt_sk,
+        &atk_infos, 3;
+        c
     );
 }
 
-criterion_group!(benches, bench_glwe_encrypt_sk, bench_ggsw_encrypt_sk, bench_glwe_automorphism_key_encrypt_sk,);
+criterion_group!(
+    benches,
+    bench_glwe_encrypt_sk,
+    bench_ggsw_encrypt_sk,
+    bench_glwe_automorphism_key_encrypt_sk,
+);
 criterion_main!(benches);

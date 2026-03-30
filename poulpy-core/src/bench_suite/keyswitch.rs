@@ -1,8 +1,8 @@
 use crate::{
     GLWEEncryptSk, GLWEKeyswitch, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
-        GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory, prepared::GLWESecretPrepared,
+        GGLWEInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyPrepared,
+        GLWESwitchingKeyPreparedFactory, prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{
@@ -15,13 +15,8 @@ use std::{hint::black_box, time::Duration};
 
 use criterion::Criterion;
 
-pub fn bench_glwe_keyswitch<BE: Backend, A, B, C>(
-    glwe_in: &A,
-    glwe_out: &B,
-    gglwe: &C,
-    c: &mut Criterion,
-    label: &str,
-) where
+pub fn bench_glwe_keyswitch<BE: Backend, A, B, C>(glwe_in: &A, glwe_out: &B, gglwe: &C, c: &mut Criterion, label: &str)
+where
     A: GLWEInfos,
     B: GLWEInfos,
     C: GGLWEInfos,
@@ -54,8 +49,7 @@ pub fn bench_glwe_keyswitch<BE: Backend, A, B, C>(
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_in_prepared: GLWESecretPrepared<Vec<u8>, BE> =
-        GLWESecretPrepared::alloc(&module, glwe_in.rank());
+    let mut sk_in_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, glwe_in.rank());
     sk_in_prepared.prepare(&module, &sk_in);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_out);
@@ -65,8 +59,7 @@ pub fn bench_glwe_keyswitch<BE: Backend, A, B, C>(
 
     ct_in.encrypt_zero_sk(&module, &sk_in_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
-        GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
+    let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
     ksk_prepared.prepare(&module, &ksk, scratch.borrow());
 
     let group_name = format!("glwe_keyswitch::{label}");

@@ -1,4 +1,7 @@
-use crate::{GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore, layouts::{GLWE, GLWEInfos, GLWEPlaintext}};
+use crate::{
+    GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore,
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext},
+};
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -165,8 +168,7 @@ where
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> =
-        ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
 
     let group_name = format!("glwe_mul_plain::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -192,8 +194,7 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> =
-        ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
 
     let group_name = format!("glwe_mul_plain_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
