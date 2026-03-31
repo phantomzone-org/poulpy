@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [0.4.5] - UNRELEASED
+## [0.5.0] - 2026-03-31
 
 ### `poulpy-bench` (new crate)
 - Consolidate all benchmark suites into a single `poulpy-bench` crate; remove `bench_suite` modules from `poulpy-hal`, `poulpy-core`, and `poulpy-schemes`.
