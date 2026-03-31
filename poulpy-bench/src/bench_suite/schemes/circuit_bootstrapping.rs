@@ -3,7 +3,10 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
-    layouts::{Dsize, GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret, GLWESecretPreparedFactory, LWE, LWELayout, LWESecret},
+    layouts::{
+        Dsize, GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret,
+        GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
+    },
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
@@ -14,8 +17,8 @@ use poulpy_hal::{
 use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout},
     circuit_bootstrapping::{
-        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk,
-        CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
+        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
     },
 };
 

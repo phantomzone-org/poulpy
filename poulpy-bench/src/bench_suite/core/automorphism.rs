@@ -10,7 +10,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
-use std::{hint::black_box};
+use std::hint::black_box;
 
 use criterion::Criterion;
 
@@ -19,8 +19,13 @@ use criterion::Criterion;
 /// `glwe_infos` describes the input/output GLWE layout.
 /// `atk_infos` describes the automorphism key layout.
 /// `p` is the Galois element (e.g. 3 for X -> X^3).
-pub fn bench_glwe_automorphism<BE: Backend>(glwe_infos: &impl GLWEInfos, atk_infos: &impl GGLWEInfos, p: i64, c: &mut Criterion, label: &str)
-where
+pub fn bench_glwe_automorphism<BE: Backend>(
+    glwe_infos: &impl GLWEInfos,
+    atk_infos: &impl GGLWEInfos,
+    p: i64,
+    c: &mut Criterion,
+    label: &str,
+) where
     Module<BE>: ModuleNew<BE>
         + GLWEAutomorphism<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>

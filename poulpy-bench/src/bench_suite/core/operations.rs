@@ -6,7 +6,7 @@ use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
-use std::{hint::black_box};
+use std::hint::black_box;
 
 use criterion::Criterion;
 

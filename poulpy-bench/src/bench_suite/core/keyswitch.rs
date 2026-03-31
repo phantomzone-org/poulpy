@@ -11,12 +11,17 @@ use poulpy_hal::{
     source::Source,
 };
 
-use std::{hint::black_box};
+use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_keyswitch<BE: Backend>(glwe_in: &impl GLWEInfos, glwe_out: &impl GLWEInfos, gglwe: &impl GGLWEInfos, c: &mut Criterion, label: &str)
-where
+pub fn bench_glwe_keyswitch<BE: Backend>(
+    glwe_in: &impl GLWEInfos,
+    glwe_out: &impl GLWEInfos,
+    gglwe: &impl GGLWEInfos,
+    c: &mut Criterion,
+    label: &str,
+) where
     Module<BE>: ModuleNew<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>

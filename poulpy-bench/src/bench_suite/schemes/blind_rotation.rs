@@ -3,7 +3,10 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
     GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
-    layouts::{Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout, LWESecret, TorusPrecision},
+    layouts::{
+        Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout,
+        LWESecret, TorusPrecision,
+    },
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -77,7 +80,14 @@ where
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
     let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
-    brk.encrypt_sk(&module, &sk_glwe_dft, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    brk.encrypt_sk(
+        &module,
+        &sk_glwe_dft,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let mut brk_prepared: BlindRotationKeyPrepared<Vec<u8>, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
     brk_prepared.prepare(&module, &brk, scratch.borrow());

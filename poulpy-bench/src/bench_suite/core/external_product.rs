@@ -10,12 +10,16 @@ use poulpy_hal::{
     layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
-use std::{hint::black_box};
+use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_external_product<BE: Backend>(glwe_infos: &impl GLWEInfos, ggsw_infos: &impl GGSWInfos, c: &mut Criterion, label: &str)
-where
+pub fn bench_glwe_external_product<BE: Backend>(
+    glwe_infos: &impl GLWEInfos,
+    ggsw_infos: &impl GGSWInfos,
+    c: &mut Criterion,
+    label: &str,
+) where
     Module<BE>: ModuleNew<BE>
         + GLWEExternalProduct<BE>
         + GGSWEncryptSk<BE>
@@ -66,7 +70,7 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_external_product_inplace<BE: Backend>(infos: &(impl GGSWInfos + GLWEInfos), c: &mut Criterion, label: &str)
+pub fn bench_glwe_external_product_inplace<BE: Backend>(infos: &impl GGSWInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + GLWEExternalProduct<BE>

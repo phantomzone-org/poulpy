@@ -445,7 +445,7 @@ fn test_vec_znx_normalize_cross_base2k() {
         let rem = exp % 63;
         let full = exp / 63;
         for _ in 0..full {
-            result = result * chunk.clone();
+            result *= chunk.clone();
         }
         result * FBig::from(1u64 << rem)
     };
@@ -456,7 +456,7 @@ fn test_vec_znx_normalize_cross_base2k() {
         let fl = x.floor();
         let mut r = x - fl; // now in [0, 1)
         if r >= FBig::<HalfEven>::from(1u64) / FBig::from(2u64) {
-            r = r - FBig::<HalfEven>::from(1u64);
+            r -= FBig::<HalfEven>::from(1u64);
         }
         r
     };
@@ -561,7 +561,7 @@ fn test_vec_znx_normalize_inter_base2k() {
         let rem = exp % 63;
         let full = exp / 63;
         for _ in 0..full {
-            result = result * chunk.clone();
+            result *= chunk.clone();
         }
         result * FBig::from(1u64 << rem)
     };
@@ -571,7 +571,7 @@ fn test_vec_znx_normalize_inter_base2k() {
         let fl = x.floor();
         let mut r = x - fl; // now in [0, 1)
         if r >= FBig::<HalfEven>::from(1u64) / FBig::from(2u64) {
-            r = r - FBig::<HalfEven>::from(1u64);
+            r -= FBig::<HalfEven>::from(1u64);
         }
         r
     };

@@ -13,7 +13,9 @@
 //! binaries, which sweep parameter ranges for detailed profiling.
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use poulpy_core::layouts::{Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESwitchingKeyLayout, Rank, TorusPrecision};
+use poulpy_core::layouts::{
+    Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESwitchingKeyLayout, Rank, TorusPrecision,
+};
 use poulpy_schemes::bin_fhe::blind_rotation::CGGI;
 
 fn p() -> &'static poulpy_bench::params::BenchParams {
@@ -60,7 +62,12 @@ fn std_vec_znx_big_normalize(c: &mut Criterion) {
 
 fn std_glwe_encrypt_sk(c: &mut Criterion) {
     let cp = &p().core;
-    let infos = GLWELayout { n: Degree(cp.n), base2k: Base2K(cp.base2k), k: TorusPrecision(cp.k), rank: Rank(cp.rank) };
+    let infos = GLWELayout {
+        n: Degree(cp.n),
+        base2k: Base2K(cp.base2k),
+        k: TorusPrecision(cp.k),
+        rank: Rank(cp.rank),
+    };
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::encryption::bench_glwe_encrypt_sk, &infos; c);
 }
 
@@ -98,7 +105,12 @@ fn std_glwe_external_product(c: &mut Criterion) {
 
 fn std_glwe_automorphism(c: &mut Criterion) {
     let cp = &p().core;
-    let glwe_infos = GLWELayout { n: Degree(cp.n), base2k: Base2K(cp.base2k), k: TorusPrecision(cp.k), rank: Rank(cp.rank) };
+    let glwe_infos = GLWELayout {
+        n: Degree(cp.n),
+        base2k: Base2K(cp.base2k),
+        k: TorusPrecision(cp.k),
+        rank: Rank(cp.rank),
+    };
     let atk_infos = GLWEAutomorphismKeyLayout {
         n: Degree(cp.n),
         base2k: Base2K(cp.base2k),
@@ -116,7 +128,12 @@ fn std_glwe_automorphism(c: &mut Criterion) {
 
 fn std_glwe_keyswitch(c: &mut Criterion) {
     let cp = &p().core;
-    let glwe = GLWELayout { n: Degree(cp.n), base2k: Base2K(cp.base2k), k: TorusPrecision(cp.k), rank: Rank(cp.rank) };
+    let glwe = GLWELayout {
+        n: Degree(cp.n),
+        base2k: Base2K(cp.base2k),
+        k: TorusPrecision(cp.k),
+        rank: Rank(cp.rank),
+    };
     let ksk_infos = GLWESwitchingKeyLayout {
         n: Degree(cp.n),
         base2k: Base2K(cp.base2k),
@@ -135,7 +152,12 @@ fn std_glwe_keyswitch(c: &mut Criterion) {
 
 fn std_glwe_decrypt(c: &mut Criterion) {
     let cp = &p().core;
-    let infos = GLWELayout { n: Degree(cp.n), base2k: Base2K(cp.base2k), k: TorusPrecision(cp.k), rank: Rank(cp.rank) };
+    let infos = GLWELayout {
+        n: Degree(cp.n),
+        base2k: Base2K(cp.base2k),
+        k: TorusPrecision(cp.k),
+        rank: Rank(cp.rank),
+    };
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::decryption::bench_glwe_decrypt, &infos; c);
 }
 
@@ -149,11 +171,13 @@ fn std_blind_rotate(c: &mut Criterion) {
 
 fn std_circuit_bootstrapping(c: &mut Criterion) {
     poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_ref::FFT64Ref, CGGI>(
-        c, "fft64-ref",
+        c,
+        "fft64-ref",
     );
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
     poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_avx::FFT64Avx, CGGI>(
-        c, "fft64-avx",
+        c,
+        "fft64-avx",
     );
 }
 

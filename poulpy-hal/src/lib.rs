@@ -92,9 +92,6 @@
 pub mod api;
 
 /// Criterion-based benchmark harnesses, generic over any backend.
-///
-
-
 /// Blanket implementations connecting [`api`] traits to [`oep`] traits on
 /// [`layouts::Module`].
 ///

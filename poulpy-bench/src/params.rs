@@ -36,7 +36,9 @@ pub struct HalSweepParams {
 
 impl Default for HalSweepParams {
     fn default() -> Self {
-        Self { sweeps: vec![[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] }
+        Self {
+            sweeps: vec![[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]],
+        }
     }
 }
 
@@ -50,7 +52,9 @@ pub struct CnvSweepParams {
 
 impl Default for CnvSweepParams {
     fn default() -> Self {
-        Self { sweeps: vec![[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]] }
+        Self {
+            sweeps: vec![[10, 1], [11, 2], [12, 4], [13, 8], [14, 16], [15, 32], [16, 64]],
+        }
     }
 }
 
@@ -84,7 +88,9 @@ pub struct SvpPrepareParams {
 
 impl Default for SvpPrepareParams {
     fn default() -> Self {
-        Self { log_n: vec![10, 11, 12, 13, 14] }
+        Self {
+            log_n: vec![10, 11, 12, 13, 14],
+        }
     }
 }
 
@@ -100,7 +106,13 @@ pub struct CoreParams {
 
 impl Default for CoreParams {
     fn default() -> Self {
-        Self { n: 1 << 12, base2k: 18, k: 54, rank: 1, dsize: 1 }
+        Self {
+            n: 1 << 12,
+            base2k: 18,
+            k: 54,
+            rank: 1,
+            dsize: 1,
+        }
     }
 }
 
