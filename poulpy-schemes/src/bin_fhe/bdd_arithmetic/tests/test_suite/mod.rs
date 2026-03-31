@@ -48,9 +48,7 @@ use poulpy_core::{
 
 use crate::bin_fhe::{
     bdd_arithmetic::{BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory},
-    blind_rotation::{
-        BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout, BlindRotationKeyPreparedFactory,
-    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, BlindRotationKeyPreparedFactory},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 
@@ -68,7 +66,6 @@ where
         + GLWESecretPreparedFactory<BE>
         + BlindRotationKeyPreparedFactory<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -93,7 +90,6 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
             + GLWESecretPreparedFactory<BE>
             + BlindRotationKeyPreparedFactory<BRA, BE>
             + BDDKeyPreparedFactory<BRA, BE>,
-        BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

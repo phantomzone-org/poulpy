@@ -18,7 +18,7 @@ use poulpy_schemes::bin_fhe::{
         BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
         FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Sltu,
     },
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout, CGGI},
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 use rand::RngExt;
@@ -47,7 +47,6 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEBlindSelection<u32, BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

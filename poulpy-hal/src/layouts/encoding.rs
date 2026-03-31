@@ -1,5 +1,5 @@
+use dashu_float::{Context, FBig, round::mode::HalfEven};
 use itertools::izip;
-use rug::{Assign, Float};
 
 use crate::{
     layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
@@ -228,9 +228,9 @@ impl<D: DataRef> VecZnx<D> {
         res
     }
 
-    /// Decodes column `col` into arbitrary-precision [`Float`] values by
-    /// evaluating `sum_j coeff[j] * 2^{-base2k * j}` using all limbs.
-    pub fn decode_vec_float(&self, base2k: usize, col: usize, data: &mut [Float]) {
+    /// Decodes column `col` into arbitrary-precision [`FBig`] values by
+    /// evaluating `sum_j coeff[j] * 2^{-base2k * j}` using all limbs (Horner's method).
+    pub fn decode_vec_float(&self, base2k: usize, col: usize, data: &mut [FBig<HalfEven>]) {
         #[cfg(debug_assertions)]
         {
             let a: VecZnx<&[u8]> = self.to_ref();
@@ -245,22 +245,23 @@ impl<D: DataRef> VecZnx<D> {
 
         let a: VecZnx<&[u8]> = self.to_ref();
         let size: usize = a.size();
-        let prec: u32 = data[0].prec();
+        // Extra 256 guard bits absorb cancellation in downstream reduce(x * 2^offset)
+        // operations (offset up to 128 bits) without affecting the public f64 API.
+        let prec = size * base2k + 256;
+        let ctx = Context::<HalfEven>::new(prec);
 
         // 2^{base2k}
-        let scale: Float = Float::with_val(prec, Float::u_pow_u(2, base2k as u32));
+        let scale: FBig<HalfEven> = FBig::from(1u64 << base2k.min(63));
 
-        // y[i] = sum x[j][i] * 2^{-base2k*j}
+        // y[i] = sum x[j][i] * 2^{-base2k*j}  (Horner: inner-first)
         (0..size).for_each(|i| {
             if i == 0 {
                 izip!(a.at(col, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
-                    y.assign(*x);
-                    *y /= &scale;
+                    *y = ctx.div(FBig::<HalfEven>::from(*x).repr(), scale.repr()).value();
                 });
             } else {
                 izip!(a.at(col, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
-                    *y += Float::with_val(prec, *x);
-                    *y /= &scale;
+                    *y = ctx.div((y.clone() + FBig::<HalfEven>::from(*x)).repr(), scale.repr()).value();
                 });
             }
         });

@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::bin_fhe::{
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout},
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout},
     circuit_bootstrapping::{
         CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
         CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
@@ -41,7 +41,6 @@ where
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
         + VecZnxRotateInplace<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -222,7 +221,6 @@ where
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
         + VecZnxRotateInplace<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

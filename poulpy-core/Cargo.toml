@@ -13,7 +13,7 @@ enable-avx = ["dep:poulpy-cpu-avx"]
 default = ["dep:poulpy-cpu-ref"]
 
 [dependencies]
-rug = {workspace = true}
+dashu-float = {workspace = true}
 criterion = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
@@ -24,8 +24,3 @@ bytemuck = {workspace = true}
 once_cell = {workspace = true}
 paste = {workspace = true}
 rand = {workspace = true}
-
-
-[[bench]]
-name = "keyswitch_glwe"
-harness = false

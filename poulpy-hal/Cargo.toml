@@ -10,7 +10,7 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
-rug = {workspace = true}
+dashu-float = {workspace = true}
 criterion = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}

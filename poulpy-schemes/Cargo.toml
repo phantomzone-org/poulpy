@@ -13,24 +13,13 @@ documentation = "https://docs.rs/poulpy"
 enable-avx = []
 
 [dependencies]
+criterion = {workspace = true}
 poulpy-cpu-avx = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
-criterion = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 rand = {workspace = true}
 paste = {workspace = true}
 
-[[bench]]
-name = "circuit_bootstrapping"
-harness = false
-
-[[bench]]
-name = "bdd_prepare"
-harness = false
-
-[[bench]]
-name = "bdd_arithmetic"
-harness = false

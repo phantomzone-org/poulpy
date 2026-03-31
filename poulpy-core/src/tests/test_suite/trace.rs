@@ -128,6 +128,10 @@ where
         noise_want += n as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
         noise_want = noise_want.sqrt().log2();
 
-        assert!((noise_have - noise_want).abs() < 1.0, "{noise_have} > {noise_want}");
+        assert!(
+            (noise_have - noise_want).abs() < 1.0,
+            "{noise_have} > {noise_want} {}",
+            noise_have - noise_want
+        );
     }
 }

@@ -12,8 +12,6 @@ documentation = "https://docs.rs/poulpy"
 [dependencies]
 poulpy-hal = {workspace = true}
 bytemuck = {workspace = true}
-rug = {workspace = true}
-criterion = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}
 rand_distr = {workspace = true}
@@ -25,8 +23,3 @@ rand_chacha = {workspace = true}
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
-
-
-[[bench]]
-name = "ntt"
-harness = false

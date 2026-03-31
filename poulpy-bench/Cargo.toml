@@ -1,0 +1,102 @@
+[package]
+name = "poulpy-bench"
+version = "0.4.4"
+edition = "2024"
+license = "Apache-2.0"
+description = "Consolidated benchmark suite for poulpy"
+repository = "https://github.com/phantomzone-org/poulpy"
+homepage = "https://github.com/phantomzone-org/poulpy"
+publish = false
+readme = "README.md"
+
+[features]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx"]
+# enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
+
+[dependencies]
+criterion = {workspace = true}
+rand = {workspace = true}
+serde = {workspace = true, features = ["derive"]}
+serde_json = {workspace = true}
+poulpy-hal = {workspace = true}
+poulpy-core = {workspace = true}
+poulpy-schemes = {workspace = true}
+poulpy-cpu-ref = {workspace = true}
+poulpy-cpu-avx = {workspace = true, optional = true}
+# poulpy-gpu = {workspace = true, optional = true}
+
+[[bench]]
+name = "vec_znx"
+harness = false
+
+[[bench]]
+name = "vec_znx_big"
+harness = false
+
+[[bench]]
+name = "vec_znx_dft"
+harness = false
+
+[[bench]]
+name = "svp"
+harness = false
+
+[[bench]]
+name = "vmp"
+harness = false
+
+[[bench]]
+name = "convolution"
+harness = false
+
+[[bench]]
+name = "fft"
+harness = false
+
+[[bench]]
+name = "ntt"
+harness = false
+
+[[bench]]
+name = "operations"
+harness = false
+
+[[bench]]
+name = "encryption"
+harness = false
+
+[[bench]]
+name = "decryption"
+harness = false
+
+[[bench]]
+name = "external_product"
+harness = false
+
+[[bench]]
+name = "automorphism"
+harness = false
+
+[[bench]]
+name = "keyswitch"
+harness = false
+
+[[bench]]
+name = "blind_rotate"
+harness = false
+
+[[bench]]
+name = "circuit_bootstrapping"
+harness = false
+
+[[bench]]
+name = "bdd_arithmetic"
+harness = false
+
+[[bench]]
+name = "bdd_prepare"
+harness = false
+
+[[bench]]
+name = "standard"
+harness = false

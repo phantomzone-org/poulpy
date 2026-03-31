@@ -16,8 +16,6 @@ enable-avx = []
 bytemuck = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
-rug = {workspace = true}
-criterion = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}
 rand_distr = {workspace = true}
@@ -30,8 +28,3 @@ paste = {workspace = true}
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
-
-
-[[bench]]
-name = "ntt"
-harness = false
