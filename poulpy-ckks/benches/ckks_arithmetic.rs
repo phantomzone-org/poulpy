@@ -9,11 +9,12 @@ use poulpy_ckks::{
         plaintext::CKKSPlaintext,
     },
     leveled::{
-        arithmetic::{
-            add_const_ct, add_const_ct_inplace, add_ct_ct, add_ct_ct_inplace, add_pt_ct, add_pt_ct_inplace, neg_ct,
-            neg_ct_inplace, sub_const_ct, sub_const_ct_inplace, sub_ct_ct, sub_ct_ct_inplace, sub_pt_ct, sub_pt_ct_inplace,
-        },
         encryption::{encrypt_sk, encrypt_sk_tmp_bytes},
+        operations::{
+            add::{add, add_const, add_const_inplace, add_inplace, add_pt, add_pt_inplace},
+            neg::{neg, neg_inplace},
+            sub::{sub, sub_const, sub_const_inplace, sub_inplace, sub_pt, sub_pt_inplace},
+        },
     },
 };
 use poulpy_core::{
@@ -180,7 +181,7 @@ where
 
     group.bench_with_input(BenchmarkId::from_parameter("add_ct_ct"), &(), |b, _| {
         b.iter(|| {
-            add_ct_ct(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b));
+            add(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b));
             black_box(&ct_out);
         })
     });
@@ -188,14 +189,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("add_ct_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            add_ct_ct_inplace(&module, &mut ct_work, black_box(&ct_b));
+            add_inplace(&module, &mut ct_work, black_box(&ct_b));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("add_pt_ct"), &(), |b, _| {
         b.iter(|| {
-            add_pt_ct(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b));
+            add_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b));
             black_box(&ct_out);
         })
     });
@@ -203,14 +204,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("add_pt_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            add_pt_ct_inplace(&module, &mut ct_work, black_box(&pt_b));
+            add_pt_inplace(&module, &mut ct_work, black_box(&pt_b));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("add_const_ct"), &(), |b, _| {
         b.iter(|| {
-            add_const_ct(
+            add_const(
                 &module,
                 &mut ct_out,
                 black_box(&ct_a),
@@ -224,14 +225,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("add_const_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            add_const_ct_inplace(&module, &mut ct_work, black_box(const_re), black_box(const_im));
+            add_const_inplace(&module, &mut ct_work, black_box(const_re), black_box(const_im));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("sub_ct_ct"), &(), |b, _| {
         b.iter(|| {
-            sub_ct_ct(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b));
+            sub(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b));
             black_box(&ct_out);
         })
     });
@@ -239,14 +240,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("sub_ct_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            sub_ct_ct_inplace(&module, &mut ct_work, black_box(&ct_b));
+            sub_inplace(&module, &mut ct_work, black_box(&ct_b));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("sub_pt_ct"), &(), |b, _| {
         b.iter(|| {
-            sub_pt_ct(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b));
+            sub_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b));
             black_box(&ct_out);
         })
     });
@@ -254,14 +255,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("sub_pt_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            sub_pt_ct_inplace(&module, &mut ct_work, black_box(&pt_b));
+            sub_pt_inplace(&module, &mut ct_work, black_box(&pt_b));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("sub_const_ct"), &(), |b, _| {
         b.iter(|| {
-            sub_const_ct(
+            sub_const(
                 &module,
                 &mut ct_out,
                 black_box(&ct_a),
@@ -275,14 +276,14 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("sub_const_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            sub_const_ct_inplace(&module, &mut ct_work, black_box(const_re), black_box(const_im));
+            sub_const_inplace(&module, &mut ct_work, black_box(const_re), black_box(const_im));
             black_box(&ct_work);
         })
     });
 
     group.bench_with_input(BenchmarkId::from_parameter("neg_ct"), &(), |b, _| {
         b.iter(|| {
-            neg_ct(&module, &mut ct_out, black_box(&ct_a));
+            neg(&module, &mut ct_out, black_box(&ct_a));
             black_box(&ct_out);
         })
     });
@@ -290,7 +291,7 @@ where
     group.bench_with_input(BenchmarkId::from_parameter("neg_ct_inplace"), &(), |b, _| {
         b.iter(|| {
             reset_ct(&mut ct_work, &ct_a);
-            neg_ct_inplace(&module, &mut ct_work);
+            neg_inplace(&module, &mut ct_work);
             black_box(&ct_work);
         })
     });

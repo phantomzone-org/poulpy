@@ -4,7 +4,7 @@ use crate::{
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
-        level::{drop_bits_ct, drop_bits_pt, drop_limbs_ct, drop_limbs_pt},
+        operations::level::{drop_bits, drop_bits_pt, drop_limbs, drop_limbs_pt},
     },
 };
 use poulpy_core::{
@@ -102,13 +102,13 @@ where
 {
     const DROP: usize = 2;
 
-    run_drop(module, params, |ct| drop_limbs_ct(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
+    run_drop(module, params, |ct| drop_limbs(ct, DROP), |pt| drop_limbs_pt(pt, DROP));
 
     let n = module.n();
     let base2k = Base2K(params.base2k);
     let k_init = TorusPrecision(params.k);
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
-    drop_limbs_ct(&mut ct, DROP);
+    drop_limbs(&mut ct, DROP);
     assert_eq!(ct.inner.k().0, k_init.0 - DROP as u32 * params.base2k);
     assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize - DROP);
 }
@@ -124,7 +124,7 @@ where
     run_drop(
         module,
         params,
-        |ct| drop_bits_ct(ct, DROP_BITS),
+        |ct| drop_bits(ct, DROP_BITS),
         |pt| drop_bits_pt(pt, DROP_BITS),
     );
 
@@ -132,7 +132,7 @@ where
     let base2k = Base2K(params.base2k);
     let k_init = TorusPrecision(params.k);
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
-    drop_bits_ct(&mut ct, DROP_BITS);
+    drop_bits(&mut ct, DROP_BITS);
     assert_eq!(ct.inner.k().0, k_init.0 - DROP_BITS);
     assert_eq!(ct.inner.size(), params.k.div_ceil(params.base2k) as usize);
 }
@@ -143,20 +143,15 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    let drop_bits = params.base2k + 8;
+    let bits = params.base2k + 8;
 
-    run_drop(
-        module,
-        params,
-        |ct| drop_bits_ct(ct, drop_bits),
-        |pt| drop_bits_pt(pt, drop_bits),
-    );
+    run_drop(module, params, |ct| drop_bits(ct, bits), |pt| drop_bits_pt(pt, bits));
 
     let n = module.n();
     let base2k = Base2K(params.base2k);
     let k_init = TorusPrecision(params.k);
     let mut ct = CKKSCiphertext::alloc(Degree(n as u32), base2k, k_init, params.log_delta);
-    drop_bits_ct(&mut ct, drop_bits);
-    assert_eq!(ct.inner.k().0, k_init.0 - drop_bits);
-    assert_eq!(ct.inner.size(), (params.k - drop_bits).div_ceil(params.base2k) as usize);
+    drop_bits(&mut ct, bits);
+    assert_eq!(ct.inner.k().0, k_init.0 - bits);
+    assert_eq!(ct.inner.size(), (params.k - bits).div_ceil(params.base2k) as usize);
 }

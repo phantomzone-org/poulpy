@@ -10,19 +10,10 @@ use poulpy_hal::{
     layouts::{DataMut, DataRef, Module, ScratchOwned, ZnxInfos, ZnxView, ZnxViewMut},
 };
 
-#[cfg(all(
-    feature = "enable-avx",
-    target_arch = "x86_64",
-    target_feature = "avx2",
-    target_feature = "fma"
-))]
-type Fft64Backend = poulpy_cpu_avx::FFT64Avx;
-#[cfg(not(all(
-    feature = "enable-avx",
-    target_arch = "x86_64",
-    target_feature = "avx2",
-    target_feature = "fma"
-)))]
+// The FFT64 AVX backend uses an IEEE 754 bit-manipulation trick for i64-to-f64
+// conversion (reim_from_znx_i64_bnd50_fma) that requires |x| < 2^50. CKKS with
+// NTT120 parameters (base2k=52) produces coefficients up to 52 bits, exceeding
+// this bound. Force the ref backend until the AVX conversion supports wider inputs.
 type Fft64Backend = poulpy_cpu_ref::FFT64Ref;
 
 const F64_FFT_MAX_LOG_DELTA: u32 = 50;
