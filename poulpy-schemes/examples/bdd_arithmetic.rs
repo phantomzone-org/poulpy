@@ -21,6 +21,14 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
+use poulpy_schemes::bin_fhe::{
+    bdd_arithmetic::{
+        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
+        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
+    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
+    circuit_bootstrapping::CircuitBootstrappingKeyLayout,
+};
 use rand::RngExt;
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
@@ -57,7 +65,6 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEBlindSelection<u32, BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

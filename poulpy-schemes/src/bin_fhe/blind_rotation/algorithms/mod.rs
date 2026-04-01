@@ -10,7 +10,7 @@ use poulpy_core::{
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch, ZnxView};
 
 use crate::bin_fhe::blind_rotation::{
-    BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable,
+    BlindRotationKey, BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable,
 };
 
 /// Marker trait for blind-rotation algorithm variants.
@@ -18,7 +18,12 @@ use crate::bin_fhe::blind_rotation::{
 /// Implementors act as phantom types that bind a specific algorithm identity
 /// to key and execution types.  This prevents accidental cross-algorithm key
 /// usage at the type level.  Currently the only implementation is [`CGGI`].
-pub trait BlindRotationAlgo: Sync {}
+pub trait BlindRotationAlgo: Sync {
+    /// Allocates a zero-filled [`BlindRotationKey`] from a dimension descriptor.
+    fn alloc_key<A: BlindRotationKeyInfos>(infos: &A) -> BlindRotationKey<Vec<u8>, Self>
+    where
+        Self: Sized;
+}
 
 /// Trait for executing the blind rotation algorithm.
 ///

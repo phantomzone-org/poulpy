@@ -15,7 +15,7 @@ use crate::bin_fhe::{
         FheUintPrepareDebug, FheUintPreparedDebug, FheUintPreparedEncryptSk, FheUintPreparedFactory,
         tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
+    blind_rotation::BlindRotationAlgo,
 };
 
 pub fn test_bdd_prepare<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
@@ -33,7 +33,6 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEEncryptSk<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

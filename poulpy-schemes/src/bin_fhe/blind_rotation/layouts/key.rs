@@ -114,7 +114,7 @@ pub trait BlindRotationKeyAlloc {
 ///
 /// ## Key Lifecycle
 ///
-/// 1. Allocate with [`BlindRotationKey::alloc`] (requires `BRT: BlindRotationKeyFactory`).
+/// 1. Allocate with [`BlindRotationKey::alloc`].
 /// 2. Fill with [`BlindRotationKey::encrypt_sk`].
 /// 3. Prepare for evaluation with `BlindRotationKeyPrepared::prepare`.
 ///
@@ -136,26 +136,9 @@ pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
-/// Algorithm-specific factory for allocating a [`BlindRotationKey`].
-///
-/// Implemented for `BlindRotationKey<Vec<u8>, BRA>` per algorithm variant.
-/// The [`BlindRotationKey::alloc`] convenience method delegates here.
-pub trait BlindRotationKeyFactory<BRA: BlindRotationAlgo> {
-    /// Allocates a zero-filled key using the dimension descriptor `infos`.
-    fn blind_rotation_key_alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA>
-    where
-        A: BlindRotationKeyInfos;
-}
-
-impl<BRA: BlindRotationAlgo> BlindRotationKey<Vec<u8>, BRA>
-where
-    Self: BlindRotationKeyFactory<BRA>,
-{
-    pub fn alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA>
-    where
-        A: BlindRotationKeyInfos,
-    {
-        Self::blind_rotation_key_alloc(infos)
+impl<BRA: BlindRotationAlgo> BlindRotationKey<Vec<u8>, BRA> {
+    pub fn alloc<A: BlindRotationKeyInfos>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA> {
+        BRA::alloc_key(infos)
     }
 }
 

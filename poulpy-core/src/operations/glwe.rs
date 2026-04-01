@@ -257,7 +257,6 @@ where
         R: DataMut,
         A: DataRef,
     {
-        assert_eq!(res.rank(), a.rank());
         let res_ref: &GLWE<&[u8]> = &res.to_ref();
         assert!(
             scratch.available() >= self.glwe_mul_plain_tmp_bytes(res_ref, res_offset, res_ref, a),

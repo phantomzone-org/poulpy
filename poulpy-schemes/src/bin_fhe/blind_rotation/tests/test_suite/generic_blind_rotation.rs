@@ -5,9 +5,8 @@ use poulpy_hal::{
 };
 
 use crate::bin_fhe::blind_rotation::{
-    BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory,
-    BlindRotationKeyLayout, BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, LookUpTableLayout, LookupTable,
-    LookupTableFactory, mod_switch_2n,
+    BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyLayout,
+    BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, LookUpTableLayout, LookupTable, LookupTableFactory, mod_switch_2n,
 };
 
 use poulpy_core::{
@@ -32,7 +31,6 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

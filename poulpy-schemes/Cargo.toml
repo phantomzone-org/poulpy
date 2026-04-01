@@ -1,6 +1,6 @@
 [package]
-name = "poulpy-bin-fhe"
-version = "0.4.4"
+name = "poulpy-schemes"
+version = "0.5.0"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
@@ -13,28 +13,12 @@ documentation = "https://docs.rs/poulpy"
 enable-avx = []
 
 [dependencies]
+criterion = {workspace = true}
 poulpy-cpu-avx = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
-criterion = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 rand = {workspace = true}
 paste = {workspace = true}
-
-[[bench]]
-name = "blind_rotate"
-harness = false
-
-[[bench]]
-name = "circuit_bootstrapping"
-harness = false
-
-[[bench]]
-name = "bdd_prepare"
-harness = false
-
-[[bench]]
-name = "bdd_arithmetic"
-harness = false

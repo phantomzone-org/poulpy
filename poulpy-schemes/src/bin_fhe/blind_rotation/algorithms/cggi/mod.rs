@@ -3,7 +3,11 @@ mod key;
 mod key_compressed;
 mod key_prepared;
 
-use crate::bin_fhe::blind_rotation::BlindRotationAlgo;
+use std::marker::PhantomData;
+
+use poulpy_core::{Distribution, layouts::GGSW};
+
+use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyInfos};
 
 /// Algorithm marker for the
 /// Chillotti-Gama-Georgieva-Izabachène (CGGI / TFHE) blind rotation.
@@ -26,4 +30,13 @@ use crate::bin_fhe::blind_rotation::BlindRotationAlgo;
 ///   of the evaluated function.
 #[derive(Clone)]
 pub struct CGGI {}
-impl BlindRotationAlgo for CGGI {}
+
+impl BlindRotationAlgo for CGGI {
+    fn alloc_key<A: BlindRotationKeyInfos>(infos: &A) -> BlindRotationKey<Vec<u8>, Self> {
+        BlindRotationKey {
+            keys: (0..infos.n_lwe().as_usize()).map(|_| GGSW::alloc_from_infos(infos)).collect(),
+            dist: Distribution::NONE,
+            _phantom: PhantomData,
+        }
+    }
+}

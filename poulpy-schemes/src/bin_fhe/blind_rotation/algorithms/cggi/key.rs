@@ -1,31 +1,14 @@
 use poulpy_hal::{
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
 
-use std::marker::PhantomData;
-
 use poulpy_core::{
     Distribution, GGSWEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{GGSW, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 
-use crate::bin_fhe::blind_rotation::{
-    BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyFactory, BlindRotationKeyInfos, CGGI,
-};
-
-impl<D: DataRef> BlindRotationKeyFactory<CGGI> for BlindRotationKey<D, CGGI> {
-    fn blind_rotation_key_alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, CGGI>
-    where
-        A: BlindRotationKeyInfos,
-    {
-        BlindRotationKey {
-            keys: (0..infos.n_lwe().as_usize()).map(|_| GGSW::alloc_from_infos(infos)).collect(),
-            dist: Distribution::NONE,
-            _phantom: PhantomData,
-        }
-    }
-}
+use crate::bin_fhe::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};
 
 impl<BE: Backend> BlindRotationKeyEncryptSk<CGGI, BE> for Module<BE>
 where

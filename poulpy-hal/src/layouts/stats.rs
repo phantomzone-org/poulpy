@@ -1,8 +1,4 @@
-use rug::{
-    Float,
-    float::Round,
-    ops::{AddAssignRound, DivAssignRound, SubAssignRound},
-};
+use dashu_float::{FBig, round::mode::HalfEven};
 
 use crate::layouts::{Backend, DataRef, VecZnx, VecZnxBig, VecZnxBigToRef, ZnxInfos};
 
@@ -29,28 +25,35 @@ impl<D: DataRef> VecZnx<D> {
     /// Computes [`Stats`] (max absolute value and standard deviation) for
     /// column `col` by decoding all limbs into arbitrary-precision floats.
     pub fn stats(&self, base2k: usize, col: usize) -> Stats {
-        let prec: u32 = (self.size() * base2k) as u32;
-        let mut data: Vec<Float> = (0..self.n()).map(|_| Float::with_val(prec, 0)).collect();
+        let mut data: Vec<FBig<HalfEven>> = (0..self.n()).map(|_| FBig::ZERO).collect();
         self.decode_vec_float(base2k, col, &mut data);
+
         // std = sqrt(sum((xi - avg)^2) / n)
-        let mut avg: Float = Float::with_val(prec, 0);
-        let mut max: Float = Float::with_val(prec, 0);
+        let mut avg: FBig<HalfEven> = FBig::ZERO;
+        let mut max: FBig<HalfEven> = FBig::ZERO;
 
         data.iter().for_each(|x| {
-            avg.add_assign_round(x, Round::Nearest);
-            max.max_mut(&Float::with_val(prec, x.abs_ref()));
+            avg = avg.clone() + x.clone();
+            let abs_x = if x < &FBig::<HalfEven>::ZERO { -x.clone() } else { x.clone() };
+            if abs_x > max {
+                max = abs_x;
+            }
         });
-        avg.div_assign_round(Float::with_val(prec, data.len()), Round::Nearest);
+        avg /= FBig::from(data.len() as i64);
         data.iter_mut().for_each(|x| {
-            x.sub_assign_round(&avg, Round::Nearest);
+            *x = x.clone() - avg.clone();
         });
-        let mut std: Float = Float::with_val(prec, 0);
-        data.iter().for_each(|x| std += x * x);
-        std.div_assign_round(Float::with_val(prec, data.len()), Round::Nearest);
-        std = std.sqrt();
+        let mut variance: FBig<HalfEven> = FBig::ZERO;
+        data.iter().for_each(|x| {
+            variance = variance.clone() + x.clone() * x.clone();
+        });
+        variance /= FBig::from(data.len() as i64);
+
+        // Final output is f64; to_f64() always succeeds (returns nearest f64).
+        // f64::try_from(FBig) fails with LossOfPrecision for nearly all values.
         Stats {
-            std: std.to_f64(),
-            max: max.to_f64(),
+            std: variance.to_f64().value().sqrt(),
+            max: max.to_f64().value(),
         }
     }
 }
