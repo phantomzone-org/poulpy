@@ -1,11 +1,7 @@
 use super::CKKSTestParams;
 use crate::{
     encoding::classical::{decode, encode},
-    layouts::{
-        ciphertext::CKKSCiphertext,
-        keys::{tensor_key::CKKSTensorKey, tensor_key_prepared::CKKSTensorKeyPrepared},
-        plaintext::CKKSPlaintext,
-    },
+    layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
         operations::mul::{mul, mul_tmp_bytes},
@@ -14,8 +10,8 @@ use crate::{
 use poulpy_core::{
     GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPreparedFactory, LWEInfos,
-        Rank, TorusPrecision, prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared,
+        GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{
@@ -43,12 +39,11 @@ where
     let k = TorusPrecision(params.k);
     let degree = Degree(n as u32);
 
-    let glwe_infos = GLWELayout {
-        n: degree,
-        base2k,
-        k,
-        rank: Rank(1),
-    };
+    let glwe_infos = params.glwe_layout();
+    let tsk_infos = params.tsk_layout();
+
+    println!("glwe_infos: {:?}", glwe_infos);
+    println!("tsk_infos: {:?}", tsk_infos);
 
     let mut source_xs = Source::new([0u8; 32]);
     let mut source_xa = Source::new([1u8; 32]);
@@ -59,8 +54,7 @@ where
     let mut sk_prepared = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_prepared.prepare(module, &sk);
 
-    let tsk_layout = CKKSTensorKey::layout(degree, base2k, k);
-    let mut tsk = CKKSTensorKey::alloc(degree, base2k, k);
+    let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
 
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(module, &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta))
@@ -68,13 +62,13 @@ where
                 module,
                 &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta),
             ))
-            .max(module.prepare_tensor_key_tmp_bytes(&tsk_layout))
-            .max(GLWETensorKey::<Vec<u8>>::encrypt_sk_tmp_bytes(module, &tsk_layout)),
+            .max(GLWETensorKeyPrepared::prepare_tmp_bytes(module, &tsk_infos))
+            .max(GLWETensorKey::encrypt_sk_tmp_bytes(module, &tsk_infos)),
     );
 
     tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let mut tsk_prepared = CKKSTensorKeyPrepared::alloc(module, degree, base2k, k);
+    let mut tsk_prepared = GLWETensorKeyPrepared::alloc_from_infos(module, &tsk_infos);
     tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
     let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, params.log_delta);
@@ -94,6 +88,9 @@ where
     let mut pt2 = CKKSPlaintext::alloc(degree, base2k, k, params.log_delta);
     encode(&mut pt1, &re1, &im1);
     encode(&mut pt2, &re2, &im2);
+
+    println!("pt1: {:?}", pt1.inner.data());
+    println!("pt1: {:?}", pt2.inner.data());
 
     let mut ct1 = CKKSCiphertext::alloc(degree, base2k, k, params.log_delta);
     let mut ct2 = CKKSCiphertext::alloc(degree, base2k, k, params.log_delta);
@@ -126,6 +123,9 @@ where
     );
 
     let mut pt_out = CKKSPlaintext::alloc(degree, base2k, ct_res.inner.k(), params.log_delta);
+
+    println!("pt_out: {:?}", pt_out.inner.data());
+
     decrypt(module, &mut pt_out, &ct_res, &sk_prepared, scratch.borrow());
     let (re_out, im_out) = decode(&pt_out);
 
@@ -141,6 +141,9 @@ where
     let prec_re = -(max_err_re.log2());
     let prec_im = -(max_err_im.log2());
     let min_prec = prec_re.min(prec_im);
+
+    println!("prec_re: {prec_re}");
+    println!("prec_im: {prec_im}");
 
     assert!(
         min_prec > 5.0,

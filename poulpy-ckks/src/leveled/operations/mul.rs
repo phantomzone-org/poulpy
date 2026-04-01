@@ -1,10 +1,13 @@
 //! CKKS ciphertext-ciphertext multiplication.
 
 use crate::{
-    layouts::{ciphertext::CKKSCiphertext, keys::tensor_key_prepared::CKKSTensorKeyPrepared, tensor::CKKSTensor},
+    layouts::{ciphertext::CKKSCiphertext, tensor::CKKSTensor},
     leveled::operations::level::rescale,
 };
-use poulpy_core::{GLWEShift, GLWETensoring, ScratchTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWEShift, GLWETensoring, ScratchTakeCore,
+    layouts::{GLWETensorKeyPrepared, LWEInfos},
+};
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 /// Returns `res_offset` for the CKKS tensor product.
@@ -49,12 +52,12 @@ pub fn relinearize_tmp_bytes<BE: Backend>(
     module: &Module<BE>,
     res: &CKKSCiphertext<impl Data>,
     tensor: &CKKSTensor<impl Data>,
-    tsk: &CKKSTensorKeyPrepared<impl DataRef, BE>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
 ) -> usize
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    module.glwe_tensor_relinearize_tmp_bytes(&res.inner, &tensor.inner, &tsk.inner)
+    module.glwe_tensor_relinearize_tmp_bytes(&res.inner, &tensor.inner, tsk)
 }
 
 /// Relinearizes a tensor product back to a standard CKKS ciphertext.
@@ -62,13 +65,13 @@ pub fn relinearize<BE: Backend>(
     module: &Module<BE>,
     res: &mut CKKSCiphertext<impl DataMut>,
     tensor: &CKKSTensor<impl DataRef>,
-    tsk: &CKKSTensorKeyPrepared<impl DataRef, BE>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
     scratch: &mut Scratch<BE>,
 ) where
     Module<BE>: GLWETensoring<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    module.glwe_tensor_relinearize(&mut res.inner, &tensor.inner, &tsk.inner, tsk.size(), scratch);
+    module.glwe_tensor_relinearize(&mut res.inner, &tensor.inner, tsk, tsk.size(), scratch);
     res.log_delta = tensor.log_delta;
 }
 
@@ -77,7 +80,7 @@ pub fn mul_tmp_bytes<BE: Backend>(
     module: &Module<BE>,
     a: &CKKSCiphertext<impl Data>,
     b: &CKKSCiphertext<impl Data>,
-    tsk: &CKKSTensorKeyPrepared<impl DataRef, BE>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
 ) -> usize
 where
     Module<BE>: GLWETensoring<BE> + GLWEShift<BE>,
@@ -89,7 +92,7 @@ where
 
     module
         .glwe_tensor_apply_tmp_bytes(&tensor.inner, res_offset, &a.inner, &b.inner)
-        .max(module.glwe_tensor_relinearize_tmp_bytes(&res.inner, &tensor.inner, &tsk.inner))
+        .max(module.glwe_tensor_relinearize_tmp_bytes(&res.inner, &tensor.inner, tsk))
         .max(module.glwe_rsh_tmp_byte())
 }
 
@@ -99,7 +102,7 @@ pub fn mul<BE: Backend>(
     res: &mut CKKSCiphertext<impl DataMut>,
     a: &CKKSCiphertext<impl DataRef>,
     b: &CKKSCiphertext<impl DataRef>,
-    tsk: &CKKSTensorKeyPrepared<impl DataRef, BE>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
     scratch: &mut Scratch<BE>,
 ) where
     Module<BE>: GLWETensoring<BE> + GLWEShift<BE>,
