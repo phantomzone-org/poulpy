@@ -1,7 +1,6 @@
-use super::{
-    CKKSTestParams,
-    helpers::{EncryptEnv, SetupResult, alloc_scratch, decrypt_decode, encrypt, setup, tol},
-};
+//! Negation tests (out-of-place and in-place).
+
+use super::helpers::{TestContext, assert_precision};
 use crate::{
     layouts::ciphertext::CKKSCiphertext,
     leveled::operations::neg::{neg, neg_inplace},
@@ -11,11 +10,15 @@ use poulpy_core::{
     layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNegate, VecZnxNegateInplace},
+    api::{
+        ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes,
+    },
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
 
-pub fn test_neg<BE: Backend>(module: &Module<BE>, params: CKKSTestParams)
+/// Verifies negation (out-of-place and in-place).
+pub fn test_neg<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + GLWEEncryptSk<BE>
@@ -23,56 +26,31 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEAdd
         + VecZnxNegate
-        + VecZnxNegateInplace,
+        + VecZnxNegateInplace
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    let n = module.n();
-    let m = n / 2;
-    let SetupResult { sk, re1, im1, .. } = setup(module, params);
-    let mut scratch_be = alloc_scratch(module, params);
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+    let mut scratch = ctx.alloc_scratch();
 
-    let ct1 = encrypt(
-        &mut EncryptEnv {
-            module,
-            params,
-            scratch_be: &mut scratch_be,
-        },
-        &sk,
-        &re1,
-        &im1,
-        [1u8; 32],
-        [2u8; 32],
-    );
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
 
-    let base2k = Base2K(params.base2k);
-    let k = TorusPrecision(params.k);
-    let mut ct_res = CKKSCiphertext::alloc(Degree(n as u32), base2k, k, params.log_delta);
-    neg(module, &mut ct_res, &ct1);
-    let (re_out, im_out) = decrypt_decode(module, params, &ct_res, &sk, &mut scratch_be);
+    let want_re: Vec<f64> = ctx.re1.iter().map(|v| -v).collect();
+    let want_im: Vec<f64> = ctx.im1.iter().map(|v| -v).collect();
 
-    let t = tol(n, params.log_delta);
-    for j in 0..m {
-        assert!((re_out[j] + re1[j]).abs() < t, "re[{j}]: {} vs {}", re_out[j], -re1[j]);
-        assert!((im_out[j] + im1[j]).abs() < t, "im[{j}]: {} vs {}", im_out[j], -im1[j]);
-    }
+    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    neg(&ctx.module, &mut ct_res, &ct1);
+    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
+    assert_precision("neg re", &re_out, &want_re, 20.0);
+    assert_precision("neg im", &im_out, &want_im, 20.0);
 
-    let mut ct_ip = encrypt(
-        &mut EncryptEnv {
-            module,
-            params,
-            scratch_be: &mut scratch_be,
-        },
-        &sk,
-        &re1,
-        &im1,
-        [1u8; 32],
-        [2u8; 32],
-    );
-    neg_inplace(module, &mut ct_ip);
-    let (re_ip, im_ip) = decrypt_decode(module, params, &ct_ip, &sk, &mut scratch_be);
-    for j in 0..m {
-        assert!((re_ip[j] + re1[j]).abs() < t, "inplace re[{j}]");
-        assert!((im_ip[j] + im1[j]).abs() < t, "inplace im[{j}]");
-    }
+    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    neg_inplace(&ctx.module, &mut ct_ip);
+    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
+    assert_precision("neg_inplace re", &re_ip, &want_re, 20.0);
+    assert_precision("neg_inplace im", &im_ip, &want_im, 20.0);
 }

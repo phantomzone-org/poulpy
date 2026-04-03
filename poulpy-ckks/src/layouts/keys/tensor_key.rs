@@ -11,7 +11,18 @@ use poulpy_hal::{
     source::Source,
 };
 
-/// Relinearization key for CKKS ct-ct multiplication.
+/// Relinearization key for CKKS ciphertext × ciphertext multiplication.
+///
+/// Wraps a [`GLWETensorKey`] with rank-1 and CKKS-specific layout parameters.
+/// The key precision is `k + base2k` to accommodate the extra digit needed
+/// by the tensor switching decomposition.
+///
+/// ## Lifecycle
+///
+/// 1. Allocate with [`CKKSTensorKey::alloc`].
+/// 2. Encrypt with [`CKKSTensorKey::encrypt_sk`].
+/// 3. Prepare into a [`CKKSTensorKeyPrepared`](super::tensor_key_prepared::CKKSTensorKeyPrepared)
+///    before evaluation.
 pub struct CKKSTensorKey<D: Data> {
     pub inner: GLWETensorKey<D>,
 }
@@ -24,7 +35,10 @@ impl CKKSTensorKey<Vec<u8>> {
         }
     }
 
-    /// Computes the tensor key layout for CKKS (rank=1).
+    /// Computes the tensor key layout for CKKS (rank=1, dsize=1).
+    ///
+    /// The key precision is `k + base2k`: one extra digit to hold the
+    /// decomposition products during relinearization.
     pub fn layout(n: Degree, base2k: Base2K, k: TorusPrecision) -> GLWETensorKeyLayout {
         let tsk_k = TorusPrecision(k.0 + base2k.0);
         GLWETensorKeyLayout {

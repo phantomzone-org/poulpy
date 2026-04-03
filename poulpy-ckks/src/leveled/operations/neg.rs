@@ -1,4 +1,6 @@
 //! CKKS ciphertext negation.
+//!
+//! Negates each column of the GLWE ciphertext.  `log_delta` is preserved.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
 use poulpy_hal::{

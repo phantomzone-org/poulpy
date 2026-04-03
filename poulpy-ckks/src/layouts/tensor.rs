@@ -3,6 +3,12 @@
 use poulpy_core::layouts::{Base2K, Degree, GLWEInfos, GLWETensor, Rank, TorusPrecision};
 use poulpy_hal::layouts::Data;
 
+/// Intermediate tensor product of two rank-1 CKKS ciphertexts.
+///
+/// Produced by [`tensor`](crate::leveled::operations::mul::tensor) and consumed
+/// by [`relinearize`](crate::leveled::operations::mul::relinearize) to yield a
+/// standard [`CKKSCiphertext`](super::ciphertext::CKKSCiphertext).  The
+/// `log_delta` is the sum of the two operands' scaling factors.
 pub struct CKKSTensor<D: Data> {
     pub inner: GLWETensor<D>,
     pub log_delta: u32,

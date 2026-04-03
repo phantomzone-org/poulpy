@@ -10,7 +10,7 @@ publish = false
 readme = "README.md"
 
 [features]
-enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx", "poulpy-ckks/enable-avx"]
 # enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
 
 [dependencies]
@@ -21,6 +21,7 @@ serde_json = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 poulpy-schemes = {workspace = true}
+poulpy-ckks = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
 # poulpy-gpu = {workspace = true, optional = true}
@@ -99,4 +100,8 @@ harness = false
 
 [[bench]]
 name = "standard"
+harness = false
+
+[[bench]]
+name = "ckks_leveled"
 harness = false

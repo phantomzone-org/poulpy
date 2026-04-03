@@ -1,6 +1,6 @@
 [package]
 name = "poulpy-ckks"
-version = "0.4.4"
+version = "0.5.0"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
@@ -18,8 +18,3 @@ poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 rand = {workspace = true}
-criterion = {workspace = true}
-
-[[bench]]
-name = "ckks_arithmetic"
-harness = false

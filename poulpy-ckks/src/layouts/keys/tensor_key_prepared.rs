@@ -7,7 +7,10 @@ use poulpy_hal::{
     layouts::{Backend, Data, DataRef, Module, Scratch},
 };
 
-/// Prepared relinearization key for fast tensor relinearization.
+/// DFT-domain relinearization key for hot-path tensor relinearization.
+///
+/// Created by preparing a [`CKKSTensorKey`] via
+/// [`CKKSTensorKeyPrepared::prepare`].
 pub struct CKKSTensorKeyPrepared<D: Data, BE: Backend> {
     pub inner: GLWETensorKeyPrepared<D, BE>,
 }
