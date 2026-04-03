@@ -1,6 +1,21 @@
 # CHANGELOG
 
-## [0.4.5] - UNRELEASED
+## [0.5.0] - 2026-03-31
+
+### `poulpy-bench` (new crate)
+- Consolidate all benchmark suites into a single `poulpy-bench` crate; remove `bench_suite` modules from `poulpy-hal`, `poulpy-core`, and `poulpy-schemes`.
+- Organize bench suite under three namespaces: `bench_suite::hal`, `bench_suite::core`, `bench_suite::schemes`.
+- Add `standard` binary: one representative run across all layers with fixed parameters, intended for version-to-version regression tracking.
+- Add JSON-configurable benchmark parameters via the `POULPY_BENCH_PARAMS` environment variable (file path or inline JSON). All sweep ranges and layout constants are overridable; any omitted field falls back to its built-in default.
+  - `hal.sweeps` — `[log_n, cols, size]` points for `vec_znx_big`, `vec_znx_dft`, `svp`
+  - `cnv.sweeps` — `[log_n, size]` points for `convolution`
+  - `vmp.sweeps` — `[log_n, rows, cols_in, cols_out, size]` points for `vmp`
+  - `svp_prepare.log_n` — ring degrees for SVP prepare
+  - `core.{n, base2k, k, rank, dsize}` — layout for all core / scheme / standard benchmarks
+- Add `run` JSON field: list of bench binary names or function names to execute; binary names run the whole binary, function names are applied as a Criterion regex filter across the default binary set.
+- Add `backends` JSON field: list of backend labels (`fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`) to restrict which backends are benchmarked; listing an AVX backend automatically enables `--features enable-avx` and sets `RUSTFLAGS="-C target-feature=+avx2,+fma"`.
+- Replace per-group `measurement_time` overrides with a shared `criterion_config()` (100 samples, 5 s measurement budget).
+- Add `examples/custom_params.json` and `examples/run_custom_params.sh`: runnable example demonstrating JSON-configurable parameters, backend selection, operation filtering, and baseline comparison.
 
 ### `poulpy-hal`
 - Remove `VmpApplyDftToDftAdd` and `SvpApplyDftToDftAdd` traits; merge additive variant into `VmpApplyDftToDft` / `SvpApplyDftToDft` via a new `limb_offset` parameter.

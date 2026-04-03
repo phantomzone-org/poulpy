@@ -1,10 +1,10 @@
+use dashu_float::{FBig, round::mode::HalfEven};
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize},
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
     test_suite::TestParams,
 };
-use rug::Float;
 
 use crate::{
     GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
@@ -70,13 +70,13 @@ where
 
             ct_in.encrypt_sk(module, &pt_in, &sk_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
-            let mut data: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
+            let mut data: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
 
             ct_out.fill_uniform(ct_out.base2k().into(), &mut source_xa);
             module.glwe_normalize(&mut ct_out, &ct_in, scratch.borrow());
 
-            let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
+            let mut data_conv: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
             let noise_have = ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2();

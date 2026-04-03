@@ -1,0 +1,24 @@
+[package]
+name = "poulpy-schemes"
+version = "0.5.0"
+edition = "2024"
+license = "Apache-2.0"
+readme = "README.md"
+description = "A backend agnostic crate implementing binary/gate-level RLWE-based FHE"
+repository = "https://github.com/phantomzone-org/poulpy"
+homepage = "https://github.com/phantomzone-org/poulpy"
+documentation = "https://docs.rs/poulpy"
+
+[features]
+enable-avx = []
+
+[dependencies]
+criterion = {workspace = true}
+poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-ref = {workspace = true}
+poulpy-hal = {workspace = true}
+poulpy-core = {workspace = true}
+itertools = {workspace = true}
+byteorder = {workspace = true}
+rand = {workspace = true}
+paste = {workspace = true}

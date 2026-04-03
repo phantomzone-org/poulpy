@@ -257,7 +257,6 @@ where
         R: DataMut,
         A: DataRef,
     {
-        assert_eq!(res.rank(), a.rank());
         let res_ref: &GLWE<&[u8]> = &res.to_ref();
         assert!(
             scratch.available() >= self.glwe_mul_plain_tmp_bytes(res_ref, res_offset, res_ref, a),
@@ -292,7 +291,7 @@ where
 
         for i in 0..cols {
             let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(&mut res_dft, res_offset, 0, &res_prep, i, &a_prep, 0, scratch_3);
+            self.cnv_apply_dft(&mut res_dft, res_offset_hi, 0, &res_prep, i, &a_prep, 0, scratch_3);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
             self.vec_znx_big_normalize(res.data_mut(), res_base2k, res_offset_lo, i, &res_big, a_base2k, 0, scratch_3);
         }
@@ -543,7 +542,7 @@ where
             }
         } else {
             for i in 0..pairs {
-                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, a.data(), 0);
+                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, a.data(), cols + i);
             }
         }
 

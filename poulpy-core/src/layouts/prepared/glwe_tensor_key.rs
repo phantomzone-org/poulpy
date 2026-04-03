@@ -152,7 +152,7 @@ impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
 }
 
 impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
+    pub fn prepare_tmp_bytes<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
         M: GLWETensorKeyPreparedFactory<B>,

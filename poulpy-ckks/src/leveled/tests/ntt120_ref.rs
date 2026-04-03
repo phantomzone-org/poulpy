@@ -1,84 +1,128 @@
+use std::sync::LazyLock;
+
 use poulpy_cpu_ref::NTT120Ref;
-use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::leveled::tests::test_suite::{
     NTT120_PARAMS,
-    arithmetic::{
-        test_add_const_ct, test_add_ct_ct, test_add_pt_ct, test_neg_ct, test_sub_const_ct, test_sub_ct_ct, test_sub_pt_ct,
-    },
-    drop_level::{test_drop_bits_crosslimb, test_drop_bits_sublimb, test_drop_limbs},
-    encrypt_decrypt::test_encrypt_decrypt,
-    precision::test_precision,
+    add::{test_add, test_add_const, test_add_pt},
+    conjugate::test_conjugate,
+    encryption::test_encrypt_decrypt,
+    helpers::TestContext,
+    level::test_div_pow2,
+    mul::{test_mul, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt, test_sequential_mul},
+    neg::test_neg,
+    plaintext_prepared::{test_add_prepared_pt, test_mul_prepared_pt, test_sub_prepared_pt},
+    rotate::test_rotate,
+    sub::{test_sub, test_sub_const, test_sub_pt},
 };
+
+const ATK_ROTATIONS: &[i64] = &[1, 7];
+
+static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS));
+static CTX_TSK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_tsk(NTT120_PARAMS));
+static CTX_ATK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
 
 #[test]
 fn encrypt_decrypt() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_encrypt_decrypt(&module, NTT120_PARAMS);
+    test_encrypt_decrypt(&CTX);
 }
 
 #[test]
-fn drop_limbs() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_drop_limbs(&module, NTT120_PARAMS);
+fn add() {
+    test_add(&CTX);
 }
 
 #[test]
-fn drop_bits_sublimb() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_drop_bits_sublimb(&module, NTT120_PARAMS);
+fn add_pt() {
+    test_add_pt(&CTX);
 }
 
 #[test]
-fn drop_bits_crosslimb() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_drop_bits_crosslimb(&module, NTT120_PARAMS);
+fn add_const() {
+    test_add_const(&CTX);
 }
 
 #[test]
-fn add_ct_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_add_ct_ct(&module, NTT120_PARAMS);
+fn sub() {
+    test_sub(&CTX);
 }
 
 #[test]
-fn add_pt_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_add_pt_ct(&module, NTT120_PARAMS);
+fn sub_pt() {
+    test_sub_pt(&CTX);
 }
 
 #[test]
-fn add_const_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_add_const_ct(&module, NTT120_PARAMS);
+fn sub_const() {
+    test_sub_const(&CTX);
 }
 
 #[test]
-fn sub_ct_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_sub_ct_ct(&module, NTT120_PARAMS);
+fn neg() {
+    test_neg(&CTX);
 }
 
 #[test]
-fn sub_pt_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_sub_pt_ct(&module, NTT120_PARAMS);
+fn div_pow2() {
+    test_div_pow2(&CTX);
 }
 
 #[test]
-fn sub_const_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_sub_const_ct(&module, NTT120_PARAMS);
+fn mul_int() {
+    test_mul_int(&CTX);
 }
 
 #[test]
-fn neg_ct() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_neg_ct(&module, NTT120_PARAMS);
+fn mul_pt() {
+    test_mul_pt(&CTX);
 }
 
 #[test]
-fn precision() {
-    let module: Module<NTT120Ref> = Module::<NTT120Ref>::new(65536);
-    test_precision(&module, NTT120_PARAMS);
+fn mul_const() {
+    test_mul_const(&CTX);
+}
+
+#[test]
+fn mul() {
+    test_mul(&CTX_TSK);
+}
+
+#[test]
+fn mul_mismatched_k() {
+    test_mul_mismatched_k(&CTX_TSK);
+}
+
+#[test]
+fn mul_mismatched_delta() {
+    test_mul_mismatched_delta(&CTX_TSK);
+}
+
+#[test]
+fn sequential_mul() {
+    test_sequential_mul(&CTX_TSK, 2);
+}
+
+#[test]
+fn add_prepared_pt() {
+    test_add_prepared_pt(&CTX);
+}
+
+#[test]
+fn sub_prepared_pt() {
+    test_sub_prepared_pt(&CTX);
+}
+
+#[test]
+fn mul_prepared_pt() {
+    test_mul_prepared_pt(&CTX);
+}
+
+#[test]
+fn rotate() {
+    test_rotate(&CTX_ATK, ATK_ROTATIONS);
+}
+
+#[test]
+fn conjugate() {
+    test_conjugate(&CTX_ATK);
 }

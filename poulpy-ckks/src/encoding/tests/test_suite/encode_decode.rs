@@ -1,21 +1,26 @@
+//! Encode / decode round-trip test.
+
 use crate::{
     encoding::classical::{decode, encode},
     layouts::plaintext::CKKSPlaintext,
 };
-use poulpy_core::layouts::{Base2K, Degree, TorusPrecision};
+use poulpy_core::layouts::{Base2K, Degree};
 
+/// Verifies encode → decode round-trip at multiple `log_delta` values.
+///
+/// The precision should be at least `log_delta - 12` bits, accounting for
+/// FFT rounding and signed-digit normalization.
 pub fn test_encode_decode(n: usize) {
     const BASE2K: u32 = 52;
 
     let m = n / 2;
     let base2k = Base2K(BASE2K);
-    let k = TorusPrecision(29 * BASE2K);
 
     for log_delta in [30, 40, 50] {
         let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64) - 0.5).collect();
         let im_in: Vec<f64> = (0..m).map(|i| 0.1 * (i as f64) / (m as f64)).collect();
 
-        let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, k, log_delta);
+        let mut pt = CKKSPlaintext::alloc(Degree(n as u32), base2k, log_delta);
         encode(&mut pt, &re_in, &im_in);
         let (re_out, im_out) = decode(&pt);
 

@@ -1,0 +1,29 @@
+{
+  "backends": ["ntt120-avx"],
+  "run": ["vec_znx_big_add", "svp_prepare", "vmp", "external_product", "automorphism"],
+  "hal": {
+    "sweeps": [
+      [11, 2, 4]
+    ]
+  },
+  "cnv": {
+    "sweeps": [
+      [11, 2]
+    ]
+  },
+  "vmp": {
+    "sweeps": [
+      [11, 4, 1, 2, 5]
+    ]
+  },
+  "svp_prepare": {
+    "log_n": [11]
+  },
+  "core": {
+    "n":      2048,
+    "base2k": 18,
+    "k":      54,
+    "rank":   1,
+    "dsize":  1
+  }
+}
