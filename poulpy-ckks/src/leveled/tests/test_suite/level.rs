@@ -1,11 +1,11 @@
-//! Level-management tests: rescale-adjacent helpers and scale-preserving division.
+//! Level-management tests: rescale-adjacent helpers, scale-preserving division, and precision drops.
 
 use super::helpers::{TestContext, assert_precision};
 use crate::{
     layouts::ciphertext::CKKSCiphertext,
     leveled::{
         encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
-        operations::level::{div_pow2, div_pow2_inplace, div_pow2_tmp_bytes},
+        operations::level::{div_pow2, div_pow2_inplace, div_pow2_tmp_bytes, drop_precision, drop_precision_inplace},
     },
 };
 use poulpy_core::{
@@ -68,4 +68,63 @@ where
     let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
     assert_precision("div_pow2_inplace re", &re_ip, &want_re, 20.0);
     assert_precision("div_pow2_inplace im", &im_ip, &want_im, 20.0);
+}
+
+/// Verifies division by `2^bits` while reducing `log_delta` by the same amount.
+///
+/// Decoding should still recover the original message, but with fewer scale bits.
+pub fn test_drop_precision<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWECopy
+        + GLWEShift<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let bits = 7usize;
+    let m = ctx.module.n() / 2;
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut scratch = ScratchOwned::<BE>::alloc(
+        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
+            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
+            .max(div_pow2_tmp_bytes(&ctx.module)),
+    );
+
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j]).collect();
+    let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j]).collect();
+    let expected_log_delta = ct.log_delta - bits as u32;
+
+    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    drop_precision(&ctx.module, &mut ct_res, &ct, bits, scratch.borrow());
+    assert_eq!(ct_res.inner.k(), ct.inner.k(), "drop_precision must preserve k");
+    assert_eq!(ct_res.inner.size(), ct.inner.size(), "drop_precision must preserve size");
+    assert_eq!(
+        ct_res.log_delta, expected_log_delta,
+        "drop_precision must reduce log_delta by bits"
+    );
+    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
+    assert_precision("drop_precision re", &re_out, &want_re, 20.0);
+    assert_precision("drop_precision im", &im_out, &want_im, 20.0);
+
+    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    drop_precision_inplace(&ctx.module, &mut ct_ip, bits, scratch.borrow());
+    assert_eq!(ct_ip.inner.k(), k, "drop_precision_inplace must preserve k");
+    assert_eq!(
+        ct_ip.log_delta,
+        ctx.params.log_delta - bits as u32,
+        "drop_precision_inplace must reduce log_delta by bits"
+    );
+    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
+    assert_precision("drop_precision_inplace re", &re_ip, &want_re, 20.0);
+    assert_precision("drop_precision_inplace im", &im_ip, &want_im, 20.0);
 }

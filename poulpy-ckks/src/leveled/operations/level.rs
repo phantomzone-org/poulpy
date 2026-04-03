@@ -1,4 +1,4 @@
-//! Level management and scale-preserving division by powers of two.
+//! Level management, rescaling, and controlled precision drops.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
 use poulpy_core::{
@@ -94,4 +94,60 @@ pub fn div_pow2_inplace<BE: Backend>(
 {
     module.glwe_rsh(bits, &mut ct.inner, scratch);
     super::utils::sign_extend_msb(ct);
+}
+
+/// Divides the encoded message by `2^bits` and drops the same number of scale bits.
+///
+/// This performs the same arithmetic right shift as [`div_pow2`], but also
+/// reduces `log_delta` by `bits`. Unlike [`rescale`], the active precision
+/// window `k` and physical size are preserved. This is useful when the torus
+/// payload is intentionally divided and the CKKS scale metadata must follow,
+/// so decoding still targets the same underlying value with fewer retained bits.
+///
+/// # Panics
+///
+/// Panics if `bits >= log_delta`, so the resulting `log_delta` stays strictly positive.
+pub fn drop_precision<BE: Backend>(
+    module: &Module<BE>,
+    res: &mut CKKSCiphertext<impl DataMut>,
+    ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
+    bits: usize,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: GLWEShift<BE> + GLWECopy,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    assert!(
+        (bits as u32) < ct.log_delta,
+        "drop_precision: bits ({bits}) must be < log_delta ({})",
+        ct.log_delta
+    );
+    div_pow2(module, res, ct, bits, scratch);
+    res.log_delta -= bits as u32;
+}
+
+/// Divides the encoded message by `2^bits` in place and drops the same number of scale bits.
+///
+/// This is the in-place form of [`drop_precision`]. `k` and `size` are
+/// preserved, while `log_delta` is reduced by `bits` and kept strictly positive.
+///
+/// # Panics
+///
+/// Panics if `bits >= log_delta`.
+pub fn drop_precision_inplace<BE: Backend>(
+    module: &Module<BE>,
+    ct: &mut CKKSCiphertext<impl DataMut>,
+    bits: usize,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: GLWEShift<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    assert!(
+        (bits as u32) < ct.log_delta,
+        "drop_precision_inplace: bits ({bits}) must be < log_delta ({})",
+        ct.log_delta
+    );
+    div_pow2_inplace(module, ct, bits, scratch);
+    ct.log_delta -= bits as u32;
 }

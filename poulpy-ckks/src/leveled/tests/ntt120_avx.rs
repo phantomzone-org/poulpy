@@ -8,7 +8,7 @@ use crate::leveled::tests::test_suite::{
     conjugate::test_conjugate,
     encryption::test_encrypt_decrypt,
     helpers::TestContext,
-    level::test_div_pow2,
+    level::{test_div_pow2, test_drop_precision},
     mul::{
         test_mul, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
         test_sequential_mul, test_square,
@@ -68,6 +68,11 @@ fn neg() {
 #[test]
 fn div_pow2() {
     test_div_pow2(&CTX);
+}
+
+#[test]
+fn drop_precision() {
+    test_drop_precision(&CTX);
 }
 
 #[test]
