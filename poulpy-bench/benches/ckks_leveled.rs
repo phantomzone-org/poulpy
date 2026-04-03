@@ -13,7 +13,7 @@ use poulpy_ckks::{
             level::{div_pow2, div_pow2_inplace, div_pow2_tmp_bytes},
             mul::{
                 mul, mul_const, mul_const_inplace, mul_int, mul_int_inplace, mul_prepared_pt, mul_prepared_pt_inplace, mul_pt,
-                mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes,
+                mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes, square, square_tmp_bytes,
             },
             neg::{neg, neg_inplace},
             rotate::{rotate, rotate_inplace, rotate_tmp_bytes},
@@ -127,6 +127,7 @@ fn setup() -> Setup {
     scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&module, &ct_tmp)
             .max(mul_tmp_bytes(&module, &ct_tmp, &ct_tmp, &tsk))
+            .max(square_tmp_bytes(&module, &ct_tmp, &tsk))
             .max(mul_pt_tmp_bytes(&module, &ct_tmp))
             .max(div_pow2_tmp_bytes(&module))
             .max(rotate_tmp_bytes(&module, &ct_tmp, &rot_key))
@@ -237,6 +238,12 @@ fn bench_ckks_leveled(c: &mut Criterion) {
                 &tsk,
                 scratch.borrow(),
             );
+        })
+    });
+    group.bench_function("square", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            square(&module, &mut ct_out, black_box(&ct_a), &tsk, scratch.borrow());
         })
     });
     group.bench_function("mul_pt", |b| {

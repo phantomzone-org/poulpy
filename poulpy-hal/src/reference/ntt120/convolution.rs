@@ -140,6 +140,65 @@ where
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Prepare self  (VecZnx → CnvPVecL + CnvPVecR, shared NTT)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Scratch bytes required by [`ntt120_cnv_prepare_self`].
+///
+/// Returns 0: the function writes the NTT into the left buffer first,
+/// then derives the right buffer from it.
+pub fn ntt120_cnv_prepare_self_tmp_bytes(_n: usize) -> usize {
+    0
+}
+
+/// Encode a `VecZnx` into both `CnvPVecL` (q120b) and `CnvPVecR` (q120c)
+/// sharing the NTT computation.
+///
+/// For each column and limb:
+/// 1. Map i64 → q120b via `BE::ntt_from_znx64` into the left buffer.
+/// 2. Apply forward NTT in-place on the left buffer via `BE::ntt_dft_execute`.
+/// 3. Convert the NTT-domain q120b (left) → q120c (right) via `c_from_b_ref`.
+///
+/// This saves one full `b_from_znx64 + NTT` per (col, limb) compared to
+/// calling `prepare_left` + `prepare_right` separately.
+pub fn ntt120_cnv_prepare_self<L, R, A, BE>(module: &impl NttModuleHandle, left: &mut L, right: &mut R, a: &A, _tmp: &mut [u8])
+where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
+    L: CnvPVecLToMut<BE>,
+    R: CnvPVecRToMut<BE>,
+    A: VecZnxToRef,
+{
+    let mut left: CnvPVecL<&mut [u8], BE> = left.to_mut();
+    let mut right: CnvPVecR<&mut [u8], BE> = right.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
+    let table = module.get_ntt_table();
+    let n = left.n();
+    let cols = left.cols();
+    let res_size = left.size();
+    let min_size = res_size.min(a.size());
+
+    for col in 0..cols {
+        for j in 0..min_size {
+            // Step 1-2: i64 → q120b → NTT, written directly into left buffer
+            {
+                let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, j));
+                BE::ntt_from_znx64(left_u64, a.at(col, j));
+                BE::ntt_dft_execute(table, left_u64);
+            }
+
+            // Step 3: derive q120c (right) from q120b (left)
+            let left_u64: &[u64] = cast_slice(left.at(col, j));
+            let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, j));
+            c_from_b_ref::<Primes30>(n, right_u32, left_u64);
+        }
+        for j in min_size..res_size {
+            cast_slice_mut::<_, u64>(left.at_mut(col, j)).fill(0);
+            cast_slice_mut::<_, u32>(right.at_mut(col, j)).fill(0);
+        }
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Apply DFT  (CnvPVecL × CnvPVecR → VecZnxDft, bbc product)
 // ──────────────────────────────────────────────────────────────────────────────
 

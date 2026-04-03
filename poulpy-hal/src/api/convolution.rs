@@ -138,4 +138,16 @@ pub trait Convolution<BE: Backend> {
         R: VecZnxDftToMut<BE>,
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>;
+
+    /// Returns scratch bytes required for [`cnv_prepare_self`](Convolution::cnv_prepare_self).
+    fn cnv_prepare_self_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
+
+    /// Prepares both left and right convolution operands from the same input polynomial,
+    /// sharing the FFT/NTT computation. This is an optimization for self-convolution
+    /// (squaring) where both operands are the same polynomial.
+    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        A: VecZnxToRef + ZnxInfos;
 }

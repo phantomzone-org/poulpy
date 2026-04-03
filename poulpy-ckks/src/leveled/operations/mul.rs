@@ -19,6 +19,7 @@
 //!
 //! | Function | Operands | Rescale |
 //! |----------|----------|---------|
+//! | [`square`] | ct × ct (same operand) | yes |
 //! | [`mul`] | ct × ct | yes |
 //! | [`mul_pt`] / [`mul_pt_inplace`] | ct × compact pt | yes |
 //! | [`mul_prepared_pt`] / [`mul_prepared_pt_inplace`] | ct × prepared pt | yes |
@@ -142,6 +143,25 @@ where
     tensor_bytes + op_bytes
 }
 
+/// Returns the scratch bytes needed for [`square`].
+pub fn square_tmp_bytes<BE: Backend>(
+    module: &Module<BE>,
+    a: &CKKSCiphertext<impl Data>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+) -> usize
+where
+    Module<BE>: GLWETensoring<BE>,
+{
+    let off = a.inner.k().as_usize();
+    let mut layout = a.inner.glwe_layout();
+    layout.k = TorusPrecision(a.inner.base2k().0 * a.inner.size() as u32);
+    let tensor_bytes = GLWETensor::bytes_of(a.inner.n(), a.inner.base2k(), layout.k, Rank(1));
+    let op_bytes = module
+        .glwe_tensor_square_apply_tmp_bytes(&layout, off, &a.inner)
+        .max(module.glwe_tensor_relinearize_tmp_bytes(&layout, &layout, tsk));
+    tensor_bytes + op_bytes
+}
+
 /// Multiplies two CKKS ciphertexts: `res = a * b`.
 ///
 /// Runs the full tensor → relinearize → rescale pipeline.  The rescale
@@ -173,6 +193,41 @@ pub fn mul<BE: Backend>(
         log_delta: 0,
     };
     tensor(module, &mut tensor_res, a, b, scratch_rest);
+    relinearize(module, res, &tensor_res, k_eff, size, tsk, scratch_rest);
+    rescale(module, res, rescale_bits, scratch_rest);
+}
+
+/// Squares a CKKS ciphertext: `res = a * a`.
+///
+/// Runs the full tensor -> relinearize -> rescale pipeline through the
+/// dedicated self-convolution entry point in `poulpy-core`.
+pub fn square<BE: Backend>(
+    module: &Module<BE>,
+    res: &mut CKKSCiphertext<impl DataMut>,
+    a: &CKKSCiphertext<impl DataRef>,
+    tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: GLWETensoring<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let rescale_bits = a.log_delta;
+    let k_eff = a.inner.k().0;
+    let size = a.inner.size();
+    let tensor_layout = GLWELayout {
+        n: a.inner.n(),
+        base2k: a.inner.base2k(),
+        k: TorusPrecision(a.inner.base2k().0 * size as u32),
+        rank: Rank(1),
+    };
+    let (tensor_inner, scratch_rest) = scratch.take_glwe_tensor(&tensor_layout);
+    let mut tensor_res = CKKSTensor {
+        inner: tensor_inner,
+        log_delta: 0,
+    };
+    let off = a.inner.k().as_usize();
+    tensor_res.log_delta = 2 * a.log_delta;
+    module.glwe_tensor_square_apply(&mut tensor_res.inner, off, &a.inner, scratch_rest);
     relinearize(module, res, &tensor_res, k_eff, size, tsk, scratch_rest);
     rescale(module, res, rescale_bits, scratch_rest);
 }

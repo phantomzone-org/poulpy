@@ -28,6 +28,7 @@ mod poulpy_core_fft64 {
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
+        test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
         test_glwe_mul_plain => crate::tests::test_suite::glwe_tensor::test_glwe_mul_plain,
         test_glwe_mul_const => crate::tests::test_suite::glwe_tensor::test_glwe_mul_const,
         // GLWE Keyswitch
@@ -100,6 +101,7 @@ mod poulpy_core_fft64 {
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
+        test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
         test_glwe_mul_plain => crate::tests::test_suite::glwe_tensor::test_glwe_mul_plain,
         test_glwe_mul_const => crate::tests::test_suite::glwe_tensor::test_glwe_mul_const,
         // GLWE Keyswitch
@@ -172,6 +174,7 @@ mod poulpy_core_ntt120 {
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
+        test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
         test_glwe_mul_plain => crate::tests::test_suite::glwe_tensor::test_glwe_mul_plain,
         test_glwe_mul_const => crate::tests::test_suite::glwe_tensor::test_glwe_mul_const,
         // GLWE Keyswitch
@@ -244,6 +247,7 @@ mod poulpy_core_ntt120 {
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
+        test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
         test_glwe_mul_plain => crate::tests::test_suite::glwe_tensor::test_glwe_mul_plain,
         test_glwe_mul_const => crate::tests::test_suite::glwe_tensor::test_glwe_mul_const,
         // GLWE Keyswitch

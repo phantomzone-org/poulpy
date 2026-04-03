@@ -87,4 +87,19 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
         R: VecZnxDftToMut<BE>,
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>;
+
+    fn cnv_prepare_self_tmp_bytes_impl(module: &Module<BE>, res_size: usize, a_size: usize) -> usize {
+        Self::cnv_prepare_left_tmp_bytes_impl(module, res_size, a_size)
+            .max(Self::cnv_prepare_right_tmp_bytes_impl(module, res_size, a_size))
+    }
+
+    fn cnv_prepare_self_impl<L, R, A>(module: &Module<BE>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        L: CnvPVecLToMut<BE>,
+        R: CnvPVecRToMut<BE>,
+        A: VecZnxToRef + ZnxInfos,
+    {
+        Self::cnv_prepare_left_impl(module, left, a, scratch);
+        Self::cnv_prepare_right_impl(module, right, a, scratch);
+    }
 }

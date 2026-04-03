@@ -25,7 +25,7 @@ use poulpy_hal::{
     reference::fft64::convolution::{
         convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_by_const_apply, convolution_by_const_apply_tmp_bytes,
         convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes, convolution_prepare_left,
-        convolution_prepare_right,
+        convolution_prepare_right, convolution_prepare_self,
     },
 };
 
@@ -159,5 +159,22 @@ where
         let (tmp, _) = scratch
             .take_slice(module.cnv_pairwise_apply_dft_tmp_bytes(res.size(), res_offset, a.size(), b.size()) / size_of::<f64>());
         convolution_pairwise_apply_dft(res, res_offset, res_col, a, b, col_0, col_1, tmp);
+    }
+
+    fn cnv_prepare_self_tmp_bytes_impl(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {
+        module.bytes_of_vec_znx_dft(1, res_size.min(a_size))
+    }
+
+    fn cnv_prepare_self_impl<L, R, A>(module: &Module<Self>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    where
+        L: CnvPVecLToMut<Self>,
+        R: CnvPVecRToMut<Self>,
+        A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
+    {
+        let left: &mut CnvPVecL<&mut [u8], FFT64Ref> = &mut left.to_mut();
+        let right: &mut CnvPVecR<&mut [u8], FFT64Ref> = &mut right.to_mut();
+        let a: &VecZnx<&[u8]> = &a.to_ref();
+        let (mut tmp, _) = scratch.take_vec_znx_dft(module, 1, left.size().min(a.size()));
+        convolution_prepare_self(module.get_fft_table(), left, right, a, &mut tmp);
     }
 }

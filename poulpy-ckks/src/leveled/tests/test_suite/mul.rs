@@ -6,7 +6,10 @@ use crate::{
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
-        operations::mul::{mul, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes},
+        operations::mul::{
+            mul, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes,
+            square, square_tmp_bytes,
+        },
     },
 };
 use poulpy_core::{
@@ -58,6 +61,46 @@ where
     let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
     assert_precision("mul re", &re_out, &want_re, 20.0);
     assert_precision("mul im", &im_out, &want_im, 20.0);
+}
+
+/// Verifies ct × ct squaring and rescale round-trip.
+pub fn test_square<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + ModuleNew<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWETensoring<BE>
+        + GLWEShift<BE>
+        + GLWETensorKeyEncryptSk<BE>
+        + GLWETensorKeyPreparedFactory<BE>,
+    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let m = ctx.module.n() / 2;
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut scratch = ScratchOwned::<BE>::alloc(
+        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
+            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
+            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
+    );
+
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+
+    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    square(&ctx.module, &mut ct_res, &ct, ctx.tsk(), scratch.borrow());
+
+    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
+    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re1[j] - ctx.im1[j] * ctx.im1[j]).collect();
+    let want_im: Vec<f64> = (0..m).map(|j| 2.0 * ctx.re1[j] * ctx.im1[j]).collect();
+    assert_precision("square re", &re_out, &want_re, 20.0);
+    assert_precision("square im", &im_out, &want_im, 20.0);
 }
 
 /// Verifies ct × ct multiplication when `k_a != k_b`.
@@ -169,8 +212,7 @@ where
     mul(&ctx.module, &mut ct_res, &a, &b, ctx.tsk(), scratch.borrow());
 
     assert_eq!(
-        ct_res.log_delta,
-        log_delta_hi,
+        ct_res.log_delta, log_delta_hi,
         "mul should keep the larger scale after rescale"
     );
     assert_eq!(

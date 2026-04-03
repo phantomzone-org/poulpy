@@ -1,7 +1,10 @@
 //! Level management and scale-preserving division by powers of two.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore, layouts::{LWEInfos, SetGLWEInfos, TorusPrecision}};
+use poulpy_core::{
+    GLWECopy, GLWEShift, ScratchTakeCore,
+    layouts::{LWEInfos, SetGLWEInfos, TorusPrecision},
+};
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 
 fn assert_target_k(label: &str, current_k: u32, target_k: TorusPrecision) {

@@ -116,4 +116,17 @@ where
     {
         BE::cnv_pairwise_apply_dft_impl(self, res, res_offset, res_col, a, b, i, j, scratch);
     }
+
+    fn cnv_prepare_self_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize {
+        BE::cnv_prepare_self_tmp_bytes_impl(self, res_size, a_size)
+    }
+
+    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
+        A: VecZnxToRef + ZnxInfos,
+    {
+        BE::cnv_prepare_self_impl(self, left, right, a, scratch);
+    }
 }
