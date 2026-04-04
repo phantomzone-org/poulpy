@@ -7,16 +7,48 @@
 //!
 //! [`fill_offset_pt`]: super::utils::fill_offset_pt
 
-use super::utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes};
-use crate::layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext, plaintext_prepared::CKKSPlaintextPrepared};
-use poulpy_core::{GLWEAdd, ScratchTakeCore, layouts::LWEInfos};
+use super::{
+    align::{align_to, are_cts_aligned, assert_cts_aligned, common_window, set_ct_active_prefix},
+    utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes},
+};
+use crate::layouts::{
+    ciphertext::{CKKSCiphertext, CKKSCiphertextToRef},
+    plaintext::CKKSPlaintext,
+    plaintext_prepared::CKKSPlaintextPrepared,
+};
+use poulpy_core::{
+    GLWEAdd, GLWEAlign, ScratchTakeCore,
+    layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos},
+};
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
 
-/// Computes `res = a + b`.
-pub fn add<BE: Backend>(
+/// Returns the scratch bytes needed for [`add`] and [`add_inplace`].
+pub fn add_tmp_bytes<BE: Backend>(
+    module: &Module<BE>,
+    a: &CKKSCiphertext<impl DataRef>,
+    b: &CKKSCiphertext<impl DataRef>,
+) -> usize
+where
+    Module<BE>: GLWEAlign<BE>,
+{
+    let (_, target_k) = common_window(a, b);
+    let layout = GLWELayout {
+        n: a.inner.n(),
+        base2k: a.inner.base2k(),
+        k: target_k,
+        rank: a.inner.rank(),
+    };
+    GLWE::bytes_of_from_infos(&layout)
+        + module
+            .glwe_align_tmp_bytes(&layout, &a.inner)
+            .max(module.glwe_align_tmp_bytes(&layout, &b.inner))
+}
+
+/// Computes `res = a + b` for already-aligned ciphertexts (no scratch needed).
+pub fn add_aligned<BE: Backend>(
     module: &Module<BE>,
     res: &mut CKKSCiphertext<impl DataMut>,
     a: &CKKSCiphertext<impl DataRef>,
@@ -24,26 +56,155 @@ pub fn add<BE: Backend>(
 ) where
     Module<BE>: GLWEAdd,
 {
+    a.assert_valid("add_aligned lhs");
+    b.assert_valid("add_aligned rhs");
+    assert_cts_aligned(a, b, "add_aligned");
     assert_eq!(
-        a.log_delta, b.log_delta,
-        "add: log_delta mismatch ({} != {})",
-        a.log_delta, b.log_delta
+        a.torus_scale_bits(),
+        b.torus_scale_bits(),
+        "add_aligned: torus_scale_bits mismatch ({} != {})",
+        a.torus_scale_bits(),
+        b.torus_scale_bits()
     );
-    res.log_delta = a.log_delta;
+    res.torus_scale_bits = a.torus_scale_bits();
+    res.offset_bits = a.offset_bits();
+    set_ct_active_prefix(res, a.inner.k());
     module.glwe_add(&mut res.inner, &a.inner, &b.inner);
+    res.assert_valid("add_aligned result");
+}
+
+/// Computes `res = a + b`.
+pub fn add<BE: Backend>(
+    module: &Module<BE>,
+    res: &mut CKKSCiphertext<impl DataMut>,
+    a: &CKKSCiphertext<impl DataRef>,
+    b: &CKKSCiphertext<impl DataRef>,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: GLWEAdd + GLWEAlign<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    a.assert_valid("add lhs");
+    b.assert_valid("add rhs");
+    assert_eq!(
+        a.torus_scale_bits(),
+        b.torus_scale_bits(),
+        "add: torus_scale_bits mismatch ({} != {})",
+        a.torus_scale_bits(),
+        b.torus_scale_bits()
+    );
+    let aligned_inputs = are_cts_aligned(a, b);
+    if aligned_inputs {
+        add_aligned(module, res, a, b);
+        return;
+    }
+
+    let (offset_common, target_k) = common_window(a, b);
+    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
+    let b_needs_align = b.offset_bits() != offset_common || b.prefix_bits() != target_k.0;
+
+    res.torus_scale_bits = a.torus_scale_bits();
+    res.offset_bits = offset_common;
+    set_ct_active_prefix(res, target_k);
+
+    if !a_needs_align && !b_needs_align {
+        module.glwe_add(&mut res.inner, &a.inner, &b.inner);
+        res.assert_valid("add result");
+        return;
+    }
+
+    let layout = GLWELayout {
+        n: a.inner.n(),
+        base2k: a.inner.base2k(),
+        k: target_k,
+        rank: a.inner.rank(),
+    };
+    let (tmp, scratch_1) = scratch.take_glwe(&layout);
+    let mut tmp_ct = CKKSCiphertext {
+        inner: tmp,
+        offset_bits: offset_common,
+        torus_scale_bits: a.torus_scale_bits(),
+    };
+    align_to(module, &mut tmp_ct, a, offset_common, target_k, scratch_1);
+    align_to(module, res, b, offset_common, target_k, scratch_1);
+    module.glwe_add_inplace(&mut res.inner, &tmp_ct.inner);
+    res.assert_valid("add result");
+}
+
+/// Computes `res += a` for already-aligned ciphertexts (no scratch needed).
+pub fn add_aligned_inplace<BE: Backend>(
+    module: &Module<BE>,
+    res: &mut CKKSCiphertext<impl DataMut>,
+    a: &CKKSCiphertext<impl DataRef>,
+) where
+    Module<BE>: GLWEAdd,
+{
+    res.assert_valid("add_aligned_inplace lhs");
+    a.assert_valid("add_aligned_inplace rhs");
+    assert_cts_aligned(res, a, "add_aligned_inplace");
+    assert_eq!(
+        res.torus_scale_bits(),
+        a.torus_scale_bits(),
+        "add_aligned_inplace: torus_scale_bits mismatch ({} != {})",
+        res.torus_scale_bits(),
+        a.torus_scale_bits()
+    );
+    module.glwe_add_inplace(&mut res.inner, &a.inner);
+    res.assert_valid("add_aligned_inplace result");
 }
 
 /// Computes `res += a` in place.
-pub fn add_inplace<BE: Backend>(module: &Module<BE>, res: &mut CKKSCiphertext<impl DataMut>, a: &CKKSCiphertext<impl DataRef>)
-where
-    Module<BE>: GLWEAdd,
+pub fn add_inplace<BE: Backend>(
+    module: &Module<BE>,
+    res: &mut CKKSCiphertext<impl DataMut>,
+    a: &CKKSCiphertext<impl DataRef>,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: GLWEAdd + GLWEAlign<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
+    res.assert_valid("add_inplace lhs");
+    a.assert_valid("add_inplace rhs");
     assert_eq!(
-        res.log_delta, a.log_delta,
-        "add_inplace: log_delta mismatch ({} != {})",
-        res.log_delta, a.log_delta
+        res.torus_scale_bits(),
+        a.torus_scale_bits(),
+        "add_inplace: torus_scale_bits mismatch ({} != {})",
+        res.torus_scale_bits(),
+        a.torus_scale_bits()
     );
-    module.glwe_add_inplace(&mut res.inner, &a.inner);
+    let aligned_inputs = are_cts_aligned(res, a);
+    if aligned_inputs {
+        add_aligned_inplace(module, res, a);
+        return;
+    }
+
+    let (offset_common, target_k) = common_window(res, a);
+    let res_needs_align = res.offset_bits() != offset_common || res.prefix_bits() != target_k.0;
+    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
+
+    if !res_needs_align && !a_needs_align {
+        module.glwe_add_inplace(&mut res.inner, &a.inner);
+        res.offset_bits = offset_common;
+        res.assert_valid("add_inplace result");
+        return;
+    }
+
+    let layout = GLWELayout {
+        n: res.inner.n(),
+        base2k: res.inner.base2k(),
+        k: target_k,
+        rank: res.inner.rank(),
+    };
+    let (tmp, scratch_1) = scratch.take_glwe(&layout);
+    let mut tmp_ct = CKKSCiphertext {
+        inner: tmp,
+        offset_bits: offset_common,
+        torus_scale_bits: res.torus_scale_bits(),
+    };
+    align_to(module, &mut tmp_ct, &res.to_ref(), offset_common, target_k, scratch_1);
+    align_to(module, res, a, offset_common, target_k, scratch_1);
+    module.glwe_add_inplace(&mut res.inner, &tmp_ct.inner);
+    res.assert_valid("add_inplace result");
 }
 
 /// Returns the scratch bytes needed for [`add_pt`] and [`add_pt_inplace`].
@@ -70,22 +231,27 @@ pub fn add_pt<BE: Backend>(
     Module<BE>: GLWEAdd + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("add_pt ciphertext");
     assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "add_pt: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
+        ct.torus_scale_bits(),
+        pt.embed_bits(),
+        "add_pt: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
+        ct.torus_scale_bits(),
+        pt.embed_bits()
     );
-    res.log_delta = ct.log_delta;
+    res.torus_scale_bits = ct.torus_scale_bits();
+    res.offset_bits = ct.offset_bits();
     let (full_pt, _) = offset_pt_from_scratch(
         module,
         ct.inner.n(),
         ct.inner.base2k(),
         poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
+        poulpy_core::layouts::TorusPrecision(ct.offset_bits()),
         pt,
         scratch,
     );
     module.glwe_add(&mut res.inner, &ct.inner, &full_pt);
+    res.assert_valid("add_pt result");
 }
 
 /// Computes `ct += pt` in place.
@@ -98,21 +264,25 @@ pub fn add_pt_inplace<BE: Backend>(
     Module<BE>: GLWEAdd + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("add_pt_inplace ciphertext");
     assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "add_pt_inplace: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
+        ct.torus_scale_bits(),
+        pt.embed_bits(),
+        "add_pt_inplace: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
+        ct.torus_scale_bits(),
+        pt.embed_bits()
     );
     let (full_pt, _) = offset_pt_from_scratch(
         module,
         ct.inner.n(),
         ct.inner.base2k(),
         poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
+        poulpy_core::layouts::TorusPrecision(ct.offset_bits()),
         pt,
         scratch,
     );
     module.glwe_add_inplace(&mut ct.inner, &full_pt);
+    ct.assert_valid("add_pt_inplace result");
 }
 
 /// Computes `res = ct + pt` using a pre-expanded plaintext (no scratch needed).
@@ -124,13 +294,18 @@ pub fn add_prepared_pt<BE: Backend>(
 ) where
     Module<BE>: GLWEAdd,
 {
+    ct.assert_valid("add_prepared_pt ciphertext");
     assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "add_prepared_pt: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
+        ct.torus_scale_bits(),
+        pt.embed_bits(),
+        "add_prepared_pt: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
+        ct.torus_scale_bits(),
+        pt.embed_bits()
     );
-    res.log_delta = ct.log_delta;
+    res.torus_scale_bits = ct.torus_scale_bits();
+    res.offset_bits = ct.offset_bits();
     module.glwe_add(&mut res.inner, &ct.inner, &pt.inner);
+    res.assert_valid("add_prepared_pt result");
 }
 
 /// Computes `ct += pt` in place using a pre-expanded plaintext (no scratch needed).
@@ -141,12 +316,16 @@ pub fn add_prepared_pt_inplace<BE: Backend>(
 ) where
     Module<BE>: GLWEAdd,
 {
+    ct.assert_valid("add_prepared_pt_inplace ciphertext");
     assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "add_prepared_pt_inplace: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
+        ct.torus_scale_bits(),
+        pt.embed_bits(),
+        "add_prepared_pt_inplace: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
+        ct.torus_scale_bits(),
+        pt.embed_bits()
     );
     module.glwe_add_inplace(&mut ct.inner, &pt.inner);
+    ct.assert_valid("add_prepared_pt_inplace result");
 }
 
 /// Returns the scratch bytes needed for [`add_const`] and [`add_const_inplace`].

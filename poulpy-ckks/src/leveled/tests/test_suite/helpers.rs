@@ -251,7 +251,7 @@ where
     {
         let degree = Degree(self.params.n);
         let base2k = ct.inner.base2k();
-        let mut pt_out = CKKSPlaintext::alloc(degree, base2k, ct.log_delta);
+        let mut pt_out = CKKSPlaintext::alloc(degree, base2k, ct.torus_scale_bits);
         decrypt(&self.module, &mut pt_out, ct, &self.sk, scratch.borrow());
         decode(&pt_out)
     }
@@ -294,4 +294,9 @@ pub fn assert_precision(label: &str, got: &[f64], want: &[f64], min_bits: f64) {
         sample.1,
         sample.2
     );
+}
+
+/// Asserts the CKKS ciphertext metadata invariants.
+pub fn assert_valid_ciphertext(label: &str, ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>) {
+    ct.assert_valid(label);
 }

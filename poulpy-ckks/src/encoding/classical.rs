@@ -20,15 +20,15 @@ const F64_FFT_MAX_LOG_DELTA: u32 = 50;
 
 /// Encodes complex slot values into a compact CKKS plaintext.
 ///
-/// The message polynomial is scaled by `2^log_delta` and stored as a small
-/// integer polynomial in base `2^base2k`, using `ceil(log_delta/base2k)` limbs.
+/// The message polynomial is scaled by `2^embed_bits` and stored as a small
+/// integer polynomial in base `2^base2k`, using `ceil(embed_bits/base2k)` limbs.
 /// The Torus positioning (`2^{-Delta}`) happens when the plaintext is used
 /// (during encryption or plaintext operations).
 pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
     let n = pt.inner.data.n();
     let m = n / 2;
 
-    assert!(pt.log_delta <= F64_FFT_MAX_LOG_DELTA);
+    assert!(pt.embed_bits <= F64_FFT_MAX_LOG_DELTA);
     assert!(re.len() <= m);
     assert!(im.len() <= m);
 
@@ -38,7 +38,7 @@ pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
     let pt_size = pt.inner.data.size();
     // Place the integer at the bottom of the compact representation (no sub-limb shift).
     let res_offset: i64 = base2k as i64 - (pt_size * base2k) as i64;
-    let delta = (2.0f64).powi(pt.log_delta as i32);
+    let delta = (2.0f64).powi(pt.embed_bits as i32);
 
     let mut dft = module.vec_znx_dft_alloc(1, 1);
     {
@@ -58,9 +58,9 @@ pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
 
 /// Decodes a CKKS plaintext into complex slot values via the canonical embedding.
 ///
-/// The plaintext should be compact (with `ceil(log_delta/base2k)` limbs).
+/// The plaintext should be compact (with `ceil(embed_bits/base2k)` limbs).
 /// Reconstructs the integer polynomial via Horner's method and divides
-/// by `2^log_delta` to recover the original message.
+/// by `2^embed_bits` to recover the original message.
 ///
 /// When `k` is not a multiple of `base2k`, the MSB limb (limb 0) contains
 /// only `k % base2k` valid bits. Any upper bits are masked (sign-extended)
@@ -68,7 +68,7 @@ pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
 pub fn decode(pt: &CKKSPlaintext<impl DataRef>) -> (Vec<f64>, Vec<f64>) {
     use poulpy_hal::layouts::VecZnx;
 
-    assert!(pt.inner.k.0 >= pt.log_delta);
+    assert!(pt.inner.k.0 >= pt.embed_bits);
 
     let n = pt.inner.data.n();
     let m = n / 2;
@@ -122,7 +122,7 @@ pub fn decode(pt: &CKKSPlaintext<impl DataRef>) -> (Vec<f64>, Vec<f64>) {
         }
     }
 
-    let inv_delta = (2.0f64).powi(-(pt.log_delta as i32));
+    let inv_delta = (2.0f64).powi(-(pt.embed_bits as i32));
     for j in 0..m {
         re[j] *= inv_delta;
         im[j] *= inv_delta;

@@ -31,8 +31,11 @@ pub fn rotate<BE: Backend>(
     Module<BE>: GLWEAutomorphism<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("rotate input");
     module.glwe_automorphism(&mut res.inner, &ct.inner, key, scratch);
-    res.log_delta = ct.log_delta;
+    res.torus_scale_bits = ct.torus_scale_bits();
+    res.offset_bits = ct.offset_bits();
+    res.assert_valid("rotate result");
 }
 
 /// `ct = Rotate(ct)` by the rotation encoded in `key`.
@@ -45,5 +48,7 @@ pub fn rotate_inplace<BE: Backend>(
     Module<BE>: GLWEAutomorphism<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("rotate_inplace input");
     module.glwe_automorphism_inplace(&mut ct.inner, key, scratch);
+    ct.assert_valid("rotate_inplace result");
 }

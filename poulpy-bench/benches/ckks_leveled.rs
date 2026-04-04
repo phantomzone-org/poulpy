@@ -8,7 +8,7 @@ use poulpy_ckks::{
     leveled::{
         encryption::{encrypt_sk, encrypt_sk_tmp_bytes},
         operations::{
-            add::{add, add_inplace, add_prepared_pt, add_prepared_pt_inplace, add_pt, add_pt_inplace},
+            add::{add, add_inplace, add_prepared_pt, add_prepared_pt_inplace, add_pt, add_pt_inplace, add_tmp_bytes},
             conjugate::{conjugate, conjugate_inplace, conjugate_tmp_bytes},
             level::{div_pow2, div_pow2_inplace, div_pow2_tmp_bytes},
             mul::{
@@ -17,7 +17,7 @@ use poulpy_ckks::{
             },
             neg::{neg, neg_inplace},
             rotate::{rotate, rotate_inplace, rotate_tmp_bytes},
-            sub::{sub, sub_inplace},
+            sub::{sub, sub_inplace, sub_tmp_bytes},
         },
     },
 };
@@ -126,6 +126,8 @@ fn setup() -> Setup {
     let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
     scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&module, &ct_tmp)
+            .max(add_tmp_bytes(&module, &ct_tmp, &ct_tmp))
+            .max(sub_tmp_bytes(&module, &ct_tmp, &ct_tmp))
             .max(mul_tmp_bytes(&module, &ct_tmp, &ct_tmp, &tsk))
             .max(square_tmp_bytes(&module, &ct_tmp, &tsk))
             .max(mul_pt_tmp_bytes(&module, &ct_tmp))
@@ -169,9 +171,10 @@ fn setup() -> Setup {
     }
 }
 
-/// Full reset: raw data + log_delta + k + size.
+/// Full reset: raw data + semantic metadata + active window.
 fn reset_ct(dst: &mut CKKSCiphertext<Vec<u8>>, src: &CKKSCiphertext<Vec<u8>>) {
-    dst.log_delta = src.log_delta;
+    dst.offset_bits = src.offset_bits;
+    dst.torus_scale_bits = src.torus_scale_bits;
     dst.inner.set_k(src.inner.k());
     dst.inner.data_mut().size = src.inner.size();
     dst.inner.data_mut().raw_mut().copy_from_slice(src.inner.data().raw());
@@ -200,10 +203,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
 
     // add/sub/neg: no reset needed for inplace (these don't modify k)
     group.bench_function("add", |b| {
-        b.iter(|| add(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b)))
+        b.iter(|| add(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b), scratch.borrow()))
     });
     group.bench_function("add_inplace", |b| {
-        b.iter(|| add_inplace(&module, &mut ct_out, black_box(&ct_b)))
+        b.iter(|| add_inplace(&module, &mut ct_out, black_box(&ct_b), scratch.borrow()))
     });
     group.bench_function("add_pt", |b| {
         b.iter(|| add_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b), scratch.borrow()))
@@ -218,10 +221,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         b.iter(|| add_prepared_pt_inplace(&module, &mut ct_out, black_box(&pt_b_prepared)))
     });
     group.bench_function("sub", |b| {
-        b.iter(|| sub(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b)))
+        b.iter(|| sub(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b), scratch.borrow()))
     });
     group.bench_function("sub_inplace", |b| {
-        b.iter(|| sub_inplace(&module, &mut ct_out, black_box(&ct_b)))
+        b.iter(|| sub_inplace(&module, &mut ct_out, black_box(&ct_b), scratch.borrow()))
     });
     group.bench_function("neg", |b| b.iter(|| neg(&module, &mut ct_out, black_box(&ct_a))));
     group.bench_function("neg_inplace", |b| b.iter(|| neg_inplace(&module, &mut ct_out)));
@@ -296,7 +299,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         })
     });
     group.bench_function("mul_int", |b| {
-        b.iter(|| mul_int(&module, &mut ct_out, black_box(&ct_a), black_box(3), scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            mul_int(&module, &mut ct_out, black_box(&ct_a), black_box(3), scratch.borrow());
+        })
     });
     group.bench_function("mul_int_inplace", |b| {
         b.iter(|| {
@@ -305,7 +311,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         })
     });
     group.bench_function("div_pow2", |b| {
-        b.iter(|| div_pow2(&module, &mut ct_out, black_box(&ct_a), black_box(1usize), scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            div_pow2(&module, &mut ct_out, black_box(&ct_a), black_box(1usize), scratch.borrow());
+        })
     });
     group.bench_function("div_pow2_inplace", |b| {
         b.iter(|| {
@@ -316,7 +325,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
 
     // rotate / conjugate: no k change
     group.bench_function("rotate", |b| {
-        b.iter(|| rotate(&module, &mut ct_out, black_box(&ct_a), &rot_key, scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            rotate(&module, &mut ct_out, black_box(&ct_a), &rot_key, scratch.borrow());
+        })
     });
     group.bench_function("rotate_inplace", |b| {
         b.iter(|| {
@@ -325,7 +337,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         })
     });
     group.bench_function("conjugate", |b| {
-        b.iter(|| conjugate(&module, &mut ct_out, black_box(&ct_a), &conj_key, scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            conjugate(&module, &mut ct_out, black_box(&ct_a), &conj_key, scratch.borrow());
+        })
     });
     group.bench_function("conjugate_inplace", |b| {
         b.iter(|| {

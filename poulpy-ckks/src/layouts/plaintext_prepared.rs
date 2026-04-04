@@ -31,15 +31,15 @@ use poulpy_hal::{
 /// [`mul_prepared_pt`]: crate::leveled::operations::mul::mul_prepared_pt
 pub struct CKKSPlaintextPrepared<D: Data> {
     pub inner: GLWEPlaintext<D>,
-    pub log_delta: u32,
+    pub embed_bits: u32,
 }
 
 impl CKKSPlaintextPrepared<Vec<u8>> {
     /// Allocates an empty prepared plaintext matching the target ciphertext parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, log_delta: u32) -> Self {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, embed_bits: u32) -> Self {
         Self {
             inner: GLWEPlaintext::alloc(n, base2k, k),
-            log_delta,
+            embed_bits,
         }
     }
 
@@ -55,7 +55,7 @@ impl CKKSPlaintextPrepared<Vec<u8>> {
     where
         Module<BE>: VecZnxNormalize<BE>,
     {
-        let mut prepared = Self::alloc(ct_n, ct_base2k, ct_k, pt.log_delta);
+        let mut prepared = Self::alloc(ct_n, ct_base2k, ct_k, pt.embed_bits);
         prepared.prepare(module, pt, scratch);
         prepared
     }
@@ -66,23 +66,29 @@ impl CKKSPlaintextPrepared<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        log_delta: u32,
+        embed_bits: u32,
         c: (f64, f64),
         scratch: &mut Scratch<BE>,
     ) -> Self
     where
         Module<BE>: VecZnxNormalize<BE>,
     {
-        let mut compact = CKKSPlaintext::alloc(n, base2k, log_delta);
+        let mut compact = CKKSPlaintext::alloc(n, base2k, embed_bits);
         let pt_k = compact.inner.k;
-        let delta = (2.0f64).powi(log_delta as i32);
+        let delta = (2.0f64).powi(embed_bits as i32);
         compact.inner.encode_coeff_i64((delta * c.0).round() as i64, pt_k, 0);
         compact
             .inner
             .encode_coeff_i64((delta * c.1).round() as i64, pt_k, n.0 as usize / 2);
-        let mut prepared = Self::alloc(n, base2k, k, log_delta);
+        let mut prepared = Self::alloc(n, base2k, k, embed_bits);
         prepared.prepare(module, &compact, scratch);
         prepared
+    }
+}
+
+impl<D: Data> CKKSPlaintextPrepared<D> {
+    pub fn embed_bits(&self) -> u32 {
+        self.embed_bits
     }
 }
 
@@ -110,7 +116,7 @@ impl<D: DataMut> CKKSPlaintextPrepared<D> {
             "plaintext has more limbs than prepared target"
         );
 
-        self.log_delta = pt.log_delta;
+        self.embed_bits = pt.embed_bits;
         let target_k = self.inner.k;
         crate::leveled::operations::utils::fill_offset_pt(module, &mut self.inner, target_k, pt, scratch);
     }
@@ -124,7 +130,7 @@ impl<D: DataRef> CKKSPlaintextPreparedToRef for CKKSPlaintextPrepared<D> {
     fn to_ref(&self) -> CKKSPlaintextPrepared<&[u8]> {
         CKKSPlaintextPrepared {
             inner: self.inner.to_ref(),
-            log_delta: self.log_delta,
+            embed_bits: self.embed_bits,
         }
     }
 }
@@ -137,7 +143,7 @@ impl<D: DataMut> CKKSPlaintextPreparedToMut for CKKSPlaintextPrepared<D> {
     fn to_mut(&mut self) -> CKKSPlaintextPrepared<&mut [u8]> {
         CKKSPlaintextPrepared {
             inner: self.inner.to_mut(),
-            log_delta: self.log_delta,
+            embed_bits: self.embed_bits,
         }
     }
 }

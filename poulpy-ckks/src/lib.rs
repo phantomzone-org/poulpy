@@ -7,8 +7,11 @@
 //!
 //! The crate uses a bivariate polynomial representation over the Torus
 //! (base-`2^{base2k}` digits) instead of the RNS representation used by
-//! most other CKKS libraries.  The active CKKS value lives in the top
-//! `k` bits of the torus window, and rescale shrinks that active window.
+//! most other CKKS libraries. A ciphertext tracks three related precisions:
+//! the stored torus prefix `inner.k()`, the semantic message position
+//! `offset_bits`, and the torus scaling factor `torus_scale_bits`. Rescale
+//! lowers all three, while prefix truncation lowers `inner.k()` and
+//! `offset_bits` without changing `torus_scale_bits`.
 //!
 //! ## Modules
 //!

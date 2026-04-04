@@ -68,6 +68,7 @@ pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
 };
 
 pub mod add;
+pub mod align;
 pub mod conjugate;
 pub mod encryption;
 pub mod helpers;

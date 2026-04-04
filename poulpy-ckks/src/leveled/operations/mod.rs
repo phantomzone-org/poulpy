@@ -1,12 +1,13 @@
 //! CKKS leveled operations.
 //!
 //! Each operation preserves the bivariate torus representation and updates the
-//! ciphertext metadata (`k`, `log_delta`, `size`) consistently.
+//! ciphertext metadata (`k`, `offset_bits`, `torus_scale_bits`, `size`) consistently.
 //!
 //! ## Operations
 //!
 //! | Module | Operation |
 //! |--------|-----------|
+//! | [`align`] | Explicit ciphertext re-windowing and alignedness helpers |
 //! | [`add`] | Ciphertext addition (ct+ct, ct+pt, ct+const, prepared-pt variants) |
 //! | [`sub`] | Ciphertext subtraction (same variants as add) |
 //! | [`neg`] | Ciphertext negation |
@@ -16,6 +17,7 @@
 //! | [`conjugate`] | Complex conjugation via automorphism (Galois element `-1`) |
 
 pub mod add;
+pub mod align;
 pub mod conjugate;
 pub mod level;
 pub mod mul;

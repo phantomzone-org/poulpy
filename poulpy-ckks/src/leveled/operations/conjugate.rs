@@ -30,8 +30,11 @@ pub fn conjugate<BE: Backend>(
     Module<BE>: GLWEAutomorphism<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("conjugate input");
     module.glwe_automorphism(&mut res.inner, &ct.inner, key, scratch);
-    res.log_delta = ct.log_delta;
+    res.torus_scale_bits = ct.torus_scale_bits();
+    res.offset_bits = ct.offset_bits();
+    res.assert_valid("conjugate result");
 }
 
 /// `ct = Conjugate(ct)` using the conjugation key (Galois element -1).
@@ -44,5 +47,7 @@ pub fn conjugate_inplace<BE: Backend>(
     Module<BE>: GLWEAutomorphism<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    ct.assert_valid("conjugate_inplace input");
     module.glwe_automorphism_inplace(&mut ct.inner, key, scratch);
+    ct.assert_valid("conjugate_inplace result");
 }

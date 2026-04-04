@@ -58,7 +58,7 @@ pub(crate) fn fill_offset_pt<BE: Backend>(
 }
 
 /// Compresses a full torus plaintext back into the compact CKKS representation
-/// using the inverse placement shift for the same target `k`.
+/// using the inverse placement shift for the same target message position.
 pub(crate) fn extract_compact_pt<BE: Backend>(
     module: &Module<BE>,
     pt: &mut CKKSPlaintext<impl DataMut>,
@@ -150,13 +150,13 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n = ct.inner.n();
-    let delta = (2.0f64).powi(ct.log_delta as i32);
+    let delta = (2.0f64).powi(ct.torus_scale_bits() as i32);
     let v_re = (delta * re).round() as i64;
     let v_im = (delta * im).round() as i64;
 
     let base2k = ct.inner.base2k();
-    let log_delta = ct.log_delta;
-    let pt_k = TorusPrecision((log_delta as usize).div_ceil(base2k.0 as usize) as u32 * base2k.0);
+    let embed_bits = ct.torus_scale_bits();
+    let pt_k = TorusPrecision((embed_bits as usize).div_ceil(base2k.0 as usize) as u32 * base2k.0);
 
     let layout = GLWEPlaintextLayout { n, base2k, k: pt_k };
     let (mut inner, scratch_rest) = scratch.take_glwe_plaintext(&layout);
@@ -167,13 +167,13 @@ where
     inner.encode_coeff_i64(v_re, pt_k, 0);
     inner.encode_coeff_i64(v_im, pt_k, n.0 as usize / 2);
 
-    (CKKSPlaintext { inner, log_delta }, scratch_rest)
+    (CKKSPlaintext { inner, embed_bits }, scratch_rest)
 }
 
 /// Returns the scratch bytes needed for [`const_pt_from_scratch`].
 pub(crate) fn const_pt_scratch_bytes(ct: &CKKSCiphertext<impl Data>) -> usize {
     let base2k = ct.inner.base2k();
-    let pt_k = TorusPrecision((ct.log_delta as usize).div_ceil(base2k.0 as usize) as u32 * base2k.0);
+    let pt_k = TorusPrecision((ct.torus_scale_bits() as usize).div_ceil(base2k.0 as usize) as u32 * base2k.0);
     GLWEPlaintext::bytes_of(ct.inner.n(), base2k, pt_k)
 }
 

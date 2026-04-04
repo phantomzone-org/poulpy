@@ -4,19 +4,20 @@ use poulpy_cpu_avx::NTT120Avx;
 
 use crate::leveled::tests::test_suite::{
     NTT120_PARAMS,
-    add::{test_add, test_add_const, test_add_pt},
+    add::{test_add, test_add_aligned, test_add_const, test_add_pt},
+    align::{test_align, test_alignment_predicates},
     conjugate::test_conjugate,
-    encryption::test_encrypt_decrypt,
+    encryption::{test_encrypt_decrypt, test_metadata_sweep},
     helpers::TestContext,
-    level::{test_div_pow2, test_drop_precision},
+    level::{test_div_pow2, test_drop_scaling_precision, test_drop_torus_precision},
     mul::{
-        test_mul, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
+        test_mul, test_mul_aligned, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
         test_sequential_mul, test_square,
     },
     neg::test_neg,
     plaintext_prepared::{test_add_prepared_pt, test_mul_prepared_pt, test_sub_prepared_pt},
     rotate::test_rotate,
-    sub::{test_sub, test_sub_const, test_sub_pt},
+    sub::{test_sub, test_sub_aligned, test_sub_const, test_sub_pt},
 };
 
 const ATK_ROTATIONS: &[i64] = &[1, 7];
@@ -26,13 +27,33 @@ static CTX_TSK: LazyLock<TestContext<NTT120Avx>> = LazyLock::new(|| TestContext:
 static CTX_ATK: LazyLock<TestContext<NTT120Avx>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
 
 #[test]
+fn align() {
+    test_align(&CTX);
+}
+
+#[test]
+fn alignment_predicates() {
+    test_alignment_predicates(&CTX);
+}
+
+#[test]
 fn encrypt_decrypt() {
     test_encrypt_decrypt(&CTX);
 }
 
 #[test]
+fn metadata_sweep() {
+    test_metadata_sweep(&CTX);
+}
+
+#[test]
 fn add() {
     test_add(&CTX);
+}
+
+#[test]
+fn add_aligned() {
+    test_add_aligned(&CTX);
 }
 
 #[test]
@@ -48,6 +69,11 @@ fn add_const() {
 #[test]
 fn sub() {
     test_sub(&CTX);
+}
+
+#[test]
+fn sub_aligned() {
+    test_sub_aligned(&CTX);
 }
 
 #[test]
@@ -71,13 +97,23 @@ fn div_pow2() {
 }
 
 #[test]
-fn drop_precision() {
-    test_drop_precision(&CTX);
+fn drop_scaling_precision() {
+    test_drop_scaling_precision(&CTX);
+}
+
+#[test]
+fn drop_torus_precision() {
+    test_drop_torus_precision(&CTX);
 }
 
 #[test]
 fn mul() {
     test_mul(&CTX_TSK);
+}
+
+#[test]
+fn mul_aligned() {
+    test_mul_aligned(&CTX_TSK);
 }
 
 #[test]
