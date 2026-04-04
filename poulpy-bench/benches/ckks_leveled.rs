@@ -8,16 +8,22 @@ use poulpy_ckks::{
     leveled::{
         encryption::{encrypt_sk, encrypt_sk_tmp_bytes},
         operations::{
-            add::{add, add_inplace, add_prepared_pt, add_prepared_pt_inplace, add_pt, add_pt_inplace},
+            add::{
+                add, add_const, add_const_inplace, add_const_tmp_bytes, add_inplace, add_prepared_pt, add_prepared_pt_inplace,
+                add_pt, add_pt_inplace, add_pt_tmp_bytes,
+            },
             conjugate::{conjugate, conjugate_inplace, conjugate_tmp_bytes},
             level::{div_pow2, div_pow2_inplace, div_pow2_tmp_bytes},
             mul::{
-                mul, mul_const, mul_const_inplace, mul_int, mul_int_inplace, mul_prepared_pt, mul_prepared_pt_inplace, mul_pt,
-                mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes,
+                mul, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_int, mul_int_inplace, mul_int_inplace_tmp_bytes,
+                mul_prepared_pt, mul_prepared_pt_inplace, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes,
             },
             neg::{neg, neg_inplace},
             rotate::{rotate, rotate_inplace, rotate_tmp_bytes},
-            sub::{sub, sub_inplace},
+            sub::{
+                sub, sub_const, sub_const_inplace, sub_const_tmp_bytes, sub_inplace, sub_prepared_pt, sub_prepared_pt_inplace,
+                sub_pt, sub_pt_inplace, sub_pt_tmp_bytes,
+            },
         },
     },
 };
@@ -33,9 +39,19 @@ use poulpy_hal::{
 };
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 
-#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+#[cfg(all(feature = "enable-avx", feature = "enable-ifma", not(clippy)))]
+compile_error!(
+    "ckks_leveled benchmark backend features are mutually exclusive; enable only one of `enable-avx` or `enable-ifma`."
+);
+
+#[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
+type BE = poulpy_cpu_ifma::NTTIfma;
+#[cfg(all(feature = "enable-avx", not(feature = "enable-ifma"), target_arch = "x86_64"))]
 type BE = poulpy_cpu_avx::NTT120Avx;
-#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+#[cfg(not(any(
+    all(feature = "enable-ifma", target_arch = "x86_64"),
+    all(feature = "enable-avx", not(feature = "enable-ifma"), target_arch = "x86_64")
+)))]
 type BE = poulpy_cpu_ref::NTT120Ref;
 
 const N: usize = 1 << 15;
@@ -97,7 +113,6 @@ fn setup() -> Setup {
     let mut tsk = GLWETensorKeyPrepared::alloc_from_infos(&module, &tsk_layout);
     tsk.prepare(&module, &tsk_raw, scratch.borrow());
 
-    // --- Automorphism keys (rotation + conjugation) ---
     let atk_dnum = K.div_ceil(DSIZE * BASE2K);
     let atk_layout = GLWEAutomorphismKeyLayout {
         n: degree,
@@ -126,8 +141,14 @@ fn setup() -> Setup {
     let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
     scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&module, &ct_tmp)
+            .max(add_pt_tmp_bytes(&module, &ct_tmp))
+            .max(add_const_tmp_bytes(&module, &ct_tmp))
+            .max(sub_pt_tmp_bytes(&module, &ct_tmp))
+            .max(sub_const_tmp_bytes(&module, &ct_tmp))
             .max(mul_tmp_bytes(&module, &ct_tmp, &ct_tmp, &tsk))
             .max(mul_pt_tmp_bytes(&module, &ct_tmp))
+            .max(mul_const_tmp_bytes(&module, &ct_tmp))
+            .max(mul_int_inplace_tmp_bytes(&module, &ct_tmp, 1))
             .max(div_pow2_tmp_bytes(&module))
             .max(rotate_tmp_bytes(&module, &ct_tmp, &rot_key))
             .max(conjugate_tmp_bytes(&module, &ct_tmp, &conj_key)),
@@ -150,7 +171,6 @@ fn setup() -> Setup {
     encrypt_sk(&module, &mut ct_a, &pt_a, &sk_prep, &mut xa, &mut xe, scratch.borrow());
     encrypt_sk(&module, &mut ct_b, &pt_b, &sk_prep, &mut xa, &mut xe, scratch.borrow());
 
-    // Prepare plaintext for add/mul_prepared_pt benchmarks (use max_k = base2k * size).
     let ct_size = k.0.div_ceil(base2k.0) as usize;
     let max_k = TorusPrecision(base2k.0 * ct_size as u32);
     let pt_b_prepared = CKKSPlaintextPrepared::alloc_and_prepare(&module, degree, base2k, max_k, &pt_b, scratch.borrow());
@@ -168,7 +188,6 @@ fn setup() -> Setup {
     }
 }
 
-/// Full reset: raw data + log_delta + k + size.
 fn reset_ct(dst: &mut CKKSCiphertext<Vec<u8>>, src: &CKKSCiphertext<Vec<u8>>) {
     dst.log_delta = src.log_delta;
     dst.inner.set_k(src.inner.k());
@@ -195,37 +214,111 @@ fn bench_ckks_leveled(c: &mut Criterion) {
     let mut ct_out = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
     let mut ct_work = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
 
+    reset_ct(&mut ct_out, &ct_a);
+    reset_ct(&mut ct_work, &ct_a);
+
     let mut group = c.benchmark_group("ckks_leveled");
 
-    // add/sub/neg: no reset needed for inplace (these don't modify k)
     group.bench_function("add", |b| {
         b.iter(|| add(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b)))
     });
     group.bench_function("add_inplace", |b| {
-        b.iter(|| add_inplace(&module, &mut ct_out, black_box(&ct_b)))
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            add_inplace(&module, &mut ct_work, black_box(&ct_b))
+        })
     });
     group.bench_function("add_pt", |b| {
         b.iter(|| add_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b), scratch.borrow()))
     });
     group.bench_function("add_pt_inplace", |b| {
-        b.iter(|| add_pt_inplace(&module, &mut ct_out, black_box(&pt_b), scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            add_pt_inplace(&module, &mut ct_work, black_box(&pt_b), scratch.borrow())
+        })
     });
     group.bench_function("add_prepared_pt", |b| {
         b.iter(|| add_prepared_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b_prepared)))
     });
     group.bench_function("add_prepared_pt_inplace", |b| {
-        b.iter(|| add_prepared_pt_inplace(&module, &mut ct_out, black_box(&pt_b_prepared)))
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            add_prepared_pt_inplace(&module, &mut ct_work, black_box(&pt_b_prepared))
+        })
     });
+    group.bench_function("add_const", |b| {
+        b.iter(|| {
+            add_const(
+                &module,
+                &mut ct_out,
+                black_box(&ct_a),
+                black_box(0.5),
+                black_box(-0.3),
+                scratch.borrow(),
+            )
+        })
+    });
+    group.bench_function("add_const_inplace", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            add_const_inplace(&module, &mut ct_work, black_box(0.5), black_box(-0.3), scratch.borrow())
+        })
+    });
+
     group.bench_function("sub", |b| {
         b.iter(|| sub(&module, &mut ct_out, black_box(&ct_a), black_box(&ct_b)))
     });
     group.bench_function("sub_inplace", |b| {
-        b.iter(|| sub_inplace(&module, &mut ct_out, black_box(&ct_b)))
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            sub_inplace(&module, &mut ct_work, black_box(&ct_b))
+        })
     });
-    group.bench_function("neg", |b| b.iter(|| neg(&module, &mut ct_out, black_box(&ct_a))));
-    group.bench_function("neg_inplace", |b| b.iter(|| neg_inplace(&module, &mut ct_out)));
+    group.bench_function("sub_pt", |b| {
+        b.iter(|| sub_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b), scratch.borrow()))
+    });
+    group.bench_function("sub_pt_inplace", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            sub_pt_inplace(&module, &mut ct_work, black_box(&pt_b), scratch.borrow())
+        })
+    });
+    group.bench_function("sub_prepared_pt", |b| {
+        b.iter(|| sub_prepared_pt(&module, &mut ct_out, black_box(&ct_a), black_box(&pt_b_prepared)))
+    });
+    group.bench_function("sub_prepared_pt_inplace", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            sub_prepared_pt_inplace(&module, &mut ct_work, black_box(&pt_b_prepared))
+        })
+    });
+    group.bench_function("sub_const", |b| {
+        b.iter(|| {
+            sub_const(
+                &module,
+                &mut ct_out,
+                black_box(&ct_a),
+                black_box(0.5),
+                black_box(-0.3),
+                scratch.borrow(),
+            )
+        })
+    });
+    group.bench_function("sub_const_inplace", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            sub_const_inplace(&module, &mut ct_work, black_box(0.5), black_box(-0.3), scratch.borrow())
+        })
+    });
 
-    // mul: reset needed (rescale modifies k)
+    group.bench_function("neg", |b| b.iter(|| neg(&module, &mut ct_out, black_box(&ct_a))));
+    group.bench_function("neg_inplace", |b| {
+        b.iter(|| {
+            reset_ct(&mut ct_work, &ct_a);
+            neg_inplace(&module, &mut ct_work)
+        })
+    });
+
     group.bench_function("mul", |b| {
         b.iter(|| {
             reset_ct(&mut ct_out, &ct_a);
@@ -289,7 +382,10 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         })
     });
     group.bench_function("mul_int", |b| {
-        b.iter(|| mul_int(&module, &mut ct_out, black_box(&ct_a), black_box(3), scratch.borrow()))
+        b.iter(|| {
+            reset_ct(&mut ct_out, &ct_a);
+            mul_int(&module, &mut ct_out, black_box(&ct_a), black_box(3), scratch.borrow())
+        })
     });
     group.bench_function("mul_int_inplace", |b| {
         b.iter(|| {
@@ -297,6 +393,7 @@ fn bench_ckks_leveled(c: &mut Criterion) {
             mul_int_inplace(&module, &mut ct_work, black_box(3), scratch.borrow());
         })
     });
+
     group.bench_function("div_pow2", |b| {
         b.iter(|| div_pow2(&module, &mut ct_out, black_box(&ct_a), black_box(1usize), scratch.borrow()))
     });
@@ -307,7 +404,6 @@ fn bench_ckks_leveled(c: &mut Criterion) {
         })
     });
 
-    // rotate / conjugate: no k change
     group.bench_function("rotate", |b| {
         b.iter(|| rotate(&module, &mut ct_out, black_box(&ct_a), &rot_key, scratch.borrow()))
     });

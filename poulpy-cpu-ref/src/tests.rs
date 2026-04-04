@@ -152,3 +152,88 @@ mod poulpy_cpu_ntt120 {
         }
     }
 }
+
+#[cfg(test)]
+mod poulpy_cpu_ntt_ifma {
+    use poulpy_hal::{backend_test_suite, cross_backend_test_suite};
+
+    cross_backend_test_suite! {
+        mod vec_znx,
+        backend_ref =  crate::FFT64Ref,
+        backend_test = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<8, base2k: 12 },
+        tests = {
+            test_vec_znx_add => poulpy_hal::test_suite::vec_znx::test_vec_znx_add,
+            test_vec_znx_add_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_inplace,
+            test_vec_znx_sub => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub,
+            test_vec_znx_sub_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub_inplace,
+            test_vec_znx_negate => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate,
+            test_vec_znx_negate_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate_inplace,
+            test_vec_znx_rotate => poulpy_hal::test_suite::vec_znx::test_vec_znx_rotate,
+            test_vec_znx_rotate_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_rotate_inplace,
+            test_vec_znx_normalize => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize,
+            test_vec_znx_normalize_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize_inplace,
+            test_vec_znx_copy => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy,
+        }
+    }
+    cross_backend_test_suite! {
+        mod svp,
+        backend_ref =  crate::FFT64Ref,
+        backend_test = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<8, base2k: 12 },
+        tests = {
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
+            test_svp_apply_dft_to_dft_inplace => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft_inplace,
+        }
+    }
+    cross_backend_test_suite! {
+        mod vec_znx_big,
+        backend_ref =  crate::FFT64Ref,
+        backend_test = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<8, base2k: 12 },
+        tests = {
+            test_vec_znx_big_add => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add,
+            test_vec_znx_big_add_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_inplace,
+            test_vec_znx_big_add_small => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small,
+            test_vec_znx_big_add_small_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_inplace,
+            test_vec_znx_big_sub => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_sub,
+            test_vec_znx_big_sub_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_sub_inplace,
+            test_vec_znx_big_negate => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_negate,
+            test_vec_znx_big_negate_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_negate_inplace,
+            test_vec_znx_big_normalize => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_normalize,
+        }
+    }
+    cross_backend_test_suite! {
+        mod vec_znx_dft,
+        backend_ref =  crate::FFT64Ref,
+        backend_test = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<8, base2k: 12 },
+        tests = {
+            test_vec_znx_dft_add => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add,
+            test_vec_znx_dft_add_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_inplace,
+            test_vec_znx_dft_sub => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_sub,
+            test_vec_znx_dft_sub_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_sub_inplace,
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_tmpa => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_tmpa,
+        }
+    }
+    cross_backend_test_suite! {
+        mod vmp,
+        backend_ref =  crate::FFT64Ref,
+        backend_test = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<8, base2k: 12 },
+        tests = {
+            test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
+        }
+    }
+    backend_test_suite! {
+        mod sampling,
+        backend = crate::NTTIfmaRef,
+        params = TestParams { size: 1<<12, base2k: 12 },
+        tests = {
+            test_vec_znx_fill_uniform => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_uniform,
+            test_vec_znx_fill_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_normal,
+            test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
+        }
+    }
+}

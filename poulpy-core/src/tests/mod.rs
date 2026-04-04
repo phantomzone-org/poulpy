@@ -226,6 +226,33 @@ mod poulpy_core_ntt120 {
 }
 
 #[cfg(test)]
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+mod poulpy_core_ntt_ifma {
+    use poulpy_hal::backend_test_suite;
+
+    backend_test_suite!(
+    mod cpu_ref,
+    backend = poulpy_cpu_ref::NTTIfmaRef,
+    params = TestParams { size: 1<<8, base2k: 38 },
+    tests = {
+        glwe_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_sk,
+        glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
+        glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
+        glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
+        glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
+        glwe_automorphism => crate::tests::test_suite::automorphism::test_glwe_automorphism,
+        glwe_automorphism_inplace => crate::tests::test_suite::automorphism::test_glwe_automorphism_inplace,
+        glwe_external_product => crate::tests::test_suite::external_product::test_glwe_external_product,
+        glwe_external_product_inplace => crate::tests::test_suite::external_product::test_glwe_external_product_inplace,
+        glwe_trace_inplace => crate::tests::test_suite::test_glwe_trace_inplace,
+        lwe_keyswitch => crate::tests::test_suite::keyswitch::test_lwe_keyswitch,
+        glwe_to_lwe => crate::tests::test_suite::test_glwe_to_lwe,
+        lwe_to_glwe => crate::tests::test_suite::test_lwe_to_glwe,
+    }
+    );
+}
+
+#[cfg(test)]
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
 mod poulpy_core_ntt120 {
     use poulpy_hal::backend_test_suite;

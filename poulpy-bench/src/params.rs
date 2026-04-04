@@ -127,9 +127,10 @@ impl CoreParams {
 pub struct BenchParams {
     /// Backend labels to benchmark (used by the shell wrapper script).
     ///
-    /// Available: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`.
+    /// Available: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`, `ntt-ifma`.
     /// If any AVX backend is listed, `--features enable-avx` is added
-    /// automatically. Omit or leave empty to run all compiled-in backends.
+    /// automatically; if any IFMA backend is listed, `--features enable-ifma`
+    /// is added automatically. Omit or leave empty to run all compiled-in backends.
     #[serde(default)]
     pub backends: Vec<String>,
     /// List of bench binaries to run (used by the shell wrapper script).
@@ -139,7 +140,7 @@ pub struct BenchParams {
     /// `svp`, `vmp`, `fft`, `ntt`, `operations`, `encryption`, `decryption`,
     /// `automorphism`, `external_product`, `keyswitch`,
     /// `blind_rotate`, `circuit_bootstrapping`, `bdd_prepare`, `bdd_arithmetic`,
-    /// `standard`.
+    /// `ckks_leveled`, `standard`.
     #[serde(default)]
     pub run: Vec<String>,
     #[serde(default)]

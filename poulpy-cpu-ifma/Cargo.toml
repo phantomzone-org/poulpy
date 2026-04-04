@@ -1,0 +1,30 @@
+[package]
+name = "poulpy-cpu-ifma"
+version = "0.5.0"
+edition = "2024"
+license = "Apache-2.0"
+readme = "README.md"
+description = "AVX512-IFMA accelerated CPU backend for poulpy-hal (3x40-bit NTT primes)"
+repository = "https://github.com/phantomzone-org/poulpy"
+homepage = "https://github.com/phantomzone-org/poulpy"
+documentation = "https://docs.rs/poulpy"
+
+[features]
+enable-ifma = []
+
+[dependencies]
+bytemuck = {workspace = true}
+poulpy-hal = {workspace = true}
+poulpy-cpu-ref = {workspace = true}
+itertools = {workspace = true}
+rand = {workspace = true}
+rand_distr = {workspace = true}
+rand_core = {workspace = true}
+byteorder = {workspace = true}
+once_cell = {workspace = true}
+rand_chacha = {workspace = true}
+paste = {workspace = true}
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

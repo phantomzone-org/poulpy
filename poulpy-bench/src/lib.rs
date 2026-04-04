@@ -17,8 +17,8 @@
 //! ```
 //!
 //! Use:
-//! - `for_each_fft_backend!` for FFT64-specific operations (DFT domain, convolution, VMP/SVP)
-//! - `for_each_ntt_backend!` for NTT120-specific operations
+//! - `for_each_fft_backend!` for FFT64-specific operations (`fft` primitive benches)
+//! - `for_each_ntt_backend!` for NTT-family-specific operations (`ntt` primitive benches)
 //! - `for_each_backend!` for operations that work with any backend (generic GLWE ops, vec_znx, etc.)
 //!
 //! # Adding a new backend
@@ -63,7 +63,7 @@ macro_rules! for_each_fft_backend_family {
     }};
 }
 
-/// Private: expands to every NTT120 backend in tier order (ref → avx → gpu).
+/// Private: expands to every NTT-family backend in tier order (ref → avx → ifma → gpu).
 #[doc(hidden)]
 #[macro_export]
 macro_rules! for_each_ntt_backend_family {
@@ -76,6 +76,11 @@ macro_rules! for_each_ntt_backend_family {
         {
             use $fn as __f;
             __f::<poulpy_cpu_avx::NTT120Avx>($($arg,)* $c, "ntt120-avx");
+        }
+        #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_ifma::NTTIfma>($($arg,)* $c, "ntt-ifma");
         }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::NTT120GPU>($($arg,)* $c, "ntt120-gpu"); }
@@ -103,7 +108,7 @@ macro_rules! for_each_ntt_backend {
     }};
 }
 
-/// Run a bench function against every available backend (FFT64 and NTT120).
+/// Run a bench function against every available backend (FFT64 and NTT-family).
 ///
 /// Use for operations that work with any backend: generic GLWE operations,
 /// `vec_znx` / `vec_znx_big` arithmetic, encryption, decryption, key-switching, etc.

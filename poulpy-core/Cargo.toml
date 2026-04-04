@@ -10,6 +10,7 @@ documentation = "https://docs.rs/poulpy"
 
 [features]
 enable-avx = ["dep:poulpy-cpu-avx"]
+enable-ifma = ["dep:poulpy-cpu-ifma"]
 default = ["dep:poulpy-cpu-ref"]
 
 [dependencies]
@@ -17,6 +18,7 @@ dashu-float = {workspace = true}
 criterion = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
+poulpy-cpu-ifma = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true, optional = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}

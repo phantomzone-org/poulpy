@@ -2,7 +2,7 @@
 
 Consolidated [Criterion](https://bheisler.github.io/criterion.rs/book/) benchmark suite for the poulpy workspace.
 
-Each benchmark binary covers one subsystem. Binaries that operate on generic polynomial or FHE operations run against **all available backends**; binaries that target transform-domain-specific operations (DFT, convolution, VMP/SVP) are restricted to the **FFT64 family**.
+Each benchmark binary covers one subsystem. Binaries that operate on generic polynomial or FHE operations run against **all available backends**; transform-domain binaries run against every backend that implements the required transform-domain traits.
 
 ## Backends and feature flags
 
@@ -12,8 +12,10 @@ Each benchmark binary covers one subsystem. Binaries that operate on generic pol
 | `NTT120Ref` | NTT120, portable | *(always enabled)* | `ntt120-ref` |
 | `FFT64Avx` | FFT64, AVX2/FMA | `enable-avx` | `fft64-avx` |
 | `NTT120Avx` | NTT120, AVX2/FMA | `enable-avx` | `ntt120-avx` |
+| `NTTIfma` | NTT IFMA, AVX512-IFMA | `enable-ifma` | `ntt-ifma` |
 
 The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_arch = "x86_64"`.
+The `enable-ifma` flag enables the `poulpy-cpu-ifma` backend and requires `target_arch = "x86_64"` plus `AVX512F`, `AVX512IFMA`, and `AVX512VL`.
 
 ## Benchmark binaries
 
@@ -23,12 +25,12 @@ The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_
 |---|---|---|
 | `vec_znx` | `VecZnx` add / sub / negate / rotate / automorphism / shift | all |
 | `vec_znx_big` | `VecZnxBig` add / sub / negate / normalize / automorphism | all |
-| `vec_znx_dft` | DFT-domain add / sub / apply / iDFT | FFT64 only |
-| `convolution` | Polynomial convolution (prepare + apply) | FFT64 only |
-| `svp` | Scalar-vector product (prepare, DFT-to-DFT) | FFT64 only |
-| `vmp` | Vector-matrix product (prepare, DFT-to-DFT) | FFT64 only |
-| `fft` | Raw FFT / iFFT primitive | hardcoded (ref + avx) |
-| `ntt` | Raw NTT / iNTT primitive | hardcoded (ref + avx) |
+| `vec_znx_dft` | DFT-domain add / sub / apply / iDFT | all |
+| `convolution` | Polynomial convolution (prepare + apply) | all |
+| `svp` | Scalar-vector product (prepare, DFT-to-DFT) | all |
+| `vmp` | Vector-matrix product (prepare, DFT-to-DFT) | all |
+| `fft` | Raw FFT / iFFT primitive | hardcoded (FFT64 ref + avx) |
+| `ntt` | Raw NTT / iNTT primitive | hardcoded (NTT ref + avx + ifma) |
 
 ### Core-level (scheme-agnostic FHE operations)
 
@@ -49,6 +51,7 @@ The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_
 | `circuit_bootstrapping` | Circuit bootstrapping | hardcoded |
 | `bdd_prepare` | BDD key preparation | hardcoded |
 | `bdd_arithmetic` | BDD homomorphic arithmetic | hardcoded |
+| `ckks_leveled` | CKKS leveled multiplication | single selected NTT backend |
 
 ### Regression tracking
 
@@ -89,7 +92,7 @@ Field reference:
 
 | Section | Field | Applies to | Description |
 |---|---|---|---|
-| `backends` | `["label", ...]` | shell script | Backends to run: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`. AVX feature is auto-enabled when an AVX backend is listed. Omit to run all compiled-in backends. |
+| `backends` | `["label", ...]` | shell script | Backends to run: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`, `ntt-ifma`. AVX or IFMA features are auto-enabled when matching backends are listed. Omit to run all compiled-in backends. |
 | `run` | `["name", ...]` | shell script | What to run. Binary names (e.g. `"vec_znx_big"`) run the whole binary; function names (e.g. `"vec_znx_big_add"`) are used as a Criterion filter across the default binary set. Mix freely. Omit or leave empty to run the default set in full. |
 | `hal.sweeps` | `[[log_n, cols, size], ...]` | `vec_znx_big`, `vec_znx_dft`, `svp` | Sweep points for generic HAL ops |
 | `cnv.sweeps` | `[[log_n, size], ...]` | `convolution` | Sweep points for convolution |
@@ -134,6 +137,14 @@ POULPY_BENCH_PARAMS=bench_params.json \
   cargo bench -p poulpy-bench --features enable-avx
 ```
 
+**IFMA-enabled run:**
+
+```sh
+POULPY_BENCH_PARAMS='{"backends":["ntt-ifma"],"run":["vec_znx_dft","convolution","ckks_leveled"]}' \
+  RUSTFLAGS="-C target-feature=+avx512f,+avx512ifma,+avx512vl" \
+  cargo bench -p poulpy-bench --features enable-ifma
+```
+
 **Regression baseline at a specific parameter set:**
 
 ```sh
@@ -159,6 +170,13 @@ cargo bench -p poulpy-bench
 cargo bench -p poulpy-bench --features enable-avx
 ```
 
+### All benchmarks with IFMA acceleration
+
+```sh
+RUSTFLAGS="-C target-feature=+avx512f,+avx512ifma,+avx512vl" \
+  cargo bench -p poulpy-bench --features enable-ifma
+```
+
 ### One binary
 
 ```sh
@@ -167,6 +185,10 @@ cargo bench -p poulpy-bench --bench vec_znx
 
 # with AVX
 cargo bench -p poulpy-bench --bench vec_znx --features enable-avx
+
+# with IFMA
+RUSTFLAGS="-C target-feature=+avx512f,+avx512ifma,+avx512vl" \
+  cargo bench -p poulpy-bench --bench vec_znx --features enable-ifma
 ```
 
 ### One group or function within a binary
@@ -178,6 +200,10 @@ encodes the operation and backend label.
 ```sh
 # all vec_znx benchmarks on the ntt120-ref backend
 cargo bench -p poulpy-bench --bench vec_znx -- ntt120-ref
+
+# all transform-domain benchmarks on the IFMA backend
+RUSTFLAGS="-C target-feature=+avx512f,+avx512ifma,+avx512vl" \
+  cargo bench -p poulpy-bench --bench vec_znx_dft -- ntt-ifma
 
 # only the add benchmark, all backends
 cargo bench -p poulpy-bench --bench vec_znx -- vec_znx_add
@@ -226,5 +252,5 @@ Criterion HTML reports are written to `target/criterion/`.
 1. Add the backend crate to `[dependencies]` in `Cargo.toml` (behind an optional feature if needed).
 2. Add one entry to the appropriate private family macro in [`src/lib.rs`](src/lib.rs):
    - `for_each_fft_backend_family!` for an FFT64 backend
-   - `for_each_ntt_backend_family!` for an NTT120 backend
+   - `for_each_ntt_backend_family!` for an NTT-family backend
 3. No bench files need to change.

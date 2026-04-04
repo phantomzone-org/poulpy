@@ -1,5 +1,5 @@
 {
-  "backends": ["ntt120-avx"],
+  "backends": ["ntt-ifma"],
   "run": ["vec_znx_big_add", "svp_prepare", "vmp", "external_product", "automorphism"],
   "hal": {
     "sweeps": [

@@ -11,10 +11,12 @@ documentation = "https://docs.rs/poulpy"
 
 [features]
 enable-avx = []
+enable-ifma = []
 
 [dependencies]
 criterion = {workspace = true}
 poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-ifma = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}

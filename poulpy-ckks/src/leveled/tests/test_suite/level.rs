@@ -61,7 +61,10 @@ where
     let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     div_pow2_inplace(&ctx.module, &mut ct_ip, bits, scratch.borrow());
     assert_eq!(ct_ip.inner.k(), k, "div_pow2_inplace must preserve k");
-    assert_eq!(ct_ip.log_delta, ctx.params.log_delta, "div_pow2_inplace must preserve log_delta");
+    assert_eq!(
+        ct_ip.log_delta, ctx.params.log_delta,
+        "div_pow2_inplace must preserve log_delta"
+    );
     let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
     assert_precision("div_pow2_inplace re", &re_ip, &want_re, 20.0);
     assert_precision("div_pow2_inplace im", &im_ip, &want_im, 20.0);

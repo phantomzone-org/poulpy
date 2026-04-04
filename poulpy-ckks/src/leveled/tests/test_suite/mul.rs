@@ -6,7 +6,9 @@ use crate::{
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
-        operations::mul::{mul, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes},
+        operations::mul::{
+            mul, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes, mul_tmp_bytes,
+        },
     },
 };
 use poulpy_core::{
@@ -169,8 +171,7 @@ where
     mul(&ctx.module, &mut ct_res, &a, &b, ctx.tsk(), scratch.borrow());
 
     assert_eq!(
-        ct_res.log_delta,
-        log_delta_hi,
+        ct_res.log_delta, log_delta_hi,
         "mul should keep the larger scale after rescale"
     );
     assert_eq!(

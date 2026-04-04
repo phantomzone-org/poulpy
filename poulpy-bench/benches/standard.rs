@@ -25,19 +25,19 @@ fn p() -> &'static poulpy_bench::params::BenchParams {
 // ── Layer 1: HAL – FFT-domain ────────────────────────────────────────────────
 
 fn std_vec_znx_dft_apply(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::vec_znx_dft::bench_vec_znx_dft_apply, &p().hal; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_dft::bench_vec_znx_dft_apply, &p().hal; c);
 }
 
 fn std_vec_znx_idft_apply(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::vec_znx_dft::bench_vec_znx_idft_apply, &p().hal; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_dft::bench_vec_znx_idft_apply, &p().hal; c);
 }
 
 fn std_vmp_apply_dft_to_dft(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::vmp::bench_vmp_apply_dft_to_dft, &p().vmp; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vmp::bench_vmp_apply_dft_to_dft, &p().vmp; c);
 }
 
 fn std_svp_apply_dft_to_dft(c: &mut Criterion) {
-    poulpy_bench::for_each_fft_backend!(poulpy_bench::bench_suite::hal::svp::bench_svp_apply_dft_to_dft, &p().hal; c);
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::svp::bench_svp_apply_dft_to_dft, &p().hal; c);
 }
 
 // ── Layer 1: HAL – coefficient domain (all backends) ────────────────────────
