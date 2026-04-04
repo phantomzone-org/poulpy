@@ -526,6 +526,7 @@ dependencies = [
 name = "poulpy-core"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "byteorder",
  "criterion",
@@ -575,6 +576,7 @@ dependencies = [
 name = "poulpy-hal"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "byteorder",
  "cmake",
@@ -593,6 +595,7 @@ dependencies = [
 name = "poulpy-schemes"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "byteorder",
  "criterion",
  "itertools 0.14.0",

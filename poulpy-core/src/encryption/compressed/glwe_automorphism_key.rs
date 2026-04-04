@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared,
         GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement, compressed::GLWEAutomorphismKeyCompressed,
@@ -24,19 +24,21 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
 
 impl<DataSelf: DataMut> GLWEAutomorphismKeyCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S, BE: Backend>(
+    pub fn encrypt_sk<M, S, E, BE: Backend>(
         &mut self,
         module: &M,
         p: i64,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef + GLWEInfos,
+        E: EncryptionInfos,
         M: GLWEAutomorphismKeyCompressedEncryptSk<BE>,
     {
-        module.glwe_automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, source_xe, scratch);
+        module.glwe_automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -45,16 +47,18 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GLWEInfos;
 }
 
@@ -76,16 +80,18 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GLWEInfos,
     {
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
@@ -115,7 +121,7 @@ where
             sk_out_prepared.prepare(self, &sk_out);
         }
 
-        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, source_xe, scratch_1);
+        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, enc_infos, source_xe, scratch_1);
 
         res.set_p(p);
     }

@@ -33,7 +33,9 @@ use itertools::izip;
 use rand_distr::{Distribution, Normal};
 
 use crate::{
-    layouts::{Backend, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{
+        Backend, NoiseInfos, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
+    },
     reference::znx::{get_carry_i128, get_digit_i128},
     source::Source,
 };
@@ -1147,9 +1149,7 @@ pub fn ntt120_vec_znx_big_add_normal_ref<R, BE>(
     base2k: usize,
     res: &mut R,
     res_col: usize,
-    k: usize,
-    sigma: f64,
-    bound: f64,
+    noise_infos: NoiseInfos,
     source: &mut Source,
 ) where
     BE: Backend<ScalarBig = i128>,
@@ -1157,15 +1157,14 @@ pub fn ntt120_vec_znx_big_add_normal_ref<R, BE>(
 {
     let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     assert!(
-        (bound.log2().ceil() as i64) < 64,
+        (noise_infos.bound.log2().ceil() as i64) < 64,
         "invalid bound: ceil(log2(bound))={} > 63",
-        bound.log2().ceil() as i64
+        noise_infos.bound.log2().ceil() as i64
     );
 
-    let limb: usize = k.div_ceil(base2k) - 1;
-    let scale: f64 = (1u64 << ((limb + 1) * base2k - k)) as f64;
-    let scaled_sigma = sigma * scale;
-    let scaled_bound = bound * scale;
+    let (limb, scale) = noise_infos.target_limb_and_scale(base2k);
+    let scaled_sigma = noise_infos.sigma * scale;
+    let scaled_bound = noise_infos.bound * scale;
 
     let normal: Normal<f64> = Normal::new(0.0, scaled_sigma).unwrap();
     let rj: &mut [i128] = res.at_mut(res_col, limb);

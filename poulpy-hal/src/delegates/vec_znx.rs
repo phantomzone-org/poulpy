@@ -8,7 +8,7 @@ use crate::{
         VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing, VecZnxZero,
     },
-    layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl,
         VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl,
@@ -497,19 +497,11 @@ impl<B> VecZnxFillNormal for Module<B>
 where
     B: Backend + VecZnxFillNormalImpl<B>,
 {
-    fn vec_znx_fill_normal<R>(
-        &self,
-        base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    ) where
+    fn vec_znx_fill_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
+    where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
+        B::vec_znx_fill_normal_impl(self, base2k, res, res_col, noise_infos, source_xe);
     }
 }
 
@@ -517,18 +509,10 @@ impl<B> VecZnxAddNormal for Module<B>
 where
     B: Backend + VecZnxAddNormalImpl<B>,
 {
-    fn vec_znx_add_normal<R>(
-        &self,
-        base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    ) where
+    fn vec_znx_add_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
+    where
         R: VecZnxToMut,
     {
-        B::vec_znx_add_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
+        B::vec_znx_add_normal_impl(self, base2k, res, res_col, noise_infos, source_xe);
     }
 }

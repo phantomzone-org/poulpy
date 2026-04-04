@@ -15,8 +15,8 @@ use crate::{
     leveled::operations::utils::{extract_compact_pt, fill_offset_pt},
 };
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{GLWE, GLWEPlaintext, GLWEPlaintextLayout, LWEInfos, SetGLWEInfos, prepared::GLWESecretPrepared},
+    EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    layouts::{GLWE, GLWEPlaintext, GLWEPlaintextLayout, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
@@ -42,11 +42,12 @@ where
 /// The compact plaintext is first placed into the active `k`-bit window of
 /// a full-width torus buffer.  The GLWE encryption is then performed on the
 /// full physical width so that fresh noise covers the entire representation.
-pub fn encrypt_sk<BE: Backend>(
+pub fn encrypt_sk<BE: Backend, E: EncryptionInfos>(
     module: &Module<BE>,
     ct: &mut CKKSCiphertext<impl DataMut>,
     pt: &CKKSPlaintext<impl DataRef>,
     sk: &GLWESecretPrepared<impl DataRef, BE>,
+    enc_infos: &E,
     source_xa: &mut Source,
     source_xe: &mut Source,
     scratch: &mut Scratch<BE>,
@@ -63,16 +64,9 @@ pub fn encrypt_sk<BE: Backend>(
         k: full_k,
     };
     let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(&layout);
-    fill_offset_pt(module, &mut full_pt, ct.inner.k(), pt, scratch_rest);
-
-    // Encrypt on the full physical width so poulpy-core injects the fresh
-    // error on the full torus buffer while the plaintext stays placed in the
-    // active `k` window.
-    let actual_k = ct.inner.k();
-    let max_k = full_k;
-    ct.inner.set_k(max_k);
-    ct.inner.encrypt_sk(module, &full_pt, sk, source_xa, source_xe, scratch_rest);
-    ct.inner.set_k(actual_k);
+    fill_offset_pt(module, &mut full_pt, ct.inner.max_k(), pt, scratch_rest);
+    ct.inner
+        .encrypt_sk(module, &full_pt, sk, enc_infos, source_xe, source_xa, scratch_rest);
 }
 
 /// Returns the scratch bytes needed for [`decrypt`].
@@ -115,5 +109,5 @@ pub fn decrypt<BE: Backend>(
     ct.inner.decrypt(module, &mut full_pt, sk, scratch_rest);
 
     pt.log_delta = ct.log_delta;
-    extract_compact_pt(module, pt, ct.inner.k(), &full_pt, scratch_rest);
+    extract_compact_pt(module, pt, ct.inner.max_k(), &full_pt, scratch_rest);
 }

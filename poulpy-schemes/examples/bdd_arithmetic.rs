@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -15,8 +15,8 @@ use poulpy_hal::{
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
+        Add, BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
+        ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
@@ -160,21 +160,26 @@ where
     // Creating the public BDD Key
     // This key is required to prepare all Fhe Integers for operations,
     // and for performing the operations themselves
+    let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_layout).unwrap();
+
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &bdd_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     ////////// Input Encryption
     // Encrypting the inputs
     let input_a = 255_u32;
     let input_b = 30_u32;
 
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_layout).unwrap();
+
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
     a_enc.encrypt_sk(
         &module,
         input_a,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -183,8 +188,9 @@ where
         &module,
         input_b,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -258,8 +264,9 @@ where
             &module,
             *input,
             &sk_glwe_prepared,
-            &mut source_xa,
+            &glwe_enc_infos,
             &mut source_xe,
+            &mut source_xa,
             scratch.borrow(),
         );
         inputs_a_enc_vec.push(next_input);
@@ -275,8 +282,9 @@ where
         &module,
         input_selector,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
     let mut input_selector_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =

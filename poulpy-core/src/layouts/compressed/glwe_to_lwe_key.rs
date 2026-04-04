@@ -23,10 +23,6 @@ impl<D: Data> LWEInfos for GLWEToLWESwitchingKeyCompressed<D> {
         self.0.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
-    }
-
     fn n(&self) -> Degree {
         self.0.n()
     }
@@ -104,7 +100,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             1,
             "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
         );
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank_in(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {

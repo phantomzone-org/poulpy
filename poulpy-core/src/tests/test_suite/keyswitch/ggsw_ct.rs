@@ -6,8 +6,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEToGGSWKeyEncryptSk, GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GGLWEToGGSWKeyEncryptSk, GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout,
         GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout,
@@ -50,14 +50,14 @@ where
 
             let dsize_in: usize = 1;
 
-            let ggsw_in_infos: GGSWLayout = GGSWLayout {
+            let ggsw_in_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: in_base2k.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
@@ -68,16 +68,16 @@ where
                 rank: rank.into(),
             };
 
-            let tsk_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
+            let tsk_infos = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_tsk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
-            let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+            let ksk_apply_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_ksk.into(),
@@ -85,7 +85,7 @@ where
                 dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
-            };
+            }).unwrap();
 
             let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_infos);
             let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
@@ -118,8 +118,16 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
-            tsk.encrypt_sk(module, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+            ksk.encrypt_sk(
+                module,
+                &sk_in,
+                &sk_out,
+                &ksk_apply_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
+            tsk.encrypt_sk(module, &sk_out, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -127,8 +135,9 @@ where
                 module,
                 &pt_scalar,
                 &sk_in_prepared,
-                &mut source_xa,
+                &ggsw_in_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
@@ -148,7 +157,7 @@ where
                     col_j,
                     var_xs,
                     0f64,
-                    SIGMA * SIGMA,
+                    DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE,
                     0f64,
                     rank as f64,
                     k_in,
@@ -201,25 +210,25 @@ where
             let dnum_ksk: usize = k_out.div_ceil(key_base2k * dsize);
             let dsize_in: usize = 1;
 
-            let ggsw_out_infos: GGSWLayout = GGSWLayout {
+            let ggsw_out_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
-            let tsk_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
+            let tsk_infos = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_tsk.into(),
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
-            let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+            let ksk_apply_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_ksk.into(),
@@ -227,7 +236,7 @@ where
                 dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
-            };
+            }).unwrap();
 
             let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
             let mut tsk: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&tsk_infos);
@@ -259,8 +268,16 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
-            tsk.encrypt_sk(module, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+            ksk.encrypt_sk(
+                module,
+                &sk_in,
+                &sk_out,
+                &ksk_apply_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
+            tsk.encrypt_sk(module, &sk_out, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -268,8 +285,9 @@ where
                 module,
                 &pt_scalar,
                 &sk_in_prepared,
-                &mut source_xa,
+                &ggsw_out_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
@@ -289,7 +307,7 @@ where
                     col_j,
                     var_xs,
                     0f64,
-                    SIGMA * SIGMA,
+                    DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE,
                     0f64,
                     rank as f64,
                     k_out,

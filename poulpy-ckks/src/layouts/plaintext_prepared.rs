@@ -6,7 +6,7 @@
 //! without per-call scratch overhead for plaintext expansion.
 
 use crate::layouts::plaintext::CKKSPlaintext;
-use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, GLWEPlaintextToMut, GLWEPlaintextToRef, TorusPrecision};
+use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, GLWEPlaintextToMut, GLWEPlaintextToRef, LWEInfos, TorusPrecision};
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, ZnxInfos},
@@ -74,7 +74,7 @@ impl CKKSPlaintextPrepared<Vec<u8>> {
         Module<BE>: VecZnxNormalize<BE>,
     {
         let mut compact = CKKSPlaintext::alloc(n, base2k, log_delta);
-        let pt_k = compact.inner.k;
+        let pt_k = compact.inner.max_k();
         let delta = (2.0f64).powi(log_delta as i32);
         compact.inner.encode_coeff_i64((delta * c.0).round() as i64, pt_k, 0);
         compact
@@ -111,7 +111,7 @@ impl<D: DataMut> CKKSPlaintextPrepared<D> {
         );
 
         self.log_delta = pt.log_delta;
-        let target_k = self.inner.k;
+        let target_k = self.inner.max_k();
         crate::leveled::operations::utils::fill_offset_pt(module, &mut self.inner, target_k, pt, scratch);
     }
 }

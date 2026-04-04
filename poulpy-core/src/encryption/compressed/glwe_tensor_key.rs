@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GGLWELayout, GLWEInfos, GLWESecretPrepared,
         GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef,
@@ -24,18 +24,20 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWETensorKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<S, M, BE: Backend>(
+    pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
+        E: EncryptionInfos,
         M: GLWETensorKeyCompressedEncryptSk<BE>,
     {
-        module.glwe_tensor_key_compressed_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
+        module.glwe_tensor_key_compressed_encrypt_sk(self, sk, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -44,15 +46,17 @@ pub trait GLWETensorKeyCompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_tensor_key_compressed_encrypt_sk<R, S>(
+    fn glwe_tensor_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
@@ -73,7 +77,7 @@ where
         let tensor_infos: GGLWELayout = GGLWELayout {
             n: infos.n(),
             base2k: infos.base2k(),
-            k: infos.k(),
+            k: infos.max_k(),
             rank_in: GLWESecretTensor::pairs(infos.rank().into()).into(),
             rank_out: infos.rank_out(),
             dnum: infos.dnum(),
@@ -89,15 +93,17 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_tensor_key_compressed_encrypt_sk<R, S>(
+    fn glwe_tensor_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEInfos + GGLWECompressedToMut + GGLWECompressedSeedMut,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         assert_eq!(res.rank_out(), sk.rank());
@@ -114,6 +120,6 @@ where
         sk_prepared.prepare(self, sk);
         sk_tensor.prepare(self, sk, scratch_2);
 
-        self.gglwe_compressed_encrypt_sk(res, &sk_tensor.data, &sk_prepared, seed_xa, source_xe, scratch_2);
+        self.gglwe_compressed_encrypt_sk(res, &sk_tensor.data, &sk_prepared, seed_xa, enc_infos, source_xe, scratch_2);
     }
 }

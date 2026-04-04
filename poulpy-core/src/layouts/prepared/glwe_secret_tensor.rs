@@ -39,10 +39,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretTensorPrepared<D, B> {
         Base2K(0)
     }
 
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
-    }
-
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }

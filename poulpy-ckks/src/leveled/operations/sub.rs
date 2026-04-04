@@ -81,7 +81,7 @@ pub fn sub_pt<BE: Backend>(
         ct.inner.n(),
         ct.inner.base2k(),
         poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
+        ct.inner.max_k(),
         pt,
         scratch,
     );
@@ -108,7 +108,7 @@ pub fn sub_pt_inplace<BE: Backend>(
         ct.inner.n(),
         ct.inner.base2k(),
         poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
+        ct.inner.max_k(),
         pt,
         scratch,
     );

@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNormalizeTmpBytes, VecZnxRotateInplaceTmpBytes, VecZnxRshTmpBytes,
         VecZnxSplitRingTmpBytes,
     },
-    layouts::{Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl,
         VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl,
@@ -535,14 +535,12 @@ unsafe impl VecZnxFillNormalImpl<Self> for FFT64Avx {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_fill_normal_ref(base2k, res, res_col, k, sigma, bound, source);
+        vec_znx_fill_normal_ref(base2k, res, res_col, noise_infos, source_xe);
     }
 }
 
@@ -552,13 +550,11 @@ unsafe impl VecZnxAddNormalImpl<Self> for FFT64Avx {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
+        vec_znx_add_normal_ref(base2k, res, res_col, noise_infos, source_xe);
     }
 }

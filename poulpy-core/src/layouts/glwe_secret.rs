@@ -20,10 +20,6 @@ impl LWEInfos for GLWESecretLayout {
         Base2K(0)
     }
 
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
-    }
-
     fn n(&self) -> Degree {
         self.n
     }
@@ -47,10 +43,6 @@ pub struct GLWESecret<D: Data> {
 impl<D: Data> LWEInfos for GLWESecret<D> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
-    }
-
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
     }
 
     fn n(&self) -> Degree {

@@ -21,11 +21,15 @@ use poulpy_ckks::{
         },
     },
 };
-use poulpy_core::layouts::{
-    Base2K, Degree, Dnum, Dsize, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPrepared,
-    GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWESecret, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPrepared,
-    LWEInfos, Rank, SetGLWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
+use poulpy_core::{
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, EncryptionLayout,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPrepared,
+        GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWESecret, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPrepared,
+        LWEInfos, Rank, SetGLWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
+    },
 };
+use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{GaloisElement, Module, ScratchOwned, ZnxView, ZnxViewMut},
@@ -93,7 +97,8 @@ fn setup() -> Setup {
             .max(GLWETensorKeyPrepared::prepare_tmp_bytes(&module, &tsk_layout))
             .max(GLWETensorKey::encrypt_sk_tmp_bytes(&module, &tsk_layout)),
     );
-    tsk_raw.encrypt_sk(&module, &sk, &mut xa, &mut xe, scratch.borrow());
+    let tsk_enc_infos = EncryptionLayout::new_from_default_sigma(tsk_layout).unwrap();
+    tsk_raw.encrypt_sk(&module, &sk, &tsk_enc_infos, &mut xa, &mut xe, scratch.borrow());
     let mut tsk = GLWETensorKeyPrepared::alloc_from_infos(&module, &tsk_layout);
     tsk.prepare(&module, &tsk_raw, scratch.borrow());
 
@@ -112,14 +117,15 @@ fn setup() -> Setup {
             .max(module.prepare_glwe_automorphism_key_tmp_bytes(&atk_layout)),
     );
 
+    let atk_enc_infos = EncryptionLayout::new_from_default_sigma(atk_layout).unwrap();
     let rot_gal = module.galois_element(1);
     let mut rot_raw = GLWEAutomorphismKey::alloc_from_infos(&atk_layout);
-    rot_raw.encrypt_sk(&module, rot_gal, &sk, &mut xa, &mut xe, scratch.borrow());
+    rot_raw.encrypt_sk(&module, rot_gal, &sk, &atk_enc_infos, &mut xa, &mut xe, scratch.borrow());
     let mut rot_key = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk_layout);
     rot_key.prepare(&module, &rot_raw, scratch.borrow());
 
     let mut conj_raw = GLWEAutomorphismKey::alloc_from_infos(&atk_layout);
-    conj_raw.encrypt_sk(&module, -1, &sk, &mut xa, &mut xe, scratch.borrow());
+    conj_raw.encrypt_sk(&module, -1, &sk, &atk_enc_infos, &mut xa, &mut xe, scratch.borrow());
     let mut conj_key = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk_layout);
     conj_key.prepare(&module, &conj_raw, scratch.borrow());
 
@@ -145,10 +151,11 @@ fn setup() -> Setup {
     encode(&mut pt_a, &re_a, &im_a);
     encode(&mut pt_b, &re_b, &im_b);
 
+    let ct_enc_infos = NoiseInfos::new(k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     let mut ct_a = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
     let mut ct_b = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
-    encrypt_sk(&module, &mut ct_a, &pt_a, &sk_prep, &mut xa, &mut xe, scratch.borrow());
-    encrypt_sk(&module, &mut ct_b, &pt_b, &sk_prep, &mut xa, &mut xe, scratch.borrow());
+    encrypt_sk(&module, &mut ct_a, &pt_a, &sk_prep, &ct_enc_infos, &mut xa, &mut xe, scratch.borrow());
+    encrypt_sk(&module, &mut ct_b, &pt_b, &sk_prep, &ct_enc_infos, &mut xa, &mut xe, scratch.borrow());
 
     // Prepare plaintext for add/mul_prepared_pt benchmarks (use max_k = base2k * size).
     let ct_size = k.0.div_ceil(base2k.0) as usize;
@@ -171,7 +178,7 @@ fn setup() -> Setup {
 /// Full reset: raw data + log_delta + k + size.
 fn reset_ct(dst: &mut CKKSCiphertext<Vec<u8>>, src: &CKKSCiphertext<Vec<u8>>) {
     dst.log_delta = src.log_delta;
-    dst.inner.set_k(src.inner.k());
+    dst.inner.set_k(src.inner.max_k());
     dst.inner.data_mut().size = src.inner.size();
     dst.inner.data_mut().raw_mut().copy_from_slice(src.inner.data().raw());
 }

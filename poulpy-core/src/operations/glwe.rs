@@ -99,7 +99,7 @@ where
         };
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a.size() + b.len() - res_offset_hi);
@@ -187,7 +187,7 @@ where
         let lvl_2_cnv_apply: usize = self.cnv_apply_dft_tmp_bytes(res_size, res_offset, a_size, b_size);
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a_size + b_size - res_offset / ab_base2k.as_usize());
@@ -238,7 +238,7 @@ where
         };
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a.size() + b.size() - res_offset_hi);
@@ -284,7 +284,7 @@ where
         };
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a.size() + res.size() - res_offset_hi);
@@ -447,7 +447,7 @@ where
         let lvl_2_pairwise: usize = self.cnv_pairwise_apply_dft_tmp_bytes(res_size, res_offset, a_size, b_size);
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a_size + b_size - res_offset / ab_base2k.as_usize());
@@ -624,7 +624,7 @@ where
         };
 
         let res_dft_size = res
-            .k()
+            .max_k()
             .as_usize()
             .div_ceil(a.base2k().as_usize())
             .min(a.size() + b.size() - res_offset_hi);
@@ -1138,18 +1138,18 @@ fn set_k_binary(c: &impl GLWEInfos, a: &impl GLWEInfos, b: &impl GLWEInfos) -> T
     if a.rank() != 0 || b.rank() != 0 {
         // If a is a plaintext (but b ciphertext)
         let k = if a.rank() == 0 {
-            b.k()
+            b.max_k()
         // If b is a plaintext (but a ciphertext)
         } else if b.rank() == 0 {
-            a.k()
+            a.max_k()
         // If a & b are both ciphertexts
         } else {
-            a.k().min(b.k())
+            a.max_k().min(b.max_k())
         };
-        k.min(c.k())
+        k.min(c.max_k())
     // If a & b are both plaintexts
     } else {
-        c.k()
+        c.max_k()
     }
 }
 
@@ -1157,8 +1157,8 @@ fn set_k_binary(c: &impl GLWEInfos, a: &impl GLWEInfos, b: &impl GLWEInfos) -> T
 // a = op(a, b)
 fn set_k_unary(a: &impl GLWEInfos, b: &impl GLWEInfos) -> TorusPrecision {
     if a.rank() != 0 || b.rank() != 0 {
-        a.k().min(b.k())
+        a.max_k().min(b.max_k())
     } else {
-        a.k()
+        a.max_k()
     }
 }

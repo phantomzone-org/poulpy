@@ -9,7 +9,10 @@ use crate::leveled::tests::test_suite::{
     encryption::test_encrypt_decrypt,
     helpers::TestContext,
     level::test_div_pow2,
-    mul::{test_mul, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt, test_sequential_mul},
+    mul::{
+        test_mul, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
+        test_sequential_mul,
+    },
     neg::test_neg,
     plaintext_prepared::{test_add_prepared_pt, test_mul_prepared_pt, test_sub_prepared_pt},
     rotate::test_rotate,

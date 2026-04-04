@@ -6,8 +6,7 @@ use poulpy_hal::{
 use std::{fmt, marker::PhantomData};
 
 use poulpy_core::{
-    Distribution,
-    layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    DeclaredK, Distribution, EncryptionLayout, layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision}
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -41,6 +40,12 @@ pub struct BlindRotationKeyLayout {
     pub rank: Rank,
 }
 
+impl DeclaredK for BlindRotationKeyLayout{
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
 impl BlindRotationKeyInfos for BlindRotationKeyLayout {
     fn n_glwe(&self) -> Degree {
         self.n_glwe
@@ -48,6 +53,16 @@ impl BlindRotationKeyInfos for BlindRotationKeyLayout {
 
     fn n_lwe(&self) -> Degree {
         self.n_lwe
+    }
+}
+
+impl BlindRotationKeyInfos for EncryptionLayout<BlindRotationKeyLayout>{
+    fn n_glwe(&self) -> Degree {
+        self.layout.n_glwe()
+    }
+
+    fn n_lwe(&self) -> Degree {
+        self.layout.n_lwe()
     }
 }
 
@@ -72,12 +87,12 @@ impl LWEInfos for BlindRotationKeyLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n_glwe
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k().as_usize())
     }
 }
 
@@ -236,10 +251,6 @@ impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKey<D, BRT> {
 impl<D: DataRef, BRT: BlindRotationAlgo> LWEInfos for BlindRotationKey<D, BRT> {
     fn base2k(&self) -> Base2K {
         self.keys[0].base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.keys[0].k()
     }
 
     fn n(&self) -> Degree {

@@ -1,7 +1,10 @@
 //! Level management and scale-preserving division by powers of two.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore, layouts::{LWEInfos, SetGLWEInfos, TorusPrecision}};
+use poulpy_core::{
+    GLWECopy, GLWEShift, ScratchTakeCore,
+    layouts::{LWEInfos, SetGLWEInfos, TorusPrecision},
+};
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 
 fn assert_target_k(label: &str, current_k: u32, target_k: TorusPrecision) {
@@ -45,12 +48,12 @@ pub fn rescale<BE: Backend>(module: &Module<BE>, ct: &mut CKKSCiphertext<impl Da
     let _ = scratch;
     assert!(bits <= ct.log_delta, "rescale: bits ({bits}) > log_delta ({})", ct.log_delta);
     assert!(
-        ct.inner.k().0 > bits,
+        ct.inner.max_k().0 > bits,
         "rescale: k ({}) exhausted (need > {bits})",
-        ct.inner.k().0
+        ct.inner.max_k().0
     );
-    let new_k = TorusPrecision(ct.inner.k().0 - bits);
-    assert_target_k("rescale", ct.inner.k().0, new_k);
+    let new_k = TorusPrecision(ct.inner.max_k().0 - bits);
+    assert_target_k("rescale", ct.inner.max_k().0, new_k);
     let base2k = ct.inner.base2k().0;
     ct.inner.set_k(new_k);
     ct.inner.data_mut().size = new_k.0.div_ceil(base2k) as usize;

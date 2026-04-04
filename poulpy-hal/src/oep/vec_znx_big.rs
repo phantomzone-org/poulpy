@@ -1,7 +1,7 @@
 //! Backend extension points for extended-precision [`VecZnxBig`](crate::layouts::VecZnxBig) operations.
 
 use crate::{
-    layouts::{Backend, Module, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, Module, NoiseInfos, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -27,10 +27,8 @@ pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
         res_base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
+        noise_infos: NoiseInfos,
         source: &mut Source,
-        sigma: f64,
-        bound: f64,
     );
 }
 

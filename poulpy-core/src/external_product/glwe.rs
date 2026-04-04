@@ -91,7 +91,7 @@ where
             let a_conv_infos: GLWELayout = GLWELayout {
                 n: a.n(),
                 base2k: ggsw.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             };
             let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
@@ -131,7 +131,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: ggsw.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);
@@ -175,7 +175,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: ggsw.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -233,7 +233,7 @@ where
         A: GLWEInfos,
         B: GGSWInfos,
     {
-        let in_size: usize = a_infos.k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
+        let in_size: usize = a_infos.max_k().div_ceil(b_infos.base2k()).div_ceil(b_infos.dsize().into()) as usize;
         let out_size: usize = res_infos.size();
         let ggsw_size: usize = b_infos.size();
         let cols: usize = (b_infos.rank() + 1).into();

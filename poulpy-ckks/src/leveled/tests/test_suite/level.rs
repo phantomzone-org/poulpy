@@ -51,7 +51,7 @@ where
 
     let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
     div_pow2(&ctx.module, &mut ct_res, &ct, bits, scratch.borrow());
-    assert_eq!(ct_res.inner.k(), ct.inner.k(), "div_pow2 must preserve k");
+    assert_eq!(ct_res.inner.max_k(), ct.inner.max_k(), "div_pow2 must preserve k");
     assert_eq!(ct_res.inner.size(), ct.inner.size(), "div_pow2 must preserve size");
     assert_eq!(ct_res.log_delta, ct.log_delta, "div_pow2 must preserve log_delta");
     let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
@@ -60,8 +60,11 @@ where
 
     let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     div_pow2_inplace(&ctx.module, &mut ct_ip, bits, scratch.borrow());
-    assert_eq!(ct_ip.inner.k(), k, "div_pow2_inplace must preserve k");
-    assert_eq!(ct_ip.log_delta, ctx.params.log_delta, "div_pow2_inplace must preserve log_delta");
+    assert_eq!(ct_ip.inner.max_k(), k, "div_pow2_inplace must preserve k");
+    assert_eq!(
+        ct_ip.log_delta, ctx.params.log_delta,
+        "div_pow2_inplace must preserve log_delta"
+    );
     let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
     assert_precision("div_pow2_inplace re", &re_ip, &want_re, 20.0);
     assert_precision("div_pow2_inplace im", &im_ip, &want_im, 20.0);

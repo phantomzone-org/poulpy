@@ -184,7 +184,7 @@ pub(crate) fn const_pt_scratch_bytes(ct: &CKKSCiphertext<impl Data>) -> usize {
 /// the torus value correctly.
 pub(crate) fn sign_extend_msb(ct: &mut CKKSCiphertext<impl DataMut>) {
     let base2k = ct.inner.base2k().0;
-    let top = ct.inner.k().0 % base2k;
+    let top = ct.inner.max_k().0 % base2k;
     if top != 0 {
         let shift = 64 - top as usize;
         let data = ct.inner.data_mut();

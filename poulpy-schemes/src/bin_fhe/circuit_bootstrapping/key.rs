@@ -1,21 +1,44 @@
 use poulpy_core::{
-    Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution, ScratchTakeCore, layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
         GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
-    },
-    trace_galois_elements,
+    }, trace_galois_elements
 };
 use std::collections::HashMap;
 
+use anyhow::Result;
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, Scratch},
     source::Source,
 };
 
 use crate::bin_fhe::blind_rotation::{
     BlindRotationAlgo, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyInfos, BlindRotationKeyLayout,
 };
+
+/// Encryption noise parameters for all three sub-keys of a circuit bootstrapping key bundle.
+///
+/// Created via [`CircuitBootstrappingEncryptionInfos::from_default_sigma`] for the
+/// standard Gaussian error distribution, or constructed manually for custom noise parameters.
+pub struct CircuitBootstrappingEncryptionInfos {
+    /// Noise parameters for the blind rotation key.
+    pub brk: NoiseInfos,
+    /// Noise parameters for the automorphism (Galois) key.
+    pub atk: NoiseInfos,
+    /// Noise parameters for the tensor-switching key.
+    pub tsk: NoiseInfos,
+}
+
+impl CircuitBootstrappingEncryptionInfos {
+    /// Constructs encryption infos using the default Gaussian sigma for all sub-keys.
+    pub fn from_default_sigma(layout: &CircuitBootstrappingKeyLayout) -> Result<Self> {
+        Ok(Self {
+            brk: NoiseInfos::new(layout.brk_layout.k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE)?,
+            atk: NoiseInfos::new(layout.atk_layout.k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE)?,
+            tsk: NoiseInfos::new(layout.tsk_layout.k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE)?,
+        })
+    }
+}
 
 /// Accessor trait for the dimensional parameters of a circuit bootstrapping
 /// key bundle.
@@ -94,8 +117,9 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> 
         res: &mut CircuitBootstrappingKey<D, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
@@ -160,15 +184,16 @@ impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
         module: &M,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         M: CircuitBootstrappingKeyEncryptSk<BRA, BE>,
     {
-        module.circuit_bootstrapping_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        module.circuit_bootstrapping_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -194,8 +219,9 @@ where
         res: &mut CircuitBootstrappingKey<D, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
@@ -214,16 +240,16 @@ where
         assert!(sk_glwe.dist() != &Distribution::NONE);
 
         for (p, atk) in res.atk.iter_mut() {
-            atk.encrypt_sk(self, *p, sk_glwe, source_xa, source_xe, scratch);
+            atk.encrypt_sk(self, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
         }
 
         let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
         sk_glwe_prepared.prepare(self, sk_glwe);
 
         res.brk
-            .encrypt_sk(self, &sk_glwe_prepared, sk_lwe, source_xa, source_xe, scratch);
+            .encrypt_sk(self, &sk_glwe_prepared, sk_lwe, &enc_infos.brk, source_xe, source_xa, scratch);
 
-        res.tsk.encrypt_sk(self, sk_glwe, source_xa, source_xe, scratch);
+        res.tsk.encrypt_sk(self, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
     }
 }
 
@@ -237,7 +263,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
         GLWEAutomorphismKeyLayout {
             n: atk.n(),
             base2k: atk.base2k(),
-            k: atk.k(),
+            k: atk.max_k(),
             dnum: atk.dnum(),
             dsize: atk.dsize(),
             rank: atk.rank(),
@@ -249,7 +275,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
             n_glwe: self.brk.n_glwe(),
             n_lwe: self.brk.n_lwe(),
             base2k: self.brk.base2k(),
-            k: self.brk.k(),
+            k: self.brk.max_k(),
             dnum: self.brk.dnum(),
             rank: self.brk.rank(),
         }
@@ -259,7 +285,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
         GGLWEToGGSWKeyLayout {
             n: self.tsk.n(),
             base2k: self.tsk.base2k(),
-            k: self.tsk.k(),
+            k: self.tsk.max_k(),
             dnum: self.tsk.dnum(),
             dsize: self.tsk.dsize(),
             rank: self.tsk.rank(),

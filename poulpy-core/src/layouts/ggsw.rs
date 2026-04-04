@@ -25,7 +25,7 @@ where
         GGSWLayout {
             n: self.n(),
             base2k: self.base2k(),
-            k: self.k(),
+            k: self.max_k(),
             rank: self.rank(),
             dnum: self.dnum(),
             dsize: self.dsize(),
@@ -55,12 +55,12 @@ impl LWEInfos for GGSWLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 impl GLWEInfos for GGSWLayout {
@@ -89,7 +89,6 @@ impl GGSWInfos for GGSWLayout {
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGSW<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
@@ -101,10 +100,6 @@ impl<D: Data> LWEInfos for GGSW<D> {
 
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn size(&self) -> usize {
@@ -139,7 +134,7 @@ impl<D: DataRef> fmt::Display for GGSW<D> {
         write!(
             f,
             "(GGSW: k: {} base2k: {} dsize: {}) {}",
-            self.k().0,
+            self.max_k().0,
             self.base2k().0,
             self.dsize().0,
             self.data
@@ -155,20 +150,25 @@ impl<D: DataMut> FillUniform for GGSW<D> {
 
 impl<D: DataRef> GGSW<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
+        let data = self.data.at(row, col);
+        let k = TorusPrecision(self.base2k.0 * data.size() as u32);
         GLWE {
-            k: self.k,
             base2k: self.base2k,
-            data: self.data.at(row, col),
+            k,
+            data,
         }
     }
 }
 
 impl<D: DataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
+        let base2k = self.base2k;
+        let data = self.data.at_mut(row, col);
+        let k = TorusPrecision(base2k.0 * data.size() as u32);
         GLWE {
-            k: self.k,
-            base2k: self.base2k,
-            data: self.data.at_mut(row, col),
+            base2k,
+            k,
+            data,
         }
     }
 }
@@ -181,7 +181,7 @@ impl GGSW<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -211,7 +211,6 @@ impl GGSW<Vec<u8>> {
                 (rank + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
-            k,
             base2k,
             dsize,
         }
@@ -224,7 +223,7 @@ impl GGSW<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -260,7 +259,6 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 impl<D: DataMut> ReaderFrom for GGSW<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
         self.data.read_from(reader)
@@ -269,7 +267,6 @@ impl<D: DataMut> ReaderFrom for GGSW<D> {
 
 impl<D: DataRef> WriterTo for GGSW<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.dsize.into())?;
         self.data.write_to(writer)
@@ -284,7 +281,6 @@ impl<D: DataMut> GGSWToMut for GGSW<D> {
     fn to_mut(&mut self) -> GGSW<&mut [u8]> {
         GGSW {
             dsize: self.dsize,
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
         }
@@ -299,7 +295,6 @@ impl<D: DataRef> GGSWToRef for GGSW<D> {
     fn to_ref(&self) -> GGSW<&[u8]> {
         GGSW {
             dsize: self.dsize,
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
         }

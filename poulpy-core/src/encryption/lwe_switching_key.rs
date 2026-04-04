@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
+    EncryptionInfos, ScratchTakeCore,
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef,
@@ -24,20 +24,22 @@ impl LWESwitchingKey<Vec<u8>> {
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
-    pub fn encrypt_sk<S1, S2, M, BE: Backend>(
+    pub fn encrypt_sk<S1, S2, M, E, BE: Backend>(
         &mut self,
         module: &M,
         sk_lwe_in: &S1,
         sk_lwe_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
         S2: LWESecretToRef,
+        E: EncryptionInfos,
         M: LWESwitchingKeyEncrypt<BE>,
     {
-        module.lwe_switching_key_encrypt_sk(self, sk_lwe_in, sk_lwe_out, source_xa, source_xe, scratch);
+        module.lwe_switching_key_encrypt_sk(self, sk_lwe_in, sk_lwe_out, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -46,16 +48,18 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn lwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn lwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_lwe_in: &S1,
         sk_lwe_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef,
         S2: LWESecretToRef;
 }
@@ -88,16 +92,18 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn lwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn lwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_lwe_in: &S1,
         sk_lwe_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef,
         S2: LWESecretToRef,
     {
@@ -128,6 +134,6 @@ where
         sk_glwe_in.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
         self.vec_znx_automorphism_inplace(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, scratch_2);
 
-        self.glwe_switching_key_encrypt_sk(res, &sk_glwe_in, &sk_glwe_out, source_xa, source_xe, scratch_2);
+        self.glwe_switching_key_encrypt_sk(res, &sk_glwe_in, &sk_glwe_out, enc_infos, source_xe, source_xa, scratch_2);
     }
 }

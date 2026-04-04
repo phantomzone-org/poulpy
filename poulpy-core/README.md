@@ -80,8 +80,8 @@ fn main() {
         &module,
         &pt_want,
         &sk_prepared,
-        &mut source_xa,
         &mut source_xe,
+            &mut source_xa,
         scratch.borrow(),
     );
 

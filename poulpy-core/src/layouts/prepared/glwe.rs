@@ -14,16 +14,11 @@ use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToRef, GetDegree, LWEI
 pub struct GLWEPrepared<D: Data, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
     pub(crate) base2k: Base2K,
-    pub(crate) k: TorusPrecision,
 }
 
 impl<D: Data, B: Backend> LWEInfos for GLWEPrepared<D, B> {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn size(&self) -> usize {
@@ -51,7 +46,6 @@ where
         GLWEPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
         }
     }
 
@@ -59,7 +53,7 @@ where
     where
         A: GLWEInfos,
     {
-        self.alloc_glwe_prepared(infos.base2k(), infos.k(), infos.rank())
+        self.alloc_glwe_prepared(infos.base2k(), infos.max_k(), infos.rank())
     }
 
     fn bytes_of_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
@@ -70,7 +64,7 @@ where
     where
         A: GLWEInfos,
     {
-        self.bytes_of_glwe_prepared(infos.base2k(), infos.k(), infos.rank())
+        self.bytes_of_glwe_prepared(infos.base2k(), infos.max_k(), infos.rank())
     }
 
     fn prepare_glwe<R, O>(&self, res: &mut R, other: &O)
@@ -85,7 +79,7 @@ where
             assert_eq!(res.n(), self.ring_degree());
             assert_eq!(other.n(), self.ring_degree());
             assert_eq!(res.size(), other.size());
-            assert_eq!(res.k(), other.k());
+            assert_eq!(res.max_k(), other.max_k());
             assert_eq!(res.base2k(), other.base2k());
 
             for i in 0..(res.rank() + 1).into() {
@@ -146,7 +140,6 @@ pub trait GLWEPreparedToMut<B: Backend> {
 impl<D: DataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPrepared<D, B> {
     fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B> {
         GLWEPrepared {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
         }
@@ -161,7 +154,6 @@ impl<D: DataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPrepared<D, B> {
     fn to_ref(&self) -> GLWEPrepared<&[u8], B> {
         GLWEPrepared {
             data: self.data.to_ref(),
-            k: self.k,
             base2k: self.base2k,
         }
     }

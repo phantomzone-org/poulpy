@@ -47,7 +47,7 @@ where
     {
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let max_k: TorusPrecision = a_infos.k().max(res_infos.k());
+        let max_k: TorusPrecision = a_infos.max_k().max(res_infos.max_k());
 
         let glwe_a_infos: GLWELayout = GLWELayout {
             n: self.n().into(),
@@ -93,7 +93,7 @@ where
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
-            k: a.k(),
+            k: a.max_k(),
             rank: Rank(1),
         });
         glwe_in.data.zero();
@@ -109,7 +109,7 @@ where
         let (mut glwe_out, scratch_2) = scratch_1.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: res.base2k(),
-            k: res.k(),
+            k: res.max_k(),
             rank: Rank(1),
         });
 

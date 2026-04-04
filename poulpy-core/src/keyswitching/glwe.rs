@@ -67,9 +67,10 @@ where
             let a_conv_infos: GLWELayout = GLWELayout {
                 n: a_infos.n(),
                 base2k: key_infos.base2k(),
-                k: a_infos.k(),
+                k: a_infos.max_k(),
                 rank: a_infos.rank(),
             };
+            println!("a_conv_infos =>>>>>>: {a_conv_infos:?} {}", a_conv_infos.size());
             let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
             let lvl_2_1: usize =
                 self.glwe_normalize_tmp_bytes()
@@ -125,7 +126,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -180,7 +181,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);
@@ -245,7 +246,6 @@ where
         let a_size: usize = a_infos.size();
         let lvl_0: usize = self.bytes_of_vec_znx_dft(cols - 1, a_size);
         let lvl_1: usize = self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos);
-
         lvl_0 + lvl_1
     }
 

@@ -5,10 +5,10 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
+use crate::{DeclaredK, layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
-};
+}};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWEToGLWEKeyLayout {
@@ -19,17 +19,23 @@ pub struct LWEToGLWEKeyLayout {
     pub dnum: Dnum,
 }
 
+impl DeclaredK for LWEToGLWEKeyLayout {
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
 impl LWEInfos for LWEToGLWEKeyLayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -63,10 +69,6 @@ pub struct LWEToGLWEKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 impl<D: Data> LWEInfos for LWEToGLWEKey<D> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
     }
 
     fn n(&self) -> Degree {
@@ -139,7 +141,7 @@ impl LWEToGLWEKey<Vec<u8>> {
         assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
 
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {
@@ -152,7 +154,7 @@ impl LWEToGLWEKey<Vec<u8>> {
     {
         assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {

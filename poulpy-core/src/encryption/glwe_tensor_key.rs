@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWELayout, GGLWEToMut, GLWEInfos, GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef,
         GLWETensorKey,
@@ -24,19 +24,21 @@ impl GLWETensorKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
-    pub fn encrypt_sk<M, S, BE: Backend>(
+    pub fn encrypt_sk<M, S, E, BE: Backend>(
         &mut self,
         module: &M,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         M: GLWETensorKeyEncryptSk<BE>,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
+        module.glwe_tensor_key_encrypt_sk(self, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -45,15 +47,17 @@ pub trait GLWETensorKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
@@ -74,7 +78,7 @@ where
         let tensor_infos: GGLWELayout = GGLWELayout {
             n: infos.n(),
             base2k: infos.base2k(),
-            k: infos.k(),
+            k: infos.max_k(),
             rank_in: GLWESecretTensor::pairs(infos.rank().into()).into(),
             rank_out: infos.rank_out(),
             dnum: infos.dnum(),
@@ -90,15 +94,17 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         assert_eq!(res.rank_out(), sk.rank());
@@ -115,6 +121,6 @@ where
         sk_prepared.prepare(self, sk);
         sk_tensor.prepare(self, sk, scratch_2);
 
-        self.gglwe_encrypt_sk(res, &sk_tensor.data, &sk_prepared, source_xa, source_xe, scratch_2);
+        self.gglwe_encrypt_sk(res, &sk_tensor.data, &sk_prepared, enc_infos, source_xe, source_xa, scratch_2);
     }
 }

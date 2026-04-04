@@ -45,7 +45,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             LWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -61,7 +60,6 @@ where
         let (data, scratch) = self.take_vec_znx(1, 1, infos.size());
         (
             LWEPlaintext {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -77,8 +75,8 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
             GLWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
+                k: infos.max_k(),
                 data,
             },
             scratch,
@@ -110,7 +108,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), pairs, infos.size());
         (
             GLWETensor {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 rank: infos.rank(),
                 data,
@@ -127,7 +124,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             GLWEPlaintext {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -149,7 +145,6 @@ where
         );
         (
             GGLWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -174,7 +169,6 @@ where
         );
         (
             GGLWEPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -197,7 +191,6 @@ where
         );
         (
             GGSW {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -222,7 +215,6 @@ where
         );
         (
             GGSWPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -308,7 +300,6 @@ where
         let (data, scratch) = self.take_vec_znx_dft(module, (infos.rank() + 1).into(), infos.size());
         (
             GLWEPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },

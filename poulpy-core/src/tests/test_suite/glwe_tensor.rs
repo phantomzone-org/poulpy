@@ -12,7 +12,8 @@ use rand::Rng;
 use std::f64::consts::SQRT_2;
 
 use crate::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring,
+    ScratchTakeCore,
     layouts::{
         Dsize, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
         GLWESecretTensorPrepared, GLWETensor, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPrepared,
@@ -42,16 +43,17 @@ where
     let out_base2k: usize = base2k - 2;
     let tsk_base2k: usize = base2k;
     let k: usize = 8 * base2k + 1;
+    let k_tsk = k + tsk_base2k;
 
     for rank in 1_usize..=3 {
         let n: usize = module.n();
 
-        let glwe_in_infos: GLWELayout = GLWELayout {
+        let glwe_in_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -60,14 +62,14 @@ where
             rank: rank.into(),
         };
 
-        let tsk_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
+        let tsk_infos = EncryptionLayout::new_from_default_sigma(GLWETensorKeyLayout {
             n: n.into(),
             base2k: tsk_base2k.into(),
-            k: (k + tsk_base2k).into(),
+            k: k_tsk.into(),
             rank: rank.into(),
             dnum: k.div_ceil(tsk_base2k).into(),
             dsize: Dsize(1),
-        };
+        }).unwrap();
 
         let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
         let mut b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
@@ -103,7 +105,7 @@ where
         sk_tensor_prep.prepare(module, &sk_tensor);
 
         let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+        tsk.encrypt_sk(module, &sk, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         let mut tsk_prep: GLWETensorKeyPrepared<Vec<u8>, BE> = GLWETensorKeyPrepared::alloc_from_infos(module, &tsk_infos);
         tsk_prep.prepare(module, &tsk, scratch.borrow());
@@ -131,8 +133,8 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_in, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
-        b.encrypt_sk(module, &pt_in, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
+        a.encrypt_sk(module, &pt_in, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        b.encrypt_sk(module, &pt_in, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         for res_offset in 0..scale {
             module.glwe_tensor_apply(&mut res_tensor, scale + res_offset, &a, &b, scratch.borrow());
@@ -193,12 +195,12 @@ where
     for rank in 1_usize..=3 {
         let n: usize = module.n();
 
-        let glwe_in_infos: GLWELayout = GLWELayout {
+        let glwe_in_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -250,7 +252,7 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_a, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
+        a.encrypt_sk(module, &pt_a, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         for res_offset in 0..scale {
             module.glwe_mul_plain(&mut res, scale + res_offset, &a, &pt_b, scratch.borrow());
@@ -301,12 +303,12 @@ where
     for rank in 1_usize..=3 {
         let n: usize = module.n();
 
-        let glwe_in_infos: GLWELayout = GLWELayout {
+        let glwe_in_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -365,7 +367,7 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_a, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
+        a.encrypt_sk(module, &pt_a, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         for res_offset in 0..scale {
             module.glwe_mul_const(&mut res, scale + res_offset, &a, &b_const, scratch.borrow());

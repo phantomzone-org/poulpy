@@ -64,7 +64,7 @@ pub fn tensor_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     module.glwe_tensor_apply_tmp_bytes(&res.inner, off, &a.inner, &b.inner)
 }
 
@@ -83,7 +83,7 @@ pub fn tensor<BE: Backend>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     assert_eq!(a.inner.base2k(), b.inner.base2k(), "tensor: base2k mismatch");
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     res.log_delta = a.log_delta + b.log_delta;
     module.glwe_tensor_apply(&mut res.inner, off, &a.inner, &b.inner, scratch);
 }
@@ -132,7 +132,7 @@ pub fn mul_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     let mut layout = a.inner.glwe_layout();
     layout.k = TorusPrecision(a.inner.base2k().0 * a.inner.size() as u32);
     let tensor_bytes = GLWETensor::bytes_of(a.inner.n(), a.inner.base2k(), layout.k, Rank(1));
@@ -159,7 +159,7 @@ pub fn mul<BE: Backend>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let rescale_bits = a.log_delta.min(b.log_delta);
-    let k_eff = a.inner.k().0.min(b.inner.k().0);
+    let k_eff = a.inner.max_k().0.min(b.inner.max_k().0);
     let size = a.inner.size().min(b.inner.size());
     let tensor_layout = GLWELayout {
         n: a.inner.n(),
@@ -184,7 +184,7 @@ where
 {
     let mut layout = ct.inner.glwe_layout();
     layout.k = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let off = ct.inner.k().as_usize();
+    let off = ct.inner.max_k().as_usize();
     let layout_bytes = poulpy_core::layouts::GLWEPlaintext::bytes_of(ct.inner.n(), ct.inner.base2k(), layout.k);
     let op_bytes = module.glwe_mul_plain_tmp_bytes(&layout, off, &ct.inner, &layout);
     layout_bytes + module.vec_znx_normalize_tmp_bytes().max(op_bytes)
@@ -206,11 +206,12 @@ pub fn mul_pt<BE: Backend>(
 {
     let size = ct.inner.size();
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let off = ct.inner.k().as_usize();
-    let (full_pt, scratch_rest) = offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, ct.inner.k(), pt, scratch);
+    let off = ct.inner.max_k().as_usize();
+    let (full_pt, scratch_rest) =
+        offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, ct.inner.max_k(), pt, scratch);
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &full_pt, scratch_rest);
     res.log_delta = ct.log_delta + pt.log_delta;
-    set_active_k_and_size(res, ct.inner.k().0, size);
+    set_active_k_and_size(res, ct.inner.max_k().0, size);
     let rescale_bits = ct.log_delta.min(pt.log_delta);
     rescale(module, res, rescale_bits, scratch_rest);
 }
@@ -226,13 +227,11 @@ pub fn mul_pt_inplace<BE: Backend>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let actual_k = ct.inner.k();
     let rescale_bits = ct.log_delta.min(pt.log_delta);
-    let off = ct.inner.k().as_usize();
-    let (full_pt, scratch_rest) = offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, ct.inner.k(), pt, scratch);
-    ct.inner.set_k(mk);
+    let off = ct.inner.max_k().as_usize();
+    let (full_pt, scratch_rest) =
+        offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, ct.inner.max_k(), pt, scratch);
     module.glwe_mul_plain_inplace(&mut ct.inner, off, &full_pt, scratch_rest);
-    ct.inner.set_k(actual_k);
     ct.log_delta += pt.log_delta;
     sign_extend_msb(ct);
     rescale(module, ct, rescale_bits, scratch_rest);
@@ -250,10 +249,10 @@ pub fn mul_prepared_pt<BE: Backend>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let size = ct.inner.size();
-    let off = ct.inner.k().as_usize();
+    let off = ct.inner.max_k().as_usize();
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &pt.inner, scratch);
     res.log_delta = ct.log_delta + pt.log_delta;
-    set_active_k_and_size(res, ct.inner.k().0, size);
+    set_active_k_and_size(res, ct.inner.max_k().0, size);
     let rescale_bits = ct.log_delta.min(pt.log_delta);
     rescale(module, res, rescale_bits, scratch);
 }
@@ -268,14 +267,12 @@ pub fn mul_prepared_pt_inplace<BE: Backend>(
     Module<BE>: GLWEMulPlain<BE> + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let actual_k = ct.inner.k();
     let rescale_bits = ct.log_delta.min(pt.log_delta);
-    let off = ct.inner.k().as_usize();
-    ct.inner.set_k(mk);
+    let off = ct.inner.max_k().as_usize();
+    let actual_k = ct.inner.max_k();
     module.glwe_mul_plain_inplace(&mut ct.inner, off, &pt.inner, scratch);
-    ct.inner.set_k(actual_k);
     ct.log_delta += pt.log_delta;
+    ct.inner.set_k(actual_k);
     sign_extend_msb(ct);
     rescale(module, ct, rescale_bits, scratch);
 }

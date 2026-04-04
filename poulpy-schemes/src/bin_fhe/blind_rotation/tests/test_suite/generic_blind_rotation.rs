@@ -10,11 +10,10 @@ use crate::bin_fhe::blind_rotation::{
 };
 
 use poulpy_core::{
-    GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
-    layouts::{
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore, layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext,
         LWESecret, LWEToRef, prepared::GLWESecretPrepared,
-    },
+    }
 };
 
 pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
@@ -51,27 +50,27 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
     let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
-    let brk_infos: BlindRotationKeyLayout = BlindRotationKeyLayout {
+    let brk_infos = EncryptionLayout::new_from_default_sigma(BlindRotationKeyLayout {
         n_glwe: n_glwe.into(),
         n_lwe: n_lwe.into(),
         base2k: base2k.into(),
         k: k_brk.into(),
         dnum: rows_brk.into(),
         rank: rank.into(),
-    };
+    }).unwrap();
 
-    let glwe_infos: GLWELayout = GLWELayout {
+    let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_res.into(),
         rank: rank.into(),
-    };
+    }).unwrap();
 
-    let lwe_infos: LWELayout = LWELayout {
+    let lwe_infos = EncryptionLayout::new_from_default_sigma(LWELayout {
         n: n_lwe.into(),
         k: k_lwe.into(),
         base2k: base2k.into(),
-    };
+    }).unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::<BE>::alloc(BlindRotationKey::encrypt_sk_tmp_bytes(module, &brk_infos));
 
@@ -97,8 +96,9 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
         module,
         &sk_glwe_dft,
         &sk_lwe,
-        &mut source_xa,
+        &brk_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -110,7 +110,7 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 

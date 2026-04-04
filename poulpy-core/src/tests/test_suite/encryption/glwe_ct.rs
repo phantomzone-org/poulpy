@@ -6,11 +6,12 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWECompressedEncryptSk, GLWEEncryptPk, GLWEEncryptSk, GLWENoise, GLWEPublicKeyGenerate, GLWESub, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GLWECompressedEncryptSk, GLWEEncryptPk, GLWEEncryptSk, GLWENoise, GLWEPublicKeyGenerate, GLWESub,
+    ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPublicKey, GLWEPublicKeyPreparedFactory, GLWESecret,
-        GLWESecretPreparedFactory, LWEInfos,
+        GLWESecretPreparedFactory,
         compressed::GLWECompressed,
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
     },
@@ -29,12 +30,12 @@ where
     for rank in 1_usize..3 {
         let n: usize = module.n();
 
-        let glwe_infos: GLWELayout = GLWELayout {
+        let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout {
             n: n.into(),
@@ -64,15 +65,19 @@ where
             module,
             &pt_want,
             &sk_prepared,
-            &mut source_xa,
+            &glwe_infos,
             &mut source_xe,
+            &mut source_xa,
             scratch.borrow(),
         );
 
         let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
-        let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
+        let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
 
-        assert!(noise_have <= noise_want + 0.2);
+        assert!(
+            noise_have <= noise_want,
+            "noise_have: {noise_have} > noise_want: {noise_want}"
+        );
     }
 }
 
@@ -89,12 +94,12 @@ where
     for rank in 1_usize..3 {
         let n: usize = module.n();
 
-        let glwe_infos: GLWELayout = GLWELayout {
+        let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout {
             n: n.into(),
@@ -124,14 +129,25 @@ where
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        ct_compressed.encrypt_sk(module, &pt_want, &sk_prepared, seed_xa, &mut source_xe, scratch.borrow());
+        ct_compressed.encrypt_sk(
+            module,
+            &pt_want,
+            &sk_prepared,
+            seed_xa,
+            &glwe_infos,
+            &mut source_xe,
+            scratch.borrow(),
+        );
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
         ct.decompress(module, &ct_compressed);
 
         let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
-        let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
-        assert!(noise_have <= noise_want + 0.2);
+        let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
+        assert!(
+            noise_have <= noise_want,
+            "noise_have: {noise_have} > noise_want: {noise_want}"
+        );
     }
 }
 
@@ -147,12 +163,12 @@ where
     for rank in 1_usize..3 {
         let n: usize = module.n();
 
-        let glwe_infos: GLWELayout = GLWELayout {
+        let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
 
@@ -174,11 +190,14 @@ where
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-        ct.encrypt_zero_sk(module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+        ct.encrypt_zero_sk(module, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         let noise_have: f64 = ct.noise(module, &pt, &sk_prepared, scratch.borrow()).std().log2();
-        let noise_want: f64 = SIGMA.log2() - (ct.k().as_usize() as f64) + 0.5;
-        assert!(noise_have <= noise_want + 0.2);
+        let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
+        assert!(
+            noise_have <= noise_want,
+            "noise_have: {noise_have} > noise_want: {noise_want}"
+        );
     }
 }
 
@@ -200,12 +219,12 @@ where
     for rank in 1_usize..3 {
         let n: usize = module.n();
 
-        let glwe_infos: GLWELayout = GLWELayout {
+        let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
         let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
@@ -228,7 +247,7 @@ where
         sk_prepared.prepare(module, &sk);
 
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(&glwe_infos);
-        pk.generate(module, &sk_prepared, &mut source_xa, &mut source_xe);
+        pk.generate(module, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
@@ -239,13 +258,18 @@ where
             module,
             &pt_want,
             &pk_prepared,
+            &glwe_infos,
             &mut source_xu,
             &mut source_xe,
             scratch.borrow(),
         );
 
         let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
-        let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * SIGMA * SIGMA).sqrt()).log2() - (k_ct as f64);
-        assert!(noise_have <= noise_want + 0.2);
+        let noise_want: f64 =
+            ((((rank as f64) + 1.0) * n as f64 * 0.5 * DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE).sqrt()).log2() - (k_ct as f64);
+        assert!(
+            noise_have <= noise_want,
+            "noise_have: {noise_have} > noise_want: {noise_want}"
+        );
     }
 }

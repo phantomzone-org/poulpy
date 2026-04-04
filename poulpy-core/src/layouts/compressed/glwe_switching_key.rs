@@ -57,10 +57,6 @@ impl<D: Data> LWEInfos for GLWESwitchingKeyCompressed<D> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -120,7 +116,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),

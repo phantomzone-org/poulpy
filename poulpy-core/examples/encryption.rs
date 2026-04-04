@@ -1,9 +1,8 @@
 use poulpy_core::{
-    GLWESub, SIGMA,
-    layouts::{
-        Base2K, Degree, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank, TorusPrecision,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GLWESub, layouts::{
+        Base2K, Degree, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, Rank, TorusPrecision,
         prepared::GLWESecretPrepared,
-    },
+    }
 };
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
@@ -28,7 +27,7 @@ fn main() {
     let base2k: Base2K = Base2K(14);
 
     // Ciphertext Torus precision (equivalent to ciphertext modulus)
-    let k_ct: TorusPrecision = TorusPrecision(27);
+    let k_xe: TorusPrecision = TorusPrecision(27);
 
     // Plaintext Torus precision (equivament to plaintext modulus)
     let k_pt: TorusPrecision = TorusPrecision(base2k.into());
@@ -39,12 +38,12 @@ fn main() {
     // Instantiate Module (DFT Tables)
     let module: Module<BackendImpl> = Module::<BackendImpl>::new(n.0 as u64);
 
-    let glwe_ct_infos: GLWELayout = GLWELayout {
+    let glwe_ct_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n,
         base2k,
-        k: k_ct,
+        k: k_xe,
         rank,
-    };
+    }).unwrap();
 
     let glwe_pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout { n, base2k, k: k_pt };
 
@@ -79,8 +78,9 @@ fn main() {
         &module,
         &pt_want,
         &sk_prepared,
-        &mut source_xa,
+        &glwe_ct_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -91,8 +91,8 @@ fn main() {
     module.glwe_sub_inplace(&mut pt_want, &pt_have);
 
     // Ideal vs. actual noise
-    let noise_have: f64 = pt_want.data.stats(base2k.into(), 0).std() * (ct.k().as_u32() as f64).exp2();
-    let noise_want: f64 = SIGMA;
+    let noise_have: f64 = pt_want.data.stats(base2k.into(), 0).std() * (k_xe.as_u32() as f64).exp2();
+    let noise_want: f64 = DEFAULT_SIGMA_XE;
 
     // Check
     assert!(noise_have <= noise_want + 0.2);
