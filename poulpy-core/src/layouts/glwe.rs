@@ -102,6 +102,14 @@ impl<D: DataRef> GLWE<D> {
     }
 }
 
+impl<D: Data> GLWE<D> {
+    /// Returns the allocated limb capacity, which can exceed the active `size()`
+    /// after a precision-consuming rescale.
+    pub fn max_size(&self) -> usize {
+        self.data.max_size
+    }
+}
+
 impl<D: DataMut> GLWE<D> {
     /// Returns a mutable reference to the underlying [`VecZnx`].
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {

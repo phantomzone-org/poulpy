@@ -3,22 +3,9 @@
 use crate::layouts::ciphertext::CKKSCiphertext;
 use poulpy_core::{
     GLWECopy, GLWEShift, ScratchTakeCore,
-    layouts::{LWEInfos, SetGLWEInfos, TorusPrecision},
+    layouts::{LWEInfos, TorusPrecision},
 };
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxInfos, ZnxViewMut};
-
-fn assert_target_k(label: &str, current_k: u32, target_k: TorusPrecision) {
-    assert!(
-        target_k.0 > 0,
-        "{label}: target k must be strictly positive, got {}",
-        target_k.0
-    );
-    assert!(
-        target_k.0 <= current_k,
-        "{label}: target k ({}) exceeds current k ({current_k})",
-        target_k.0
-    );
-}
 
 /// Returns the scratch bytes needed for [`rescale`] (currently zero).
 pub fn rescale_tmp_bytes<BE: Backend>(module: &Module<BE>) -> usize {
@@ -34,19 +21,21 @@ where
     module.glwe_rsh_tmp_byte()
 }
 
-/// Rescales by shrinking the active precision window by `bits`.
+/// Rescales by consuming `bits` of active torus precision and reducing the
+/// torus scale by `bits`.
 ///
-/// After rescale: `new_k = k - bits`, `new_torus_scale_bits = torus_scale_bits - bits`,
-/// `new_offset_bits = offset_bits - bits`, and `new_size = ceil(new_k / base2k)`.
-/// The MSB limb is sign-extended
-/// if `new_k` is not limb-aligned.
+/// In the bivariate representation this lowers `k`, `offset_bits`, and
+/// `torus_scale_bits` together. The decoded message stays approximately
+/// unchanged, while the consumed precision becomes visible in the active
+/// ciphertext shape.
 ///
 /// # Panics
 ///
-/// Panics if `bits > torus_scale_bits` or if the resulting `k` would be zero.
-pub fn rescale<BE: Backend>(module: &Module<BE>, ct: &mut CKKSCiphertext<impl DataMut>, bits: u32, scratch: &mut Scratch<BE>) {
-    let _ = module;
-    let _ = scratch;
+/// Panics if `bits > torus_scale_bits`.
+pub fn rescale<BE: Backend>(module: &Module<BE>, ct: &mut CKKSCiphertext<impl DataMut>, bits: u32, scratch: &mut Scratch<BE>)
+where
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
     ct.assert_valid("rescale input");
     assert!(
         bits <= ct.torus_scale_bits(),
@@ -54,18 +43,19 @@ pub fn rescale<BE: Backend>(module: &Module<BE>, ct: &mut CKKSCiphertext<impl Da
         ct.torus_scale_bits()
     );
     assert!(
-        ct.inner.k().0 > bits,
-        "rescale: k ({}) exhausted (need > {bits})",
-        ct.inner.k().0
+        bits <= ct.prefix_bits(),
+        "rescale: bits ({bits}) > prefix_bits ({})",
+        ct.prefix_bits()
     );
-    let new_k = TorusPrecision(ct.inner.k().0 - bits);
-    assert_target_k("rescale", ct.inner.k().0, new_k);
-    let base2k = ct.inner.base2k().0;
-    ct.inner.set_k(new_k);
-    ct.inner.data_mut().size = new_k.0.div_ceil(base2k) as usize;
-    super::utils::sign_extend_msb(ct);
-    ct.torus_scale_bits -= bits;
+
+    let _ = module;
+    let _ = scratch;
+    let target_k = TorusPrecision(ct.prefix_bits() - bits);
+    ct.set_active_k(target_k);
+    ct.zero_inactive_tail();
     ct.offset_bits -= bits;
+    ct.torus_scale_bits -= bits;
+    super::utils::sign_extend_msb(ct);
     ct.assert_valid("rescale result");
 }
 
@@ -199,8 +189,8 @@ pub fn drop_torus_precision(ct: &mut CKKSCiphertext<impl DataMut>, target_k: Tor
         let src_end = src_start + (data.size - dropped_limbs) * limb_stride;
         data.raw_mut().copy_within(src_start..src_end, 0);
     }
-    ct.inner.set_k(target_k);
-    ct.inner.data_mut().size = target_k.0.div_ceil(base2k) as usize;
+    ct.set_active_k(target_k);
+    ct.zero_inactive_tail();
     ct.offset_bits = ct.offset_bits().min(target_k.0);
     super::utils::sign_extend_msb(ct);
     ct.assert_valid("drop_torus_precision result");

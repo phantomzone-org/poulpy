@@ -6,9 +6,12 @@ use crate::{
     layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
     leveled::{
         encryption::{decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
-        operations::mul::{
-            mul, mul_aligned, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes,
-            mul_tmp_bytes, square, square_tmp_bytes,
+        operations::{
+            level::drop_torus_precision,
+            mul::{
+                mul, mul_aligned, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes,
+                mul_tmp_bytes, square, square_tmp_bytes,
+            },
         },
     },
 };
@@ -154,9 +157,122 @@ where
     assert_precision("square im", &im_out, &want_im, 20.0);
 }
 
+/// Verifies repeated `square` on an operand whose `size` has shrunk below its
+/// allocation via prior rescales.
+pub fn test_square_size_reduced_input<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + ModuleNew<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWETensoring<BE>
+        + GLWEAlign<BE>
+        + GLWEShift<BE>
+        + GLWETensorKeyEncryptSk<BE>
+        + GLWETensorKeyPreparedFactory<BE>,
+    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let m = ctx.module.n() / 2;
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut scratch = ScratchOwned::<BE>::alloc(
+        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
+            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
+            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
+    );
+
+    let re_in: Vec<f64> = (0..m).map(|i| 0.4 * (1.0 - 2.0 * (i as f64) / (m as f64))).collect();
+    let im_in: Vec<f64> = (0..m).map(|i| 0.2 * (2.0 * (i as f64) / (m as f64) - 1.0)).collect();
+
+    let x = ctx.encrypt(&re_in, &im_in, &mut scratch);
+
+    let mut cur = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    square(&ctx.module, &mut cur, &x, ctx.tsk(), scratch.borrow());
+    for level in 1..4 {
+        let mut next = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+        square(&ctx.module, &mut next, &cur, ctx.tsk(), scratch.borrow());
+        assert_valid_ciphertext(&format!("square level {level}"), &next);
+        cur = next;
+    }
+
+    let (re_out, im_out) = ctx.decrypt_decode(&cur, &mut scratch);
+    let mut want_re = re_in.clone();
+    let mut want_im = im_in.clone();
+    for _ in 0..4 {
+        for j in 0..m {
+            let (r, i) = (want_re[j], want_im[j]);
+            want_re[j] = r * r - i * i;
+            want_im[j] = 2.0 * r * i;
+        }
+    }
+    assert_precision("square size-reduced re", &re_out, &want_re, 25.0);
+    assert_precision("square size-reduced im", &im_out, &want_im, 25.0);
+}
+
+/// Verifies `mul(x^4, x^4)` when both operands have `size < max_size`.
+pub fn test_mul_size_reduced_inputs<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + ModuleNew<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWETensoring<BE>
+        + GLWEAlign<BE>
+        + GLWEShift<BE>
+        + GLWETensorKeyEncryptSk<BE>
+        + GLWETensorKeyPreparedFactory<BE>,
+    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let m = ctx.module.n() / 2;
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut scratch = ScratchOwned::<BE>::alloc(
+        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
+            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
+            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, ctx.tsk())),
+    );
+
+    let re_in: Vec<f64> = (0..m).map(|i| 0.4 * (1.0 - 2.0 * (i as f64) / (m as f64))).collect();
+    let im_in: Vec<f64> = (0..m).map(|i| 0.2 * (2.0 * (i as f64) / (m as f64) - 1.0)).collect();
+
+    let x = ctx.encrypt(&re_in, &im_in, &mut scratch);
+    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    mul(&ctx.module, &mut x2, &x, &x, ctx.tsk(), scratch.borrow());
+    let mut x4 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    mul(&ctx.module, &mut x4, &x2, &x2, ctx.tsk(), scratch.borrow());
+    let mut x8 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    mul(&ctx.module, &mut x8, &x4, &x4, ctx.tsk(), scratch.borrow());
+    assert_valid_ciphertext("x8 = mul(x4, x4)", &x8);
+
+    let (re_out, im_out) = ctx.decrypt_decode(&x8, &mut scratch);
+    let mut want_re = re_in.clone();
+    let mut want_im = im_in.clone();
+    for _ in 0..3 {
+        for j in 0..m {
+            let (r, i) = (want_re[j], want_im[j]);
+            want_re[j] = r * r - i * i;
+            want_im[j] = 2.0 * r * i;
+        }
+    }
+    assert_precision("mul size-reduced re", &re_out, &want_re, 25.0);
+    assert_precision("mul size-reduced im", &im_out, &want_im, 25.0);
+}
+
 /// Verifies ct × ct multiplication when `k_a != k_b`.
 ///
-/// The result active precision should be `min(k_a, k_b) - rescale_bits`.
+/// The result active precision window should stay at `min(k_a, k_b)`.
 pub fn test_mul_mismatched_k<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -202,7 +318,7 @@ where
     assert_eq!(
         ct_res.inner.k(),
         expected_k,
-        "mul should keep the smaller active precision after rescale"
+        "mul should keep the smaller active precision window"
     );
 
     let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
@@ -215,9 +331,7 @@ where
 /// Verifies ct × ct multiplication when the operands use different
 /// `torus_scale_bits`.
 ///
-/// The result scale should be `max(torus_scale_bits_a, torus_scale_bits_b)`,
-/// and rescale should consume `min(torus_scale_bits_a, torus_scale_bits_b)`
-/// bits from `k`.
+/// The result scale should be `max(torus_scale_bits_a, torus_scale_bits_b)`.
 pub fn test_mul_mismatched_delta<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -279,7 +393,7 @@ where
     assert_eq!(
         ct_res.inner.k(),
         TorusPrecision(k.0 - log_delta_lo),
-        "mul should consume the smaller scale from active k"
+        "mul should consume visible active precision during rescale"
     );
 
     let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
@@ -499,4 +613,59 @@ where
         assert_precision(&format!("seq_const level {level} re"), &re_out, &want_re2, 20.0);
         assert_precision(&format!("seq_const level {level} im"), &im_out, &want_im2, 20.0);
     }
+}
+
+/// Regression guard for the `mul`/`square` cost model.
+///
+/// After `drop_torus_precision` halves `k`, subsequent `mul_tmp_bytes` and
+/// `square_tmp_bytes` queries must return strictly smaller scratch
+/// requirements than the full-level ciphertext. This enforces the leveled
+/// CKKS cost invariant that shrunk ciphertexts compute cheaper — not just
+/// semantically, but operationally.
+pub fn test_mul_tmp_bytes_scales_with_size<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + ModuleNew<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWETensoring<BE>
+        + GLWEAlign<BE>
+        + GLWEShift<BE>
+        + GLWETensorKeyEncryptSk<BE>
+        + GLWETensorKeyPreparedFactory<BE>,
+    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let base2k = Base2K(ctx.params.base2k);
+    let k_full = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_full = CKKSCiphertext::alloc(degree, base2k, k_full, ctx.params.log_delta);
+    let mut ct_shrunk = CKKSCiphertext::alloc(degree, base2k, k_full, ctx.params.log_delta);
+
+    // Drop to roughly half the full precision, aligned to base2k.
+    let half_limbs = (ct_full.inner.size() / 2).max(1);
+    let k_half = TorusPrecision(base2k.0 * half_limbs as u32);
+    assert!(k_half.0 < k_full.0, "need a real precision drop to test cost scaling");
+    assert!(
+        k_half.0 >= ct_shrunk.torus_scale_bits(),
+        "halved k must still cover torus_scale_bits"
+    );
+    drop_torus_precision(&mut ct_shrunk, k_half);
+
+    let full_bytes = mul_tmp_bytes(&ctx.module, &ct_full, &ct_full, ctx.tsk());
+    let shrunk_bytes = mul_tmp_bytes(&ctx.module, &ct_shrunk, &ct_shrunk, ctx.tsk());
+    assert!(
+        shrunk_bytes < full_bytes,
+        "mul_tmp_bytes must scale down after drop_torus_precision (full={full_bytes}, shrunk={shrunk_bytes})"
+    );
+
+    let full_sq_bytes = square_tmp_bytes(&ctx.module, &ct_full, ctx.tsk());
+    let shrunk_sq_bytes = square_tmp_bytes(&ctx.module, &ct_shrunk, ctx.tsk());
+    assert!(
+        shrunk_sq_bytes < full_sq_bytes,
+        "square_tmp_bytes must scale down after drop_torus_precision (full={full_sq_bytes}, shrunk={shrunk_sq_bytes})"
+    );
 }

@@ -10,8 +10,9 @@
 //! most other CKKS libraries. A ciphertext tracks three related precisions:
 //! the stored torus prefix `inner.k()`, the semantic message position
 //! `offset_bits`, and the torus scaling factor `torus_scale_bits`. Rescale
-//! lowers all three, while prefix truncation lowers `inner.k()` and
-//! `offset_bits` without changing `torus_scale_bits`.
+//! visibly consumes precision by lowering all three together, while prefix
+//! truncation lowers `inner.k()` and `offset_bits` without changing
+//! `torus_scale_bits`.
 //!
 //! ## Modules
 //!

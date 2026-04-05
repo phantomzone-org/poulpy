@@ -8,7 +8,7 @@
 //! [`fill_offset_pt`]: super::utils::fill_offset_pt
 
 use super::{
-    align::{align_to, are_cts_aligned, assert_cts_aligned, common_window, set_ct_active_prefix},
+    align::{align_to, are_cts_aligned, assert_cts_aligned, common_window},
     utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes},
 };
 use crate::layouts::{
@@ -68,7 +68,8 @@ pub fn add_aligned<BE: Backend>(
     );
     res.torus_scale_bits = a.torus_scale_bits();
     res.offset_bits = a.offset_bits();
-    set_ct_active_prefix(res, a.inner.k());
+    res.set_active_k(a.inner.k());
+    res.zero_inactive_tail();
     module.glwe_add(&mut res.inner, &a.inner, &b.inner);
     res.assert_valid("add_aligned result");
 }
@@ -105,7 +106,8 @@ pub fn add<BE: Backend>(
 
     res.torus_scale_bits = a.torus_scale_bits();
     res.offset_bits = offset_common;
-    set_ct_active_prefix(res, target_k);
+    res.set_active_k(target_k);
+    res.zero_inactive_tail();
 
     if !a_needs_align && !b_needs_align {
         module.glwe_add(&mut res.inner, &a.inner, &b.inner);

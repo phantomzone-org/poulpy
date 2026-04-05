@@ -8,7 +8,7 @@
 use crate::layouts::ciphertext::{CKKSCiphertext, CKKSCiphertextToRef};
 use poulpy_core::{
     GLWEAlign, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos, SetGLWEInfos, TorusPrecision},
+    layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos, TorusPrecision},
 };
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut};
 
@@ -39,19 +39,6 @@ pub fn common_window(a: &CKKSCiphertext<impl Data>, b: &CKKSCiphertext<impl Data
     let offset_common = a.offset_bits().max(b.offset_bits());
     let payload_common = payload_a.min(payload_b);
     (offset_common, TorusPrecision(offset_common + payload_common))
-}
-
-pub(crate) fn set_ct_active_prefix(ct: &mut CKKSCiphertext<impl DataMut>, target_k: TorusPrecision) {
-    let base2k = ct.inner.base2k().0;
-    let target_size = target_k.0.div_ceil(base2k) as usize;
-    let max_size = ct.inner.data_mut().max_size;
-    assert!(
-        target_size <= max_size,
-        "set_ct_active_prefix: result storage too small for target_k ({}) with base2k ({base2k})",
-        target_k.0
-    );
-    ct.inner.set_k(target_k);
-    ct.inner.data_mut().size = target_size;
 }
 
 /// Returns the scratch bytes needed for [`align_to`].
@@ -94,7 +81,8 @@ pub fn align_to<BE: Backend>(
         src.torus_scale_bits()
     );
 
-    set_ct_active_prefix(res, target_k);
+    res.set_active_k(target_k);
+    res.zero_inactive_tail();
     module.glwe_align(&mut res.inner, target_offset_bits, &src.inner, src.offset_bits(), scratch);
     res.offset_bits = target_offset_bits;
     res.torus_scale_bits = src.torus_scale_bits();
@@ -149,7 +137,8 @@ pub fn align_to_inplace<BE: Backend>(
     };
     align_to(module, &mut tmp, &ct.to_ref(), target_offset_bits, target_k, scratch_rest);
 
-    set_ct_active_prefix(ct, target_k);
+    ct.set_active_k(target_k);
+    ct.zero_inactive_tail();
     let raw = tmp.inner.data().raw();
     ct.inner.data_mut().raw_mut()[..raw.len()].copy_from_slice(raw);
     ct.offset_bits = target_offset_bits;

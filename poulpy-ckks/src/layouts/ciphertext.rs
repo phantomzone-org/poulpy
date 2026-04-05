@@ -3,8 +3,10 @@
 //! A [`CKKSCiphertext`] pairs a rank-1 [`GLWE`] ciphertext with scaling and
 //! precision metadata.
 
-use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision};
-use poulpy_hal::layouts::{Data, DataMut, DataRef};
+use poulpy_core::layouts::{
+    Base2K, Degree, GLWE, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision,
+};
+use poulpy_hal::layouts::{Data, DataMut, DataRef, ZnxViewMut};
 
 /// Encrypted CKKS value carrying a GLWE ciphertext and CKKS metadata.
 ///
@@ -20,7 +22,20 @@ use poulpy_hal::layouts::{Data, DataMut, DataRef};
 /// torus precision to be reduced without destroying the message: the dominant
 /// limbs are preserved, and only the least-significant limbs are dropped.
 ///
-/// **Invariant:** `offset_bits >= torus_scale_bits`.
+/// ## Invariants
+///
+/// - `offset_bits >= torus_scale_bits`
+/// - `inner.size() == div_ceil(inner.k(), base2k)` — the active limb count is
+///   always consistent with `k`. All `(k, size)` updates must go through
+///   [`CKKSCiphertext::set_active_k`].
+/// - **Storage invariant:** every inactive tail limb `inner.data[col, size..max_size]`
+///   is zero across every column. A shrunk ciphertext is therefore
+///   operationally identical to a freshly allocated one at the same `k`:
+///   downstream operations whose cost depends on `size()` see no stale data,
+///   and the storage cost of a leveled operation scales with the reduced
+///   `size`, not the original `max_size`. The invariant is re-established by
+///   [`CKKSCiphertext::zero_inactive_tail`] after any operation that shrinks
+///   `size`.
 ///
 /// Message extraction: `message ≈ phase · 2^{offset_bits} / 2^{torus_scale_bits}`.
 pub struct CKKSCiphertext<D: Data> {
@@ -57,7 +72,9 @@ impl<D: Data> CKKSCiphertext<D> {
     pub fn offset_bits(&self) -> u32 {
         self.offset_bits
     }
+}
 
+impl<D: DataRef> CKKSCiphertext<D> {
     pub fn assert_valid(&self, label: &str) {
         let prefix_bits = self.prefix_bits();
         let limb_bits = self.inner.base2k().0;
@@ -85,6 +102,74 @@ impl<D: Data> CKKSCiphertext<D> {
             "{label}: active limb count ({}) does not match prefix_bits ({prefix_bits}) and base2k ({limb_bits})",
             self.inner.size()
         );
+
+        #[cfg(debug_assertions)]
+        {
+            // Storage invariant: every inactive tail limb must be zero.
+            let data = self.inner.data();
+            let active_size = data.size;
+            let max_size = data.max_size;
+            if active_size < max_size {
+                let n = data.n;
+                let cols = data.cols;
+                let total_i64 = n * cols * max_size;
+                let ptr = data.data.as_ref().as_ptr() as *const i64;
+                // SAFETY: `VecZnx`'s backing buffer stores at least
+                // `n * cols * max_size` i64s laid out limb-major
+                // (see `VecZnx` docs). Reading up to `max_size` limbs is
+                // therefore always in-bounds regardless of the current
+                // active `size`.
+                let full: &[i64] = unsafe { std::slice::from_raw_parts(ptr, total_i64) };
+                let tail_start = active_size * n * cols;
+                for (offset, &v) in full[tail_start..].iter().enumerate() {
+                    assert!(
+                        v == 0,
+                        "{label}: inactive tail limb not zeroed (limb {}, i64 offset {}, value {})",
+                        active_size + offset / (n * cols),
+                        tail_start + offset,
+                        v,
+                    );
+                }
+            }
+        }
+    }
+}
+
+impl<D: DataMut> CKKSCiphertext<D> {
+    /// Sets the active torus precision `k` and synchronizes `data.size` to
+    /// `div_ceil(k, base2k)`.
+    ///
+    /// This is the sanctioned way to move the `(k, size)` pair together.
+    /// It does not touch `offset_bits` / `torus_scale_bits`, does not
+    /// sign-extend the new MSB limb, and does not zero any inactive tail
+    /// limbs; callers that shrink `k` must follow up with
+    /// [`Self::zero_inactive_tail`] so the storage invariant holds.
+    pub(crate) fn set_active_k(&mut self, k: TorusPrecision) {
+        let base2k = self.inner.base2k().0;
+        let new_size = k.0.div_ceil(base2k) as usize;
+        let max_size = self.inner.data_mut().max_size;
+        assert!(
+            new_size <= max_size,
+            "set_active_k: size {new_size} for k={} base2k={base2k} exceeds max_size {max_size}",
+            k.0
+        );
+        self.inner.set_k(k);
+        self.inner.data_mut().size = new_size;
+    }
+
+    /// Zeros all inactive tail limbs `data[col, size..max_size]` across
+    /// every column, re-establishing the storage invariant after a shrink.
+    pub(crate) fn zero_inactive_tail(&mut self) {
+        let data = self.inner.data_mut();
+        if data.size >= data.max_size {
+            return;
+        }
+        let active_size = data.size;
+        let tail_start = active_size * data.n * data.cols;
+        // Temporarily widen so `raw_mut()` covers the full allocated buffer.
+        data.size = data.max_size;
+        data.raw_mut()[tail_start..].fill(0);
+        data.size = active_size;
     }
 }
 
