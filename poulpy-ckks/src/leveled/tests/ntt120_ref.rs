@@ -17,8 +17,8 @@ use crate::leveled::tests::test_suite::{
     metadata::test_metadata_sweep,
     mul::{
         test_mul, test_mul_aligned, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
-        test_mul_size_reduced_inputs, test_mul_tmp_bytes_scales_with_size, test_sequential_mul, test_square,
-        test_square_size_reduced_input,
+        test_deep_square_chain, test_mul_size_reduced_inputs, test_mul_tmp_bytes_scales_with_size,
+        test_sequential_mul, test_square, test_square_size_reduced_input,
     },
     neg::test_neg,
     plaintext_prepared::{test_add_prepared_pt, test_mul_prepared_pt, test_sub_prepared_pt},
@@ -155,6 +155,11 @@ fn mul_mismatched_delta() {
 #[test]
 fn sequential_mul() {
     test_sequential_mul(&CTX_TSK, 2);
+}
+
+#[test]
+fn deep_square_chain() {
+    test_deep_square_chain(&CTX_TSK);
 }
 
 #[test]

@@ -669,3 +669,102 @@ where
         "square_tmp_bytes must scale down after drop_torus_precision (full={full_sq_bytes}, shrunk={shrunk_sq_bytes})"
     );
 }
+
+/// Deep squaring chain regression: X -> X^2 -> X^4 -> ... -> X^128.
+///
+/// Asserts that precision degrades gracefully (~1 bit per level, no
+/// catastrophic single-step drop) through the full multiplicative depth.
+pub fn test_deep_square_chain<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWETensoring<BE>
+        + GLWEAlign<BE>
+        + GLWEShift<BE>
+        + GLWETensorKeyEncryptSk<BE>
+        + GLWETensorKeyPreparedFactory<BE>,
+    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    let m = ctx.module.n() / 2;
+    let base2k = Base2K(ctx.params.base2k);
+    let k = TorusPrecision(ctx.params.k);
+    let degree = Degree(ctx.params.n);
+
+    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut scratch = ScratchOwned::<BE>::alloc(
+        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
+            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
+            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
+    );
+
+    // Use 256th roots of unity as inputs: w^t = exp(2 pi i t / 256).
+    let tau = 2.0 * std::f64::consts::PI;
+    let re_in: Vec<f64> = (0..m).map(|i| (tau * (i % 256) as f64 / 256.0).cos()).collect();
+    let im_in: Vec<f64> = (0..m).map(|i| (tau * (i % 256) as f64 / 256.0).sin()).collect();
+
+    let mut ct = ctx.encrypt(&re_in, &im_in, &mut scratch);
+    assert_valid_ciphertext("deep_square start", &ct);
+
+    let mut want_re = re_in;
+    let mut want_im = im_in;
+
+    // Measure initial precision of X^1.
+    let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch);
+    let mut max_err = 0.0f64;
+    for (g, w) in re_out.iter().zip(want_re.iter()).chain(im_out.iter().zip(want_im.iter())) {
+        max_err = max_err.max((g - w).abs());
+    }
+    let mut prev_prec = if max_err == 0.0 { f64::INFINITY } else { -max_err.log2() };
+    println!(
+        "deep_square X^1: k={} size={} prec={prev_prec:.2} bits",
+        ct.inner.k().0, ct.inner.size()
+    );
+    let max_depth = 15;
+
+    for level in 0..max_depth {
+        if ct.inner.k().0 <= ct.torus_scale_bits() {
+            break;
+        }
+        let mut ct_next = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+        square(&ctx.module, &mut ct_next, &ct, ctx.tsk(), scratch.borrow());
+        ct = ct_next;
+        assert_valid_ciphertext(&format!("deep_square level {level}"), &ct);
+
+        let exp = 1usize << (level + 1);
+        for j in 0..m {
+            let (r, i) = (want_re[j], want_im[j]);
+            want_re[j] = r * r - i * i;
+            want_im[j] = 2.0 * r * i;
+        }
+
+        let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch);
+        let mut max_err = 0.0f64;
+        for (g, w) in re_out.iter().zip(want_re.iter()) {
+            max_err = max_err.max((g - w).abs());
+        }
+        for (g, w) in im_out.iter().zip(want_im.iter()) {
+            max_err = max_err.max((g - w).abs());
+        }
+        let prec = if max_err == 0.0 { f64::INFINITY } else { -max_err.log2() };
+        let drop = prev_prec - prec;
+        println!(
+            "deep_square X^{exp}: k={} size={} prec={prec:.2} bits (drop={drop:.2})",
+            ct.inner.k().0, ct.inner.size()
+        );
+
+        assert!(
+            drop < 3.0,
+            "deep_square X^{exp}: catastrophic precision drop {drop:.2} bits (prev={prev_prec:.2}, now={prec:.2})"
+        );
+        assert!(
+            prec > 15.0,
+            "deep_square X^{exp}: precision {prec:.2} bits fell below 15-bit floor"
+        );
+
+        prev_prec = prec;
+    }
+}
