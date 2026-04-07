@@ -4,7 +4,7 @@ use crate::{
         VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
-        reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
+        reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
         reim4::{Reim4BlkMatVec, Reim4Convolution},
         vec_znx_dft::vec_znx_dft_apply,
     },
@@ -12,7 +12,7 @@ use crate::{
 
 pub fn convolution_prepare_left<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -22,7 +22,7 @@ where
 
 pub fn convolution_prepare_right<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -32,7 +32,7 @@ where
 
 fn convolution_prepare<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -67,7 +67,7 @@ where
 
 pub fn convolution_prepare_self<L, R, A, T, BE>(table: &ReimFFTTable<f64>, left: &mut L, right: &mut R, a: &A, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,

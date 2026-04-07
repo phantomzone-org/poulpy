@@ -5,14 +5,17 @@ use poulpy_hal::{
         VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl,
         VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
-    reference::fft64::vec_znx_dft::{
-        vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_add_scaled_inplace, vec_znx_dft_apply, vec_znx_dft_copy,
-        vec_znx_dft_sub, vec_znx_dft_sub_inplace, vec_znx_dft_sub_negate_inplace, vec_znx_dft_zero, vec_znx_idft_apply,
-        vec_znx_idft_apply_consume, vec_znx_idft_apply_tmpa,
+    reference::fft64::{
+        reim::FFTModuleHandle,
+        vec_znx_dft::{
+            vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_add_scaled_inplace, vec_znx_dft_apply, vec_znx_dft_copy,
+            vec_znx_dft_sub, vec_znx_dft_sub_inplace, vec_znx_dft_sub_negate_inplace, vec_znx_dft_zero, vec_znx_idft_apply,
+            vec_znx_idft_apply_consume, vec_znx_idft_apply_tmpa,
+        },
     },
 };
 
-use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
+use crate::FFT64Avx;
 
 unsafe impl VecZnxIdftApplyTmpBytesImpl<Self> for FFT64Avx {
     fn vec_znx_idft_apply_tmp_bytes_impl(_module: &Module<Self>) -> usize {

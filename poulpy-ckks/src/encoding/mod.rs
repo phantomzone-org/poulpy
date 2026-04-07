@@ -11,4 +11,3 @@
 //! | `encode_ci` | (Planned) Encoding into the real subring $Z[X+X^{-1}]$. |
 
 pub mod classical;
-pub mod tests;

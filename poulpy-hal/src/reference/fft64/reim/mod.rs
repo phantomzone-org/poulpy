@@ -25,6 +25,8 @@ mod table_fft;
 mod table_ifft;
 mod zero;
 
+use std::fmt::Debug;
+
 pub use conversion::*;
 pub use fft_ref::*;
 pub use fft_vec::*;
@@ -63,7 +65,42 @@ pub(crate) fn frac_rev_bits<R: Float + FloatConst>(x: usize) -> R {
     }
 }
 
-pub trait ReimDFTExecute<D, T> {
+pub trait FFTModuleHandle<F: Float + FloatConst + Debug> {
+    /// Returns a shared reference to the forward FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
+    fn get_fft_table(&self) -> &ReimFFTTable<F>;
+
+    /// Returns a shared reference to the inverse FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
+    fn get_ifft_table(&self) -> &ReimIFFTTable<F>;
+}
+
+/// Backend-side accessor for FFT/IFFT twiddle tables stored in `B::Handle`.
+///
+/// Implement this on a backend type `B` (not on `Module<B>`) to avoid orphan-rule
+/// violations in downstream crates. The blanket `impl FFTModuleHandle<F> for Module<B>`
+/// below bridges this into the public API automatically.
+pub trait FFTHandleAccessor<F: Float + FloatConst + Debug>: crate::layouts::Backend {
+    fn get_fft_table_from_handle(handle: &Self::Handle) -> &ReimFFTTable<F>;
+    fn get_ifft_table_from_handle(handle: &Self::Handle) -> &ReimIFFTTable<F>;
+}
+
+impl<F: Float + FloatConst + Debug, B: FFTHandleAccessor<F>> FFTModuleHandle<F> for crate::layouts::Module<B> {
+    fn get_fft_table(&self) -> &ReimFFTTable<F> {
+        B::get_fft_table_from_handle(unsafe { &*self.ptr() })
+    }
+    fn get_ifft_table(&self) -> &ReimIFFTTable<F> {
+        B::get_ifft_table_from_handle(unsafe { &*self.ptr() })
+    }
+}
+
+pub trait ReimFFTExecute<D, T> {
     fn reim_dft_execute(table: &D, data: &mut [T]);
 }
 

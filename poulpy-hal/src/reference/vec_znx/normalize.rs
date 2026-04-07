@@ -126,7 +126,7 @@ fn vec_znx_normalize_inter_base2k<R, A, ZNXARI>(
 
     // Regular normalization over the overlapping limbs of res and a.
     for j in 0..mid_range {
-        ZNXARI::znx_normalize_middle_step(
+        ZNXARI::znx_normalize_middle_step::<true>(
             base2k,
             lsh_pos,
             res.at_mut(res_col, res_start - j - 1),
@@ -272,7 +272,7 @@ fn vec_znx_normalize_cross_base2k<R, A, ZNXARI>(
         // Normalizes the j-th limb of a and store the results into `a_norm``.
         // This step is required to avoid overflow in the next step,
         // which assumes that |a| is bounded by 2^{a_base2k -1} (i.e. normalized).
-        ZNXARI::znx_normalize_middle_step(a_base2k, lsh_pos, a_norm, a_slice, a_carry);
+        ZNXARI::znx_normalize_middle_step::<true>(a_base2k, lsh_pos, a_norm, a_slice, a_carry);
 
         // In the first iteration we need to match the precision `res` and `a`.
         if j == 0 {

@@ -1,5 +1,6 @@
 use poulpy_core::{
-    EncryptionInfos, GetDistribution, layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecretToRef}
+    EncryptionInfos, GetDistribution,
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecretToRef},
 };
 use poulpy_hal::{
     layouts::{Backend, DataMut, Scratch},

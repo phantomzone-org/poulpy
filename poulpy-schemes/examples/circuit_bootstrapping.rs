@@ -2,7 +2,7 @@ use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWENormalize,
     layouts::{
         GGLWEToGGSWKeyLayout, GGSW, GGSWInfos, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWEInfos, GLWELayout, GLWEPlaintext,
-        GLWESecret, LWE, LWELayout, LWEInfos, LWEPlaintext, LWESecret,
+        GLWESecret, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
@@ -179,14 +179,30 @@ fn main() {
     let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_layout).unwrap();
 
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &lwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_lwe.encrypt_sk(
+        &module,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_layout);
 
-    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    cbt_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 

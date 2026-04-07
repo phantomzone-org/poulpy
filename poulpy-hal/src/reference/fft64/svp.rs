@@ -3,12 +3,12 @@ use crate::{
         Backend, ScalarZnx, ScalarZnxToRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut,
         VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
-    reference::fft64::reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
+    reference::fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
 };
 
 pub fn svp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: SvpPPolToMut<BE>,
     A: ScalarZnxToRef,
 {
@@ -27,7 +27,7 @@ pub fn svp_apply_dft<R, A, B, BE>(
     b: &B,
     b_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
     B: VecZnxToRef,

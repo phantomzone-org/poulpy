@@ -16,9 +16,7 @@ use crate::{
     },
 };
 use poulpy_core::{
-    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWEShift,
-    GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWESecretPreparedFactory, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision},
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWENormalize, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore, layouts::{Base2K, Degree, GLWESecretPreparedFactory, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision}
 };
 use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
@@ -36,7 +34,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
@@ -81,11 +79,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -124,11 +121,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -168,11 +164,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -225,11 +220,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -282,11 +276,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -341,11 +334,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -539,14 +531,13 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>
         + GLWEMulPlain<BE>
         + GLWEMulConst<BE>
         + poulpy_core::GLWEAdd,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -633,11 +624,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -684,11 +674,10 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWEShift<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

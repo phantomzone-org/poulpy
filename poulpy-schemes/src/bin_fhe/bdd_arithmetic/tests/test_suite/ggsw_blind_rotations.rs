@@ -1,5 +1,5 @@
 use poulpy_core::{
-    EncryptionLayout, GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, DEFAULT_SIGMA_XE, ScratchTakeCore,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecretPrepared,
         GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
@@ -76,7 +76,15 @@ where
 
     let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_k_infos);
-    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &ggsw_k_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    k_enc_prep.encrypt_sk(
+        module,
+        k,
+        sk_glwe_prep,
+        &ggsw_k_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let base: [usize; 2] = [module.log_n() >> 1, module.log_n() - (module.log_n() >> 1)];
 

@@ -17,7 +17,7 @@ use crate::layouts::{
     plaintext_prepared::CKKSPlaintextPrepared,
 };
 use poulpy_core::{
-    GLWEAlign, GLWESub, ScratchTakeCore,
+    GLWENormalize, GLWESub, ScratchTakeCore,
     layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos},
 };
 use poulpy_hal::{
@@ -32,7 +32,7 @@ pub fn sub_tmp_bytes<BE: Backend>(
     b: &CKKSCiphertext<impl DataRef>,
 ) -> usize
 where
-    Module<BE>: GLWEAlign<BE>,
+    Module<BE>: GLWENormalize<BE>,
 {
     let (_, target_k) = common_window(a, b);
     let layout = GLWELayout {
@@ -43,8 +43,7 @@ where
     };
     GLWE::bytes_of_from_infos(&layout)
         + module
-            .glwe_align_tmp_bytes(&layout, &a.inner)
-            .max(module.glwe_align_tmp_bytes(&layout, &b.inner))
+            .glwe_normalize_tmp_bytes()
 }
 
 /// Computes `res = a - b` for already-aligned ciphertexts (no scratch needed).
@@ -82,7 +81,7 @@ pub fn sub<BE: Backend>(
     b: &CKKSCiphertext<impl DataRef>,
     scratch: &mut Scratch<BE>,
 ) where
-    Module<BE>: GLWESub + GLWEAlign<BE>,
+    Module<BE>: GLWESub + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     a.assert_valid("sub lhs");
@@ -101,8 +100,8 @@ pub fn sub<BE: Backend>(
     }
 
     let (offset_common, target_k) = common_window(a, b);
-    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
-    let b_needs_align = b.offset_bits() != offset_common || b.prefix_bits() != target_k.0;
+    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
+    let b_needs_align = b.offset_bits() != offset_common || b.delta() != target_k.0;
 
     res.torus_scale_bits = a.torus_scale_bits();
     res.offset_bits = offset_common;
@@ -162,7 +161,7 @@ pub fn sub_inplace<BE: Backend>(
     a: &CKKSCiphertext<impl DataRef>,
     scratch: &mut Scratch<BE>,
 ) where
-    Module<BE>: GLWESub + GLWEAlign<BE>,
+    Module<BE>: GLWESub + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     res.assert_valid("sub_inplace lhs");
@@ -181,8 +180,8 @@ pub fn sub_inplace<BE: Backend>(
     }
 
     let (offset_common, target_k) = common_window(res, a);
-    let res_needs_align = res.offset_bits() != offset_common || res.prefix_bits() != target_k.0;
-    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
+    let res_needs_align = res.offset_bits() != offset_common || res.delta() != target_k.0;
+    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
 
     if !res_needs_align && !a_needs_align {
         module.glwe_sub_inplace(&mut res.inner, &a.inner);

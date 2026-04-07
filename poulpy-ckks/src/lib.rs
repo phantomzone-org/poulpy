@@ -23,7 +23,6 @@
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | [`bootstrapping`] | (Planned) CKKS bootstrapping |
 
-pub mod bootstrapping;
 pub mod encoding;
 pub mod layouts;
 pub mod leveled;

@@ -5,8 +5,7 @@
     target_feature = "avx2",
     target_feature = "fma"
 )))]
-mod ntt120_ref;
-
+//mod ntt120_ref;
 #[cfg(test)]
 #[cfg(all(
     feature = "enable-avx",

@@ -21,12 +21,12 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::{
     alloc_aligned,
-    reference::fft64::reim::{ReimDFTExecute, fft_ref, frac_rev_bits},
+    reference::fft64::reim::{ReimFFTExecute, fft_ref, frac_rev_bits},
 };
 
 pub struct ReimFFTRef;
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTRef {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for ReimFFTRef {
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         fft_ref(table.m, &table.omg, data);
     }

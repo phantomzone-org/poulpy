@@ -51,7 +51,8 @@ where
                     base2k: in_base2k.into(),
                     k: k_in.into(),
                     rank: rank_in.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let glwe_out_infos: GLWELayout = GLWELayout {
                     n: n.into(),
@@ -68,7 +69,8 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_infos);
                 let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
@@ -125,7 +127,6 @@ where
                 ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
                 glwe_out.keyswitch(module, &glwe_in, &ksk_prepared, scratch.borrow());
-
 
                 let noise_max: f64 = var_noise_gglwe_product_v2(
                     module.n() as f64,
@@ -186,7 +187,8 @@ where
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let ksk_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                 n: n.into(),
@@ -196,7 +198,8 @@ where
                 dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_infos);
             let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);

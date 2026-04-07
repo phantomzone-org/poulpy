@@ -6,7 +6,7 @@ use poulpy_hal::{
     reference::{
         fft64::{
             convolution::I64Ops,
-            reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
+            reim::{FFTHandleAccessor, ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
             reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
         znx::{
@@ -124,44 +124,12 @@ unsafe impl ModuleNewImpl<Self> for FFT64Avx {
     }
 }
 
-/// Extension trait providing access to FFT/IFFT tables from a `Module<FFT64Avx>`.
-///
-/// This trait abstracts access to the backend-specific [`FFT64AvxHandle`] stored in
-/// the module, allowing internal functions to retrieve precomputed twiddle factors
-/// without unsafe pointer dereferencing at the call site.
-///
-/// # Safety
-///
-/// Implementations must ensure that:
-/// - The returned reference lifetime is tied to the module's lifetime.
-/// - The underlying handle pointer is valid and properly aligned.
-/// - The twiddle tables are immutable (no `&mut` access).
-///
-/// The `Module` type guarantees these invariants via its construction and lifetime management.
-pub trait FFT64ModuleHandle {
-    /// Returns a shared reference to the forward FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_fft_table(&self) -> &ReimFFTTable<f64>;
-
-    /// Returns a shared reference to the inverse FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_ifft_table(&self) -> &ReimIFFTTable<f64>;
-}
-
-impl FFT64ModuleHandle for Module<FFT64Avx> {
-    fn get_fft_table(&self) -> &ReimFFTTable<f64> {
-        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
-        &h.table_fft
+impl FFTHandleAccessor<f64> for FFT64Avx {
+    fn get_fft_table_from_handle(handle: &FFT64AvxHandle) -> &ReimFFTTable<f64> {
+        &handle.table_fft
     }
-    fn get_ifft_table(&self) -> &ReimIFFTTable<f64> {
-        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
-        &h.table_ifft
+    fn get_ifft_table_from_handle(handle: &FFT64AvxHandle) -> &ReimIFFTTable<f64> {
+        &handle.table_ifft
     }
 }
 
@@ -294,11 +262,29 @@ impl ZnxSwitchRing for FFT64Avx {
     }
 }
 
+impl ZnxNormalizeFirstStep for FFT64Avx {
+    #[inline(always)]
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_first_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry);
+        }
+    }
+}
+
+impl ZnxNormalizeMiddleStep for FFT64Avx {
+    #[inline(always)]
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_middle_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry);
+        }
+    }
+}
+
 impl ZnxNormalizeFinalStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_avx(base2k, lsh, x, a, carry);
+            znx_normalize_final_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -308,15 +294,6 @@ impl ZnxNormalizeFinalStepInplace for FFT64Avx {
     fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
             znx_normalize_final_step_inplace_avx(base2k, lsh, x, carry);
-        }
-    }
-}
-
-impl ZnxNormalizeFirstStep for FFT64Avx {
-    #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe {
-            znx_normalize_first_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -335,15 +312,6 @@ impl ZnxNormalizeFirstStepInplace for FFT64Avx {
     fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
             znx_normalize_first_step_inplace_avx(base2k, lsh, x, carry);
-        }
-    }
-}
-
-impl ZnxNormalizeMiddleStep for FFT64Avx {
-    #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe {
-            znx_normalize_middle_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -384,14 +352,14 @@ impl ZnxNormalizeDigit for FFT64Avx {
     }
 }
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for FFT64Avx {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for FFT64Avx {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         ReimFFTAvx::reim_dft_execute(table, data);
     }
 }
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for FFT64Avx {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for FFT64Avx {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         ReimIFFTAvx::reim_dft_execute(table, data);

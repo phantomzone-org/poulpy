@@ -12,40 +12,17 @@ use super::{
     utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes},
 };
 use crate::layouts::{
-    ciphertext::{CKKSCiphertext, CKKSCiphertextToRef},
-    plaintext::CKKSPlaintext,
-    plaintext_prepared::CKKSPlaintextPrepared,
+    ciphertext::{CKKSCiphertext},
+    plaintext::{CKKSPlaintext, CKKSPlaintextZnx},
 };
 use poulpy_core::{
-    GLWEAdd, GLWEAlign, ScratchTakeCore,
+    GLWEAdd, GLWENormalize, ScratchTakeCore,
     layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos},
 };
 use poulpy_hal::{
-    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
-
-/// Returns the scratch bytes needed for [`add`] and [`add_inplace`].
-pub fn add_tmp_bytes<BE: Backend>(
-    module: &Module<BE>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
-) -> usize
-where
-    Module<BE>: GLWEAlign<BE>,
-{
-    let (_, target_k) = common_window(a, b);
-    let layout = GLWELayout {
-        n: a.inner.n(),
-        base2k: a.inner.base2k(),
-        k: target_k,
-        rank: a.inner.rank(),
-    };
-    GLWE::bytes_of_from_infos(&layout)
-        + module
-            .glwe_align_tmp_bytes(&layout, &a.inner)
-            .max(module.glwe_align_tmp_bytes(&layout, &b.inner))
-}
 
 /// Computes `res = a + b` for already-aligned ciphertexts (no scratch needed).
 pub fn add_aligned<BE: Backend>(
@@ -68,8 +45,6 @@ pub fn add_aligned<BE: Backend>(
     );
     res.torus_scale_bits = a.torus_scale_bits();
     res.offset_bits = a.offset_bits();
-    res.set_active_k(a.inner.k());
-    res.zero_inactive_tail();
     module.glwe_add(&mut res.inner, &a.inner, &b.inner);
     res.assert_valid("add_aligned result");
 }
@@ -82,7 +57,7 @@ pub fn add<BE: Backend>(
     b: &CKKSCiphertext<impl DataRef>,
     scratch: &mut Scratch<BE>,
 ) where
-    Module<BE>: GLWEAdd + GLWEAlign<BE>,
+    Module<BE>: GLWEAdd + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     a.assert_valid("add lhs");
@@ -101,8 +76,8 @@ pub fn add<BE: Backend>(
     }
 
     let (offset_common, target_k) = common_window(a, b);
-    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
-    let b_needs_align = b.offset_bits() != offset_common || b.prefix_bits() != target_k.0;
+    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
+    let b_needs_align = b.offset_bits() != offset_common || b.delta() != target_k.0;
 
     res.torus_scale_bits = a.torus_scale_bits();
     res.offset_bits = offset_common;
@@ -162,7 +137,7 @@ pub fn add_inplace<BE: Backend>(
     a: &CKKSCiphertext<impl DataRef>,
     scratch: &mut Scratch<BE>,
 ) where
-    Module<BE>: GLWEAdd + GLWEAlign<BE>,
+    Module<BE>: GLWEAdd + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     res.assert_valid("add_inplace lhs");
@@ -181,8 +156,8 @@ pub fn add_inplace<BE: Backend>(
     }
 
     let (offset_common, target_k) = common_window(res, a);
-    let res_needs_align = res.offset_bits() != offset_common || res.prefix_bits() != target_k.0;
-    let a_needs_align = a.offset_bits() != offset_common || a.prefix_bits() != target_k.0;
+    let res_needs_align = res.offset_bits() != offset_common || res.delta() != target_k.0;
+    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
 
     if !res_needs_align && !a_needs_align {
         module.glwe_add_inplace(&mut res.inner, &a.inner);
@@ -367,4 +342,16 @@ pub fn add_const_inplace<BE: Backend>(
 {
     let (pt, scratch_rest) = const_pt_from_scratch(ct, re, im, scratch);
     add_pt_inplace(module, ct, &pt, scratch_rest);
+}
+
+/// Computes `ct += pt` in place for a bottom-aligned [`CKKSPlaintextZnx`].
+pub fn add_plaintext_znx_inplace<BE: Backend>(
+    module: &Module<BE>,
+    ct: &mut CKKSCiphertext<impl DataMut>,
+    pt: &CKKSPlaintextZnx<impl DataRef>,
+    scratch: &mut Scratch<BE>,
+) where
+    Module<BE>: VecZnxRshAdd<BE>,
+{
+    pt.add_to(module, ct.inner.data_mut(), ct.log_delta, scratch);
 }

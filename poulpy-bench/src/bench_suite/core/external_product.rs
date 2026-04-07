@@ -56,8 +56,23 @@ pub fn bench_glwe_external_product<BE: Backend>(
     let ggsw_enc_infos = NoiseInfos::new(ggsw_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
-    ct_glwe_in.encrypt_zero_sk(&module, &sk_prepared, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_ggsw.encrypt_sk(
+        &module,
+        &pt,
+        &sk_prepared,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    ct_glwe_in.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
@@ -109,8 +124,23 @@ where
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
-    ct_glwe.encrypt_zero_sk(&module, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_ggsw.encrypt_sk(
+        &module,
+        &pt,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    ct_glwe.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());

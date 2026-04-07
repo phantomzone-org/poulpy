@@ -132,10 +132,24 @@ impl ZnxSwitchRing for FFT64Ref {
     }
 }
 
+impl ZnxNormalizeFirstStep for FFT64Ref {
+    #[inline(always)]
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        znx_normalize_first_step_ref::<OVERWRITE>(base2k, lsh, x, a, carry);
+    }
+}
+
+impl ZnxNormalizeMiddleStep for FFT64Ref {
+    #[inline(always)]
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        znx_normalize_middle_step_ref::<OVERWRITE>(base2k, lsh, x, a, carry);
+    }
+}
+
 impl ZnxNormalizeFinalStep for FFT64Ref {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        znx_normalize_final_step_ref(base2k, lsh, x, a, carry);
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        znx_normalize_final_step_ref::<OVERWRITE>(base2k, lsh, x, a, carry);
     }
 }
 
@@ -143,13 +157,6 @@ impl ZnxNormalizeFinalStepInplace for FFT64Ref {
     #[inline(always)]
     fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         znx_normalize_final_step_inplace_ref(base2k, lsh, x, carry);
-    }
-}
-
-impl ZnxNormalizeFirstStep for FFT64Ref {
-    #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        znx_normalize_first_step_ref(base2k, lsh, x, a, carry);
     }
 }
 
@@ -164,13 +171,6 @@ impl ZnxNormalizeFirstStepInplace for FFT64Ref {
     #[inline(always)]
     fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         znx_normalize_first_step_inplace_ref(base2k, lsh, x, carry);
-    }
-}
-
-impl ZnxNormalizeMiddleStep for FFT64Ref {
-    #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        znx_normalize_middle_step_ref(base2k, lsh, x, a, carry);
     }
 }
 

@@ -60,9 +60,24 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
     let ksk_enc_infos = NoiseInfos::new(gglwe.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     let glwe_enc_infos = NoiseInfos::new(glwe_in.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ksk.encrypt_sk(&module, &sk_in, &sk_out, &ksk_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ksk.encrypt_sk(
+        &module,
+        &sk_in,
+        &sk_out,
+        &ksk_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
-    ct_in.encrypt_zero_sk(&module, &sk_in_prepared, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_in.encrypt_zero_sk(
+        &module,
+        &sk_in_prepared,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
     ksk_prepared.prepare(&module, &ksk, scratch.borrow());

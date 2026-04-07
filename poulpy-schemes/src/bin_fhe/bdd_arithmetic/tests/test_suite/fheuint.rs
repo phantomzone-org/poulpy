@@ -40,7 +40,15 @@ where
 
     for j in 0..3 {
         let a: u32 = 0x8483_8281;
-        a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         a_enc.sext(module, j, keys, scratch.borrow());
 
@@ -52,7 +60,15 @@ where
 
     for j in 0..3 {
         let a: u32 = 0x4443_4241;
-        a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         a_enc.sext(module, j, keys, scratch.borrow());
 
@@ -95,8 +111,24 @@ where
     let a: u32 = 0xFFFFFFFF;
     let b: u32 = 0xAABBCCDD;
 
-    b_enc.encrypt_sk(module, b, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
-    a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    b_enc.encrypt_sk(
+        module,
+        b,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     for dst in 0..4 {
         for src in 0..4 {
@@ -140,8 +172,24 @@ where
     let a: u32 = 0xFFFFFFFF;
     let b: u32 = 0xAABBCCDD;
 
-    b_enc.encrypt_sk(module, b, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
-    a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    b_enc.encrypt_sk(
+        module,
+        b,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     for dst in 0..2 {
         for src in 0..2 {
@@ -180,7 +228,15 @@ where
 
     let a: u32 = source_xa.next_u32();
 
-    a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     for i in 0..32 {
         a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());

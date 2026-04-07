@@ -157,8 +157,26 @@ fn setup() -> Setup {
     let ct_enc_infos = NoiseInfos::new(k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     let mut ct_a = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
     let mut ct_b = CKKSCiphertext::alloc(degree, base2k, k, LOG_DELTA);
-    encrypt_sk(&module, &mut ct_a, &pt_a, &sk_prep, &ct_enc_infos, &mut xa, &mut xe, scratch.borrow());
-    encrypt_sk(&module, &mut ct_b, &pt_b, &sk_prep, &ct_enc_infos, &mut xa, &mut xe, scratch.borrow());
+    encrypt_sk(
+        &module,
+        &mut ct_a,
+        &pt_a,
+        &sk_prep,
+        &ct_enc_infos,
+        &mut xa,
+        &mut xe,
+        scratch.borrow(),
+    );
+    encrypt_sk(
+        &module,
+        &mut ct_b,
+        &pt_b,
+        &sk_prep,
+        &ct_enc_infos,
+        &mut xa,
+        &mut xe,
+        scratch.borrow(),
+    );
 
     // Prepare plaintext for add/mul_prepared_pt benchmarks (use max_k = base2k * size).
     let ct_size = k.0.div_ceil(base2k.0) as usize;

@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GetDistribution,
     dist::Distribution,
-    layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
+    layouts::{Base2K, Degree, LWEInfos},
 };
 
 pub struct LWESecret<D: Data> {

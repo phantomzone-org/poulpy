@@ -12,7 +12,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWE, GGLWECompressed, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress, LWEInfos,
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress,
         prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
     noise::GGLWENoise,
@@ -48,7 +48,8 @@ where
                     dsize: di.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
 
@@ -130,7 +131,8 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> =
                     GLWESwitchingKeyCompressed::alloc_from_infos(&gglwe_infos);
@@ -151,7 +153,15 @@ where
 
                 let seed_xa = [1u8; 32];
 
-                ksk_compressed.encrypt_sk(module, &sk_in, &sk_out, seed_xa, &gglwe_infos, &mut source_xe, scratch.borrow());
+                ksk_compressed.encrypt_sk(
+                    module,
+                    &sk_in,
+                    &sk_out,
+                    seed_xa,
+                    &gglwe_infos,
+                    &mut source_xe,
+                    scratch.borrow(),
+                );
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
@@ -209,7 +219,8 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ksk_compressed: GGLWECompressed<Vec<u8>> = GGLWECompressed::alloc_from_infos(&gglwe_infos);
 

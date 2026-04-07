@@ -50,7 +50,8 @@ where
             base2k: out_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let key_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
             n: n.into(),
@@ -59,7 +60,8 @@ where
             rank: rank.into(),
             dsize: dsize.into(),
             dnum: dnum.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
         let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
@@ -88,7 +90,15 @@ where
 
         module.vec_znx_fill_uniform(out_base2k, &mut pt_have.data, 0, &mut source_xa);
 
-        glwe_out.encrypt_sk(module, &pt_have, &sk_dft, &glwe_out_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        glwe_out.encrypt_sk(
+            module,
+            &pt_have,
+            &sk_dft,
+            &glwe_out_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);

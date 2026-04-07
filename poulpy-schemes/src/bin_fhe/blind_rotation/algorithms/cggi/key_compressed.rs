@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
 use poulpy_core::{
-    Distribution, EncryptionInfos, GGSWCompressedEncryptSk, GetDistribution, ScratchTakeCore, layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef}
+    Distribution, EncryptionInfos, GGSWCompressedEncryptSk, GetDistribution, ScratchTakeCore,
+    layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},

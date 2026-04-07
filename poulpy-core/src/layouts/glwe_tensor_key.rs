@@ -3,9 +3,12 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::{DeclaredK, layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-}};
+use crate::{
+    DeclaredK,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    },
+};
 
 use std::fmt;
 

@@ -48,13 +48,37 @@ where
         let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
         let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
 
-        a_enc.encrypt_sk(module, a, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
-        b_enc.encrypt_sk(module, b, sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        b_enc.encrypt_sk(
+            module,
+            b,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
         pt.raw_mut()[0] = bit;
-        s.encrypt_sk(module, &pt, sk, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        s.encrypt_sk(
+            module,
+            &pt,
+            sk,
+            &ggsw_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
         s_prepared.prepare(module, &s, scratch.borrow());
 
         module.cswap(&mut a_enc, &mut b_enc, &s_prepared, scratch.borrow());
@@ -91,14 +115,30 @@ where
     let mut data_enc: Vec<FheUint<Vec<u8>, u32>> = (0..data.len())
         .map(|i| {
             let mut ct: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
-            ct.encrypt_sk(module, data[i], sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_sk(
+                module,
+                data[i],
+                sk,
+                &glwe_enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             ct
         })
         .collect_vec();
 
     for idx in 0..data.len() as u32 {
         let mut idx_enc = FheUintPrepared::alloc_from_infos(module, &ggsw_infos);
-        idx_enc.encrypt_sk(module, idx, sk, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        idx_enc.encrypt_sk(
+            module,
+            idx,
+            sk,
+            &ggsw_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         module.glwe_blind_retrieval_statefull(&mut data_enc, &idx_enc, 0, 5, scratch.borrow());
 
@@ -137,7 +177,15 @@ where
     let data_enc: Vec<FheUint<Vec<u8>, u32>> = (0..data.len())
         .map(|i| {
             let mut ct: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
-            ct.encrypt_sk(module, data[i], sk, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_sk(
+                module,
+                data[i],
+                sk,
+                &glwe_enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             ct
         })
         .collect_vec();
@@ -146,7 +194,15 @@ where
     for idx in 0..data.len() as u32 {
         let offset = 2;
         let mut idx_enc: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(module, &ggsw_infos);
-        idx_enc.encrypt_sk(module, idx << offset, sk, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        idx_enc.encrypt_sk(
+            module,
+            idx << offset,
+            sk,
+            &ggsw_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut res: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
         retriever.retrieve(module, &mut res, &data_enc, &idx_enc, offset, scratch.borrow());

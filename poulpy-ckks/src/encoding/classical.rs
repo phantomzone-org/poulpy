@@ -1,23 +1,12 @@
 //! Classical CKKS encoding and decoding via the canonical embedding.
 
-use crate::layouts::plaintext::CKKSPlaintext;
+use std::fmt::Debug;
 
-use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::{
-    api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc,
-        VecZnxDftApply, VecZnxIdftApplyConsume,
-    },
-    layouts::{DataMut, DataRef, Module, ScratchOwned, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{Backend, Module},
+    reference::fft64::reim::FFTModuleHandle,
 };
-
-// The FFT64 AVX backend uses an IEEE 754 bit-manipulation trick for i64-to-f64
-// conversion (reim_from_znx_i64_bnd50_fma) that requires |x| < 2^50. CKKS with
-// NTT120 parameters (base2k=52) produces coefficients up to 52 bits, exceeding
-// this bound. Force the ref backend until the AVX conversion supports wider inputs.
-type Fft64Backend = poulpy_cpu_ref::FFT64Ref;
-
-const F64_FFT_MAX_LOG_DELTA: u32 = 50;
+use rand_distr::num_traits::{Float, FloatConst};
 
 /// Encodes complex slot values into a compact CKKS plaintext.
 ///
@@ -25,36 +14,22 @@ const F64_FFT_MAX_LOG_DELTA: u32 = 50;
 /// integer polynomial in base `2^base2k`, using `ceil(embed_bits/base2k)` limbs.
 /// The Torus positioning (`2^{-Delta}`) happens when the plaintext is used
 /// (during encryption or plaintext operations).
-pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
-    let n = pt.inner.data.n();
+pub(crate) fn encode_reim<F, BE: Backend>(module: &Module<BE>, pt: &mut [F], re: &[F], im: &[F])
+where
+    F: Float + FloatConst + Debug,
+    Module<BE>: FFTModuleHandle<F>,
+{
+    let n = pt.len();
     let m = n / 2;
 
-    assert!(pt.embed_bits <= F64_FFT_MAX_LOG_DELTA);
-    assert!(re.len() <= m);
-    assert!(im.len() <= m);
+    assert_eq!(module.n(), n);
+    assert_eq!(re.len(), m);
+    assert_eq!(im.len(), m);
 
-    let module = Module::<Fft64Backend>::new(n as u64);
+    pt[..m].copy_from_slice(re);
+    pt[m..].copy_from_slice(im);
 
-    let base2k: usize = pt.inner.base2k.into();
-    let pt_size = pt.inner.data.size();
-    // Place the integer at the bottom of the compact representation (no sub-limb shift).
-    let res_offset: i64 = base2k as i64 - (pt_size * base2k) as i64;
-    let delta = (2.0f64).powi(pt.embed_bits as i32);
-
-    let mut dft = module.vec_znx_dft_alloc(1, 1);
-    {
-        let reim: &mut [f64] = dft.at_mut(0, 0);
-        for j in 0..re.len() {
-            reim[j] = delta * re[j];
-        }
-        for j in 0..im.len() {
-            reim[m + j] = delta * im[j];
-        }
-    }
-    let big = module.vec_znx_idft_apply_consume(dft);
-
-    let mut scratch = ScratchOwned::<Fft64Backend>::alloc(module.vec_znx_big_normalize_tmp_bytes());
-    module.vec_znx_big_normalize(&mut pt.inner.data, base2k, res_offset, 0, &big, base2k, 0, scratch.borrow());
+    module.get_ifft_table().execute(pt);
 }
 
 /// Decodes a CKKS plaintext into complex slot values via the canonical embedding.
@@ -66,68 +41,23 @@ pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
 /// When `k` is not a multiple of `base2k`, the MSB limb (limb 0) contains
 /// only `k % base2k` valid bits. Any upper bits are masked (sign-extended)
 /// before the DFT so the Horner does not interpret garbage as signal.
-pub fn decode(pt: &CKKSPlaintext<impl DataRef>) -> (Vec<f64>, Vec<f64>) {
-    use poulpy_hal::layouts::VecZnx;
-
-    assert!(pt.inner.max_k().0 >= pt.embed_bits);
-
-    let n = pt.inner.data.n();
+pub(crate) fn decode_reim<F, BE: Backend>(module: &Module<BE>, pt: &[F], re: &mut [F], im: &mut [F])
+where
+    F: Float + FloatConst + Debug,
+    Module<BE>: FFTModuleHandle<F>,
+{
+    let n = pt.len();
     let m = n / 2;
-    let base2k: usize = pt.inner.base2k.into();
-    let k: usize = pt.inner.max_k().0 as usize;
-    let size = pt.inner.data.size();
-    let top_limb_bits = if k.is_multiple_of(base2k) { base2k } else { k % base2k };
 
-    let module = Module::<Fft64Backend>::new(n as u64);
+    assert_eq!(module.n(), n);
+    assert!(re.len() <= m);
+    assert!(im.len() <= m);
 
-    // When k is not a multiple of base2k, the MSB limb may have garbage
-    // above the valid bits (e.g. after glwe_rsh). Mask before DFT.
-    let needs_masking = top_limb_bits < base2k;
-    let masked = if needs_masking {
-        let mut m = VecZnx::alloc(n, 1, size);
-        for l in 0..size {
-            let src: &[i64] = pt.inner.data.at(0, l);
-            let dst: &mut [i64] = m.at_mut(0, l);
-            dst.copy_from_slice(src);
-        }
-        let mask_shift = 64 - top_limb_bits;
-        let limb0: &mut [i64] = m.at_mut(0, 0);
-        for v in limb0.iter_mut() {
-            *v = (*v << mask_shift) >> mask_shift;
-        }
-        Some(m)
-    } else {
-        None
-    };
+    let mut reim_tmp = vec![F::zero(); n];
+    reim_tmp.copy_from_slice(&pt);
 
-    let mut dft = module.vec_znx_dft_alloc(1, size);
-    if let Some(ref m) = masked {
-        module.vec_znx_dft_apply(1, 0, &mut dft, 0, m, 0);
-    } else {
-        module.vec_znx_dft_apply(1, 0, &mut dft, 0, &pt.inner.data, 0);
-    }
+    module.get_ifft_table().execute(&mut reim_tmp);
 
-    let mut re = vec![0.0f64; m];
-    let mut im = vec![0.0f64; m];
-
-    // Reconstruct the integer polynomial using Horner's method from MSB (limb 0)
-    // to LSB (limb size-1). Uniform 2^{base2k} scale for all limbs — the MSB
-    // masking above ensures the top limb has only `top_limb_bits` valid bits,
-    // so the Horner correctly produces H < 2^k.
-    let scale_up = (2.0f64).powi(base2k as i32);
-    for l in 0..size {
-        let reim: &[f64] = dft.at(0, l);
-        for j in 0..m {
-            re[j] = re[j] * scale_up + reim[j];
-            im[j] = im[j] * scale_up + reim[m + j];
-        }
-    }
-
-    let inv_delta = (2.0f64).powi(-(pt.embed_bits as i32));
-    for j in 0..m {
-        re[j] *= inv_delta;
-        im[j] *= inv_delta;
-    }
-
-    (re, im)
+    re.copy_from_slice(&reim_tmp[..m]);
+    im.copy_from_slice(&reim_tmp[m..]);
 }

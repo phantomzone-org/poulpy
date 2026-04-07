@@ -1,10 +1,13 @@
 use poulpy_hal::{
     layouts::{Module, ScalarZnxToRef, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef},
     oep::{SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
-    reference::fft64::svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
+    reference::fft64::{
+        reim::FFTModuleHandle,
+        svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
+    },
 };
 
-use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
+use crate::FFT64Avx;
 
 unsafe impl SvpPrepareImpl<Self> for FFT64Avx {
     fn svp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)

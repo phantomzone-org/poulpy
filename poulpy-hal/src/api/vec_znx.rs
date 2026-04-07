@@ -159,6 +159,23 @@ pub trait VecZnxLsh<B: Backend> {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxLshAdd<B: Backend> {
+    /// Left shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
 /// Returns scratch bytes required for right-shift operations.
 pub trait VecZnxRshTmpBytes {
     fn vec_znx_rsh_tmp_bytes(&self) -> usize;
@@ -168,6 +185,23 @@ pub trait VecZnxRsh<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_rsh<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRshAdd<B: Backend> {
+    /// Right shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_add<R, A>(
         &self,
         base2k: usize,
         k: usize,

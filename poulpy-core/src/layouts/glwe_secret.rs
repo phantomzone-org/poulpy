@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GetDistribution,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

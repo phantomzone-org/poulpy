@@ -41,7 +41,8 @@ where
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
 
@@ -110,7 +111,8 @@ where
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut key_compressed: GGLWEToGGSWKeyCompressed<Vec<u8>> = GGLWEToGGSWKeyCompressed::alloc_from_infos(&key_infos);
 

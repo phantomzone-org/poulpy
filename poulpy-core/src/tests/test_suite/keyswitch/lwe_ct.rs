@@ -47,13 +47,15 @@ where
         base2k: key_base2k.into(),
         k: k_ksk.into(),
         dnum: dnum.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let lwe_in_infos = EncryptionLayout::new_from_default_sigma(LWELayout {
         n: n_lwe_in.into(),
         base2k: in_base2k.into(),
         k: k_lwe_ct.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let lwe_out_infos: LWELayout = LWELayout {
         n: n_lwe_out.into(),

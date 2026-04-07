@@ -91,7 +91,15 @@ where
         let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&params.bdd_layout).unwrap();
         let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(params.glwe_layout).unwrap();
         let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
-        bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &bdd_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        bdd_key.encrypt_sk(
+            &module,
+            &sk_lwe,
+            &sk_glwe,
+            &bdd_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let input_a = 255_u32;
 

@@ -6,7 +6,7 @@ use poulpy_hal::{
 
 use crate::{
     EncryptionInfos, ScratchTakeCore,
-    encryption::{DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEEncryptSkInternal},
+    encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGSWCompressedSeedMut, GGSWInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},

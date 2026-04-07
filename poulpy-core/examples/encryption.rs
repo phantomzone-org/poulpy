@@ -1,8 +1,9 @@
 use poulpy_core::{
-    DEFAULT_SIGMA_XE, EncryptionLayout, GLWESub, layouts::{
+    DEFAULT_SIGMA_XE, EncryptionLayout, GLWESub,
+    layouts::{
         Base2K, Degree, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, Rank, TorusPrecision,
         prepared::GLWESecretPrepared,
-    }
+    },
 };
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
@@ -43,7 +44,8 @@ fn main() {
         base2k,
         k: k_xe,
         rank,
-    }).unwrap();
+    })
+    .unwrap();
 
     let glwe_pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout { n, base2k, k: k_pt };
 

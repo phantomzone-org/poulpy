@@ -18,3 +18,5 @@ poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 rand = {workspace = true}
+rand_distr = {workspace = true}
+anyhow = {workspace = true}

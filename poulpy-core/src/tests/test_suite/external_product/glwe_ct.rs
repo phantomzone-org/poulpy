@@ -49,7 +49,8 @@ where
                 base2k: in_base2k.into(),
                 k: k_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let glwe_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
@@ -65,7 +66,8 @@ where
                 dnum: dnum.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
             let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
@@ -187,7 +189,8 @@ where
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let ggsw_apply_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
@@ -196,7 +199,8 @@ where
                 dnum: dnum.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
             let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);

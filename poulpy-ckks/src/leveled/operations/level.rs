@@ -43,14 +43,14 @@ where
         ct.torus_scale_bits()
     );
     assert!(
-        bits <= ct.prefix_bits(),
+        bits <= ct.delta(),
         "rescale: bits ({bits}) > prefix_bits ({})",
-        ct.prefix_bits()
+        ct.delta()
     );
 
     let _ = module;
     let _ = scratch;
-    let target_k = TorusPrecision(ct.prefix_bits() - bits);
+    let target_k = TorusPrecision(ct.delta() - bits);
     ct.set_active_k(target_k);
     ct.zero_inactive_tail();
     ct.offset_bits -= bits;
@@ -163,10 +163,10 @@ pub fn drop_scaling_precision_inplace<BE: Backend>(
 pub fn drop_torus_precision(ct: &mut CKKSCiphertext<impl DataMut>, target_k: TorusPrecision) {
     ct.assert_valid("drop_torus_precision input");
     assert!(
-        target_k.0 <= ct.prefix_bits(),
+        target_k.0 <= ct.delta(),
         "drop_torus_precision: target_k ({}) > current k ({})",
         target_k.0,
-        ct.prefix_bits()
+        ct.delta()
     );
     assert!(
         target_k.0 >= ct.torus_scale_bits(),
@@ -175,7 +175,7 @@ pub fn drop_torus_precision(ct: &mut CKKSCiphertext<impl DataMut>, target_k: Tor
         ct.torus_scale_bits()
     );
     let base2k = ct.inner.base2k().0;
-    let dropped_bits = ct.prefix_bits() - target_k.0;
+    let dropped_bits = ct.delta() - target_k.0;
     assert_eq!(
         dropped_bits % base2k,
         0,

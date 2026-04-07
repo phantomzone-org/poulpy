@@ -10,11 +10,11 @@ use crate::bin_fhe::{
 };
 
 use anyhow::Result;
-use poulpy_core::{DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWESwitchingKeyEncryptSk};
 use poulpy_core::layouts::{
     GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
     GLWESwitchingKeyPrepared,
 };
+use poulpy_core::{DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWESwitchingKeyEncryptSk};
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
@@ -214,12 +214,15 @@ where
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(sk_glwe.n(), key.rank_out());
             sk_out.fill_ternary_prob(0.5, source_xe);
             key.encrypt_sk(self, sk_glwe, &sk_out, ks_glwe_infos, source_xe, source_xa, scratch);
-            res.ks_lwe.encrypt_sk(self, sk_lwe, &sk_out, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
+            res.ks_lwe
+                .encrypt_sk(self, sk_lwe, &sk_out, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
         } else {
-            res.ks_lwe.encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
+            res.ks_lwe
+                .encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
         }
 
-        res.cbt.encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.cbt, source_xe, source_xa, scratch);
+        res.cbt
+            .encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.cbt, source_xe, source_xa, scratch);
     }
 }
 

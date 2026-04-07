@@ -5,10 +5,13 @@ use poulpy_hal::{
         ZnxInfos,
     },
     oep::{VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl},
-    reference::fft64::vmp::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes, vmp_zero},
+    reference::fft64::{
+        reim::FFTModuleHandle,
+        vmp::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes, vmp_zero},
+    },
 };
 
-use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
+use crate::FFT64Avx;
 
 unsafe impl VmpApplyDftToDftImpl<Self> for FFT64Avx
 where

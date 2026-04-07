@@ -53,7 +53,8 @@ where
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -69,7 +70,8 @@ where
             rank: rank.into(),
             dnum: k.div_ceil(tsk_base2k).into(),
             dsize: Dsize(1),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
         let mut b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
@@ -133,8 +135,24 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_in, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
-        b.encrypt_sk(module, &pt_in, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a.encrypt_sk(
+            module,
+            &pt_in,
+            &sk_dft,
+            &glwe_in_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
+        b.encrypt_sk(
+            module,
+            &pt_in,
+            &sk_dft,
+            &glwe_in_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         for res_offset in 0..scale {
             module.glwe_tensor_apply(&mut res_tensor, scale + res_offset, &a, &b, scratch.borrow());
@@ -267,7 +285,15 @@ where
             *i = (source_xa.next_i64() & 7) - 4;
         }
         pt_in.encode_vec_i64(&data, TorusPrecision(scale as u32));
-        a.encrypt_sk(module, &pt_in, &sk_dft, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a.encrypt_sk(
+            module,
+            &pt_in,
+            &sk_dft,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         for res_offset in 0..scale {
             module.glwe_tensor_square_apply(&mut res_square, scale + res_offset, &a, scratch.borrow());
@@ -329,7 +355,8 @@ where
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -381,7 +408,15 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_a, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a.encrypt_sk(
+            module,
+            &pt_a,
+            &sk_dft,
+            &glwe_in_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         for res_offset in 0..scale {
             module.glwe_mul_plain(&mut res, scale + res_offset, &a, &pt_b, scratch.borrow());
@@ -437,7 +472,8 @@ where
             base2k: in_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
@@ -496,7 +532,15 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(module, &pt_a, &sk_dft, &glwe_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        a.encrypt_sk(
+            module,
+            &pt_a,
+            &sk_dft,
+            &glwe_in_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         for res_offset in 0..scale {
             module.glwe_mul_const(&mut res, scale + res_offset, &a, &b_const, scratch.borrow());

@@ -17,7 +17,7 @@ use std::ptr::NonNull;
 use poulpy_hal::{
     layouts::{Backend, Module},
     oep::ModuleNewImpl,
-    reference::fft64::reim::{ReimFFTTable, ReimIFFTTable},
+    reference::fft64::reim::{FFTHandleAccessor, ReimFFTTable, ReimIFFTTable},
 };
 
 use super::FFT64Ref;
@@ -88,5 +88,14 @@ impl FFT64ModuleHandle for Module<FFT64Ref> {
         // SAFETY: same as above.
         let h: &FFT64RefHandle = unsafe { &*self.ptr() };
         &h.table_ifft
+    }
+}
+
+impl FFTHandleAccessor<f64> for FFT64Ref {
+    fn get_fft_table_from_handle(handle: &FFT64RefHandle) -> &ReimFFTTable<f64> {
+        &handle.table_fft
+    }
+    fn get_ifft_table_from_handle(handle: &FFT64RefHandle) -> &ReimIFFTTable<f64> {
+        &handle.table_ifft
     }
 }

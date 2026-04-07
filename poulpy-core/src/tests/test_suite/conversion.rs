@@ -46,7 +46,8 @@ where
                 base2k: Base2K(bases[0] as u32),
                 k: TorusPrecision(k_in as u32),
                 rank: Rank(rank as u32),
-            }).unwrap();
+            })
+            .unwrap();
 
             let glwe_infos_out: GLWELayout = GLWELayout {
                 n: n_glwe,
@@ -130,7 +131,8 @@ where
         k: TorusPrecision(k_ksk as u32),
         dnum: Dnum(2),
         rank_out: rank,
-    }).unwrap();
+    })
+    .unwrap();
 
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
@@ -143,7 +145,8 @@ where
         n: n_lwe,
         base2k: Base2K(base2k as u32 - 2),
         k: TorusPrecision(k_lwe as u32),
-    }).unwrap();
+    })
+    .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         LWEToGLWEKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
@@ -245,14 +248,16 @@ where
         k: TorusPrecision(k_ksk as u32),
         dnum: Dnum(2),
         rank_in: rank,
-    }).unwrap();
+    })
+    .unwrap();
 
     let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n: n_glwe,
         base2k: Base2K(base2k as u32 - 1),
         k: TorusPrecision(k_glwe as u32),
         rank,
-    }).unwrap();
+    })
+    .unwrap();
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,

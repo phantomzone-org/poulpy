@@ -5,14 +5,17 @@ use poulpy_hal::{
         VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos,
     },
     oep::ConvolutionImpl,
-    reference::fft64::convolution::{
-        convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_by_const_apply, convolution_by_const_apply_tmp_bytes,
-        convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes, convolution_prepare_left,
-        convolution_prepare_right, convolution_prepare_self,
+    reference::fft64::{
+        convolution::{
+            convolution_apply_dft, convolution_apply_dft_tmp_bytes, convolution_by_const_apply,
+            convolution_by_const_apply_tmp_bytes, convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes,
+            convolution_prepare_left, convolution_prepare_right, convolution_prepare_self,
+        },
+        reim::FFTModuleHandle,
     },
 };
 
-use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
+use crate::FFT64Avx;
 
 unsafe impl ConvolutionImpl<Self> for FFT64Avx
 where

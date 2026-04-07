@@ -5,7 +5,6 @@ use poulpy_cpu_ref::NTT120Ref;
 use crate::leveled::tests::test_suite::{
     NTT120_PARAMS,
     add::{test_add, test_add_aligned, test_add_const, test_add_pt},
-    align::{test_align, test_alignment_predicates},
     composition::{
         test_prepared_linear_sum, test_prepared_poly2_mul, test_prepared_poly2_sum, test_prepared_poly2_sum_aligned,
         test_prepared_poly2_term, test_prepared_poly2_term_align,
@@ -31,16 +30,6 @@ const ATK_ROTATIONS: &[i64] = &[1, 7];
 static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS));
 static CTX_TSK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_tsk(NTT120_PARAMS));
 static CTX_ATK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
-
-#[test]
-fn align() {
-    test_align(&CTX);
-}
-
-#[test]
-fn alignment_predicates() {
-    test_alignment_predicates(&CTX);
-}
 
 #[test]
 fn encrypt_decrypt() {

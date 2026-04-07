@@ -53,7 +53,8 @@ where
         base2k: out_base2k.into(),
         k: k_ct.into(),
         rank: rank.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let key_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
         n: n.into(),
@@ -62,7 +63,8 @@ where
         rank: rank.into(),
         dsize: dsize.into(),
         dnum: dnum.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
@@ -89,7 +91,15 @@ where
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
     let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
-        tmp.encrypt_sk(module, *gal_el, &sk, &key_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        tmp.encrypt_sk(
+            module,
+            *gal_el,
+            &sk,
+            &key_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
             GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
         atk_prepared.prepare(module, &tmp, scratch.borrow());
@@ -100,7 +110,15 @@ where
         .step_by(5)
         .map(|_| {
             let mut ct = GLWE::alloc_from_infos(&glwe_out_infos);
-            ct.encrypt_sk(module, &pt, &sk_prep, &glwe_out_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_sk(
+                module,
+                &pt,
+                &sk_prep,
+                &glwe_out_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             module.glwe_rotate_inplace(-5, &mut pt, scratch.borrow()); // X^-batch * pt
             ct
         })

@@ -3,9 +3,12 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::{DeclaredK, layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-}};
+use crate::{
+    DeclaredK,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    },
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -20,7 +23,7 @@ pub struct GGLWEToGGSWKeyLayout {
     pub dsize: Dsize,
 }
 
-impl DeclaredK for GGLWEToGGSWKeyLayout{
+impl DeclaredK for GGLWEToGGSWKeyLayout {
     fn k(&self) -> TorusPrecision {
         self.k
     }

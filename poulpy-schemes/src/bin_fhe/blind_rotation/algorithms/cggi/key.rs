@@ -4,7 +4,8 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchTakeCore, layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef}
+    Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchTakeCore,
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 
 use crate::bin_fhe::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};

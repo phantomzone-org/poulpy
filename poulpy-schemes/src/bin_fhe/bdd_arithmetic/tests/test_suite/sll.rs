@@ -60,9 +60,25 @@ where
 
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     source.fill_bytes(&mut scratch.borrow().data);
-    a_enc_prep.encrypt_sk(module, a, sk_glwe_prep, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    a_enc_prep.encrypt_sk(
+        module,
+        a,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
     source.fill_bytes(&mut scratch.borrow().data);
-    b_enc_prep.encrypt_sk(module, b, sk_glwe_prep, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    b_enc_prep.encrypt_sk(
+        module,
+        b,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     res.sll(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch.borrow());
 

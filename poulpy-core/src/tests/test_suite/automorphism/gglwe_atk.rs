@@ -6,11 +6,14 @@ use poulpy_hal::{
 };
 
 use crate::{
-    DEFAULT_SIGMA_XE, EncryptionLayout, GGLWENoise, GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk, ScratchTakeCore, layouts::{
+    DEFAULT_SIGMA_XE, EncryptionLayout, GGLWENoise, GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk,
+    ScratchTakeCore,
+    layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret,
         GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
-    }, var_noise_gglwe_product_v2
+    },
+    var_noise_gglwe_product_v2,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -54,7 +57,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let auto_key_out_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
                 n: n.into(),
@@ -63,7 +67,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let auto_key_apply_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
                 n: n.into(),
@@ -72,7 +77,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_in_infos);
             let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_out_infos);
@@ -97,10 +103,26 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key_in.encrypt_sk(module, p0, &sk, &auto_key_in_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key_in.encrypt_sk(
+                module,
+                p0,
+                &sk,
+                &auto_key_in_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(module, p1, &sk, &auto_key_apply_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key_apply.encrypt_sk(
+                module,
+                p1,
+                &sk,
+                &auto_key_apply_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_infos);
@@ -196,7 +218,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let auto_key_apply_layout = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
                 n: n.into(),
@@ -205,7 +228,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_layout);
             let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_apply_layout);
@@ -224,10 +248,26 @@ where
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
-            auto_key.encrypt_sk(module, p0, &sk, &auto_key_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key.encrypt_sk(
+                module,
+                p0,
+                &sk,
+                &auto_key_layout,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             // gglwe_{s2}(s1) -> s1 -> s2
-            auto_key_apply.encrypt_sk(module, p1, &sk, &auto_key_apply_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key_apply.encrypt_sk(
+                module,
+                p1,
+                &sk,
+                &auto_key_apply_layout,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_layout);

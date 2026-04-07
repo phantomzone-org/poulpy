@@ -11,7 +11,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         Dsize, GGLWEDecompress, GGLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, LWEInfos, prepared::GLWESecretPrepared,
+        GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, prepared::GLWESecretPrepared,
     },
 };
 
@@ -39,7 +39,8 @@ where
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
 
@@ -54,7 +55,14 @@ where
         let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
-        tensor_key.encrypt_sk(module, &sk, &tensor_key_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        tensor_key.encrypt_sk(
+            module,
+            &sk,
+            &tensor_key_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
@@ -100,7 +108,8 @@ where
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut tensor_key_compressed: GLWETensorKeyCompressed<Vec<u8>> =
             GLWETensorKeyCompressed::alloc_from_infos(&tensor_key_infos);

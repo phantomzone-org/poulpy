@@ -6,11 +6,15 @@ use poulpy_hal::{
 };
 
 use crate::{
-    EncryptionLayout, GGLWEToGGSWKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, GLWEAutomorphismKeyEncryptSk, ScratchTakeCore, encryption::DEFAULT_SIGMA_XE, layouts::{
+    EncryptionLayout, GGLWEToGGSWKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, GLWEAutomorphismKeyEncryptSk,
+    ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
+    layouts::{
         GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEAutomorphismKey,
         GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGLWEToGGSWKeyPrepared, GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
-    }, noise::noise_ggsw_keyswitch
+    },
+    noise::noise_ggsw_keyswitch,
 };
 
 pub fn test_ggsw_automorphism<BE: Backend>(params: &TestParams, module: &Module<BE>)
@@ -54,7 +58,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let ggsw_out_layout = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
@@ -63,7 +68,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let tsk_layout = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
@@ -72,7 +78,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let auto_key_layout = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
@@ -81,7 +88,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut ct_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_layout);
             let mut ct_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_layout);
@@ -108,7 +116,15 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(module, p, &sk, &auto_key_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key.encrypt_sk(
+                module,
+                p,
+                &sk,
+                &auto_key_layout,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             tsk.encrypt_sk(module, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
@@ -203,7 +219,8 @@ where
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let tsk_layout = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
@@ -212,7 +229,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let auto_key_layout = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
                 n: n.into(),
@@ -221,7 +239,8 @@ where
                 dnum: dnum_ksk.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_layout);
             let mut tsk: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&tsk_layout);
@@ -247,7 +266,15 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            auto_key.encrypt_sk(module, p, &sk, &auto_key_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            auto_key.encrypt_sk(
+                module,
+                p,
+                &sk,
+                &auto_key_layout,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             tsk.encrypt_sk(module, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);

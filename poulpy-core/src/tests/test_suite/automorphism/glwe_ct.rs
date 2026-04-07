@@ -52,7 +52,8 @@ where
                 base2k: in_base2k.into(),
                 k: k_in.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let ct_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
@@ -68,7 +69,8 @@ where
                 rank: rank.into(),
                 dnum: dnum.into(),
                 dsize: dsize.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut autokey: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&autokey_infos);
             let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ct_in_infos);
@@ -95,7 +97,15 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(module, p, &sk, &autokey_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            autokey.encrypt_sk(
+                module,
+                p,
+                &sk,
+                &autokey_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             ct_in.encrypt_sk(
                 module,
@@ -171,7 +181,8 @@ where
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let autokey_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
                 n: n.into(),
@@ -180,7 +191,8 @@ where
                 rank: rank.into(),
                 dnum: dnum.into(),
                 dsize: dsize.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut autokey: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&autokey_infos);
             let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ct_out_infos);
@@ -205,7 +217,15 @@ where
             let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
             sk_prepared.prepare(module, &sk);
 
-            autokey.encrypt_sk(module, p, &sk, &autokey_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            autokey.encrypt_sk(
+                module,
+                p,
+                &sk,
+                &autokey_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             ct.encrypt_sk(
                 module,

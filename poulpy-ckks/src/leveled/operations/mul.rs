@@ -251,7 +251,7 @@ pub fn mul_aligned<BE: Backend>(
     b.assert_valid("mul rhs");
     assert_cts_aligned(a, b, "mul_aligned");
     let rescale_bits = a.torus_scale_bits().min(b.torus_scale_bits());
-    let active_prefix = a.prefix_bits().min(b.prefix_bits());
+    let active_prefix = a.delta().min(b.delta());
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), b.inner.size(), a.inner.k().0, b.inner.k().0, base2k).min(res.inner.max_size());
@@ -296,7 +296,7 @@ pub fn mul<BE: Backend>(
     a.assert_valid("mul lhs");
     b.assert_valid("mul rhs");
     let rescale_bits = a.torus_scale_bits().min(b.torus_scale_bits());
-    let active_prefix = a.prefix_bits().min(b.prefix_bits());
+    let active_prefix = a.delta().min(b.delta());
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), b.inner.size(), a.inner.k().0, b.inner.k().0, base2k).min(res.inner.max_size());
@@ -337,7 +337,7 @@ pub fn square<BE: Backend>(
 {
     a.assert_valid("square input");
     let rescale_bits = a.torus_scale_bits();
-    let active_prefix = a.prefix_bits();
+    let active_prefix = a.delta();
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), a.inner.size(), a.inner.k().0, a.inner.k().0, base2k).min(res.inner.max_size());
@@ -396,7 +396,7 @@ pub fn mul_pt<BE: Backend>(
     let product_scale_bits = ct.torus_scale_bits() + pt.embed_bits();
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
     let product_offset_bits = ct.offset_bits();
-    let active_prefix_bits = ct.prefix_bits();
+    let active_prefix_bits = ct.delta();
     let off = mk.as_usize();
     let (full_pt, scratch_rest) = offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, mk, pt, scratch);
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &full_pt, scratch_rest);
@@ -451,7 +451,7 @@ pub fn mul_prepared_pt<BE: Backend>(
     let product_scale_bits = ct.torus_scale_bits() + pt.embed_bits();
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
     let product_offset_bits = ct.offset_bits();
-    let active_prefix_bits = ct.prefix_bits();
+    let active_prefix_bits = ct.delta();
     let off = mk.as_usize();
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &pt.inner, scratch);
     res.torus_scale_bits = product_scale_bits;

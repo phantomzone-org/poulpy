@@ -6,7 +6,8 @@ use poulpy_hal::{
 use std::{fmt, marker::PhantomData};
 
 use poulpy_core::{
-    DeclaredK, Distribution, EncryptionLayout, layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision}
+    DeclaredK, Distribution, EncryptionLayout,
+    layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -40,7 +41,7 @@ pub struct BlindRotationKeyLayout {
     pub rank: Rank,
 }
 
-impl DeclaredK for BlindRotationKeyLayout{
+impl DeclaredK for BlindRotationKeyLayout {
     fn k(&self) -> TorusPrecision {
         self.k
     }
@@ -56,7 +57,7 @@ impl BlindRotationKeyInfos for BlindRotationKeyLayout {
     }
 }
 
-impl BlindRotationKeyInfos for EncryptionLayout<BlindRotationKeyLayout>{
+impl BlindRotationKeyInfos for EncryptionLayout<BlindRotationKeyLayout> {
     fn n_glwe(&self) -> Degree {
         self.layout.n_glwe()
     }

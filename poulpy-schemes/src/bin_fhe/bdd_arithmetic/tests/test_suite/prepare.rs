@@ -1,5 +1,5 @@
 use poulpy_core::{
-    EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, DEFAULT_SIGMA_XE, ScratchTakeCore,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     layouts::{GGSWInfos, GGSWLayout, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
@@ -55,7 +55,15 @@ where
     // GLWE(value)
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
     let value: u32 = source.next_u32();
-    c_enc.encrypt_sk(module, value, sk_glwe_prep, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    c_enc.encrypt_sk(
+        module,
+        value,
+        sk_glwe_prep,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     // GGSW(0)
     let mut c_enc_prep_debug: FheUintPreparedDebug<Vec<u8>, u32> =

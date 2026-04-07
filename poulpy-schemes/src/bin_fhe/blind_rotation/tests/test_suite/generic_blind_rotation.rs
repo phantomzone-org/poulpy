@@ -10,10 +10,11 @@ use crate::bin_fhe::blind_rotation::{
 };
 
 use poulpy_core::{
-    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore, layouts::{
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
+    layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext,
         LWESecret, LWEToRef, prepared::GLWESecretPrepared,
-    }
+    },
 };
 
 pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
@@ -57,20 +58,23 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
         k: k_brk.into(),
         dnum: rows_brk.into(),
         rank: rank.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_res.into(),
         rank: rank.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let lwe_infos = EncryptionLayout::new_from_default_sigma(LWELayout {
         n: n_lwe.into(),
         k: k_lwe.into(),
         base2k: base2k.into(),
-    }).unwrap();
+    })
+    .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::<BE>::alloc(BlindRotationKey::encrypt_sk_tmp_bytes(module, &brk_infos));
 
@@ -110,7 +114,15 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 

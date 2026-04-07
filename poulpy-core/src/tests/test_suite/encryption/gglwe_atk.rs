@@ -11,7 +11,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, LWEInfos, compressed::GLWEAutomorphismKeyCompressed,
+        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
         prepared::GLWESecretPrepared,
     },
     noise::GGLWENoise,
@@ -46,7 +46,8 @@ where
                 dnum: dnum.into(),
                 dsize: di.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
 
@@ -125,7 +126,8 @@ where
                 dnum: dnum.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            }).unwrap();
+            })
+            .unwrap();
 
             let mut atk_compressed: GLWEAutomorphismKeyCompressed<Vec<u8>> =
                 GLWEAutomorphismKeyCompressed::alloc_from_infos(&atk_infos);

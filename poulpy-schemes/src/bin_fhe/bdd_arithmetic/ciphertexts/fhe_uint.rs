@@ -1,9 +1,11 @@
 use poulpy_core::{
-    EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE, ScratchTakeCore, layouts::{
+    EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub,
+    GLWETrace, LWEFromGLWE, ScratchTakeCore,
+    layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout,
         GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
         TorusPrecision,
-    }
+    },
 };
 use poulpy_hal::{
     api::ModuleLogN,
@@ -106,7 +108,8 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         data: T,
         sk_glwe: &S,
         enc_infos: &E,
-        source_xe: &mut Source, source_xa: &mut Source,
+        source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
@@ -139,7 +142,8 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.encrypt_sk(module, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
+        self.bits
+            .encrypt_sk(module, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
     }
 }
 

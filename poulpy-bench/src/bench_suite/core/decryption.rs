@@ -37,7 +37,14 @@ where
         ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(&module, infos) | GLWE::decrypt_tmp_bytes(&module, infos));
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    ct.encrypt_zero_sk(&module, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let group_name = format!("glwe_decrypt::{label}");
     let mut group = c.benchmark_group(group_name);

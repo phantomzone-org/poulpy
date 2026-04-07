@@ -13,7 +13,7 @@ use crate::{
     },
 };
 use poulpy_core::{
-    GLWEAdd, GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWESub, ScratchTakeCore,
+    GLWEAdd, GLWENormalize, GLWEDecrypt, GLWEEncryptSk, GLWESub, ScratchTakeCore,
     layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
 };
 use poulpy_hal::{
@@ -29,7 +29,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEAdd
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWESub
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,

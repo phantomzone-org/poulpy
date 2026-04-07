@@ -55,7 +55,8 @@ where
                     dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let gglwe_out_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
@@ -74,7 +75,8 @@ where
                     dnum: dnum.into(),
                     dsize: dsize.into(),
                     rank: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_in_infos);
                 let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
@@ -212,7 +214,8 @@ where
                     dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let ggsw_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                     n: n.into(),
@@ -221,7 +224,8 @@ where
                     dnum: dnum.into(),
                     dsize: dsize.into(),
                     rank: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
                 let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);

@@ -137,7 +137,15 @@ where
 
     let lwe_enc_infos = EncryptionLayout::new_from_default_sigma(lwe_infos).unwrap();
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
@@ -145,7 +153,15 @@ where
 
     let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
     let now: Instant = Instant::now();
-    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    cbt_key.encrypt_sk(
+        module,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
@@ -321,7 +337,15 @@ where
 
     let lwe_enc_infos = EncryptionLayout::new_from_default_sigma(lwe_infos).unwrap();
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
@@ -329,7 +353,15 @@ where
 
     let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
     let now: Instant = Instant::now();
-    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    cbt_key.encrypt_sk(
+        module,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);

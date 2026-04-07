@@ -54,7 +54,8 @@ where
                         dsize: dsize_in.into(),
                         rank_in: rank_in_s0s1.into(),
                         rank_out: rank_out_s0s1.into(),
-                    }).unwrap();
+                    })
+                    .unwrap();
 
                     let gglwe_s1s2_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                         n: n.into(),
@@ -64,7 +65,8 @@ where
                         dsize: dsize.into(),
                         rank_in: rank_out_s0s1.into(),
                         rank_out: rank_out_s1s2.into(),
-                    }).unwrap();
+                    })
+                    .unwrap();
 
                     let gglwe_s0s2_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                         n: n.into(),
@@ -108,7 +110,15 @@ where
                     sk2_prepared.prepare(module, &sk2);
 
                     // gglwe_{s1}(s0) = s0 -> s1
-                    gglwe_s0s1.encrypt_sk(module, &sk0, &sk1, &gglwe_s0s1_infos, &mut source_xe, &mut source_xa, scratch_enc.borrow());
+                    gglwe_s0s1.encrypt_sk(
+                        module,
+                        &sk0,
+                        &sk1,
+                        &gglwe_s0s1_infos,
+                        &mut source_xe,
+                        &mut source_xa,
+                        scratch_enc.borrow(),
+                    );
 
                     // gglwe_{s2}(s1) -> s1 -> s2
                     gglwe_s1s2.encrypt_sk(
@@ -197,7 +207,8 @@ where
                     dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let gglwe_s1s2_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                     n: n.into(),
@@ -207,7 +218,8 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_out.into(),
                     rank_out: rank_out.into(),
-                }).unwrap();
+                })
+                .unwrap();
 
                 let mut gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s0s1_infos);
                 let mut gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s1s2_infos);

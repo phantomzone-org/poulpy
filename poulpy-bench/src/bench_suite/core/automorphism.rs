@@ -56,7 +56,15 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     );
 
     let atk_enc_infos = NoiseInfos::new(atk_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    atk.encrypt_sk(&module, p, &sk, &atk_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    atk.encrypt_sk(
+        &module,
+        p,
+        &sk,
+        &atk_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
     module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
@@ -65,7 +73,14 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
 
     let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    ct_in.encrypt_zero_sk(&module, &sk_prepared, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    ct_in.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let group_name = format!("glwe_automorphism::{label}");
     let mut group = c.benchmark_group(group_name);

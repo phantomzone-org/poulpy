@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use poulpy_core::{
     EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared, GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision
+        Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
+        GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -72,7 +73,15 @@ where
 
     let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
-    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &ggsw_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    k_enc_prep.encrypt_sk(
+        module,
+        k,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let digit = 5;
     let mask: u32 = (1 << digit) - 1;
@@ -92,7 +101,15 @@ where
         for value in data.iter().take(1 << digit) {
             pt.encode_coeff_i64(*value, TorusPrecision(base2k.as_u32()), 0);
             let mut ct = GLWE::alloc_from_infos(&glwe_infos);
-            ct.encrypt_sk(module, &pt, sk_glwe_prep, &glwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_sk(
+                module,
+                &pt,
+                sk_glwe_prep,
+                &glwe_enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             cts.push(ct);
         }
 

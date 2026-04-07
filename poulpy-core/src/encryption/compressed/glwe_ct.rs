@@ -6,7 +6,7 @@ use poulpy_hal::{
 
 use crate::{
     EncryptionInfos,
-    encryption::{DEFAULT_SIGMA_XE, GLWEEncryptSk, GLWEEncryptSkInternal},
+    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},

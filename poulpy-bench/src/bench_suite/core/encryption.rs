@@ -42,7 +42,14 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct.encrypt_zero_sk(&module, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_zero_sk(
+                &module,
+                &sk_prepared,
+                &enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             black_box(());
         })
     });
@@ -78,7 +85,15 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct.encrypt_sk(&module, &pt, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            ct.encrypt_sk(
+                &module,
+                &pt,
+                &sk_prepared,
+                &enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             black_box(());
         })
     });

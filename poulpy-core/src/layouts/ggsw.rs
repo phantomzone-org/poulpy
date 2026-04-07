@@ -165,11 +165,7 @@ impl<D: DataMut> GGSW<D> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
         let k = TorusPrecision(base2k.0 * data.size() as u32);
-        GLWE {
-            base2k,
-            k,
-            data,
-        }
+        GLWE { base2k, k, data }
     }
 }
 

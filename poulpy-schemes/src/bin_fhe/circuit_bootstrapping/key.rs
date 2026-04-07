@@ -1,8 +1,11 @@
 use poulpy_core::{
-    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution, ScratchTakeCore, layouts::{
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution,
+    ScratchTakeCore,
+    layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
         GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
-    }, trace_galois_elements
+    },
+    trace_galois_elements,
 };
 use std::collections::HashMap;
 
@@ -249,7 +252,8 @@ where
         res.brk
             .encrypt_sk(self, &sk_glwe_prepared, sk_lwe, &enc_infos.brk, source_xe, source_xa, scratch);
 
-        res.tsk.encrypt_sk(self, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
+        res.tsk
+            .encrypt_sk(self, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
     }
 }
 

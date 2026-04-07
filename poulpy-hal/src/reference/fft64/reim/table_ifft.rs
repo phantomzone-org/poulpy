@@ -21,12 +21,12 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::{
     alloc_aligned,
-    reference::fft64::reim::{ReimDFTExecute, frac_rev_bits, ifft_ref::ifft_ref},
+    reference::fft64::reim::{ReimFFTExecute, frac_rev_bits, ifft_ref::ifft_ref},
 };
 
 pub struct ReimIFFTRef;
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTRef {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTRef {
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         ifft_ref(table.m, &table.omg, data);
     }
@@ -115,7 +115,7 @@ fn fill_ifft8_omegas<R: Float + FloatConst>(j: R, omg: &mut [R], pos: usize) -> 
     let _8th: R = R::from(1. / 8.).unwrap();
     let angle_1: R = j / R::from(2).unwrap();
     let angle_2: R = j / R::from(4).unwrap();
-    let angle_4: R = j / R::from(2).unwrap();
+    let angle_4: R = j / R::from(8).unwrap();
     let two_pi: R = R::from(2).unwrap() * R::PI();
     omg_pos[0] = R::cos(two_pi * angle_4);
     omg_pos[1] = R::cos(two_pi * (angle_4 + _8th));

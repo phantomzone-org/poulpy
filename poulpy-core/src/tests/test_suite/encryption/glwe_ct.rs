@@ -35,7 +35,8 @@ where
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout {
             n: n.into(),
@@ -99,7 +100,8 @@ where
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout {
             n: n.into(),
@@ -168,7 +170,8 @@ where
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
 
@@ -190,7 +193,14 @@ where
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-        ct.encrypt_zero_sk(module, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        ct.encrypt_zero_sk(
+            module,
+            &sk_prepared,
+            &glwe_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let noise_have: f64 = ct.noise(module, &pt, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
@@ -224,7 +234,8 @@ where
             base2k: base2k.into(),
             k: k_ct.into(),
             rank: rank.into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
         let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);

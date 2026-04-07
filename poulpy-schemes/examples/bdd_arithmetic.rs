@@ -163,7 +163,15 @@ where
     let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_layout).unwrap();
 
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &bdd_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+    bdd_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &bdd_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     ////////// Input Encryption
     // Encrypting the inputs
