@@ -3,9 +3,9 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
+use crate::{DeclaredK, layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-};
+}};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -26,6 +26,12 @@ pub struct GLWESwitchingKeyLayout {
     pub dsize: Dsize,
 }
 
+impl DeclaredK for GLWESwitchingKeyLayout {
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
 impl LWEInfos for GLWESwitchingKeyLayout {
     fn n(&self) -> Degree {
         self.n
@@ -35,8 +41,8 @@ impl LWEInfos for GLWESwitchingKeyLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -125,10 +131,6 @@ impl<D: Data> LWEInfos for GLWESwitchingKey<D> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -191,7 +193,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -216,7 +218,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),

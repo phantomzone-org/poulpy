@@ -50,10 +50,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWESwitchingKeyPrepared<D, B> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -109,7 +105,7 @@ where
     {
         self.alloc_glwe_switching_key_prepared(
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -135,7 +131,7 @@ where
     {
         self.bytes_of_glwe_key_prepared(
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),

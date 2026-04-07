@@ -6,12 +6,12 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWENoise, GGLWEToGGSWKeyCompressedEncryptSk, GGLWEToGGSWKeyEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGLWENoise, GGLWEToGGSWKeyCompressedEncryptSk, GGLWEToGGSWKeyEncryptSk, ScratchTakeCore,
     decryption::GLWEDecrypt,
-    encryption::SIGMA,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         Dsize, GGLWE, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyDecompress,
-        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, LWEInfos,
+        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
         prepared::GLWESecretPrepared,
     },
 };
@@ -34,14 +34,14 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let key_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
+        let key_infos = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
 
@@ -56,12 +56,12 @@ where
         let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
-        key.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+        key.encrypt_sk(module, &sk, &key_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let max_noise = SIGMA.log2() + 0.5 - (key.k().as_u32() as f64);
+        let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
         let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), rank);
 
@@ -73,12 +73,11 @@ where
             let ksk: &GGLWE<Vec<u8>> = key.at(i);
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
-                    assert!(
-                        ksk.noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise
-                    )
+                    let noise_have = ksk
+                        .noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
                 }
             }
         }
@@ -104,14 +103,14 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let key_infos: GGLWEToGGSWKeyLayout = GGLWEToGGSWKeyLayout {
+        let key_infos = EncryptionLayout::new_from_default_sigma(GGLWEToGGSWKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        };
+        }).unwrap();
 
         let mut key_compressed: GGLWEToGGSWKeyCompressed<Vec<u8>> = GGLWEToGGSWKeyCompressed::alloc_from_infos(&key_infos);
 
@@ -128,7 +127,7 @@ where
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        key_compressed.encrypt_sk(module, &sk, seed_xa, &mut source_xe, scratch.borrow());
+        key_compressed.encrypt_sk(module, &sk, seed_xa, &key_infos, &mut source_xe, scratch.borrow());
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
         key.decompress(module, &key_compressed);
@@ -136,7 +135,7 @@ where
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let max_noise = SIGMA.log2() + 0.5 - (key.k().as_u32() as f64);
+        let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
         let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), rank);
 
@@ -148,12 +147,11 @@ where
             let ksk: &GGLWE<Vec<u8>> = key.at(i);
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
-                    assert!(
-                        ksk.noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
-                            .std()
-                            .log2()
-                            <= max_noise
-                    )
+                    let noise_have = ksk
+                        .noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
                 }
             }
         }

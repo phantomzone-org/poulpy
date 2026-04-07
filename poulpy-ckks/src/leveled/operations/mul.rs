@@ -79,7 +79,7 @@ pub fn tensor_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     module.glwe_tensor_apply_tmp_bytes(&res.inner, off, &a.inner, &b.inner)
 }
 
@@ -114,7 +114,7 @@ pub fn tensor<BE: Backend>(
     a.assert_valid("tensor lhs");
     b.assert_valid("tensor rhs");
     assert_eq!(a.inner.base2k(), b.inner.base2k(), "tensor: base2k mismatch");
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     res.torus_scale_bits = a.torus_scale_bits() + b.torus_scale_bits();
     res.offset_bits = a.offset_bits().min(b.offset_bits());
     module.glwe_tensor_apply(&mut res.inner, off, &a.inner, &b.inner, scratch);
@@ -186,7 +186,7 @@ pub fn mul_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     let tensor_size = mul_tensor_size(
         a.inner.size(),
         b.inner.size(),
@@ -214,7 +214,7 @@ pub fn square_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize();
+    let off = a.inner.max_k().as_usize();
     let tensor_size = mul_tensor_size(
         a.inner.size(),
         a.inner.size(),
@@ -354,7 +354,7 @@ pub fn square<BE: Backend>(
         offset_bits: a.offset_bits(),
         torus_scale_bits: a.torus_scale_bits() * 2,
     };
-    let off = a.inner.k().as_usize();
+    let off = a.inner.max_k().as_usize();
     module.glwe_tensor_square_apply(&mut tensor_res.inner, off, &a.inner, scratch_rest);
     tensor_res.assert_valid("square tensor result");
     // See `mul_aligned` for the widen/retract rationale.
@@ -371,7 +371,7 @@ where
 {
     let mut layout = ct.inner.glwe_layout();
     layout.k = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let off = ct.inner.k().as_usize();
+    let off = ct.inner.max_k().as_usize();
     let layout_bytes = poulpy_core::layouts::GLWEPlaintext::bytes_of(ct.inner.n(), ct.inner.base2k(), layout.k);
     let op_bytes = module.glwe_mul_plain_tmp_bytes(&layout, off, &ct.inner, &layout);
     layout_bytes + module.vec_znx_normalize_tmp_bytes().max(op_bytes)

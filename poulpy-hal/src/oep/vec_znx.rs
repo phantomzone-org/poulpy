@@ -1,7 +1,7 @@
 //! Backend extension points for coefficient-domain [`VecZnx`](crate::layouts::VecZnx) operations.
 
 use crate::{
-    layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -486,10 +486,8 @@ pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut;
 }
@@ -505,10 +503,8 @@ pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut;
 }

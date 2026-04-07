@@ -159,7 +159,7 @@ where
         let gglwe_infos: GGLWELayout = GGLWELayout {
             n: res_infos.n(),
             base2k: res_infos.base2k(),
-            k: res_infos.k(),
+            k: res_infos.max_k(),
             dnum: res_infos.dnum(),
             dsize: Dsize(1),
             rank_in: res_infos.rank().max(Rank(1)),
@@ -302,7 +302,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let glwe_brk_layout = &GLWELayout {
         n: key.brk.n(),
         base2k: key.brk.base2k(),
-        k: key.brk.k(),
+        k: key.brk.max_k(),
         rank: key.brk.rank(),
     };
 
@@ -311,7 +311,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let glwe_atk_layout: &GLWELayout = &GLWELayout {
         n: glwe_brk_layout.n(),
         base2k: atk_layout.base2k(),
-        k: glwe_brk_layout.k(),
+        k: glwe_brk_layout.max_k(),
         rank: glwe_brk_layout.rank(),
     };
 

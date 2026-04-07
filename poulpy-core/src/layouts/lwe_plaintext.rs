@@ -15,10 +15,6 @@ impl LWEInfos for LWEPlaintextLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         Degree(0)
     }
@@ -30,7 +26,6 @@ impl LWEInfos for LWEPlaintextLayout {
 
 pub struct LWEPlaintext<D: Data> {
     pub(crate) data: VecZnx<D>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
 }
 
@@ -38,19 +33,11 @@ impl<D: DataMut> SetLWEInfos for LWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
-
-    fn set_k(&mut self, k: TorusPrecision) {
-        self.k = k
-    }
 }
 
 impl<D: Data> LWEInfos for LWEPlaintext<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn n(&self) -> Degree {
@@ -67,13 +54,12 @@ impl LWEPlaintext<Vec<u8>> {
     where
         A: LWEInfos,
     {
-        Self::alloc(infos.base2k(), infos.k())
+        Self::alloc(infos.base2k(), infos.max_k())
     }
 
     pub fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
         LWEPlaintext {
             data: VecZnx::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
-            k,
             base2k,
         }
     }
@@ -92,7 +78,13 @@ impl LWEPlaintext<Vec<u8>> {
 
 impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LWEPlaintext: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
+        write!(
+            f,
+            "LWEPlaintext: base2k={} k={}: {}",
+            self.base2k().0,
+            self.max_k().0,
+            self.data
+        )
     }
 }
 
@@ -106,7 +98,6 @@ impl<D: DataRef> LWEPlaintextToRef for LWEPlaintext<D> {
         LWEPlaintext {
             data: self.data.to_ref(),
             base2k: self.base2k,
-            k: self.k,
         }
     }
 }
@@ -121,7 +112,6 @@ impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
         LWEPlaintext {
             data: self.data.to_mut(),
             base2k: self.base2k,
-            k: self.k,
         }
     }
 }

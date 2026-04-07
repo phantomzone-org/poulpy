@@ -6,8 +6,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWENormalize, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWENormalize, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout,
         GLWESwitchingKeyPreparedFactory, LWEInfos,
@@ -46,12 +46,12 @@ where
                 let n: usize = module.n();
                 let dnum: usize = k_in.div_ceil(key_base2k * dsize);
 
-                let glwe_in_infos: GLWELayout = GLWELayout {
+                let glwe_in_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
                     n: n.into(),
                     base2k: in_base2k.into(),
                     k: k_in.into(),
                     rank: rank_in.into(),
-                };
+                }).unwrap();
 
                 let glwe_out_infos: GLWELayout = GLWELayout {
                     n: n.into(),
@@ -60,7 +60,7 @@ where
                     rank: rank_out.into(),
                 };
 
-                let ksk: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+                let ksk_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: key_base2k.into(),
                     k: k_ksk.into(),
@@ -68,9 +68,9 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                }).unwrap();
 
-                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_infos);
                 let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
                 let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
                 let mut pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
@@ -83,9 +83,9 @@ where
                 module.vec_znx_fill_uniform(pt_in.base2k().into(), &mut pt_in.data, 0, &mut source_xa);
 
                 let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk)
+                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_infos)
                         | GLWE::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                        | GLWE::keyswitch_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &ksk),
+                        | GLWE::keyswitch_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &ksk_infos),
                 );
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
@@ -100,14 +100,23 @@ where
                 let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
                 sk_out_prepared.prepare(module, &sk_out);
 
-                ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+                ksk.encrypt_sk(
+                    module,
+                    &sk_in,
+                    &sk_out,
+                    &ksk_infos,
+                    &mut source_xe,
+                    &mut source_xa,
+                    scratch.borrow(),
+                );
 
                 glwe_in.encrypt_sk(
                     module,
                     &pt_in,
                     &sk_in_prepared,
-                    &mut source_xa,
+                    &glwe_in_infos,
                     &mut source_xe,
+                    &mut source_xa,
                     scratch.borrow(),
                 );
 
@@ -116,6 +125,7 @@ where
                 ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
                 glwe_out.keyswitch(module, &glwe_in, &ksk_prepared, scratch.borrow());
+
 
                 let noise_max: f64 = var_noise_gglwe_product_v2(
                     module.n() as f64,
@@ -126,7 +136,7 @@ where
                     0.5,
                     0.5,
                     0f64,
-                    SIGMA * SIGMA,
+                    DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE,
                     0f64,
                     rank_in as f64,
                 )
@@ -171,14 +181,14 @@ where
 
             let n: usize = module.n();
             let dnum: usize = k_out.div_ceil(key_base2k * dsize);
-            let glwe_out_infos: GLWELayout = GLWELayout {
+            let glwe_out_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
                 n: n.into(),
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
-            let ksk_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+            let ksk_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_ksk.into(),
@@ -186,7 +196,7 @@ where
                 dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
-            };
+            }).unwrap();
 
             let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_infos);
             let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
@@ -216,14 +226,23 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+            ksk.encrypt_sk(
+                module,
+                &sk_in,
+                &sk_out,
+                &ksk_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             glwe_out.encrypt_sk(
                 module,
                 &pt_want,
                 &sk_in_prepared,
-                &mut source_xa,
+                &glwe_out_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
@@ -242,7 +261,7 @@ where
                 0.5,
                 0.5,
                 0f64,
-                SIGMA * SIGMA,
+                DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE,
                 0f64,
                 rank as f64,
             )

@@ -6,8 +6,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGSW, GGSWDecompress, GGSWInfos, GGSWLayout, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         compressed::GGSWCompressed, prepared::GLWESecretPrepared,
@@ -28,14 +28,14 @@ where
             let n: usize = module.n();
             let dnum: usize = (k - di * base2k) / (di * base2k);
 
-            let ggsw_infos: GGSWLayout = GGSWLayout {
+            let ggsw_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
                 dnum: dnum.into(),
                 dsize: di.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
@@ -59,12 +59,13 @@ where
                 module,
                 &pt_scalar,
                 &sk_prepared,
-                &mut source_xa,
+                &ggsw_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
-            let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
+            let noise_f = |_col_i: usize| -(k as f64) + DEFAULT_SIGMA_XE.log2() + 0.5;
 
             for row in 0..ct.dnum().as_usize() {
                 for col in 0..ct.rank().as_usize() + 1 {
@@ -94,14 +95,14 @@ where
             let n: usize = module.n();
             let dnum: usize = (k - di * base2k) / (di * base2k);
 
-            let ggsw_infos: GGSWLayout = GGSWLayout {
+            let ggsw_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
                 dnum: dnum.into(),
                 dsize: di.into(),
                 rank: rank.into(),
-            };
+            }).unwrap();
 
             let mut ct_compressed: GGSWCompressed<Vec<u8>> = GGSWCompressed::alloc_from_infos(&ggsw_infos);
 
@@ -122,9 +123,9 @@ where
 
             let seed_xa: [u8; 32] = [1u8; 32];
 
-            ct_compressed.encrypt_sk(module, &pt_scalar, &sk_prepared, seed_xa, &mut source_xe, scratch.borrow());
+            ct_compressed.encrypt_sk(module, &pt_scalar, &sk_prepared, seed_xa, &ggsw_infos, &mut source_xe, scratch.borrow());
 
-            let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
+            let noise_f = |_col_i: usize| -(k as f64) + DEFAULT_SIGMA_XE.log2() + 0.5;
 
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
             ct.decompress(module, &ct_compressed);

@@ -4,7 +4,7 @@
 //! precision metadata.
 
 use poulpy_core::layouts::{
-    Base2K, Degree, GLWE, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision,
+    Base2K, Degree, GLWE, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision,
 };
 use poulpy_hal::layouts::{Data, DataMut, DataRef, ZnxViewMut};
 
@@ -46,14 +46,8 @@ pub struct CKKSCiphertext<D: Data> {
 
 impl CKKSCiphertext<Vec<u8>> {
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, torus_scale_bits: u32) -> Self {
-        let infos = GLWELayout {
-            n,
-            base2k,
-            k,
-            rank: Rank(1),
-        };
         Self {
-            inner: GLWE::alloc_from_infos(&infos),
+            inner: GLWE::alloc(n, base2k, k, Rank(1)),
             offset_bits: k.0,
             torus_scale_bits,
         }

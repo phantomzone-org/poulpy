@@ -2,6 +2,7 @@
 
 use crate::layouts::plaintext::CKKSPlaintext;
 
+use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc,
@@ -68,12 +69,12 @@ pub fn encode(pt: &mut CKKSPlaintext<impl DataMut>, re: &[f64], im: &[f64]) {
 pub fn decode(pt: &CKKSPlaintext<impl DataRef>) -> (Vec<f64>, Vec<f64>) {
     use poulpy_hal::layouts::VecZnx;
 
-    assert!(pt.inner.k.0 >= pt.embed_bits);
+    assert!(pt.inner.max_k().0 >= pt.embed_bits);
 
     let n = pt.inner.data.n();
     let m = n / 2;
     let base2k: usize = pt.inner.base2k.into();
-    let k: usize = pt.inner.k.0 as usize;
+    let k: usize = pt.inner.max_k().0 as usize;
     let size = pt.inner.data.size();
     let top_limb_bits = if k.is_multiple_of(base2k) { base2k } else { k % base2k };
 

@@ -1,13 +1,13 @@
 use poulpy_core::{
-    GGSWEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, LWEInfos,
         prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -36,11 +36,13 @@ where
     let mut ct = poulpy_core::layouts::GLWE::alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(poulpy_core::layouts::GLWE::encrypt_sk_tmp_bytes(&module, infos));
 
+    let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
     let group_name = format!("glwe_encrypt_sk::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+            ct.encrypt_zero_sk(&module, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
             black_box(());
         })
     });
@@ -70,11 +72,13 @@ where
     let mut ct = GGSW::alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGSW::encrypt_sk_tmp_bytes(&module, infos));
 
+    let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
     let group_name = format!("ggsw_encrypt_sk::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct.encrypt_sk(&module, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+            ct.encrypt_sk(&module, &pt, &sk_prepared, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
             black_box(());
         })
     });
@@ -100,11 +104,13 @@ where
     let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(&module, atk_infos));
 
+    let enc_infos = NoiseInfos::new(atk_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
     let group_name = format!("glwe_automorphism_key_encrypt_sk::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            atk.encrypt_sk(&module, p, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            atk.encrypt_sk(&module, p, &sk, &enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
             black_box(());
         })
     });

@@ -38,6 +38,8 @@ pub use vec_znx_dft::*;
 pub use vmp_pmat::*;
 pub use znx_base::*;
 
+use anyhow::Result;
+
 /// Base trait alias for all data containers.
 ///
 /// Requires equality comparison ([`PartialEq`], [`Eq`]), a known size at
@@ -78,4 +80,26 @@ pub trait ToOwnedDeep {
 /// data without performing a full byte-by-byte comparison.
 pub trait DigestU64 {
     fn digest_u64(&self) -> u64;
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NoiseInfos {
+    pub k: usize,
+    pub sigma: f64,
+    pub bound: f64,
+}
+
+impl NoiseInfos {
+    pub fn new(k: usize, sigma: f64, bound: f64) -> Result<Self> {
+        anyhow::ensure!(sigma.is_sign_positive(), "sigma must be positive");
+        anyhow::ensure!(sigma >= 1.0, "sigma must be greater or equal to 1");
+        anyhow::ensure!(bound >= sigma, "bound: {bound} must be greater or equal to sigma: {sigma}");
+        Ok(Self { k, sigma, bound })
+    }
+
+    pub fn target_limb_and_scale(&self, base2k: usize) -> (usize, f64) {
+        let limb: usize = self.k.div_ceil(base2k) - 1;
+        let scale: f64 = (((limb + 1) * base2k - self.k) as f64).exp2();
+        (limb, scale)
+    }
 }

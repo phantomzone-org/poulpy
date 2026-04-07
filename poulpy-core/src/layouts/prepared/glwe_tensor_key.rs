@@ -24,10 +24,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWETensorKeyPrepared<D, B> {
         self.0.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
-    }
-
     fn size(&self) -> usize {
         self.0.size()
     }
@@ -77,7 +73,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.alloc_tensor_key_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank_out())
+        self.alloc_tensor_key_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank_out())
     }
 
     fn bytes_of_tensor_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
@@ -89,7 +85,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.bytes_of_tensor_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.bytes_of_tensor_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn prepare_tensor_key_tmp_bytes<A>(&self, infos: &A) -> usize

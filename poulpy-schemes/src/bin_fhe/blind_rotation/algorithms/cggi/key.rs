@@ -4,8 +4,7 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    Distribution, GGSWEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
+    Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchTakeCore, layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef}
 };
 
 use crate::bin_fhe::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};
@@ -19,17 +18,19 @@ where
         self.ggsw_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn blind_rotation_key_encrypt_sk<D, S0, S1>(
+    fn blind_rotation_key_encrypt_sk<D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKey<D, CGGI>,
         sk_glwe: &S0,
         sk_lwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
         S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
     {
         assert_eq!(res.keys.len() as u32, sk_lwe.n());
@@ -53,7 +54,7 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                ggsw.encrypt_sk(self, &pt, sk_glwe, source_xa, source_xe, scratch);
+                ggsw.encrypt_sk(self, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch);
             }
         }
     }

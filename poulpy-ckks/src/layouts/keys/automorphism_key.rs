@@ -1,7 +1,7 @@
 //! CKKS automorphism key for slot rotations and conjugation.
 
 use poulpy_core::{
-    GLWEAutomorphismKeyEncryptSk,
+    EncryptionInfos, GLWEAutomorphismKeyEncryptSk,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWESecretToRef, Rank, TorusPrecision,
     },
@@ -56,18 +56,19 @@ impl CKKSAutomorphismKey<Vec<u8>> {
     }
 
     /// Encrypts the automorphism key for Galois element `p` under a secret key.
-    pub fn encrypt_sk<BE: Backend, S>(
+    pub fn encrypt_sk<BE: Backend, S, E: EncryptionInfos>(
         &mut self,
         module: &Module<BE>,
         p: i64,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>,
         S: GLWESecretToRef,
     {
-        self.inner.encrypt_sk(module, p, sk, source_xa, source_xe, scratch);
+        self.inner.encrypt_sk(module, p, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }

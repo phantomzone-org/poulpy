@@ -29,7 +29,7 @@ impl CKKSTensor<Vec<u8>> {
     pub fn alloc_from_infos<A: GLWEInfos>(infos: &A, torus_scale_bits: u32) -> Self {
         CKKSTensor {
             inner: GLWETensor::alloc_from_infos(infos),
-            offset_bits: infos.k().0,
+            offset_bits: infos.max_k().0,
             torus_scale_bits,
         }
     }
@@ -37,7 +37,7 @@ impl CKKSTensor<Vec<u8>> {
 
 impl<D: Data> CKKSTensor<D> {
     pub fn prefix_bits(&self) -> u32 {
-        self.inner.k().0
+        self.inner.max_k().0
     }
 
     pub fn assert_valid(&self, label: &str) {

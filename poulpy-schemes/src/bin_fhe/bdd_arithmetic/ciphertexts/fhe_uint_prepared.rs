@@ -8,7 +8,7 @@ use poulpy_core::layouts::{
     GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWLayout, GGSWPreparedToMut, GGSWPreparedToRef, GLWEAutomorphismKeyHelper,
     GetGaloisElement, LWE,
 };
-use poulpy_core::{GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
+use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::api::{ModuleLogN, ScratchAvailable, ScratchFromBytes};
@@ -154,7 +154,7 @@ where
     where
         A: GGSWInfos,
     {
-        self.alloc_fhe_uint_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.alloc_fhe_uint_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 }
 
@@ -190,17 +190,18 @@ pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
-    fn fhe_uint_prepared_encrypt_sk<DM, S>(
+    fn fhe_uint_prepared_encrypt_sk<DM, S, E>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
         value: T,
         sk: &S,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
+        enc_infos: &E,
+        source_xe: &mut Source, source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         use poulpy_hal::{api::ScratchTakeBasic, layouts::ZnxZero};
@@ -216,27 +217,28 @@ where
         for i in 0..T::BITS as usize {
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
-            tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);
+            tmp_ggsw.encrypt_sk(self, &pt, sk, enc_infos, source_xe, source_xa, scratch_2);
             res.bits[i].prepare(self, &tmp_ggsw, scratch_2);
         }
     }
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T, BE> {
-    pub fn encrypt_sk<M, S>(
+    pub fn encrypt_sk<M, S, E>(
         &mut self,
         module: &M,
         value: T,
         sk: &S,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
+        enc_infos: &E,
+        source_xe: &mut Source, source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: FheUintPreparedEncryptSk<T, BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.fhe_uint_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);
+        module.fhe_uint_prepared_encrypt_sk(self, value, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -260,8 +262,8 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D,
         self.bits[0].base2k()
     }
 
-    fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.bits[0].k()
+    fn size(&self) -> usize {
+        self.bits[0].size()
     }
 
     fn n(&self) -> poulpy_core::layouts::Degree {

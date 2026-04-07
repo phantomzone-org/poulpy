@@ -9,13 +9,14 @@ use poulpy_hal::{
 use crate::bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout},
     circuit_bootstrapping::{
-        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingExecute, CircuitBootstrappingKey,
+        CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
+        CircuitBootstrappingKeyPreparedFactory,
     },
 };
 
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Dsize, GGLWEToGGSWKeyLayout, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWEInfos,
         GLWESecretPreparedFactory, LWELayout,
@@ -134,15 +135,17 @@ where
 
     println!("pt_lwe: {pt_lwe}");
 
+    let lwe_enc_infos = EncryptionLayout::new_from_default_sigma(lwe_infos).unwrap();
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
     println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
 
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
     let now: Instant = Instant::now();
-    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
@@ -180,6 +183,7 @@ where
             )
         }
     }
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
     let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (res_base2k - 2);
@@ -188,8 +192,9 @@ where
         module,
         &pt_glwe,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -314,15 +319,17 @@ where
 
     println!("pt_lwe: {pt_lwe}");
 
+    let lwe_enc_infos = EncryptionLayout::new_from_default_sigma(lwe_infos).unwrap();
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &lwe_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
     println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
 
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
     let now: Instant = Instant::now();
-    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    cbt_key.encrypt_sk(module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
@@ -350,6 +357,7 @@ where
         }
     }
 
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
     let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (res_base2k - k_lwe_pt - 1);
@@ -358,8 +366,9 @@ where
         module,
         &pt_glwe,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 

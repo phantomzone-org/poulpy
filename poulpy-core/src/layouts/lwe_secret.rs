@@ -47,9 +47,6 @@ impl<D: Data> LWEInfos for LWESecret<D> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
     }
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
-    }
 
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)

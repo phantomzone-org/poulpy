@@ -39,7 +39,14 @@ impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
         M: ModuleN,
         A: GGSWInfos,
     {
-        Self::alloc(module, infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
+        Self::alloc(
+            module,
+            infos.base2k(),
+            infos.max_k(),
+            infos.dnum(),
+            infos.dsize(),
+            infos.rank(),
+        )
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
@@ -60,12 +67,12 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintPreparedDebug<D, T> {
         self.bits[0].base2k()
     }
 
-    fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.bits[0].k()
-    }
-
     fn n(&self) -> poulpy_core::layouts::Degree {
         self.bits[0].n()
+    }
+
+    fn size(&self) -> usize {
+        self.bits[0].size()
     }
 }
 

@@ -16,10 +16,11 @@ use crate::{
     },
 };
 use poulpy_core::{
-    GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring,
-    ScratchTakeCore,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWEShift,
+    GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
     layouts::{Base2K, Degree, GLWESecretPreparedFactory, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision},
 };
+use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -370,15 +371,17 @@ where
     let mut pt_lo = CKKSPlaintext::alloc(degree, base2k, log_delta_lo);
     encode(&mut pt_lo, &ctx.re2, &ctx.im2);
 
+    let enc_infos = NoiseInfos::new(k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
     let mut xa = Source::new([7u8; 32]);
     let mut xe = Source::new([8u8; 32]);
     let mut a = CKKSCiphertext::alloc(degree, base2k, k, log_delta_hi);
-    encrypt_sk(&ctx.module, &mut a, &pt_hi, &ctx.sk, &mut xa, &mut xe, scratch.borrow());
+    encrypt_sk(&ctx.module, &mut a, &pt_hi, &ctx.sk, &enc_infos, &mut xa, &mut xe, scratch.borrow());
 
     let mut xa = Source::new([9u8; 32]);
     let mut xe = Source::new([10u8; 32]);
     let mut b = CKKSCiphertext::alloc(degree, base2k, k, log_delta_lo);
-    encrypt_sk(&ctx.module, &mut b, &pt_lo, &ctx.sk, &mut xa, &mut xe, scratch.borrow());
+    encrypt_sk(&ctx.module, &mut b, &pt_lo, &ctx.sk, &enc_infos, &mut xa, &mut xe, scratch.borrow());
     assert_valid_ciphertext("mul_mismatched_delta lhs", &a);
     assert_valid_ciphertext("mul_mismatched_delta rhs", &b);
 
@@ -574,7 +577,7 @@ where
     let mut want_im = im_in.clone();
 
     for level in 0..depth {
-        assert!(ct.inner.k().0 > ctx.params.log_delta, "level {level}: k exhausted");
+        assert!(ct.inner.max_k().0 > ctx.params.log_delta, "level {level}: k exhausted");
         let mut ct_next = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
         mul(&ctx.module, &mut ct_next, &ct, &ct, ctx.tsk(), scratch.borrow());
         ct = ct_next;

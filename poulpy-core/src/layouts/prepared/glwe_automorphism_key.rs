@@ -39,10 +39,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWEAutomorphismKeyPrepared<D, B> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -111,7 +107,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.alloc_glwe_automorphism_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.alloc_glwe_automorphism_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn bytes_of_glwe_automorphism_key_prepared(
@@ -134,7 +130,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.bytes_of_glwe_automorphism_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.bytes_of_glwe_automorphism_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn prepare_glwe_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize

@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -17,12 +17,13 @@ use poulpy_hal::{
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        Add, And, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,
+        Add, And, BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
+        ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk,
+        CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
     },
 };
 
@@ -80,9 +81,10 @@ where
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
     // Circuit bootstrapping evaluation key
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&params.bdd_layout.cbt_layout).unwrap();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> =
         CircuitBootstrappingKey::alloc_from_infos(&params.bdd_layout.cbt_layout);
-    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &cbt_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
@@ -91,8 +93,10 @@ where
     let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &params.glwe_layout);
     sk_glwe_prepared.prepare(&module, &sk_glwe);
 
+    let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&params.bdd_layout).unwrap();
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(params.glwe_layout).unwrap();
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
-    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &bdd_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
     let input_a = 255_u32;
     let input_b = 30_u32;
@@ -102,8 +106,9 @@ where
         &module,
         input_a,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -112,8 +117,9 @@ where
         &module,
         input_b,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 

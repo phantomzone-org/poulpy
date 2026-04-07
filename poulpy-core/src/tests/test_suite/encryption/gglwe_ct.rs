@@ -6,10 +6,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, GGLWEEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptSk,
-    ScratchTakeCore,
+    EncryptionLayout, GGLWECompressedEncryptSk, GGLWEEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk,
+    GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     decryption::GLWEDecrypt,
-    encryption::SIGMA,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWE, GGLWECompressed, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
         GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress, LWEInfos,
@@ -40,7 +40,7 @@ where
             for di in 1_usize..dsize + 1 {
                 let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-                let gglwe_infos: GGLWELayout = GGLWELayout {
+                let gglwe_infos = EncryptionLayout::new_from_default_sigma(GGLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
@@ -48,7 +48,7 @@ where
                     dsize: di.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                }).unwrap();
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
 
@@ -67,9 +67,17 @@ where
                 let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
                 sk_out_prepared.prepare(module, &sk_out);
 
-                ksk.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+                ksk.encrypt_sk(
+                    module,
+                    &sk_in,
+                    &sk_out,
+                    &gglwe_infos,
+                    &mut source_xe,
+                    &mut source_xa,
+                    scratch.borrow(),
+                );
 
-                let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
+                let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
@@ -80,9 +88,8 @@ where
                             .log2();
 
                         assert!(
-                            noise_have < max_noise + 0.5,
-                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
-                            max_noise + 0.5
+                            noise_have <= max_noise,
+                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{max_noise}",
                         );
                     }
                 }
@@ -115,7 +122,7 @@ where
             for dsize in 1_usize..max_dsize {
                 let dnum: usize = (k_ksk - dsize * base2k) / (dsize * base2k);
 
-                let gglwe_infos: GGLWELayout = GGLWELayout {
+                let gglwe_infos = EncryptionLayout::new_from_default_sigma(GGLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
@@ -123,7 +130,7 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                }).unwrap();
 
                 let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> =
                     GLWESwitchingKeyCompressed::alloc_from_infos(&gglwe_infos);
@@ -144,12 +151,12 @@ where
 
                 let seed_xa = [1u8; 32];
 
-                ksk_compressed.encrypt_sk(module, &sk_in, &sk_out, seed_xa, &mut source_xe, scratch.borrow());
+                ksk_compressed.encrypt_sk(module, &sk_in, &sk_out, seed_xa, &gglwe_infos, &mut source_xe, scratch.borrow());
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
-                let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
+                let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
@@ -160,9 +167,8 @@ where
                             .log2();
 
                         assert!(
-                            noise_have < max_noise + 0.5,
-                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
-                            max_noise + 0.5
+                            noise_have <= max_noise,
+                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{max_noise}",
                         );
                     }
                 }
@@ -195,7 +201,7 @@ where
             for dsize in 1_usize..max_dsize + 1 {
                 let dnum: usize = (k_ksk - dsize * base2k) / (dsize * base2k);
 
-                let gglwe_infos: GGLWELayout = GGLWELayout {
+                let gglwe_infos = EncryptionLayout::new_from_default_sigma(GGLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
@@ -203,7 +209,7 @@ where
                     dsize: dsize.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                }).unwrap();
 
                 let mut ksk_compressed: GGLWECompressed<Vec<u8>> = GGLWECompressed::alloc_from_infos(&gglwe_infos);
 
@@ -228,6 +234,7 @@ where
                     &sk_in.data,
                     &sk_out_prepared,
                     seed_xa,
+                    &gglwe_infos,
                     &mut source_xe,
                     scratch.borrow(),
                 );
@@ -235,7 +242,7 @@ where
                 let mut ksk: GGLWE<Vec<u8>> = GGLWE::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
-                let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
+                let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
@@ -245,9 +252,8 @@ where
                             .log2();
 
                         assert!(
-                            noise_have < max_noise + 0.5,
-                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
-                            max_noise + 0.5
+                            noise_have <= max_noise,
+                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{max_noise}",
                         );
                     }
                 }

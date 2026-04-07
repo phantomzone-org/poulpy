@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
 use poulpy_core::{
-    Distribution, GGSWCompressedEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
+    Distribution, EncryptionInfos, GGSWCompressedEncryptSk, GetDistribution, ScratchTakeCore, layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef}
 };
 use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
@@ -41,17 +40,19 @@ where
         self.ggsw_compressed_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn blind_rotation_key_compressed_encrypt_sk<D, S0, S1>(
+    fn blind_rotation_key_compressed_encrypt_sk<D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKeyCompressed<D, CGGI>,
         sk_glwe: &S0,
         sk_lwe: &S1,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
         S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
     {
         assert_eq!(res.keys.len() as u32, sk_lwe.n());
@@ -77,7 +78,7 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                ggsw.encrypt_sk(self, &pt, sk_glwe, source_xa.new_seed(), source_xe, scratch);
+                ggsw.encrypt_sk(self, &pt, sk_glwe, source_xa.new_seed(), enc_infos, source_xe, scratch);
             }
         }
     }

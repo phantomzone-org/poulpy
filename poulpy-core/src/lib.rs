@@ -93,6 +93,6 @@ pub use keyswitching::*;
 pub use noise::*;
 pub use scratch::*;
 
-pub use encryption::SIGMA;
+pub use encryption::DEFAULT_SIGMA_XE;
 
 pub mod tests;

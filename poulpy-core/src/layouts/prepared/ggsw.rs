@@ -15,7 +15,6 @@ use crate::layouts::{
 #[derive(PartialEq, Eq)]
 pub struct GGSWPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
@@ -27,10 +26,6 @@ impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
 
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn size(&self) -> usize {
@@ -89,7 +84,6 @@ where
                 (rank + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
-            k,
             base2k,
             dsize,
         }
@@ -100,7 +94,7 @@ where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_ggsw_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.alloc_ggsw_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
     fn bytes_of_ggsw_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
@@ -126,7 +120,7 @@ where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_ggsw_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.bytes_of_ggsw_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
     fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -152,7 +146,6 @@ where
         let other: GGSW<&[u8]> = other.to_ref();
         assert_eq!(res.n(), self.ring_degree());
         assert_eq!(other.n(), self.ring_degree());
-        assert_eq!(res.k, other.k);
         assert_eq!(res.base2k, other.base2k);
         assert_eq!(res.dsize, other.dsize);
         assert!(
@@ -244,7 +237,6 @@ impl<D: DataMut, B: Backend> GGSWPreparedToMut<B> for GGSWPrepared<D, B> {
     fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B> {
         GGSWPrepared {
             base2k: self.base2k,
-            k: self.k,
             dsize: self.dsize,
             data: self.data.to_mut(),
         }
@@ -259,7 +251,6 @@ impl<D: DataRef, B: Backend> GGSWPreparedToRef<B> for GGSWPrepared<D, B> {
     fn to_ref(&self) -> GGSWPrepared<&[u8], B> {
         GGSWPrepared {
             base2k: self.base2k,
-            k: self.k,
             dsize: self.dsize,
             data: self.data.to_ref(),
         }

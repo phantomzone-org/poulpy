@@ -36,10 +36,6 @@ impl<D: Data> LWEInfos for GLWEAutomorphismKeyCompressed<D> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -95,7 +91,7 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -116,7 +112,7 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),

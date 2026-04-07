@@ -60,9 +60,6 @@ impl<D: Data> LWEInfos for GGSWCompressed<D> {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
     fn size(&self) -> usize {
         self.data.size()
     }
@@ -114,7 +111,7 @@ impl GGSWCompressed<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -155,7 +152,7 @@ impl GGSWCompressed<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -188,7 +185,6 @@ impl<D: DataRef> GGSWCompressed<D> {
         let rank: usize = self.rank().into();
         GLWECompressed {
             data: self.data.at(row, col),
-            k: self.k,
             base2k: self.base2k,
             rank: self.rank,
             seed: self.seed[row * (rank + 1) + col],
@@ -202,7 +198,6 @@ impl<D: DataMut> GGSWCompressed<D> {
         let rank: usize = self.rank().into();
         GLWECompressed {
             data: self.data.at_mut(row, col),
-            k: self.k,
             base2k: self.base2k,
             rank: self.rank,
             seed: self.seed[row * (rank + 1) + col],
@@ -290,7 +285,7 @@ pub trait GGSWCompressedToMut {
 impl<D: DataMut> GGSWCompressedToMut for GGSWCompressed<D> {
     fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]> {
         GGSWCompressed {
-            k: self.k(),
+            k: self.max_k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             rank: self.rank(),
@@ -309,7 +304,7 @@ pub trait GGSWCompressedToRef {
 impl<D: DataRef> GGSWCompressedToRef for GGSWCompressed<D> {
     fn to_ref(&self) -> GGSWCompressed<&[u8]> {
         GGSWCompressed {
-            k: self.k(),
+            k: self.max_k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             rank: self.rank(),
