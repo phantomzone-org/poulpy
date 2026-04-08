@@ -1,6 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
+use dashu_float::ops::DivRemEuclid;
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
@@ -88,10 +89,9 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
 
     let res_size: usize = res.size();
     let a_size = a.size();
-    let steps: usize = k / base2k;
-    let k_rem: usize = k % base2k;
+    let (steps, k_rem) = k.div_rem_euclid(base2k);
 
-    if steps >= res_size.min(a_size) {
+    if steps >= res_size.max(a_size) {
         if OVERWRITE {
             for j in 0..res_size {
                 ZNXARI::znx_zero(res.at_mut(res_col, j));
@@ -101,7 +101,7 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         return;
     }
 
-    let min_size: usize = a_size.min(res_size) - steps;
+    let min_size: usize = res_size.min(a_size  - steps);
 
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
@@ -139,6 +139,7 @@ where
         + ZnxNormalizeFirstStepInplace
         + ZnxNormalizeFinalStepInplace,
 {
+
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let n: usize = res.n();
 
@@ -264,14 +265,26 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
         );
     }
 
-    // Propagates carry on the rest of the limbs of res
-    for j in 0..res_end {
-        if j == res_end - 1 {
-            ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
-        } else {
-            ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+    if OVERWRITE{
+        // Propagates carry on the rest of the limbs of res
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+            } else {
+                ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+            }
+        }
+    }else{
+        // Propagates carry on the rest of the limbs of res
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                ZNXARI::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            } else {
+                ZNXARI::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            }
         }
     }
+    
 }
 
 pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
