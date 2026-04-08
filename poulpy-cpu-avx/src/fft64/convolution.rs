@@ -11,11 +11,10 @@ use poulpy_hal::{
             convolution_by_const_apply_tmp_bytes, convolution_pairwise_apply_dft, convolution_pairwise_apply_dft_tmp_bytes,
             convolution_prepare_left, convolution_prepare_right, convolution_prepare_self,
         },
-        reim::FFTModuleHandle,
     },
 };
 
-use crate::FFT64Avx;
+use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
 
 unsafe impl ConvolutionImpl<Self> for FFT64Avx
 where

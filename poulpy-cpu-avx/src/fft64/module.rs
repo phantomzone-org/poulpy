@@ -6,7 +6,7 @@ use poulpy_hal::{
     reference::{
         fft64::{
             convolution::I64Ops,
-            reim::{FFTHandleAccessor, ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
+            reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
             reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
         znx::{
@@ -124,12 +124,44 @@ unsafe impl ModuleNewImpl<Self> for FFT64Avx {
     }
 }
 
-impl FFTHandleAccessor<f64> for FFT64Avx {
-    fn get_fft_table_from_handle(handle: &FFT64AvxHandle) -> &ReimFFTTable<f64> {
-        &handle.table_fft
+/// Extension trait providing access to FFT/IFFT tables from a `Module<FFT64Avx>`.
+///
+/// This trait abstracts access to the backend-specific [`FFT64AvxHandle`] stored in
+/// the module, allowing internal functions to retrieve precomputed twiddle factors
+/// without unsafe pointer dereferencing at the call site.
+///
+/// # Safety
+///
+/// Implementations must ensure that:
+/// - The returned reference lifetime is tied to the module's lifetime.
+/// - The underlying handle pointer is valid and properly aligned.
+/// - The twiddle tables are immutable (no `&mut` access).
+///
+/// The `Module` type guarantees these invariants via its construction and lifetime management.
+pub trait FFT64ModuleHandle {
+    /// Returns a shared reference to the forward FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
+    fn get_fft_table(&self) -> &ReimFFTTable<f64>;
+
+    /// Returns a shared reference to the inverse FFT twiddle table.
+    ///
+    /// # Complexity
+    ///
+    /// O(1) — simple pointer dereference.
+    fn get_ifft_table(&self) -> &ReimIFFTTable<f64>;
+}
+
+impl FFT64ModuleHandle for Module<FFT64Avx> {
+    fn get_fft_table(&self) -> &ReimFFTTable<f64> {
+        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
+        &h.table_fft
     }
-    fn get_ifft_table_from_handle(handle: &FFT64AvxHandle) -> &ReimIFFTTable<f64> {
-        &handle.table_ifft
+    fn get_ifft_table(&self) -> &ReimIFFTTable<f64> {
+        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
+        &h.table_ifft
     }
 }
 

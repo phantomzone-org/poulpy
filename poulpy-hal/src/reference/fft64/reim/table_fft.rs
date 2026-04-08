@@ -37,7 +37,7 @@ pub struct ReimFFTTable<R: Float + FloatConst + Debug> {
     omg: Vec<R>,
 }
 
-impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
+impl<R: Float + FloatConst + Debug> ReimFFTTable<R> {
     pub fn new(m: usize) -> Self {
         assert!(m & (m - 1) == 0, "m must be a power of two but is {m}");
         let mut omg: Vec<R> = alloc_aligned::<R>(2 * m);
@@ -68,6 +68,10 @@ impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
         }
 
         Self { m, omg }
+    }
+
+    pub fn execute(&self, data: &mut [R]) {
+        fft_ref(self.m, &self.omg, data);
     }
 
     pub fn m(&self) -> usize {

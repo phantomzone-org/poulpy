@@ -6,12 +6,11 @@ use poulpy_hal::{
     },
     oep::{VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl},
     reference::fft64::{
-        reim::FFTModuleHandle,
         vmp::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes, vmp_zero},
     },
 };
 
-use crate::FFT64Avx;
+use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};
 
 unsafe impl VmpApplyDftToDftImpl<Self> for FFT64Avx
 where
