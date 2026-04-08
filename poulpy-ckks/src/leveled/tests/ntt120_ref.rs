@@ -4,11 +4,9 @@ use poulpy_cpu_ref::NTT120Ref;
 
 use crate::leveled::tests::test_suite::{NTT120_PARAMS, helpers::TestContext};
 
-//const ATK_ROTATIONS: &[i64] = &[1, 7];
+const ATK_ROTATIONS: &[i64] = &[1, 7];
 
-static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS));
-//static CTX_TSK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_tsk(NTT120_PARAMS));
-//static CTX_ATK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
+static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS, ATK_ROTATIONS));
 
 #[test]
 fn encrypt_decrypt() {
@@ -16,95 +14,77 @@ fn encrypt_decrypt() {
 }
 
 #[test]
-fn ct_add_aligned() {
-    crate::leveled::tests::test_suite::add::test_ct_add_aligned(&CTX);
+fn add_ct_aligned() {
+    crate::leveled::tests::test_suite::add::test_add_ct_aligned(&CTX);
 }
 
 #[test]
-fn ct_add_delta_a_lt_b() {
-    crate::leveled::tests::test_suite::add::test_ct_add_delta_a_lt_b(&CTX);
+fn add_ct_delta_a_lt_b() {
+    crate::leveled::tests::test_suite::add::test_add_ct_delta_a_lt_b(&CTX);
 }
 
 #[test]
-fn ct_add_delta_a_gt_b() {
-    crate::leveled::tests::test_suite::add::test_ct_add_delta_a_gt_b(&CTX);
+fn add_ct_delta_a_gt_b() {
+    crate::leveled::tests::test_suite::add::test_add_ct_delta_a_gt_b(&CTX);
 }
 
 #[test]
-fn ct_add_smaller_output() {
-    crate::leveled::tests::test_suite::add::test_ct_add_smaller_output(&CTX);
+fn add_ct_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_add_ct_smaller_output(&CTX);
 }
 
 #[test]
-fn ct_add_inplace_aligned() {
-    crate::leveled::tests::test_suite::add::test_ct_add_inplace_aligned(&CTX);
+fn add_ct_inplace_aligned() {
+    crate::leveled::tests::test_suite::add::test_add_ct_inplace_aligned(&CTX);
 }
 
 #[test]
-fn ct_add_inplace_self_lt() {
-    crate::leveled::tests::test_suite::add::test_ct_add_inplace_self_lt(&CTX);
+fn add_ct_inplace_self_lt() {
+    crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_lt(&CTX);
 }
 
 #[test]
-fn ct_add_inplace_self_gt() {
-    crate::leveled::tests::test_suite::add::test_ct_add_inplace_self_gt(&CTX);
+fn add_ct_inplace_self_gt() {
+    crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_gt(&CTX);
 }
 
 #[test]
-fn ct_add_pt_znx_inplace() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx_inplace(&CTX);
+fn add_pt_znx_inplace() {
+    crate::leveled::tests::test_suite::add::test_add_pt_znx_inplace(&CTX);
 }
 
 #[test]
-fn ct_add_pt_znx() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx(&CTX);
+fn add_pt_znx() {
+    crate::leveled::tests::test_suite::add::test_add_pt_znx(&CTX);
 }
 
 #[test]
-fn ct_add_pt_rnx_inplace() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx_inplace(&CTX);
+fn add_pt_rnx_inplace() {
+    crate::leveled::tests::test_suite::add::test_add_pt_rnx_inplace(&CTX);
 }
 
 #[test]
-fn ct_add_pt_rnx() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx(&CTX);
+fn add_pt_rnx() {
+    crate::leveled::tests::test_suite::add::test_add_pt_rnx(&CTX);
 }
 
 #[test]
-fn ct_add_pt_znx_smaller_output() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx_smaller_output(&CTX);
+fn add_pt_znx_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_add_pt_znx_smaller_output(&CTX);
 }
 
 #[test]
-fn ct_add_pt_rnx_smaller_output() {
-    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx_smaller_output(&CTX);
+fn add_pt_rnx_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_add_pt_rnx_smaller_output(&CTX);
+}
+
+#[test]
+fn mul_ct_aligned() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
 
 /*
 #[test]
-fn metadata_sweep() {
-    test_metadata_sweep(&CTX);
-}
-
-#[test]
-fn add() {
-    test_add(&CTX);
-}
-
-#[test]
-fn add_aligned() {
-    test_add_aligned(&CTX);
-}
-
-#[test]
-fn add_pt() {
-    test_add_pt(&CTX);
-}
-
-#[test]
-fn add_const() {
-    test_add_const(&CTX);
-}
 
 #[test]
 fn sub() {

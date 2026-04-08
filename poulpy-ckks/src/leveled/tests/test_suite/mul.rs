@@ -1,74 +1,47 @@
 //! Multiplication tests: ct × ct, ct × pt, ct × const, ct × int, and sequential depth chains.
 
-use super::helpers::{TestContext, assert_precision, assert_valid_ciphertext};
-use crate::{
-    encoding::classical::encode,
-    layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
-    leveled::{
-        encryption::{decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
-        operations::{
-            level::drop_torus_precision,
-            mul::{
-                mul, mul_aligned, mul_const, mul_const_inplace, mul_const_tmp_bytes, mul_pt, mul_pt_inplace, mul_pt_tmp_bytes,
-                mul_tmp_bytes, square, square_tmp_bytes,
-            },
-        },
-    },
-};
-use poulpy_core::{
-    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWENormalize, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore, layouts::{Base2K, Degree, GLWESecretPreparedFactory, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision}
-};
-use poulpy_hal::layouts::NoiseInfos;
+use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensoring, ScratchTakeCore};
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLshInplace,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+    },
     layouts::{Backend, Module, Scratch, ScratchOwned},
-    source::Source,
 };
 
-/// Verifies ct × ct multiplication and rescale round-trip.
-pub fn test_mul<BE: Backend>(ctx: &TestContext<BE>)
+use crate::leveled::tests::test_suite::helpers::TestContext;
+
+/// ct × ct multiplication with both inputs at the same log_delta.
+pub fn test_mul_ct_aligned<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
+        + VecZnxRshAdd<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
         + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
+        + GLWETensoring<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
+    let mut scratch = ctx.alloc_scratch();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul();
 
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, ctx.tsk())),
-    );
+    let mut ct_res = ctx.alloc_ct();
+    ct_res
+        .mul_relin(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow())
+        .unwrap();
 
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
-    assert_valid_ciphertext("mul lhs", &ct1);
-    assert_valid_ciphertext("mul rhs", &ct2);
-
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul(&ctx.module, &mut ct_res, &ct1, &ct2, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("mul result", &ct_res);
-
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re2[j] - ctx.im1[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
-    assert_precision("mul re", &re_out, &want_re, 20.0);
-    assert_precision("mul im", &im_out, &want_im, 20.0);
+    ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
+
+/*
 
 /// Verifies the aligned fast-path variant: `mul_aligned`.
 pub fn test_mul_aligned<BE: Backend>(ctx: &TestContext<BE>)
@@ -760,3 +733,4 @@ where
         prev_prec = prec;
     }
 }
+*/

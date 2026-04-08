@@ -65,14 +65,14 @@ impl CKKSTestParams {
 
 /// NTT120 parameter set.
 pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
-    n: 8,
+    n: 1024,
     base2k: 52,
-    k: 8 * 52,
+    k: 8 * 52 + 17,
     prec: PrecisionLayout {
         log_decimal: 40,
-        log_integer: 10,
+        log_integer: 30,
     },
-    hw: 8,
+    hw: 192,
     dsize: 1,
 };
 
@@ -83,7 +83,7 @@ pub mod encryption;
 pub mod helpers;
 //pub mod level;
 //pub mod metadata;
-//pub mod mul;
+pub mod mul;
 //pub mod neg;
 //pub mod plaintext_prepared;
 //pub mod rotate;

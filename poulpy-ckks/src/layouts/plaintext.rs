@@ -9,8 +9,6 @@ use poulpy_hal::{
 };
 use rand_distr::num_traits::{Float, FloatConst};
 
-use crate::layouts::ciphertext::CKKSCiphertext;
-
 #[derive(Debug, Clone)]
 pub struct CKKSPlaintextRnx<F>(Vec<F>)
 where
@@ -110,6 +108,7 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
 
         anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
         anyhow::ensure!(self.0.len() == other.data.n().as_usize());
+        anyhow::ensure!(log_decimal + log_integer <= 127);
 
         let scale = (-(log_decimal as f64)).exp2();
         let k = other.data.max_k();
@@ -176,12 +175,12 @@ impl<D: DataRef> CKKSPlaintextZnx<D> {
         &self,
         module: &Module<BE>,
         dst: &mut VecZnx<impl DataMut>,
-        log_delta: usize,
+        offset: usize,
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: VecZnxRshAdd<BE>,
     {
-        module.vec_znx_rsh_add(self.data.base2k().as_usize(), log_delta, dst, 0, self.data.data(), 0, scratch);
+        module.vec_znx_rsh_add(self.data.base2k().as_usize(), offset, dst, 0, self.data.data(), 0, scratch);
     }
 }
 
