@@ -33,8 +33,7 @@ where
     let n: usize = res.n();
     let cols: usize = res.cols();
     let size: usize = res.size();
-    let steps: usize = k / base2k;
-    let k_rem: usize = k % base2k;
+    let (steps, k_rem) = k.div_rem_euclid(base2k);
 
     if steps >= size {
         for j in 0..size {
@@ -82,7 +81,13 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
 ) where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxZero + ZnxNormalizeFirstStep + ZnxNormalizeMiddleStep + ZnxCopy + ZnxNormalizeFinalStep,
+    ZNXARI: ZnxZero
+        + ZnxNormalizeFirstStep
+        + ZnxNormalizeMiddleStep
+        + ZnxCopy
+        + ZnxNormalizeFinalStep
+        + ZnxNormalizeFirstStepCarryOnly
+        + ZnxNormalizeMiddleStepCarryOnly,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -103,12 +108,22 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
 
     let min_size: usize = res_size.min(a_size - steps);
 
+    for j in ((steps + min_size)..a_size).rev() {
+        if j == a_size - 1 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+        }
+    }
+
+    if steps + min_size == a_size {
+        ZNXARI::znx_zero(carry);
+    }
+
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
     for j in (0..min_size).rev() {
-        if j == min_size - 1 {
-            ZNXARI::znx_normalize_first_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
-        } else if j == 0 {
+        if j == 0 {
             ZNXARI::znx_normalize_final_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         } else {
             ZNXARI::znx_normalize_middle_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
