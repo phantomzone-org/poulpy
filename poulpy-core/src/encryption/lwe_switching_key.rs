@@ -24,6 +24,7 @@ impl LWESwitchingKey<Vec<u8>> {
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S1, S2, M, E, BE: Backend>(
         &mut self,
         module: &M,
@@ -48,6 +49,7 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
     where
         A: GGLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn lwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,

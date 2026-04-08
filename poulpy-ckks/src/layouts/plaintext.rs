@@ -26,7 +26,7 @@ pub struct PrecisionLayout {
 
 impl PrecisionLayout {
     pub fn k(&self, base2k: Base2K) -> TorusPrecision {
-        return ((self.log_decimal + self.log_integer).next_multiple_of(base2k.as_usize())).into();
+        ((self.log_decimal + self.log_integer).next_multiple_of(base2k.as_usize())).into()
     }
 }
 
@@ -35,7 +35,7 @@ pub trait CKKSPlaintextConversion {
     fn to_znx<BE>(&self, other: &mut CKKSPlaintextZnx<impl DataMut>) -> Result<()>
     where
         BE: Backend;
-    fn from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
+    fn decode_from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
     where
         BE: Backend;
 }
@@ -51,11 +51,11 @@ impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
     }
 
     pub fn data(&self) -> &[F] {
-        return &self.0;
+        &self.0
     }
 
     pub fn data_mut(&mut self) -> &mut [F] {
-        return &mut self.0;
+        &mut self.0
     }
 
     pub fn encode_reim(&mut self, table: &ReimIFFTTable<F>, re: &[F], im: &[F]) {
@@ -98,7 +98,7 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
     const MAX_LOG_DECIMAL_PREC: usize = 53;
 
     /// TODO: use buffers internally instead of allocating.
-    fn from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
+    fn decode_from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
     where
         BE: Backend,
     {
@@ -162,6 +162,10 @@ impl<D: Data> CKKSPlaintextZnx<D> {
     pub fn plaintext(&self) -> &GLWEPlaintext<D> {
         &self.data
     }
+
+    pub(crate) fn offset(&self, log_scale: usize) -> usize {
+        log_scale + self.log_decimal_prec() - self.data.max_k().as_usize()
+    }
 }
 
 impl<D: DataRef> CKKSPlaintextZnx<D> {
@@ -175,12 +179,20 @@ impl<D: DataRef> CKKSPlaintextZnx<D> {
         &self,
         module: &Module<BE>,
         dst: &mut VecZnx<impl DataMut>,
-        offset: usize,
+        log_delta: usize,
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: VecZnxRshAdd<BE>,
     {
-        module.vec_znx_rsh_add(self.data.base2k().as_usize(), offset, dst, 0, self.data.data(), 0, scratch);
+        module.vec_znx_rsh_add(
+            self.data.base2k().as_usize(),
+            self.offset(log_delta),
+            dst,
+            0,
+            self.data.data(),
+            0,
+            scratch,
+        );
     }
 }
 
@@ -201,7 +213,7 @@ impl<D: DataMut> CKKSPlaintextZnx<D> {
     {
         module.vec_znx_lsh(
             self.data.base2k().as_usize(),
-            log_delta,
+            self.offset(log_delta),
             self.data.data_mut(),
             0,
             src,
@@ -245,7 +257,7 @@ mod tests {
         rnx.to_znx::<NTT120Ref>(&mut znx).unwrap();
 
         let mut rnx_out = CKKSPlaintextRnx::<f64>::alloc(n);
-        rnx_out.from_znx::<NTT120Ref>(&znx).unwrap();
+        rnx_out.decode_from_znx::<NTT120Ref>(&znx).unwrap();
 
         let err = max_err(&values, &rnx_out.0);
         // Rounding at scale 2^log_decimal_prec gives max error = 0.5 * 2^-log_decimal_prec.
@@ -279,9 +291,16 @@ mod tests {
 
     // Encode values → CKKSPlaintextZnx → add_to a zero VecZnx →
     // extract_from → decode, compare.
-    fn test_add_extract_roundtrip(base2k: usize, prec: PrecisionLayout, log_delta: usize) {
+    #[test]
+    fn add_extract_roundtrip() {
         use poulpy_hal::layouts::VecZnx;
         let n = 16usize;
+
+        let prec = PrecisionLayout {
+            log_integer: 10,
+            log_decimal: 40,
+        };
+        let base2k: usize = 52;
 
         let module = Module::<NTT120Ref>::new(n as u64);
         let mut scratch = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
@@ -294,8 +313,10 @@ mod tests {
         let mut pt = CKKSPlaintextZnx::alloc(n.into(), base2k.into(), prec);
         rnx.to_znx::<NTT120Ref>(&mut pt).unwrap();
 
+        let log_delta: usize = 188;
+
         // Build a zero VecZnx wide enough to hold the offset plaintext.
-        let mut buf = VecZnx::alloc(n, 1, (log_delta + prec.log_decimal + prec.log_integer).div_ceil(base2k));
+        let mut buf = VecZnx::alloc(n, 1, log_delta.div_ceil(base2k));
 
         // Add the plaintext at the correct offset.
         pt.add_to(&module, &mut buf, log_delta, scratch.borrow());
@@ -305,19 +326,6 @@ mod tests {
         pt_out.extract_from(&module, &buf, log_delta, scratch.borrow());
 
         assert_eq!(pt.data.data(), pt_out.data.data())
-    }
-
-    #[test]
-    fn add_extract_roundtrip() {
-        // total_offset = 6 + 40 = 46 → bit_shift = 46 % 16 = 14.
-        test_add_extract_roundtrip(
-            16,
-            PrecisionLayout {
-                log_integer: 10,
-                log_decimal: 40,
-            },
-            6,
-        );
     }
 
     #[test]

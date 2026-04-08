@@ -24,6 +24,7 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWETensorKeyCompressed<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,

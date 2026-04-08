@@ -50,6 +50,7 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
     where
         A: GGSWInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,

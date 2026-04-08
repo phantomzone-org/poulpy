@@ -67,6 +67,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
     where
         A: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts a plaintext under a GLWE secret key into a compressed GLWE ciphertext.
     ///
     /// - `res`: output compressed GLWE ciphertext.
@@ -105,6 +106,7 @@ where
         lvl_0
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,

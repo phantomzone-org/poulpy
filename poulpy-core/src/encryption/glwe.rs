@@ -39,6 +39,7 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts a plaintext under a GLWE secret key.
     ///
     /// Produces a GLWE ciphertext `ct = (c0, c1, ..., c_{rank})` such that
@@ -93,6 +94,7 @@ impl<D: DataMut> GLWE<D> {
         module.glwe_encrypt_zero_sk(self, sk, enc_infos, source_xe, source_xa, scratch);
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts a plaintext under a GLWE public key.
     ///
     /// Produces a GLWE ciphertext by sampling a uniform polynomial `u`,
@@ -158,6 +160,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
     where
         A: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts plaintext `pt` under secret key `sk`, writing the result to `res`.
     fn glwe_encrypt_sk<R, P, S, E>(
         &self,
@@ -208,6 +211,7 @@ where
         lvl_0 + lvl_1 + lvl_2 + lvl_3
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -300,6 +304,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
     where
         A: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_pk<R, P, K, E>(
         &self,
         res: &mut R,
@@ -348,6 +353,7 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_pk<R, P, K, E>(
         &self,
         res: &mut R,
@@ -404,6 +410,7 @@ where
 }
 
 pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_pk_internal<R, P, K, E>(
         &self,
         res: &mut R,
@@ -433,6 +440,7 @@ where
         + VecZnxDftBytesOf,
     Scratch<BE>: ScratchTakeBasic,
 {
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_pk_internal<R, P, K, E>(
         &self,
         res: &mut R,

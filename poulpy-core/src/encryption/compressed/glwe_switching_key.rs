@@ -50,6 +50,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
@@ -84,6 +85,7 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,

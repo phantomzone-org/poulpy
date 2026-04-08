@@ -34,6 +34,7 @@ impl<DM: DataMut> GLWEAutomorphismKey<DM>
 where
     Self: GGLWEToRef,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,
@@ -57,6 +58,7 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_automorphism_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
@@ -97,6 +99,7 @@ where
         lvl_0 + lvl_1
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_automorphism_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,

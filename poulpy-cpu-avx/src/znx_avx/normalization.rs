@@ -1114,6 +1114,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_final_step_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [

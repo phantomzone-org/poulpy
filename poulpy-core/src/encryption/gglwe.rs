@@ -57,6 +57,7 @@ pub trait GGLWEEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn gglwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -96,6 +97,7 @@ where
         lvl_0 + lvl_1
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn gglwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,

@@ -177,7 +177,7 @@ where
         let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
 
-        pt_rnx.encode_reim(&fft_module.get_ifft_table(), re, im);
+        pt_rnx.encode_reim(fft_module.get_ifft_table(), re, im);
 
         let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
@@ -214,14 +214,14 @@ where
         decrypt(&self.module, &mut pt_znx, ct, &self.sk, scratch);
 
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
-        pt_rnx.from_znx::<BE>(&pt_znx).unwrap();
+        pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
 
         println!("pt_rnx: {:?}", &pt_rnx.data()[..8]);
 
         let m = self.params.n / 2;
         let mut re = vec![0.0; m];
         let mut im = vec![0.0; m];
-        pt_rnx.decode_reim(&fft_module.get_fft_table(), &mut re, &mut im);
+        pt_rnx.decode_reim(fft_module.get_fft_table(), &mut re, &mut im);
 
         (re, im)
     }

@@ -2,7 +2,7 @@ use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEEncryptSk, GLWEKeyswitch, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyPrepared,
-        GLWESwitchingKeyPreparedFactory, LWEInfos, prepared::GLWESecretPrepared,
+        GLWESwitchingKeyPreparedFactory, prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{

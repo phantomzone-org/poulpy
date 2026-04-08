@@ -25,8 +25,6 @@ mod table_fft;
 mod table_ifft;
 mod zero;
 
-use std::fmt::Debug;
-
 pub use conversion::*;
 pub use fft_ref::*;
 pub use fft_vec::*;

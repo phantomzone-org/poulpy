@@ -1,6 +1,6 @@
 use poulpy_core::{
     EncryptionLayout, GLWEAdd, GLWEDecrypt, GLWEEncryptSk, GLWERotate, GLWESub, GLWETrace,
-    layouts::{GLWELayout, GLWESecretPrepared, LWEInfos},
+    layouts::{GLWELayout, GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},

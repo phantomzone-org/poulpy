@@ -23,6 +23,7 @@ impl LWEToGLWEKey<Vec<u8>> {
 }
 
 impl<D: DataMut> LWEToGLWEKey<D> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S1, S2, M, E, BE: Backend>(
         &mut self,
         module: &M,
@@ -48,6 +49,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn lwe_to_glwe_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
@@ -90,6 +92,7 @@ where
         lvl_0 + lvl_1
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn lwe_to_glwe_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,

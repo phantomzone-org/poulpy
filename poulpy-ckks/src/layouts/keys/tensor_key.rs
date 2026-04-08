@@ -51,6 +51,7 @@ impl CKKSTensorKey<Vec<u8>> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts the tensor key under a secret key.
     pub fn encrypt_sk<BE: Backend, S, E: EncryptionInfos>(
         &mut self,

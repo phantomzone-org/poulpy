@@ -23,6 +23,7 @@ impl LWE<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> LWE<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<P, S, M, E, BE: Backend>(
         &mut self,
         module: &M,
@@ -49,6 +50,7 @@ pub trait LWEEncryptSk<BE: Backend> {
     where
         A: LWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -83,6 +85,7 @@ where
         lvl_0 + lvl_1
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,

@@ -1,7 +1,7 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, LWEInfos,
+        GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::GLWESecretPrepared,
     },
 };

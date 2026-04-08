@@ -113,8 +113,7 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: VecZnxRshAdd<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let offset = self.log_delta + pt_znx.log_decimal_prec() - self.inner.base2k().as_usize();
-        pt_znx.add_to(module, self.inner.data_mut(), offset, scratch);
+        pt_znx.add_to(module, self.inner.data_mut(), self.log_delta, scratch);
         Ok(())
     }
 

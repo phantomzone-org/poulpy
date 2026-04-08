@@ -182,6 +182,7 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<M, S0, S1, BE: Backend>(
         &mut self,
         module: &M,

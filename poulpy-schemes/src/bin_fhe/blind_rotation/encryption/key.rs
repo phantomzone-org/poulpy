@@ -55,6 +55,7 @@ pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<M, S0, S1, E, BE: Backend>(
         &mut self,
         module: &M,

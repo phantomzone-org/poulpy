@@ -13,7 +13,7 @@
 use crate::layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintextZnx};
 use poulpy_core::{
     EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd},
@@ -33,6 +33,7 @@ where
             .max(GLWE::encrypt_sk_tmp_bytes(module, ct_infos))
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Encrypts a compact [`CKKSPlaintext`] under a GLWE secret key.
 ///
 /// The compact plaintext is first placed into the ciphertext `offset_bits` position
@@ -52,10 +53,8 @@ pub fn encrypt_sk<BE: Backend, E: EncryptionInfos>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     ct.inner.encrypt_zero_sk(module, sk, enc_infos, source_xe, source_xa, scratch);
-    let base2k = ct.inner.base2k().as_usize();
-    let offset = enc_infos.noise_infos().k - (base2k * pt.data.size());
-    pt.add_to(module, ct.inner.data_mut(), offset, scratch);
     ct.log_delta = enc_infos.noise_infos().k - pt.prec.log_decimal;
+    pt.add_to(module, ct.inner.data_mut(), ct.log_delta, scratch);
 }
 
 /// Returns the scratch bytes needed for [`decrypt`].
@@ -84,6 +83,5 @@ pub fn decrypt<BE: Backend>(
 {
     let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(&ct.inner);
     ct.inner.decrypt(module, &mut full_pt, sk, scratch_rest);
-    let offset = ct.log_delta + pt.log_decimal_prec() - ct.inner.base2k().as_usize() * pt.data.size();
-    pt.extract_from(module, &full_pt.data, offset, scratch_rest);
+    pt.extract_from(module, &full_pt.data, ct.log_delta, scratch_rest);
 }

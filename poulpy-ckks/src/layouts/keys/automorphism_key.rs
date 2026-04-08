@@ -55,6 +55,7 @@ impl CKKSAutomorphismKey<Vec<u8>> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts the automorphism key for Galois element `p` under a secret key.
     pub fn encrypt_sk<BE: Backend, S, E: EncryptionInfos>(
         &mut self,

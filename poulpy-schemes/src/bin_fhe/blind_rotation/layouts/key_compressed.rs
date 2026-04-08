@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCompressed},
+    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, compressed::GGSWCompressed},
 };
 
 use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};

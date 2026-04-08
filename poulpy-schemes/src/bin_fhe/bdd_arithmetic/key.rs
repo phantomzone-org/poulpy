@@ -154,6 +154,7 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
     where
         A: BDDKeyInfos;
 
+    #[allow(clippy::too_many_arguments)]
     /// Fills `res` with key material encrypted under `sk_lwe` / `sk_glwe`.
     ///
     /// `source_xa` supplies mask randomness; `source_xe` supplies error
@@ -192,6 +193,7 @@ where
             .max(self.glwe_to_lwe_key_encrypt_sk_tmp_bytes(&infos.ks_lwe_infos()))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn bdd_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut BDDKey<D, BRA>,
@@ -227,6 +229,7 @@ where
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S0, S1, M, BE: Backend>(
         &mut self,
         module: &M,

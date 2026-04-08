@@ -2,7 +2,7 @@ use poulpy_core::{
     EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
-        GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
+        GLWESecretPreparedFactory, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{

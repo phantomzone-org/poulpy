@@ -1,6 +1,6 @@
 use poulpy_core::{
     EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared},
+    layouts::{Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, prepared::GGSWPrepared},
 };
 
 use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyInfos};

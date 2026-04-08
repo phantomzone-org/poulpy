@@ -102,6 +102,7 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUint<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,

@@ -1,6 +1,6 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},

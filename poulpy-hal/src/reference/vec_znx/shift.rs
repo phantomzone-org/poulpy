@@ -106,9 +106,10 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         return;
     }
 
-    let min_size: usize = res_size.min(a_size - steps);
+    let min_size: usize = res_size.min(a_size.saturating_sub(steps));
+    let carry_only_start: usize = (steps + min_size).min(a_size);
 
-    for j in ((steps + min_size)..a_size).rev() {
+    for j in (carry_only_start..a_size).rev() {
         if j == a_size - 1 {
             ZNXARI::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
         } else {
@@ -116,7 +117,7 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         }
     }
 
-    if steps + min_size == a_size {
+    if carry_only_start == a_size {
         ZNXARI::znx_zero(carry);
     }
 
@@ -546,6 +547,34 @@ mod tests {
 
             assert_eq!(res_ref, res_test);
         }
+    }
+
+    #[test]
+    fn test_vec_znx_lsh_steps_past_source_yields_zero() {
+        let n: usize = 8;
+        let cols: usize = 2;
+        let base2k: usize = 50;
+        let mut source: Source = Source::new([0u8; 32]);
+        let mut carry: Vec<i64> = vec![0i64; vec_znx_lsh_tmp_bytes(n) / size_of::<i64>()];
+
+        let a_size: usize = 1;
+        let res_size: usize = 4;
+        let k: usize = 2 * base2k;
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
+        let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+        let zero: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+
+        a.fill_uniform(base2k, &mut source);
+        res_test.fill_uniform(base2k, &mut source);
+
+        for i in 0..cols {
+            vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut a, i, &mut carry);
+            vec_znx_lsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, i, &a, i, &mut carry);
+            vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_test, i, &mut carry);
+        }
+
+        assert_eq!(res_test, zero);
     }
 
     #[test]

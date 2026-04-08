@@ -190,6 +190,7 @@ pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
+    #[allow(clippy::too_many_arguments)]
     fn fhe_uint_prepared_encrypt_sk<DM, S, E>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
@@ -225,6 +226,7 @@ where
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T, BE> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<M, S, E>(
         &mut self,
         module: &M,
