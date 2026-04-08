@@ -2,40 +2,85 @@ use std::sync::LazyLock;
 
 use poulpy_cpu_ref::NTT120Ref;
 
-use crate::leveled::tests::test_suite::{
-    NTT120_PARAMS,
-    add::{test_add, test_add_aligned, test_add_const, test_add_pt},
-    composition::{
-        test_prepared_linear_sum, test_prepared_poly2_mul, test_prepared_poly2_sum, test_prepared_poly2_sum_aligned,
-        test_prepared_poly2_term, test_prepared_poly2_term_align,
-    },
-    conjugate::test_conjugate,
-    encryption::test_encrypt_decrypt,
-    helpers::TestContext,
-    level::{test_div_pow2, test_drop_scaling_precision, test_drop_torus_precision},
-    metadata::test_metadata_sweep,
-    mul::{
-        test_mul, test_mul_aligned, test_mul_const, test_mul_int, test_mul_mismatched_delta, test_mul_mismatched_k, test_mul_pt,
-        test_deep_square_chain, test_mul_size_reduced_inputs, test_mul_tmp_bytes_scales_with_size,
-        test_sequential_mul, test_square, test_square_size_reduced_input,
-    },
-    neg::test_neg,
-    plaintext_prepared::{test_add_prepared_pt, test_mul_prepared_pt, test_sub_prepared_pt},
-    rotate::test_rotate,
-    sub::{test_sub, test_sub_aligned, test_sub_const, test_sub_pt},
-};
+use crate::leveled::tests::test_suite::{NTT120_PARAMS, helpers::TestContext};
 
-const ATK_ROTATIONS: &[i64] = &[1, 7];
+//const ATK_ROTATIONS: &[i64] = &[1, 7];
 
 static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS));
-static CTX_TSK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_tsk(NTT120_PARAMS));
-static CTX_ATK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
+//static CTX_TSK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_tsk(NTT120_PARAMS));
+//static CTX_ATK: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new_with_atk(NTT120_PARAMS, ATK_ROTATIONS));
 
 #[test]
 fn encrypt_decrypt() {
-    test_encrypt_decrypt(&CTX);
+    crate::leveled::tests::test_suite::encryption::test_encrypt_decrypt(&CTX);
 }
 
+#[test]
+fn ct_add_aligned() {
+    crate::leveled::tests::test_suite::add::test_ct_add_aligned(&CTX);
+}
+
+#[test]
+fn ct_add_delta_a_lt_b() {
+    crate::leveled::tests::test_suite::add::test_ct_add_delta_a_lt_b(&CTX);
+}
+
+#[test]
+fn ct_add_delta_a_gt_b() {
+    crate::leveled::tests::test_suite::add::test_ct_add_delta_a_gt_b(&CTX);
+}
+
+#[test]
+fn ct_add_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_ct_add_smaller_output(&CTX);
+}
+
+#[test]
+fn ct_add_inplace_aligned() {
+    crate::leveled::tests::test_suite::add::test_ct_add_inplace_aligned(&CTX);
+}
+
+#[test]
+fn ct_add_inplace_self_lt() {
+    crate::leveled::tests::test_suite::add::test_ct_add_inplace_self_lt(&CTX);
+}
+
+#[test]
+fn ct_add_inplace_self_gt() {
+    crate::leveled::tests::test_suite::add::test_ct_add_inplace_self_gt(&CTX);
+}
+
+#[test]
+fn ct_add_pt_znx_inplace() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx_inplace(&CTX);
+}
+
+#[test]
+fn ct_add_pt_znx() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx(&CTX);
+}
+
+#[test]
+fn ct_add_pt_rnx_inplace() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx_inplace(&CTX);
+}
+
+#[test]
+fn ct_add_pt_rnx() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx(&CTX);
+}
+
+#[test]
+fn ct_add_pt_znx_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_znx_smaller_output(&CTX);
+}
+
+#[test]
+fn ct_add_pt_rnx_smaller_output() {
+    crate::leveled::tests::test_suite::add::test_ct_add_pt_rnx_smaller_output(&CTX);
+}
+
+/*
 #[test]
 fn metadata_sweep() {
     test_metadata_sweep(&CTX);
@@ -220,3 +265,4 @@ fn rotate() {
 fn conjugate() {
     test_conjugate(&CTX_ATK);
 }
+    */

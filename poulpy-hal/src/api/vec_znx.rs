@@ -162,7 +162,7 @@ pub trait VecZnxLsh<B: Backend> {
 pub trait VecZnxLshAdd<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh<R, A>(
+    fn vec_znx_lsh_add<R, A>(
         &self,
         base2k: usize,
         k: usize,

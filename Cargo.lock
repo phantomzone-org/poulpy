@@ -516,6 +516,7 @@ name = "poulpy-ckks"
 version = "0.5.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",

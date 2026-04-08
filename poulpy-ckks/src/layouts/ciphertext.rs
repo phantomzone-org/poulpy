@@ -61,6 +61,11 @@ impl CKKSCiphertext<Vec<u8>> {
             log_delta: 0,
         }
     }
+
+    /// Reallocates the owned backing buffer so capacity matches `size` limb count.
+    pub fn drop_limbs(&mut self, size: usize) {
+        self.inner.drop_limbs(size);
+    }
 }
 
 impl<D: Data> CKKSCiphertext<D> {

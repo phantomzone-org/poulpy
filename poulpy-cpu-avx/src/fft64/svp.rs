@@ -1,9 +1,7 @@
 use poulpy_hal::{
     layouts::{Module, ScalarZnxToRef, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef},
     oep::{SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
-    reference::fft64::{
-        svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
-    },
+    reference::fft64::svp::{svp_apply_dft_to_dft, svp_apply_dft_to_dft_inplace, svp_prepare},
 };
 
 use crate::{FFT64Avx, fft64::module::FFT64ModuleHandle};

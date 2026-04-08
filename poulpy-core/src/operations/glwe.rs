@@ -2,8 +2,9 @@ use poulpy_hal::{
     api::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAdd, VecZnxLshInplace, VecZnxLshTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub,
         VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
@@ -1083,14 +1084,29 @@ where
     }
 }
 
-impl<BE: Backend> GLWEShift<BE> for Module<BE> where Self: ModuleN + VecZnxRshInplace<BE> {}
+impl<BE: Backend> GLWEShift<BE> for Module<BE> where
+    Self: ModuleN
+        + VecZnxRshInplace<BE>
+        + VecZnxLshAdd<BE>
+        + VecZnxRshTmpBytes
+        + VecZnxLshTmpBytes
+        + VecZnxLshInplace<BE>
+        + VecZnxLsh<BE>
+{
+}
 
 pub trait GLWEShift<BE: Backend>
 where
-    Self: ModuleN + VecZnxRshInplace<BE>,
+    Self: ModuleN
+        + VecZnxRshInplace<BE>
+        + VecZnxLshAdd<BE>
+        + VecZnxRshTmpBytes
+        + VecZnxLshTmpBytes
+        + VecZnxLshInplace<BE>
+        + VecZnxLsh<BE>,
 {
-    fn glwe_rsh_tmp_byte(&self) -> usize {
-        let lvl_0: usize = VecZnx::rsh_tmp_bytes(self.n());
+    fn glwe_shift_tmp_bytes(&self) -> usize {
+        let lvl_0: usize = self.vec_znx_rsh_tmp_bytes().max(self.vec_znx_lsh_tmp_bytes());
         lvl_0
     }
 
@@ -1099,26 +1115,89 @@ where
         R: GLWEToMut,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let res = &mut res.to_mut();
         assert!(
-            scratch.available() >= self.glwe_rsh_tmp_byte(),
-            "scratch.available(): {} < GLWEShift::glwe_rsh_tmp_byte: {}",
+            scratch.available() >= self.glwe_shift_tmp_bytes(),
+            "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_rsh_tmp_byte()
+            self.glwe_shift_tmp_bytes()
         );
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_rsh_inplace(base2k, k, res.data_mut(), i, scratch);
         }
     }
-}
 
-impl GLWE<Vec<u8>> {
-    pub fn rsh_tmp_bytes<M, BE: Backend>(module: &M) -> usize
+    fn glwe_lsh_inplace<R>(&self, res: &mut R, k: usize, scratch: &mut Scratch<BE>)
     where
-        M: GLWEShift<BE>,
+        R: GLWEToMut,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_rsh_tmp_byte()
+        let res = &mut res.to_mut();
+
+        assert!(
+            scratch.available() >= self.glwe_shift_tmp_bytes(),
+            "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_shift_tmp_bytes()
+        );
+
+        let base2k: usize = res.base2k().into();
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_lsh_inplace(base2k, k, res.data_mut(), i, scratch);
+        }
+    }
+
+    fn glwe_lsh<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res = &mut res.to_mut();
+        let a = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_shift_tmp_bytes(),
+            "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_shift_tmp_bytes()
+        );
+
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(res.base2k(), a.base2k());
+        assert!(res.rank() >= a.rank());
+
+        let base2k: usize = res.base2k().into();
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_lsh(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+        }
+    }
+
+    fn glwe_lsh_add<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res = &mut res.to_mut();
+        let a = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_shift_tmp_bytes(),
+            "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_shift_tmp_bytes()
+        );
+
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(res.base2k(), a.base2k());
+        assert!(res.rank() >= a.rank());
+
+        let base2k: usize = res.base2k().into();
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_lsh_add(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+        }
     }
 }
 

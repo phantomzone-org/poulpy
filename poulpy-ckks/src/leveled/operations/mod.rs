@@ -16,7 +16,7 @@
 //! | [`rotate`] | Slot rotation via automorphism |
 //! | [`conjugate`] | Complex conjugation via automorphism (Galois element `-1`) |
 
-//pub mod add;
+pub mod add;
 //pub mod conjugate;
 //pub mod level;
 //pub mod mul;

@@ -1,209 +1,505 @@
 //! Addition tests: ct+ct, ct+pt, ct+const (out-of-place and in-place).
+//!
+//! # Test inventory
+//!
+//! ## Operations-layer ct+ct (`CKKSCiphertext::add`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_ct_add_aligned`] | `a.log_delta == b.log_delta`, `offset == 0` → `glwe_add` fast path |
+//! | [`test_ct_add_delta_a_lt_b`] | `a.log_delta < b.log_delta` → b shifted to align with a |
+//! | [`test_ct_add_delta_a_gt_b`] | `a.log_delta > b.log_delta` → a shifted to align with b |
+//! | [`test_ct_add_smaller_output`] | `offset > 0` (output one limb narrower than inputs) |
+//!
+//! ## Operations-layer ct+ct (`CKKSCiphertext::add_inplace`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_ct_add_inplace_aligned`] | `self.log_delta == a.log_delta` |
+//! | [`test_ct_add_inplace_self_lt`] | `self.log_delta < a.log_delta` → a shifted to align with self |
+//! | [`test_ct_add_inplace_self_gt`] | `self.log_delta > a.log_delta` → self shifted to align with a |
+//!
+//! ## Operations-layer ct + ZNX plaintext (`CKKSCiphertext::add_pt_znx[_inplace]`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_ct_add_pt_znx_inplace`] | in-place, `offset == 0` |
+//! | [`test_ct_add_pt_znx`] | out-of-place, `offset == 0` |
+//! | [`test_ct_add_pt_znx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
+//!
+//! ## Operations-layer ct + RNX plaintext (`CKKSCiphertext::add_pt_rnx[_inplace]`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_ct_add_pt_rnx_inplace`] | in-place, `offset == 0`, RNX → ZNX auto-conversion |
+//! | [`test_ct_add_pt_rnx`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
+//! | [`test_ct_add_pt_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
-use super::helpers::{TestContext, assert_precision};
-use crate::{
-    encoding::classical::encode,
-    layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
-    leveled::{
-        encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
-        operations::add::{
-            add, add_aligned, add_aligned_inplace, add_const, add_const_inplace, add_const_tmp_bytes, add_inplace, add_pt,
-            add_pt_inplace, add_pt_tmp_bytes, add_tmp_bytes,
-        },
-    },
-};
+use super::helpers::TestContext;
 use poulpy_core::{
-    GLWEAdd, GLWEDecrypt, GLWEEncryptSk, GLWENormalize, ScratchTakeCore, layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision}
+    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore, layouts::GLWESecretPreparedFactory,
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VecZnxRshAdd,
+    },
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
 
-/// Verifies ct + ct addition (out-of-place and in-place).
-pub fn test_add<BE: Backend>(ctx: &TestContext<BE>)
+// All test functions share this where clause:
+//
+//   Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE>
+//             + GLWESecretPreparedFactory<BE> + GLWEAdd + GLWECopy + GLWEShift<BE>
+//             + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes + VecZnxLsh<BE> + VecZnxRshAdd<BE>
+//   ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>
+//   Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable
+
+// ─── ct+ct out-of-place (CKKSCiphertext::add) ────────────────────────────────
+
+/// ct+ct out-of-place, aligned (same log_delta, offset == 0 → glwe_add fast path).
+pub fn test_ct_add_aligned<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEAdd
-        + GLWENormalize<BE>
+        + GLWECopy
+        + GLWEShift<BE>
         + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(add_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp)),
-    );
-
+    let mut scratch = ctx.alloc_scratch_with_shift();
     let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+    let (want_re, want_im) = ctx.want_add();
 
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] + ctx.re2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] + ctx.im2[j]).collect();
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.add(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
 
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    add(&ctx.module, &mut ct_res, &ct1, &ct2, scratch.borrow());
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("add re", &re_out, &want_re, 20.0);
-    assert_precision("add im", &im_out, &want_im, 20.0);
-
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    add_inplace(&ctx.module, &mut ct_ip, &ct2, scratch.borrow());
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("add_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("add_inplace im", &im_ip, &want_im, 20.0);
-
-    let shifted_k = TorusPrecision(k.0 - 1);
-    let mut ct2_shifted = CKKSCiphertext::alloc(degree, base2k, shifted_k, ctx.params.log_delta);
-    ctx.module.glwe_align(
-        &mut ct2_shifted.inner,
-        shifted_k.0,
-        &ct2.inner,
-        ct2.offset_bits(),
-        scratch.borrow(),
-    );
-    ct2_shifted.offset_bits = shifted_k.0;
-
-    let mut ct_misaligned = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    add(&ctx.module, &mut ct_misaligned, &ct1, &ct2_shifted, scratch.borrow());
-    let (re_misaligned, im_misaligned) = ctx.decrypt_decode(&ct_misaligned, &mut scratch);
-    assert_precision("add misaligned re", &re_misaligned, &want_re, 19.0);
-    assert_precision("add misaligned im", &im_misaligned, &want_im, 19.0);
+    assert_eq!(ct_res.log_delta, ct1.log_delta, "aligned: log_delta must equal inputs");
+    ctx.assert_decrypt_precision("ct_add_aligned", &ct_res, &want_re, &want_im, 20.0, &mut scratch);
 }
 
-/// Verifies ct + compact pt addition (out-of-place and in-place).
-pub fn test_add_pt<BE: Backend>(ctx: &TestContext<BE>)
+/// ct+ct out-of-place, a.log_delta < b.log_delta (b is shifted to align with a).
+pub fn test_ct_add_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
         + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(add_pt_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
-
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut pt2 = CKKSPlaintext::alloc(degree, base2k, ctx.params.log_delta);
-    encode(&mut pt2, &ctx.re2, &ctx.im2);
-
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] + ctx.re2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] + ctx.im2[j]).collect();
-
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    add_pt(&ctx.module, &mut ct_res, &ct1, &pt2, scratch.borrow());
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("add_pt re", &re_out, &want_re, 20.0);
-    assert_precision("add_pt im", &im_out, &want_im, 20.0);
-
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    add_pt_inplace(&ctx.module, &mut ct_ip, &pt2, scratch.borrow());
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("add_pt_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("add_pt_inplace im", &im_ip, &want_im, 20.0);
-}
-
-/// Verifies ct + complex constant addition (out-of-place and in-place).
-pub fn test_add_const<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEAdd
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(add_const_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
-    let (c_re, c_im) = (0.7, -0.3);
-
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] + c_re).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] + c_im).collect();
-
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    add_const(&ctx.module, &mut ct_res, &ct1, c_re, c_im, scratch.borrow());
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("add_const re", &re_out, &want_re, 20.0);
-    assert_precision("add_const im", &im_out, &want_im, 20.0);
-
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    add_const_inplace(&ctx.module, &mut ct_ip, c_re, c_im, scratch.borrow());
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("add_const_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("add_const_inplace im", &im_ip, &want_im, 20.0);
-}
-
-/// Verifies the aligned fast-path variants: `add_aligned` and `add_aligned_inplace`.
-pub fn test_add_aligned<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEAdd
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let mut scratch = ctx.alloc_scratch();
-
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
 
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] + ctx.re2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] + ctx.im2[j]).collect();
+    // Drop ct1 by one limb: ct1.log_delta becomes ct2.log_delta - base2k.
+    ct1.rescale_inplace(&ctx.module, ctx.params.base2k, scratch.borrow());
+    let expected_delta = ct1.log_delta;
+    let (want_re, want_im) = ctx.want_add();
 
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    add_aligned(&ctx.module, &mut ct_res, &ct1, &ct2);
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("add_aligned re", &re_out, &want_re, 20.0);
-    assert_precision("add_aligned im", &im_out, &want_im, 20.0);
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.add(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
 
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    add_aligned_inplace(&ctx.module, &mut ct_ip, &ct2);
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("add_aligned_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("add_aligned_inplace im", &im_ip, &want_im, 20.0);
+    assert_eq!(ct_res.log_delta, expected_delta, "a_lt_b: result must use min log_delta");
+    ctx.assert_decrypt_precision("ct_add a_lt_b", &ct_res, &want_re, &want_im, 18.0, &mut scratch);
+}
+
+/// ct+ct out-of-place, a.log_delta > b.log_delta (a is shifted to align with b).
+pub fn test_ct_add_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let mut ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+
+    // Drop ct2: ct2.log_delta becomes ct1.log_delta - base2k.
+    ct2.rescale_inplace(&ctx.module, ctx.params.base2k, scratch.borrow());
+    let expected_delta = ct2.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.add(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+
+    assert_eq!(ct_res.log_delta, expected_delta, "a_gt_b: result must use min log_delta");
+    ctx.assert_decrypt_precision("ct_add a_gt_b", &ct_res, &want_re, &want_im, 18.0, &mut scratch);
+}
+
+/// ct+ct out-of-place, output buffer has smaller max_k than inputs (offset > 0).
+///
+/// Both inputs are at the same log_delta.  The output is one limb narrower,
+/// so both inputs are shifted by one limb before addition to fit.
+/// Expected result log_delta = input log_delta − base2k.
+pub fn test_ct_add_smaller_output<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct_reduced_k();
+    ct_res.add(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+
+    let expected_delta = ct1.log_delta - ctx.params.base2k;
+    assert_eq!(
+        ct_res.log_delta, expected_delta,
+        "smaller_output: log_delta must be reduced by offset"
+    );
+    ctx.assert_decrypt_precision("ct_add smaller_output", &ct_res, &want_re, &want_im, 18.0, &mut scratch);
+}
+
+// ─── ct+ct in-place (CKKSCiphertext::add_inplace) ────────────────────────────
+
+/// ct+ct in-place, aligned (same log_delta).
+pub fn test_ct_add_inplace_aligned<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+    let expected_delta = ct1.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    ct1.add_inplace(&ctx.module, &ct2, scratch.borrow()).unwrap();
+
+    assert_eq!(
+        ct1.log_delta, expected_delta,
+        "add_inplace aligned: log_delta must be unchanged"
+    );
+    ctx.assert_decrypt_precision("ct_add_inplace_aligned", &ct1, &want_re, &want_im, 20.0, &mut scratch);
+}
+
+/// ct+ct in-place, self.log_delta < a.log_delta (a is shifted down to align with self).
+pub fn test_ct_add_inplace_self_lt<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct_self = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let ct_other = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+
+    // Rescale self: self.log_delta < ct_other.log_delta.
+    ct_self.rescale_inplace(&ctx.module, ctx.params.base2k, scratch.borrow());
+    let expected_delta = ct_self.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    ct_self.add_inplace(&ctx.module, &ct_other, scratch.borrow()).unwrap();
+
+    assert_eq!(
+        ct_self.log_delta, expected_delta,
+        "add_inplace self_lt: log_delta must stay at self's value"
+    );
+    ctx.assert_decrypt_precision("ct_add_inplace self_lt", &ct_self, &want_re, &want_im, 18.0, &mut scratch);
+}
+
+/// ct+ct in-place, self.log_delta > a.log_delta (self is shifted down to align with a).
+pub fn test_ct_add_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct_self = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let mut ct_other = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
+
+    // Rescale other: ct_other.log_delta < ct_self.log_delta.
+    ct_other.rescale_inplace(&ctx.module, ctx.params.base2k, scratch.borrow());
+    let expected_delta = ct_other.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    ct_self.add_inplace(&ctx.module, &ct_other, scratch.borrow()).unwrap();
+
+    assert_eq!(
+        ct_self.log_delta, expected_delta,
+        "add_inplace self_gt: log_delta must drop to a's value"
+    );
+    ctx.assert_decrypt_precision("ct_add_inplace self_gt", &ct_self, &want_re, &want_im, 18.0, &mut scratch);
+}
+
+// ─── ct + compact ZNX plaintext (CKKSCiphertext::add_pt_znx[_inplace]) ────────
+
+/// ct + ZNX plaintext, in-place.
+pub fn test_ct_add_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_znx = ctx.encode_pt_znx();
+    let expected_delta = ct.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    ct.add_pt_znx_inplace(&ctx.module, &pt_znx, scratch.borrow()).unwrap();
+
+    assert_eq!(ct.log_delta, expected_delta, "add_pt_znx_inplace must not change log_delta");
+    ctx.assert_decrypt_precision("ct_add_pt_znx_inplace", &ct, &want_re, &want_im, 20.0, &mut scratch);
+}
+
+/// ct + ZNX plaintext, out-of-place (self = a + pt_znx).
+pub fn test_ct_add_pt_znx<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_znx = ctx.encode_pt_znx();
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.add_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
+
+    assert_eq!(ct_res.log_delta, ct1.log_delta, "add_pt_znx must carry forward a's log_delta");
+    ctx.assert_decrypt_precision("ct_add_pt_znx", &ct_res, &want_re, &want_im, 20.0, &mut scratch);
+}
+
+// ─── ct + float RNX plaintext (CKKSCiphertext::add_pt_rnx[_inplace]) ──────────
+
+/// ct + RNX plaintext, in-place (auto-converts RNX → ZNX using scratch).
+pub fn test_ct_add_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_rnx = ctx.encode_pt_rnx();
+    let expected_delta = ct.log_delta;
+    let (want_re, want_im) = ctx.want_add();
+
+    ct.add_pt_rnx_inplace(&ctx.module, &pt_rnx, ctx.prec(), scratch.borrow())
+        .unwrap();
+
+    assert_eq!(ct.log_delta, expected_delta, "add_pt_rnx_inplace must not change log_delta");
+    ctx.assert_decrypt_precision("ct_add_pt_rnx_inplace", &ct, &want_re, &want_im, 20.0, &mut scratch);
+}
+
+/// ct + RNX plaintext, out-of-place (self = a + pt_rnx, auto-converts RNX → ZNX using scratch).
+pub fn test_ct_add_pt_rnx<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_rnx = ctx.encode_pt_rnx();
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct();
+    ct_res
+        .add_pt_rnx(&ctx.module, &ct1, &pt_rnx, ctx.prec(), scratch.borrow())
+        .unwrap();
+
+    assert_eq!(ct_res.log_delta, ct1.log_delta, "add_pt_rnx must carry forward a's log_delta");
+    ctx.assert_decrypt_precision("ct_add_pt_rnx", &ct_res, &want_re, &want_im, 20.0, &mut scratch);
+}
+
+/// ct + ZNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
+///
+/// Exercises the lsh-then-add path in `add_pt_znx`.  The output log_delta must
+/// equal `a.log_delta − base2k`, not the original `a.log_delta`.
+pub fn test_ct_add_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_znx = ctx.encode_pt_znx();
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct_reduced_k();
+    ct_res.add_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
+
+    let expected_delta = ct1.log_delta - ctx.params.base2k;
+    assert_eq!(
+        ct_res.log_delta, expected_delta,
+        "add_pt_znx smaller_output: log_delta must be reduced by offset"
+    );
+    ctx.assert_decrypt_precision(
+        "ct_add_pt_znx smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        &mut scratch,
+    );
+}
+
+/// ct + RNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
+///
+/// Same path as `test_ct_add_pt_znx_smaller_output` but entered via `add_pt_rnx`
+/// (which converts RNX → ZNX internally before delegating to `add_pt_znx`).
+pub fn test_ct_add_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAdd
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxLsh<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch_with_shift();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let pt_rnx = ctx.encode_pt_rnx();
+    let (want_re, want_im) = ctx.want_add();
+
+    let mut ct_res = ctx.alloc_ct_reduced_k();
+    ct_res
+        .add_pt_rnx(&ctx.module, &ct1, &pt_rnx, ctx.prec(), scratch.borrow())
+        .unwrap();
+
+    let expected_delta = ct1.log_delta - ctx.params.base2k;
+    assert_eq!(
+        ct_res.log_delta, expected_delta,
+        "add_pt_rnx smaller_output: log_delta must be reduced by offset"
+    );
+    ctx.assert_decrypt_precision(
+        "ct_add_pt_rnx smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        &mut scratch,
+    );
 }

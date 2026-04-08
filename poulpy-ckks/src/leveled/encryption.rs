@@ -17,21 +17,20 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{VecZnxLsh, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
 /// Returns the scratch bytes needed for [`encrypt_sk`].
-pub fn encrypt_sk_tmp_bytes<BE: Backend>(module: &Module<BE>, ct: &CKKSCiphertext<impl Data>) -> usize
+pub fn encrypt_sk_tmp_bytes<A, BE: Backend>(module: &Module<BE>, ct_infos: &A) -> usize
 where
     Module<BE>: GLWEEncryptSk<BE> + VecZnxNormalizeTmpBytes,
+    A: GLWEInfos,
 {
-    let full_k = poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let layout_bytes = GLWEPlaintext::bytes_of(ct.inner.n(), ct.inner.base2k(), full_k);
-    layout_bytes
+    GLWEPlaintext::bytes_of_from_infos(ct_infos)
         + module
             .vec_znx_normalize_tmp_bytes()
-            .max(GLWE::encrypt_sk_tmp_bytes(module, &ct.inner))
+            .max(GLWE::encrypt_sk_tmp_bytes(module, ct_infos))
 }
 
 /// Encrypts a compact [`CKKSPlaintext`] under a GLWE secret key.
@@ -53,7 +52,9 @@ pub fn encrypt_sk<BE: Backend, E: EncryptionInfos>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     ct.inner.encrypt_zero_sk(module, sk, enc_infos, source_xe, source_xa, scratch);
-    pt.add_to(module, ct.inner.data_mut(), ct.log_delta, scratch);
+    let log_delta = enc_infos.noise_infos().k - ct.inner.base2k().as_usize();
+    pt.add_to(module, ct.inner.data_mut(), log_delta, scratch);
+    ct.log_delta = log_delta;
 }
 
 /// Returns the scratch bytes needed for [`decrypt`].

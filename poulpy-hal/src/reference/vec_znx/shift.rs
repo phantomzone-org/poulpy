@@ -101,7 +101,7 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         return;
     }
 
-    let min_size: usize = res_size.min(a_size  - steps);
+    let min_size: usize = res_size.min(a_size - steps);
 
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
@@ -139,7 +139,6 @@ where
         + ZnxNormalizeFirstStepInplace
         + ZnxNormalizeFinalStepInplace,
 {
-
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let n: usize = res.n();
 
@@ -265,7 +264,7 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
         );
     }
 
-    if OVERWRITE{
+    if OVERWRITE {
         // Propagates carry on the rest of the limbs of res
         for j in 0..res_end {
             if j == res_end - 1 {
@@ -274,7 +273,7 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
                 ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
             }
         }
-    }else{
+    } else {
         // Propagates carry on the rest of the limbs of res
         for j in 0..res_end {
             if j == res_end - 1 {
@@ -284,7 +283,6 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
             }
         }
     }
-    
 }
 
 pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)

@@ -268,7 +268,7 @@ impl<B> VecZnxLshAdd<B> for Module<B>
 where
     B: Backend + VecZnxLshAddImpl<B>,
 {
-    fn vec_znx_lsh<R, A>(
+    fn vec_znx_lsh_add<R, A>(
         &self,
         base2k: usize,
         k: usize,
