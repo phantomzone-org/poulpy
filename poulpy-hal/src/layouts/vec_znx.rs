@@ -227,7 +227,7 @@ impl<D: DataRef> fmt::Display for VecZnx<D> {
                 let coeffs = self.at(col, size);
                 write!(f, "  Size {size}: [")?;
 
-                let max_show = 100;
+                let max_show = 16;
                 let show_count = coeffs.len().min(max_show);
 
                 for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
