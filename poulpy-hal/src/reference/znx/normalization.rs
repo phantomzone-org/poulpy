@@ -65,7 +65,13 @@ pub fn znx_normalize_first_step_inplace_ref(base2k: usize, lsh: usize, x: &mut [
 }
 
 #[inline(always)]
-pub fn znx_normalize_first_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_ref<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
@@ -77,14 +83,22 @@ pub fn znx_normalize_first_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a:
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
             let digit: i64 = get_digit_i64(base2k, *a);
             *c = get_carry_i64(base2k, *a, digit);
-            *x = digit;
+            if OVERWRITE {
+                *x = digit;
+            } else {
+                *x += digit;
+            }
         });
     } else {
         let base2k_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
             let digit: i64 = get_digit_i64(base2k_lsh, *a);
             *c = get_carry_i64(base2k_lsh, *a, digit);
-            *x = digit << lsh;
+            if OVERWRITE {
+                *x = digit << lsh;
+            } else {
+                *x += digit << lsh;
+            }
         });
     }
 }
@@ -162,7 +176,13 @@ pub fn znx_normalize_digit_ref(base2k: usize, res: &mut [i64], src: &mut [i64]) 
 }
 
 #[inline(always)]
-pub fn znx_normalize_middle_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_ref<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
@@ -174,8 +194,14 @@ pub fn znx_normalize_middle_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a
             let digit: i64 = get_digit_i64(base2k, *a);
             let carry: i64 = get_carry_i64(base2k, *a, digit);
             let digit_plus_c: i64 = digit + *c;
-            *x = get_digit_i64(base2k, digit_plus_c);
-            *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
+            let x1: i64 = get_digit_i64(base2k, digit_plus_c);
+            if OVERWRITE {
+                *x = x1;
+            } else {
+                *x += x1;
+            }
+
+            *c = carry + get_carry_i64(base2k, digit_plus_c, x1);
         });
     } else {
         let base2k_lsh: usize = base2k - lsh;
@@ -183,8 +209,13 @@ pub fn znx_normalize_middle_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a
             let digit: i64 = get_digit_i64(base2k_lsh, *a);
             let carry: i64 = get_carry_i64(base2k_lsh, *a, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
-            *x = get_digit_i64(base2k, digit_plus_c);
-            *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
+            let x1: i64 = get_digit_i64(base2k, digit_plus_c);
+            if OVERWRITE {
+                *x = x1;
+            } else {
+                *x += x1;
+            }
+            *c = carry + get_carry_i64(base2k, digit_plus_c, x1);
         });
     }
 }
@@ -210,7 +241,13 @@ pub fn znx_normalize_final_step_inplace_ref(base2k: usize, lsh: usize, x: &mut [
 }
 
 #[inline(always)]
-pub fn znx_normalize_final_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_ref<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
@@ -218,12 +255,20 @@ pub fn znx_normalize_final_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a:
     }
     if lsh == 0 {
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit_i64(base2k, get_digit_i64(base2k, *a) + *c);
+            if OVERWRITE {
+                *x = get_digit_i64(base2k, get_digit_i64(base2k, *a) + *c);
+            } else {
+                *x += get_digit_i64(base2k, get_digit_i64(base2k, *a) + *c);
+            }
         });
     } else {
         let base2k_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *a) << lsh) + *c);
+            if OVERWRITE {
+                *x = get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *a) << lsh) + *c);
+            } else {
+                *x += get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *a) << lsh) + *c);
+            }
         });
     }
 }

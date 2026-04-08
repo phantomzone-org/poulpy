@@ -55,11 +55,11 @@ where
         let res_infos: GLWELayout = GLWELayout {
             n: self.n().into(),
             base2k: lwe_infos.base2k(),
-            k: lwe_infos.k(),
+            k: lwe_infos.max_k(),
             rank: Rank(1),
         };
 
-        let lvl_0: usize = GLWE::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.k(), 1u32.into());
+        let lvl_0: usize = GLWE::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.max_k(), 1u32.into());
         let lvl_1: usize = self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos);
         let lvl_2: usize = GLWE::bytes_of_from_infos(glwe_infos);
 
@@ -89,7 +89,7 @@ where
         let glwe_layout: GLWELayout = GLWELayout {
             n: self.n().into(),
             base2k: res.base2k(),
-            k: res.k(),
+            k: res.max_k(),
             rank: Rank(1),
         };
 

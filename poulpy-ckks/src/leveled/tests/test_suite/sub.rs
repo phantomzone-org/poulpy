@@ -1,23 +1,15 @@
 //! Subtraction tests: ct-ct, ct-pt, ct-const (out-of-place and in-place).
-
 use super::helpers::{TestContext, assert_precision};
-use crate::{
-    encoding::classical::encode,
-    layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
-    leveled::{
-        encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
-        operations::sub::{
-            sub, sub_aligned, sub_aligned_inplace, sub_const, sub_const_inplace, sub_const_tmp_bytes, sub_inplace, sub_pt,
-            sub_pt_inplace, sub_pt_tmp_bytes, sub_tmp_bytes,
-        },
-    },
+use crate::layouts::{
+    ciphertext::CKKSCiphertext,
+    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
 };
 use poulpy_core::{
-    GLWEAdd, GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWESub, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
+    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWESub, ScratchTakeCore, layouts::GLWESecretPreparedFactory
 };
+use poulpy_cpu_ref::{FFT64Ref, fft64::FFT64ModuleHandle};
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd},
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
 
@@ -29,7 +21,8 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEAdd
-        + GLWEAlign<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWESub
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,

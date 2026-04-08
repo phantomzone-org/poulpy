@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
-    GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout,
         LWESecret, TorusPrecision,
@@ -79,13 +79,16 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
+    let brk_enc_infos = EncryptionLayout::new_from_default_sigma(brk_infos).unwrap();
+
     let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
     brk.encrypt_sk(
         &module,
         &sk_glwe_dft,
         &sk_lwe,
-        &mut source_xa,
+        &brk_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 

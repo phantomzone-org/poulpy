@@ -5,8 +5,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
-    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal, SIGMA},
+    EncryptionInfos, ScratchTakeCore,
+    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, GLWESecretPrepared, LWEInfos,
         compressed::{GGLWECompressed, GGLWECompressedToMut},
@@ -26,20 +26,22 @@ impl<D: DataMut> GGLWECompressed<D> {
     /// - `source_xe`: PRNG source for sampling encryption noise.
     /// - `scratch`: scratch buffer (see [`GGLWECompressed::encrypt_sk_tmp_bytes`] for sizing).
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, P, S, BE: Backend>(
+    pub fn encrypt_sk<M, P, S, E, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
         sk: &S,
         seed: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>,
+        E: EncryptionInfos,
         M: GGLWECompressedEncryptSk<BE>,
     {
-        module.gglwe_compressed_encrypt_sk(self, pt, sk, seed, source_xe, scratch);
+        module.gglwe_compressed_encrypt_sk(self, pt, sk, seed, enc_infos, source_xe, scratch);
     }
 }
 
@@ -59,17 +61,19 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_compressed_encrypt_sk<R, P, S>(
+    fn gglwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>;
 }
 
@@ -96,17 +100,19 @@ where
         lvl_0 + lvl_1
     }
 
-    fn gglwe_compressed_encrypt_sk<R, P, S>(
+    fn gglwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
@@ -139,13 +145,13 @@ where
                 self.gglwe_compressed_encrypt_sk_tmp_bytes(res)
             );
             assert!(
-                res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
+                res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.max_k().0,
                 "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
                 res.dnum(),
                 res.dsize(),
                 res.base2k(),
                 res.dnum().0 * res.dsize().0 * res.base2k().0,
-                res.k()
+                res.max_k()
             );
 
             let dnum: usize = res.dnum().into();
@@ -170,15 +176,14 @@ where
 
                     self.glwe_encrypt_sk_internal(
                         res.base2k().into(),
-                        res.k().into(),
                         &mut res.at_mut(row_i, col_j).data,
                         cols,
                         true,
                         Some((&tmp_pt, 0)),
                         sk,
-                        &mut source_xa_tmp,
+                        enc_infos,
                         source_xe,
-                        SIGMA,
+                        &mut source_xa_tmp,
                         scrach_1,
                     );
                 }

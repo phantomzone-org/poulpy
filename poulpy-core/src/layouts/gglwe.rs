@@ -20,7 +20,7 @@ where
         GGLWELayout {
             n: self.n(),
             base2k: self.base2k(),
-            k: self.k(),
+            k: self.max_k(),
             rank_in: self.rank_in(),
             rank_out: self.rank_out(),
             dsize: self.dsize(),
@@ -49,12 +49,12 @@ impl LWEInfos for GGLWELayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -85,7 +85,6 @@ impl GGLWEInfos for GGLWELayout {
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWE<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
@@ -93,10 +92,6 @@ pub struct GGLWE<D: Data> {
 impl<D: Data> LWEInfos for GGLWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn n(&self) -> Degree {
@@ -161,7 +156,7 @@ impl<D: DataRef> fmt::Display for GGLWE<D> {
         write!(
             f,
             "(GGLWE: k={} base2k={} dsize={}) {}",
-            self.k().0,
+            self.max_k().0,
             self.base2k().0,
             self.dsize().0,
             self.data
@@ -171,21 +166,22 @@ impl<D: DataRef> fmt::Display for GGLWE<D> {
 
 impl<D: DataRef> GGLWE<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
+        let data = self.data.at(row, col);
+        let k = TorusPrecision(self.base2k.0 * data.size() as u32);
         GLWE {
-            k: self.k,
             base2k: self.base2k,
-            data: self.data.at(row, col),
+            k,
+            data,
         }
     }
 }
 
 impl<D: DataMut> GGLWE<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
-        GLWE {
-            k: self.k,
-            base2k: self.base2k,
-            data: self.data.at_mut(row, col),
-        }
+        let base2k = self.base2k;
+        let data = self.data.at_mut(row, col);
+        let k = TorusPrecision(base2k.0 * data.size() as u32);
+        GLWE { base2k, k, data }
     }
 }
 
@@ -197,7 +193,7 @@ impl GGLWE<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -228,7 +224,6 @@ impl GGLWE<Vec<u8>> {
                 (rank_out + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
-            k,
             base2k,
             dsize,
         }
@@ -241,7 +236,7 @@ impl GGLWE<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -289,7 +284,6 @@ pub trait GGLWEToMut {
 impl<D: DataMut> GGLWEToMut for GGLWE<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         GGLWE {
-            k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             data: self.data.to_mut(),
@@ -304,7 +298,6 @@ pub trait GGLWEToRef {
 impl<D: DataRef> GGLWEToRef for GGLWE<D> {
     fn to_ref(&self) -> GGLWE<&[u8]> {
         GGLWE {
-            k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             data: self.data.to_ref(),
@@ -314,7 +307,6 @@ impl<D: DataRef> GGLWEToRef for GGLWE<D> {
 
 impl<D: DataMut> ReaderFrom for GGLWE<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
         self.data.read_from(reader)
@@ -323,7 +315,6 @@ impl<D: DataMut> ReaderFrom for GGLWE<D> {
 
 impl<D: DataRef> WriterTo for GGLWE<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u32::<LittleEndian>(self.k.0)?;
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
         writer.write_u32::<LittleEndian>(self.dsize.0)?;
         self.data.write_to(writer)

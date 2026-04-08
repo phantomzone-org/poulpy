@@ -18,7 +18,6 @@ use crate::layouts::{
 #[derive(PartialEq, Eq)]
 pub struct GGLWEPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
@@ -31,10 +30,6 @@ impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
 
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn size(&self) -> usize {
@@ -104,7 +99,6 @@ where
 
         GGLWEPrepared {
             data: self.vmp_pmat_alloc(dnum.into(), rank_in.into(), (rank_out + 1).into(), size),
-            k,
             base2k,
             dsize,
         }
@@ -118,7 +112,7 @@ where
         assert_eq!(self.ring_degree(), infos.n());
         self.alloc_gglwe_prepared(
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -161,7 +155,7 @@ where
         assert_eq!(self.ring_degree(), infos.n());
         self.bytes_of_gglwe_prepared(
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -198,7 +192,7 @@ where
         assert_eq!(res.n(), self.ring_degree());
         assert_eq!(other.n(), self.ring_degree());
         assert_eq!(res.base2k, other.base2k);
-        assert_eq!(res.k, other.k);
+        assert_eq!(res.size(), other.size());
         assert_eq!(res.dsize, other.dsize);
         assert!(
             scratch.available() >= self.prepare_gglwe_tmp_bytes(&res),
@@ -299,7 +293,6 @@ pub trait GGLWEPreparedToMut<B: Backend> {
 impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GGLWEPrepared<D, B> {
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
         GGLWEPrepared {
-            k: self.k,
             base2k: self.base2k,
             dsize: self.dsize,
             data: self.data.to_mut(),
@@ -316,7 +309,6 @@ pub trait GGLWEPreparedToRef<B: Backend> {
 impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GGLWEPrepared<D, B> {
     fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
         GGLWEPrepared {
-            k: self.k,
             base2k: self.base2k,
             dsize: self.dsize,
             data: self.data.to_ref(),

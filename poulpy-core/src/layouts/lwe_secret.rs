@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GetDistribution,
     dist::Distribution,
-    layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
+    layouts::{Base2K, Degree, LWEInfos},
 };
 
 pub struct LWESecret<D: Data> {
@@ -46,9 +46,6 @@ impl<D: DataRef> LWESecret<D> {
 impl<D: Data> LWEInfos for LWESecret<D> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
-    }
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
     }
 
     fn n(&self) -> Degree {

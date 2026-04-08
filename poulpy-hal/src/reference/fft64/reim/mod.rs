@@ -25,6 +25,8 @@ mod table_fft;
 mod table_ifft;
 mod zero;
 
+use std::fmt::Debug;
+
 pub use conversion::*;
 pub use fft_ref::*;
 pub use fft_vec::*;
@@ -63,7 +65,7 @@ pub(crate) fn frac_rev_bits<R: Float + FloatConst>(x: usize) -> R {
     }
 }
 
-pub trait ReimDFTExecute<D, T> {
+pub trait ReimFFTExecute<D, T> {
     fn reim_dft_execute(table: &D, data: &mut [T]);
 }
 

@@ -1,4 +1,4 @@
-use std::arch::x86_64::__m256i;
+use std::arch::x86_64::{__m256i, _mm256_add_epi64};
 
 /// Vector forms of those constants (broadcast to all lanes)
 ///
@@ -291,7 +291,13 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_avx<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
@@ -322,8 +328,14 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(av, digit_256, base2k_vec, top_mask);
 
-                _mm256_storeu_si256(xx, digit_256);
-                _mm256_storeu_si256(cc, carry_256);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, digit_256);
+                    _mm256_storeu_si256(cc, carry_256);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, digit_256));
+                    _mm256_storeu_si256(cc, carry_256);
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -345,8 +357,15 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(av, digit_256, base2k_vec, top_mask);
 
-                _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
-                _mm256_storeu_si256(cc, carry_256);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
+                    _mm256_storeu_si256(cc, carry_256);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    let tmp: __m256i = _mm256_sllv_epi64(digit_256, lsh_v);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, tmp));
+                    _mm256_storeu_si256(cc, carry_256);
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -359,7 +378,7 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_first_step_ref;
 
-        znx_normalize_first_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_first_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -523,7 +542,13 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_avx<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
@@ -557,8 +582,14 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
                 let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
-                _mm256_storeu_si256(xx, x1);
-                _mm256_storeu_si256(cc, cout);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, x1);
+                    _mm256_storeu_si256(cc, cout);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, x1));
+                    _mm256_storeu_si256(cc, cout);
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -585,8 +616,14 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
                 let c1: __m256i = get_carry_avx(s, x1, base2k_vec, top_mask);
                 let cout: __m256i = _mm256_add_epi64(c0, c1);
 
-                _mm256_storeu_si256(xx, x1);
-                _mm256_storeu_si256(cc, cout);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, x1);
+                    _mm256_storeu_si256(cc, cout);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, x1));
+                    _mm256_storeu_si256(cc, cout);
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -598,7 +635,7 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_middle_step_ref;
 
-        znx_normalize_middle_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_middle_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -676,7 +713,13 @@ pub fn znx_normalize_final_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_avx<const OVERWRITE: bool>(
+    base2k: usize,
+    lsh: usize,
+    x: &mut [i64],
+    a: &[i64],
+    carry: &mut [i64],
+) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
@@ -706,7 +749,12 @@ pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 let s: __m256i = _mm256_add_epi64(d0, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
 
-                _mm256_storeu_si256(xx, x1);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, x1);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, x1));
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -729,7 +777,12 @@ pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
                 let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
                 let x1: __m256i = get_digit_avx(s, mask, sign);
 
-                _mm256_storeu_si256(xx, x1);
+                if OVERWRITE {
+                    _mm256_storeu_si256(xx, x1);
+                } else {
+                    let xv: __m256i = _mm256_loadu_si256(xx);
+                    _mm256_storeu_si256(xx, _mm256_add_epi64(xv, x1));
+                }
 
                 xx = xx.add(1);
                 aa = aa.add(1);
@@ -741,7 +794,7 @@ pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_final_step_ref;
 
-        znx_normalize_final_step_ref(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_final_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 2..], &a[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -969,7 +1022,7 @@ mod tests {
 
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_first_step_avx_internal() {
+    fn test_znx_normalize_first_step_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -989,14 +1042,14 @@ mod tests {
 
         let base2k = 12;
 
-        znx_normalize_first_step_ref(base2k, 0, &mut y0, &a, &mut c0);
-        znx_normalize_first_step_avx(base2k, 0, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref::<OVERWRITE>(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx::<OVERWRITE>(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_first_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
-        znx_normalize_first_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref::<OVERWRITE>(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx::<OVERWRITE>(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -1009,13 +1062,14 @@ mod tests {
             return;
         };
         unsafe {
-            test_znx_normalize_first_step_avx_internal();
+            test_znx_normalize_first_step_avx_internal::<true>();
+            test_znx_normalize_first_step_avx_internal::<false>();
         }
     }
 
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_middle_step_avx_internal() {
+    fn test_znx_normalize_middle_step_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1035,14 +1089,14 @@ mod tests {
 
         let base2k = 12;
 
-        znx_normalize_middle_step_ref(base2k, 0, &mut y0, &a, &mut c0);
-        znx_normalize_middle_step_avx(base2k, 0, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref::<OVERWRITE>(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx::<OVERWRITE>(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_middle_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
-        znx_normalize_middle_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref::<OVERWRITE>(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx::<OVERWRITE>(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -1055,13 +1109,13 @@ mod tests {
             return;
         };
         unsafe {
-            test_znx_normalize_middle_step_avx_internal();
+            test_znx_normalize_middle_step_avx_internal::<true>();
+            test_znx_normalize_middle_step_avx_internal::<false>();
         }
     }
 
-    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_final_step_avx_internal() {
+    fn test_znx_normalize_final_step_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1081,14 +1135,14 @@ mod tests {
 
         let base2k = 12;
 
-        znx_normalize_final_step_ref(base2k, 0, &mut y0, &a, &mut c0);
-        znx_normalize_final_step_avx(base2k, 0, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref::<OVERWRITE>(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx::<OVERWRITE>(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_final_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
-        znx_normalize_final_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref::<OVERWRITE>(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx::<OVERWRITE>(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -1101,7 +1155,8 @@ mod tests {
             return;
         };
         unsafe {
-            test_znx_normalize_final_step_avx_internal();
+            test_znx_normalize_final_step_avx_internal::<true>();
+            test_znx_normalize_final_step_avx_internal::<false>();
         }
     }
 

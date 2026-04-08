@@ -1,4 +1,4 @@
-use dashu_float::{Context, FBig, round::mode::HalfEven};
+use dashu_float::{Context, FBig, ops::DivRemEuclid, round::mode::HalfEven};
 use itertools::izip;
 
 use crate::{
@@ -183,18 +183,58 @@ impl<D: DataRef> VecZnx<D> {
         let rem: usize = base2k - (k % base2k);
         if k < base2k {
             let scale = 1 << rem as i64;
-            data.iter_mut().for_each(|x| *x = div_round(*x, scale));
+            data.iter_mut().for_each(|x| *x = div_round_i64(*x, scale));
         } else {
             (1..size).for_each(|i| {
                 if i == size - 1 && rem != base2k {
                     let k_rem: usize = (base2k - rem) % base2k;
                     let scale: i64 = 1 << rem as i64;
                     izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
-                        *y = (*y << k_rem) + div_round(*x, scale);
+                        *y = (*y << k_rem) + div_round_i64(*x, scale);
                     });
                 } else {
                     izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
                         *y = (*y << base2k) + x;
+                    });
+                }
+            })
+        }
+    }
+
+    pub fn decode_vec_i128(&self, base2k: usize, col: usize, k: usize, data: &mut [i128]) {
+        let size: usize = k.div_ceil(base2k);
+        #[cfg(debug_assertions)]
+        {
+            let a: VecZnx<&[u8]> = self.to_ref();
+            assert!(
+                data.len() >= a.n(),
+                "invalid data: data.len()={} < a.n()={}",
+                data.len(),
+                a.n()
+            );
+            assert!(col < a.cols());
+        }
+
+        let a: VecZnx<&[u8]> = self.to_ref();
+        data.iter_mut()
+            .zip(a.at(col, 0).iter())
+            .for_each(|(bi, ai)| *bi = *ai as i128);
+
+        let rem: usize = base2k - (k % base2k);
+        if k < base2k {
+            let scale = 1 << rem as i128;
+            data.iter_mut().for_each(|x| *x = div_round_i128(*x, scale));
+        } else {
+            (1..size).for_each(|i| {
+                if i == size - 1 && rem != base2k {
+                    let k_rem: usize = (base2k - rem) % base2k;
+                    let scale: i128 = 1 << rem as i128;
+                    izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
+                        *y = (*y << k_rem) + div_round_i128(*x as i128, scale);
+                    });
+                } else {
+                    izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
+                        *y = (*y << base2k) + *x as i128;
                     });
                 }
             })
@@ -220,7 +260,7 @@ impl<D: DataRef> VecZnx<D> {
             if j == size - 1 && rem != base2k {
                 let k_rem: usize = (base2k - rem) % base2k;
                 let scale: i64 = 1 << rem as i64;
-                res = (res << k_rem) + div_round(x, scale);
+                res = (res << k_rem) + div_round_i64(x, scale);
             } else {
                 res = (res << base2k) + x;
             }
@@ -274,10 +314,20 @@ impl<D: DataRef> VecZnx<D> {
 ///
 /// Panics if `b == 0`.
 #[inline]
-pub fn div_round(a: i64, b: i64) -> i64 {
+pub fn div_round_i64(a: i64, b: i64) -> i64 {
     assert!(b != 0, "division by zero");
-    let div: i64 = a / b;
-    let rem: i64 = a % b;
+    let (div, rem) = a.div_rem_euclid(b);
+    if (2 * rem.abs()) >= b.abs() {
+        div + a.signum() * b.signum()
+    } else {
+        div
+    }
+}
+
+#[inline]
+pub fn div_round_i128(a: i128, b: i128) -> i128 {
+    assert!(b != 0, "division by zero");
+    let (div, rem) = a.div_rem_euclid(b);
     if (2 * rem.abs()) >= b.abs() {
         div + a.signum() * b.signum()
     } else {

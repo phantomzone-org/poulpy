@@ -47,7 +47,7 @@ use poulpy_core::{
 };
 
 use crate::bin_fhe::{
-    bdd_arithmetic::{BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory},
+    bdd_arithmetic::{BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory},
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, BlindRotationKeyPreparedFactory},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
@@ -112,7 +112,16 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
         sk_lwe.fill_binary_block(block_size as usize, &mut source_xs);
         let bdd_key_infos: BDDKeyLayout = TEST_BDD_KEY_LAYOUT;
         let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_key_infos);
-        bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+        let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_key_infos).unwrap();
+        bdd_key.encrypt_sk(
+            &module,
+            &sk_lwe,
+            &sk_glwe,
+            &bdd_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
         let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
         bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 

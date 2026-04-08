@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank},
 };
 
 /// DFT-domain (prepared) variant of [`GLWESecret`].
@@ -34,10 +34,6 @@ impl<D: DataMut, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
 impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
-    }
-
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
     }
 
     fn n(&self) -> Degree {

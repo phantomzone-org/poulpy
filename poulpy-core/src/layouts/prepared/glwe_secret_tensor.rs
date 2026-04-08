@@ -8,7 +8,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToMut,
-        GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision,
+        GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef, GetDegree, LWEInfos, Rank,
     },
 };
 
@@ -37,10 +37,6 @@ impl<D: DataMut, BE: Backend> GetDistributionMut for GLWESecretTensorPrepared<D,
 impl<D: Data, B: Backend> LWEInfos for GLWESecretTensorPrepared<D, B> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
-    }
-
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
     }
 
     fn n(&self) -> Degree {

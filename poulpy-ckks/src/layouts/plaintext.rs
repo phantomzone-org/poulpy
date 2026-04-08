@@ -1,84 +1,346 @@
-//! Compact CKKS plaintext layout.
-//!
-//! A [`CKKSPlaintext`] stores the integer polynomial produced by CKKS encoding
-//! using just enough limbs to hold `embed_bits`. It does not carry
-//! ciphertext metadata such as `offset_bits`; torus placement into a ciphertext
-//! window happens only when the plaintext participates in an operation
-//! (encryption, add, sub, mul) or is prepared.
+use std::fmt::Debug;
 
-use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, GLWEPlaintextToMut, GLWEPlaintextToRef, TorusPrecision};
-use poulpy_hal::layouts::{Data, DataMut, DataRef};
+use anyhow::Result;
+use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos, TorusPrecision};
+use poulpy_hal::{
+    api::{VecZnxLsh, VecZnxRshAdd},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnx},
+    reference::fft64::reim::{ReimFFTTable, ReimIFFTTable},
+};
+use rand_distr::num_traits::{Float, FloatConst};
 
-/// Compact CKKS plaintext: an integer polynomial plus the embedding precision
-/// `embed_bits`, stored with `ceil(embed_bits / base2k)` limbs.
-///
-/// This is a storage object.  It becomes an operation object when expanded
-/// into a ciphertext-shaped torus layout by [`fill_offset_pt`] or by
-/// preparing into a [`CKKSPlaintextPrepared`](super::plaintext_prepared::CKKSPlaintextPrepared).
-///
-/// ## Lifecycle
-///
-/// 1. Allocate with [`CKKSPlaintext::alloc`] (compact) or
-///    [`CKKSPlaintext::alloc_for_decryption`] (full-width for decrypt output).
-/// 2. Encode with [`encode`](crate::encoding::classical::encode).
-/// 3. Use in encryption or leveled operations.
-/// 4. After decryption, decode with [`decode`](crate::encoding::classical::decode).
-///
-/// [`fill_offset_pt`]: crate::leveled::operations::utils::fill_offset_pt
-pub struct CKKSPlaintext<D: Data> {
-    pub inner: GLWEPlaintext<D>,
-    pub embed_bits: u32,
+use crate::layouts::ciphertext::CKKSCiphertext;
+
+#[derive(Debug, Clone)]
+pub struct CKKSPlaintextRnx<F>(Vec<F>)
+where
+    F: Float + FloatConst + Debug;
+pub struct CKKSPlaintextZnx<D: Data> {
+    pub data: GLWEPlaintext<D>,
+    pub prec: PrecisionLayout,
 }
 
-impl CKKSPlaintext<Vec<u8>> {
-    /// Allocates a compact CKKS plaintext with just enough limbs for the
-    /// message precision (`ceil(embed_bits / base2k)` limbs).
-    pub fn alloc(n: Degree, base2k: Base2K, embed_bits: u32) -> Self {
-        let pt_k = TorusPrecision((embed_bits as usize).div_ceil(base2k.0 as usize) as u32 * base2k.0);
+#[derive(Debug, Clone, Copy)]
+pub struct PrecisionLayout {
+    pub log_decimal: usize,
+    pub log_integer: usize,
+}
+
+impl PrecisionLayout {
+    pub fn k(&self, base2k: Base2K) -> TorusPrecision {
+        return ((self.log_decimal + self.log_integer).next_multiple_of(base2k.as_usize())).into();
+    }
+}
+
+pub trait CKKSPlaintextConversion {
+    const MAX_LOG_DECIMAL_PREC: usize;
+    fn to_znx<BE>(&self, other: &mut CKKSPlaintextZnx<impl DataMut>) -> Result<()>
+    where
+        BE: Backend;
+    fn from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
+    where
+        BE: Backend;
+}
+
+impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
+    pub fn alloc(n: usize) -> Self {
+        assert!(n.is_power_of_two());
+        Self(vec![F::zero(); n])
+    }
+
+    pub fn n(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn data(&self) -> &[F] {
+        return &self.0;
+    }
+
+    pub fn data_mut(&mut self) -> &mut [F] {
+        return &mut self.0;
+    }
+
+    pub fn encode_reim(&mut self, table: &ReimIFFTTable<F>, re: &[F], im: &[F]) {
+        let n = self.n();
+        let m = n / 2;
+
+        assert_eq!(table.m(), m);
+        assert_eq!(re.len(), m);
+        assert_eq!(im.len(), m);
+
+        self.0[..m].copy_from_slice(re);
+        self.0[m..].copy_from_slice(im);
+
+        table.execute(&mut self.0);
+
+        // Normalize by 1/m, matching vec_znx_idft_apply's divisor=m convention.
+        let inv_m = F::from(m).unwrap().recip();
+        self.0.iter_mut().for_each(|x| *x = *x * inv_m);
+    }
+
+    pub fn decode_reim(&self, table: &ReimFFTTable<F>, re: &mut [F], im: &mut [F]) {
+        let n = self.n();
+        let m = n / 2;
+
+        assert_eq!(table.m(), m);
+        assert!(re.len() <= m);
+        assert!(im.len() <= m);
+
+        let mut reim_tmp = vec![F::zero(); n];
+        reim_tmp.copy_from_slice(&self.0);
+
+        table.execute(&mut reim_tmp);
+
+        re.copy_from_slice(&reim_tmp[..m]);
+        im.copy_from_slice(&reim_tmp[m..]);
+    }
+}
+
+impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
+    const MAX_LOG_DECIMAL_PREC: usize = 53;
+
+    /// TODO: use buffers internally instead of allocating.
+    fn from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
+    where
+        BE: Backend,
+    {
+        let log_decimal = other.prec.log_decimal;
+        let log_integer = other.prec.log_integer;
+        let n = other.data.n().as_usize();
+
+        anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
+        anyhow::ensure!(self.0.len() == other.data.n().as_usize());
+
+        let scale = (-(log_decimal as f64)).exp2();
+        let k = other.data.max_k();
+        if log_decimal + log_integer <= 63 {
+            let mut data = vec![0i64; n];
+            other.data.decode_vec_i64(&mut data, k);
+            self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
+        } else {
+            let mut data = vec![0i128; n];
+            other.data.decode_vec_i128(&mut data, k);
+            self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
+        }
+
+        Ok(())
+    }
+
+    /// TODO: use buffers internally instead of allocating.
+    fn to_znx<BE>(&self, other: &mut CKKSPlaintextZnx<impl DataMut>) -> Result<()>
+    where
+        BE: Backend,
+    {
+        let log_decimal = other.prec.log_decimal;
+        let log_integer = other.prec.log_integer;
+
+        anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
+        anyhow::ensure!(self.0.len() == other.data.n().as_usize());
+
+        let scale = (log_decimal as f64).exp2();
+        let k = other.data.max_k();
+        if log_decimal + log_integer <= 63 {
+            let data: Vec<i64> = self.0.iter().map(|&x| (x * scale).round() as i64).collect();
+            other.data.encode_vec_i64(&data, k);
+        } else {
+            let data: Vec<i128> = self.0.iter().map(|&x| (x * scale).round() as i128).collect();
+            other.data.encode_vec_i128(&data, k);
+        }
+
+        Ok(())
+    }
+}
+
+impl<D: Data> CKKSPlaintextZnx<D> {
+    pub fn log_decimal_prec(&self) -> usize {
+        self.prec.log_decimal
+    }
+
+    pub fn log_integer_size(&self) -> usize {
+        self.prec.log_integer
+    }
+
+    pub fn plaintext(&self) -> &GLWEPlaintext<D> {
+        &self.data
+    }
+}
+
+impl<D: DataRef> CKKSPlaintextZnx<D> {
+    /// Adds this bottom-aligned plaintext into `dst` at bit position
+    /// `log_delta + log_decimal_prec` from the bottom.
+    ///
+    /// When the total offset is not a multiple of `base2k`, each plaintext
+    /// limb is split across two adjacent destination limbs via a coefficient-
+    /// level bit shift.
+    pub(crate) fn add_to<BE: Backend>(
+        &self,
+        module: &Module<BE>,
+        dst: &mut VecZnx<impl DataMut>,
+        log_delta: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: VecZnxRshAdd<BE>,
+    {
+        module.vec_znx_rsh_add(self.data.base2k().as_usize(), log_delta, dst, 0, self.data.data(), 0, scratch);
+    }
+}
+
+impl<D: DataMut> CKKSPlaintextZnx<D> {
+    /// Extracts a bottom-aligned plaintext from a `VecZnx` at bit position
+    /// `log_delta + log_decimal_prec` from the bottom.
+    ///
+    /// When the total offset is not a multiple of `base2k`, adjacent source
+    /// limbs are combined via a coefficient-level right shift.
+    pub(crate) fn extract_from<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        src: &VecZnx<impl DataRef>,
+        log_delta: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: VecZnxLsh<BE>,
+    {
+        module.vec_znx_lsh(
+            self.data.base2k().as_usize(),
+            log_delta,
+            self.data.data_mut(),
+            0,
+            src,
+            0,
+            scratch,
+        );
+    }
+}
+
+impl CKKSPlaintextZnx<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, prec: PrecisionLayout) -> Self {
         Self {
-            inner: GLWEPlaintext::alloc(n, base2k, pt_k),
-            embed_bits,
-        }
-    }
-
-    /// Allocates a CKKS plaintext with the given Torus precision k.
-    /// Used for decryption output, where the precision matches the ciphertext.
-    pub fn alloc_for_decryption(n: Degree, base2k: Base2K, k: TorusPrecision, embed_bits: u32) -> Self {
-        Self {
-            inner: GLWEPlaintext::alloc(n, base2k, k),
-            embed_bits,
+            data: GLWEPlaintext::alloc(n, base2k, prec.k(base2k)),
+            prec,
         }
     }
 }
 
-impl<D: Data> CKKSPlaintext<D> {
-    pub fn embed_bits(&self) -> u32 {
-        self.embed_bits
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use poulpy_cpu_ref::{FFT64Ref, NTT120Ref, fft64::FFT64ModuleHandle};
+    use poulpy_hal::{
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeTmpBytes},
+        layouts::ScratchOwned,
+    };
+
+    fn max_err(a: &[f64], b: &[f64]) -> f64 {
+        a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0_f64, f64::max)
     }
-}
 
-pub trait CKKSPlaintextToRef {
-    fn to_ref(&self) -> CKKSPlaintext<&[u8]>;
-}
+    fn roundtrip_f64(base2k: usize, prec: PrecisionLayout) {
+        let n = 16usize;
+        // Values spread across [-1, 1] to exercise both signs and fractional precision.
+        let values: Vec<f64> = (0..n).map(|i| 2.0 * (i as f64) / (n as f64) - 1.0).collect();
 
-impl<D: DataRef> CKKSPlaintextToRef for CKKSPlaintext<D> {
-    fn to_ref(&self) -> CKKSPlaintext<&[u8]> {
-        CKKSPlaintext {
-            inner: self.inner.to_ref(),
-            embed_bits: self.embed_bits,
-        }
+        let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n);
+        rnx.0.copy_from_slice(&values);
+
+        let mut znx = CKKSPlaintextZnx::alloc(n.into(), base2k.into(), prec);
+        rnx.to_znx::<NTT120Ref>(&mut znx).unwrap();
+
+        let mut rnx_out = CKKSPlaintextRnx::<f64>::alloc(n);
+        rnx_out.from_znx::<NTT120Ref>(&znx).unwrap();
+
+        let err = max_err(&values, &rnx_out.0);
+        // Rounding at scale 2^log_decimal_prec gives max error = 0.5 * 2^-log_decimal_prec.
+        let bound = (prec.log_decimal as f64).exp2().recip();
+        assert!(err < bound, "max_err={err:.2e} exceeds bound={bound:.2e}");
     }
-}
 
-pub trait CKKSPlaintextToMut {
-    fn to_mut(&mut self) -> CKKSPlaintext<&mut [u8]>;
-}
+    #[test]
+    fn rnx_to_znx_roundtrip_i64_path() {
+        // log_decimal_prec + log_integer_size = 50 <= 63: uses encode_vec_i64.
+        roundtrip_f64(
+            16,
+            PrecisionLayout {
+                log_integer: 10,
+                log_decimal: 40,
+            },
+        );
+    }
 
-impl<D: DataMut> CKKSPlaintextToMut for CKKSPlaintext<D> {
-    fn to_mut(&mut self) -> CKKSPlaintext<&mut [u8]> {
-        CKKSPlaintext {
-            inner: self.inner.to_mut(),
-            embed_bits: self.embed_bits,
-        }
+    #[test]
+    fn rnx_to_znx_roundtrip_i128_path() {
+        // log_decimal_prec + log_integer_size = 70 > 63: uses encode_vec_i128.
+        roundtrip_f64(
+            16,
+            PrecisionLayout {
+                log_integer: 30,
+                log_decimal: 40,
+            },
+        );
+    }
+
+    // Encode values → CKKSPlaintextZnx → add_to a zero VecZnx →
+    // extract_from → decode, compare.
+    fn test_add_extract_roundtrip(base2k: usize, prec: PrecisionLayout, log_delta: usize) {
+        use poulpy_hal::layouts::VecZnx;
+        let n = 16usize;
+
+        let module = Module::<NTT120Ref>::new(n as u64);
+        let mut scratch = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+
+        let values: Vec<f64> = (0..n).map(|i| 2.0 * (i as f64) / (n as f64) - 1.0).collect();
+
+        // Encode to ZNX.
+        let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n);
+        rnx.0.copy_from_slice(&values);
+        let mut pt = CKKSPlaintextZnx::alloc(n.into(), base2k.into(), prec);
+        rnx.to_znx::<NTT120Ref>(&mut pt).unwrap();
+
+        // Build a zero VecZnx wide enough to hold the offset plaintext.
+        let mut buf = VecZnx::alloc(n, 1, (log_delta + prec.log_decimal + prec.log_integer).div_ceil(base2k));
+
+        // Add the plaintext at the correct offset.
+        pt.add_to(&module, &mut buf, log_delta, scratch.borrow());
+
+        // Extract the bottom-aligned plaintext and decode.
+        let mut pt_out = CKKSPlaintextZnx::alloc(n.into(), base2k.into(), prec);
+        pt_out.extract_from(&module, &buf, log_delta, scratch.borrow());
+
+        assert_eq!(pt.data.data(), pt_out.data.data())
+    }
+
+    #[test]
+    fn add_extract_roundtrip() {
+        // total_offset = 6 + 40 = 46 → bit_shift = 46 % 16 = 14.
+        test_add_extract_roundtrip(
+            16,
+            PrecisionLayout {
+                log_integer: 10,
+                log_decimal: 40,
+            },
+            6,
+        );
+    }
+
+    #[test]
+    fn encode_decode_reim_roundtrip() {
+        let n = 16usize;
+        let m = n / 2;
+        let module = Module::<FFT64Ref>::new(n as u64);
+
+        let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64)).collect();
+        let im_in: Vec<f64> = (0..m).map(|i| -((i as f64) / (m as f64))).collect();
+
+        let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n);
+        rnx.encode_reim(module.get_ifft_table(), &re_in, &im_in);
+
+        let mut re_out = vec![0.0f64; m];
+        let mut im_out = vec![0.0f64; m];
+        rnx.decode_reim(module.get_fft_table(), &mut re_out, &mut im_out);
+
+        let err_re = max_err(&re_in, &re_out);
+        let err_im = max_err(&im_in, &im_out);
+        let bound = 1e-10;
+        assert!(err_re < bound, "re max_err={err_re:.2e} exceeds bound={bound:.2e}");
+        assert!(err_im < bound, "im max_err={err_im:.2e} exceeds bound={bound:.2e}");
     }
 }

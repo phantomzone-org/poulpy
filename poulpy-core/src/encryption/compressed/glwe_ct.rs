@@ -5,7 +5,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal, SIGMA},
+    EncryptionInfos,
+    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},
@@ -36,20 +37,22 @@ impl<D: DataMut> GLWECompressed<D> {
     /// - `source_xe`: PRNG source for sampling encryption noise.
     /// - `scratch`: scratch buffer (see [`GLWECompressed::encrypt_sk_tmp_bytes`] for sizing).
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, P, S, BE: Backend>(
+    pub fn encrypt_sk<M, P, S, E, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         M: GLWECompressedEncryptSk<BE>,
         P: GLWEPlaintextToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
-        module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
+        module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -72,17 +75,19 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
     /// - `seed_xa`: seed for deterministic mask generation.
     /// - `source_xe`: PRNG source for sampling encryption noise.
     /// - `scratch`: scratch buffer.
-    fn glwe_compressed_encrypt_sk<R, P, S>(
+    fn glwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>;
 }
 
@@ -100,17 +105,19 @@ where
         lvl_0
     }
 
-    fn glwe_compressed_encrypt_sk<R, P, S>(
+    fn glwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
         {
@@ -126,15 +133,14 @@ where
 
             self.glwe_encrypt_sk_internal(
                 res.base2k().into(),
-                res.k().into(),
                 &mut res.data,
                 cols,
                 true,
                 Some((pt, 0)),
                 sk,
-                &mut source_xa,
+                enc_infos,
                 source_xe,
-                SIGMA,
+                &mut source_xa,
                 scratch,
             );
         }

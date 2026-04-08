@@ -93,7 +93,7 @@ impl GLWEPacker {
     {
         GLWE::bytes_of_from_infos(res_infos)
             + module
-                .glwe_rsh_tmp_byte()
+                .glwe_shift_tmp_bytes()
                 .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
     }
 

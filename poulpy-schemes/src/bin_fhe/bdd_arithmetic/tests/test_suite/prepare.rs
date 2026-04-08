@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, SIGMA, ScratchTakeCore,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     layouts::{GGSWInfos, GGSWLayout, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
@@ -50,10 +50,20 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
+
     // GLWE(value)
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
     let value: u32 = source.next_u32();
-    c_enc.encrypt_sk(module, value, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+    c_enc.encrypt_sk(
+        module,
+        value,
+        sk_glwe_prep,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     // GGSW(0)
     let mut c_enc_prep_debug: FheUintPreparedDebug<Vec<u8>, u32> =
@@ -65,7 +75,7 @@ where
     c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch_2.borrow());
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_infos.size() as f64 * ggsw_infos.base2k().as_usize() as f64) + SIGMA.log2() + 2.0;
+        let mut noise: f64 = -(ggsw_infos.size() as f64 * ggsw_infos.base2k().as_usize() as f64) + DEFAULT_SIGMA_XE.log2() + 2.0;
         noise += 0.5 * ggsw_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_infos.log_n() as f64

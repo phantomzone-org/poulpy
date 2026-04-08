@@ -11,7 +11,7 @@ use crate::leveled::{
     },
 };
 use poulpy_core::{
-    GLWEAdd, GLWEAlign, GLWEDecrypt, GLWEEncryptSk, GLWEMulPlain, GLWEShift, GLWETensoring, ScratchTakeCore,
+    GLWEAdd, GLWENormalize, GLWEDecrypt, GLWEEncryptSk, GLWEMulPlain, GLWEShift, GLWETensoring, ScratchTakeCore,
     layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
 };
 use poulpy_hal::{
@@ -117,9 +117,8 @@ where
         + GLWEMulPlain<BE>
         + GLWEShift<BE>
         + GLWEAdd
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWETensoring<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -178,9 +177,8 @@ where
         + GLWEMulPlain<BE>
         + GLWEShift<BE>
         + GLWEAdd
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWETensoring<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -235,9 +233,8 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEMulPlain<BE>
         + GLWEShift<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWETensoring<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -315,9 +312,8 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEMulPlain<BE>
         + GLWEShift<BE>
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWETensoring<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -384,9 +380,8 @@ where
         + GLWEMulPlain<BE>
         + GLWEShift<BE>
         + GLWEAdd
-        + GLWEAlign<BE>
+        + GLWENormalize<BE>
         + GLWETensoring<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

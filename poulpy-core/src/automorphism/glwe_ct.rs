@@ -297,7 +297,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -340,7 +340,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);
@@ -386,7 +386,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -432,7 +432,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -475,7 +475,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);
@@ -518,7 +518,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);

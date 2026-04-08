@@ -116,10 +116,6 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyP
         self.data[0].base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.data[0].k()
-    }
-
     fn n(&self) -> Degree {
         self.data[0].n()
     }

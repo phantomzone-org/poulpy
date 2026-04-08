@@ -128,10 +128,24 @@ impl ZnxSwitchRing for NTT120Avx {
     }
 }
 
+impl ZnxNormalizeFirstStep for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_first_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeMiddleStep for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
 impl ZnxNormalizeFinalStep for NTT120Avx {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_final_step_avx(base2k, lsh, x, a, carry) }
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -139,13 +153,6 @@ impl ZnxNormalizeFinalStepInplace for NTT120Avx {
     #[inline(always)]
     fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe { znx_normalize_final_step_inplace_avx(base2k, lsh, x, carry) }
-    }
-}
-
-impl ZnxNormalizeFirstStep for NTT120Avx {
-    #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_first_step_avx(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -160,13 +167,6 @@ impl ZnxNormalizeFirstStepInplace for NTT120Avx {
     #[inline(always)]
     fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe { znx_normalize_first_step_inplace_avx(base2k, lsh, x, carry) }
-    }
-}
-
-impl ZnxNormalizeMiddleStep for NTT120Avx {
-    #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_middle_step_avx(base2k, lsh, x, a, carry) }
     }
 }
 

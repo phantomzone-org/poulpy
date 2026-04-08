@@ -7,8 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
-    encryption::{SIGMA, SIGMA_BOUND},
+    EncryptionInfos, ScratchTakeCore,
     layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
 };
 
@@ -24,21 +23,23 @@ impl LWE<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> LWE<DataSelf> {
-    pub fn encrypt_sk<P, S, M, BE: Backend>(
+    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
         M: LWEEncryptSk<BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.lwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
+        module.lwe_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -48,18 +49,20 @@ pub trait LWEEncryptSk<BE: Backend> {
     where
         A: LWEInfos;
 
-    fn lwe_encrypt_sk<R, P, S>(
+    fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: LWEToMut,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
@@ -80,18 +83,20 @@ where
         lvl_0 + lvl_1
     }
 
-    fn lwe_encrypt_sk<R, P, S>(
+    fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: LWEToMut,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
@@ -111,7 +116,6 @@ where
         );
 
         let base2k: usize = res.base2k().into();
-        let k: usize = res.k().into();
 
         self.vec_znx_fill_uniform(base2k, &mut res.data, 0, source_xa);
 
@@ -137,7 +141,7 @@ where
                 .sum::<i64>();
         });
 
-        self.vec_znx_add_normal(base2k, &mut tmp_znx, 0, k, source_xe, SIGMA, SIGMA_BOUND);
+        self.vec_znx_add_normal(base2k, &mut tmp_znx, 0, enc_infos.noise_infos(), source_xe);
 
         self.vec_znx_normalize_inplace(base2k, &mut tmp_znx, 0, scratch_1);
 

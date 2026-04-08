@@ -515,17 +515,21 @@ dependencies = [
 name = "poulpy-ckks"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
+ "bytemuck",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
+ "rand_distr",
 ]
 
 [[package]]
 name = "poulpy-core"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "byteorder",
  "criterion",
@@ -575,6 +579,7 @@ dependencies = [
 name = "poulpy-hal"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "bytemuck",
  "byteorder",
  "cmake",
@@ -593,6 +598,7 @@ dependencies = [
 name = "poulpy-schemes"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "byteorder",
  "criterion",
  "itertools 0.14.0",

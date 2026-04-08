@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToMut, GLWEInfos, GLWESecret, GLWESecretTensor,
         GLWESecretTensorFactory, GLWESecretToRef,
@@ -24,19 +24,21 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGLWEToGGSWKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<M, S, BE: Backend>(
+    pub fn encrypt_sk<M, S, E, BE: Backend>(
         &mut self,
         module: &M,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         M: GGLWEToGGSWKeyCompressedEncryptSk<BE>,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_to_ggsw_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
+        module.gglwe_to_ggsw_key_encrypt_sk(self, sk, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -45,15 +47,17 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_to_ggsw_key_encrypt_sk<R, S>(
+    fn gglwe_to_ggsw_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
@@ -81,15 +85,17 @@ where
         lvl_0 + lvl_1 + lvl_2 + lvl_3
     }
 
-    fn gglwe_to_ggsw_key_encrypt_sk<R, S>(
+    fn gglwe_to_ggsw_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         assert_eq!(res.rank(), sk.rank());
@@ -121,7 +127,7 @@ where
             let (seed_xa_tmp, _) = source_xa.branch();
 
             res.at_mut(i)
-                .encrypt_sk(self, &sk_ij, &sk_prepared, seed_xa_tmp, source_xe, scratch_3);
+                .encrypt_sk(self, &sk_ij, &sk_prepared, seed_xa_tmp, enc_infos, source_xe, scratch_3);
         }
     }
 }

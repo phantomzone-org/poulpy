@@ -1,6 +1,6 @@
 use poulpy_core::{
-    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace,
-    LWEFromGLWE, ScratchTakeCore,
+    EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub,
+    GLWETrace, LWEFromGLWE, ScratchTakeCore,
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout,
         GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
@@ -46,7 +46,7 @@ impl<T: UnsignedInteger> FheUint<Vec<u8>, T> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
@@ -86,8 +86,8 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
         self.bits.base2k()
     }
 
-    fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.bits.k()
+    fn size(&self) -> usize {
+        self.bits.size()
     }
 
     fn n(&self) -> poulpy_core::layouts::Degree {
@@ -102,17 +102,19 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUint<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
-    pub fn encrypt_sk<S, M, BE: Backend>(
+    pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         data: T,
         sk_glwe: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEEncryptSk<BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -140,7 +142,8 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
+        self.bits
+            .encrypt_sk(module, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
     }
 }
 
@@ -359,7 +362,7 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
             let (mut res_tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: self.n(),
                 base2k: ks_lwe.base2k(),
-                k: ks_lwe.k().min(self.k()),
+                k: ks_lwe.max_k().min(self.max_k()),
                 rank: ks_lwe.rank_out(),
             });
             module.glwe_keyswitch(&mut res_tmp, self, ks_glwe, scratch_1);

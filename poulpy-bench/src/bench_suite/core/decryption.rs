@@ -1,10 +1,10 @@
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -36,7 +36,15 @@ where
     let mut scratch: ScratchOwned<BE> =
         ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(&module, infos) | GLWE::decrypt_tmp_bytes(&module, infos));
 
-    ct.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+    let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    ct.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let group_name = format!("glwe_decrypt::{label}");
     let mut group = c.benchmark_group(group_name);

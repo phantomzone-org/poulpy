@@ -8,8 +8,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     glwe_trace::GLWETrace,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
@@ -45,21 +45,23 @@ where
         let dsize: usize = 1;
         let dnum: usize = k.div_ceil(key_base2k * dsize);
 
-        let glwe_out_infos: GLWELayout = GLWELayout {
+        let glwe_out_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
             n: n.into(),
             base2k: out_base2k.into(),
             k: k.into(),
             rank: rank.into(),
-        };
+        })
+        .unwrap();
 
-        let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
+        let key_infos = EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
             n: n.into(),
             base2k: key_base2k.into(),
             k: k_autokey.into(),
             rank: rank.into(),
             dsize: dsize.into(),
             dnum: dnum.into(),
-        };
+        })
+        .unwrap();
 
         let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
         let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
@@ -88,13 +90,29 @@ where
 
         module.vec_znx_fill_uniform(out_base2k, &mut pt_have.data, 0, &mut source_xa);
 
-        glwe_out.encrypt_sk(module, &pt_have, &sk_dft, &mut source_xa, &mut source_xe, scratch.borrow());
+        glwe_out.encrypt_sk(
+            module,
+            &pt_have,
+            &sk_dft,
+            &glwe_out_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
         let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
-            tmp.encrypt_sk(module, *gal_el, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+            tmp.encrypt_sk(
+                module,
+                *gal_el,
+                &sk,
+                &key_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
             let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
                 GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
             atk_prepared.prepare(module, &tmp, scratch.borrow());
@@ -118,13 +136,13 @@ where
             0.5,
             0.5,
             1.0 / 12.0,
-            SIGMA * SIGMA,
+            DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE,
             0.0,
             rank as f64,
             k,
             k_autokey,
         );
-        noise_want += SIGMA * SIGMA * (-2.0 * (k) as f64).exp2();
+        noise_want += DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE * (-2.0 * (k) as f64).exp2();
         noise_want += n as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
         noise_want = noise_want.sqrt().log2();
 

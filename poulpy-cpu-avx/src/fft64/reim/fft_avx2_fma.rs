@@ -232,7 +232,7 @@ fn bitwiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: &[f64; 
 
 #[cfg(all(test, target_feature = "avx2"))]
 mod tests {
-    use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef, ReimIFFTTable};
+    use poulpy_hal::reference::fft64::reim::{ReimFFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef, ReimIFFTTable};
 
     use crate::fft64::reim::{ReimFFTAvx, ReimIFFTAvx};
 

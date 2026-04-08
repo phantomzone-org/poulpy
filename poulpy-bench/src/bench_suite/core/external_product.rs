@@ -1,13 +1,13 @@
 use poulpy_core::{
-    GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct, ScratchTakeCore,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct, ScratchTakeCore,
     layouts::{
-        GGSW, GGSWInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GGSW, GGSWInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, LWEInfos,
         prepared::{GGSWPrepared, GGSWPreparedFactory, GLWESecretPrepared},
     },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -53,8 +53,26 @@ pub fn bench_glwe_external_product<BE: Backend>(
             | GLWE::external_product_tmp_bytes(&module, glwe_infos, glwe_infos, ggsw_infos),
     );
 
-    ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
-    ct_glwe_in.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+    let ggsw_enc_infos = NoiseInfos::new(ggsw_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
+    ct_ggsw.encrypt_sk(
+        &module,
+        &pt,
+        &sk_prepared,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    ct_glwe_in.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
@@ -104,8 +122,25 @@ where
             | GLWE::external_product_tmp_bytes(&module, infos, infos, infos),
     );
 
-    ct_ggsw.encrypt_sk(&module, &pt, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
-    ct_glwe.encrypt_zero_sk(&module, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+    let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+
+    ct_ggsw.encrypt_sk(
+        &module,
+        &pt,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    ct_glwe.encrypt_zero_sk(
+        &module,
+        &sk_prepared,
+        &enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());

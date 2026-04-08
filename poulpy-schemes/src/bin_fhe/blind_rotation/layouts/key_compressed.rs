@@ -152,10 +152,6 @@ impl<D: DataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed
         self.keys[0].size()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.keys[0].k()
-    }
-
     fn base2k(&self) -> Base2K {
         self.keys[0].base2k()
     }

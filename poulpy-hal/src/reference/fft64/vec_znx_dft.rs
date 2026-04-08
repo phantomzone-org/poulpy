@@ -6,7 +6,7 @@ use crate::{
         ZnxView, ZnxViewMut,
     },
     reference::{
-        fft64::reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable},
+        fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},
         znx::ZnxZero,
     },
 };
@@ -166,7 +166,7 @@ pub fn vec_znx_dft_apply<R, A, BE>(
     a: &A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimArith + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
 {
@@ -201,7 +201,7 @@ pub fn vec_znx_dft_apply<R, A, BE>(
 
 pub fn vec_znx_idft_apply<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -233,7 +233,7 @@ where
 
 pub fn vec_znx_idft_apply_tmpa<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToMut<BE>,
 {
@@ -263,7 +263,7 @@ where
 
 pub fn vec_znx_idft_apply_consume<D: Data, BE>(table: &ReimIFFTTable<f64>, mut res: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
 where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimDFTExecute<ReimIFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64>,
     VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
 {
     {

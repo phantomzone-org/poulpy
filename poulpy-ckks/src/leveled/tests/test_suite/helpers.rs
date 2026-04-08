@@ -8,20 +8,27 @@ use std::collections::HashMap;
 
 use super::CKKSTestParams;
 use crate::{
-    encoding::classical::{decode, encode},
-    layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext},
+    layouts::{
+        ciphertext::CKKSCiphertext,
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
+    },
     leveled::encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
 };
 use poulpy_core::{
-    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
+    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
-        GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision,
-        prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
+        TorusPrecision, prepared::GLWESecretPrepared,
     },
 };
+use poulpy_cpu_ref::{FFT64Ref, fft64::FFT64ModuleHandle};
+
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VecZnxRshAdd,
+    },
     layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
     source::Source,
 };
@@ -47,6 +54,22 @@ impl<BE: Backend> TestContext<BE>
 where
     Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
 {
+    pub fn degree(&self) -> Degree {
+        self.params.n.into()
+    }
+
+    pub fn base2k(&self) -> Base2K {
+        self.params.base2k.into()
+    }
+
+    pub fn rank(&self) -> poulpy_core::layouts::Rank {
+        self.params.glwe_layout().rank()
+    }
+
+    pub fn prec(&self) -> PrecisionLayout {
+        self.params.prec
+    }
+
     /// Creates a base context with a prepared secret key and two test messages.
     pub fn new(params: CKKSTestParams) -> Self
     where
@@ -89,19 +112,13 @@ where
     {
         let mut ctx = Self::new(params);
         let tsk_infos = params.tsk_layout();
-        let degree = Degree(params.n);
-        let base2k = Base2K(params.base2k);
-        let k = TorusPrecision(params.k);
 
         let mut xa = Source::new([1u8; 32]);
         let mut xe = Source::new([2u8; 32]);
 
         let mut scratch = ScratchOwned::<BE>::alloc(
-            encrypt_sk_tmp_bytes(&ctx.module, &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta))
-                .max(decrypt_tmp_bytes(
-                    &ctx.module,
-                    &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta),
-                ))
+            encrypt_sk_tmp_bytes(&ctx.module, &params.glwe_layout())
+                .max(decrypt_tmp_bytes(&ctx.module, &params.glwe_layout()))
                 .max(GLWETensorKeyPrepared::prepare_tmp_bytes(&ctx.module, &tsk_infos))
                 .max(GLWETensorKey::encrypt_sk_tmp_bytes(&ctx.module, &tsk_infos)),
         );
@@ -113,7 +130,7 @@ where
         sk_raw.fill_ternary_hw(params.hw, &mut source_xs);
 
         let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(&ctx.module, &sk_raw, &mut xa, &mut xe, scratch.borrow());
+        tsk.encrypt_sk(&ctx.module, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
         let mut tsk_prepared = GLWETensorKeyPrepared::alloc_from_infos(&ctx.module, &tsk_infos);
         tsk_prepared.prepare(&ctx.module, &tsk, scratch.borrow());
         ctx.tsk = Some(tsk_prepared);
@@ -135,19 +152,13 @@ where
     {
         let mut ctx = Self::new(params);
         let atk_infos = params.atk_layout();
-        let degree = Degree(params.n);
-        let base2k = Base2K(params.base2k);
-        let k = TorusPrecision(params.k);
 
         let mut xa = Source::new([5u8; 32]);
         let mut xe = Source::new([6u8; 32]);
 
         let mut scratch = ScratchOwned::<BE>::alloc(
-            encrypt_sk_tmp_bytes(&ctx.module, &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta))
-                .max(decrypt_tmp_bytes(
-                    &ctx.module,
-                    &CKKSCiphertext::alloc(degree, base2k, k, params.log_delta),
-                ))
+            encrypt_sk_tmp_bytes(&ctx.module, &params.glwe_layout())
+                .max(decrypt_tmp_bytes(&ctx.module, &params.glwe_layout()))
                 .max(ctx.module.prepare_glwe_automorphism_key_tmp_bytes(&atk_infos))
                 .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(&ctx.module, &atk_infos)),
         );
@@ -172,7 +183,7 @@ where
         let mut atks = HashMap::new();
         for &p in &galois_elements {
             let mut atk = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
-            atk.encrypt_sk(&ctx.module, p, &sk_raw, &mut xa, &mut xe, scratch.borrow());
+            atk.encrypt_sk(&ctx.module, p, &sk_raw, &atk_infos, &mut xa, &mut xe, scratch.borrow());
             let mut atk_prepared = GLWEAutomorphismKeyPrepared::alloc_from_infos(&ctx.module, &atk_infos);
             atk_prepared.prepare(&ctx.module, &atk, scratch.borrow());
             atks.insert(p, atk_prepared);
@@ -198,43 +209,33 @@ where
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
     pub fn encrypt(&self, re: &[f64], im: &[f64], scratch: &mut ScratchOwned<BE>) -> CKKSCiphertext<Vec<u8>>
     where
-        Module<BE>: ModuleN + GLWEEncryptSk<BE>,
+        Module<BE>: ModuleN + GLWEEncryptSk<BE> + VecZnxRshAdd<BE>,
         ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let degree = Degree(self.params.n);
-        let base2k = Base2K(self.params.base2k);
-        let k = TorusPrecision(self.params.k);
-        let mut pt = CKKSPlaintext::alloc(degree, base2k, self.params.log_delta);
-        encode(&mut pt, re, im);
-        let mut ct = CKKSCiphertext::alloc(degree, base2k, k, self.params.log_delta);
-        let mut xa = Source::new([3u8; 32]);
-        let mut xe = Source::new([4u8; 32]);
-        encrypt_sk(&self.module, &mut ct, &pt, &self.sk, &mut xa, &mut xe, scratch.borrow());
-        ct
-    }
+        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
 
-    /// Encodes and encrypts with a specific torus precision `k`.
-    pub fn encrypt_with_k(
-        &self,
-        re: &[f64],
-        im: &[f64],
-        k: TorusPrecision,
-        scratch: &mut ScratchOwned<BE>,
-    ) -> CKKSCiphertext<Vec<u8>>
-    where
-        Module<BE>: ModuleN + GLWEEncryptSk<BE>,
-        ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        let degree = Degree(self.params.n);
-        let base2k = Base2K(self.params.base2k);
-        let mut pt = CKKSPlaintext::alloc(degree, base2k, self.params.log_delta);
-        encode(&mut pt, re, im);
-        let mut ct = CKKSCiphertext::alloc(degree, base2k, k, self.params.log_delta);
+        pt_rnx.encode_reim(&fft_module.get_ifft_table(), re, im);
+
+        println!("pt_rnx: {:?}", &pt_rnx.data()[..8]);
+
+        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+
+        let mut ct = CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout());
         let mut xa = Source::new([3u8; 32]);
         let mut xe = Source::new([4u8; 32]);
-        encrypt_sk(&self.module, &mut ct, &pt, &self.sk, &mut xa, &mut xe, scratch.borrow());
+        encrypt_sk(
+            &self.module,
+            &mut ct,
+            &pt_znx,
+            &self.sk,
+            &self.params.glwe_layout(),
+            &mut xa,
+            &mut xe,
+            scratch.borrow(),
+        );
         ct
     }
 
@@ -245,15 +246,25 @@ where
         scratch: &mut ScratchOwned<BE>,
     ) -> (Vec<f64>, Vec<f64>)
     where
-        Module<BE>: ModuleN + GLWEDecrypt<BE>,
+        Module<BE>: ModuleN + GLWEDecrypt<BE> + VecZnxLsh<BE>,
         ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let degree = Degree(self.params.n);
-        let base2k = ct.inner.base2k();
-        let mut pt_out = CKKSPlaintext::alloc(degree, base2k, ct.torus_scale_bits);
-        decrypt(&self.module, &mut pt_out, ct, &self.sk, scratch.borrow());
-        decode(&pt_out)
+        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
+        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), ct.inner.base2k(), self.params.prec);
+        decrypt(&self.module, &mut pt_znx, ct, &self.sk, scratch.borrow());
+
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
+        pt_rnx.from_znx::<BE>(&pt_znx).unwrap();
+
+        println!("pt_rnx: {:?}", &pt_rnx.data()[..8]);
+
+        let m = self.params.n / 2;
+        let mut re = vec![0.0; m];
+        let mut im = vec![0.0; m];
+        pt_rnx.decode_reim(&fft_module.get_fft_table(), &mut re, &mut im);
+
+        (re, im)
     }
 
     /// Allocates enough scratch for encrypt + decrypt.
@@ -262,13 +273,76 @@ where
         Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     {
-        let ct = CKKSCiphertext::alloc(
-            Degree(self.params.n),
-            Base2K(self.params.base2k),
-            TorusPrecision(self.params.k),
-            self.params.log_delta,
-        );
-        ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(&self.module, &ct).max(decrypt_tmp_bytes(&self.module, &ct)))
+        let ct_infos = self.params.glwe_layout();
+        ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(&self.module, &ct_infos).max(decrypt_tmp_bytes(&self.module, &ct_infos)))
+    }
+
+    /// Allocates scratch covering encrypt, decrypt, and GLWEShift operations.
+    pub fn alloc_scratch_with_shift(&self) -> ScratchOwned<BE>
+    where
+        Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEShift<BE> + VecZnxNormalizeTmpBytes,
+        ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
+    {
+        let ct_infos = self.params.glwe_layout();
+        ScratchOwned::<BE>::alloc(
+            encrypt_sk_tmp_bytes(&self.module, &ct_infos)
+                .max(decrypt_tmp_bytes(&self.module, &ct_infos))
+                .max(self.module.glwe_shift_tmp_bytes()),
+        )
+    }
+
+    /// Returns element-wise (re1+re2, im1+im2).
+    pub fn want_add(&self) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let re = (0..m).map(|j| self.re1[j] + self.re2[j]).collect();
+        let im = (0..m).map(|j| self.im1[j] + self.im2[j]).collect();
+        (re, im)
+    }
+
+    /// Allocates a fresh full-precision result ciphertext.
+    pub fn alloc_ct(&self) -> CKKSCiphertext<Vec<u8>> {
+        CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout())
+    }
+
+    /// Allocates a ciphertext with one fewer limb than the default (k − base2k).
+    pub fn alloc_ct_reduced_k(&self) -> CKKSCiphertext<Vec<u8>> {
+        let reduced_k = TorusPrecision((self.params.k - self.params.base2k) as u32);
+        CKKSCiphertext::alloc(self.degree(), self.base2k(), reduced_k, self.rank())
+    }
+
+    /// Encodes (re2, im2) into an RNX plaintext via IFFT.
+    pub fn encode_pt_rnx(&self) -> CKKSPlaintextRnx<f64> {
+        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
+        let mut pt_rnx = CKKSPlaintextRnx::<f64>::alloc(self.params.n);
+        pt_rnx.encode_reim(fft_module.get_ifft_table(), &self.re2, &self.im2);
+        pt_rnx
+    }
+
+    /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
+    pub fn encode_pt_znx(&self) -> CKKSPlaintextZnx<Vec<u8>> {
+        let pt_rnx = self.encode_pt_rnx();
+        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        pt_znx
+    }
+
+    /// Decrypts `ct`, decodes, and asserts both channels meet `min_bits` of precision.
+    pub fn assert_decrypt_precision(
+        &self,
+        label: &str,
+        ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
+        want_re: &[f64],
+        want_im: &[f64],
+        min_bits: f64,
+        scratch: &mut ScratchOwned<BE>,
+    ) where
+        Module<BE>: ModuleN + GLWEDecrypt<BE> + VecZnxLsh<BE>,
+        ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let (re_out, im_out) = self.decrypt_decode(ct, scratch);
+        assert_precision(&format!("{label} re"), &re_out, want_re, min_bits);
+        assert_precision(&format!("{label} im"), &im_out, want_im, min_bits);
     }
 }
 
@@ -294,9 +368,4 @@ pub fn assert_precision(label: &str, got: &[f64], want: &[f64], min_bits: f64) {
         sample.1,
         sample.2
     );
-}
-
-/// Asserts the CKKS ciphertext metadata invariants.
-pub fn assert_valid_ciphertext(label: &str, ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>) {
-    ct.assert_valid(label);
 }

@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GetDistribution, ScratchTakeCore,
     layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecretToRef},
 };
 
@@ -38,36 +38,40 @@ pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
     /// Encrypts each bit of `sk_lwe` as a GGSW ciphertext under `sk_glwe`,
     /// storing the result in `res`.
     #[allow(clippy::too_many_arguments)]
-    fn blind_rotation_key_encrypt_sk<D, S0, S1>(
+    fn blind_rotation_key_encrypt_sk<D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKey<D, BRA>,
         sk_glwe: &S0,
         sk_lwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
         D: DataMut,
         S0: GLWESecretPreparedToRef<B> + GLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution;
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
-    pub fn encrypt_sk<M, S0, S1, BE: Backend>(
+    pub fn encrypt_sk<M, S0, S1, E, BE: Backend>(
         &mut self,
         module: &M,
         sk_glwe: &S0,
         sk_lwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
         Scratch<BE>: ScratchTakeCore<BE>,
+        E: EncryptionInfos,
         M: BlindRotationKeyEncryptSk<BRA, BE>,
     {
-        module.blind_rotation_key_encrypt_sk(self, sk_glwe, sk_lwe, source_xa, source_xe, scratch);
+        module.blind_rotation_key_encrypt_sk(self, sk_glwe, sk_lwe, enc_infos, source_xe, source_xa, scratch);
     }
 }
 

@@ -1,6 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
+use dashu_float::ops::DivRemEuclid;
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
@@ -70,44 +71,55 @@ where
     }
 }
 
-pub fn vec_znx_lsh<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
+pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
+    base2k: usize,
+    k: usize,
+    res: &mut R,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i64],
+) where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxZero + ZnxNormalizeFirstStep + ZnxNormalizeMiddleStep + ZnxNormalizeFirstStep + ZnxCopy + ZnxNormalizeFinalStep,
+    ZNXARI: ZnxZero + ZnxNormalizeFirstStep + ZnxNormalizeMiddleStep + ZnxCopy + ZnxNormalizeFinalStep,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
 
     let res_size: usize = res.size();
     let a_size = a.size();
-    let steps: usize = k / base2k;
-    let k_rem: usize = k % base2k;
+    let (steps, k_rem) = k.div_rem_euclid(base2k);
 
-    if steps >= res_size.min(a_size) {
-        for j in 0..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+    if steps >= res_size.max(a_size) {
+        if OVERWRITE {
+            for j in 0..res_size {
+                ZNXARI::znx_zero(res.at_mut(res_col, j));
+            }
         }
+
         return;
     }
 
-    let min_size: usize = a_size.min(res_size) - steps;
+    let min_size: usize = res_size.min(a_size - steps);
 
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
     for j in (0..min_size).rev() {
         if j == min_size - 1 {
-            ZNXARI::znx_normalize_first_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            ZNXARI::znx_normalize_first_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         } else if j == 0 {
-            ZNXARI::znx_normalize_final_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            ZNXARI::znx_normalize_final_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            ZNXARI::znx_normalize_middle_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         }
     }
 
-    // Zeroes bottom
-    for j in min_size..res_size {
-        ZNXARI::znx_zero(res.at_mut(res_col, j));
+    if OVERWRITE {
+        // Zeroes bottom
+        for j in min_size..res_size {
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
+        }
     }
 }
 
@@ -174,8 +186,15 @@ where
     }
 }
 
-pub fn vec_znx_rsh<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
+pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
+    base2k: usize,
+    k: usize,
+    res: &mut R,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i64],
+) where
     R: VecZnxToMut,
     A: VecZnxToRef,
     ZNXARI: ZnxZero
@@ -225,16 +244,18 @@ where
         ZNXARI::znx_zero(carry);
     }
 
-    // Zeroes lower limbs of res if a_size + steps < res_size
-    for j in 0..res_size {
-        ZNXARI::znx_zero(res.at_mut(res_col, j));
+    if OVERWRITE {
+        // Zeroes lower limbs of res if a_size + steps < res_size
+        for j in 0..res_size {
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
+        }
     }
 
     // Continues with shifted normalization
     let mid_range: usize = res_start.saturating_sub(res_end);
 
     for j in 0..mid_range {
-        ZNXARI::znx_normalize_middle_step(
+        ZNXARI::znx_normalize_middle_step::<OVERWRITE>(
             base2k,
             lsh,
             res.at_mut(res_col, res_start - j - 1),
@@ -243,12 +264,23 @@ where
         );
     }
 
-    // Propagates carry on the rest of the limbs of res
-    for j in 0..res_end {
-        if j == res_end - 1 {
-            ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
-        } else {
-            ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+    if OVERWRITE {
+        // Propagates carry on the rest of the limbs of res
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                ZNXARI::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+            } else {
+                ZNXARI::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+            }
+        }
+    } else {
+        // Propagates carry on the rest of the limbs of res
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                ZNXARI::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            } else {
+                ZNXARI::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            }
         }
     }
 }
@@ -493,7 +525,7 @@ mod tests {
 
             for i in 0..cols {
                 vec_znx_lsh_inplace::<_, ZnxRef>(base2k, k, &mut res_ref, i, &mut carry);
-                vec_znx_lsh::<_, _, ZnxRef>(base2k, k, &mut res_test, i, &a, i, &mut carry);
+                vec_znx_lsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, i, &a, i, &mut carry);
                 vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_test, i, &mut carry);
             }
 
@@ -534,7 +566,7 @@ mod tests {
 
                 for j in 0..cols {
                     vec_znx_rsh_inplace::<_, ZnxRef>(base2k, k, &mut res_ref, j, &mut carry);
-                    vec_znx_rsh::<_, _, ZnxRef>(base2k, k, &mut res_test, j, &a, j, &mut carry);
+                    vec_znx_rsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, j, &a, j, &mut carry);
                 }
 
                 for j in 0..cols {

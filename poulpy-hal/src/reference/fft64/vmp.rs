@@ -2,7 +2,7 @@ use crate::{
     cast_mut,
     layouts::{DataViewMut, MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
     reference::fft64::{
-        reim::{ReimArith, ReimDFTExecute, ReimFFTTable},
+        reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
         reim4::Reim4BlkMatVec,
         vec_znx_dft::vec_znx_dft_apply,
     },
@@ -16,7 +16,7 @@ pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
 
 pub fn vmp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, pmat: &mut R, mat: &A, tmp: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: VmpPMatToMut<BE>,
     A: MatZnxToRef,
 {
@@ -57,7 +57,7 @@ pub(crate) fn vmp_prepare_core<REIM>(
     ncols: usize,
     tmp: &mut [f64],
 ) where
-    REIM: ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    REIM: ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
 {
     let m: usize = table.m();
     let n: usize = m << 1;
@@ -99,7 +99,7 @@ pub fn vmp_apply_dft_tmp_bytes(n: usize, a_size: usize, prows: usize, pcols_in: 
 
 pub fn vmp_apply_dft<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimDFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
     M: VmpPMatToRef<BE>,

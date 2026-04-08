@@ -79,7 +79,7 @@ pub fn tensor_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     module.glwe_tensor_apply_tmp_bytes(&res.inner, off, &a.inner, &b.inner)
 }
 
@@ -114,7 +114,7 @@ pub fn tensor<BE: Backend>(
     a.assert_valid("tensor lhs");
     b.assert_valid("tensor rhs");
     assert_eq!(a.inner.base2k(), b.inner.base2k(), "tensor: base2k mismatch");
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     res.torus_scale_bits = a.torus_scale_bits() + b.torus_scale_bits();
     res.offset_bits = a.offset_bits().min(b.offset_bits());
     module.glwe_tensor_apply(&mut res.inner, off, &a.inner, &b.inner, scratch);
@@ -186,7 +186,7 @@ pub fn mul_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize().max(b.inner.k().as_usize());
+    let off = a.inner.max_k().as_usize().max(b.inner.max_k().as_usize());
     let tensor_size = mul_tensor_size(
         a.inner.size(),
         b.inner.size(),
@@ -214,7 +214,7 @@ pub fn square_tmp_bytes<BE: Backend>(
 where
     Module<BE>: GLWETensoring<BE>,
 {
-    let off = a.inner.k().as_usize();
+    let off = a.inner.max_k().as_usize();
     let tensor_size = mul_tensor_size(
         a.inner.size(),
         a.inner.size(),
@@ -251,7 +251,7 @@ pub fn mul_aligned<BE: Backend>(
     b.assert_valid("mul rhs");
     assert_cts_aligned(a, b, "mul_aligned");
     let rescale_bits = a.torus_scale_bits().min(b.torus_scale_bits());
-    let active_prefix = a.prefix_bits().min(b.prefix_bits());
+    let active_prefix = a.delta().min(b.delta());
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), b.inner.size(), a.inner.k().0, b.inner.k().0, base2k).min(res.inner.max_size());
@@ -296,7 +296,7 @@ pub fn mul<BE: Backend>(
     a.assert_valid("mul lhs");
     b.assert_valid("mul rhs");
     let rescale_bits = a.torus_scale_bits().min(b.torus_scale_bits());
-    let active_prefix = a.prefix_bits().min(b.prefix_bits());
+    let active_prefix = a.delta().min(b.delta());
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), b.inner.size(), a.inner.k().0, b.inner.k().0, base2k).min(res.inner.max_size());
@@ -337,7 +337,7 @@ pub fn square<BE: Backend>(
 {
     a.assert_valid("square input");
     let rescale_bits = a.torus_scale_bits();
-    let active_prefix = a.prefix_bits();
+    let active_prefix = a.delta();
     let base2k = a.inner.base2k().0;
     let tensor_size =
         mul_tensor_size(a.inner.size(), a.inner.size(), a.inner.k().0, a.inner.k().0, base2k).min(res.inner.max_size());
@@ -354,7 +354,7 @@ pub fn square<BE: Backend>(
         offset_bits: a.offset_bits(),
         torus_scale_bits: a.torus_scale_bits() * 2,
     };
-    let off = a.inner.k().as_usize();
+    let off = a.inner.max_k().as_usize();
     module.glwe_tensor_square_apply(&mut tensor_res.inner, off, &a.inner, scratch_rest);
     tensor_res.assert_valid("square tensor result");
     // See `mul_aligned` for the widen/retract rationale.
@@ -371,7 +371,7 @@ where
 {
     let mut layout = ct.inner.glwe_layout();
     layout.k = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
-    let off = ct.inner.k().as_usize();
+    let off = ct.inner.max_k().as_usize();
     let layout_bytes = poulpy_core::layouts::GLWEPlaintext::bytes_of(ct.inner.n(), ct.inner.base2k(), layout.k);
     let op_bytes = module.glwe_mul_plain_tmp_bytes(&layout, off, &ct.inner, &layout);
     layout_bytes + module.vec_znx_normalize_tmp_bytes().max(op_bytes)
@@ -396,7 +396,7 @@ pub fn mul_pt<BE: Backend>(
     let product_scale_bits = ct.torus_scale_bits() + pt.embed_bits();
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
     let product_offset_bits = ct.offset_bits();
-    let active_prefix_bits = ct.prefix_bits();
+    let active_prefix_bits = ct.delta();
     let off = mk.as_usize();
     let (full_pt, scratch_rest) = offset_pt_from_scratch(module, ct.inner.n(), ct.inner.base2k(), mk, mk, pt, scratch);
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &full_pt, scratch_rest);
@@ -451,7 +451,7 @@ pub fn mul_prepared_pt<BE: Backend>(
     let product_scale_bits = ct.torus_scale_bits() + pt.embed_bits();
     let mk = TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32);
     let product_offset_bits = ct.offset_bits();
-    let active_prefix_bits = ct.prefix_bits();
+    let active_prefix_bits = ct.delta();
     let off = mk.as_usize();
     module.glwe_mul_plain(&mut res.inner, off, &ct.inner, &pt.inner, scratch);
     res.torus_scale_bits = product_scale_bits;

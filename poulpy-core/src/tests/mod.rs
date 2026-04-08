@@ -26,7 +26,6 @@ mod poulpy_core_fft64 {
         glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
         // GLWE Base2k Conversion
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
-        glwe_align => crate::tests::test_suite::test_glwe_align,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
         test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
@@ -100,7 +99,6 @@ mod poulpy_core_fft64 {
         glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
         // GLWE Base2k Conversion
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
-        glwe_align => crate::tests::test_suite::test_glwe_align,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
         test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
@@ -174,7 +172,6 @@ mod poulpy_core_ntt120 {
         glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
         // GLWE Base2k Conversion
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
-        glwe_align => crate::tests::test_suite::test_glwe_align,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
         test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,
@@ -248,7 +245,6 @@ mod poulpy_core_ntt120 {
         glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
         // GLWE Base2k Conversion
         glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
-        glwe_align => crate::tests::test_suite::test_glwe_align,
         // GLWE Tensoring
         test_glwe_tensoring => crate::tests::test_suite::glwe_tensor::test_glwe_tensoring,
         test_glwe_tensor_square => crate::tests::test_suite::glwe_tensor::test_glwe_tensor_square,

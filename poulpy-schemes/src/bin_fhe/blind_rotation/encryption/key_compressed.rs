@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GetDistribution,
+    EncryptionInfos, GetDistribution,
     layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecretToRef},
 };
 use poulpy_hal::{
@@ -32,16 +32,18 @@ pub trait BlindRotationKeyCompressedEncryptSk<B: Backend, BRA: BlindRotationAlgo
     /// `seed_xa` is the 32-byte root seed from which per-element mask seeds
     /// are derived.  `source_xe` provides randomness for the error components.
     #[allow(clippy::too_many_arguments)]
-    fn blind_rotation_key_compressed_encrypt_sk<D, S0, S1>(
+    fn blind_rotation_key_compressed_encrypt_sk<D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKeyCompressed<D, BRA>,
         sk_glwe: &S0,
         sk_lwe: &S1,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
         D: DataMut,
         S0: GLWESecretPreparedToRef<B> + GLWEInfos,
+        E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution;
 }
