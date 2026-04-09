@@ -1,24 +1,32 @@
 //! Conjugation tests (out-of-place and in-place).
+//!
+//! # Test inventory
+//!
+//! ## Operations-layer conjugation (`CKKSCiphertext::conjugate`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_conjugate`] | out-of-place conjugation |
+//!
+//! ## Operations-layer conjugation (`CKKSCiphertext::conjugate_inplace`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_conjugate_inplace`] | in-place conjugation |
 
-use super::helpers::{TestContext, assert_precision};
-use crate::{
-    layouts::ciphertext::CKKSCiphertext,
-    leveled::{
-        encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
-        operations::conjugate::{conjugate, conjugate_inplace, conjugate_tmp_bytes},
-    },
-};
-use poulpy_core::{
-    GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
-};
+use super::helpers::TestContext;
+use poulpy_core::{GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+    },
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
 
-/// Verifies that conjugation flips the imaginary part while preserving the
-/// real part (out-of-place and in-place).
+// ─── conjugation out-of-place (CKKSCiphertext::conjugate) ───────────────────
+
+/// Conjugation out-of-place: real part preserved, imaginary part negated.
 pub fn test_conjugate<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -27,38 +35,53 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEAutomorphism<BE>
         + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeTmpBytes
+        + VecZnxCopy
+        + VecZnxLsh<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxRshAdd<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
+    let mut scratch = ctx.alloc_scratch();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_conjugate();
     let conj_key = ctx.atk(-1);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(conjugate_tmp_bytes(&ctx.module, &ct_tmp, conj_key)),
-    );
 
-    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.conjugate(&ctx.module, &ct1, conj_key, scratch.borrow());
 
-    // out-of-place
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    conjugate(&ctx.module, &mut ct_res, &ct, conj_key, scratch.borrow());
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
+    assert_eq!(ct_res.log_delta, ct1.log_delta, "conjugate: log_delta must equal input");
+    ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
 
-    let want_re: Vec<f64> = ctx.re1.clone();
-    let want_im: Vec<f64> = ctx.im1.iter().map(|&v| -v).collect();
-    assert_precision("conjugate re", &re_out, &want_re, 20.0);
-    assert_precision("conjugate im", &im_out, &want_im, 20.0);
+// ─── conjugation in-place (CKKSCiphertext::conjugate_inplace) ───────────────
 
-    // in-place
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    conjugate_inplace(&ctx.module, &mut ct_ip, conj_key, scratch.borrow());
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("conjugate_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("conjugate_inplace im", &im_ip, &want_im, 20.0);
+/// Conjugation in-place: real part preserved, imaginary part negated.
+pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEAutomorphism<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxCopy
+        + VecZnxLsh<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxRshAdd<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let expected_delta = ct.log_delta;
+    let (want_re, want_im) = ctx.want_conjugate();
+    let conj_key = ctx.atk(-1);
+
+    ct.conjugate_inplace(&ctx.module, conj_key, scratch.borrow());
+
+    assert_eq!(ct.log_delta, expected_delta, "conjugate_inplace: log_delta must be unchanged");
+    ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }

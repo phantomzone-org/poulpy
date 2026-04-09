@@ -154,13 +154,31 @@ fn neg_inplace() {
 }
 
 #[test]
+fn conjugate() {
+    crate::leveled::tests::test_suite::conjugate::test_conjugate(&CTX);
+}
+
+#[test]
+fn conjugate_inplace() {
+    crate::leveled::tests::test_suite::conjugate::test_conjugate_inplace(&CTX);
+}
+
+#[test]
+fn rotate() {
+    crate::leveled::tests::test_suite::rotate::test_rotate(&CTX, ATK_ROTATIONS);
+}
+
+#[test]
+fn rotate_inplace() {
+    crate::leveled::tests::test_suite::rotate::test_rotate_inplace(&CTX, ATK_ROTATIONS);
+}
+
+#[test]
 fn mul_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
 
 /*
-#[test]
-
 #[test]
 fn div_pow2() {
     test_div_pow2(&CTX);
@@ -286,13 +304,4 @@ fn prepared_poly2_mul() {
     test_prepared_poly2_mul(&CTX_TSK);
 }
 
-#[test]
-fn rotate() {
-    test_rotate(&CTX_ATK, ATK_ROTATIONS);
-}
-
-#[test]
-fn conjugate() {
-    test_conjugate(&CTX_ATK);
-}
     */

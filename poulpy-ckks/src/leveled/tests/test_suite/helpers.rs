@@ -15,7 +15,8 @@ use crate::{
     leveled::encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
 };
 use poulpy_core::{
-    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
+    GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring,
+    ScratchTakeCore,
     layouts::{
         Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision,
@@ -81,6 +82,7 @@ where
             + GLWETensorKeyEncryptSk<BE>
             + GLWETensorKeyPreparedFactory<BE>
             + GLWEAutomorphismKeyEncryptSk<BE>
+            + GLWEAutomorphism<BE>
             + GLWEShift<BE>
             + GLWETensoring<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -113,31 +115,37 @@ where
         let mut tsk_prepared = GLWETensorKeyPrepared::alloc_from_infos(&module, &tsk_infos);
         tsk_prepared.prepare(&module, &tsk, scratch.borrow());
 
-        // Compute Galois elements: rotations, their inverses, and conjugation (-1).
-        let mut galois_elements: Vec<i64> = Vec::new();
-        for &r in rotations {
-            let ge = module.galois_element(r);
-            galois_elements.push(ge);
-            galois_elements.push(module.galois_element_inv(ge));
-        }
-        galois_elements.push(-1); // conjugation
-        galois_elements.sort();
-        galois_elements.dedup();
+        // Store keys by the public index used by operations/tests:
+        // rotation shift `k` for slot rotations, and `-1` for conjugation.
+        let mut automorphism_indices: Vec<i64> = rotations.to_vec();
+        automorphism_indices.push(-1);
+        automorphism_indices.sort();
+        automorphism_indices.dedup();
 
         let mut atks = HashMap::new();
-        for &p in &galois_elements {
+        for &index in &automorphism_indices {
             let mut atk = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
-            atk.encrypt_sk(&module, p, &sk_raw, &atk_infos, &mut xa, &mut xe, scratch.borrow());
+            let galois_element = if index == -1 { -1 } else { module.galois_element(index) };
+            atk.encrypt_sk(
+                &module,
+                galois_element,
+                &sk_raw,
+                &atk_infos,
+                &mut xa,
+                &mut xe,
+                scratch.borrow(),
+            );
             let mut atk_prepared = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk_infos);
             atk_prepared.prepare(&module, &atk, scratch.borrow());
-            atks.insert(p, atk_prepared);
+            atks.insert(index, atk_prepared);
         }
 
         let ct_infos = params.glwe_layout();
         let scratch_size = encrypt_sk_tmp_bytes(&module, &ct_infos)
             .max(decrypt_tmp_bytes(&module, &ct_infos))
             .max(module.glwe_shift_tmp_bytes())
-            .max(CKKSCiphertext::mul_relin_tmp_bytes(&module, &ct_infos, &tsk_infos));
+            .max(CKKSCiphertext::mul_relin_tmp_bytes(&module, &ct_infos, &tsk_infos))
+            .max(CKKSCiphertext::automorphism_tmp_bytes(&module, &ct_infos, &atk_infos));
 
         Self {
             module,
@@ -161,10 +169,10 @@ where
         &self.atks
     }
 
-    pub fn atk(&self, galois_element: i64) -> &GLWEAutomorphismKeyPrepared<Vec<u8>, BE> {
+    pub fn atk(&self, index: i64) -> &GLWEAutomorphismKeyPrepared<Vec<u8>, BE> {
         self.atks()
-            .get(&galois_element)
-            .unwrap_or_else(|| panic!("missing automorphism key for galois element {galois_element}"))
+            .get(&index)
+            .unwrap_or_else(|| panic!("missing automorphism key for index {index}"))
     }
 
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
@@ -216,8 +224,6 @@ where
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
         pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
 
-        println!("pt_rnx: {:?}", &pt_rnx.data()[..8]);
-
         let m = self.params.n / 2;
         let mut re = vec![0.0; m];
         let mut im = vec![0.0; m];
@@ -253,6 +259,24 @@ where
         let m = self.params.n / 2;
         let re = (0..m).map(|j| -self.re1[j]).collect();
         let im = (0..m).map(|j| -self.im1[j]).collect();
+        (re, im)
+    }
+
+    pub fn want_conjugate(&self) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let re = (0..m).map(|j| self.re1[j]).collect();
+        let im = (0..m).map(|j| -self.im1[j]).collect();
+        (re, im)
+    }
+
+    pub fn want_rotate(&self, k: i64) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let re = (0..m)
+            .map(|j| self.re1[((j as i64 + k).rem_euclid(m as i64)) as usize])
+            .collect();
+        let im = (0..m)
+            .map(|j| self.im1[((j as i64 + k).rem_euclid(m as i64)) as usize])
+            .collect();
         (re, im)
     }
 

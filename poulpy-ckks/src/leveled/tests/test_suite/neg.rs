@@ -15,9 +15,7 @@
 //! | [`test_neg_inplace`] | in-place negation |
 
 use super::helpers::TestContext;
-use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedFactory,
-};
+use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
     api::{
         ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNegate,

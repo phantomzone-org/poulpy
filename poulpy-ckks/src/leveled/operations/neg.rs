@@ -9,11 +9,8 @@ use poulpy_hal::{
 };
 
 impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn neg<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        ct: &CKKSCiphertext<impl DataRef>,
-    ) where
+    pub fn neg<BE: Backend>(&mut self, module: &Module<BE>, ct: &CKKSCiphertext<impl DataRef>)
+    where
         Module<BE>: VecZnxNegate,
     {
         let ncols = ct.inner.data().cols;

@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use anyhow::Result;
 use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos, TorusPrecision};
 use poulpy_hal::{
+    GALOISGENERATOR,
     api::{VecZnxLsh, VecZnxRshAdd, VecZnxRshSub},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnx},
     reference::fft64::reim::{ReimFFTTable, ReimIFFTTable},
@@ -40,6 +41,24 @@ pub trait CKKSPlaintextConversion {
         BE: Backend;
 }
 
+/// Returns the FFT-internal position for each user slot.
+///
+/// User slot `k` has Galois exponent `5^k mod 2N`.  The FFT position
+/// is `bit_reverse((5^k mod 2N − 1) / 2, log₂N)`.  No conjugate
+/// folding is needed because `5 ≡ 1 mod 4` guarantees the result
+/// stays in `[0, m)`.
+fn slot_map(m: usize) -> Vec<usize> {
+    let two_n = 4 * m;
+    let log_n = (2 * m).trailing_zeros();
+    let mut map = Vec::with_capacity(m);
+    let mut exp = 1usize;
+    for _ in 0..m {
+        map.push(((exp - 1) / 2).reverse_bits() >> (usize::BITS - log_n));
+        exp = (exp * GALOISGENERATOR as usize) % two_n;
+    }
+    map
+}
+
 impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
     pub fn alloc(n: usize) -> Self {
         assert!(n.is_power_of_two());
@@ -66,8 +85,13 @@ impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
         assert_eq!(re.len(), m);
         assert_eq!(im.len(), m);
 
-        self.0[..m].copy_from_slice(re);
-        self.0[m..].copy_from_slice(im);
+        let sm = slot_map(m);
+
+        self.0.fill(F::zero());
+        for k in 0..m {
+            self.0[sm[k]] = re[k];
+            self.0[m + sm[k]] = im[k];
+        }
 
         table.execute(&mut self.0);
 
@@ -89,8 +113,13 @@ impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
 
         table.execute(&mut reim_tmp);
 
-        re.copy_from_slice(&reim_tmp[..m]);
-        im.copy_from_slice(&reim_tmp[m..]);
+        let sm = slot_map(m);
+        for (k, out) in re.iter_mut().enumerate() {
+            *out = reim_tmp[sm[k]];
+        }
+        for (k, out) in im.iter_mut().enumerate() {
+            *out = reim_tmp[m + sm[k]];
+        }
     }
 }
 
