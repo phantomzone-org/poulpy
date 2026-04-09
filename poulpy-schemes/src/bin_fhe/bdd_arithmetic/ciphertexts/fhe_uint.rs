@@ -2,7 +2,7 @@ use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace,
     LWEFromGLWE, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout,
+        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEPlaintext,
         GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
         TorusPrecision,
     },
@@ -142,6 +142,18 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
         self.bits.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
     }
+
+    pub fn encrypt_sk_tmp_bytes<M, BE: Backend>(&self, module: &M) -> usize
+    where
+        M: ModuleLogN + GLWEEncryptSk<BE>,
+    {
+        let pt_infos = GLWEPlaintextLayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: 2_usize.into(),
+        };
+        GLWEPlaintext::bytes_of_from_infos(&pt_infos) + module.glwe_encrypt_sk_tmp_bytes(self)
+    }
 }
 
 impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
@@ -204,6 +216,18 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
         }
 
         T::from_bits(&bits)
+    }
+
+    pub fn decrypt_tmp_bytes<M, BE: Backend>(&self, module: &M) -> usize
+    where
+        M: ModuleLogN + GLWEDecrypt<BE>,
+    {
+        let pt_infos = GLWEPlaintextLayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: 1_usize.into(),
+        };
+        GLWEPlaintext::bytes_of_from_infos(&pt_infos) + module.glwe_decrypt_tmp_bytes(self)
     }
 }
 
