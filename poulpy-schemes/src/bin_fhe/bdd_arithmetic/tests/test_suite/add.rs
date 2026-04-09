@@ -1,6 +1,6 @@
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecretPrepared, GLWESecretPreparedFactory},
+    layouts::{GGSWLayout, GLWEAutomorphismKeyHelper, GLWELayout, GLWESecretPrepared, GLWESecretPreparedFactory},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -11,7 +11,8 @@ use rand::Rng;
 
 use crate::bin_fhe::{
     bdd_arithmetic::{
-        Add, BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare,
+        Add, BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
+        FheUintPrepare,
         FheUintPrepareDebug, FheUintPrepared, FheUintPreparedEncryptSk, FheUintPreparedFactory,
         tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
@@ -63,8 +64,30 @@ where
     source.fill_bytes(&mut scratch.borrow().data);
     b_enc_prep.encrypt_sk(module, b, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    // a + b
-    res.add(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch.borrow());
+    let atk_infos = bdd_key_prepared.automorphism_key_infos();
+    let add_bytes: usize =
+        res.add_tmp_bytes(module, &glwe_infos, &ggsw_infos, &atk_infos);
+    let mut scratch_add: ScratchOwned<BE> = ScratchOwned::alloc(add_bytes);
+    res.add(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch_add.borrow());
+    assert_eq!(
+        res.decrypt(module, sk_glwe_prep, scratch.borrow()),
+        a.wrapping_add(b)
+    );
 
-    assert_eq!(res.decrypt(module, sk_glwe_prep, scratch.borrow()), a.wrapping_add(b));
+    let mt_threads: usize = 4;
+    let add_mt_bytes: usize =
+        res.add_multi_thread_tmp_bytes(module, mt_threads, &glwe_infos, &ggsw_infos, &atk_infos);
+    let mut scratch_mt: ScratchOwned<BE> = ScratchOwned::alloc(add_mt_bytes);
+    res.add_multi_thread(
+        mt_threads,
+        module,
+        &a_enc_prep,
+        &b_enc_prep,
+        bdd_key_prepared,
+        scratch_mt.borrow(),
+    );
+    assert_eq!(
+        res.decrypt(module, sk_glwe_prep, scratch.borrow()),
+        a.wrapping_add(b)
+    );
 }

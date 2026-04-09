@@ -28,6 +28,11 @@ fn fhe_uint_get_bit_glwe() {
 }
 
 #[test]
+fn fhe_uint_encrypt_decrypt_tmp_bytes() {
+    test_suite::test_fhe_uint_encrypt_decrypt_tmp_bytes(&TEST_CONTEXT_CGGI_FFT64_REF);
+}
+
+#[test]
 fn fhe_uint_sext() {
     test_suite::test_fhe_uint_sext(&TEST_CONTEXT_CGGI_FFT64_REF);
 }

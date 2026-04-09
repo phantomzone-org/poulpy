@@ -39,6 +39,15 @@ pub trait GetBitCircuitInfo: Sync {
     fn output_size(&self) -> usize;
     /// Returns the node sequence and intermediate-state count for output bit `bit`.
     fn get_circuit(&self, bit: usize) -> (&[Node], usize);
+
+    /// Maximum `max_inter_state` across all output-bit circuits.
+    ///
+    /// If [`output_size`][Self::output_size] is zero, returns `0`.
+    fn max_state_size(&self) -> usize {
+        (0..self.output_size())
+            .map(|i| self.get_circuit(i).1)
+            .fold(0, usize::max)
+    }
 }
 
 /// A statically-sized BDD bit-circuit, produced by the code-generator.
@@ -189,11 +198,7 @@ where
             );
         }
 
-        let mut max_state_size = 0;
-        for i in 0..circuit.output_size() {
-            let (_, state_size) = circuit.get_circuit(i);
-            max_state_size = max_state_size.max(state_size)
-        }
+        let max_state_size = circuit.max_state_size();
 
         let scratch_thread_size: usize = self.execute_bdd_circuit_tmp_bytes(&out[0], max_state_size, &inputs.get_bit(0));
 
