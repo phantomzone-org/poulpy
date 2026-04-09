@@ -172,36 +172,13 @@ where
 
     let a: u32 = source_xa.next_u32();
 
-    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch.borrow());
+    let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(a_enc.encrypt_sk_tmp_bytes(module));
+    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch_enc.borrow());
+
+    let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(c_enc.decrypt_tmp_bytes(module));
 
     for i in 0..32 {
         a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());
-        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch.borrow()));
+        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch_dec.borrow()));
     }
-}
-
-pub fn test_fhe_uint_encrypt_decrypt_tmp_bytes<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
-where
-    Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeBDD<u32, BE>,
-{
-    let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
-
-    let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-
-    let mut source_xa: Source = Source::new([2u8; 32]);
-    let mut source_xe: Source = Source::new([3u8; 32]);
-
-    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
-    let a: u32 = source_xa.next_u32();
-
-    let enc_need: usize = a_enc.encrypt_sk_tmp_bytes(module);
-    let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(enc_need);
-    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch_enc.borrow());
-
-    let dec_need: usize = a_enc.decrypt_tmp_bytes(module);
-    let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(dec_need);
-    assert_eq!(a, a_enc.decrypt(module, sk, scratch_dec.borrow()));
 }

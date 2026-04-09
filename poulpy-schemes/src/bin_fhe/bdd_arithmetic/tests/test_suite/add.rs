@@ -1,6 +1,6 @@
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWEAutomorphismKeyHelper, GLWELayout, GLWESecretPrepared, GLWESecretPreparedFactory},
+    layouts::{GGSWLayout, GLWELayout, GLWESecretPrepared, GLWESecretPreparedFactory},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -63,14 +63,14 @@ where
     source.fill_bytes(&mut scratch.borrow().data);
     b_enc_prep.encrypt_sk(module, b, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
 
-    let atk_infos = bdd_key_prepared.automorphism_key_infos();
-    let add_bytes: usize = res.add_tmp_bytes(module, &glwe_infos, &ggsw_infos, &atk_infos);
+    let add_bytes: usize = res.add_tmp_bytes(module, &glwe_infos, &ggsw_infos, bdd_key_prepared);
     let mut scratch_add: ScratchOwned<BE> = ScratchOwned::alloc(add_bytes);
     res.add(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch_add.borrow());
     assert_eq!(res.decrypt(module, sk_glwe_prep, scratch.borrow()), a.wrapping_add(b));
 
     let mt_threads: usize = 4;
-    let add_mt_bytes: usize = res.add_multi_thread_tmp_bytes(module, mt_threads, &glwe_infos, &ggsw_infos, &atk_infos);
+    let add_mt_bytes: usize =
+        res.add_multi_thread_tmp_bytes(module, mt_threads, &glwe_infos, &ggsw_infos, bdd_key_prepared);
     let mut scratch_mt: ScratchOwned<BE> = ScratchOwned::alloc(add_mt_bytes);
     res.add_multi_thread(
         mt_threads,

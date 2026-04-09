@@ -52,45 +52,49 @@ where
 
     /// Minimum scratch size in bytes for [`execute_bdd_circuit_2w_to_1w`][Self::execute_bdd_circuit_2w_to_1w]
     /// (single OS thread for BDD evaluation).
-    fn execute_bdd_circuit_2w_to_1w_tmp_bytes<C, T, R, G, AK>(
+    fn execute_bdd_circuit_2w_to_1w_tmp_bytes<C, T, R, G, K, H>(
         &self,
         circuit: &C,
         res_infos: &R,
         ggsw_infos: &G,
-        atk_infos: &AK,
+        key: &H,
     ) -> usize
     where
         C: GetBitCircuitInfo,
         T: UnsignedInteger,
         R: GLWEInfos,
         G: GGSWInfos,
-        AK: GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
     {
+        let atk_infos = key.automorphism_key_infos();
         let glwe_slot_bytes = T::BITS as usize * GLWE::bytes_of_from_infos(res_infos);
         let bdd_bytes = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
-        let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, atk_infos);
+        let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, &atk_infos);
         glwe_slot_bytes + bdd_bytes.max(pack_bytes)
     }
 
     /// Minimum scratch size in bytes for [`execute_bdd_circuit_2w_to_1w_multi_thread`][Self::execute_bdd_circuit_2w_to_1w_multi_thread].
-    fn execute_bdd_circuit_2w_to_1w_multi_thread_tmp_bytes<C, T, R, G, AK>(
+    fn execute_bdd_circuit_2w_to_1w_multi_thread_tmp_bytes<C, T, R, G, K, H>(
         &self,
         threads: usize,
         circuit: &C,
         res_infos: &R,
         ggsw_infos: &G,
-        atk_infos: &AK,
+        key: &H,
     ) -> usize
     where
         C: GetBitCircuitInfo,
         T: UnsignedInteger,
         R: GLWEInfos,
         G: GGSWInfos,
-        AK: GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
     {
+        let atk_infos = key.automorphism_key_infos();
         let glwe_slot_bytes = T::BITS as usize * GLWE::bytes_of_from_infos(res_infos);
         let bdd_per_thread = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
-        let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, atk_infos);
+        let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, &atk_infos);
         glwe_slot_bytes + (threads * bdd_per_thread).max(pack_bytes)
     }
 
@@ -191,32 +195,34 @@ macro_rules! define_bdd_2w_to_1w_trait {
                     H: GLWEAutomorphismKeyHelper<K, BE>,
                     Scratch<BE>: ScratchTakeCore<BE>;
 
-                fn [<$method_name _tmp_bytes>]<M, R, G, AK>(
+                fn [<$method_name _tmp_bytes>]<M, R, G, K, H>(
                     &self,
                     module: &M,
                     res_infos: &R,
                     ggsw_infos: &G,
-                    atk_infos: &AK,
+                    key: &H,
                 ) -> usize
                 where
                     M: ExecuteBDDCircuit2WTo1W<BE>,
                     R: GLWEInfos,
                     G: GGSWInfos,
-                    AK: GGLWEInfos;
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>;
 
-                fn [<$method_name _multi_thread_tmp_bytes>]<M, R, G, AK>(
+                fn [<$method_name _multi_thread_tmp_bytes>]<M, R, G, K, H>(
                     &self,
                     module: &M,
                     threads: usize,
                     res_infos: &R,
                     ggsw_infos: &G,
-                    atk_infos: &AK,
+                    key: &H,
                 ) -> usize
                 where
                     M: ExecuteBDDCircuit2WTo1W<BE>,
                     R: GLWEInfos,
                     G: GGSWInfos,
-                    AK: GGLWEInfos;
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>;
             }
         }
     };
@@ -265,47 +271,49 @@ macro_rules! impl_bdd_2w_to_1w_trait {
                     module.execute_bdd_circuit_2w_to_1w_multi_thread(threads, self, &$output_circuits, a, b, key, scratch)
                 }
 
-                fn [<$method_name _tmp_bytes>]<M, R, G, AK>(
+                fn [<$method_name _tmp_bytes>]<M, R, G, K, H>(
                     &self,
                     module: &M,
                     res_infos: &R,
                     ggsw_infos: &G,
-                    atk_infos: &AK,
+                    key: &H,
                 ) -> usize
                 where
                     M: ExecuteBDDCircuit2WTo1W<BE>,
                     R: GLWEInfos,
                     G: GGSWInfos,
-                    AK: GGLWEInfos,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
                 {
-                    module.execute_bdd_circuit_2w_to_1w_tmp_bytes::<_, $ty, _, _, _>(
+                    module.execute_bdd_circuit_2w_to_1w_tmp_bytes::<_, $ty, _, _, _, _>(
                         &$output_circuits,
                         res_infos,
                         ggsw_infos,
-                        atk_infos,
+                        key,
                     )
                 }
 
-                fn [<$method_name _multi_thread_tmp_bytes>]<M, R, G, AK>(
+                fn [<$method_name _multi_thread_tmp_bytes>]<M, R, G, K, H>(
                     &self,
                     module: &M,
                     threads: usize,
                     res_infos: &R,
                     ggsw_infos: &G,
-                    atk_infos: &AK,
+                    key: &H,
                 ) -> usize
                 where
                     M: ExecuteBDDCircuit2WTo1W<BE>,
                     R: GLWEInfos,
                     G: GGSWInfos,
-                    AK: GGLWEInfos,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
                 {
-                    module.execute_bdd_circuit_2w_to_1w_multi_thread_tmp_bytes::<_, $ty, _, _, _>(
+                    module.execute_bdd_circuit_2w_to_1w_multi_thread_tmp_bytes::<_, $ty, _, _, _, _>(
                         threads,
                         &$output_circuits,
                         res_infos,
                         ggsw_infos,
-                        atk_infos,
+                        key,
                     )
                 }
             }
