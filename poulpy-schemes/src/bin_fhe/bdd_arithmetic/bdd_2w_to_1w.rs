@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use poulpy_core::{
     GLWECopy, GLWEPacking, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GGSWPrepared, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement,
+        GGLWEInfos, GGLWEPreparedToRef, GGSWInfos, GGSWPrepared, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement,
     },
 };
 use poulpy_hal::{
@@ -67,8 +67,7 @@ where
         AK: GGLWEInfos,
     {
         let glwe_slot_bytes = T::BITS as usize * GLWE::bytes_of_from_infos(res_infos);
-        let bdd_bytes =
-            self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
+        let bdd_bytes = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
         let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, atk_infos);
         glwe_slot_bytes + bdd_bytes.max(pack_bytes)
     }
@@ -90,8 +89,7 @@ where
         AK: GGLWEInfos,
     {
         let glwe_slot_bytes = T::BITS as usize * GLWE::bytes_of_from_infos(res_infos);
-        let bdd_per_thread =
-            self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
+        let bdd_per_thread = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
         let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, atk_infos);
         glwe_slot_bytes + (threads * bdd_per_thread).max(pack_bytes)
     }

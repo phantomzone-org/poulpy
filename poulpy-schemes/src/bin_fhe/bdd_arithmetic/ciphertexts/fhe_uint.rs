@@ -2,9 +2,9 @@ use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace,
     LWEFromGLWE, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout,
-        GLWEPlaintext, GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
-        LWEToMut, Rank, TorusPrecision,
+        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEPlaintext,
+        GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
+        TorusPrecision,
     },
 };
 use poulpy_hal::{

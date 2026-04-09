@@ -44,9 +44,7 @@ pub trait GetBitCircuitInfo: Sync {
     ///
     /// If [`output_size`][Self::output_size] is zero, returns `0`.
     fn max_state_size(&self) -> usize {
-        (0..self.output_size())
-            .map(|i| self.get_circuit(i).1)
-            .fold(0, usize::max)
+        (0..self.output_size()).map(|i| self.get_circuit(i).1).fold(0, usize::max)
     }
 }
 
