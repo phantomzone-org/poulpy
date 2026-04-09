@@ -84,6 +84,6 @@ pub mod helpers;
 //pub mod level;
 //pub mod metadata;
 pub mod mul;
-//pub mod neg;
+pub mod neg;
 //pub mod rotate;
 pub mod sub;

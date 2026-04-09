@@ -144,17 +144,22 @@ fn sub_pt_rnx_smaller_output() {
 }
 
 #[test]
+fn neg() {
+    crate::leveled::tests::test_suite::neg::test_neg(&CTX);
+}
+
+#[test]
+fn neg_inplace() {
+    crate::leveled::tests::test_suite::neg::test_neg_inplace(&CTX);
+}
+
+#[test]
 fn mul_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
 
 /*
 #[test]
-
-#[test]
-fn neg() {
-    test_neg(&CTX);
-}
 
 #[test]
 fn div_pow2() {

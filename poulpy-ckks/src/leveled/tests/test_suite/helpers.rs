@@ -249,6 +249,13 @@ where
         (re, im)
     }
 
+    pub fn want_neg(&self) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let re = (0..m).map(|j| -self.re1[j]).collect();
+        let im = (0..m).map(|j| -self.im1[j]).collect();
+        (re, im)
+    }
+
     pub fn want_mul(&self) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
 
