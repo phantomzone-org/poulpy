@@ -10,11 +10,11 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [features]
-enable-avx = []
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx"]
 
 [dependencies]
 criterion = {workspace = true}
-poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-avx = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
