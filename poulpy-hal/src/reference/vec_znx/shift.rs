@@ -7,9 +7,9 @@ use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
-        ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-        ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-        ZnxZero,
+        ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+        ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxZero,
     },
     source::Source,
 };
@@ -135,6 +135,51 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         // Zeroes bottom
         for j in min_size..res_size {
             ZNXARI::znx_zero(res.at_mut(res_col, j));
+        }
+    }
+}
+
+pub fn vec_znx_lsh_sub<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+    ZNXARI: ZnxZero
+        + ZnxNormalizeFirstStepCarryOnly
+        + ZnxNormalizeMiddleStepSub
+        + ZnxNormalizeFinalStepSub
+        + ZnxNormalizeMiddleStepCarryOnly,
+{
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
+
+    let res_size: usize = res.size();
+    let a_size = a.size();
+    let (steps, k_rem) = k.div_rem_euclid(base2k);
+
+    if steps >= res_size.max(a_size) {
+        return;
+    }
+
+    let min_size: usize = res_size.min(a_size.saturating_sub(steps));
+    let carry_only_start: usize = (steps + min_size).min(a_size);
+
+    for j in (carry_only_start..a_size).rev() {
+        if j == a_size - 1 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+        }
+    }
+
+    if carry_only_start == a_size {
+        ZNXARI::znx_zero(carry);
+    }
+
+    for j in (0..min_size).rev() {
+        if j == 0 {
+            ZNXARI::znx_normalize_final_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         }
     }
 }
@@ -297,6 +342,76 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
             } else {
                 ZNXARI::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
             }
+        }
+    }
+}
+
+pub fn vec_znx_rsh_sub<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+    ZNXARI: ZnxZero
+        + ZnxCopy
+        + ZnxNormalizeFirstStepCarryOnly
+        + ZnxNormalizeMiddleStepCarryOnly
+        + ZnxNormalizeMiddleStepSub
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFirstStepInplace
+        + ZnxNormalizeFinalStepInplace,
+{
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
+
+    let res_size: usize = res.size();
+    let a_size: usize = a.size();
+
+    let mut steps: usize = k / base2k;
+    let k_rem: usize = k % base2k;
+
+    if !k.is_multiple_of(base2k) {
+        steps += 1;
+    }
+
+    let lsh: usize = (base2k - k_rem) % base2k;
+    let res_end: usize = res_size.min(steps);
+    let res_start: usize = res_size.min(a_size + steps);
+    let a_start: usize = a_size.min(res_size.saturating_sub(steps));
+
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+
+    for j in 0..a_out_range {
+        if j == 0 {
+            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+        }
+    }
+
+    if a_out_range == 0 {
+        ZNXARI::znx_zero(carry);
+    }
+
+    let mid_range: usize = res_start.saturating_sub(res_end);
+
+    for j in 0..mid_range {
+        ZNXARI::znx_normalize_middle_step_sub(
+            base2k,
+            lsh,
+            res.at_mut(res_col, res_start - j - 1),
+            a.at(a_col, a_start - j - 1),
+            carry,
+        );
+    }
+
+    // Negate carry before propagation: the carry from normalizing rsh(a)
+    // must be subtracted from the lower limbs of res.
+    carry.iter_mut().for_each(|c| *c = -*c);
+
+    for j in 0..res_end {
+        if j == res_end - 1 {
+            ZNXARI::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+        } else {
+            ZNXARI::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
         }
     }
 }

@@ -1,11 +1,7 @@
 //! CKKS ciphertext addition.
 //!
-//! Provides ct+ct, ct+pt (compact and prepared), and ct+constant variants,
-//! each in out-of-place and in-place form.  Compact plaintext operands are
-//! expanded into the ciphertext torus layout via [`fill_offset_pt`] before
-//! the underlying GLWE addition.
-//!
-//! [`fill_offset_pt`]: super::utils::fill_offset_pt
+//! Provides ct+ct, ct+pt in ZNX form, and ct+pt in RNX form, each in
+//! out-of-place and in-place form.
 
 use std::fmt::Debug;
 
@@ -37,8 +33,8 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: GLWEAdd + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        // Case where the receiver ciphertext has less maximum precision than the minimum precision between the two
-        // input ciphertexts. In this case we need to shift the addition by `offset` bits.
+        // If the destination has less precision than the aligned inputs, shift
+        // the computation down by `offset` bits before writing the result.
         let offset = a
             .inner
             .max_k()

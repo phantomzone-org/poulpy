@@ -307,6 +307,44 @@ pub unsafe trait VecZnxLshAddImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::api::VecZnxLshSub] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshSubImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_sub_impl<R, A>(
+        module: &Module<B>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::api::VecZnxRshSub] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshSubImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_sub_impl<R, A>(
+        module: &Module<B>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [poulpy-backend/src/cpu_fft64_ref/vec_znx.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx.rs) for reference implementation.
 /// * See [crate::api::VecZnxRshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.

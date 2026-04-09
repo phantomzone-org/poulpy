@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use anyhow::Result;
 use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos, TorusPrecision};
 use poulpy_hal::{
-    api::{VecZnxLsh, VecZnxRshAdd},
+    api::{VecZnxLsh, VecZnxRshAdd, VecZnxRshSub},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnx},
     reference::fft64::reim::{ReimFFTTable, ReimIFFTTable},
 };
@@ -185,6 +185,26 @@ impl<D: DataRef> CKKSPlaintextZnx<D> {
         Module<BE>: VecZnxRshAdd<BE>,
     {
         module.vec_znx_rsh_add(
+            self.data.base2k().as_usize(),
+            self.offset(log_delta),
+            dst,
+            0,
+            self.data.data(),
+            0,
+            scratch,
+        );
+    }
+
+    pub(crate) fn sub_to<BE: Backend>(
+        &self,
+        module: &Module<BE>,
+        dst: &mut VecZnx<impl DataMut>,
+        log_delta: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: VecZnxRshSub<BE>,
+    {
+        module.vec_znx_rsh_sub(
             self.data.base2k().as_usize(),
             self.offset(log_delta),
             dst,

@@ -85,6 +85,5 @@ pub mod helpers;
 //pub mod metadata;
 pub mod mul;
 //pub mod neg;
-//pub mod plaintext_prepared;
 //pub mod rotate;
-//pub mod sub;
+pub mod sub;

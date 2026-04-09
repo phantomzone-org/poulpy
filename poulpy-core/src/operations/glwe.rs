@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAdd, VecZnxLshInplace, VecZnxLshTmpBytes,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAdd, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
         VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub,
         VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
@@ -1088,6 +1088,7 @@ impl<BE: Backend> GLWEShift<BE> for Module<BE> where
     Self: ModuleN
         + VecZnxRshInplace<BE>
         + VecZnxLshAdd<BE>
+        + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
         + VecZnxLshInplace<BE>
@@ -1100,6 +1101,7 @@ where
     Self: ModuleN
         + VecZnxRshInplace<BE>
         + VecZnxLshAdd<BE>
+        + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
         + VecZnxLshInplace<BE>
@@ -1197,6 +1199,32 @@ where
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_lsh_add(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+        }
+    }
+
+    fn glwe_lsh_sub<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res = &mut res.to_mut();
+        let a = &a.to_ref();
+        assert!(
+            scratch.available() >= self.glwe_shift_tmp_bytes(),
+            "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
+            scratch.available(),
+            self.glwe_shift_tmp_bytes()
+        );
+
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(res.base2k(), a.base2k());
+        assert!(res.rank() >= a.rank());
+
+        let base2k: usize = res.base2k().into();
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_lsh_sub(base2k, k, res.data_mut(), i, a.data(), i, scratch);
         }
     }
 }
