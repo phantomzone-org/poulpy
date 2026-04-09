@@ -79,32 +79,77 @@ fn add_pt_rnx_smaller_output() {
 }
 
 #[test]
+fn sub_ct_aligned() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_aligned(&CTX);
+}
+
+#[test]
+fn sub_ct_delta_a_lt_b() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_delta_a_lt_b(&CTX);
+}
+
+#[test]
+fn sub_ct_delta_a_gt_b() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_delta_a_gt_b(&CTX);
+}
+
+#[test]
+fn sub_ct_smaller_output() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_smaller_output(&CTX);
+}
+
+#[test]
+fn sub_ct_inplace_aligned() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_aligned(&CTX);
+}
+
+#[test]
+fn sub_ct_inplace_self_lt() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_lt(&CTX);
+}
+
+#[test]
+fn sub_ct_inplace_self_gt() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_gt(&CTX);
+}
+
+#[test]
+fn sub_pt_znx_inplace() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_znx_inplace(&CTX);
+}
+
+#[test]
+fn sub_pt_znx() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_znx(&CTX);
+}
+
+#[test]
+fn sub_pt_rnx_inplace() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_inplace(&CTX);
+}
+
+#[test]
+fn sub_pt_rnx() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_rnx(&CTX);
+}
+
+#[test]
+fn sub_pt_znx_smaller_output() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_znx_smaller_output(&CTX);
+}
+
+#[test]
+fn sub_pt_rnx_smaller_output() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_smaller_output(&CTX);
+}
+
+#[test]
 fn mul_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
 
 /*
 #[test]
-
-#[test]
-fn sub() {
-    test_sub(&CTX);
-}
-
-#[test]
-fn sub_aligned() {
-    test_sub_aligned(&CTX);
-}
-
-#[test]
-fn sub_pt() {
-    test_sub_pt(&CTX);
-}
-
-#[test]
-fn sub_const() {
-    test_sub_const(&CTX);
-}
 
 #[test]
 fn neg() {

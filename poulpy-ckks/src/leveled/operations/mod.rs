@@ -7,8 +7,7 @@
 //!
 //! | Module | Operation |
 //! |--------|-----------|
-//! | [`align`] | Explicit ciphertext re-windowing and alignedness helpers |
-//! | [`add`] | Ciphertext addition (ct+ct, ct+pt, ct+const, prepared-pt variants) |
+//! | [`add`] | Ciphertext addition (ct+ct, ct+pt in ZNX form, ct+pt in RNX form) |
 //! | [`sub`] | Ciphertext subtraction (same variants as add) |
 //! | [`neg`] | Ciphertext negation |
 //! | [`mul`] | Ciphertext multiplication (ct×ct, ct×pt, ct×const, prepared-pt, integer) |
@@ -22,4 +21,4 @@ pub mod add;
 pub mod mul;
 //pub mod neg;
 //pub mod rotate;
-//pub mod sub;
+pub mod sub;

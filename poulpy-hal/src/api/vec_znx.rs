@@ -215,6 +215,40 @@ pub trait VecZnxRshAdd<B: Backend> {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxLshSub<B: Backend> {
+    /// Left shift by k bits and subtract from destination.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_sub<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRshSub<B: Backend> {
+    /// Right shift by k bits and subtract from destination.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_sub<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
 pub trait VecZnxLshInplace<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     fn vec_znx_lsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)

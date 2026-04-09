@@ -35,8 +35,6 @@
 //! | [`test_add_pt_rnx`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
 //! | [`test_add_pt_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
-use crate::{layouts::plaintext::CKKSPlaintextZnx, leveled::encryption::decrypt};
-
 use super::helpers::TestContext;
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore, layouts::GLWESecretPreparedFactory,
@@ -325,7 +323,7 @@ where
     ctx.assert_decrypt_precision("add_pt_znx_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/// ct + ZNX plaintext, out-of-place (self = a + pt_znx).
+/// ct + ZNX plaintext, out-of-place.
 pub fn test_add_pt_znx<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -386,7 +384,7 @@ where
     ctx.assert_decrypt_precision("add_pt_rnx_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/// ct + RNX plaintext, out-of-place (self = a + pt_rnx, auto-converts RNX → ZNX using scratch).
+/// ct + RNX plaintext, out-of-place (auto-converts RNX → ZNX using scratch).
 pub fn test_add_pt_rnx<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -439,9 +437,6 @@ where
 {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
-
-    let mut pt_znx = CKKSPlaintextZnx::alloc(ctx.degree(), ctx.base2k(), ctx.params.prec);
-    decrypt(&ctx.module, &mut pt_znx, &ct1, &ctx.sk, scratch.borrow());
 
     let pt_znx = ctx.encode_pt_znx();
     let (want_re, want_im) = ctx.want_add();

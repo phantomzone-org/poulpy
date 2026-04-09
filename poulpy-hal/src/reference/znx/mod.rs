@@ -113,6 +113,14 @@ pub trait ZnxNormalizeMiddleStepInplace {
     fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
+pub trait ZnxNormalizeMiddleStepSub {
+    fn znx_normalize_middle_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeFinalStepSub {
+    fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
+}
+
 pub trait ZnxNormalizeFinalStepInplace {
     fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }

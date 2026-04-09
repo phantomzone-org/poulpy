@@ -1,369 +1,164 @@
 //! CKKS ciphertext subtraction.
 //!
-//! Provides ct-ct, ct-pt (compact and prepared), and ct-constant variants,
-//! each in out-of-place and in-place form.  Compact plaintext operands are
-//! expanded into the ciphertext torus layout via [`fill_offset_pt`] before
-//! the underlying GLWE subtraction.
-//!
-//! [`fill_offset_pt`]: super::utils::fill_offset_pt
+//! Provides ct-ct, ct-pt in ZNX form, and ct-pt in RNX form, each in
+//! out-of-place and in-place form.
 
-use super::{
-    align::{align_to, are_cts_aligned, assert_cts_aligned, common_window},
-    utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes},
-};
+use std::fmt::Debug;
+
 use crate::layouts::{
-    ciphertext::{CKKSCiphertext, CKKSCiphertextToRef},
-    plaintext::CKKSPlaintext,
-    plaintext_prepared::CKKSPlaintextPrepared,
+    ciphertext::CKKSCiphertext,
+    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
 };
 use poulpy_core::{
-    GLWENormalize, GLWESub, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWELayout, LWEInfos},
+    GLWECopy, GLWEShift, GLWESub, ScratchTakeCore,
+    layouts::{GLWEPlaintextLayout, LWEInfos},
 };
 use poulpy_hal::{
-    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    api::{ScratchAvailable, VecZnxRshSub},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-/// Returns the scratch bytes needed for [`sub`] and [`sub_inplace`].
-pub fn sub_tmp_bytes<BE: Backend>(
-    module: &Module<BE>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
-) -> usize
-where
-    Module<BE>: GLWENormalize<BE>,
-{
-    let (_, target_k) = common_window(a, b);
-    let layout = GLWELayout {
-        n: a.inner.n(),
-        base2k: a.inner.base2k(),
-        k: target_k,
-        rank: a.inner.rank(),
-    };
-    GLWE::bytes_of_from_infos(&layout)
-        + module
-            .glwe_normalize_tmp_bytes()
-}
+use anyhow::Result;
+use rand_distr::num_traits::{Float, FloatConst};
 
-/// Computes `res = a - b` for already-aligned ciphertexts (no scratch needed).
-pub fn sub_aligned<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    a.assert_valid("sub_aligned lhs");
-    b.assert_valid("sub_aligned rhs");
-    assert_cts_aligned(a, b, "sub_aligned");
-    assert_eq!(
-        a.torus_scale_bits(),
-        b.torus_scale_bits(),
-        "sub_aligned: torus_scale_bits mismatch ({} != {})",
-        a.torus_scale_bits(),
-        b.torus_scale_bits()
-    );
-    res.torus_scale_bits = a.torus_scale_bits();
-    res.offset_bits = a.offset_bits();
-    res.set_active_k(a.inner.k());
-    res.zero_inactive_tail();
-    module.glwe_sub(&mut res.inner, &a.inner, &b.inner);
-    res.assert_valid("sub_aligned result");
-}
+impl<D: DataMut> CKKSCiphertext<D> {
+    pub fn sub<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        b: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWESub + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        // If the destination has less precision than the aligned inputs, shift
+        // the computation down by `offset` bits before writing the result.
+        let offset = a
+            .inner
+            .max_k()
+            .min(b.inner.max_k())
+            .as_usize()
+            .saturating_sub(self.inner.max_k().as_usize());
 
-/// Computes `res = a - b`.
-pub fn sub<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + GLWENormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    a.assert_valid("sub lhs");
-    b.assert_valid("sub rhs");
-    assert_eq!(
-        a.torus_scale_bits(),
-        b.torus_scale_bits(),
-        "sub: torus_scale_bits mismatch ({} != {})",
-        a.torus_scale_bits(),
-        b.torus_scale_bits()
-    );
-    let aligned_inputs = are_cts_aligned(a, b);
-    if aligned_inputs {
-        sub_aligned(module, res, a, b);
-        return;
+        if offset == 0 && a.log_delta == b.log_delta {
+            module.glwe_sub(&mut self.inner, &a.inner, &b.inner);
+        } else if a.log_delta <= b.log_delta {
+            module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
+            module.glwe_lsh_sub(&mut self.inner, &b.inner, b.log_delta - a.log_delta + offset, scratch);
+        } else {
+            module.glwe_lsh(&mut self.inner, &a.inner, a.log_delta - b.log_delta + offset, scratch);
+            module.glwe_lsh_sub(&mut self.inner, &b.inner, offset, scratch);
+        }
+
+        self.log_delta = a.log_delta.min(b.log_delta) - offset;
+
+        Ok(())
     }
 
-    let (offset_common, target_k) = common_window(a, b);
-    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
-    let b_needs_align = b.offset_bits() != offset_common || b.delta() != target_k.0;
+    pub fn sub_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWESub + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        if self.log_delta < a.log_delta {
+            module.glwe_lsh_sub(&mut self.inner, &a.inner, a.log_delta - self.log_delta, scratch);
+        } else if self.log_delta > a.log_delta {
+            module.glwe_lsh_inplace(&mut self.inner, self.log_delta - a.log_delta, scratch);
+            module.glwe_sub_inplace(&mut self.inner, &a.inner);
+        } else {
+            module.glwe_sub_inplace(&mut self.inner, &a.inner);
+        }
 
-    res.torus_scale_bits = a.torus_scale_bits();
-    res.offset_bits = offset_common;
-    res.set_active_k(target_k);
-    res.zero_inactive_tail();
+        self.log_delta = self.log_delta.min(a.log_delta);
 
-    if !a_needs_align && !b_needs_align {
-        module.glwe_sub(&mut res.inner, &a.inner, &b.inner);
-        res.assert_valid("sub result");
-        return;
+        Ok(())
     }
 
-    let layout = GLWELayout {
-        n: a.inner.n(),
-        base2k: a.inner.base2k(),
-        k: target_k,
-        rank: a.inner.rank(),
-    };
-    let (tmp, scratch_1) = scratch.take_glwe(&layout);
-    let mut tmp_ct = CKKSCiphertext {
-        inner: tmp,
-        offset_bits: offset_common,
-        torus_scale_bits: b.torus_scale_bits(),
-    };
-    align_to(module, &mut tmp_ct, b, offset_common, target_k, scratch_1);
-    align_to(module, res, a, offset_common, target_k, scratch_1);
-    module.glwe_sub_inplace(&mut res.inner, &tmp_ct.inner);
-    res.assert_valid("sub result");
-}
-
-/// Computes `res -= a` for already-aligned ciphertexts (no scratch needed).
-pub fn sub_aligned_inplace<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    a: &CKKSCiphertext<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    res.assert_valid("sub_aligned_inplace lhs");
-    a.assert_valid("sub_aligned_inplace rhs");
-    assert_cts_aligned(res, a, "sub_aligned_inplace");
-    assert_eq!(
-        res.torus_scale_bits(),
-        a.torus_scale_bits(),
-        "sub_aligned_inplace: torus_scale_bits mismatch ({} != {})",
-        res.torus_scale_bits(),
-        a.torus_scale_bits()
-    );
-    module.glwe_sub_inplace(&mut res.inner, &a.inner);
-    res.assert_valid("sub_aligned_inplace result");
-}
-
-/// Computes `res -= a` in place.
-pub fn sub_inplace<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    a: &CKKSCiphertext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + GLWENormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    res.assert_valid("sub_inplace lhs");
-    a.assert_valid("sub_inplace rhs");
-    assert_eq!(
-        res.torus_scale_bits(),
-        a.torus_scale_bits(),
-        "sub_inplace: torus_scale_bits mismatch ({} != {})",
-        res.torus_scale_bits(),
-        a.torus_scale_bits()
-    );
-    let aligned_inputs = are_cts_aligned(res, a);
-    if aligned_inputs {
-        sub_aligned_inplace(module, res, a);
-        return;
+    pub fn sub_pt_znx<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshSub<BE> + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let offset = a.inner.max_k().as_usize().saturating_sub(self.inner.max_k().as_usize());
+        module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
+        self.log_delta = a.log_delta - offset;
+        self.sub_pt_znx_inplace(module, pt_znx, scratch)?;
+        Ok(())
     }
 
-    let (offset_common, target_k) = common_window(res, a);
-    let res_needs_align = res.offset_bits() != offset_common || res.delta() != target_k.0;
-    let a_needs_align = a.offset_bits() != offset_common || a.delta() != target_k.0;
-
-    if !res_needs_align && !a_needs_align {
-        module.glwe_sub_inplace(&mut res.inner, &a.inner);
-        res.offset_bits = offset_common;
-        res.assert_valid("sub_inplace result");
-        return;
+    pub fn sub_pt_znx_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshSub<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        pt_znx.sub_to(module, self.inner.data_mut(), self.log_delta, scratch);
+        Ok(())
     }
 
-    let layout = GLWELayout {
-        n: res.inner.n(),
-        base2k: res.inner.base2k(),
-        k: target_k,
-        rank: res.inner.rank(),
-    };
-    let (tmp, scratch_1) = scratch.take_glwe(&layout);
-    let mut tmp_ct = CKKSCiphertext {
-        inner: tmp,
-        offset_bits: offset_common,
-        torus_scale_bits: res.torus_scale_bits(),
-    };
-    align_to(module, &mut tmp_ct, &res.to_ref(), offset_common, target_k, scratch_1);
-    align_to(module, res, a, offset_common, target_k, scratch_1);
-    module.glwe_sub_negate_inplace(&mut res.inner, &tmp_ct.inner);
-    res.assert_valid("sub_inplace result");
-}
+    pub fn sub_pt_rnx<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: PrecisionLayout,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshSub<BE> + GLWECopy + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.inner.base2k(),
+            k: prec.k(self.inner.base2k()),
+        });
+        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.sub_pt_znx(module, a, &pt_znx, scratch_1)?;
+        Ok(())
+    }
 
-/// Returns the scratch bytes needed for [`sub_pt`] and [`sub_pt_inplace`].
-pub fn sub_pt_tmp_bytes<BE: Backend>(module: &Module<BE>, ct: &CKKSCiphertext<impl Data>) -> usize
-where
-    Module<BE>: VecZnxNormalizeTmpBytes,
-{
-    offset_pt_scratch_bytes(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-    )
-}
-
-/// Computes `res = ct - pt`.
-pub fn sub_pt<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    pt: &CKKSPlaintext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    ct.assert_valid("sub_pt ciphertext");
-    assert_eq!(
-        ct.torus_scale_bits(),
-        pt.embed_bits(),
-        "sub_pt: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
-        ct.torus_scale_bits(),
-        pt.embed_bits()
-    );
-    res.torus_scale_bits = ct.torus_scale_bits();
-    res.offset_bits = ct.offset_bits();
-    let (full_pt, _) = offset_pt_from_scratch(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        poulpy_core::layouts::TorusPrecision(ct.offset_bits()),
-        pt,
-        scratch,
-    );
-    module.glwe_sub(&mut res.inner, &ct.inner, &full_pt);
-    res.assert_valid("sub_pt result");
-}
-
-/// Computes `ct -= pt` in place.
-pub fn sub_pt_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    pt: &CKKSPlaintext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    ct.assert_valid("sub_pt_inplace ciphertext");
-    assert_eq!(
-        ct.torus_scale_bits(),
-        pt.embed_bits(),
-        "sub_pt_inplace: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
-        ct.torus_scale_bits(),
-        pt.embed_bits()
-    );
-    let (full_pt, _) = offset_pt_from_scratch(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        poulpy_core::layouts::TorusPrecision(ct.offset_bits()),
-        pt,
-        scratch,
-    );
-    module.glwe_sub_inplace(&mut ct.inner, &full_pt);
-    ct.assert_valid("sub_pt_inplace result");
-}
-
-/// Computes `res = ct - pt` using a pre-expanded plaintext (no scratch needed).
-pub fn sub_prepared_pt<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    pt: &CKKSPlaintextPrepared<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    ct.assert_valid("sub_prepared_pt ciphertext");
-    assert_eq!(
-        ct.torus_scale_bits(),
-        pt.embed_bits(),
-        "sub_prepared_pt: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
-        ct.torus_scale_bits(),
-        pt.embed_bits()
-    );
-    res.torus_scale_bits = ct.torus_scale_bits();
-    res.offset_bits = ct.offset_bits();
-    module.glwe_sub(&mut res.inner, &ct.inner, &pt.inner);
-    res.assert_valid("sub_prepared_pt result");
-}
-
-/// Computes `ct -= pt` in place using a pre-expanded plaintext (no scratch needed).
-pub fn sub_prepared_pt_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    pt: &CKKSPlaintextPrepared<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    ct.assert_valid("sub_prepared_pt_inplace ciphertext");
-    assert_eq!(
-        ct.torus_scale_bits(),
-        pt.embed_bits(),
-        "sub_prepared_pt_inplace: scale mismatch (ct.torus_scale_bits={}, pt.embed_bits={})",
-        ct.torus_scale_bits(),
-        pt.embed_bits()
-    );
-    module.glwe_sub_inplace(&mut ct.inner, &pt.inner);
-    ct.assert_valid("sub_prepared_pt_inplace result");
-}
-
-/// Returns the scratch bytes needed for [`sub_const`] and [`sub_const_inplace`].
-pub fn sub_const_tmp_bytes<BE: Backend>(module: &Module<BE>, ct: &CKKSCiphertext<impl Data>) -> usize
-where
-    Module<BE>: VecZnxNormalizeTmpBytes,
-{
-    const_pt_scratch_bytes(ct) + sub_pt_tmp_bytes(module, ct)
-}
-
-/// Computes `res = ct - c` where `c = re + i*im`.
-pub fn sub_const<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    re: f64,
-    im: f64,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let (pt, scratch_rest) = const_pt_from_scratch(ct, re, im, scratch);
-    sub_pt(module, res, ct, &pt, scratch_rest);
-}
-
-/// Computes `ct -= c` in place where `c = re + i*im`.
-pub fn sub_const_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    re: f64,
-    im: f64,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let (pt, scratch_rest) = const_pt_from_scratch(ct, re, im, scratch);
-    sub_pt_inplace(module, ct, &pt, scratch_rest);
+    pub fn sub_pt_rnx_inplace<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: PrecisionLayout,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshSub<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.inner.base2k(),
+            k: prec.k(self.inner.base2k()),
+        });
+        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.sub_pt_znx_inplace(module, &pt_znx, scratch_1)?;
+        Ok(())
+    }
 }
