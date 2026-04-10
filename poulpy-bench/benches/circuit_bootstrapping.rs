@@ -11,6 +11,11 @@ fn bench_circuit_bootstrapping(c: &mut Criterion) {
         c,
         "fft64-avx",
     );
+    #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
+    poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_ifma::FFT64Ifma, CGGI>(
+        c,
+        "fft64-ifma",
+    );
 }
 
 criterion_group! {

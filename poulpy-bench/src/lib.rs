@@ -68,7 +68,14 @@ macro_rules! for_each_fft_backend_family {
     }};
 }
 
-/// Private: expands to every NTT-family backend in tier order (ref → avx → ifma → gpu).
+/// Private: expands to every NTT-family backend in tier order
+/// (ntt120-ref → ntt120-avx → ntt-ifma-ref → ntt-ifma → gpu).
+///
+/// Two reference scalar backends are listed because they cover different CRT layouts:
+/// `NTT120Ref` decomposes Q120 into four ~30-bit primes, while `NTTIfmaRef` decomposes
+/// it into three ~40-bit primes (matching the layout the AVX-512 IFMA backend
+/// accelerates). Benchmarking both gives an apples-to-apples scalar baseline for
+/// each SIMD backend.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! for_each_ntt_backend_family {
@@ -81,6 +88,10 @@ macro_rules! for_each_ntt_backend_family {
         {
             use $fn as __f;
             __f::<poulpy_cpu_avx::NTT120Avx>($($arg,)* $c, "ntt120-avx");
+        }
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_ref::NTTIfmaRef>($($arg,)* $c, "ntt-ifma-ref");
         }
         #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
         {
