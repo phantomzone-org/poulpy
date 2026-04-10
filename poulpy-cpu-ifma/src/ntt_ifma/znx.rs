@@ -7,18 +7,19 @@
 use poulpy_hal::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
-    ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep,
-    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace,
-    ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
+    ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
+    ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxRotate,
+    ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
 };
 
 use crate::znx_ifma::{
     znx_add_ifma, znx_add_inplace_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
     znx_mul_power_of_two_ifma, znx_mul_power_of_two_inplace_ifma, znx_negate_ifma, znx_negate_inplace_ifma,
     znx_normalize_digit_ifma, znx_normalize_final_step_ifma, znx_normalize_final_step_inplace_ifma,
-    znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma, znx_normalize_first_step_inplace_ifma,
-    znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma, znx_normalize_middle_step_inplace_ifma,
-    znx_sub_ifma, znx_sub_inplace_ifma, znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
+    znx_normalize_final_step_sub_ifma, znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma,
+    znx_normalize_first_step_inplace_ifma, znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma,
+    znx_normalize_middle_step_inplace_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_ifma, znx_sub_inplace_ifma,
+    znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
 };
 
 use super::NTTIfma;
@@ -130,8 +131,15 @@ impl ZnxSwitchRing for NTTIfma {
 
 impl ZnxNormalizeFinalStep for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_final_step_ifma(base2k, lsh, x, a, carry) }
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeFinalStepSub for NTTIfma {
+    #[inline(always)]
+    fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_sub_ifma(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -144,8 +152,8 @@ impl ZnxNormalizeFinalStepInplace for NTTIfma {
 
 impl ZnxNormalizeFirstStep for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_first_step_ifma(base2k, lsh, x, a, carry) }
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_first_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -165,8 +173,15 @@ impl ZnxNormalizeFirstStepInplace for NTTIfma {
 
 impl ZnxNormalizeMiddleStep for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_middle_step_ifma(base2k, lsh, x, a, carry) }
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeMiddleStepSub for NTTIfma {
+    #[inline(always)]
+    fn znx_normalize_middle_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_sub_ifma(base2k, lsh, x, a, carry) }
     }
 }
 

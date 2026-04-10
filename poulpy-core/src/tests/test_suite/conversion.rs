@@ -7,8 +7,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
-    LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, SIGMA, ScratchTakeCore,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize,
+    GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
         GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
@@ -38,17 +38,21 @@ where
 
     for rank in 1_usize..3 {
         for bases in [[base2k, base2k - 3], [base2k - 3, base2k]] {
-            let glwe_infos_in: GLWELayout = GLWELayout {
+            let k_in = 4 * bases[0] + 1;
+            let k_out = 4 * bases[0] + 1;
+
+            let glwe_infos_in = EncryptionLayout::new_from_default_sigma(GLWELayout {
                 n: n_glwe,
                 base2k: Base2K(bases[0] as u32),
-                k: TorusPrecision((4 * bases[0] + 1) as u32),
+                k: TorusPrecision(k_in as u32),
                 rank: Rank(rank as u32),
-            };
+            })
+            .unwrap();
 
             let glwe_infos_out: GLWELayout = GLWELayout {
                 n: n_glwe,
                 base2k: Base2K(bases[1] as u32),
-                k: TorusPrecision((4 * bases[0] + 1) as u32),
+                k: TorusPrecision(k_out as u32),
                 rank: Rank(rank as u32),
             };
 
@@ -68,7 +72,15 @@ where
             let pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
             let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_out);
 
-            ct_in.encrypt_sk(module, &pt_in, &sk_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+            ct_in.encrypt_sk(
+                module,
+                &pt_in,
+                &sk_prep,
+                &glwe_infos_in,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut data: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
@@ -80,7 +92,7 @@ where
             ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
             let noise_have = ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2();
-            let noise_max = -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.50;
+            let noise_max = -(k_out as f64) + DEFAULT_SIGMA_XE.log2() + 0.50;
 
             assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}")
         }
@@ -105,31 +117,36 @@ where
 
     let rank: Rank = Rank(2);
     let k_lwe_pt: TorusPrecision = TorusPrecision(8);
+    let k_ksk = 5 * base2k + 1;
+    let k_glwe = 4 * base2k + 1;
+    let k_lwe = 4 * base2k + 1;
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
-    let lwe_to_glwe_infos: LWEToGLWEKeyLayout = LWEToGLWEKeyLayout {
+    let lwe_to_glwe_infos = EncryptionLayout::new_from_default_sigma(LWEToGLWEKeyLayout {
         n: n_glwe,
         base2k: Base2K(base2k as u32),
-        k: TorusPrecision((5 * base2k + 1) as u32),
+        k: TorusPrecision(k_ksk as u32),
         dnum: Dnum(2),
         rank_out: rank,
-    };
+    })
+    .unwrap();
 
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
         base2k: Base2K(base2k as u32 - 1),
-        k: TorusPrecision((4 * base2k + 1) as u32),
+        k: TorusPrecision(k_glwe as u32),
         rank,
     };
 
-    let lwe_infos: LWELayout = LWELayout {
+    let lwe_infos = EncryptionLayout::new_from_default_sigma(LWELayout {
         n: n_lwe,
         base2k: Base2K(base2k as u32 - 2),
-        k: TorusPrecision((4 * base2k + 1) as u32),
-    };
+        k: TorusPrecision(k_lwe as u32),
+    })
+    .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         LWEToGLWEKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
@@ -152,7 +169,15 @@ where
     lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    lwe_ct.encrypt_sk(module, &lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    lwe_ct.encrypt_sk(
+        module,
+        &lwe_pt,
+        &sk_lwe,
+        &lwe_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
 
@@ -160,8 +185,9 @@ where
         module,
         &sk_lwe,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &lwe_to_glwe_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -175,7 +201,7 @@ where
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
     glwe_ct.decrypt(module, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
 
-    let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.k());
+    let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.max_k());
 
     module.vec_znx_normalize(
         lwe_pt_conv.data_mut(),
@@ -209,29 +235,34 @@ where
     let n_glwe: Degree = Degree(module.n() as u32);
     let n_lwe: Degree = Degree(22);
     let base2k: usize = params.base2k;
+    let k_ksk = 5 * base2k + 1;
+    let k_glwe = 4 * base2k + 1;
+    let k_lwe = 4 * base2k + 1;
 
     let rank: Rank = Rank(2);
     let k_lwe_pt: TorusPrecision = TorusPrecision(8);
 
-    let glwe_to_lwe_infos: GLWEToLWEKeyLayout = GLWEToLWEKeyLayout {
+    let glwe_to_lwe_infos = EncryptionLayout::new_from_default_sigma(GLWEToLWEKeyLayout {
         n: n_glwe,
         base2k: Base2K(base2k as u32),
-        k: TorusPrecision((5 * base2k + 1) as u32),
+        k: TorusPrecision(k_ksk as u32),
         dnum: Dnum(2),
         rank_in: rank,
-    };
+    })
+    .unwrap();
 
-    let glwe_infos: GLWELayout = GLWELayout {
+    let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n: n_glwe,
         base2k: Base2K(base2k as u32 - 1),
-        k: TorusPrecision((4 * base2k + 1) as u32),
+        k: TorusPrecision(k_glwe as u32),
         rank,
-    };
+    })
+    .unwrap();
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,
         base2k: Base2K(base2k as u32 - 2),
-        k: TorusPrecision((4 * base2k + 1) as u32),
+        k: TorusPrecision(k_lwe as u32),
     };
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -265,14 +296,23 @@ where
         module,
         &glwe_pt,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
     let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_from_infos(&glwe_to_lwe_infos);
 
-    ksk.encrypt_sk(module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    ksk.encrypt_sk(
+        module,
+        &sk_lwe,
+        &sk_glwe,
+        &glwe_to_lwe_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
@@ -284,7 +324,7 @@ where
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
     lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe, scratch.borrow());
 
-    let mut glwe_pt_conv = GLWEPlaintext::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.k());
+    let mut glwe_pt_conv = GLWEPlaintext::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.max_k());
 
     module.vec_znx_normalize(
         glwe_pt_conv.data_mut(),

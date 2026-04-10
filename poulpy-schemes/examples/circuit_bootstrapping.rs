@@ -1,11 +1,12 @@
 use poulpy_core::{
-    GLWENormalize,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWENormalize,
     layouts::{
         GGLWEToGGSWKeyLayout, GGSW, GGSWInfos, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWEInfos, GLWELayout, GLWEPlaintext,
-        GLWESecret, LWE, LWELayout, LWEPlaintext, LWESecret,
+        GLWESecret, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
+use poulpy_hal::layouts::NoiseInfos;
 use std::time::Instant;
 
 #[cfg(all(
@@ -32,7 +33,10 @@ use poulpy_hal::{
 
 use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationKeyLayout, CGGI},
-    circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared},
+    circuit_bootstrapping::{
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingKey, CircuitBootstrappingKeyLayout,
+        CircuitBootstrappingKeyPrepared,
+    },
 };
 
 fn main() {
@@ -171,15 +175,34 @@ fn main() {
     // LWE ciphertext
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
+    let lwe_enc_infos = NoiseInfos::new(lwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_layout).unwrap();
+
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    ct_lwe.encrypt_sk(
+        &module,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_layout);
 
-    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    cbt_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
@@ -239,12 +262,14 @@ fn main() {
     println!("{}", pt_glwe);
 
     // Encrypt
+    let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     ct_glwe.encrypt_sk(
         &module,
         &pt_glwe,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 

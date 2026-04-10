@@ -6,8 +6,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEExternalProduct, GGLWENoise, GGSWEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GGLWEExternalProduct, GGLWENoise, GGSWEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEInfos, GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
         GLWESwitchingKeyLayout,
@@ -47,7 +47,7 @@ where
                 let dnum: usize = k_in.div_ceil(key_base2k * dsize);
                 let dsize_in: usize = 1;
 
-                let gglwe_in_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+                let gglwe_in_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: in_base2k.into(),
                     k: k_in.into(),
@@ -55,7 +55,8 @@ where
                     dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                })
+                .unwrap();
 
                 let gglwe_out_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
@@ -67,14 +68,15 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let ggsw_infos: GGSWLayout = GGSWLayout {
+                let ggsw_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                     n: n.into(),
                     base2k: key_base2k.into(),
                     k: k_ggsw.into(),
                     dnum: dnum.into(),
                     dsize: dsize.into(),
                     rank: rank_out.into(),
-                };
+                })
+                .unwrap();
 
                 let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_in_infos);
                 let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
@@ -108,14 +110,23 @@ where
                 sk_out_prepared.prepare(module, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe_in.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+                ct_gglwe_in.encrypt_sk(
+                    module,
+                    &sk_in,
+                    &sk_out,
+                    &gglwe_in_infos,
+                    &mut source_xe,
+                    &mut source_xa,
+                    scratch.borrow(),
+                );
 
                 ct_rgsw.encrypt_sk(
                     module,
                     &pt_rgsw,
                     &sk_out_prepared,
-                    &mut source_xa,
+                    &ggsw_infos,
                     &mut source_xe,
+                    &mut source_xa,
                     scratch.borrow(),
                 );
 
@@ -129,11 +140,11 @@ where
                     module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}
                 });
 
-                let var_gct_err_lhs: f64 = SIGMA * SIGMA;
+                let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
                 let var_gct_err_rhs: f64 = 0f64;
 
                 let var_msg: f64 = 1f64 / n as f64; // X^{k}
-                let var_a0_err: f64 = SIGMA * SIGMA;
+                let var_a0_err: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
                 let var_a1_err: f64 = 1f64 / 12f64;
 
                 let max_noise: f64 = noise_ggsw_product(
@@ -195,7 +206,7 @@ where
 
                 let dsize_in: usize = 1;
 
-                let gglwe_out_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
+                let gglwe_out_infos = EncryptionLayout::new_from_default_sigma(GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: out_base2k.into(),
                     k: k_out.into(),
@@ -203,16 +214,18 @@ where
                     dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
-                };
+                })
+                .unwrap();
 
-                let ggsw_infos: GGSWLayout = GGSWLayout {
+                let ggsw_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                     n: n.into(),
                     base2k: key_base2k.into(),
                     k: k_ggsw.into(),
                     dnum: dnum.into(),
                     dsize: dsize.into(),
                     rank: rank_out.into(),
-                };
+                })
+                .unwrap();
 
                 let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
                 let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
@@ -245,14 +258,23 @@ where
                 sk_out_prepared.prepare(module, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe.encrypt_sk(module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+                ct_gglwe.encrypt_sk(
+                    module,
+                    &sk_in,
+                    &sk_out,
+                    &gglwe_out_infos,
+                    &mut source_xe,
+                    &mut source_xa,
+                    scratch.borrow(),
+                );
 
                 ct_rgsw.encrypt_sk(
                     module,
                     &pt_rgsw,
                     &sk_out_prepared,
-                    &mut source_xa,
+                    &ggsw_infos,
                     &mut source_xe,
+                    &mut source_xa,
                     scratch.borrow(),
                 );
 
@@ -266,11 +288,11 @@ where
                     module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}
                 });
 
-                let var_gct_err_lhs: f64 = SIGMA * SIGMA;
+                let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
                 let var_gct_err_rhs: f64 = 0f64;
 
                 let var_msg: f64 = 1f64 / n as f64; // X^{k}
-                let var_a0_err: f64 = SIGMA * SIGMA;
+                let var_a0_err: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
                 let var_a1_err: f64 = 1f64 / 12f64;
 
                 let max_noise: f64 = noise_ggsw_product(

@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, GLWEToLWEKey, LWEInfos, LWESecret, LWESecretToRef, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
@@ -23,21 +23,24 @@ impl GLWEToLWEKey<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWEToLWEKey<D> {
-    pub fn encrypt_sk<M, S1, S2, BE: Backend>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<M, S1, S2, E, BE: Backend>(
         &mut self,
         module: &M,
         sk_lwe: &S1,
         sk_glwe: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         M: GLWEToLWESwitchingKeyEncryptSk<BE>,
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_to_lwe_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        module.glwe_to_lwe_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -46,17 +49,20 @@ pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_lwe: &S1,
         sk_glwe: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
+        E: EncryptionInfos,
         R: GGLWEToMut + GGLWEInfos;
 }
 
@@ -83,17 +89,20 @@ where
         lvl_0 + lvl_1_sk_lwe_as_glwe.max(lvl_1_encrypt)
     }
 
-    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_lwe: &S1,
         sk_glwe: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
+        E: EncryptionInfos,
         R: GGLWEToMut + GGLWEInfos,
     {
         let sk_lwe: &LWESecret<&[u8]> = &sk_lwe.to_ref();
@@ -118,6 +127,14 @@ where
             sk_lwe_as_glwe_prep.prepare(self, &sk_lwe_as_glwe);
         }
 
-        self.gglwe_encrypt_sk(res, &sk_glwe.data, &sk_lwe_as_glwe_prep, source_xa, source_xe, scratch_1);
+        self.gglwe_encrypt_sk(
+            res,
+            &sk_glwe.data,
+            &sk_lwe_as_glwe_prep,
+            enc_infos,
+            source_xe,
+            source_xa,
+            scratch_1,
+        );
     }
 }

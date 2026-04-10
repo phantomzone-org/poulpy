@@ -27,7 +27,7 @@ use std::arch::global_asm;
 pub(crate) use conversion::*;
 pub(crate) use fft_vec_avx2_fma::*;
 
-use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTTable, ReimIFFTTable};
+use poulpy_hal::reference::fft64::reim::{ReimFFTExecute, ReimFFTTable, ReimIFFTTable};
 use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::fft64::reim::{fft_avx2_fma::fft_avx2_fma, ifft_avx2_fma::ifft_avx2_fma};
@@ -48,7 +48,7 @@ pub(crate) fn as_arr_mut<const SIZE: usize, R: Float + FloatConst>(x: &mut [R]) 
 
 pub struct ReimFFTAvx;
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTAvx {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for ReimFFTAvx {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         unsafe {
@@ -59,7 +59,7 @@ impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTAvx {
 
 pub struct ReimIFFTAvx;
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTAvx {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTAvx {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         unsafe {

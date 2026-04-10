@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
+    EncryptionInfos, ScratchTakeCore,
     encryption::gglwe::GGLWEEncryptSk,
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos,
@@ -32,21 +32,24 @@ impl GLWESwitchingKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
-    pub fn encrypt_sk<M, S1, S2, BE: Backend>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<M, S1, S2, E, BE: Backend>(
         &mut self,
         module: &M,
         sk_in: &S1,
         sk_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
+        E: EncryptionInfos,
         M: GLWESwitchingKeyEncryptSk<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_switching_key_encrypt_sk(self, sk_in, sk_out, source_xa, source_xe, scratch);
+        module.glwe_switching_key_encrypt_sk(self, sk_in, sk_out, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -55,16 +58,19 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_switching_key_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
 }
@@ -87,16 +93,19 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_switching_key_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
     {
@@ -128,7 +137,7 @@ where
 
         sk_out_tmp.dist = sk_out.dist;
 
-        self.gglwe_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, source_xa, source_xe, scratch_2);
+        self.gglwe_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, enc_infos, source_xe, source_xa, scratch_2);
 
         *res.input_degree() = sk_in.n();
         *res.output_degree() = sk_out.n();

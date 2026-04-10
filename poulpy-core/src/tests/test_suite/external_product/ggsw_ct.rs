@@ -6,8 +6,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
-    encryption::SIGMA,
+    EncryptionLayout, GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGSWPrepared, GLWESecretPrepared},
@@ -45,14 +45,15 @@ where
             let dnum_in: usize = k_in / in_base2k;
             let dsize_in: usize = 1;
 
-            let ggsw_in_infos: GGSWLayout = GGSWLayout {
+            let ggsw_in_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: in_base2k.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            };
+            })
+            .unwrap();
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
@@ -63,14 +64,15 @@ where
                 rank: rank.into(),
             };
 
-            let ggsw_apply_infos: GGSWLayout = GGSWLayout {
+            let ggsw_apply_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_apply.into(),
                 dnum: dnum.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            };
+            })
+            .unwrap();
 
             let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_infos);
             let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
@@ -104,12 +106,21 @@ where
                 module,
                 &pt_apply,
                 &sk_prepared,
-                &mut source_xa,
+                &ggsw_apply_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
-            ggsw_in.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+            ggsw_in.encrypt_sk(
+                module,
+                &pt_in,
+                &sk_prepared,
+                &ggsw_in_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
             ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());
@@ -118,11 +129,11 @@ where
 
             module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
-            let var_gct_err_lhs: f64 = SIGMA * SIGMA;
+            let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
 
             let var_msg: f64 = 1f64 / n as f64; // X^{k}
-            let var_a0_err: f64 = SIGMA * SIGMA;
+            let var_a0_err: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_a1_err: f64 = 1f64 / 12f64;
 
             let max_noise = |_col_j: usize| -> f64 {
@@ -182,23 +193,25 @@ where
             let dnum_in: usize = k_out / out_base2k;
             let dsize_in: usize = 1;
 
-            let ggsw_out_infos: GGSWLayout = GGSWLayout {
+            let ggsw_out_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: out_base2k.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
-            };
+            })
+            .unwrap();
 
-            let ggsw_apply_infos: GGSWLayout = GGSWLayout {
+            let ggsw_apply_infos = EncryptionLayout::new_from_default_sigma(GGSWLayout {
                 n: n.into(),
                 base2k: key_base2k.into(),
                 k: k_apply.into(),
                 dnum: dnum.into(),
                 dsize: dsize.into(),
                 rank: rank.into(),
-            };
+            })
+            .unwrap();
 
             let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
             let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
@@ -232,12 +245,21 @@ where
                 module,
                 &pt_apply,
                 &sk_prepared,
-                &mut source_xa,
+                &ggsw_apply_infos,
                 &mut source_xe,
+                &mut source_xa,
                 scratch.borrow(),
             );
 
-            ggsw_out.encrypt_sk(module, &pt_in, &sk_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+            ggsw_out.encrypt_sk(
+                module,
+                &pt_in,
+                &sk_prepared,
+                &ggsw_out_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
             ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());
@@ -246,11 +268,11 @@ where
 
             module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
-            let var_gct_err_lhs: f64 = SIGMA * SIGMA;
+            let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
 
             let var_msg: f64 = 1f64 / n as f64; // X^{k}
-            let var_a0_err: f64 = SIGMA * SIGMA;
+            let var_a0_err: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_a1_err: f64 = 1f64 / 12f64;
 
             let max_noise = |_col_j: usize| -> f64 {

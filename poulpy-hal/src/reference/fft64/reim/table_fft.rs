@@ -21,12 +21,12 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::{
     alloc_aligned,
-    reference::fft64::reim::{ReimDFTExecute, fft_ref, frac_rev_bits},
+    reference::fft64::reim::{ReimFFTExecute, fft_ref, frac_rev_bits},
 };
 
 pub struct ReimFFTRef;
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTRef {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for ReimFFTRef {
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         fft_ref(table.m, &table.omg, data);
     }
@@ -37,7 +37,7 @@ pub struct ReimFFTTable<R: Float + FloatConst + Debug> {
     omg: Vec<R>,
 }
 
-impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
+impl<R: Float + FloatConst + Debug> ReimFFTTable<R> {
     pub fn new(m: usize) -> Self {
         assert!(m & (m - 1) == 0, "m must be a power of two but is {m}");
         let mut omg: Vec<R> = alloc_aligned::<R>(2 * m);
@@ -68,6 +68,10 @@ impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
         }
 
         Self { m, omg }
+    }
+
+    pub fn execute(&self, data: &mut [R]) {
+        fft_ref(self.m, &self.omg, data);
     }
 
     pub fn m(&self) -> usize {

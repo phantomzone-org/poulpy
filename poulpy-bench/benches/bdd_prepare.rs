@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
@@ -17,7 +17,8 @@ use poulpy_hal::{
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, FheUintPrepare, FheUintPrepared,
+        BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint,
+        FheUintPrepare, FheUintPrepared,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout},
@@ -87,8 +88,18 @@ where
         let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &params.glwe_layout);
         sk_glwe_prepared.prepare(&module, &sk_glwe);
 
+        let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&params.bdd_layout).unwrap();
+        let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(params.glwe_layout).unwrap();
         let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&params.bdd_layout);
-        bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+        bdd_key.encrypt_sk(
+            &module,
+            &sk_lwe,
+            &sk_glwe,
+            &bdd_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let input_a = 255_u32;
 
@@ -97,8 +108,9 @@ where
             &module,
             input_a,
             &sk_glwe_prepared,
-            &mut source_xa,
+            &glwe_enc_infos,
             &mut source_xe,
+            &mut source_xa,
             scratch.borrow(),
         );
 

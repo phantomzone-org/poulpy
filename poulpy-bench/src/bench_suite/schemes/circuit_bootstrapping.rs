@@ -17,8 +17,9 @@ use poulpy_hal::{
 use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout},
     circuit_bootstrapping::{
-        CircuitBootstrappingExecute, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingExecute, CircuitBootstrappingKey,
+        CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
+        CircuitBootstrappingKeyPreparedFactory,
     },
 };
 
@@ -102,8 +103,18 @@ where
 
     let ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
+
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
-    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    cbt_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
     let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =

@@ -62,7 +62,7 @@ where
         let lvl_0: usize = GLWE::bytes_of_from_infos(res);
         let lvl_1: usize = self
             .glwe_rotate_tmp_bytes()
-            .max(self.glwe_rsh_tmp_byte())
+            .max(self.glwe_shift_tmp_bytes())
             .max(self.glwe_normalize_tmp_bytes())
             .max(self.glwe_automorphism_tmp_bytes(res, res, key));
 

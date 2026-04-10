@@ -5,8 +5,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
-    encryption::{GGSWEncryptSk, GLWEEncryptSkInternal, SIGMA},
+    EncryptionInfos, ScratchTakeCore,
+    encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGSWCompressedSeedMut, GGSWInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},
@@ -26,20 +26,22 @@ impl GGSWCompressed<Vec<u8>> {
 
 impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, BE: Backend>(
+    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>,
+        E: EncryptionInfos,
         M: GGSWCompressedEncryptSk<BE>,
     {
-        module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
+        module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -48,17 +50,20 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
     where
         A: GGSWInfos;
 
-    fn ggsw_compressed_encrypt_sk<R, P, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>;
 }
 
@@ -76,17 +81,19 @@ where
         lvl_0
     }
 
-    fn ggsw_compressed_encrypt_sk<R, P, S>(
+    fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
         let base2k: usize = res.base2k().into();
@@ -133,15 +140,14 @@ where
 
                     self.glwe_encrypt_sk_internal(
                         res.base2k().into(),
-                        res.k().into(),
                         &mut res.at_mut(row_i, col_j).data,
                         cols,
                         true,
                         Some((&tmp_pt, col_j)),
                         sk,
-                        &mut source_xa_tmp,
+                        enc_infos,
                         source_xe,
-                        SIGMA,
+                        &mut source_xa_tmp,
                         scratch_1,
                     );
                 }

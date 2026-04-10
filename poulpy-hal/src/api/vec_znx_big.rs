@@ -1,5 +1,5 @@
 use crate::{
-    layouts::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, NoiseInfos, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -45,10 +45,8 @@ pub trait VecZnxBigAddNormal<B: Backend> {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
+        noise_infos: NoiseInfos,
         source: &mut Source,
-        sigma: f64,
-        bound: f64,
     );
 }
 

@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
         GLWESwitchingKeyDegreesMut, LWEInfos,
@@ -26,20 +26,22 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
 
 impl<D: DataMut> GLWESwitchingKeyCompressed<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S1, S2, BE: Backend>(
+    pub fn encrypt_sk<M, S1, S2, E, BE: Backend>(
         &mut self,
         module: &M,
         sk_in: &S1,
         sk_out: &S2,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
+        E: EncryptionInfos,
         M: GLWESwitchingKeyCompressedEncryptSk<BE>,
     {
-        module.glwe_switching_key_compressed_encrypt_sk(self, sk_in, sk_out, seed_xa, source_xe, scratch);
+        module.glwe_switching_key_compressed_encrypt_sk(self, sk_in, sk_out, seed_xa, enc_infos, source_xe, scratch);
     }
 }
 
@@ -48,16 +50,19 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
 }
@@ -80,16 +85,19 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
     {
@@ -121,7 +129,7 @@ where
 
         sk_out_tmp.dist = sk_out.dist;
 
-        self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, source_xe, scratch_2);
+        self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, enc_infos, source_xe, scratch_2);
 
         *res.input_degree() = sk_in.n();
         *res.output_degree() = sk_out.n();

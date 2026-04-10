@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPrepared,
         GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement,
@@ -34,19 +34,22 @@ impl<DM: DataMut> GLWEAutomorphismKey<DM>
 where
     Self: GGLWEToRef,
 {
-    pub fn encrypt_sk<S, M, BE: Backend>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         p: i64,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef,
+        E: EncryptionInfos,
         M: GLWEAutomorphismKeyEncryptSk<BE>,
     {
-        module.glwe_automorphism_key_encrypt_sk(self, p, sk, source_xa, source_xe, scratch);
+        module.glwe_automorphism_key_encrypt_sk(self, p, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -55,16 +58,20 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn glwe_automorphism_key_encrypt_sk<R, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_automorphism_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
+
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef;
 }
 
@@ -92,16 +99,20 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_automorphism_key_encrypt_sk<R, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_automorphism_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
+
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef,
     {
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
@@ -134,7 +145,7 @@ where
             sk_out_prepared.prepare(self, &sk_out);
         }
 
-        self.gglwe_encrypt_sk(res, &sk.data, &sk_out_prepared, source_xa, source_xe, scratch_1);
+        self.gglwe_encrypt_sk(res, &sk.data, &sk_out_prepared, enc_infos, source_xe, source_xa, scratch_1);
 
         res.set_p(p);
     }

@@ -63,7 +63,7 @@ pub(crate) fn frac_rev_bits<R: Float + FloatConst>(x: usize) -> R {
     }
 }
 
-pub trait ReimDFTExecute<D, T> {
+pub trait ReimFFTExecute<D, T> {
     fn reim_dft_execute(table: &D, data: &mut [T]);
 }
 

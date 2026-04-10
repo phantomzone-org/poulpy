@@ -3,9 +3,12 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
-    TorusPrecision,
+use crate::{
+    DeclaredK,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
+        TorusPrecision,
+    },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -34,6 +37,12 @@ pub struct GLWEAutomorphismKeyLayout {
     pub rank: Rank,
     pub dnum: Dnum,
     pub dsize: Dsize,
+}
+
+impl DeclaredK for GLWEAutomorphismKeyLayout {
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
 }
 
 /// GLWE automorphism (Galois) key.
@@ -89,10 +98,6 @@ impl<D: Data> LWEInfos for GLWEAutomorphismKey<D> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -127,12 +132,12 @@ impl LWEInfos for GLWEAutomorphismKeyLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -187,7 +192,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -215,7 +220,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),

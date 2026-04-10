@@ -1,5 +1,5 @@
 use crate::{
-    layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -159,6 +159,23 @@ pub trait VecZnxLsh<B: Backend> {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxLshAdd<B: Backend> {
+    /// Left shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_add<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
 /// Returns scratch bytes required for right-shift operations.
 pub trait VecZnxRshTmpBytes {
     fn vec_znx_rsh_tmp_bytes(&self) -> usize;
@@ -168,6 +185,57 @@ pub trait VecZnxRsh<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_rsh<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRshAdd<B: Backend> {
+    /// Right shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_add<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxLshSub<B: Backend> {
+    /// Left shift by k bits and subtract from destination.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_sub<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRshSub<B: Backend> {
+    /// Right shift by k bits and subtract from destination.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_sub<R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -312,31 +380,15 @@ pub trait VecZnxFillUniform {
 /// Fills the selected column with a discrete Gaussian noise vector
 /// scaled by `2^{-k}` with standard deviation `sigma`, bounded to `[-bound, bound]`.
 pub trait VecZnxFillNormal {
-    fn vec_znx_fill_normal<R>(
-        &self,
-        base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    ) where
+    fn vec_znx_fill_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
+    where
         R: VecZnxToMut;
 }
 
 #[allow(clippy::too_many_arguments)]
 pub trait VecZnxAddNormal {
     /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
-    fn vec_znx_add_normal<R>(
-        &self,
-        base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    ) where
+    fn vec_znx_add_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
+    where
         R: VecZnxToMut;
 }

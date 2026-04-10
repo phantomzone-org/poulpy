@@ -4,28 +4,28 @@ use poulpy_hal::{
         VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNormalizeTmpBytes, VecZnxRotateInplaceTmpBytes, VecZnxRshTmpBytes,
         VecZnxSplitRingTmpBytes,
     },
-    layouts::{Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl,
         VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl,
-        VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxLshTmpBytesImpl,
-        VecZnxMergeRingsImpl, VecZnxMergeRingsTmpBytesImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl,
-        VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-        VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
-        VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl, VecZnxZeroImpl,
+        VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshAddImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxLshSubImpl,
+        VecZnxLshTmpBytesImpl, VecZnxMergeRingsImpl, VecZnxMergeRingsTmpBytesImpl, VecZnxMulXpMinusOneImpl,
+        VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl,
+        VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
+        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshAddImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshSubImpl,
+        VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl, VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl,
+        VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl, VecZnxZeroImpl,
     },
     reference::vec_znx::{
         vec_znx_add, vec_znx_add_inplace, vec_znx_add_normal_ref, vec_znx_add_scalar, vec_znx_add_scalar_inplace,
         vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_automorphism_inplace_tmp_bytes, vec_znx_copy,
-        vec_znx_fill_normal_ref, vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_tmp_bytes,
-        vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace,
-        vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_negate, vec_znx_negate_inplace, vec_znx_normalize,
-        vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
-        vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
-        vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace, vec_znx_sub_scalar,
-        vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
+        vec_znx_fill_normal_ref, vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_sub,
+        vec_znx_lsh_tmp_bytes, vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one,
+        vec_znx_mul_xp_minus_one_inplace, vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_negate, vec_znx_negate_inplace,
+        vec_znx_normalize, vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
+        vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes,
+        vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
+        vec_znx_sub_scalar, vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
     },
     source::Source,
 };
@@ -274,7 +274,30 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_lsh_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh::<_, _, Self>(base2k, k, res, res_col, a, a_col, carry);
+        vec_znx_lsh::<_, _, Self, true>(base2k, k, res, res_col, a, a_col, carry);
+    }
+}
+
+unsafe impl VecZnxLshAddImpl<Self> for NTT120Avx
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_lsh_add_impl<R, A>(
+        module: &Module<Self>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_lsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh::<_, _, Self, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 }
 
@@ -317,7 +340,76 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_rsh_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh::<_, _, Self>(base2k, k, res, res_col, a, a_col, carry);
+        vec_znx_rsh::<_, _, Self, true>(base2k, k, res, res_col, a, a_col, carry);
+    }
+}
+
+unsafe impl VecZnxRshAddImpl<Self> for NTT120Avx
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_rsh_add_impl<R, A>(
+        module: &Module<Self>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_rsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh::<_, _, Self, false>(base2k, k, res, res_col, a, a_col, carry);
+    }
+}
+
+unsafe impl VecZnxLshSubImpl<Self> for NTT120Avx
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_lsh_sub_impl<R, A>(
+        module: &Module<Self>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_lsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh_sub::<_, _, Self>(base2k, k, res, res_col, a, a_col, carry);
+    }
+}
+
+unsafe impl VecZnxRshSubImpl<Self> for NTT120Avx
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_rsh_sub_impl<R, A>(
+        module: &Module<Self>,
+        base2k: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_rsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh_sub::<_, _, Self>(base2k, k, res, res_col, a, a_col, carry);
     }
 }
 
@@ -535,14 +627,12 @@ unsafe impl VecZnxFillNormalImpl<Self> for NTT120Avx {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_fill_normal_ref(base2k, res, res_col, k, sigma, bound, source);
+        vec_znx_fill_normal_ref(base2k, res, res_col, noise_infos, source_xe);
     }
 }
 
@@ -552,13 +642,11 @@ unsafe impl VecZnxAddNormalImpl<Self> for NTT120Avx {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
+        vec_znx_add_normal_ref(base2k, res, res_col, noise_infos, source_xe);
     }
 }

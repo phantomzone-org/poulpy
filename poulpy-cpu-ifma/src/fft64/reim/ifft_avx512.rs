@@ -17,9 +17,9 @@
 
 use std::arch::x86_64::{
     __m128d, __m256d, __m512d, __m512i, _mm_loadu_pd, _mm256_loadu_pd, _mm256_set_m128d, _mm256_storeu_pd, _mm512_add_pd,
-    _mm512_castpd256_pd512, _mm512_castpd512_pd256, _mm512_extractf64x4_pd, _mm512_fmadd_pd, _mm512_fmsub_pd,
-    _mm512_insertf64x4, _mm512_loadu_pd, _mm512_mul_pd, _mm512_permutex2var_pd, _mm512_set1_pd, _mm512_set_epi64,
-    _mm512_shuffle_pd, _mm512_storeu_pd, _mm512_sub_pd, _mm512_unpackhi_pd, _mm512_unpacklo_pd,
+    _mm512_castpd256_pd512, _mm512_castpd512_pd256, _mm512_extractf64x4_pd, _mm512_fmadd_pd, _mm512_fmsub_pd, _mm512_insertf64x4,
+    _mm512_loadu_pd, _mm512_mul_pd, _mm512_permutex2var_pd, _mm512_set_epi64, _mm512_set1_pd, _mm512_shuffle_pd,
+    _mm512_storeu_pd, _mm512_sub_pd, _mm512_unpackhi_pd, _mm512_unpacklo_pd,
 };
 
 use crate::fft64::reim::as_arr;

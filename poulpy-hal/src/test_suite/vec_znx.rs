@@ -12,7 +12,9 @@ use crate::{
         VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace,
         VecZnxSwitchRing,
     },
-    layouts::{Backend, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{
+        Backend, DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut,
+    },
     reference::znx::znx_copy_ref,
     source::Source,
 };
@@ -754,17 +756,15 @@ where
 {
     let n: usize = module.n();
     let base2k: usize = 17;
-    let k: usize = 2 * 17;
     let size: usize = 5;
-    let sigma: f64 = 3.2;
-    let bound: f64 = 6.0 * sigma;
-    let mut source: Source = Source::new([0u8; 32]);
+    let noise_infos = NoiseInfos::new(2 * 17, 3.2, 6.0 * 3.2).unwrap();
+    let mut source_xe: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
     let zero: Vec<i64> = vec![0; n];
-    let k_f64: f64 = (1u64 << k as u64) as f64;
+    let k_f64: f64 = (1u64 << noise_infos.k as u64) as f64;
     (0..cols).for_each(|col_i| {
         let mut a: VecZnx<_> = VecZnx::alloc(n, cols, size);
-        module.vec_znx_fill_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
+        module.vec_znx_fill_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {
@@ -772,7 +772,7 @@ where
                 })
             } else {
                 let std: f64 = a.stats(base2k, col_i).std() * k_f64;
-                assert!((std - sigma).abs() < 0.1, "std={std} ~!= {sigma}");
+                assert!((std - noise_infos.sigma).abs() < 0.1, "std={std} ~!= {}", noise_infos.sigma);
             }
         })
     });
@@ -784,19 +784,17 @@ where
 {
     let n: usize = module.n();
     let base2k: usize = 17;
-    let k: usize = 2 * 17;
     let size: usize = 5;
-    let sigma: f64 = 3.2;
-    let bound: f64 = 6.0 * sigma;
-    let mut source: Source = Source::new([0u8; 32]);
+    let noise_infos = NoiseInfos::new(2 * 17, 3.2, 6.0 * 3.2).unwrap();
+    let mut source_xe: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
     let zero: Vec<i64> = vec![0; n];
-    let k_f64: f64 = (1u64 << k as u64) as f64;
+    let k_f64: f64 = (1u64 << noise_infos.k as u64) as f64;
     let sqrt2: f64 = SQRT_2;
     (0..cols).for_each(|col_i| {
         let mut a: VecZnx<_> = VecZnx::alloc(n, cols, size);
-        module.vec_znx_fill_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
-        module.vec_znx_add_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
+        module.vec_znx_fill_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
+        module.vec_znx_add_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {
@@ -804,7 +802,11 @@ where
                 })
             } else {
                 let std: f64 = a.stats(base2k, col_i).std() * k_f64;
-                assert!((std - sigma * sqrt2).abs() < 0.1, "std={std} ~!= {}", sigma * sqrt2);
+                assert!(
+                    (std - noise_infos.sigma * sqrt2).abs() < 0.1,
+                    "std={std} ~!= {}",
+                    noise_infos.sigma * sqrt2
+                );
             }
         })
     });

@@ -1,49 +1,49 @@
 //! CKKS ciphertext slot rotation.
 //!
 //! Slot rotation is an automorphism whose Galois element is determined by
-//! the rotation amount.  The caller must supply the prepared automorphism
-//! key for the desired rotation (obtained via `Module::galois_element`).
+//! the rotation amount. The public API is expressed in terms of the slot
+//! shift `k`, and the provided key store is indexed by that same shift.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
-use poulpy_core::{GLWEAutomorphism, ScratchTakeCore, layouts::GLWEAutomorphismKeyPrepared};
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_core::{
+    GLWEAutomorphism, ScratchTakeCore,
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GetGaloisElement},
+};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-/// Returns the scratch bytes needed for [`rotate`] and [`rotate_inplace`].
-pub fn rotate_tmp_bytes<BE: Backend>(
-    module: &Module<BE>,
-    ct: &CKKSCiphertext<impl Data>,
-    key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-) -> usize
-where
-    Module<BE>: GLWEAutomorphism<BE>,
-{
-    module.glwe_automorphism_tmp_bytes(&ct.inner, &ct.inner, key)
-}
+impl<D: DataMut> CKKSCiphertext<D> {
+    /// `self = Rotate(ct, k)` — rotates slots by `k` positions.
+    pub fn rotate<H, K, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        ct: &CKKSCiphertext<impl DataRef>,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: GLWEAutomorphism<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let key = keys
+            .get_automorphism_key(k)
+            .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
+        module.glwe_automorphism(&mut self.inner, &ct.inner, key, scratch);
+        self.log_delta = ct.log_delta;
+    }
 
-/// `res = Rotate(ct)` by the rotation encoded in `key`.
-pub fn rotate<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWEAutomorphism<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    module.glwe_automorphism(&mut res.inner, &ct.inner, key, scratch);
-    res.log_delta = ct.log_delta;
-}
-
-/// `ct = Rotate(ct)` by the rotation encoded in `key`.
-pub fn rotate_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWEAutomorphism<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    module.glwe_automorphism_inplace(&mut ct.inner, key, scratch);
+    /// `self = Rotate(self, k)` — rotates slots by `k` positions in place.
+    pub fn rotate_inplace<H, K, BE: Backend>(&mut self, module: &Module<BE>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        Module<BE>: GLWEAutomorphism<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let key = keys
+            .get_automorphism_key(k)
+            .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
+        module.glwe_automorphism_inplace(&mut self.inner, key, scratch);
+    }
 }

@@ -6,7 +6,9 @@ use crate::{
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
-    layouts::{Backend, Module, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{
+        Backend, Module, NoiseInfos, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
+    },
     oep::{
         VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl, VecZnxBigAddSmallInplaceImpl,
         VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl,
@@ -57,12 +59,10 @@ where
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
+        noise_infos: NoiseInfos,
         source: &mut Source,
-        sigma: f64,
-        bound: f64,
     ) {
-        B::add_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
+        B::add_normal_impl(self, base2k, res, res_col, noise_infos, source);
     }
 }
 

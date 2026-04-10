@@ -1,7 +1,7 @@
 //! CKKS relinearization key (tensor switching key).
 
 use poulpy_core::{
-    GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GLWEInfos, GLWESecretToRef, GLWETensorKey, GLWETensorKeyLayout, Rank, TorusPrecision,
     },
@@ -51,19 +51,21 @@ impl CKKSTensorKey<Vec<u8>> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Encrypts the tensor key under a secret key.
-    pub fn encrypt_sk<BE: Backend, S>(
+    pub fn encrypt_sk<BE: Backend, S, E: EncryptionInfos>(
         &mut self,
         module: &Module<BE>,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: GLWETensorKeyEncryptSk<BE>,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.inner.encrypt_sk(module, sk, source_xa, source_xe, scratch);
+        self.inner.encrypt_sk(module, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }

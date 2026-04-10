@@ -120,12 +120,12 @@ where
             let lvl_1: usize = VecZnx::bytes_of(
                 self.n(),
                 (key_infos.rank_out() + 1).into(),
-                res_infos.k().min(a_infos.k()).div_ceil(key_infos.base2k()) as usize,
+                res_infos.max_k().min(a_infos.max_k()).div_ceil(key_infos.base2k()) as usize,
             ) + self.vec_znx_normalize_tmp_bytes();
             return lvl_0 + lvl_1;
         }
 
-        let lvl_1: usize = if res_infos.k() > a_infos.k() {
+        let lvl_1: usize = if res_infos.max_k() > a_infos.max_k() {
             GLWE::bytes_of_from_infos(res_infos)
         } else {
             GLWE::bytes_of_from_infos(a_infos)
@@ -152,7 +152,7 @@ where
         let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: res.n(),
             base2k: atk_layout.base2k(),
-            k: a.k().max(res.k()),
+            k: a.max_k().max(res.max_k()),
             rank: res.rank(),
         });
 
@@ -198,7 +198,7 @@ where
             let (mut res_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: self.n().into(),
                 base2k: ksk_infos.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_1);

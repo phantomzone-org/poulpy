@@ -1,6 +1,6 @@
 //! CKKS ciphertext negation.
 //!
-//! Negates each column of the GLWE ciphertext.  `log_delta` is preserved.
+//! Negates each column of the GLWE ciphertext.
 
 use crate::layouts::ciphertext::CKKSCiphertext;
 use poulpy_hal::{
@@ -8,25 +8,25 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module},
 };
 
-/// Computes `res = -ct`.
-pub fn neg<BE: Backend>(module: &Module<BE>, res: &mut CKKSCiphertext<impl DataMut>, ct: &CKKSCiphertext<impl DataRef>)
-where
-    Module<BE>: VecZnxNegate,
-{
-    res.log_delta = ct.log_delta;
-    let ncols = ct.inner.data().cols;
-    for i in 0..ncols {
-        module.vec_znx_negate(res.inner.data_mut(), i, ct.inner.data(), i);
+impl<D: DataMut> CKKSCiphertext<D> {
+    pub fn neg<BE: Backend>(&mut self, module: &Module<BE>, ct: &CKKSCiphertext<impl DataRef>)
+    where
+        Module<BE>: VecZnxNegate,
+    {
+        let ncols = ct.inner.data().cols;
+        for i in 0..ncols {
+            module.vec_znx_negate(self.inner.data_mut(), i, ct.inner.data(), i);
+        }
+        self.log_delta = ct.log_delta;
     }
-}
 
-/// Computes `ct = -ct` in place.
-pub fn neg_inplace<BE: Backend>(module: &Module<BE>, ct: &mut CKKSCiphertext<impl DataMut>)
-where
-    Module<BE>: VecZnxNegateInplace,
-{
-    let ncols = ct.inner.data().cols;
-    for i in 0..ncols {
-        module.vec_znx_negate_inplace(ct.inner.data_mut(), i);
+    pub fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
+    where
+        Module<BE>: VecZnxNegateInplace,
+    {
+        let ncols = self.inner.data().cols;
+        for i in 0..ncols {
+            module.vec_znx_negate_inplace(self.inner.data_mut(), i);
+        }
     }
 }

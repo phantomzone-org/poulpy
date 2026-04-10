@@ -16,7 +16,8 @@ use poulpy_hal::{
     reference::ntt120::convolution::{
         ntt120_cnv_apply_dft, ntt120_cnv_apply_dft_tmp_bytes, ntt120_cnv_by_const_apply, ntt120_cnv_by_const_apply_tmp_bytes,
         ntt120_cnv_pairwise_apply_dft, ntt120_cnv_pairwise_apply_dft_tmp_bytes, ntt120_cnv_prepare_left,
-        ntt120_cnv_prepare_left_tmp_bytes, ntt120_cnv_prepare_right, ntt120_cnv_prepare_right_tmp_bytes,
+        ntt120_cnv_prepare_left_tmp_bytes, ntt120_cnv_prepare_right, ntt120_cnv_prepare_right_tmp_bytes, ntt120_cnv_prepare_self,
+        ntt120_cnv_prepare_self_tmp_bytes,
     },
 };
 
@@ -145,5 +146,20 @@ where
         let bytes = ntt120_cnv_pairwise_apply_dft_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
         ntt120_cnv_pairwise_apply_dft::<_, _, _, Self>(module, res, res_offset, res_col, a, b, col_0, col_1, tmp);
+    }
+
+    fn cnv_prepare_self_tmp_bytes_impl(module: &Module<Self>, _res_size: usize, _a_size: usize) -> usize {
+        ntt120_cnv_prepare_self_tmp_bytes(module.n())
+    }
+
+    fn cnv_prepare_self_impl<L, R, A>(module: &Module<Self>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    where
+        L: poulpy_hal::layouts::CnvPVecLToMut<Self>,
+        R: poulpy_hal::layouts::CnvPVecRToMut<Self>,
+        A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
+    {
+        let bytes = ntt120_cnv_prepare_self_tmp_bytes(module.n());
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt120_cnv_prepare_self::<_, _, _, Self>(module, left, right, a, tmp);
     }
 }

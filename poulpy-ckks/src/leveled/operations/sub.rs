@@ -1,189 +1,164 @@
 //! CKKS ciphertext subtraction.
 //!
-//! Provides ct-ct, ct-pt (compact and prepared), and ct-constant variants,
-//! each in out-of-place and in-place form.  Compact plaintext operands are
-//! expanded into the ciphertext torus layout via [`fill_offset_pt`] before
-//! the underlying GLWE subtraction.
-//!
-//! [`fill_offset_pt`]: super::utils::fill_offset_pt
+//! Provides ct-ct, ct-pt in ZNX form, and ct-pt in RNX form, each in
+//! out-of-place and in-place form.
 
-use super::utils::{const_pt_from_scratch, const_pt_scratch_bytes, offset_pt_from_scratch, offset_pt_scratch_bytes};
-use crate::layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintext, plaintext_prepared::CKKSPlaintextPrepared};
-use poulpy_core::{GLWESub, ScratchTakeCore, layouts::LWEInfos};
+use std::fmt::Debug;
+
+use crate::layouts::{
+    ciphertext::CKKSCiphertext,
+    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
+};
+use poulpy_core::{
+    GLWECopy, GLWEShift, GLWESub, ScratchTakeCore,
+    layouts::{GLWEPlaintextLayout, LWEInfos},
+};
 use poulpy_hal::{
-    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    api::{ScratchAvailable, VecZnxRshSub},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-/// Computes `res = a - b`.
-pub fn sub<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    assert_eq!(
-        a.log_delta, b.log_delta,
-        "sub: log_delta mismatch ({} != {})",
-        a.log_delta, b.log_delta
-    );
-    res.log_delta = a.log_delta;
-    module.glwe_sub(&mut res.inner, &a.inner, &b.inner);
-}
+use anyhow::Result;
+use rand_distr::num_traits::{Float, FloatConst};
 
-/// Computes `res -= a` in place.
-pub fn sub_inplace<BE: Backend>(module: &Module<BE>, res: &mut CKKSCiphertext<impl DataMut>, a: &CKKSCiphertext<impl DataRef>)
-where
-    Module<BE>: GLWESub,
-{
-    assert_eq!(
-        res.log_delta, a.log_delta,
-        "sub_inplace: log_delta mismatch ({} != {})",
-        res.log_delta, a.log_delta
-    );
-    module.glwe_sub_inplace(&mut res.inner, &a.inner);
-}
+impl<D: DataMut> CKKSCiphertext<D> {
+    pub fn sub<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        b: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWESub + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        // If the destination has less precision than the aligned inputs, shift
+        // the computation down by `offset` bits before writing the result.
+        let offset = a
+            .inner
+            .max_k()
+            .min(b.inner.max_k())
+            .as_usize()
+            .saturating_sub(self.inner.max_k().as_usize());
 
-/// Returns the scratch bytes needed for [`sub_pt`] and [`sub_pt_inplace`].
-pub fn sub_pt_tmp_bytes<BE: Backend>(module: &Module<BE>, ct: &CKKSCiphertext<impl Data>) -> usize
-where
-    Module<BE>: VecZnxNormalizeTmpBytes,
-{
-    offset_pt_scratch_bytes(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-    )
-}
+        if offset == 0 && a.log_delta == b.log_delta {
+            module.glwe_sub(&mut self.inner, &a.inner, &b.inner);
+        } else if a.log_delta <= b.log_delta {
+            module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
+            module.glwe_lsh_sub(&mut self.inner, &b.inner, b.log_delta - a.log_delta + offset, scratch);
+        } else {
+            module.glwe_lsh(&mut self.inner, &a.inner, a.log_delta - b.log_delta + offset, scratch);
+            module.glwe_lsh_sub(&mut self.inner, &b.inner, offset, scratch);
+        }
 
-/// Computes `res = ct - pt`.
-pub fn sub_pt<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    pt: &CKKSPlaintext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "sub_pt: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
-    );
-    res.log_delta = ct.log_delta;
-    let (full_pt, _) = offset_pt_from_scratch(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
-        pt,
-        scratch,
-    );
-    module.glwe_sub(&mut res.inner, &ct.inner, &full_pt);
-}
+        self.log_delta = a.log_delta.min(b.log_delta) - offset;
 
-/// Computes `ct -= pt` in place.
-pub fn sub_pt_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    pt: &CKKSPlaintext<impl DataRef>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "sub_pt_inplace: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
-    );
-    let (full_pt, _) = offset_pt_from_scratch(
-        module,
-        ct.inner.n(),
-        ct.inner.base2k(),
-        poulpy_core::layouts::TorusPrecision(ct.inner.base2k().0 * ct.inner.size() as u32),
-        ct.inner.k(),
-        pt,
-        scratch,
-    );
-    module.glwe_sub_inplace(&mut ct.inner, &full_pt);
-}
+        Ok(())
+    }
 
-/// Computes `res = ct - pt` using a pre-expanded plaintext (no scratch needed).
-pub fn sub_prepared_pt<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    pt: &CKKSPlaintextPrepared<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "sub_prepared_pt: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
-    );
-    res.log_delta = ct.log_delta;
-    module.glwe_sub(&mut res.inner, &ct.inner, &pt.inner);
-}
+    pub fn sub_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWESub + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        if self.log_delta < a.log_delta {
+            module.glwe_lsh_sub(&mut self.inner, &a.inner, a.log_delta - self.log_delta, scratch);
+        } else if self.log_delta > a.log_delta {
+            module.glwe_lsh_inplace(&mut self.inner, self.log_delta - a.log_delta, scratch);
+            module.glwe_sub_inplace(&mut self.inner, &a.inner);
+        } else {
+            module.glwe_sub_inplace(&mut self.inner, &a.inner);
+        }
 
-/// Computes `ct -= pt` in place using a pre-expanded plaintext (no scratch needed).
-pub fn sub_prepared_pt_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    pt: &CKKSPlaintextPrepared<impl DataRef>,
-) where
-    Module<BE>: GLWESub,
-{
-    assert_eq!(
-        ct.log_delta, pt.log_delta,
-        "sub_prepared_pt_inplace: log_delta mismatch (ct={}, pt={})",
-        ct.log_delta, pt.log_delta
-    );
-    module.glwe_sub_inplace(&mut ct.inner, &pt.inner);
-}
+        self.log_delta = self.log_delta.min(a.log_delta);
 
-/// Returns the scratch bytes needed for [`sub_const`] and [`sub_const_inplace`].
-pub fn sub_const_tmp_bytes<BE: Backend>(module: &Module<BE>, ct: &CKKSCiphertext<impl Data>) -> usize
-where
-    Module<BE>: VecZnxNormalizeTmpBytes,
-{
-    const_pt_scratch_bytes(ct) + sub_pt_tmp_bytes(module, ct)
-}
+        Ok(())
+    }
 
-/// Computes `res = ct - c` where `c = re + i*im`.
-pub fn sub_const<BE: Backend>(
-    module: &Module<BE>,
-    res: &mut CKKSCiphertext<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    re: f64,
-    im: f64,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let (pt, scratch_rest) = const_pt_from_scratch(ct, re, im, scratch);
-    sub_pt(module, res, ct, &pt, scratch_rest);
-}
+    pub fn sub_pt_znx<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshSub<BE> + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let offset = a.inner.max_k().as_usize().saturating_sub(self.inner.max_k().as_usize());
+        module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
+        self.log_delta = a.log_delta - offset;
+        self.sub_pt_znx_inplace(module, pt_znx, scratch)?;
+        Ok(())
+    }
 
-/// Computes `ct -= c` in place where `c = re + i*im`.
-pub fn sub_const_inplace<BE: Backend>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    re: f64,
-    im: f64,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWESub + VecZnxNormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let (pt, scratch_rest) = const_pt_from_scratch(ct, re, im, scratch);
-    sub_pt_inplace(module, ct, &pt, scratch_rest);
+    pub fn sub_pt_znx_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshSub<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        pt_znx.sub_to(module, self.inner.data_mut(), self.log_delta, scratch);
+        Ok(())
+    }
+
+    pub fn sub_pt_rnx<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: PrecisionLayout,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshSub<BE> + GLWECopy + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.inner.base2k(),
+            k: prec.k(self.inner.base2k()),
+        });
+        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.sub_pt_znx(module, a, &pt_znx, scratch_1)?;
+        Ok(())
+    }
+
+    pub fn sub_pt_rnx_inplace<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: PrecisionLayout,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshSub<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.inner.base2k(),
+            k: prec.k(self.inner.base2k()),
+        });
+        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.sub_pt_znx_inplace(module, &pt_znx, scratch_1)?;
+        Ok(())
+    }
 }

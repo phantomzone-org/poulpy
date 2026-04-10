@@ -6,12 +6,12 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWENoise, GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGLWENoise, GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
     decryption::GLWEDecrypt,
-    encryption::SIGMA,
+    encryption::DEFAULT_SIGMA_XE,
     layouts::{
         Dsize, GGLWEDecompress, GGLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, LWEInfos, prepared::GLWESecretPrepared,
+        GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, prepared::GLWESecretPrepared,
     },
 };
 
@@ -32,14 +32,15 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let tensor_key_infos = GLWETensorKeyLayout {
+        let tensor_key_infos = EncryptionLayout::new_from_default_sigma(GLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        };
+        })
+        .unwrap();
 
         let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
 
@@ -54,23 +55,28 @@ where
         let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
-        tensor_key.encrypt_sk(module, &sk, &mut source_xa, &mut source_xe, scratch.borrow());
+        tensor_key.encrypt_sk(
+            module,
+            &sk,
+            &tensor_key_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
+        let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k as f64) + 0.5;
 
         for row in 0..tensor_key.dnum().as_usize() {
             for col in 0..tensor_key.rank_in().as_usize() {
-                assert!(
-                    tensor_key
-                        .0
-                        .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
-                        .std()
-                        .log2()
-                        <= max_noise
-                )
+                let noise_have = tensor_key
+                    .0
+                    .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2();
+                assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
             }
         }
     }
@@ -95,14 +101,15 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let tensor_key_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
+        let tensor_key_infos = EncryptionLayout::new_from_default_sigma(GLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
             dnum: dnum.into(),
             dsize: Dsize(1),
             rank: rank.into(),
-        };
+        })
+        .unwrap();
 
         let mut tensor_key_compressed: GLWETensorKeyCompressed<Vec<u8>> =
             GLWETensorKeyCompressed::alloc_from_infos(&tensor_key_infos);
@@ -120,7 +127,7 @@ where
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        tensor_key_compressed.encrypt_sk(module, &sk, seed_xa, &mut source_xe, scratch.borrow());
+        tensor_key_compressed.encrypt_sk(module, &sk, seed_xa, &tensor_key_infos, &mut source_xe, scratch.borrow());
 
         let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
         tensor_key.decompress(module, &tensor_key_compressed);
@@ -128,18 +135,16 @@ where
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
+        let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k as f64) + 0.5;
 
         for row in 0..tensor_key.dnum().as_usize() {
             for col in 0..tensor_key.rank_in().as_usize() {
-                assert!(
-                    tensor_key
-                        .0
-                        .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
-                        .std()
-                        .log2()
-                        <= max_noise
-                )
+                let noise_have = tensor_key
+                    .0
+                    .noise(module, row, col, &sk_tensor.data, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2();
+                assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
             }
         }
     }

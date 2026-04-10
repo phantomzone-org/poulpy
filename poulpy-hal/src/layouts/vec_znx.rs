@@ -140,10 +140,40 @@ impl<D: DataRef> ZnxView for VecZnx<D> {
     type Scalar = i64;
 }
 
+impl<D: Data> VecZnx<D> {
+    /// Returns the allocated limb capacity.
+    pub fn max_size(&self) -> usize {
+        self.max_size
+    }
+}
+
+impl<D: DataMut> VecZnx<D> {
+    /// Sets the active limb count.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size > max_size`.
+    pub fn set_size(&mut self, size: usize) {
+        assert!(size <= self.max_size);
+        self.size = size;
+    }
+}
+
 impl VecZnx<Vec<u8>> {
     /// Returns the scratch space (in bytes) required by right-shift operations.
-    pub fn rsh_tmp_bytes(n: usize) -> usize {
+    pub fn shift_tmp_bytes(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
+    }
+
+    /// Reallocates the backing buffer so capacity matches the `new_size` limb count.
+    pub fn drop_limbs(&mut self, new_size: usize) {
+        if self.size == new_size {
+            return;
+        }
+
+        let mut compact: Self = Self::alloc(self.n, self.cols, self.size);
+        compact.raw_mut().copy_from_slice(self.raw());
+        *self = compact;
     }
 }
 
@@ -227,7 +257,7 @@ impl<D: DataRef> fmt::Display for VecZnx<D> {
                 let coeffs = self.at(col, size);
                 write!(f, "  Size {size}: [")?;
 
-                let max_show = 100;
+                let max_show = 16;
                 let show_count = coeffs.len().min(max_show);
 
                 for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {

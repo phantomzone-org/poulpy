@@ -134,7 +134,5 @@ where
             0,
             scratch_1,
         );
-
-        pt.set_k(pt.k().min(res.k()));
     }
 }

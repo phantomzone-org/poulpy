@@ -21,6 +21,7 @@ once_cell = {workspace = true}
 rand_chacha = {workspace = true}
 bytemuck = {workspace = true}
 paste = {workspace = true}
+anyhow = {workspace = true}
 
 
 [build-dependencies]

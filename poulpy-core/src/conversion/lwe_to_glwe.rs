@@ -25,7 +25,7 @@ where
         let lvl_0: usize = GLWE::bytes_of(
             self.n().into(),
             key_infos.base2k(),
-            lwe_infos.k().max(glwe_infos.k()),
+            lwe_infos.max_k().max(glwe_infos.max_k()),
             1u32.into(),
         );
 
@@ -63,7 +63,7 @@ where
         let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: ksk.base2k(),
-            k: lwe.k(),
+            k: lwe.max_k(),
             rank: 1u32.into(),
         });
         glwe.data.zero();

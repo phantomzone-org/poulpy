@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
+    EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
@@ -58,10 +58,27 @@ where
     let a: u32 = source.next_u32();
     let b: u32 = source.next_u32();
 
+    let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     source.fill_bytes(&mut scratch.borrow().data);
-    a_enc_prep.encrypt_sk(module, a, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+    a_enc_prep.encrypt_sk(
+        module,
+        a,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
     source.fill_bytes(&mut scratch.borrow().data);
-    b_enc_prep.encrypt_sk(module, b, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+    b_enc_prep.encrypt_sk(
+        module,
+        b,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     // d + a
     res.slt(module, &a_enc_prep, &b_enc_prep, bdd_key_prepared, scratch.borrow());

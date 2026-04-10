@@ -3,8 +3,11 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+use crate::{
+    DeclaredK,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -20,6 +23,12 @@ pub struct GGLWEToGGSWKeyLayout {
     pub dsize: Dsize,
 }
 
+impl DeclaredK for GGLWEToGGSWKeyLayout {
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWEToGGSWKey<D: Data> {
     pub(crate) keys: Vec<GGLWE<D>>,
@@ -32,10 +41,6 @@ impl<D: Data> LWEInfos for GGLWEToGGSWKey<D> {
 
     fn base2k(&self) -> Base2K {
         self.keys[0].base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.keys[0].k()
     }
 
     fn size(&self) -> usize {
@@ -76,8 +81,8 @@ impl LWEInfos for GGLWEToGGSWKeyLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -142,7 +147,7 @@ impl GGLWEToGGSWKey<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -169,7 +174,7 @@ impl GGLWEToGGSWKey<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),

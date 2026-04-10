@@ -6,15 +6,16 @@ use poulpy_hal::{
     reference::{
         fft64::{
             convolution::I64Ops,
-            reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
+            reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
             reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
             ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-            ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
-            ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub,
-            ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
+            ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+            ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
+            ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
+            znx_copy_ref, znx_rotate, znx_zero_ref,
         },
     },
 };
@@ -43,9 +44,10 @@ use crate::{
         znx_add_ifma, znx_add_inplace_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
         znx_mul_power_of_two_ifma, znx_mul_power_of_two_inplace_ifma, znx_negate_ifma, znx_negate_inplace_ifma,
         znx_normalize_digit_ifma, znx_normalize_final_step_ifma, znx_normalize_final_step_inplace_ifma,
-        znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma, znx_normalize_first_step_inplace_ifma,
-        znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma, znx_normalize_middle_step_inplace_ifma,
-        znx_sub_ifma, znx_sub_inplace_ifma, znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
+        znx_normalize_final_step_sub_ifma, znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma,
+        znx_normalize_first_step_inplace_ifma, znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma,
+        znx_normalize_middle_step_inplace_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_ifma, znx_sub_inplace_ifma,
+        znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
     },
 };
 
@@ -293,9 +295,18 @@ impl ZnxSwitchRing for FFT64Ifma {
 
 impl ZnxNormalizeFinalStep for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_ifma(base2k, lsh, x, a, carry);
+            znx_normalize_final_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
+        }
+    }
+}
+
+impl ZnxNormalizeFinalStepSub for FFT64Ifma {
+    #[inline(always)]
+    fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_final_step_sub_ifma(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -311,9 +322,9 @@ impl ZnxNormalizeFinalStepInplace for FFT64Ifma {
 
 impl ZnxNormalizeFirstStep for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_ifma(base2k, lsh, x, a, carry);
+            znx_normalize_first_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -338,9 +349,18 @@ impl ZnxNormalizeFirstStepInplace for FFT64Ifma {
 
 impl ZnxNormalizeMiddleStep for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_ifma(base2k, lsh, x, a, carry);
+            znx_normalize_middle_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
+        }
+    }
+}
+
+impl ZnxNormalizeMiddleStepSub for FFT64Ifma {
+    #[inline(always)]
+    fn znx_normalize_middle_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_middle_step_sub_ifma(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -381,14 +401,14 @@ impl ZnxNormalizeDigit for FFT64Ifma {
     }
 }
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for FFT64Ifma {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for FFT64Ifma {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         ReimFFTIfma::reim_dft_execute(table, data);
     }
 }
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ifma {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ifma {
     #[inline(always)]
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         ReimIFFTIfma::reim_dft_execute(table, data);

@@ -10,7 +10,7 @@
 use crate::NTT120Ref;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
-    layouts::{Module, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Module, NoiseInfos, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
@@ -19,16 +19,18 @@ use poulpy_hal::{
         VecZnxBigSubNegateInplaceImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl,
         VecZnxBigSubSmallNegateInplaceImpl,
     },
-    reference::ntt120::vec_znx_big::{
-        ntt120_vec_znx_big_add, ntt120_vec_znx_big_add_inplace, ntt120_vec_znx_big_add_normal_ref, ntt120_vec_znx_big_add_small,
-        ntt120_vec_znx_big_add_small_inplace, ntt120_vec_znx_big_automorphism, ntt120_vec_znx_big_automorphism_inplace,
-        ntt120_vec_znx_big_automorphism_inplace_tmp_bytes, ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate,
-        ntt120_vec_znx_big_negate_inplace, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes,
-        ntt120_vec_znx_big_sub, ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace,
-        ntt120_vec_znx_big_sub_small_a, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace,
-        ntt120_vec_znx_big_sub_small_negate_inplace,
+    reference::ntt120::{
+        I128BigOps, I128NormalizeOps,
+        vec_znx_big::{
+            ntt120_vec_znx_big_add, ntt120_vec_znx_big_add_inplace, ntt120_vec_znx_big_add_normal_ref,
+            ntt120_vec_znx_big_add_small, ntt120_vec_znx_big_add_small_inplace, ntt120_vec_znx_big_automorphism,
+            ntt120_vec_znx_big_automorphism_inplace, ntt120_vec_znx_big_automorphism_inplace_tmp_bytes,
+            ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate, ntt120_vec_znx_big_negate_inplace,
+            ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
+            ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace, ntt120_vec_znx_big_sub_small_a,
+            ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace, ntt120_vec_znx_big_sub_small_negate_inplace,
+        },
     },
-    reference::ntt120::{I128BigOps, I128NormalizeOps},
     source::Source,
 };
 
@@ -41,7 +43,7 @@ unsafe impl VecZnxBigFromSmallImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_from_small::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_from_small(res, res_col, a, a_col);
     }
 }
 
@@ -51,12 +53,10 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for NTT120Ref {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
+        noise_infos: NoiseInfos,
         source: &mut Source,
-        sigma: f64,
-        bound: f64,
     ) {
-        ntt120_vec_znx_big_add_normal_ref::<_, NTT120Ref>(base2k, res, res_col, k, sigma, bound, source);
+        ntt120_vec_znx_big_add_normal_ref(base2k, res, res_col, noise_infos, source);
     }
 }
 
@@ -74,7 +74,7 @@ unsafe impl VecZnxBigAddImpl<Self> for NTT120Ref {
         A: VecZnxBigToRef<Self>,
         B: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_add::<_, _, _, NTT120Ref>(res, res_col, a, a_col, b, b_col);
+        ntt120_vec_znx_big_add(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -84,7 +84,7 @@ unsafe impl VecZnxBigAddInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_add_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_add_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -102,7 +102,7 @@ unsafe impl VecZnxBigAddSmallImpl<Self> for NTT120Ref {
         A: VecZnxBigToRef<Self>,
         B: VecZnxToRef,
     {
-        ntt120_vec_znx_big_add_small::<_, _, _, NTT120Ref>(res, res_col, a, a_col, b, b_col);
+        ntt120_vec_znx_big_add_small(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -112,7 +112,7 @@ unsafe impl VecZnxBigAddSmallInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_add_small_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_add_small_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -130,7 +130,7 @@ unsafe impl VecZnxBigSubImpl<Self> for NTT120Ref {
         A: VecZnxBigToRef<Self>,
         B: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_sub::<_, _, _, NTT120Ref>(res, res_col, a, a_col, b, b_col);
+        ntt120_vec_znx_big_sub(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -140,7 +140,7 @@ unsafe impl VecZnxBigSubInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_sub_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_sub_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -150,7 +150,7 @@ unsafe impl VecZnxBigSubNegateInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_sub_negate_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_sub_negate_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -168,7 +168,7 @@ unsafe impl VecZnxBigSubSmallAImpl<Self> for NTT120Ref {
         A: VecZnxToRef,
         B: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_sub_small_a::<_, _, _, NTT120Ref>(res, res_col, a, a_col, b, b_col);
+        ntt120_vec_znx_big_sub_small_a(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -178,7 +178,7 @@ unsafe impl VecZnxBigSubSmallInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_sub_small_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -196,7 +196,7 @@ unsafe impl VecZnxBigSubSmallBImpl<Self> for NTT120Ref {
         A: VecZnxBigToRef<Self>,
         B: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_b::<_, _, _, NTT120Ref>(res, res_col, a, a_col, b, b_col);
+        ntt120_vec_znx_big_sub_small_b(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -206,7 +206,7 @@ unsafe impl VecZnxBigSubSmallNegateInplaceImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_negate_inplace::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_sub_small_negate_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -216,7 +216,7 @@ unsafe impl VecZnxBigNegateImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_negate::<_, _, NTT120Ref>(res, res_col, a, a_col);
+        ntt120_vec_znx_big_negate(res, res_col, a, a_col);
     }
 }
 
@@ -225,7 +225,7 @@ unsafe impl VecZnxBigNegateInplaceImpl<Self> for NTT120Ref {
     where
         R: VecZnxBigToMut<Self>,
     {
-        ntt120_vec_znx_big_negate_inplace::<_, NTT120Ref>(res, res_col);
+        ntt120_vec_znx_big_negate_inplace(res, res_col);
     }
 }
 
@@ -254,7 +254,7 @@ where
         A: VecZnxBigToRef<Self>,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i128>());
-        ntt120_vec_znx_big_normalize::<_, _, NTT120Ref>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+        ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 }
 
@@ -264,7 +264,7 @@ unsafe impl VecZnxBigAutomorphismImpl<Self> for NTT120Ref {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        ntt120_vec_znx_big_automorphism::<_, _, NTT120Ref>(p, res, res_col, a, a_col);
+        ntt120_vec_znx_big_automorphism(p, res, res_col, a, a_col);
     }
 }
 
@@ -288,6 +288,6 @@ where
         R: VecZnxBigToMut<Self>,
     {
         let (tmp, _) = scratch.take_slice(module.vec_znx_big_automorphism_inplace_tmp_bytes() / size_of::<i128>());
-        ntt120_vec_znx_big_automorphism_inplace::<_, NTT120Ref>(p, res, res_col, tmp);
+        ntt120_vec_znx_big_automorphism_inplace(p, res, res_col, tmp);
     }
 }

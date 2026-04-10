@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
@@ -32,21 +32,23 @@ impl GGLWE<Vec<u8>> {
 
 impl<D: DataMut> GGLWE<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, BE: Backend>(
+    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>,
         M: GGLWEEncryptSk<BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
+        module.gglwe_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -55,17 +57,21 @@ pub trait GGLWEEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_encrypt_sk<R, P, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn gglwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
+
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>;
 }
 
@@ -91,17 +97,21 @@ where
         lvl_0 + lvl_1
     }
 
-    fn gglwe_encrypt_sk<R, P, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn gglwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
+
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
@@ -131,13 +141,13 @@ where
             self.gglwe_encrypt_sk_tmp_bytes(res)
         );
         assert!(
-            res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
+            res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.max_k().0,
             "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
             res.dnum(),
             res.dsize(),
             res.base2k(),
             res.dnum().0 * res.dsize().0 * res.base2k().0,
-            res.k()
+            res.max_k()
         );
 
         let dnum: usize = res.dnum().into();
@@ -163,7 +173,15 @@ where
                 tmp_pt.data.zero(); // zeroes for next iteration
                 self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
                 self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
-                self.glwe_encrypt_sk(&mut res.at_mut(row_i, col_i), &tmp_pt, sk, source_xa, source_xe, scratch_1);
+                self.glwe_encrypt_sk(
+                    &mut res.at_mut(row_i, col_i),
+                    &tmp_pt,
+                    sk,
+                    enc_infos,
+                    source_xe,
+                    source_xa,
+                    scratch_1,
+                );
             }
         }
     }

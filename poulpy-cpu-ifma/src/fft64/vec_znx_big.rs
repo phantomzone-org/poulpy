@@ -2,8 +2,8 @@ use crate::FFT64Ifma;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
     layouts::{
-        Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView,
-        ZnxViewMut,
+        Module, NoiseInfos, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
+        ZnxView, ZnxViewMut,
     },
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
@@ -61,12 +61,10 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Ifma {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) {
-        vec_znx_big_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
+        vec_znx_big_add_normal_ref(base2k, res, res_col, noise_infos, source_xe);
     }
 }
 

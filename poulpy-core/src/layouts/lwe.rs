@@ -19,23 +19,20 @@ pub trait LWEInfos {
     fn log_n(&self) -> usize {
         self.n().log2()
     }
-    /// Returns the torus precision `k` (number of significant bits).
-    fn k(&self) -> TorusPrecision;
     /// Returns the maximum torus precision representable with the current limb decomposition.
     fn max_k(&self) -> TorusPrecision {
-        TorusPrecision(self.base2k().0 * self.size() as u32)
+        TorusPrecision(self.size() as u32 * self.base2k().as_u32())
     }
     /// Returns the base-2-log of the limb width used for the RNS/CRT representation.
     fn base2k(&self) -> Base2K;
     /// Returns the number of limbs, i.e. `ceil(k / base2k)`.
-    fn size(&self) -> usize {
-        self.k().0.div_ceil(self.base2k().0) as usize
-    }
+    fn size(&self) -> usize;
+
     /// Returns a plain-data [`LWELayout`] snapshot of the current parameters.
     fn lwe_layout(&self) -> LWELayout {
         LWELayout {
             n: self.n(),
-            k: self.k(),
+            k: self.max_k(),
             base2k: self.base2k(),
         }
     }
@@ -43,8 +40,6 @@ pub trait LWEInfos {
 
 /// Trait for mutating LWE parameters in place.
 pub trait SetLWEInfos {
-    /// Sets the torus precision `k`.
-    fn set_k(&mut self, k: TorusPrecision);
     /// Sets the limb width `base2k`.
     fn set_base2k(&mut self, base2k: Base2K);
 }
@@ -65,12 +60,12 @@ impl LWEInfos for LWELayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.into())
     }
 }
 /// A scalar (non-polynomial) LWE ciphertext.
@@ -83,7 +78,6 @@ impl LWEInfos for LWELayout {
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWE<D: Data> {
     pub(crate) data: VecZnx<D>,
-    pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
 }
 
@@ -92,9 +86,6 @@ impl<D: Data> LWEInfos for LWE<D> {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32 - 1)
     }
@@ -107,10 +98,6 @@ impl<D: Data> LWEInfos for LWE<D> {
 impl<D: Data> SetLWEInfos for LWE<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
-    }
-
-    fn set_k(&mut self, k: TorusPrecision) {
-        self.k = k
     }
 }
 
@@ -136,7 +123,7 @@ impl<D: DataRef> fmt::Debug for LWE<D> {
 
 impl<D: DataRef> fmt::Display for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LWE: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
+        write!(f, "LWE: base2k={} k={}: {}", self.base2k().0, self.max_k().0, self.data)
     }
 }
 
@@ -155,7 +142,7 @@ impl LWE<Vec<u8>> {
     where
         A: LWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k())
     }
 
     /// Allocates a new [`LWE`] with the given parameters.
@@ -166,7 +153,6 @@ impl LWE<Vec<u8>> {
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
         LWE {
             data: VecZnx::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
-            k,
             base2k,
         }
     }
@@ -176,7 +162,7 @@ impl LWE<Vec<u8>> {
     where
         A: LWEInfos,
     {
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k())
     }
 
     /// Returns the byte count required for an [`LWE`] with the given parameters.
@@ -198,7 +184,6 @@ pub trait LWEToRef {
 impl<D: DataRef> LWEToRef for LWE<D> {
     fn to_ref(&self) -> LWE<&[u8]> {
         LWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
         }
@@ -215,7 +200,6 @@ pub trait LWEToMut {
 impl<D: DataMut> LWEToMut for LWE<D> {
     fn to_mut(&mut self) -> LWE<&mut [u8]> {
         LWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
         }
@@ -225,7 +209,6 @@ impl<D: DataMut> LWEToMut for LWE<D> {
 impl<D: DataMut> ReaderFrom for LWE<D> {
     /// Deserialises an [`LWE`] in little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.data.read_from(reader)
     }
@@ -234,7 +217,6 @@ impl<D: DataMut> ReaderFrom for LWE<D> {
 impl<D: DataRef> WriterTo for LWE<D> {
     /// Serialises the [`LWE`] in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         self.data.write_to(writer)
     }

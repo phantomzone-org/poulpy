@@ -24,3 +24,4 @@ itertools = {workspace = true}
 byteorder = {workspace = true}
 rand = {workspace = true}
 paste = {workspace = true}
+anyhow = {workspace = true}

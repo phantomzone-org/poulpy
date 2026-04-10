@@ -16,19 +16,19 @@
 
 use poulpy_hal::reference::fft64::{
     convolution::I64Ops,
-    reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable, fft_ref, ifft_ref},
+    reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, fft_ref, ifft_ref},
     reim4::{Reim4BlkMatVec, Reim4Convolution},
 };
 
 use super::FFT64Ref;
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for FFT64Ref {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for FFT64Ref {
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         fft_ref(table.m(), table.omg(), data);
     }
 }
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ref {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ref {
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         ifft_ref(table.m(), table.omg(), data);
     }

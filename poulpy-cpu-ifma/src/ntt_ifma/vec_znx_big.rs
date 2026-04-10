@@ -10,7 +10,7 @@
 use crate::NTTIfma;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
-    layouts::{Module, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{Module, NoiseInfos, Scratch, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
@@ -140,12 +140,10 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for NTTIfma {
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
     ) {
-        ntt120_vec_znx_big_add_normal_ref::<_, NTTIfma>(base2k, res, res_col, k, sigma, bound, source);
+        ntt120_vec_znx_big_add_normal_ref::<_, NTTIfma>(base2k, res, res_col, noise_infos, source_xe);
     }
 }
 

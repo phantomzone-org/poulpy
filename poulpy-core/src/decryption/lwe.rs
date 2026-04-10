@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     ScratchTakeCore,
-    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos, TorusPrecision},
+    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos},
 };
 
 impl<DataSelf: DataRef + DataMut> LWE<DataSelf> {
@@ -80,7 +80,5 @@ where
         let pt_base2k = pt.base2k().into();
         let res_base2k = res.base2k().into();
         self.vec_znx_normalize(&mut pt.to_mut().data, pt_base2k, 0, 0, tmp.data(), res_base2k, 0, scratch_1);
-
-        pt.set_k(TorusPrecision(res.k().0.min(pt.size() as u32 * res.base2k().0)));
     }
 }
