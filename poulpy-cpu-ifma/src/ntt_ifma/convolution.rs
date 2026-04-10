@@ -90,7 +90,13 @@ where
         let k_abs = k + offset;
         let j_min = k_abs.saturating_sub(a_size - 1);
         let j_max = (k_abs + 1).min(b_size);
-        let j_count = j_max - j_min;
+        let j_count = j_max.saturating_sub(j_min);
+        debug_assert!(
+            j_count <= MAX_CNV_J_RANGE,
+            "convolution j-range {} exceeds MAX_CNV_J_RANGE ({})",
+            j_count,
+            MAX_CNV_J_RANGE
+        );
 
         let res_ptr = res.at_mut_ptr(res_col, k) as *mut __m256i;
 
@@ -179,7 +185,13 @@ unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
         let k_abs = k + offset;
         let j_min = k_abs.saturating_sub(a_size - 1);
         let j_max = (k_abs + 1).min(b_size);
-        let j_count = j_max - j_min;
+        let j_count = j_max.saturating_sub(j_min);
+        debug_assert!(
+            j_count <= MAX_CNV_J_RANGE,
+            "convolution j-range {} exceeds MAX_CNV_J_RANGE ({})",
+            j_count,
+            MAX_CNV_J_RANGE
+        );
 
         let res_ptr = res.at_mut_ptr(res_col, k) as *mut __m256i;
 
@@ -333,6 +345,12 @@ where
         ntt_ifma_cnv_by_const_apply::<_, _, Self>(res, res_offset, res_col, a, a_col, b, tmp);
     }
 
+    /// # Limits
+    ///
+    /// The j-range `(b_size).min(k+1) - max(0, k - (a_size - 1))` per output
+    /// coefficient must not exceed `MAX_CNV_J_RANGE` (= 128, defined in this
+    /// module). For practical CKKS parameters this holds since `b_size` is
+    /// small. Violations panic in debug builds.
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_impl<R, A, B>(
         module: &Module<Self>,

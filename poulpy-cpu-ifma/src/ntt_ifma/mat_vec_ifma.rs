@@ -30,7 +30,8 @@
 use core::arch::x86_64::{
     __m256i, __m512i, _mm256_add_epi64, _mm256_and_si256, _mm256_loadu_si256, _mm256_madd52hi_epu64, _mm256_madd52lo_epu64,
     _mm256_mul_epu32, _mm256_set1_epi64x, _mm256_setzero_si256, _mm256_srli_epi64, _mm256_storeu_si256, _mm512_add_epi64,
-    _mm512_and_si512, _mm512_loadu_si512, _mm512_mul_epu32, _mm512_set1_epi64, _mm512_srli_epi64,
+    _mm512_and_si512, _mm512_loadu_si512, _mm512_madd52hi_epu64, _mm512_madd52lo_epu64, _mm512_mul_epu32, _mm512_set1_epi64,
+    _mm512_setzero_si512, _mm512_srli_epi64, _mm512_storeu_si512,
 };
 
 use super::ntt_ifma_avx512::{cond_sub_2q_si256, cond_sub_2q_si512, harvey_modmul_si256, harvey_modmul_si512};
@@ -322,36 +323,26 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma(
     y: &[u32],
 ) {
     unsafe {
-        // Pair A accumulators
-        let mut acc_lo_a = _mm256_setzero_si256();
-        let mut acc_hi_a = _mm256_setzero_si256();
-        // Pair B accumulators
-        let mut acc_lo_b = _mm256_setzero_si256();
-        let mut acc_hi_b = _mm256_setzero_si256();
+        // Both paired rows fit in a single __m512i (2 × 4 u64 lanes).
+        // Lanes [0..4] = pair A (4 limbs), lanes [4..8] = pair B (4 limbs).
+        let mut acc_lo = _mm512_setzero_si512();
+        let mut acc_hi = _mm512_setzero_si512();
 
-        let mut x_ptr = x.as_ptr() as *const __m256i;
-        let mut y_ptr = y.as_ptr() as *const __m256i;
+        let mut x_ptr = x.as_ptr() as *const __m512i;
+        let mut y_ptr = y.as_ptr() as *const __m512i;
 
         for _ in 0..ell {
-            // Pair A: x[2i] × y[2i]
-            let xa = _mm256_loadu_si256(x_ptr);
-            let ya = _mm256_loadu_si256(y_ptr);
-            acc_lo_a = _mm256_madd52lo_epu64(acc_lo_a, xa, ya);
-            acc_hi_a = _mm256_madd52hi_epu64(acc_hi_a, xa, ya);
+            let xv = _mm512_loadu_si512(x_ptr);
+            let yv = _mm512_loadu_si512(y_ptr);
+            acc_lo = _mm512_madd52lo_epu64(acc_lo, xv, yv);
+            acc_hi = _mm512_madd52hi_epu64(acc_hi, xv, yv);
 
-            // Pair B: x[2i+1] × y[2i+1]
-            let xb = _mm256_loadu_si256(x_ptr.add(1));
-            let yb = _mm256_loadu_si256(y_ptr.add(1));
-            acc_lo_b = _mm256_madd52lo_epu64(acc_lo_b, xb, yb);
-            acc_hi_b = _mm256_madd52hi_epu64(acc_hi_b, xb, yb);
-
-            x_ptr = x_ptr.add(2);
-            y_ptr = y_ptr.add(2);
+            x_ptr = x_ptr.add(1);
+            y_ptr = y_ptr.add(1);
         }
 
-        let res_ptr = res.as_mut_ptr() as *mut __m256i;
-        _mm256_storeu_si256(res_ptr, reduce_bbc_ifma_simd(acc_lo_a, acc_hi_a));
-        _mm256_storeu_si256(res_ptr.add(1), reduce_bbc_ifma_simd(acc_lo_b, acc_hi_b));
+        // Reduce both pairs in one call.
+        _mm512_storeu_si512(res.as_mut_ptr() as *mut __m512i, reduce_bbc_ifma_simd_512(acc_lo, acc_hi));
     }
 }
 
@@ -385,56 +376,37 @@ pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_ifma(
     y: &[u32],
 ) {
     unsafe {
-        // col 0, pair A
-        let mut acc_lo_c0a = _mm256_setzero_si256();
-        let mut acc_hi_c0a = _mm256_setzero_si256();
-        // col 0, pair B
-        let mut acc_lo_c0b = _mm256_setzero_si256();
-        let mut acc_hi_c0b = _mm256_setzero_si256();
-        // col 1, pair A
-        let mut acc_lo_c1a = _mm256_setzero_si256();
-        let mut acc_hi_c1a = _mm256_setzero_si256();
-        // col 1, pair B
-        let mut acc_lo_c1b = _mm256_setzero_si256();
-        let mut acc_hi_c1b = _mm256_setzero_si256();
+        // Pack the two pairs (A and B) of each column into a single __m512i.
+        // Lanes [0..4] = pair A, lanes [4..8] = pair B.
+        let mut acc_lo_c0 = _mm512_setzero_si512();
+        let mut acc_hi_c0 = _mm512_setzero_si512();
+        let mut acc_lo_c1 = _mm512_setzero_si512();
+        let mut acc_hi_c1 = _mm512_setzero_si512();
 
-        let mut x_ptr = x.as_ptr() as *const __m256i;
-        let mut y_ptr = y.as_ptr() as *const __m256i;
+        let mut x_ptr = x.as_ptr() as *const __m512i;
+        let mut y_ptr = y.as_ptr() as *const __m512i;
 
         for _ in 0..ell {
-            // Load x pair
-            let xa = _mm256_loadu_si256(x_ptr);
-            let xb = _mm256_loadu_si256(x_ptr.add(1));
+            // Load x pair: [xa | xb] in one __m512i.
+            let xv = _mm512_loadu_si512(x_ptr);
 
-            // Column 0, pair A: xa × y_col0_a
-            let yc0a = _mm256_loadu_si256(y_ptr);
-            acc_lo_c0a = _mm256_madd52lo_epu64(acc_lo_c0a, xa, yc0a);
-            acc_hi_c0a = _mm256_madd52hi_epu64(acc_hi_c0a, xa, yc0a);
+            // Column 0: [yc0a | yc0b] in one __m512i.
+            let yc0 = _mm512_loadu_si512(y_ptr);
+            acc_lo_c0 = _mm512_madd52lo_epu64(acc_lo_c0, xv, yc0);
+            acc_hi_c0 = _mm512_madd52hi_epu64(acc_hi_c0, xv, yc0);
 
-            // Column 0, pair B: xb × y_col0_b
-            let yc0b = _mm256_loadu_si256(y_ptr.add(1));
-            acc_lo_c0b = _mm256_madd52lo_epu64(acc_lo_c0b, xb, yc0b);
-            acc_hi_c0b = _mm256_madd52hi_epu64(acc_hi_c0b, xb, yc0b);
+            // Column 1: [yc1a | yc1b] in one __m512i (next 64 bytes after col0).
+            let yc1 = _mm512_loadu_si512(y_ptr.add(1));
+            acc_lo_c1 = _mm512_madd52lo_epu64(acc_lo_c1, xv, yc1);
+            acc_hi_c1 = _mm512_madd52hi_epu64(acc_hi_c1, xv, yc1);
 
-            // Column 1, pair A: xa × y_col1_a
-            let yc1a = _mm256_loadu_si256(y_ptr.add(2));
-            acc_lo_c1a = _mm256_madd52lo_epu64(acc_lo_c1a, xa, yc1a);
-            acc_hi_c1a = _mm256_madd52hi_epu64(acc_hi_c1a, xa, yc1a);
-
-            // Column 1, pair B: xb × y_col1_b
-            let yc1b = _mm256_loadu_si256(y_ptr.add(3));
-            acc_lo_c1b = _mm256_madd52lo_epu64(acc_lo_c1b, xb, yc1b);
-            acc_hi_c1b = _mm256_madd52hi_epu64(acc_hi_c1b, xb, yc1b);
-
-            x_ptr = x_ptr.add(2);
-            y_ptr = y_ptr.add(4);
+            x_ptr = x_ptr.add(1);
+            y_ptr = y_ptr.add(2);
         }
 
-        let res_ptr = res.as_mut_ptr() as *mut __m256i;
-        _mm256_storeu_si256(res_ptr, reduce_bbc_ifma_simd(acc_lo_c0a, acc_hi_c0a));
-        _mm256_storeu_si256(res_ptr.add(1), reduce_bbc_ifma_simd(acc_lo_c0b, acc_hi_c0b));
-        _mm256_storeu_si256(res_ptr.add(2), reduce_bbc_ifma_simd(acc_lo_c1a, acc_hi_c1a));
-        _mm256_storeu_si256(res_ptr.add(3), reduce_bbc_ifma_simd(acc_lo_c1b, acc_hi_c1b));
+        let res_ptr = res.as_mut_ptr() as *mut __m512i;
+        _mm512_storeu_si512(res_ptr, reduce_bbc_ifma_simd_512(acc_lo_c0, acc_hi_c0));
+        _mm512_storeu_si512(res_ptr.add(1), reduce_bbc_ifma_simd_512(acc_lo_c1, acc_hi_c1));
     }
 }
 

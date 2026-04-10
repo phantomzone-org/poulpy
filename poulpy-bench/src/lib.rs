@@ -58,6 +58,11 @@ macro_rules! for_each_fft_backend_family {
             use $fn as __f;
             __f::<poulpy_cpu_avx::FFT64Avx>($($arg,)* $c, "fft64-avx");
         }
+        #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_ifma::FFT64Ifma>($($arg,)* $c, "fft64-ifma");
+        }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::FFT64GPU>($($arg,)* $c, "fft64-gpu"); }
     }};

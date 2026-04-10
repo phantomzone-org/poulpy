@@ -5,9 +5,7 @@
 //! DFT-to-DFT apply path uses IFMA BBC kernels together with SIMD accumulation.
 
 use bytemuck::{cast_slice, cast_slice_mut};
-use core::arch::x86_64::{
-    __m256i, _mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256,
-};
+use core::arch::x86_64::{__m256i, _mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
 
 use poulpy_hal::{
     api::TakeSlice,

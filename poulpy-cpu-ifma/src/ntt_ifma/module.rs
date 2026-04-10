@@ -1,14 +1,15 @@
-//! Backend handle construction and module initialization for [`NTTIfma`](crate::NTTIfma).
+//! Backend handle and module initialisation for [`NTTIfma`](super::NTTIfma).
 //!
-//! This module owns the runtime state required by the IFMA backend:
+//! This module defines:
 //!
-//! - precomputed forward and inverse NTT tables
-//! - BBC metadata for multiply-accumulate kernels
-//! - runtime CPU feature validation during [`Module::new`](poulpy_hal::layouts::Module::new)
-//!
-//! The handle is stored behind the generic [`Module`](poulpy_hal::layouts::Module)
-//! abstraction and exposed to the reference IFMA helper layer through the
-//! `NttIfmaModuleHandle` provider traits.
+//! - [`NTTIfmaHandle`]: the opaque handle stored inside a `Module<NTTIfma>`,
+//!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
+//! - The [`Backend`] trait implementation, which defines scalar types and the
+//!   handle destruction path.
+//! - The [`ModuleNewImpl`] implementation, which allocates the handle on the heap,
+//!   verifies AVX512-IFMA availability at runtime, and transfers ownership to the `Module`.
+//! - The [`NttIfmaHandleProvider`] impl for [`NTTIfmaHandle`], wiring the handle into
+//!   the blanket `NttIfmaModuleHandle` impl provided by `poulpy-hal`.
 
 use std::ptr::NonNull;
 
@@ -26,11 +27,11 @@ use poulpy_hal::{
 
 use crate::NTTIfma;
 
-/// Opaque handle for the [`NTTIfma`](crate::NTTIfma) backend.
+/// Opaque handle for the [`NTTIfma`](super::NTTIfma) backend.
 ///
 /// Holds precomputed twiddle-factor tables for the forward NTT and inverse NTT
-/// of size `n`, and the lazy-accumulation metadata for bbc and bbb products
-/// using the 3-prime IFMA representation.
+/// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` and
+/// `q120b × q120b` products.
 ///
 /// This struct is heap-allocated during module creation and freed when the
 /// `Module<NTTIfma>` is dropped (via [`Backend::destroy`]).
@@ -67,7 +68,7 @@ unsafe impl ModuleNewImpl<Self> for NTTIfma {
     fn new_impl(n: u64) -> Module<Self> {
         #[cfg(target_arch = "x86_64")]
         if !std::arch::is_x86_feature_detected!("avx512ifma") {
-            panic!("CPU must support AVX512-IFMA")
+            panic!("NTTIfma requires x86_64 with AVX512-IFMA support");
         }
 
         #[cfg(not(target_arch = "x86_64"))]
