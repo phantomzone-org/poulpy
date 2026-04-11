@@ -3,9 +3,9 @@ use poulpy_hal::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
         VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAdd, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub,
-        VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxRshTmpBytes,
+        VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
     reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
@@ -15,7 +15,6 @@ use crate::{
     GGLWEProduct, ScratchTakeCore,
     layouts::{
         Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
-        TorusPrecision,
     },
 };
 
@@ -229,8 +228,8 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
             (0, -((a_base2k - (res_offset % a_base2k)) as i64))
@@ -275,8 +274,8 @@ where
         let (mut res_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, res.size());
         let (mut a_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, a.size());
 
-        self.cnv_prepare_left(&mut res_prep, res.data(), scratch_2);
-        self.cnv_prepare_right(&mut a_prep, a.data(), scratch_2);
+        self.cnv_prepare_left(&mut res_prep, res.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut a_prep, a.data(), !0i64, scratch_2);
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
             (0, -((a_base2k - (res_offset % a_base2k)) as i64))
@@ -647,7 +646,7 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, a.size());
 
-        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), scratch_2);
+        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), !0i64, scratch_2);
         let (mut diag_terms, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, res.size());
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
@@ -720,8 +719,8 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
 
         // Example for rank=3
         //
@@ -796,7 +795,6 @@ where
         }
     }
 }
-
 pub trait GLWEAdd
 where
     Self: ModuleN + VecZnxAdd + VecZnxCopy + VecZnxAddInplace + VecZnxZero,
@@ -873,6 +871,34 @@ impl<BE: Backend> GLWEAdd for Module<BE> where Self: ModuleN + VecZnxAdd + VecZn
 impl<BE: Backend> GLWESub for Module<BE> where
     Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubInplace + VecZnxSubNegateInplace
 {
+}
+
+impl<BE: Backend> GLWENegate for Module<BE> where Self: VecZnxNegate + VecZnxNegateInplace + VecZnxZero + ModuleN {}
+pub trait GLWENegate
+where
+    Self: VecZnxNegate + VecZnxNegateInplace + VecZnxZero + ModuleN,
+{
+    fn glwe_negate(&self, res: &mut GLWE<impl DataMut>, a: &GLWE<impl DataRef>) {
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.rank(), res.rank());
+        let cols = res.rank().as_usize() + 1;
+        for i in 0..cols {
+            self.vec_znx_negate(res.data_mut(), i, a.data(), i);
+        }
+        res.base2k = a.base2k;
+    }
+
+    fn glwe_negate_inplace(&self, res: &mut GLWE<impl DataMut>) {
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        assert_eq!(res.n(), self.n() as u32);
+        let cols = res.rank().as_usize() + 1;
+        for i in 0..cols {
+            self.vec_znx_negate_inplace(res.data_mut(), i);
+        }
+    }
 }
 
 pub trait GLWESub
@@ -1358,37 +1384,5 @@ where
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_normalize_inplace(res.base2k().into(), res.data_mut(), i, scratch);
         }
-    }
-}
-
-#[allow(dead_code)]
-// c = op(a, b)
-fn set_k_binary(c: &impl GLWEInfos, a: &impl GLWEInfos, b: &impl GLWEInfos) -> TorusPrecision {
-    // If either operands is a ciphertext
-    if a.rank() != 0 || b.rank() != 0 {
-        // If a is a plaintext (but b ciphertext)
-        let k = if a.rank() == 0 {
-            b.max_k()
-        // If b is a plaintext (but a ciphertext)
-        } else if b.rank() == 0 {
-            a.max_k()
-        // If a & b are both ciphertexts
-        } else {
-            a.max_k().min(b.max_k())
-        };
-        k.min(c.max_k())
-    // If a & b are both plaintexts
-    } else {
-        c.max_k()
-    }
-}
-
-#[allow(dead_code)]
-// a = op(a, b)
-fn set_k_unary(a: &impl GLWEInfos, b: &impl GLWEInfos) -> TorusPrecision {
-    if a.rank() != 0 || b.rank() != 0 {
-        a.max_k().min(b.max_k())
-    } else {
-        a.max_k()
     }
 }

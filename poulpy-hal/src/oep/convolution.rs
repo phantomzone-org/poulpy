@@ -11,12 +11,12 @@ use crate::layouts::{
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ConvolutionImpl<BE: Backend> {
     fn cnv_prepare_left_tmp_bytes_impl(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
-    fn cnv_prepare_left_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_left_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecLToMut<BE>,
         A: VecZnxToRef;
     fn cnv_prepare_right_tmp_bytes_impl(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
-    fn cnv_prepare_right_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_right_impl<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecRToMut<BE>,
         A: VecZnxToRef + ZnxInfos;
@@ -93,13 +93,19 @@ pub unsafe trait ConvolutionImpl<BE: Backend> {
             .max(Self::cnv_prepare_right_tmp_bytes_impl(module, res_size, a_size))
     }
 
-    fn cnv_prepare_self_impl<L, R, A>(module: &Module<BE>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
-    where
+    fn cnv_prepare_self_impl<L, R, A>(
+        module: &Module<BE>,
+        left: &mut L,
+        right: &mut R,
+        a: &A,
+        mask: i64,
+        scratch: &mut Scratch<BE>,
+    ) where
         L: CnvPVecLToMut<BE>,
         R: CnvPVecRToMut<BE>,
         A: VecZnxToRef + ZnxInfos,
     {
-        Self::cnv_prepare_left_impl(module, left, a, scratch);
-        Self::cnv_prepare_right_impl(module, right, a, scratch);
+        Self::cnv_prepare_left_impl(module, left, a, mask, scratch);
+        Self::cnv_prepare_right_impl(module, right, a, mask, scratch);
     }
 }

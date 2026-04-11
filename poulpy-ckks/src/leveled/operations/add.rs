@@ -6,8 +6,9 @@
 use std::fmt::Debug;
 
 use crate::layouts::{
+    Metadata, PrecisionInfos,
     ciphertext::CKKSCiphertext,
-    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
+    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
 };
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEShift, ScratchTakeCore,
@@ -35,24 +36,19 @@ impl<D: DataMut> CKKSCiphertext<D> {
     {
         // If the destination has less precision than the aligned inputs, shift
         // the computation down by `offset` bits before writing the result.
-        let offset = a
-            .inner
-            .max_k()
-            .min(b.inner.max_k())
-            .as_usize()
-            .saturating_sub(self.inner.max_k().as_usize());
+        let offset = self.offset_binary(a, b);
 
-        if offset == 0 && a.log_delta == b.log_delta {
+        if offset == 0 && a.log_hom_rem() == b.log_hom_rem() {
             module.glwe_add(&mut self.inner, &a.inner, &b.inner);
-        } else if a.log_delta <= b.log_delta {
+        } else if a.log_hom_rem() <= b.log_hom_rem() {
             module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
-            module.glwe_lsh_add(&mut self.inner, &b.inner, b.log_delta - a.log_delta + offset, scratch);
+            module.glwe_lsh_add(&mut self.inner, &b.inner, b.log_hom_rem() - a.log_hom_rem() + offset, scratch);
         } else {
             module.glwe_lsh(&mut self.inner, &b.inner, offset, scratch);
-            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_delta - b.log_delta + offset, scratch);
+            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_hom_rem() - b.log_hom_rem() + offset, scratch);
         }
 
-        self.log_delta = a.log_delta.min(b.log_delta) - offset;
+        self.set_log_hom_rem(a.log_hom_rem().min(b.log_hom_rem()) - offset)?;
 
         Ok(())
     }
@@ -67,16 +63,18 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: GLWEAdd + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        if self.log_delta < a.log_delta {
-            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_delta - self.log_delta, scratch);
-        } else if self.log_delta > a.log_delta {
-            module.glwe_lsh_inplace(&mut self.inner, self.log_delta - a.log_delta, scratch);
+        let self_log_ingeter = self.log_hom_rem();
+
+        if self_log_ingeter < a.log_hom_rem() {
+            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_hom_rem() - self_log_ingeter, scratch);
+        } else if self_log_ingeter > a.log_hom_rem() {
+            module.glwe_lsh_inplace(&mut self.inner, self_log_ingeter - a.log_hom_rem(), scratch);
             module.glwe_add_inplace(&mut self.inner, &a.inner);
         } else {
             module.glwe_add_inplace(&mut self.inner, &a.inner);
         }
 
-        self.log_delta = self.log_delta.min(a.log_delta);
+        self.set_log_hom_rem(self_log_ingeter.min(a.log_hom_rem()))?;
 
         Ok(())
     }
@@ -92,9 +90,9 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: VecZnxRshAdd<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let offset = a.inner.max_k().as_usize().saturating_sub(self.inner.max_k().as_usize());
+        let offset = self.offset_unary(a);
         module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
-        self.log_delta = a.log_delta - offset;
+        self.set_log_hom_rem(a.log_hom_rem() - offset)?;
         self.add_pt_znx_inplace(module, pt_znx, scratch)?;
         Ok(())
     }
@@ -109,7 +107,8 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: VecZnxRshAdd<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        pt_znx.add_to(module, self.inner.data_mut(), self.log_delta, scratch);
+        let log_integer = self.log_hom_rem();
+        pt_znx.add_to(module, self.inner.data_mut(), log_integer, scratch);
         Ok(())
     }
 
@@ -118,7 +117,7 @@ impl<D: DataMut> CKKSCiphertext<D> {
         module: &Module<BE>,
         a: &CKKSCiphertext<impl DataRef>,
         pt_rnx: &CKKSPlaintextRnx<F>,
-        prec: PrecisionLayout,
+        prec: Metadata,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -130,9 +129,9 @@ impl<D: DataMut> CKKSCiphertext<D> {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
             n: module.n().into(),
             base2k: self.inner.base2k(),
-            k: prec.k(self.inner.base2k()),
+            k: prec.min_k(self.inner.base2k()),
         });
-        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        let mut pt_znx = CKKSPlaintextZnx { inner: pt_glwe, prec };
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         self.add_pt_znx(module, a, &pt_znx, scratch_1)?;
         Ok(())
@@ -142,7 +141,7 @@ impl<D: DataMut> CKKSCiphertext<D> {
         &mut self,
         module: &Module<BE>,
         pt_rnx: &CKKSPlaintextRnx<F>,
-        prec: PrecisionLayout,
+        prec: Metadata,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -154,9 +153,9 @@ impl<D: DataMut> CKKSCiphertext<D> {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
             n: module.n().into(),
             base2k: self.inner.base2k(),
-            k: prec.k(self.inner.base2k()),
+            k: prec.min_k(self.inner.base2k()),
         });
-        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        let mut pt_znx = CKKSPlaintextZnx { inner: pt_glwe, prec };
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         self.add_pt_znx_inplace(module, &pt_znx, scratch_1)?;
         Ok(())

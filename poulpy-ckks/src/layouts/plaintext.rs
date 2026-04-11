@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
-use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos, TorusPrecision};
+use poulpy_core::layouts::{Base2K, Degree, GLWEInfos, GLWEPlaintext, LWEInfos, Rank, TorusPrecision};
 use poulpy_hal::{
     GALOISGENERATOR,
     api::{VecZnxLsh, VecZnxRshAdd, VecZnxRshSub},
@@ -10,25 +10,15 @@ use poulpy_hal::{
 };
 use rand_distr::num_traits::{Float, FloatConst};
 
+use crate::layouts::{Metadata, PrecisionInfos};
+
 #[derive(Debug, Clone)]
 pub struct CKKSPlaintextRnx<F>(Vec<F>)
 where
     F: Float + FloatConst + Debug;
 pub struct CKKSPlaintextZnx<D: Data> {
-    pub data: GLWEPlaintext<D>,
-    pub prec: PrecisionLayout,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PrecisionLayout {
-    pub log_decimal: usize,
-    pub log_integer: usize,
-}
-
-impl PrecisionLayout {
-    pub fn k(&self, base2k: Base2K) -> TorusPrecision {
-        ((self.log_decimal + self.log_integer).next_multiple_of(base2k.as_usize())).into()
-    }
+    pub inner: GLWEPlaintext<D>,
+    pub prec: Metadata,
 }
 
 pub trait CKKSPlaintextConversion {
@@ -132,22 +122,22 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
         BE: Backend,
     {
         let log_decimal = other.prec.log_decimal;
-        let log_integer = other.prec.log_integer;
-        let n = other.data.n().as_usize();
+        let log_integer = other.prec.log_hom_rem;
+        let n = other.inner.n().as_usize();
 
         anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
-        anyhow::ensure!(self.0.len() == other.data.n().as_usize());
+        anyhow::ensure!(self.0.len() == other.inner.n().as_usize());
         anyhow::ensure!(log_decimal + log_integer <= 127);
 
         let scale = (-(log_decimal as f64)).exp2();
-        let k = other.data.max_k();
+        let k = other.inner.max_k();
         if log_decimal + log_integer <= 63 {
             let mut data = vec![0i64; n];
-            other.data.decode_vec_i64(&mut data, k);
+            other.inner.decode_vec_i64(&mut data, k);
             self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
         } else {
             let mut data = vec![0i128; n];
-            other.data.decode_vec_i128(&mut data, k);
+            other.inner.decode_vec_i128(&mut data, k);
             self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
         }
 
@@ -160,40 +150,78 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
         BE: Backend,
     {
         let log_decimal = other.prec.log_decimal;
-        let log_integer = other.prec.log_integer;
+        let log_integer = other.prec.log_hom_rem;
 
         anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
-        anyhow::ensure!(self.0.len() == other.data.n().as_usize());
+        anyhow::ensure!(self.0.len() == other.inner.n().as_usize());
 
         let scale = (log_decimal as f64).exp2();
-        let k = other.data.max_k();
+        let k = other.inner.max_k();
         if log_decimal + log_integer <= 63 {
             let data: Vec<i64> = self.0.iter().map(|&x| (x * scale).round() as i64).collect();
-            other.data.encode_vec_i64(&data, k);
+            other.inner.encode_vec_i64(&data, k);
         } else {
             let data: Vec<i128> = self.0.iter().map(|&x| (x * scale).round() as i128).collect();
-            other.data.encode_vec_i128(&data, k);
+            other.inner.encode_vec_i128(&data, k);
         }
 
         Ok(())
     }
 }
 
-impl<D: Data> CKKSPlaintextZnx<D> {
-    pub fn log_decimal_prec(&self) -> usize {
+impl<D: Data> PrecisionInfos for CKKSPlaintextZnx<D> {
+    fn log_decimal(&self) -> usize {
         self.prec.log_decimal
     }
 
-    pub fn log_integer_size(&self) -> usize {
-        self.prec.log_integer
+    fn log_hom_rem(&self) -> usize {
+        self.prec.log_hom_rem
     }
 
+    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
+        anyhow::ensure!(self.max_k().as_usize() - self.log_hom_rem() >= log_decimal);
+        self.prec.log_decimal = log_decimal;
+        Ok(())
+    }
+
+    fn set_log_hom_rem(&mut self, log_integer: usize) -> Result<()> {
+        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= log_integer);
+        self.prec.log_hom_rem = log_integer;
+        Ok(())
+    }
+}
+
+impl<D: Data> LWEInfos for CKKSPlaintextZnx<D> {
+    fn base2k(&self) -> Base2K {
+        self.inner.base2k()
+    }
+
+    fn max_k(&self) -> TorusPrecision {
+        self.inner.max_k()
+    }
+
+    fn n(&self) -> Degree {
+        self.inner.n()
+    }
+
+    fn size(&self) -> usize {
+        self.inner.size()
+    }
+}
+
+impl<D: Data> GLWEInfos for CKKSPlaintextZnx<D> {
+    fn rank(&self) -> Rank {
+        Rank(1)
+    }
+}
+
+impl<D: Data> CKKSPlaintextZnx<D> {
     pub fn plaintext(&self) -> &GLWEPlaintext<D> {
-        &self.data
+        &self.inner
     }
 
     pub(crate) fn offset(&self, log_scale: usize) -> usize {
-        log_scale + self.log_decimal_prec() - self.data.max_k().as_usize()
+        log_scale + self.log_decimal() - self.inner.max_k().as_usize()
     }
 }
 
@@ -214,11 +242,11 @@ impl<D: DataRef> CKKSPlaintextZnx<D> {
         Module<BE>: VecZnxRshAdd<BE>,
     {
         module.vec_znx_rsh_add(
-            self.data.base2k().as_usize(),
+            self.inner.base2k().as_usize(),
             self.offset(log_delta),
             dst,
             0,
-            self.data.data(),
+            self.inner.data(),
             0,
             scratch,
         );
@@ -234,11 +262,11 @@ impl<D: DataRef> CKKSPlaintextZnx<D> {
         Module<BE>: VecZnxRshSub<BE>,
     {
         module.vec_znx_rsh_sub(
-            self.data.base2k().as_usize(),
+            self.inner.base2k().as_usize(),
             self.offset(log_delta),
             dst,
             0,
-            self.data.data(),
+            self.inner.data(),
             0,
             scratch,
         );
@@ -261,9 +289,9 @@ impl<D: DataMut> CKKSPlaintextZnx<D> {
         Module<BE>: VecZnxLsh<BE>,
     {
         module.vec_znx_lsh(
-            self.data.base2k().as_usize(),
+            self.inner.base2k().as_usize(),
             self.offset(log_delta),
-            self.data.data_mut(),
+            self.inner.data_mut(),
             0,
             src,
             0,
@@ -273,9 +301,9 @@ impl<D: DataMut> CKKSPlaintextZnx<D> {
 }
 
 impl CKKSPlaintextZnx<Vec<u8>> {
-    pub fn alloc(n: Degree, base2k: Base2K, prec: PrecisionLayout) -> Self {
+    pub fn alloc(n: Degree, base2k: Base2K, prec: Metadata) -> Self {
         Self {
-            data: GLWEPlaintext::alloc(n, base2k, prec.k(base2k)),
+            inner: GLWEPlaintext::alloc(n, base2k, prec.min_k(base2k)),
             prec,
         }
     }
@@ -294,7 +322,7 @@ mod tests {
         a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0_f64, f64::max)
     }
 
-    fn roundtrip_f64(base2k: usize, prec: PrecisionLayout) {
+    fn roundtrip_f64(base2k: usize, prec: Metadata) {
         let n = 16usize;
         // Values spread across [-1, 1] to exercise both signs and fractional precision.
         let values: Vec<f64> = (0..n).map(|i| 2.0 * (i as f64) / (n as f64) - 1.0).collect();
@@ -319,8 +347,8 @@ mod tests {
         // log_decimal_prec + log_integer_size = 50 <= 63: uses encode_vec_i64.
         roundtrip_f64(
             16,
-            PrecisionLayout {
-                log_integer: 10,
+            Metadata {
+                log_hom_rem: 10,
                 log_decimal: 40,
             },
         );
@@ -331,8 +359,8 @@ mod tests {
         // log_decimal_prec + log_integer_size = 70 > 63: uses encode_vec_i128.
         roundtrip_f64(
             16,
-            PrecisionLayout {
-                log_integer: 30,
+            Metadata {
+                log_hom_rem: 30,
                 log_decimal: 40,
             },
         );
@@ -345,8 +373,8 @@ mod tests {
         use poulpy_hal::layouts::VecZnx;
         let n = 16usize;
 
-        let prec = PrecisionLayout {
-            log_integer: 10,
+        let prec = Metadata {
+            log_hom_rem: 10,
             log_decimal: 40,
         };
         let base2k: usize = 52;
@@ -374,7 +402,7 @@ mod tests {
         let mut pt_out = CKKSPlaintextZnx::alloc(n.into(), base2k.into(), prec);
         pt_out.extract_from(&module, &buf, log_delta, scratch.borrow());
 
-        assert_eq!(pt.data.data(), pt_out.data.data())
+        assert_eq!(pt.inner.data(), pt_out.inner.data())
     }
 
     #[test]

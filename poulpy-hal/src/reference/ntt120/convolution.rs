@@ -37,7 +37,7 @@ use crate::{
     },
     reference::ntt120::{
         NttDFTExecute, NttFromZnx64,
-        arithmetic::{b_from_znx64_ref, c_from_b_ref},
+        arithmetic::{b_from_znx64_masked_ref, b_from_znx64_ref, c_from_b_ref},
         mat_vec::{accum_mul_q120_bc, accum_to_q120b},
         ntt::{NttTable, ntt_ref},
         primes::{PrimeSet, Primes30},
@@ -66,7 +66,7 @@ pub fn ntt120_cnv_prepare_left_tmp_bytes(_n: usize) -> usize {
 ///
 /// Limbs of `res` beyond `a.size()` are zeroed.
 /// No scratch buffer is needed; `_tmp` is unused.
-pub fn ntt120_cnv_prepare_left<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, _tmp: &mut [u8])
+pub fn ntt120_cnv_prepare_left<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, mask: i64, _tmp: &mut [u8])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
     R: CnvPVecLToMut<BE>,
@@ -80,9 +80,17 @@ where
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
-        for j in 0..min_size {
+        // All limbs except the last: unmasked fast path.
+        for j in 0..min_size.saturating_sub(1) {
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, j));
             BE::ntt_from_znx64(res_u64, a.at(col, j));
+            BE::ntt_dft_execute(table, res_u64);
+        }
+        // Last active limb: masked path.
+        if min_size > 0 {
+            let last = min_size - 1;
+            let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, last));
+            BE::ntt_from_znx64_masked(res_u64, a.at(col, last), mask);
             BE::ntt_dft_execute(table, res_u64);
         }
         for j in min_size..res_size {
@@ -112,7 +120,7 @@ pub fn ntt120_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
 ///
 /// `tmp` must hold at least `ntt120_cnv_prepare_right_tmp_bytes(n) / size_of::<u64>()` elements.
 /// Limbs of `res` beyond `a.size()` are zeroed.
-pub fn ntt120_cnv_prepare_right<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, tmp: &mut [u64])
+pub fn ntt120_cnv_prepare_right<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, mask: i64, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar>,
     R: CnvPVecRToMut<BE>,
@@ -127,10 +135,19 @@ where
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
-        for j in 0..min_size {
+        // All limbs except the last: unmasked fast path.
+        for j in 0..min_size.saturating_sub(1) {
             b_from_znx64_ref::<Primes30>(n, tmp, a.at(col, j));
             ntt_ref(table, tmp);
             let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, j));
+            c_from_b_ref::<Primes30>(n, res_u32, tmp);
+        }
+        // Last active limb: masked path.
+        if min_size > 0 {
+            let last = min_size - 1;
+            b_from_znx64_masked_ref::<Primes30>(n, tmp, a.at(col, last), mask);
+            ntt_ref(table, tmp);
+            let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, last));
             c_from_b_ref::<Primes30>(n, res_u32, tmp);
         }
         for j in min_size..res_size {
@@ -161,8 +178,14 @@ pub fn ntt120_cnv_prepare_self_tmp_bytes(_n: usize) -> usize {
 ///
 /// This saves one full `b_from_znx64 + NTT` per (col, limb) compared to
 /// calling `prepare_left` + `prepare_right` separately.
-pub fn ntt120_cnv_prepare_self<L, R, A, BE>(module: &impl NttModuleHandle, left: &mut L, right: &mut R, a: &A, _tmp: &mut [u8])
-where
+pub fn ntt120_cnv_prepare_self<L, R, A, BE>(
+    module: &impl NttModuleHandle,
+    left: &mut L,
+    right: &mut R,
+    a: &A,
+    mask: i64,
+    _tmp: &mut [u8],
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
     L: CnvPVecLToMut<BE>,
     R: CnvPVecRToMut<BE>,
@@ -178,17 +201,27 @@ where
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
-        for j in 0..min_size {
-            // Step 1-2: i64 → q120b → NTT, written directly into left buffer
+        // All limbs except the last: unmasked fast path.
+        for j in 0..min_size.saturating_sub(1) {
             {
                 let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, j));
                 BE::ntt_from_znx64(left_u64, a.at(col, j));
                 BE::ntt_dft_execute(table, left_u64);
             }
-
-            // Step 3: derive q120c (right) from q120b (left)
             let left_u64: &[u64] = cast_slice(left.at(col, j));
             let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, j));
+            c_from_b_ref::<Primes30>(n, right_u32, left_u64);
+        }
+        // Last active limb: masked path.
+        if min_size > 0 {
+            let last = min_size - 1;
+            {
+                let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, last));
+                BE::ntt_from_znx64_masked(left_u64, a.at(col, last), mask);
+                BE::ntt_dft_execute(table, left_u64);
+            }
+            let left_u64: &[u64] = cast_slice(left.at(col, last));
+            let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, last));
             c_from_b_ref::<Primes30>(n, right_u32, left_u64);
         }
         for j in min_size..res_size {

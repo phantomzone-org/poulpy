@@ -10,7 +10,7 @@ use poulpy_core::{
     layouts::{GLWEAutomorphismKeyLayout, GLWELayout, GLWETensorKeyLayout, Rank},
 };
 
-use crate::layouts::plaintext::PrecisionLayout;
+use crate::layouts::Metadata;
 
 /// Shared CKKS parameter set for test instantiation.
 #[derive(Clone, Copy)]
@@ -18,7 +18,7 @@ pub struct CKKSTestParams {
     pub n: usize,
     pub base2k: usize,
     pub k: usize,
-    pub prec: PrecisionLayout,
+    pub prec: Metadata,
     pub hw: usize,
     pub dsize: usize,
 }
@@ -35,8 +35,8 @@ impl CKKSTestParams {
     }
 
     pub fn tsk_layout(&self) -> EncryptionLayout<GLWETensorKeyLayout> {
-        let dnum = self.k.div_ceil(self.dsize * self.base2k);
         let k = self.k + self.dsize * self.base2k;
+        let dnum = k.div_ceil(self.dsize * self.base2k);
         EncryptionLayout::new_from_default_sigma(GLWETensorKeyLayout {
             n: self.n.into(),
             base2k: self.base2k.into(),
@@ -49,8 +49,8 @@ impl CKKSTestParams {
     }
 
     pub fn atk_layout(&self) -> EncryptionLayout<GLWEAutomorphismKeyLayout> {
-        let dnum = self.k.div_ceil(self.dsize * self.base2k);
         let k = self.k + self.dsize * self.base2k;
+        let dnum = k.div_ceil(self.dsize * self.base2k);
         EncryptionLayout::new_from_default_sigma(GLWEAutomorphismKeyLayout {
             n: self.n.into(),
             base2k: self.base2k.into(),
@@ -65,12 +65,12 @@ impl CKKSTestParams {
 
 /// NTT120 parameter set.
 pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
-    n: 1024,
+    n: 256,
     base2k: 52,
-    k: 8 * 52 + 17,
-    prec: PrecisionLayout {
+    k: 8 * 52 + 1,
+    prec: Metadata {
         log_decimal: 40,
-        log_integer: 30,
+        log_hom_rem: 30,
     },
     hw: 192,
     dsize: 1,

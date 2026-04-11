@@ -163,7 +163,7 @@ mod poulpy_core_ntt120 {
     backend_test_suite!(
     mod cpu_ref,
     backend = poulpy_cpu_ref::NTT120Ref,
-    params = TestParams { size: 1<<8, base2k: 50 },
+    params = TestParams { size: 1<<8, base2k: 52 },
     tests = {
         //GLWE Encryption
         glwe_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_sk,

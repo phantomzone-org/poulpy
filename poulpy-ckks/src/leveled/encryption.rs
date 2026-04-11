@@ -10,7 +10,7 @@
 //! so that noise is injected across the full torus buffer, while the message
 //! is positioned according to the semantic precision `offset_bits`.
 
-use crate::layouts::{ciphertext::CKKSCiphertext, plaintext::CKKSPlaintextZnx};
+use crate::layouts::{PrecisionInfos, ciphertext::CKKSCiphertext, plaintext::CKKSPlaintextZnx};
 use poulpy_core::{
     EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{GLWE, GLWEInfos, GLWEPlaintext, prepared::GLWESecretPrepared},
@@ -53,8 +53,10 @@ pub fn encrypt_sk<BE: Backend, E: EncryptionInfos>(
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     ct.inner.encrypt_zero_sk(module, sk, enc_infos, source_xe, source_xa, scratch);
-    ct.log_delta = enc_infos.noise_infos().k - pt.prec.log_decimal;
-    pt.add_to(module, ct.inner.data_mut(), ct.log_delta, scratch);
+    let log_integer = enc_infos.noise_infos().k - pt.prec.log_decimal;
+    pt.add_to(module, ct.inner.data_mut(), log_integer, scratch);
+    ct.set_log_hom_rem(log_integer).unwrap();
+    ct.set_log_decimal(pt.log_decimal()).unwrap();
 }
 
 /// Returns the scratch bytes needed for [`decrypt`].
@@ -83,5 +85,6 @@ pub fn decrypt<BE: Backend>(
 {
     let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(&ct.inner);
     ct.inner.decrypt(module, &mut full_pt, sk, scratch_rest);
-    pt.extract_from(module, &full_pt.data, ct.log_delta, scratch_rest);
+    println!("full_pt: {}", full_pt);
+    pt.extract_from(module, &full_pt.data, ct.log_hom_rem(), scratch_rest);
 }

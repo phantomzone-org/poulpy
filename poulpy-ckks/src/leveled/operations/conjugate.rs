@@ -34,8 +34,9 @@ impl<D: DataMut> CKKSCiphertext<D> {
         Module<BE>: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        // TODO: manage case where receiver has smaller k
         module.glwe_automorphism(&mut self.inner, &ct.inner, key, scratch);
-        self.log_delta = ct.log_delta;
+        self.prec = ct.prec;
     }
 
     /// `self = Conjugate(self)` using the conjugation key (Galois element -1).

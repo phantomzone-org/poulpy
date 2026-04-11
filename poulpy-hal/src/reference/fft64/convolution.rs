@@ -10,27 +10,27 @@ use crate::{
     },
 };
 
-pub fn convolution_prepare_left<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
+pub fn convolution_prepare_left<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
 {
-    convolution_prepare(table, res, a, tmp)
+    convolution_prepare(table, res, a, mask, tmp)
 }
 
-pub fn convolution_prepare_right<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
+pub fn convolution_prepare_right<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
 {
-    convolution_prepare(table, res, a, tmp)
+    convolution_prepare(table, res, a, mask, tmp)
 }
 
-fn convolution_prepare<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, tmp: &mut T)
+fn convolution_prepare<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     R: ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
@@ -53,7 +53,15 @@ where
     let res_raw: &mut [f64] = res.raw_mut();
 
     for i in 0..cols {
+        // FFT all limbs (unmasked); the last active limb will be overwritten below.
         vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
+
+        // Re-compute only the last active limb with the mask applied.
+        if min_size > 0 {
+            let last = min_size - 1;
+            BE::reim_from_znx_masked(tmp.at_mut(0, last), a.at(i, last), mask);
+            BE::reim_dft_execute(table, tmp.at_mut(0, last));
+        }
 
         let tmp_raw: &[f64] = tmp.raw();
         let res_col: &mut [f64] = &mut res_raw[i * n * res_size..];
@@ -65,8 +73,14 @@ where
     }
 }
 
-pub fn convolution_prepare_self<L, R, A, T, BE>(table: &ReimFFTTable<f64>, left: &mut L, right: &mut R, a: &A, tmp: &mut T)
-where
+pub fn convolution_prepare_self<L, R, A, T, BE>(
+    table: &ReimFFTTable<f64>,
+    left: &mut L,
+    right: &mut R,
+    a: &A,
+    mask: i64,
+    tmp: &mut T,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
     L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
@@ -97,7 +111,15 @@ where
     let right_raw: &mut [f64] = right.raw_mut();
 
     for i in 0..cols {
+        // FFT all limbs (unmasked); the last active limb will be overwritten below.
         vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
+
+        // Re-compute only the last active limb with the mask applied.
+        if min_size > 0 {
+            let last = min_size - 1;
+            BE::reim_from_znx_masked(tmp.at_mut(0, last), a.at(i, last), mask);
+            BE::reim_dft_execute(table, tmp.at_mut(0, last));
+        }
 
         let tmp_raw: &[f64] = tmp.raw();
         let left_col: &mut [f64] = &mut left_raw[i * n * res_size..];

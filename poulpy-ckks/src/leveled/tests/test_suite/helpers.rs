@@ -9,8 +9,9 @@ use std::collections::HashMap;
 use super::CKKSTestParams;
 use crate::{
     layouts::{
+        Metadata,
         ciphertext::CKKSCiphertext,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
     },
     leveled::encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
 };
@@ -68,7 +69,7 @@ where
         self.params.glwe_layout().rank()
     }
 
-    pub fn prec(&self) -> PrecisionLayout {
+    pub fn prec(&self) -> Metadata {
         self.params.prec
     }
 
@@ -190,7 +191,7 @@ where
         let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
 
-        let mut ct = CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout());
+        let mut ct = CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout()).unwrap();
         let mut xa = Source::new([3u8; 32]);
         let mut xe = Source::new([4u8; 32]);
         encrypt_sk(
@@ -300,13 +301,14 @@ where
 
     /// Allocates a fresh full-precision result ciphertext.
     pub fn alloc_ct(&self) -> CKKSCiphertext<Vec<u8>> {
-        CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout())
+        CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout()).unwrap()
     }
 
     /// Allocates a ciphertext with one fewer limb than the default (k − base2k).
     pub fn alloc_ct_reduced_k(&self) -> CKKSCiphertext<Vec<u8>> {
-        let reduced_k = TorusPrecision((self.params.k - self.params.base2k) as u32);
-        CKKSCiphertext::alloc(self.degree(), self.base2k(), reduced_k, self.rank())
+        let mut layout = self.params.glwe_layout();
+        layout.layout.k = TorusPrecision(layout.layout.k.as_u32() - self.params.base2k as u32);
+        CKKSCiphertext::alloc_from_infos(&layout).unwrap()
     }
 
     /// Encodes (re2, im2) into an RNX plaintext via IFFT.

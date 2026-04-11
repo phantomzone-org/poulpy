@@ -26,11 +26,12 @@ impl<D: DataMut> CKKSCiphertext<D> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        // TODO: manage case where receiver has smaller k
         let key = keys
             .get_automorphism_key(k)
             .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
         module.glwe_automorphism(&mut self.inner, &ct.inner, key, scratch);
-        self.log_delta = ct.log_delta;
+        self.prec = ct.prec;
     }
 
     /// `self = Rotate(self, k)` — rotates slots by `k` positions in place.

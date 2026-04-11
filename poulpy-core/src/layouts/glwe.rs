@@ -213,8 +213,8 @@ impl GLWE<Vec<u8>> {
     }
 
     /// Reallocates the backing buffer so capacity matches `size` limb count.
-    pub fn drop_limbs(&mut self, size: usize) {
-        self.data.drop_limbs(size);
+    pub fn reallocate_limbs(&mut self, size: usize) {
+        self.data.reallocate_limbs(size);
     }
 }
 

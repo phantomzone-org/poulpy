@@ -34,23 +34,23 @@ where
     fn cnv_prepare_left_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize {
         BE::cnv_prepare_left_tmp_bytes_impl(self, res_size, a_size)
     }
-    fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos,
     {
-        BE::cnv_prepare_left_impl(self, res, a, scratch);
+        BE::cnv_prepare_left_impl(self, res, a, mask, scratch);
     }
 
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize {
         BE::cnv_prepare_right_tmp_bytes_impl(self, res_size, a_size)
     }
-    fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos,
     {
-        BE::cnv_prepare_right_impl(self, res, a, scratch);
+        BE::cnv_prepare_right_impl(self, res, a, mask, scratch);
     }
 
     fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
@@ -121,12 +121,12 @@ where
         BE::cnv_prepare_self_tmp_bytes_impl(self, res_size, a_size)
     }
 
-    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos,
     {
-        BE::cnv_prepare_self_impl(self, left, right, a, scratch);
+        BE::cnv_prepare_self_impl(self, left, right, a, mask, scratch);
     }
 }

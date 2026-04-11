@@ -1,15 +1,22 @@
 //! Multiplication tests: ct × ct, ct × pt, ct × const, ct × int, and sequential depth chains.
 
-use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensoring, ScratchTakeCore};
+use poulpy_core::{
+    GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorDecrypt, GLWETensoring, ScratchTakeCore,
+    layouts::{GLWESecretTensorPreparedFactory, LWEInfos},
+};
 use poulpy_hal::{
     api::{
-        ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLshInplace,
-        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        Convolution, ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAddInplace,
+        VecZnxBigNormalize, VecZnxCopy, VecZnxIdftApplyConsume, VecZnxLshInplace, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VecZnxRshAdd,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned},
 };
 
-use crate::leveled::tests::test_suite::helpers::TestContext;
+use crate::{
+    layouts::{PrecisionInfos, plaintext::CKKSPlaintextZnx},
+    leveled::{encryption::decrypt, tests::test_suite::helpers::TestContext},
+};
 
 /// ct × ct multiplication with both inputs at the same log_delta.
 pub fn test_mul_ct_aligned<BE: Backend>(ctx: &TestContext<BE>)
@@ -24,19 +31,33 @@ where
         + GLWEShift<BE>
         + GLWETensoring<BE>
         + VecZnxLshInplace<BE>
-        + VecZnxCopy,
+        + VecZnxCopy
+        + GLWESecretTensorPreparedFactory<BE>
+        + GLWETensorDecrypt<BE>
+        + Convolution<BE>
+        + VecZnxBigAddInplace<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxIdftApplyConsume<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, scratch.borrow());
+
+    let mut pt_znx = CKKSPlaintextZnx::alloc(ctx.degree(), ctx.base2k(), ctx.params.prec);
+    decrypt(&ctx.module, &mut pt_znx, &ct1, &ctx.sk, scratch.borrow());
+    decrypt(&ctx.module, &mut pt_znx, &ct2, &ctx.sk, scratch.borrow());
+
+    println!("ct1: {} {} {}", ct1.log_hom_rem(), ct1.log_decimal(), ct1.max_k());
+    println!("ct2: {} {} {}", ct2.log_hom_rem(), ct2.log_decimal(), ct2.max_k());
+
     let (want_re, want_im) = ctx.want_mul();
 
     let mut ct_res = ctx.alloc_ct();
-    ct_res
-        .mul_relin(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow())
-        .unwrap();
+    ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
+
+    println!("ct_res: {} {} {}", ct_res.log_hom_rem(), ct_res.log_decimal(), ct_res.max_k());
 
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }

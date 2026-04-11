@@ -22,7 +22,7 @@ where
         module.bytes_of_vec_znx_dft(1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_left_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    fn cnv_prepare_left_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
     where
         R: CnvPVecLToMut<Self>,
         A: VecZnxToRef,
@@ -30,14 +30,14 @@ where
         let res: &mut CnvPVecL<&mut [u8], FFT64Avx> = &mut res.to_mut();
         let a: &VecZnx<&[u8]> = &a.to_ref();
         let (mut tmp, _) = scratch.take_vec_znx_dft(module, 1, res.size().min(a.size()));
-        convolution_prepare_left(module.get_fft_table(), res, a, &mut tmp);
+        convolution_prepare_left(module.get_fft_table(), res, a, mask, &mut tmp);
     }
 
     fn cnv_prepare_right_tmp_bytes_impl(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {
         module.bytes_of_vec_znx_dft(1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_right_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    fn cnv_prepare_right_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
     where
         R: CnvPVecRToMut<Self>,
         A: VecZnxToRef,
@@ -45,7 +45,7 @@ where
         let res: &mut CnvPVecR<&mut [u8], FFT64Avx> = &mut res.to_mut();
         let a: &VecZnx<&[u8]> = &a.to_ref();
         let (mut tmp, _) = scratch.take_vec_znx_dft(module, 1, res.size().min(a.size()));
-        convolution_prepare_right(module.get_fft_table(), res, a, &mut tmp);
+        convolution_prepare_right(module.get_fft_table(), res, a, mask, &mut tmp);
     }
     fn cnv_apply_dft_tmp_bytes_impl(
         _module: &Module<Self>,
@@ -153,8 +153,14 @@ where
         module.bytes_of_vec_znx_dft(1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_self_impl<L, R, A>(module: &Module<Self>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<Self>)
-    where
+    fn cnv_prepare_self_impl<L, R, A>(
+        module: &Module<Self>,
+        left: &mut L,
+        right: &mut R,
+        a: &A,
+        mask: i64,
+        scratch: &mut Scratch<Self>,
+    ) where
         L: CnvPVecLToMut<Self>,
         R: CnvPVecRToMut<Self>,
         A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
@@ -163,7 +169,7 @@ where
         let right: &mut CnvPVecR<&mut [u8], FFT64Avx> = &mut right.to_mut();
         let a: &VecZnx<&[u8]> = &a.to_ref();
         let (mut tmp, _) = scratch.take_vec_znx_dft(module, 1, left.size().min(a.size()));
-        convolution_prepare_self(module.get_fft_table(), left, right, a, &mut tmp);
+        convolution_prepare_self(module.get_fft_table(), left, right, a, mask, &mut tmp);
     }
 }
 

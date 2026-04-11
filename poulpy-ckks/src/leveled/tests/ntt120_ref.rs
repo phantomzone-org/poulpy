@@ -8,6 +8,8 @@ const ATK_ROTATIONS: &[i64] = &[1, 7];
 
 static CTX: LazyLock<TestContext<NTT120Ref>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS, ATK_ROTATIONS));
 
+use anyhow::Result;
+
 #[test]
 fn encrypt_decrypt() {
     crate::leveled::tests::test_suite::encryption::test_encrypt_decrypt(&CTX);
@@ -144,8 +146,8 @@ fn sub_pt_rnx_smaller_output() {
 }
 
 #[test]
-fn neg() {
-    crate::leveled::tests::test_suite::neg::test_neg(&CTX);
+fn neg() -> Result<()> {
+    crate::leveled::tests::test_suite::neg::test_neg(&CTX)
 }
 
 #[test]

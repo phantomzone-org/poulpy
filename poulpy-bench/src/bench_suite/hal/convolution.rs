@@ -39,7 +39,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_left_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
+            module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
             black_box(());
         }
     }
@@ -86,7 +86,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_right_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_right(&mut a_prep, &a, scratch.borrow());
+            module.cnv_prepare_right(&mut a_prep, &a, !0i64, scratch.borrow());
             black_box(());
         }
     }
@@ -140,8 +140,8 @@ where
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+        module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+        module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
         move || {
             module.cnv_apply_dft(&mut c_dft, 0, 0, &a_prep, 0, &b_prep, 0, scratch.borrow());
             black_box(());
@@ -198,8 +198,8 @@ where
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+        module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+        module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
         move || {
             module.cnv_pairwise_apply_dft(&mut c_dft, 0, 0, &a_prep, &b_prep, 0, 1, scratch.borrow());
             black_box(());

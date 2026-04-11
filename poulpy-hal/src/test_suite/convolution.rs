@@ -122,8 +122,8 @@ where
             .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
-    module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-    module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+    module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+    module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
 
     for a_col in 0..a.cols() {
         for b_col in 0..b.cols() {
@@ -200,8 +200,8 @@ where
             .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
-    module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-    module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+    module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+    module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
 
     for col_i in 0..cols {
         for col_j in 0..cols {

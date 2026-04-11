@@ -33,28 +33,28 @@ where
         ntt120_cnv_prepare_left_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_left_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    fn cnv_prepare_left_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
     where
         R: CnvPVecLToMut<Self>,
         A: VecZnxToRef,
     {
         let bytes = Self::cnv_prepare_left_tmp_bytes_impl(module, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_prepare_left::<_, _, Self>(module, res, a, tmp);
+        ntt120_cnv_prepare_left::<_, _, Self>(module, res, a, mask, tmp);
     }
 
     fn cnv_prepare_right_tmp_bytes_impl(module: &Module<Self>, _res_size: usize, _a_size: usize) -> usize {
         ntt120_cnv_prepare_right_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_right_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
+    fn cnv_prepare_right_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
     where
         R: CnvPVecRToMut<Self>,
         A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
     {
         let bytes = Self::cnv_prepare_right_tmp_bytes_impl(module, 0, 0);
         let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
-        ntt120_cnv_prepare_right::<_, _, Self>(module, res, a, tmp);
+        ntt120_cnv_prepare_right::<_, _, Self>(module, res, a, mask, tmp);
     }
 
     fn cnv_apply_dft_tmp_bytes_impl(
@@ -152,14 +152,20 @@ where
         ntt120_cnv_prepare_self_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_self_impl<L, R, A>(module: &Module<Self>, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<Self>)
-    where
+    fn cnv_prepare_self_impl<L, R, A>(
+        module: &Module<Self>,
+        left: &mut L,
+        right: &mut R,
+        a: &A,
+        mask: i64,
+        scratch: &mut Scratch<Self>,
+    ) where
         L: poulpy_hal::layouts::CnvPVecLToMut<Self>,
         R: poulpy_hal::layouts::CnvPVecRToMut<Self>,
         A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
     {
         let bytes = ntt120_cnv_prepare_self_tmp_bytes(module.n());
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_prepare_self::<_, _, _, Self>(module, left, right, a, tmp);
+        ntt120_cnv_prepare_self::<_, _, _, Self>(module, left, right, a, mask, tmp);
     }
 }

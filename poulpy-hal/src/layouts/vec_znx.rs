@@ -166,12 +166,12 @@ impl VecZnx<Vec<u8>> {
     }
 
     /// Reallocates the backing buffer so capacity matches the `new_size` limb count.
-    pub fn drop_limbs(&mut self, new_size: usize) {
+    pub fn reallocate_limbs(&mut self, new_size: usize) {
         if self.size == new_size {
             return;
         }
 
-        let mut compact: Self = Self::alloc(self.n, self.cols, self.size);
+        let mut compact: Self = Self::alloc(self.n, self.cols, new_size);
         compact.raw_mut().copy_from_slice(self.raw());
         *self = compact;
     }
