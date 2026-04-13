@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
@@ -117,7 +117,7 @@ where
     );
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_infos);
     cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
 

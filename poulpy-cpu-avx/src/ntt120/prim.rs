@@ -17,7 +17,7 @@
 
 //! Trait implementations for [`NTT120Avx`](super::NTT120Avx) — primitive NTT-domain operations.
 //!
-//! Implements all `Ntt*` traits from [`poulpy_hal::reference::ntt120`] for
+//! Implements all `Ntt*` traits from [`poulpy_cpu_ref::reference::ntt120`] for
 //! [`NTT120Avx`](super::NTT120Avx).
 //!
 //! NTT forward/inverse execution uses the AVX2-accelerated kernels from
@@ -31,7 +31,7 @@ use core::arch::x86_64::{
     _mm256_storeu_si256, _mm256_sub_epi64, _mm256_xor_si256,
 };
 
-use poulpy_hal::reference::ntt120::{
+use poulpy_cpu_ref::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
     NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128,
     NttZero,

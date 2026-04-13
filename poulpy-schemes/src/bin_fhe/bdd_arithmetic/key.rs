@@ -23,7 +23,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, Scratch},
     source::Source,
 };
 
@@ -326,7 +326,7 @@ pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>
 where
     Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>,
 {
-    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<Vec<u8>, BRA, BE>
+    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: BDDKeyInfos,
     {
@@ -375,7 +375,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Mod
 {
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<Vec<u8>, BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> {
     pub fn alloc_from_infos<M, A>(module: &M, infos: &A) -> Self
     where
         M: BDDKeyPreparedFactory<BRA, BE>,

@@ -2,31 +2,31 @@
 //!
 //! # Test inventory
 //!
-//! ## Operations-layer rotation (`CKKSCiphertext::rotate`)
+//! ## Operations-layer rotation (`GLWE<_, CKKS>::rotate`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_rotate`] | out-of-place rotation for each requested shift |
 //!
-//! ## Operations-layer rotation (`CKKSCiphertext::rotate_inplace`)
+//! ## Operations-layer rotation (`GLWE<_, CKKS>::rotate_inplace`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_rotate_inplace`] | in-place rotation for each requested shift |
 
-use crate::layouts::PrecisionInfos;
+use crate::{CKKSInfos, leveled::operations::rotate::CKKSRotateOps};
 
-use super::helpers::TestContext;
+use super::helpers::{TestBackend as Backend, TestContext};
 use poulpy_core::{GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace,
-        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
     },
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Module, Scratch, ScratchOwned},
 };
 
-// ─── rotation out-of-place (CKKSCiphertext::rotate) ─────────────────────────
+// ─── rotation out-of-place (GLWE<_, CKKS>::rotate) ─────────────────────────
 
 /// Rotation out-of-place: slot values are cyclically shifted.
 pub fn test_rotate<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64])
@@ -41,7 +41,7 @@ where
         + VecZnxCopy
         + VecZnxLsh<BE>
         + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>,
+        + VecZnxRshAddInto<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
@@ -63,7 +63,7 @@ where
     }
 }
 
-// ─── rotation in-place (CKKSCiphertext::rotate_inplace) ─────────────────────
+// ─── rotation in-place (GLWE<_, CKKS>::rotate_inplace) ─────────────────────
 
 /// Rotation in-place: slot values are cyclically shifted.
 pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64])
@@ -78,7 +78,7 @@ where
         + VecZnxCopy
         + VecZnxLsh<BE>
         + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>,
+        + VecZnxRshAddInto<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {

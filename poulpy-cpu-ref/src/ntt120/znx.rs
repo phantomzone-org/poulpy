@@ -1,10 +1,10 @@
 //! Single ring element (`Z[X]/(X^n+1)`) arithmetic for [`NTT120Ref`](crate::NTT120Ref).
 //!
-//! Implements the `Znx*` traits from `poulpy_hal::reference::znx`. All implementations
+//! Implements the `Znx*` traits from `crate::reference::znx`. All implementations
 //! delegate to the same `_ref` functions as `poulpy-cpu-ref` — these operate on plain
 //! `&[i64]` slices, which are backend-independent.
 
-use poulpy_hal::reference::znx::{
+use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,

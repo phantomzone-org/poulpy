@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -188,7 +188,7 @@ where
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
+    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     let mut max_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
@@ -206,13 +206,15 @@ where
 
     // Allocating the intermediate ciphertext c_enc
     let mut compare_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
-    let mut compare_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut compare_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
 
     for input_i in inputs_enc.iter_mut() {
-        let mut max_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+        let mut max_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+            FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
         max_enc_prepared.prepare(&module, &max_enc, &bdd_key_prepared, scratch.borrow());
 
-        let mut input_i_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
+        let mut input_i_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
             FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
         input_i_enc_prepared.prepare(&module, input_i, &bdd_key_prepared, scratch.borrow());
 

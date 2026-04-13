@@ -21,10 +21,17 @@
 - Remove `VmpApplyDftToDftAdd` and `SvpApplyDftToDftAdd` traits; merge additive variant into `VmpApplyDftToDft` / `SvpApplyDftToDft` via a new `limb_offset` parameter.
   These traits accumulated VMP results directly into a scattered output buffer, causing severe cache misses. Writing into a contiguous temporary buffer and folding with `VecZnxDftAddInplace` is ~2× faster.
 - Remove all associated OEP (`VmpApplyDftToDftAddImpl`, `VmpApplyDftToDftAddTmpBytesImpl`, `SvpApplyDftToDftAddImpl`), delegate, and bench-suite plumbing.
+- Add family defaults for `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution`.
+- Add portable defaults for `scratch` and `vec_znx` in `HalImpl`, reducing backend boilerplate.
+- Remove legacy OEP traits for `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution`; use `HalImpl` + defaults instead.
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx`
 - Update FFT64 and NTT120 `vmp_apply_dft_to_dft` implementations to accept `limb_offset` directly, replacing the separate `_add` codepath.
 - NTT120 AVX2 (`arithmetic_avx.rs`): add `reduce_b_and_apply_crt` that fuses the CRT multiply into the Barrett reduction pass, using new compile-time constants `POW32_CRT` and `POW16_CRT`; apply to `compact_all_blocks` to reduce instruction count by a factor of ~2x.
+- Drop legacy backend-specific VMP/Convolution OEP impl modules; rely on HAL family defaults.
+- Drop legacy backend-specific `scratch`/`vec_znx` impl modules and FFT64 `vec_znx_big` impls; NTT120 `vec_znx_big` now only provides the i128 ops hooks for HAL defaults.
+- Drop legacy backend-specific `svp` impl modules; rely on HAL family defaults.
+- Remove legacy `vec_znx_dft` OEP traits; use `HalImpl` family defaults instead.
 
 ### `poulpy-core`
 - Rewrite external product (`glwe_external_product_internal`) and GLWE keyswitching inner loops to write intermediate per-digit VMP results into a dedicated temporary buffer before accumulating with `VecZnxDftAddInplace`, avoiding scattered-write cache thrashing. `where` bounds updated accordingly.

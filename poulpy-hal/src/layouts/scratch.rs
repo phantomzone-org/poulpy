@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
-use crate::layouts::Backend;
+use crate::layouts::{Backend, DeviceBuf};
 
 /// Owned scratch buffer for temporary workspace during polynomial operations.
 ///
 /// Operations such as normalization, DFT, and vector-matrix products require
-/// temporary scratch memory. `ScratchOwned` holds an aligned `Vec<u8>` that
+/// temporary scratch memory. `ScratchOwned` holds a backend-owned buffer that
 /// can be borrowed as a [`Scratch`] reference.
 ///
 /// The required size for each operation is obtained via the corresponding
@@ -13,7 +13,7 @@ use crate::layouts::Backend;
 /// [`VecZnxNormalizeTmpBytes`](crate::api::VecZnxNormalizeTmpBytes)).
 #[repr(C)]
 pub struct ScratchOwned<B: Backend> {
-    pub data: Vec<u8>,
+    pub data: DeviceBuf<B>,
     pub _phantom: PhantomData<B>,
 }
 

@@ -1,90 +1,121 @@
 //! CKKS secret-key encryption and decryption.
-//!
-//! Encryption expands a compact [`CKKSPlaintext`] into the ciphertext's full
-//! torus width, places the message according to the ciphertext message position,
-//! then calls the underlying GLWE encryption. Decryption reverses the process:
-//! decrypt into a sufficiently wide torus plaintext, then extract the compact
-//! representation using the ciphertext `offset_bits`.
-//!
-//! The core GLWE encryption is invoked with the physical width
-//! so that noise is injected across the full torus buffer, while the message
-//! is positioned according to the semantic precision `offset_bits`.
 
-use crate::layouts::{PrecisionInfos, ciphertext::CKKSCiphertext, plaintext::CKKSPlaintextZnx};
+use crate::{
+    CKKSInfos,
+    layouts::plaintext::{CKKSPlaintextZnx, attach_meta},
+    leveled::operations::pt_znx::CKKSPlaintextZnxOps,
+};
 use poulpy_core::{
     EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, prepared::GLWESecretPrepared},
+    layouts::{GLWEInfos, GLWEPlaintext, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, LWEInfos},
 };
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd},
+    api::{VecZnxLsh, VecZnxNormalizeTmpBytes, VecZnxRshAddInto},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
-/// Returns the scratch bytes needed for [`encrypt_sk`].
-pub fn encrypt_sk_tmp_bytes<A, BE: Backend>(module: &Module<BE>, ct_infos: &A) -> usize
+use anyhow::{Ok, Result};
+
+pub trait CKKSEncrypt<BE: Backend> {
+    fn ckks_encrypt_sk_tmp_bytes<A>(&self, ct_infos: &A) -> usize
+    where
+        A: GLWEInfos;
+
+    #[allow(clippy::too_many_arguments)]
+    fn ckks_encrypt_sk<C, S, E: EncryptionInfos>(
+        &self,
+        ct: &mut C,
+        pt: &CKKSPlaintextZnx<impl DataRef>,
+        sk: &S,
+        enc_infos: &E,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        C: GLWEToMut + LWEInfos + CKKSInfos,
+        S: GLWESecretPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>;
+}
+
+impl<BE: Backend> CKKSEncrypt<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptSk<BE> + VecZnxNormalizeTmpBytes,
-    A: GLWEInfos,
+    Self: GLWEEncryptSk<BE> + VecZnxNormalizeTmpBytes + VecZnxRshAddInto<BE>,
 {
-    GLWEPlaintext::bytes_of_from_infos(ct_infos)
-        + module
-            .vec_znx_normalize_tmp_bytes()
-            .max(GLWE::encrypt_sk_tmp_bytes(module, ct_infos))
+    fn ckks_encrypt_sk_tmp_bytes<A>(&self, ct_infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(ct_infos)
+            + self
+                .vec_znx_normalize_tmp_bytes()
+                .max(self.glwe_encrypt_sk_tmp_bytes(ct_infos))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn ckks_encrypt_sk<C, S, E: EncryptionInfos>(
+        &self,
+        ct: &mut C,
+        pt: &CKKSPlaintextZnx<impl DataRef>,
+        sk: &S,
+        enc_infos: &E,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        C: GLWEToMut + LWEInfos + CKKSInfos,
+        S: GLWESecretPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.glwe_encrypt_zero_sk(ct, sk, enc_infos, source_xe, source_xa, scratch);
+        let log_hom_rem = enc_infos.noise_infos().k - pt.meta.log_decimal;
+        ct.set_log_hom_rem(log_hom_rem).unwrap();
+        ct.set_log_decimal(pt.log_decimal()).unwrap();
+        self.ckks_add_pt_znx(ct, pt, scratch)?;
+        Ok(())
+    }
 }
 
-#[allow(clippy::too_many_arguments)]
-/// Encrypts a compact [`CKKSPlaintext`] under a GLWE secret key.
-///
-/// The compact plaintext is first placed into the ciphertext `offset_bits` position
-/// of a full-width torus buffer. The GLWE encryption is then performed on the
-/// full physical width so that fresh noise covers the entire representation.
-pub fn encrypt_sk<BE: Backend, E: EncryptionInfos>(
-    module: &Module<BE>,
-    ct: &mut CKKSCiphertext<impl DataMut>,
-    pt: &CKKSPlaintextZnx<impl DataRef>,
-    sk: &GLWESecretPrepared<impl DataRef, BE>,
-    enc_infos: &E,
-    source_xa: &mut Source,
-    source_xe: &mut Source,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWEEncryptSk<BE> + VecZnxNormalize<BE> + VecZnxRshAdd<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    ct.inner.encrypt_zero_sk(module, sk, enc_infos, source_xe, source_xa, scratch);
-    let log_integer = enc_infos.noise_infos().k - pt.prec.log_decimal;
-    pt.add_to(module, ct.inner.data_mut(), log_integer, scratch);
-    ct.set_log_hom_rem(log_integer).unwrap();
-    ct.set_log_decimal(pt.log_decimal()).unwrap();
+pub trait CKKSDecrypt<BE: Backend> {
+    fn ckks_decrypt_tmp_bytes<A>(&self, ct_infos: &A) -> usize
+    where
+        A: GLWEInfos;
+    fn ckks_decrypt<C, S>(
+        &self,
+        pt: &mut CKKSPlaintextZnx<impl DataMut>,
+        ct: &C,
+        sk: &S,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        C: GLWEToRef + GLWEInfos + CKKSInfos,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-/// Returns the scratch bytes needed for [`decrypt`].
-pub fn decrypt_tmp_bytes<A, BE: Backend>(module: &Module<BE>, ct_infos: &A) -> usize
+impl<BE: Backend> CKKSDecrypt<BE> for Module<BE>
 where
-    Module<BE>: GLWEDecrypt<BE>,
-    A: GLWEInfos,
+    Self: GLWEDecrypt<BE> + VecZnxLsh<BE>,
 {
-    GLWEPlaintext::bytes_of_from_infos(ct_infos) + module.glwe_decrypt_tmp_bytes(ct_infos)
-}
+    fn ckks_decrypt_tmp_bytes<A>(&self, ct_infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(ct_infos) + self.glwe_decrypt_tmp_bytes(ct_infos)
+    }
 
-/// Decrypts a [`CKKSCiphertext`] into a compact [`CKKSPlaintext`].
-///
-/// Decryption is performed on a width large enough to cover both the physical
-/// limb prefix and the semantic message position `offset_bits`, then the compact
-/// representation is extracted using the inverse placement for `offset_bits`.
-pub fn decrypt<BE: Backend>(
-    module: &Module<BE>,
-    pt: &mut CKKSPlaintextZnx<impl DataMut>,
-    ct: &CKKSCiphertext<impl DataRef>,
-    sk: &GLWESecretPrepared<impl DataRef, BE>,
-    scratch: &mut Scratch<BE>,
-) where
-    Module<BE>: GLWEDecrypt<BE> + VecZnxNormalize<BE> + VecZnxLsh<BE> + VecZnxLshInplace<BE> + VecZnxCopy,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(&ct.inner);
-    ct.inner.decrypt(module, &mut full_pt, sk, scratch_rest);
-    println!("full_pt: {}", full_pt);
-    pt.extract_from(module, &full_pt.data, ct.log_hom_rem(), scratch_rest);
+    fn ckks_decrypt<C, S>(&self, pt: &mut CKKSPlaintextZnx<impl DataMut>, ct: &C, sk: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        C: GLWEToRef + GLWEInfos + CKKSInfos,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
+        let mut full_pt = attach_meta(full_pt, ct.meta());
+        self.glwe_decrypt(ct, &mut full_pt, sk, scratch_rest);
+        self.ckks_extract_pt_znx(pt, &full_pt, scratch_rest)?;
+        Ok(())
+    }
 }

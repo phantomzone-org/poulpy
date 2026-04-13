@@ -102,6 +102,4 @@ harness = false
 name = "standard"
 harness = false
 
-[[bench]]
-name = "ckks_leveled"
-harness = false
+

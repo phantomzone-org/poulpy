@@ -1,11 +1,10 @@
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
+use poulpy_cpu_ref::{
     reference::{
         fft64::{
             convolution::I64Ops,
+            module::{FFT64HandleFactory, FFTHandleProvider},
             reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
             reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
@@ -19,6 +18,7 @@ use poulpy_hal::{
         },
     },
 };
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 
 use crate::{
     FFT64Avx,
@@ -82,7 +82,15 @@ pub struct FFT64AvxHandle {
 impl Backend for FFT64Avx {
     type ScalarPrep = f64;
     type ScalarBig = i64;
+    type OwnedBuf = Vec<u8>;
     type Handle = FFT64AvxHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
             drop(Box::from_raw(handle.as_ptr()));
@@ -92,78 +100,32 @@ impl Backend for FFT64Avx {
 
 /// # Safety
 ///
-/// This implementation is marked `unsafe` because it constructs a `Module` with a raw pointer
-/// to heap-allocated data. The caller (HAL) must ensure:
-/// - The returned module is used correctly according to HAL contracts.
-/// - The module's lifetime management calls `Backend::destroy()` exactly once.
-///
-/// # Panics
-///
-/// Panics if the runtime CPU does not support AVX2, AVX, or FMA instruction sets.
-/// This check is performed via `std::arch::is_x86_feature_detected!()`.
-///
-/// # CPU feature detection
-///
-/// The runtime check ensures that calling SIMD intrinsics does not result in `SIGILL`.
-/// This is necessary because compile-time target features may differ from runtime CPU capabilities
-/// (e.g., cross-compilation or running on heterogeneous clusters).
-unsafe impl ModuleNewImpl<Self> for FFT64Avx {
-    fn new_impl(n: u64) -> Module<Self> {
+/// The returned handle must be fully initialized for `n`.
+unsafe impl FFT64HandleFactory for FFT64AvxHandle {
+    fn create_fft64_handle(n: usize) -> Self {
+        FFT64AvxHandle {
+            table_fft: ReimFFTTable::new(n >> 1),
+            table_ifft: ReimIFFTTable::new(n >> 1),
+        }
+    }
+
+    fn assert_fft64_runtime_support() {
         if !std::arch::is_x86_feature_detected!("avx")
             || !std::arch::is_x86_feature_detected!("avx2")
             || !std::arch::is_x86_feature_detected!("fma")
         {
             panic!("arch must support avx2, avx and fma")
         }
-
-        let handle: FFT64AvxHandle = FFT64AvxHandle {
-            table_fft: ReimFFTTable::new(n as usize >> 1),
-            table_ifft: ReimIFFTTable::new(n as usize >> 1),
-        };
-        // Leak Box to get a stable NonNull pointer
-        let ptr: NonNull<FFT64AvxHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
     }
 }
 
-/// Extension trait providing access to FFT/IFFT tables from a `Module<FFT64Avx>`.
-///
-/// This trait abstracts access to the backend-specific [`FFT64AvxHandle`] stored in
-/// the module, allowing internal functions to retrieve precomputed twiddle factors
-/// without unsafe pointer dereferencing at the call site.
-///
-/// # Safety
-///
-/// Implementations must ensure that:
-/// - The returned reference lifetime is tied to the module's lifetime.
-/// - The underlying handle pointer is valid and properly aligned.
-/// - The twiddle tables are immutable (no `&mut` access).
-///
-/// The `Module` type guarantees these invariants via its construction and lifetime management.
-pub trait FFT64ModuleHandle {
-    /// Returns a shared reference to the forward FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_fft_table(&self) -> &ReimFFTTable<f64>;
-
-    /// Returns a shared reference to the inverse FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_ifft_table(&self) -> &ReimIFFTTable<f64>;
-}
-
-impl FFT64ModuleHandle for Module<FFT64Avx> {
+unsafe impl FFTHandleProvider<f64> for FFT64AvxHandle {
     fn get_fft_table(&self) -> &ReimFFTTable<f64> {
-        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
-        &h.table_fft
+        &self.table_fft
     }
+
     fn get_ifft_table(&self) -> &ReimIFFTTable<f64> {
-        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
-        &h.table_ifft
+        &self.table_ifft
     }
 }
 

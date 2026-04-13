@@ -27,7 +27,7 @@ use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace},
-    layouts::{Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{DeviceBuf, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -156,7 +156,8 @@ fn main() {
     // sk_glwe.fill_zero(); // for testing
 
     // GLWE secret prepared (opaque backend dependant write only struct)
-    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank.into());
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> =
+        GLWESecretPrepared::alloc(&module, rank.into());
     sk_glwe_prepared.prepare(&module, &sk_glwe);
 
     // Plaintext value to circuit bootstrap
@@ -210,7 +211,7 @@ fn main() {
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BackendImpl>, CGGI, BackendImpl> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_layout);
     cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
@@ -274,7 +275,7 @@ fn main() {
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let mut res_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BackendImpl>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &res);
     res_prepared.prepare(&module, &res, scratch.borrow());
 
     // Apply GLWE x GGSW

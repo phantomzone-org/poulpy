@@ -7,7 +7,7 @@ use poulpy_core::{
     ScratchTakeCore,
     layouts::{GGSWInfos, GLWE, GLWEInfos, LWE, LWEInfos},
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch, ZnxView};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, DeviceBuf, Scratch, ZnxView};
 
 use crate::bin_fhe::blind_rotation::{
     BlindRotationKey, BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable,
@@ -94,7 +94,7 @@ where
     }
 }
 
-impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA, BE> {
+impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> {
     /// Returns the minimum scratch-space size in bytes required by
     /// [`BlindRotationKeyPrepared::execute`].
     ///

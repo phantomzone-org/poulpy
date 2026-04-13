@@ -2,39 +2,50 @@
 //!
 //! Negates each column of the GLWE ciphertext.
 
-use crate::layouts::{PrecisionInfos, ciphertext::CKKSCiphertext};
+use crate::{CKKS, CKKSInfos, layouts::CKKSRescaleOps};
 use anyhow::Result;
-use poulpy_core::{GLWECopy, GLWENegate, ScratchTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchTakeCore,
+    layouts::{GLWE, GLWEToRef, LWEInfos},
+};
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxLsh},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch},
 };
 
-impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn neg<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+pub trait CKKSNegOps {
+    fn neg<O, BE: Backend>(&mut self, module: &Module<BE>, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
     where
-        Module<BE>: GLWENegate + GLWECopy + VecZnxLsh<BE>,
+        Module<BE>: GLWENegate + GLWEShift<BE>,
+        O: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
+    where
+        Module<BE>: GLWENegate;
+}
+
+impl<D: DataMut> CKKSNegOps for GLWE<D, CKKS> {
+    fn neg<O, BE: Backend>(&mut self, module: &Module<BE>, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        Module<BE>: GLWENegate + GLWEShift<BE>,
+        O: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         if self.max_k() < other.effective_k() {
             self.rescale(module, (other.max_k() - self.effective_k()).into(), other, scratch)?;
-            module.glwe_negate_inplace(&mut self.inner);
+            module.glwe_negate_inplace(self);
         } else {
-            module.glwe_negate(&mut self.inner, &other.inner);
-            self.prec = other.prec
+            module.glwe_negate(self, other);
+            self.meta = other.meta();
         }
         Ok(())
     }
 
-    pub fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
+    fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
     where
         Module<BE>: GLWENegate,
     {
-        module.glwe_negate_inplace(&mut self.inner);
+        module.glwe_negate_inplace(self);
     }
 }

@@ -24,7 +24,7 @@ pub use glwe_blind_selection::*;
 pub use or::*;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 pub use prepare::*;
@@ -54,9 +54,9 @@ use crate::bin_fhe::{
 
 pub struct TestContext<BRA: BlindRotationAlgo, BE: Backend> {
     pub module: Module<BE>,
-    pub sk_glwe: GLWESecretPrepared<Vec<u8>, BE>,
+    pub sk_glwe: GLWESecretPrepared<DeviceBuf<BE>, BE>,
     pub sk_lwe: LWESecret<Vec<u8>>,
-    pub bdd_key: BDDKeyPrepared<Vec<u8>, BRA, BE>,
+    pub bdd_key: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend> Default for TestContext<BRA, BE>
@@ -103,7 +103,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
 
         let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(TEST_N_GLWE.into(), TEST_RANK.into());
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, TEST_RANK.into());
+        let mut sk_glwe_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, TEST_RANK.into());
         sk_glwe_prep.prepare(&module, &sk_glwe);
 
         let n_lwe: u32 = TEST_N_LWE;
@@ -122,7 +122,8 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
             &mut source_xa,
             scratch.borrow(),
         );
-        let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
+        let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+            BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
         bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
         TestContext {

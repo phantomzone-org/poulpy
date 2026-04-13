@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
 use crate::layouts::{
@@ -82,7 +82,7 @@ where
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEPrepared<Vec<u8>, BE> {
+    ) -> GGLWEPrepared<DeviceBuf<BE>, BE> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -105,7 +105,7 @@ where
     }
 
     /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
-    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos,
     {
@@ -209,8 +209,8 @@ impl<BE: Backend> GGLWEPreparedFactory<BE> for Module<BE> where
 {
 }
 
-/// Convenience associated functions for owned (`Vec<u8>`) allocation and byte-size queries.
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+/// Convenience associated functions for owned (device buffer) allocation and byte-size queries.
+impl<B: Backend> GGLWEPrepared<DeviceBuf<B>, B> {
     /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
@@ -274,7 +274,7 @@ impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
     }
 }
 
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+impl<B: Backend> GGLWEPrepared<DeviceBuf<B>, B> {
     /// Returns the scratch-space bytes needed by [`prepare`](Self::prepare).
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where

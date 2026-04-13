@@ -26,7 +26,7 @@
 //!
 //! # Algorithm
 //!
-//! Identical to the scalar reference in [`poulpy_hal::reference::ntt120::ntt`],
+//! Identical to the scalar reference in [`poulpy_cpu_ref::reference::ntt120::ntt`],
 //! but the inner loops operate on 4 primes simultaneously via 256-bit SIMD.
 //!
 //! Split-precomputed multiplication:
@@ -54,7 +54,7 @@ use core::arch::x86_64::{
     _mm256_set1_epi64x, _mm256_srl_epi64, _mm256_srli_epi64, _mm256_storeu_si256, _mm256_sub_epi64,
 };
 
-use poulpy_hal::reference::ntt120::{
+use poulpy_cpu_ref::reference::ntt120::{
     ntt::{NttReducMeta, NttStepMeta, NttTable, NttTableInv},
     primes::PrimeSet,
 };
@@ -550,7 +550,7 @@ pub(crate) unsafe fn intt_avx2<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [
 #[cfg(all(test, target_feature = "avx2"))]
 mod tests {
     use super::*;
-    use poulpy_hal::reference::ntt120::{
+    use poulpy_cpu_ref::reference::ntt120::{
         arithmetic::{b_from_znx64_ref, b_to_znx128_ref},
         ntt::{NttTable, NttTableInv, ntt_ref},
         primes::Primes30,

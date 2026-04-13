@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
 use crate::layouts::{
@@ -62,7 +62,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> GGSWPrepared<Vec<u8>, B> {
+    ) -> GGSWPrepared<DeviceBuf<B>, B> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -89,7 +89,7 @@ where
         }
     }
 
-    fn alloc_ggsw_prepared_from_infos<A>(&self, infos: &A) -> GGSWPrepared<Vec<u8>, B>
+    fn alloc_ggsw_prepared_from_infos<A>(&self, infos: &A) -> GGSWPrepared<DeviceBuf<B>, B>
     where
         A: GGSWInfos,
     {
@@ -163,7 +163,7 @@ impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
 {
 }
 
-impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
+impl<B: Backend> GGSWPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -201,7 +201,7 @@ impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
     }
 }
 
-impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
+impl<B: Backend> GGSWPrepared<DeviceBuf<B>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,

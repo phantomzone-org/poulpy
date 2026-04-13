@@ -1,9 +1,12 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAutomorphism},
     layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
     source::Source,
 };
 
+pub use crate::api::GLWEAutomorphismKeyCompressedEncryptSk;
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
@@ -42,12 +45,12 @@ impl<DataSelf: DataMut> GLWEAutomorphismKeyCompressed<DataSelf> {
     }
 }
 
-pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEAutomorphismKeyCompressedEncryptSkDefault<BE: Backend> {
     fn glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn glwe_automorphism_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
@@ -63,7 +66,7 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
         S: GLWESecretToRef + GLWEInfos;
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,

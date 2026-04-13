@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
@@ -54,8 +54,8 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretTensorPrepared<D, B> {
 }
 
 pub trait GLWESecretTensorPreparedFactory<B: Backend> {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<Vec<u8>, B>;
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>;
+    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos;
 
@@ -74,14 +74,14 @@ impl<B: Backend> GLWESecretTensorPreparedFactory<B> for Module<B>
 where
     Self: GLWESecretPreparedFactory<B>,
 {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<Vec<u8>, B> {
+    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
         GLWESecretTensorPrepared {
             data: self.svp_ppol_alloc(GLWESecretTensor::pairs(rank.into())),
             rank,
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -109,7 +109,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretTensorPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module},
 };
 
 use crate::{
@@ -58,14 +58,19 @@ pub trait GLWEPublicKeyPreparedFactory<B: Backend>
 where
     Self: GetDegree + GLWEPreparedFactory<B>,
 {
-    fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
+    fn alloc_glwe_public_key_prepared(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+    ) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B> {
         GLWEPublicKeyPrepared {
             key: self.alloc_glwe_prepared(base2k, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -96,7 +101,7 @@ where
 impl<B: Backend> GLWEPublicKeyPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>
 {}
 
-impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWEPublicKeyPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,

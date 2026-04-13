@@ -3,17 +3,19 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
+pub use crate::api::GLWEFromLWE;
 use crate::{
-    GLWEKeyswitch, ScratchTakeCore,
+    ScratchTakeCore,
+    keyswitching::GLWEKeyswitchDefault,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
-impl<BE: Backend> GLWEFromLWE<BE> for Module<BE>
+pub(crate) trait GLWEFromLWEDefault<BE: Backend>:
+    GLWEKeyswitchDefault<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>
 where
-    Self: GLWEKeyswitch<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
+    fn glwe_from_lwe_tmp_bytes_default<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
         R: GLWEInfos,
         A: LWEInfos,
@@ -22,14 +24,14 @@ where
         assert_eq!(self.n() as u32, glwe_infos.n());
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let lvl_0: usize = GLWE::bytes_of(
+        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of(
             self.n().into(),
             key_infos.base2k(),
             lwe_infos.max_k().max(glwe_infos.max_k()),
             1u32.into(),
         );
 
-        let lvl_1_ks: usize = self.glwe_keyswitch_tmp_bytes(glwe_infos, glwe_infos, key_infos);
+        let lvl_1_ks: usize = self.glwe_keyswitch_tmp_bytes_default(glwe_infos, glwe_infos, key_infos);
         let lvl_1_a_conv: usize = if lwe_infos.base2k() == key_infos.base2k() {
             0
         } else {
@@ -41,7 +43,7 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_from_lwe<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    fn glwe_from_lwe_default<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         A: LWEToRef,
@@ -54,10 +56,10 @@ where
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(lwe.n() <= self.n() as u32);
         assert!(
-            scratch.available() >= self.glwe_from_lwe_tmp_bytes(res, lwe, ksk),
+            scratch.available() >= self.glwe_from_lwe_tmp_bytes_default(res, lwe, ksk),
             "scratch.available(): {} < GLWEFromLWE::glwe_from_lwe_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_from_lwe_tmp_bytes(res, lwe, ksk)
+            self.glwe_from_lwe_tmp_bytes_default(res, lwe, ksk)
         );
 
         let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
@@ -113,25 +115,15 @@ where
             );
         }
 
-        self.glwe_keyswitch(res, &glwe, ksk, scratch_1);
+        self.glwe_keyswitch_default(res, &glwe, ksk, scratch_1);
     }
 }
 
-pub trait GLWEFromLWE<BE: Backend>
+impl<BE: Backend> GLWEFromLWEDefault<BE> for Module<BE>
 where
-    Self: GLWEKeyswitch<BE>,
+    Self: GLWEKeyswitchDefault<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
-    where
-        R: GLWEInfos,
-        A: LWEInfos,
-        K: GGLWEInfos;
-
-    fn glwe_from_lwe<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut,
-        A: LWEToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
 }
 
 impl GLWE<Vec<u8>> {
@@ -146,10 +138,10 @@ impl GLWE<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWE<D> {
-    pub fn from_lwe<A, K, M, BE: Backend>(&mut self, module: &M, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
+impl<D: DataMut, M> GLWE<D, M> {
+    pub fn from_lwe<A, K, Mod, BE: Backend>(&mut self, module: &Mod, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
     where
-        M: GLWEFromLWE<BE>,
+        Mod: GLWEFromLWE<BE>,
         A: LWEToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,

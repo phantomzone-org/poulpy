@@ -6,6 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::LWEEncryptSk;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
@@ -44,13 +45,12 @@ impl<DataSelf: DataMut> LWE<DataSelf> {
     }
 }
 
-pub trait LWEEncryptSk<BE: Backend> {
-    /// Returns the scratch space (in bytes) required by [`LWE::encrypt_sk`].
+#[doc(hidden)]
+pub trait LWEEncryptSkDefault<BE: Backend> {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: LWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -68,7 +68,7 @@ pub trait LWEEncryptSk<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<BE: Backend> LWEEncryptSk<BE> for Module<BE>
+impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
 where
     Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeBasic + ScratchAvailable,

@@ -3,6 +3,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
+pub use crate::api::LWEKeySwitch;
 use crate::{
     LWESampleExtract, ScratchTakeCore,
     keyswitching::GLWEKeyswitch,
@@ -33,13 +34,12 @@ impl<D: DataMut> LWE<D> {
     }
 }
 
-impl<BE: Backend> LWEKeySwitch<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract {}
-
-pub trait LWEKeySwitch<BE: Backend>
+#[doc(hidden)]
+pub trait LWEKeySwitchDefault<BE: Backend>
 where
     Self: GLWEKeyswitch<BE> + LWESampleExtract,
 {
-    fn lwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    fn lwe_keyswitch_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: LWEInfos,
         A: LWEInfos,
@@ -63,14 +63,14 @@ where
             rank: Rank(1),
         };
 
-        let lvl_0: usize = GLWE::bytes_of_from_infos(&glwe_a_infos);
-        let lvl_1: usize = GLWE::bytes_of_from_infos(&glwe_res_infos);
+        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&glwe_a_infos);
+        let lvl_1: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&glwe_res_infos);
         let lvl_2: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
 
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn lwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    fn lwe_keyswitch_default<R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
     where
         R: LWEToMut,
         A: LWEToRef,
@@ -84,10 +84,10 @@ where
         assert!(a.n().as_usize() <= self.n());
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(
-            scratch.available() >= self.lwe_keyswitch_tmp_bytes(res, a, ksk),
+            scratch.available() >= self.lwe_keyswitch_tmp_bytes_default(res, a, ksk),
             "scratch.available(): {} < LWEKeySwitch::lwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_keyswitch_tmp_bytes(res, a, ksk)
+            self.lwe_keyswitch_tmp_bytes_default(res, a, ksk)
         );
 
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
@@ -117,3 +117,5 @@ where
         self.lwe_sample_extract(res, &glwe_out);
     }
 }
+
+impl<BE: Backend> LWEKeySwitchDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract {}

@@ -9,7 +9,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -35,7 +35,7 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let module: &Module<BE> = &test_context.module;
-    let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk_glwe_prep: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
@@ -71,8 +71,8 @@ where
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
-    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
-        FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
+    let mut k_enc_prep: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::<DeviceBuf<BE>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
     k_enc_prep.encrypt_sk(
         module,
         k,

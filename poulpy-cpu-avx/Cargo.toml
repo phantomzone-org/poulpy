@@ -14,6 +14,7 @@ enable-avx = []
 
 [dependencies]
 bytemuck = {workspace = true}
+poulpy-core = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 itertools = {workspace = true}

@@ -2,31 +2,31 @@
 //!
 //! # Test inventory
 //!
-//! ## Operations-layer conjugation (`CKKSCiphertext::conjugate`)
+//! ## Operations-layer conjugation (`GLWE<_, CKKS>::conjugate`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_conjugate`] | out-of-place conjugation |
 //!
-//! ## Operations-layer conjugation (`CKKSCiphertext::conjugate_inplace`)
+//! ## Operations-layer conjugation (`GLWE<_, CKKS>::conjugate_inplace`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_conjugate_inplace`] | in-place conjugation |
 
-use crate::layouts::PrecisionInfos;
+use crate::{CKKSInfos, leveled::operations::conjugate::CKKSConjugateOps};
 
-use super::helpers::TestContext;
+use super::helpers::{TestBackend as Backend, TestContext};
 use poulpy_core::{GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace,
-        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
     },
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Module, Scratch, ScratchOwned},
 };
 
-// ─── conjugation out-of-place (CKKSCiphertext::conjugate) ───────────────────
+// ─── conjugation out-of-place (GLWE<_, CKKS>::conjugate) ───────────────────
 
 /// Conjugation out-of-place: real part preserved, imaginary part negated.
 pub fn test_conjugate<BE: Backend>(ctx: &TestContext<BE>)
@@ -41,7 +41,7 @@ where
         + VecZnxCopy
         + VecZnxLsh<BE>
         + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>,
+        + VecZnxRshAddInto<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
@@ -61,7 +61,7 @@ where
     ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-// ─── conjugation in-place (CKKSCiphertext::conjugate_inplace) ───────────────
+// ─── conjugation in-place (GLWE<_, CKKS>::conjugate_inplace) ───────────────
 
 /// Conjugation in-place: real part preserved, imaginary part negated.
 pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>)
@@ -76,7 +76,7 @@ where
         + VecZnxCopy
         + VecZnxLsh<BE>
         + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>,
+        + VecZnxRshAddInto<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {

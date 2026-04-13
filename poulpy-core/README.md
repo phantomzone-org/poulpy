@@ -4,101 +4,35 @@
 
 ## Getting Started
 
+`poulpy-core` is backend-agnostic. Concrete execution lives in backend crates such as
+`poulpy-cpu-ref` or `poulpy-cpu-avx`, which provide the backend type `BE` used by
+`poulpy_hal::layouts::Module<BE>`. The HAL remains dispatch-only: `poulpy-cpu-ref`
+hosts the default implementations, while accelerated backends override selected methods.
+
+The canonical public traits live under `poulpy_core::api::*`:
+
 ```rust
 use poulpy_core::{
-    GLWESub, SIGMA,
-    layouts::{
-        Base2K, Degree, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank, TorusPrecision,
-        prepared::GLWESecretPrepared,
-    },
+    api::{GLWEDecrypt, GLWEEncryptSk},
+    layouts::GLWE,
 };
-use poulpy_cpu_ref::FFT64Ref;
-use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
-    layouts::{Module, ScratchOwned},
-    source::Source,
-};
+use poulpy_hal::layouts::{Backend, Module};
 
-fn main() {
-    // Ring degree
-    let log_n: usize = 10;
-
-    let n: Degree = Degree(1 << log_n);
-
-    // Base-2-k (implicit digit decomposition)
-    let base2k: Base2K = Base2K(14);
-
-    // Ciphertext Torus precision (equivalent to ciphertext modulus)
-    let k_ct: TorusPrecision = TorusPrecision(27);
-
-    // Plaintext Torus precision (equivament to plaintext modulus)
-    let k_pt: TorusPrecision = TorusPrecision(base2k.into());
-
-    // GLWE rank
-    let rank: Rank = Rank(1);
-
-    // Instantiate Module (DFT Tables)
-    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(n.0 as u64);
-
-    let glwe_ct_infos: GLWELayout = GLWELayout {
-        n,
-        base2k,
-        k: k_ct,
-        rank,
-    };
-
-    let glwe_pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout { n, base2k, k: k_pt };
-
-    // Allocates ciphertext & plaintexts
-    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_ct_infos);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
-
-    // CPRNG
-    let mut source_xs: Source = Source::new([0u8; 32]);
-    let mut source_xe: Source = Source::new([1u8; 32]);
-    let mut source_xa: Source = Source::new([2u8; 32]);
-
-    // Scratch space
-    let mut scratch: ScratchOwned<FFT64Ref> = ScratchOwned::alloc(
-        GLWE::encrypt_sk_tmp_bytes(&module, &glwe_ct_infos) | GLWE::decrypt_tmp_bytes(&module, &glwe_ct_infos),
-    );
-
-    // Generate secret-key
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_ct_infos);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    // Backend-prepared secret
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, FFT64Ref> = GLWESecretPrepared::alloc(&module, rank);
-    sk_prepared.prepare(&module, &sk);
-
-    // Uniform plaintext
-    module.vec_znx_fill_uniform(base2k.into(), &mut pt_want.data, 0, &mut source_xa);
-
-    // Encryption
-    ct.encrypt_sk(
-        &module,
-        &pt_want,
-        &sk_prepared,
-        &mut source_xe,
-            &mut source_xa,
-        scratch.borrow(),
-    );
-
-    // Decryption
-    ct.decrypt(&module, &mut pt_have, &sk_prepared, scratch.borrow());
-
-    // Diff between pt - Dec(Enc(pt))
-    module.glwe_sub_inplace(&mut pt_want, &pt_have);
-
-    // Ideal vs. actual noise
-    let noise_have: f64 = pt_want.data.stats(base2k.into(), 0).std() * (ct.k().as_u32() as f64).exp2();
-    let noise_want: f64 = SIGMA;
-
-    // Check
-    assert!(noise_have <= noise_want + 0.2);
+fn roundtrip<BE>(module: &Module<BE>)
+where
+    BE: Backend,
+    Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE>,
+{
+    // Allocate GLWE operands, prepare keys, compute tmp bytes,
+    // then call the safe `poulpy_core::api::*` traits through `module`
+    // or the convenience methods on `GLWE`.
+    let _ = module;
+    let _phantom: Option<GLWE<Vec<u8>>> = None;
 }
 ```
+
+For a runnable end-to-end example using a concrete backend, see
+`poulpy-cpu-ref/examples/core_encryption.rs`.
 
 ## Layouts
 
@@ -135,7 +69,7 @@ let mut atk_compressed: GGLWEAutomorphismKeyCompressed<Vec<u8>> =
 let mut atk: GGLWEAutomorphismKey<Vec<u8>> = 
     GGLWEAutomorphismKey::alloc(...);
 atk.decompress(module, &atk_compressed);
-let mut atk_prep: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GLWESecretPrepared<Vec<u8>, B> = atk.prepare_alloc(...);
+let mut atk_prep = atk.prepare_alloc(module);
 ```
 
 ---
@@ -178,4 +112,6 @@ ggsw.automorphism(...);
 
 ## Tests
 
-A fully generic test suite is available in [`src/tests/test_suite`](./src/tests/test_suite).
+A fully generic backend conformance suite is available in [`src/test_suite`](./src/test_suite).
+Concrete backend crates instantiate it via `poulpy_core::core_backend_test_suite!`, keeping
+`poulpy-core` free of any concrete backend dependency.

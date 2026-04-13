@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
 };
 
 use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToRef, GetDegree, LWEInfos, Rank, TorusPrecision};
@@ -42,14 +42,14 @@ where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>,
 {
     /// Allocates a new prepared GLWE with the given parameters.
-    fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<Vec<u8>, B> {
+    fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<DeviceBuf<B>, B> {
         GLWEPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
         }
     }
 
-    fn alloc_glwe_prepared_from_infos<A>(&self, infos: &A) -> GLWEPrepared<Vec<u8>, B>
+    fn alloc_glwe_prepared_from_infos<A>(&self, infos: &A) -> GLWEPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -91,7 +91,7 @@ where
 
 impl<B: Backend> GLWEPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
 
-impl<B: Backend> GLWEPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWEPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,

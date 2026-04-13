@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -91,14 +91,14 @@ where
         rank: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
-        GLWEAutomorphismKeyPrepared::<Vec<u8>, B> {
+    ) -> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
+        GLWEAutomorphismKeyPrepared::<DeviceBuf<B>, B> {
             key: self.alloc_gglwe_prepared(base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
 
-    fn alloc_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
@@ -161,7 +161,7 @@ where
 
 impl<B: Backend> GLWEAutomorphismKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -193,7 +193,7 @@ impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
     }
 }
 
-impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where
         M: GLWEAutomorphismKeyPreparedFactory<B>,

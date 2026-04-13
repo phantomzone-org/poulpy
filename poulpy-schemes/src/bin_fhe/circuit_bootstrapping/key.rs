@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, Scratch},
     source::Source,
 };
 
@@ -247,7 +247,7 @@ where
             atk.encrypt_sk(self, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
         }
 
-        let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
+        let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
         sk_glwe_prepared.prepare(self, sk_glwe);
 
         res.brk

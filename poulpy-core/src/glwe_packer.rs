@@ -3,6 +3,7 @@ use poulpy_hal::{
     layouts::{Backend, GaloisElement, Module, Scratch},
 };
 
+pub use crate::api::GLWEPackerOps;
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
@@ -17,14 +18,14 @@ use crate::{
 /// Main difference with usual GLWE packing is that
 /// the output is bit-reversed.
 pub struct GLWEPacker {
-    accumulators: Vec<Accumulator>,
+    pub(crate) accumulators: Vec<Accumulator>,
     log_batch: usize,
     counter: usize,
 }
 
 /// [Accumulator] stores intermediate packing result.
 /// There are Log(N) such accumulators in a [GLWEPacker].
-struct Accumulator {
+pub(crate) struct Accumulator {
     data: GLWE<Vec<u8>>,
     value: bool,   // Implicit flag for zero ciphertext
     control: bool, // Can be combined with incoming value
@@ -91,7 +92,7 @@ impl GLWEPacker {
         K: GGLWEInfos,
         M: GLWEPackerOps<BE>,
     {
-        GLWE::bytes_of_from_infos(res_infos)
+        GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
             + module
                 .glwe_shift_tmp_bytes()
                 .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
@@ -158,7 +159,38 @@ impl GLWEPacker {
     }
 }
 
-impl<BE: Backend> GLWEPackerOps<BE> for Module<BE> where
+#[doc(hidden)]
+pub trait GLWEPackerOpsDefault<BE: Backend>
+where
+    Self: Sized
+        + ModuleLogN
+        + GLWEAutomorphism<BE>
+        + GaloisElement
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>
+        + GLWECopy,
+{
+    fn packer_add_default<A, K, H>(
+        &self,
+        packer: &mut GLWEPacker,
+        a: Option<&A>,
+        i: usize,
+        auto_keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        A: GLWEToRef + GLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
+    }
+}
+
+impl<BE: Backend> GLWEPackerOpsDefault<BE> for Module<BE> where
     Self: Sized
         + ModuleLogN
         + GLWEAutomorphism<BE>
@@ -172,31 +204,7 @@ impl<BE: Backend> GLWEPackerOps<BE> for Module<BE> where
 {
 }
 
-pub trait GLWEPackerOps<BE: Backend>
-where
-    Self: Sized
-        + ModuleLogN
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
-        + GLWECopy,
-{
-    fn packer_add<A, K, H>(&self, packer: &mut GLWEPacker, a: Option<&A>, i: usize, auto_keys: &H, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
-    }
-}
-
-fn pack_core<A, K, H, M, BE: Backend>(
+pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
     module: &M,
     a: Option<&A>,
     accumulators: &mut [Accumulator],
@@ -307,7 +315,7 @@ fn combine<B, K, H, M, BE: Backend>(
             module.glwe_sub(&mut tmp, a, b);
             module.glwe_rsh(1, &mut tmp, scratch_1);
             // a = a * X^-t + b
-            module.glwe_add_inplace(a, b);
+            module.glwe_add_assign(a, b);
 
             module.glwe_rsh(1, a, scratch_1);
             module.glwe_normalize_inplace(&mut tmp, scratch_1);

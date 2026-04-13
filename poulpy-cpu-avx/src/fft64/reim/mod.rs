@@ -27,7 +27,7 @@ use std::arch::global_asm;
 pub(crate) use conversion::*;
 pub(crate) use fft_vec_avx2_fma::*;
 
-use poulpy_hal::reference::fft64::reim::{ReimFFTExecute, ReimFFTTable, ReimIFFTTable};
+use poulpy_cpu_ref::reference::fft64::reim::{ReimFFTExecute, ReimFFTTable, ReimIFFTTable};
 use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::fft64::reim::{fft_avx2_fma::fft_avx2_fma, ifft_avx2_fma::ifft_avx2_fma};

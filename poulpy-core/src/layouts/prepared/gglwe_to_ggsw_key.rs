@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -66,7 +66,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
     /// Allocates a new [`GGLWEToGGSWKeyPrepared`] matching the parameters of `infos`.
     ///
     /// Panics if `rank_in != rank_out`.
-    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos;
 
@@ -80,7 +80,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
         rank: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>;
+    ) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>;
 
     /// Returns the byte size required to store a [`GGLWEToGGSWKeyPrepared`] matching `infos`.
     fn bytes_of_gglwe_to_ggsw_from_infos<A>(&self, infos: &A) -> usize
@@ -109,7 +109,7 @@ impl<BE: Backend> GGLWEToGGSWKeyPreparedFactory<BE> for Module<BE>
 where
     Self: GGLWEPreparedFactory<BE>,
 {
-    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos,
     {
@@ -128,7 +128,7 @@ where
         rank: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE> {
+    ) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> {
         GGLWEToGGSWKeyPrepared {
             keys: (0..rank.as_usize())
                 .map(|_| self.alloc_gglwe_prepared(base2k, k, rank, rank, dnum, dsize))
@@ -184,8 +184,8 @@ where
     }
 }
 
-/// Convenience associated functions for owned (`Vec<u8>`) allocation and byte-size queries.
-impl<BE: Backend> GGLWEToGGSWKeyPrepared<Vec<u8>, BE> {
+/// Convenience associated functions for owned (device buffer) allocation and byte-size queries.
+impl<BE: Backend> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> {
     /// Allocates a new [`GGLWEToGGSWKeyPrepared`] matching the parameters of `infos`.
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where

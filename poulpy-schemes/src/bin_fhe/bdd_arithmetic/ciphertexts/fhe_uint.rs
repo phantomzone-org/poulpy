@@ -302,7 +302,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         module.glwe_rotate_inplace(rot, &mut tmp_fhe_uint_byte, scratch_1);
 
         // Add self[0] += a[0]
-        module.glwe_add_inplace(&mut self.bits, &tmp_fhe_uint_byte);
+        module.glwe_add_assign(&mut self.bits, &tmp_fhe_uint_byte);
     }
 }
 
@@ -489,7 +489,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         for i in 0..3 {
             let (mut tmp, _) = scratch_1.take_glwe(self);
             module.glwe_rotate(((1 << T::LOG_BYTES) << log_gap) << i, &mut tmp, &sext);
-            module.glwe_add_inplace(&mut sext, &tmp);
+            module.glwe_add_assign(&mut sext, &tmp);
         }
 
         // Splice sext

@@ -1,9 +1,12 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
     api::ScratchAvailable,
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
+pub use crate::api::GLWECompressedEncryptSk;
 use crate::{
     EncryptionInfos,
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
@@ -56,26 +59,12 @@ impl<D: DataMut> GLWECompressed<D> {
     }
 }
 
-/// Compressed secret-key encryption of a GLWE ciphertext.
-///
-/// Produces a [`GLWECompressed`] where the mask is derived from a seed
-/// instead of being stored explicitly.
-pub trait GLWECompressedEncryptSk<BE: Backend> {
-    /// Returns the scratch buffer size in bytes required by
-    /// [`glwe_compressed_encrypt_sk`](Self::glwe_compressed_encrypt_sk).
+#[doc(hidden)]
+pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
-    /// Encrypts a plaintext under a GLWE secret key into a compressed GLWE ciphertext.
-    ///
-    /// - `res`: output compressed GLWE ciphertext.
-    /// - `pt`: the plaintext to encrypt.
-    /// - `sk`: the GLWE secret key in prepared form.
-    /// - `seed_xa`: seed for deterministic mask generation.
-    /// - `source_xe`: PRNG source for sampling encryption noise.
-    /// - `scratch`: scratch buffer.
     fn glwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -92,7 +81,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<BE: Backend> GLWECompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWECompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
     Scratch<BE>: ScratchAvailable,

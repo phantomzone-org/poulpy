@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -45,13 +45,13 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(atk_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, atk_infos.rank_out());
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, atk_infos.rank_out());
     sk_prepared.prepare(&module, &sk);
 
     let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWEAutomorphismKey::encrypt_sk_tmp_bytes(&module, atk_infos)
-            | GLWE::encrypt_sk_tmp_bytes(&module, glwe_infos)
+            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, glwe_infos)
             | GLWE::automorphism_tmp_bytes(&module, glwe_infos, glwe_infos, atk_infos),
     );
 
@@ -66,7 +66,8 @@ pub fn bench_glwe_automorphism<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
+    let mut atk_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+        GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
     module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
 
     let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);

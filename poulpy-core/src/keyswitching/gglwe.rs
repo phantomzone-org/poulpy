@@ -3,6 +3,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, Module, Scratch},
 };
 
+pub use crate::api::GGLWEKeyswitch;
 use crate::{
     ScratchTakeCore,
     keyswitching::GLWEKeyswitch,
@@ -108,23 +109,23 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
     }
 }
 
-impl<BE: Backend> GGLWEKeyswitch<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {}
 
-pub trait GGLWEKeyswitch<BE: Backend>
+#[doc(hidden)]
+pub trait GGLWEKeyswitchDefault<BE: Backend>
 where
     Self: GLWEKeyswitch<BE>,
 {
-    fn gglwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    fn gglwe_keyswitch_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
     {
-        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
-        lvl_0
+        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
     }
 
-    fn gglwe_keyswitch<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn gglwe_keyswitch_default<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut + GGLWEInfos,
         A: GGLWEToRef + GGLWEInfos,
@@ -156,10 +157,10 @@ where
         assert_eq!(res.dsize(), a.dsize(), "res dsize: {} != a dsize: {}", res.dsize(), a.dsize());
         assert_eq!(res.base2k(), a.base2k());
         assert!(
-            scratch.available() >= self.gglwe_keyswitch_tmp_bytes(res, a, b),
+            scratch.available() >= self.gglwe_keyswitch_tmp_bytes_default(res, a, b),
             "scratch.available(): {} < GGLWEKeyswitch::gglwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_keyswitch_tmp_bytes(res, a, b)
+            self.gglwe_keyswitch_tmp_bytes_default(res, a, b)
         );
 
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
@@ -172,7 +173,7 @@ where
         }
     }
 
-    fn gglwe_keyswitch_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn gglwe_keyswitch_inplace_default<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut,
         A: GGLWEPreparedToRef<BE> + GGLWEInfos,
@@ -188,10 +189,10 @@ where
             a.rank_out()
         );
         assert!(
-            scratch.available() >= self.gglwe_keyswitch_tmp_bytes(res, res, a),
+            scratch.available() >= self.gglwe_keyswitch_tmp_bytes_default(res, res, a),
             "scratch.available(): {} < GGLWEKeyswitch::gglwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_keyswitch_tmp_bytes(res, res, a)
+            self.gglwe_keyswitch_tmp_bytes_default(res, res, a)
         );
 
         for row in 0..res.dnum().into() {
@@ -202,4 +203,4 @@ where
     }
 }
 
-impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {}
+impl<BE: Backend> GGLWEKeyswitchDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}

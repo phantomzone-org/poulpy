@@ -1,9 +1,12 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::GGLWECompressedEncryptSk;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
@@ -56,12 +59,12 @@ impl GGLWECompressed<Vec<u8>> {
     }
 }
 
-pub trait GGLWECompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {
     fn gglwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn gglwe_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -78,14 +81,14 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
         S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<BE: Backend> GGLWECompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGLWECompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
         + VecZnxNormalizeInplace<BE>
-        + VecZnxAddScalarInplace
+        + VecZnxAddScalarAssign
         + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -95,7 +98,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(infos);
         let lvl_1: usize = self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes());
 
         lvl_0 + lvl_1
@@ -170,7 +173,7 @@ where
                 for row_i in 0..dnum {
                     // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                     tmp_pt.data.zero(); // zeroes for next iteration
-                    self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_j);
+                    self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_j);
                     self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                     let (seed, mut source_xa_tmp) = source_xa.branch();

@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 
@@ -40,7 +40,7 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, gglwe)
-            | GLWE::encrypt_sk_tmp_bytes(&module, glwe_in)
+            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, glwe_in)
             | GLWE::keyswitch_tmp_bytes(&module, glwe_out, glwe_in, gglwe),
     );
 
@@ -51,7 +51,7 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_in_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, glwe_in.rank());
+    let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, glwe_in.rank());
     sk_in_prepared.prepare(&module, &sk_in);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_out);
@@ -79,7 +79,7 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
+    let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
     ksk_prepared.prepare(&module, &ksk, scratch.borrow());
 
     let group_name = format!("glwe_keyswitch::{label}");

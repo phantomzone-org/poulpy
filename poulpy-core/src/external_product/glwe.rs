@@ -1,12 +1,14 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
         VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, ZnxInfos, ZnxZero},
 };
 
+pub use crate::api::GLWEExternalProduct;
+use crate::api::GLWEExternalProductInternal;
 use crate::{
     GLWENormalize, ScratchTakeCore,
     layouts::{
@@ -27,58 +29,39 @@ impl GLWE<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GLWE<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
+impl<DataSelf: DataMut, M> GLWE<DataSelf, M> {
+    pub fn external_product<A, B, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
         B: GGSWPreparedToRef<BE> + GGSWInfos,
-        M: GLWEExternalProduct<BE>,
+        Mod: GLWEExternalProduct<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_external_product(self, a, b, scratch);
     }
 
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
+    pub fn external_product_inplace<A, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, scratch: &mut Scratch<BE>)
     where
         A: GGSWPreparedToRef<BE> + GGSWInfos,
-        M: GLWEExternalProduct<BE>,
+        Mod: GLWEExternalProduct<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_external_product_inplace(self, a, scratch);
     }
 }
 
-pub trait GLWEExternalProduct<BE: Backend> {
-    fn glwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGSWInfos;
-
-    fn glwe_external_product_inplace<R, D>(&self, res: &mut R, a: &D, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEInfos,
-        D: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>;
-
-    fn glwe_external_product<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEInfos,
-        A: GLWEToRef + GLWEInfos,
-        D: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>;
-}
-
-impl<BE: Backend> GLWEExternalProduct<BE> for Module<BE>
+pub(crate) trait GLWEExternalProductDefault<BE: Backend>:
+    Sized
+    + GLWEExternalProductInternal<BE>
+    + VecZnxDftBytesOf
+    + VecZnxBigNormalize<BE>
+    + VecZnxBigNormalizeTmpBytes
+    + VecZnxBigAddSmallAssign<BE>
+    + GLWENormalize<BE>
 where
-    Self: GLWEExternalProductInternal<BE>
-        + VecZnxDftBytesOf
-        + VecZnxBigNormalize<BE>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxBigAddSmallInplace<BE>
-        + GLWENormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_external_product_tmp_bytes<R, A, B>(&self, res: &R, a: &A, ggsw: &B) -> usize
+    fn glwe_external_product_tmp_bytes_default<R, A, B>(&self, res: &R, a: &A, ggsw: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -94,7 +77,7 @@ where
                 k: a.max_k(),
                 rank: a.rank(),
             };
-            let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
+            let lvl_2_0: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&a_conv_infos);
             let lvl_2_1: usize = self
                 .glwe_normalize_tmp_bytes()
                 .max(self.glwe_external_product_internal_tmp_bytes(res, &a_conv_infos, ggsw));
@@ -106,7 +89,7 @@ where
         lvl_0 + lvl_1.max(lvl_2)
     }
 
-    fn glwe_external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
+    fn glwe_external_product_inplace_default<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut + GLWEInfos,
         D: GGSWPreparedToRef<BE> + GGSWInfos,
@@ -115,10 +98,10 @@ where
         assert_eq!(ggsw.rank(), res.rank());
         assert_eq!(ggsw.n(), res.n());
         assert!(
-            scratch.available() >= self.glwe_external_product_tmp_bytes(res, res, ggsw),
+            scratch.available() >= self.glwe_external_product_tmp_bytes_default(res, res, ggsw),
             "scratch.available(): {} < GLWEExternalProduct::glwe_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_external_product_tmp_bytes(res, res, ggsw)
+            self.glwe_external_product_tmp_bytes_default(res, res, ggsw)
         );
 
         let res_base2k: usize = res.base2k().as_usize();
@@ -146,7 +129,7 @@ where
         }
     }
 
-    fn glwe_external_product<R, A, G>(&self, res: &mut R, a: &A, ggsw: &G, scratch: &mut Scratch<BE>)
+    fn glwe_external_product_default<R, A, G>(&self, res: &mut R, a: &A, ggsw: &G, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut + GLWEInfos,
         A: GLWEToRef + GLWEInfos,
@@ -158,10 +141,10 @@ where
         assert_eq!(ggsw.n(), res.n());
         assert_eq!(a.n(), res.n());
         assert!(
-            scratch.available() >= self.glwe_external_product_tmp_bytes(res, a, ggsw),
+            scratch.available() >= self.glwe_external_product_tmp_bytes_default(res, a, ggsw),
             "scratch.available(): {} < GLWEExternalProduct::glwe_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_external_product_tmp_bytes(res, a, ggsw)
+            self.glwe_external_product_tmp_bytes_default(res, a, ggsw)
         );
 
         let a_base2k: usize = a.base2k().into();
@@ -191,24 +174,16 @@ where
     }
 }
 
-pub trait GLWEExternalProductInternal<BE: Backend> {
-    fn glwe_external_product_internal_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGSWInfos;
-    fn glwe_external_product_internal<DR, A, G>(
-        &self,
-        res_dft: VecZnxDft<DR, BE>,
-        a: &A,
-        ggsw: &G,
-        scratch: &mut Scratch<BE>,
-    ) -> VecZnxBig<DR, BE>
-    where
-        DR: DataMut,
-        A: GLWEToRef,
-        G: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable;
+impl<BE: Backend> GLWEExternalProductDefault<BE> for Module<BE>
+where
+    Self: GLWEExternalProductInternal<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxBigAddSmallAssign<BE>
+        + GLWENormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
 }
 
 impl<BE: Backend> GLWEExternalProductInternal<BE> for Module<BE>
@@ -219,7 +194,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxDftApply<BE>
         + VmpApplyDftToDft<BE>
-        + VecZnxDftAddInplace<BE>
+        + VecZnxDftAddAssign<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
@@ -319,7 +294,7 @@ where
                     res_dft_tmp.set_size(res_dft.size());
                     self.vmp_apply_dft_to_dft(&mut res_dft_tmp, &a_dft, &ggsw.data, di, scratch_2);
                     for col in 0..cols {
-                        self.vec_znx_dft_add_inplace(&mut res_dft, col, &res_dft_tmp, col);
+                        self.vec_znx_dft_add_assign(&mut res_dft, col, &res_dft_tmp, col);
                     }
                 }
             }

@@ -1,9 +1,12 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxNormalizeInplace},
     layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::GGSWCompressedEncryptSk;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
@@ -45,12 +48,12 @@ impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
     }
 }
 
-pub trait GGSWCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGSWCompressedEncryptSkDefault<BE: Backend> {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -67,9 +70,9 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
         S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<BE: Backend> GGSWCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGSWCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -128,7 +131,7 @@ where
                 tmp_pt.data.zero();
 
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-                self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+                self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
                 self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
 
                 for col_j in 0..rank + 1 {

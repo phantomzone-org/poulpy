@@ -4,6 +4,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::{GLWESwitchingKeyEncryptPk, GLWESwitchingKeyEncryptSk};
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::gglwe::GGLWEEncryptSk,
@@ -53,12 +54,12 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     }
 }
 
-pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWESwitchingKeyEncryptSkDefault<BE: Backend> {
     fn glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn glwe_switching_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
@@ -75,7 +76,7 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
         S2: GLWESecretToRef;
 }
 
-impl<BE: Backend> GLWESwitchingKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWESwitchingKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing + SvpPrepare<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -144,13 +145,14 @@ where
     }
 }
 
-pub trait GLWESwitchingKeyEncryptPk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWESwitchingKeyEncryptPkDefault<BE: Backend> {
     fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 }
 
-impl<BE: Backend> GLWESwitchingKeyEncryptPk<BE> for Module<BE> {
+impl<BE: Backend> GLWESwitchingKeyEncryptPkDefault<BE> for Module<BE> {
     fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
     where
         A: GGLWEInfos,

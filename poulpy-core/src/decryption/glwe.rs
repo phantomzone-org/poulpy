@@ -1,27 +1,28 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigAddSmallAssign,
         VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataRef, DataViewMut, Module, Scratch},
 };
 
+pub use crate::api::GLWEDecrypt;
 use crate::layouts::{
     GLWE, GLWEInfos, GLWEPlaintextToMut, GLWESecretPrepared, GLWEToRef, LWEInfos, SetGLWEInfos, prepared::GLWESecretPreparedToRef,
 };
 
-impl GLWE<Vec<u8>> {
+impl<M> GLWE<Vec<u8>, M> {
     /// Returns the number of scratch bytes required by [`GLWE::decrypt`].
-    pub fn decrypt_tmp_bytes<A, M, BE: Backend>(module: &M, a_infos: &A) -> usize
+    pub fn decrypt_tmp_bytes<A, Mod, BE: Backend>(module: &Mod, a_infos: &A) -> usize
     where
         A: GLWEInfos,
-        M: GLWEDecrypt<BE>,
+        Mod: GLWEDecrypt<BE>,
     {
         module.glwe_decrypt_tmp_bytes(a_infos)
     }
 }
 
-impl<DataSelf: DataRef> GLWE<DataSelf> {
+impl<DataSelf: DataRef, M> GLWE<DataSelf, M> {
     /// Decrypts this GLWE ciphertext into a plaintext using the prepared secret key.
     ///
     /// Computes `pt = body + mask * secret`, where `body` is the first column
@@ -30,44 +31,33 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
     ///
     /// The plaintext precision `k` is set to the minimum of the plaintext and
     /// ciphertext precisions.
-    pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    pub fn decrypt<P, S, Mod, BE: Backend>(&self, module: &Mod, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        M: GLWEDecrypt<BE>,
+        Mod: GLWEDecrypt<BE>,
         Scratch<BE>: ScratchTakeBasic,
     {
         module.glwe_decrypt(self, pt, sk, scratch);
     }
 }
 
-pub trait GLWEDecrypt<BE: Backend> {
-    fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: GLWEInfos;
-
-    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos;
-}
-
-impl<BE: Backend> GLWEDecrypt<BE> for Module<BE>
+pub(crate) trait GLWEDecryptDefault<BE: Backend>:
+    Sized
+    + ModuleN
+    + VecZnxDftBytesOf
+    + VecZnxNormalizeTmpBytes
+    + VecZnxBigBytesOf
+    + VecZnxDftApply<BE>
+    + SvpApplyDftToDftInplace<BE>
+    + VecZnxIdftApplyConsume<BE>
+    + VecZnxBigAddAssign<BE>
+    + VecZnxBigAddSmallAssign<BE>
+    + VecZnxBigNormalize<BE>
 where
-    Self: ModuleN
-        + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigAddInplace<BE>
-        + VecZnxBigAddSmallInplace<BE>
-        + VecZnxBigNormalize<BE>,
     Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
 {
-    fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_decrypt_tmp_bytes_default<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
@@ -80,7 +70,7 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    fn glwe_decrypt_default<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToRef + GLWEInfos,
         P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
@@ -96,10 +86,10 @@ where
             assert_eq!(pt.n(), sk.n());
         }
         assert!(
-            scratch.available() >= self.glwe_decrypt_tmp_bytes(res),
+            scratch.available() >= self.glwe_decrypt_tmp_bytes_default(res),
             "scratch.available(): {} < GLWEDecrypt::glwe_decrypt_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_decrypt_tmp_bytes(res)
+            self.glwe_decrypt_tmp_bytes_default(res)
         );
 
         let cols: usize = (res.rank() + 1).into();
@@ -115,11 +105,11 @@ where
             let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
 
             // c0_big += a[i] * s[i]
-            self.vec_znx_big_add_inplace(&mut c0_big, 0, &ci_big, 0);
+            self.vec_znx_big_add_assign(&mut c0_big, 0, &ci_big, 0);
         });
 
         // c0_big = (a * s) + (-a * s + m + e) = BIG(m + e)
-        self.vec_znx_big_add_small_inplace(&mut c0_big, 0, res.data(), 0);
+        self.vec_znx_big_add_small_assign(&mut c0_big, 0, res.data(), 0);
 
         let pt_base2k: usize = pt.base2k().into();
 
@@ -135,4 +125,20 @@ where
             scratch_1,
         );
     }
+}
+
+impl<BE: Backend> GLWEDecryptDefault<BE> for Module<BE>
+where
+    Self: ModuleN
+        + VecZnxDftBytesOf
+        + VecZnxNormalizeTmpBytes
+        + VecZnxBigBytesOf
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigAddAssign<BE>
+        + VecZnxBigAddSmallAssign<BE>
+        + VecZnxBigNormalize<BE>,
+    Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
+{
 }

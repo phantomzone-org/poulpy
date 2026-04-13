@@ -2,7 +2,7 @@
 
 use super::helpers::{TestContext, assert_precision, assert_valid_ciphertext};
 use crate::{
-    layouts::ciphertext::CKKSCiphertext,
+    layouts::ciphertext::CKKS,
     leveled::{
         encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
         operations::level::{
@@ -13,7 +13,7 @@ use crate::{
 };
 use poulpy_core::{
     GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWESecretPreparedFactory, LWEInfos, TorusPrecision},
+    layouts::{Base2K, Degree, GLWE, GLWESecretPreparedFactory, LWEInfos, TorusPrecision},
 };
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
@@ -41,7 +41,7 @@ where
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
 
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -53,13 +53,13 @@ where
     let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] / scale).collect();
     let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] / scale).collect();
 
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     div_pow2(&ctx.module, &mut ct_res, &ct, bits, scratch.borrow());
     assert_valid_ciphertext("div_pow2 result", &ct_res);
-    assert_eq!(ct_res.inner.k(), ct.inner.k(), "div_pow2 must preserve k");
-    assert_eq!(ct_res.inner.size(), ct.inner.size(), "div_pow2 must preserve size");
+    assert_eq!(ct_res.k(), ct.k(), "div_pow2 must preserve k");
+    assert_eq!(ct_res.size(), ct.size(), "div_pow2 must preserve size");
     assert_eq!(
-        ct_res.torus_scale_bits, ct.torus_scale_bits,
+        ct_res.torus_scale_bits(), ct.torus_scale_bits(),
         "div_pow2 must preserve torus_scale_bits"
     );
     let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
@@ -69,9 +69,9 @@ where
     let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     div_pow2_inplace(&ctx.module, &mut ct_ip, bits, scratch.borrow());
     assert_valid_ciphertext("div_pow2_inplace result", &ct_ip);
-    assert_eq!(ct_ip.inner.k(), k, "div_pow2_inplace must preserve k");
+    assert_eq!(ct_ip.k(), k, "div_pow2_inplace must preserve k");
     assert_eq!(
-        ct_ip.torus_scale_bits, ctx.params.log_delta,
+        ct_ip.torus_scale_bits(), ctx.params.log_delta,
         "div_pow2_inplace must preserve torus_scale_bits"
     );
     let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
@@ -100,7 +100,7 @@ where
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
 
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -111,23 +111,23 @@ where
     assert_valid_ciphertext("drop_scaling_precision input", &ct);
     let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j]).collect();
     let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j]).collect();
-    let expected_torus_scale_bits = ct.torus_scale_bits - bits as u32;
+    let expected_torus_scale_bits = ct.torus_scale_bits().saturating_sub(bits as u32);
 
-    let mut ct_res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     drop_scaling_precision(&ctx.module, &mut ct_res, &ct, bits, scratch.borrow());
     assert_valid_ciphertext("drop_scaling_precision result", &ct_res);
-    assert_eq!(ct_res.inner.k(), ct.inner.k(), "drop_scaling_precision must preserve k");
+    assert_eq!(ct_res.k(), ct.k(), "drop_scaling_precision must preserve k");
     assert_eq!(
-        ct_res.inner.size(),
-        ct.inner.size(),
+        ct_res.size(),
+        ct.size(),
         "drop_scaling_precision must preserve size"
     );
     assert_eq!(
-        ct_res.torus_scale_bits, expected_torus_scale_bits,
+        ct_res.torus_scale_bits(), expected_torus_scale_bits,
         "drop_scaling_precision must reduce torus_scale_bits by bits"
     );
     assert_eq!(
-        ct_res.offset_bits, ct.offset_bits,
+        ct_res.offset_bits(), ct.offset_bits(),
         "drop_scaling_precision must preserve offset_bits"
     );
     let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
@@ -137,14 +137,14 @@ where
     let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     drop_scaling_precision_inplace(&ctx.module, &mut ct_ip, bits, scratch.borrow());
     assert_valid_ciphertext("drop_scaling_precision_inplace result", &ct_ip);
-    assert_eq!(ct_ip.inner.k(), k, "drop_scaling_precision_inplace must preserve k");
+    assert_eq!(ct_ip.k(), k, "drop_scaling_precision_inplace must preserve k");
     assert_eq!(
-        ct_ip.torus_scale_bits,
+        ct_ip.torus_scale_bits(),
         ctx.params.log_delta - bits as u32,
         "drop_scaling_precision_inplace must reduce torus_scale_bits by bits"
     );
     assert_eq!(
-        ct_ip.offset_bits, k.0,
+        ct_ip.offset_bits(), k.0,
         "drop_scaling_precision_inplace must preserve offset_bits"
     );
     let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
@@ -169,27 +169,27 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
 
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch =
         ScratchOwned::<BE>::alloc(encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp).max(decrypt_tmp_bytes(&ctx.module, &ct_tmp)));
 
     let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     assert_valid_ciphertext("drop_torus_precision input", &ct);
-    let old_size = ct.inner.size();
-    let old_torus_scale_bits = ct.torus_scale_bits;
+    let old_size = ct.size();
+    let old_torus_scale_bits = ct.torus_scale_bits();
     let target_k = TorusPrecision(k.0 - base2k.0);
 
     drop_torus_precision(&mut ct, target_k);
     assert_valid_ciphertext("drop_torus_precision result", &ct);
 
-    assert_eq!(ct.inner.k(), target_k, "drop_torus_precision must update k");
-    assert!(ct.inner.size() < old_size, "drop_torus_precision must shrink active size");
+    assert_eq!(ct.k(), target_k, "drop_torus_precision must update k");
+    assert!(ct.size() < old_size, "drop_torus_precision must shrink active size");
     assert_eq!(
-        ct.offset_bits, target_k.0,
+        ct.offset_bits(), target_k.0,
         "drop_torus_precision must lower offset_bits to target_k"
     );
     assert_eq!(
-        ct.torus_scale_bits, old_torus_scale_bits,
+        ct.torus_scale_bits(), old_torus_scale_bits,
         "drop_torus_precision must preserve torus_scale_bits"
     );
 

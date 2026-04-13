@@ -1,13 +1,13 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxAddScalarInplace},
+    api::{ScratchAvailable, VecZnxAddScalarAssign},
     layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
 
+use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
 use crate::{
-    GLWENoise,
+    api::{GGLWENoise, GLWENoise},
     layouts::{GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, prepared::GLWESecretPreparedToRef},
 };
-use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
 
 impl<D: DataRef> GGLWE<D> {
     pub fn noise<M, S, P, BE: Backend>(
@@ -28,36 +28,16 @@ impl<D: DataRef> GGLWE<D> {
     }
 }
 
-pub trait GGLWENoise<BE: Backend> {
-    fn gglwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos;
-
-    fn gglwe_noise<R, S, P>(
-        &self,
-        res: &R,
-        res_row: usize,
-        res_col: usize,
-        pt_want: &P,
-        sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Stats
-    where
-        R: GGLWEToRef + GGLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        P: ScalarZnxToRef;
-}
-
 impl<BE: Backend> GGLWENoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarInplace + GLWENoise<BE>,
+    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn gglwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(infos);
         let lvl_1: usize = self.glwe_noise_tmp_bytes(infos);
 
         lvl_0 + lvl_1
@@ -88,7 +68,7 @@ where
         let dsize: usize = res.dsize().into();
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
         pt.data_mut().zero();
-        self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, res_col);
+        self.vec_znx_add_scalar_assign(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, res_col);
         self.glwe_noise(&res.at(res_row, res_col), &pt, sk_prepared, scratch_1)
     }
 }

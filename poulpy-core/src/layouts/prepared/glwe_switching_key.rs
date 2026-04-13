@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -91,15 +91,15 @@ where
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GLWESwitchingKeyPrepared<Vec<u8>, B> {
-        GLWESwitchingKeyPrepared::<Vec<u8>, B> {
+    ) -> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
+        GLWESwitchingKeyPrepared::<DeviceBuf<B>, B> {
             key: self.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize),
             input_degree: Degree(0),
             output_degree: Degree(0),
         }
     }
 
-    fn alloc_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
@@ -168,7 +168,7 @@ where
 
 impl<B: Backend> GLWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -227,7 +227,7 @@ impl<D: DataMut, B: Backend> GLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where
         M: GLWESwitchingKeyPreparedFactory<B>,

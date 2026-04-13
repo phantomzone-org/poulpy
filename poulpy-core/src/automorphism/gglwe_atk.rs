@@ -44,17 +44,18 @@ impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     }
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyAutomorphism<BE> for Module<BE>
+pub(crate) trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
+    Sized
+    + GaloisElement
+    + GLWEKeyswitch<BE>
+    + VecZnxAutomorphism
+    + VecZnxAutomorphismInplace<BE>
+    + VecZnxAutomorphismInplaceTmpBytes
+    + CyclotomicOrder
 where
-    Self: GaloisElement
-        + GLWEKeyswitch<BE>
-        + VecZnxAutomorphism
-        + VecZnxAutomorphismInplace<BE>
-        + VecZnxAutomorphismInplaceTmpBytes
-        + CyclotomicOrder,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    fn glwe_automorphism_key_automorphism_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
@@ -67,14 +68,14 @@ where
         let lvl_0: usize = if res_infos.glwe_layout() == a_infos.glwe_layout() {
             self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
         } else {
-            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::bytes_of_from_infos(a_infos)
+            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(a_infos)
         };
         let lvl_1: usize = self.vec_znx_automorphism_inplace_tmp_bytes();
 
         lvl_0.max(lvl_1)
     }
 
-    fn glwe_automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    fn glwe_automorphism_key_automorphism_default<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
@@ -91,10 +92,10 @@ where
 
         assert_eq!(res.base2k(), a.base2k());
         assert!(
-            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes(res, a, key),
+            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes_default(res, a, key),
             "scratch.available(): {} < GLWEAutomorphismKeyAutomorphism::glwe_automorphism_key_automorphism_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_automorphism_key_automorphism_tmp_bytes(res, a, key)
+            self.glwe_automorphism_key_automorphism_tmp_bytes_default(res, a, key)
         );
 
         let cols_out: usize = (key.rank_out() + 1).into();
@@ -145,7 +146,7 @@ where
         res.set_p((p * key.p()) % self.cyclotomic_order());
     }
 
-    fn glwe_automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    fn glwe_automorphism_key_automorphism_inplace_default<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -153,10 +154,10 @@ where
     {
         assert_eq!(res.rank(), key.rank(), "key rank: {} != key rank: {}", res.rank(), key.rank());
         assert!(
-            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes(res, res, key),
+            scratch.available() >= self.glwe_automorphism_key_automorphism_tmp_bytes_default(res, res, key),
             "scratch.available(): {} < GLWEAutomorphismKeyAutomorphism::glwe_automorphism_key_automorphism_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_automorphism_key_automorphism_tmp_bytes(res, res, key)
+            self.glwe_automorphism_key_automorphism_tmp_bytes_default(res, res, key)
         );
 
         let cols_out: usize = (key.rank_out() + 1).into();
@@ -190,21 +191,15 @@ where
     }
 }
 
-pub trait GLWEAutomorphismKeyAutomorphism<BE: Backend> {
-    fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        K: GGLWEInfos;
-
-    fn glwe_automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
-
-    fn glwe_automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
-    where
-        R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
+impl<BE: Backend> GLWEAutomorphismKeyAutomorphismDefault<BE> for Module<BE>
+where
+    Self: GaloisElement
+        + GLWEKeyswitch<BE>
+        + VecZnxAutomorphism
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismInplaceTmpBytes
+        + CyclotomicOrder,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
 }
+pub use crate::api::GLWEAutomorphismKeyAutomorphism;

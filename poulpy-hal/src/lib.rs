@@ -40,14 +40,14 @@
 //!
 //! The crate is organized into a four-layer stack:
 //!
-//! 1. **[`api`]** -- Safe, user-facing trait definitions (e.g. [`api::VecZnxAdd`],
+//! 1. **[`api`]** -- Safe, user-facing trait definitions (e.g. [`api::VecZnxAddInto`],
 //!    [`api::VmpApplyDftToDft`]). Scheme authors program against these.
-//! 2. **[`oep`]** -- Unsafe extension-point traits mirroring the API (e.g.
-//!    [`oep::VecZnxAddImpl`]). Backend crates implement these.
+//! 2. **[`oep`]** -- Unsafe extension-point layer centered on [`oep::HalImpl`].
+//!    Backend crates implement `HalImpl` and opt into default fallbacks via macros.
 //! 3. **[`delegates`]** -- Blanket `impl` glue that connects each [`api`] trait to
-//!    the corresponding [`oep`] trait on [`layouts::Module`].
-//! 4. **[`mod@reference`]** -- Pure-Rust reference implementations of all operations
-//!    (scalar arithmetic, FFT64). Used for testing and as a correctness oracle.
+//!    the corresponding `HalImpl` method on [`layouts::Module`].
+//! 4. **Reference implementations** live in the `poulpy-cpu-ref` crate, which provides
+//!    the portable default backend used by tests and benchmarks.
 //!
 //! ## Testing and Benchmarking
 //!
@@ -61,7 +61,7 @@
 //!
 //! ## Safety Contract
 //!
-//! All [`oep`] traits are `unsafe` to implement. Implementors must uphold the
+//! All [`oep`] extension points are `unsafe` to implement. Implementors must uphold the
 //! contract documented in [`doc::backend_safety`], covering memory domains,
 //! alignment, scratch lifetime, synchronization, aliasing, and numerical
 //! exactness.
@@ -106,17 +106,13 @@ pub mod delegates;
 /// `&mut [u8]`) enabling owned, borrowed, and scratch-backed usage.
 pub mod layouts;
 
-/// Open Extension Points: `unsafe` traits that backend crates implement.
+/// Open Extension Points: the `unsafe` backend extension layer centered on
+/// [`oep::HalImpl`].
 ///
-/// Each trait mirrors a corresponding [`api`] trait and carries the `Impl`
-/// suffix. See [`doc::backend_safety`] for the safety contract.
+/// Backend crates implement `HalImpl` and may delegate to default fallbacks
+/// provided by a backend crate (for example `poulpy-cpu-ref`). See
+/// [`doc::backend_safety`] for the safety contract.
 pub mod oep;
-
-/// Pure-Rust reference implementations of all operations.
-///
-/// Contains scalar polynomial arithmetic, vector-level operations, and an
-/// FFT64 implementation. Used as a correctness oracle for backend testing.
-pub mod reference;
 
 /// Deterministic pseudorandom number generation based on ChaCha8.
 pub mod source;

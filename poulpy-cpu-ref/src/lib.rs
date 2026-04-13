@@ -14,10 +14,36 @@
 //! No platform-specific intrinsics or assembly are used.
 
 pub mod fft64;
+pub mod hal_defaults;
+mod hal_impl;
 pub mod ntt120;
+pub mod reference;
 
 #[cfg(test)]
 mod tests;
 
+pub use poulpy_hal::cast_mut;
+
+pub mod api {
+    pub use poulpy_hal::api::*;
+}
+
+pub mod layouts {
+    pub use poulpy_hal::layouts::*;
+}
+
+pub mod source {
+    pub use poulpy_hal::source::*;
+}
+
 pub use fft64::FFT64Ref;
 pub use ntt120::{NTT120Ref, NTT120RefHandle};
+
+use poulpy_core::oep::CoreImpl;
+unsafe impl CoreImpl<FFT64Ref> for FFT64Ref {
+    poulpy_core::impl_core_default_methods!(FFT64Ref);
+}
+
+unsafe impl CoreImpl<NTT120Ref> for NTT120Ref {
+    poulpy_core::impl_core_default_methods!(NTT120Ref);
+}

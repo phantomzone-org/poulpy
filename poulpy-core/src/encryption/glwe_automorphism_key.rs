@@ -4,6 +4,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::{GLWEAutomorphismKeyEncryptPk, GLWEAutomorphismKeyEncryptSk};
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
@@ -53,12 +54,12 @@ where
     }
 }
 
-pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
     fn glwe_automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn glwe_automorphism_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
@@ -67,7 +68,6 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
@@ -75,7 +75,7 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
         S: GLWESecretToRef;
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWEAutomorphismKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: GGLWEEncryptSk<BE> + VecZnxAutomorphism + GaloisElement + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -151,13 +151,14 @@ where
     }
 }
 
-pub trait GLWEAutomorphismKeyEncryptPk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEAutomorphismKeyEncryptPkDefault<BE: Backend> {
     fn glwe_automorphism_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyEncryptPk<BE> for Module<BE>
+impl<BE: Backend> GLWEAutomorphismKeyEncryptPkDefault<BE> for Module<BE>
 where
     Self:,
     Scratch<BE>: ScratchTakeCore<BE>,

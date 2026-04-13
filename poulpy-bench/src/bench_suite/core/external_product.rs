@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -39,7 +39,7 @@ pub fn bench_glwe_external_product<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(ggsw_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, ggsw_infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, ggsw_infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
@@ -49,7 +49,7 @@ pub fn bench_glwe_external_product<BE: Backend>(
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GGSW::encrypt_sk_tmp_bytes(&module, ggsw_infos)
-            | GLWE::encrypt_sk_tmp_bytes(&module, glwe_infos)
+            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, glwe_infos)
             | GLWE::external_product_tmp_bytes(&module, glwe_infos, glwe_infos, ggsw_infos),
     );
 
@@ -74,7 +74,7 @@ pub fn bench_glwe_external_product<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product::{label}");
@@ -109,7 +109,7 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
@@ -118,7 +118,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GGSW::encrypt_sk_tmp_bytes(&module, infos)
-            | GLWE::encrypt_sk_tmp_bytes(&module, infos)
+            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, infos)
             | GLWE::external_product_tmp_bytes(&module, infos, infos, infos),
     );
 
@@ -142,7 +142,7 @@ where
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
     ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product_inplace::{label}");

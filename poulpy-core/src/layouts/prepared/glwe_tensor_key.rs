@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -64,12 +64,12 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> GLWETensorKeyPrepared<Vec<u8>, B> {
+    ) -> GLWETensorKeyPrepared<DeviceBuf<B>, B> {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
         GLWETensorKeyPrepared(self.alloc_gglwe_prepared(base2k, k, Rank(pairs), rank, dnum, dsize))
     }
 
-    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<Vec<u8>, B>
+    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
@@ -115,7 +115,7 @@ where
 
 impl<B: Backend> GLWETensorKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWETensorKeyPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -147,7 +147,7 @@ impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
     }
 }
 
-impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWETensorKeyPrepared<DeviceBuf<B>, B> {
     pub fn prepare_tmp_bytes<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,

@@ -4,6 +4,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::GLWEPublicKeyGenerate;
 use crate::{
     Distribution, EncryptionInfos, GLWEEncryptSk, GetDistribution, GetDistributionMut, ScratchTakeCore,
     layouts::{
@@ -29,7 +30,8 @@ impl<D: DataMut> GLWEPublicKey<D> {
     }
 }
 
-pub trait GLWEPublicKeyGenerate<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEPublicKeyGenerateDefault<BE: Backend> {
     fn glwe_public_key_generate<R, S, E>(
         &self,
         res: &mut R,
@@ -43,7 +45,7 @@ pub trait GLWEPublicKeyGenerate<BE: Backend> {
         S: GLWESecretPreparedToRef<BE> + GetDistribution;
 }
 
-impl<BE: Backend> GLWEPublicKeyGenerate<BE> for Module<BE>
+impl<BE: Backend> GLWEPublicKeyGenerateDefault<BE> for Module<BE>
 where
     Self: GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

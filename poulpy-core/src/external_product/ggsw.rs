@@ -3,6 +3,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
 };
 
+pub use crate::api::GGSWExternalProduct;
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
     layouts::{
@@ -11,21 +12,33 @@ use crate::{
     },
 };
 
-pub trait GGSWExternalProduct<BE: Backend>
+impl GGSW<Vec<u8>> {
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    where
+        R: GGSWInfos,
+        A: GGSWInfos,
+        B: GGSWInfos,
+        M: GGSWExternalProduct<BE>,
+    {
+        module.ggsw_external_product_tmp_bytes(res_infos, a_infos, b_infos)
+    }
+}
+
+#[doc(hidden)]
+pub trait GGSWExternalProductDefault<BE: Backend>
 where
     Self: GLWEExternalProduct<BE> + ModuleN,
 {
-    fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    fn ggsw_external_product_tmp_bytes_default<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGSWInfos,
         A: GGSWInfos,
         B: GGSWInfos,
     {
-        let lvl_0: usize = self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos);
-        lvl_0
+        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 
-    fn ggsw_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn ggsw_external_product_default<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         A: GGSWToRef,
@@ -42,10 +55,10 @@ where
         assert_eq!(res.base2k(), a.base2k());
 
         assert!(
-            scratch.available() >= self.ggsw_external_product_tmp_bytes(res, a, b),
+            scratch.available() >= self.ggsw_external_product_tmp_bytes_default(res, a, b),
             "scratch.available(): {} < GGSWExternalProduct::ggsw_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.ggsw_external_product_tmp_bytes(res, a, b)
+            self.ggsw_external_product_tmp_bytes_default(res, a, b)
         );
 
         let min_dnum: usize = res.dnum().min(a.dnum()).into();
@@ -63,7 +76,7 @@ where
         }
     }
 
-    fn ggsw_external_product_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn ggsw_external_product_inplace_default<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         A: GGSWPreparedToRef<BE>,
@@ -76,10 +89,10 @@ where
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank(), "res rank: {} != a rank: {}", res.rank(), a.rank());
         assert!(
-            scratch.available() >= self.ggsw_external_product_tmp_bytes(res, res, a),
+            scratch.available() >= self.ggsw_external_product_tmp_bytes_default(res, res, a),
             "scratch.available(): {} < GGSWExternalProduct::ggsw_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.ggsw_external_product_tmp_bytes(res, res, a)
+            self.ggsw_external_product_tmp_bytes_default(res, res, a)
         );
 
         for row in 0..res.dnum().into() {
@@ -90,19 +103,7 @@ where
     }
 }
 
-impl<BE: Backend> GGSWExternalProduct<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
-
-impl GGSW<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GGSWInfos,
-        A: GGSWInfos,
-        B: GGSWInfos,
-        M: GGSWExternalProduct<BE>,
-    {
-        module.ggsw_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
+impl<BE: Backend> GGSWExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> + ModuleN {}
 
 impl<DataSelf: DataMut> GGSW<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)

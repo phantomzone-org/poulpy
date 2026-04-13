@@ -4,6 +4,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::GGLWEToGGSWKeyEncryptSk;
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
@@ -43,7 +44,8 @@ impl<DataSelf: DataMut> GGLWEToGGSWKey<DataSelf> {
     }
 }
 
-pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGLWEToGGSWKeyEncryptSkDefault<BE: Backend> {
     fn gglwe_to_ggsw_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
@@ -55,7 +57,6 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
@@ -63,7 +64,7 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
-impl<BE: Backend> GGLWEToGGSWKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGLWEToGGSWKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopy,
     Scratch<BE>: ScratchTakeCore<BE>,

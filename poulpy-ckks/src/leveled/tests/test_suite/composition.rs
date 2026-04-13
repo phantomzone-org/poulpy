@@ -1,7 +1,7 @@
 //! Composition tests: multi-step CKKS evaluation paths that combine primitives.
 
 use super::helpers::{TestContext, assert_precision};
-use crate::layouts::{ciphertext::CKKSCiphertext, plaintext_prepared::CKKSPlaintextPrepared};
+use crate::layouts::{ciphertext::CKKS, plaintext_prepared::CKKSPlaintextPrepared};
 use crate::leveled::{
     encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
     operations::{
@@ -12,7 +12,7 @@ use crate::leveled::{
 };
 use poulpy_core::{
     GLWEAdd, GLWENormalize, GLWEDecrypt, GLWEEncryptSk, GLWEMulPlain, GLWEShift, GLWETensoring, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWESecretPreparedFactory, TorusPrecision},
+    layouts::{Base2K, Degree, GLWE, GLWESecretPreparedFactory, TorusPrecision},
 };
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
@@ -76,7 +76,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -90,8 +90,8 @@ where
     let (want_re, want_im) = same_offset_expected(ctx, c1, c2);
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut term1 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
     mul_prepared_pt(&ctx.module, &mut term2, &x, &pt2, scratch.borrow());
 
@@ -126,7 +126,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -142,11 +142,11 @@ where
     let (want_re, want_im) = poly2_expected(ctx, (0.0, 0.0), c1, c2);
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
 
-    let mut term1 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
     mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
 
@@ -186,7 +186,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -202,19 +202,19 @@ where
     let (want_re, want_im) = poly2_expected(ctx, (0.0, 0.0), c1, c2);
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
 
-    let mut term1 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
     mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
 
     let target_offset = term1.offset_bits().max(term2.offset_bits());
     let target_k = TorusPrecision(target_offset);
-    let mut aligned1 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut aligned2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut sum = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut aligned1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut aligned2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut sum = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     align_to(&ctx.module, &mut aligned1, &term1, target_offset, target_k, scratch.borrow());
     align_to(&ctx.module, &mut aligned2, &term2, target_offset, target_k, scratch.borrow());
     add_aligned(&ctx.module, &mut sum, &aligned1, &aligned2);
@@ -243,7 +243,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -256,10 +256,10 @@ where
     let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
 
-    let mut term = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term, &x2, &pt2, scratch.borrow());
 
     let want_re: Vec<f64> = (0..m)
@@ -288,7 +288,7 @@ where
         natural_offset,
         "x2 branch must consume visible offset precision"
     );
-    let mut aligned = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut aligned = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     align_to(
         &ctx.module,
         &mut aligned,
@@ -322,7 +322,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -335,10 +335,10 @@ where
     let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
 
-    let mut term = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term, &x2, &pt2, scratch.borrow());
 
     let want_re: Vec<f64> = (0..m)
@@ -391,7 +391,7 @@ where
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     let mut scratch = ScratchOwned::<BE>::alloc(
         encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
             .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
@@ -410,20 +410,20 @@ where
 
     let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
     let y = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
-    let mut x2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
 
     let mut poly = ctx.encrypt(&zero, &zero, &mut scratch);
     add_prepared_pt_inplace(&ctx.module, &mut poly, &pt0);
 
-    let mut term1 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
     mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
     add_inplace(&ctx.module, &mut poly, &term1, scratch.borrow());
     add_inplace(&ctx.module, &mut poly, &term2, scratch.borrow());
 
-    let mut res = CKKSCiphertext::alloc(degree, base2k, k, ctx.params.log_delta);
+    let mut res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
     mul(&ctx.module, &mut res, &y, &poly, tsk, scratch.borrow());
 
     let (re_out, im_out) = ctx.decrypt_decode(&res, &mut scratch);

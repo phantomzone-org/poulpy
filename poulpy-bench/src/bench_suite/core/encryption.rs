@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -30,11 +30,13 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
-    let mut ct = poulpy_core::layouts::GLWE::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(poulpy_core::layouts::GLWE::encrypt_sk_tmp_bytes(&module, infos));
+    let mut ct: poulpy_core::layouts::GLWE<Vec<u8>> = poulpy_core::layouts::GLWE::alloc_from_infos(infos);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(poulpy_core::layouts::GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(
+        &module, infos,
+    ));
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
@@ -72,7 +74,7 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
     sk_prepared.prepare(&module, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);

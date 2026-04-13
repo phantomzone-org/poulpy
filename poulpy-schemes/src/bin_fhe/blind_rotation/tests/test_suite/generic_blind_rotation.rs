@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Scratch, ScratchOwned, ZnxView},
+    layouts::{Backend, DeviceBuf, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
 
@@ -80,7 +80,7 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
+    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
     sk_glwe_dft.prepare(module, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
@@ -141,7 +141,7 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut brk_prepared: BlindRotationKeyPrepared<Vec<u8>, BRA, BE> = BlindRotationKeyPrepared::alloc(module, &brk);
+    let mut brk_prepared: BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> = BlindRotationKeyPrepared::alloc(module, &brk);
     brk_prepared.prepare(module, &brk, scratch_br.borrow());
 
     brk_prepared.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());

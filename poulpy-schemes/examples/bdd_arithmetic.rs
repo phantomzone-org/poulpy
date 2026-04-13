@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -206,16 +206,16 @@ where
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
+    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     // Input Preparation
     // Before each operation, the inputs to that operation must be prepared
     // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
-    let mut a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
 
-    let mut b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
 
     // Allocating the intermediate ciphertext c_enc
@@ -225,7 +225,7 @@ where
     c_enc.add(&module, &a_enc_prepared, &b_enc_prepared, &bdd_key_prepared, scratch.borrow());
 
     // Preparing the intermediate result ciphertext, c_enc, for the next operation
-    let mut c_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut c_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     c_enc_prepared.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
 
     // Creating the output ciphertext d_enc
@@ -295,7 +295,7 @@ where
         &mut source_xa,
         scratch.borrow(),
     );
-    let mut input_selector_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
+    let mut input_selector_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     input_selector_enc_prepared.prepare(&module, &input_selector_enc, &bdd_key_prepared, scratch.borrow());
 

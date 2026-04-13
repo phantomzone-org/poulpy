@@ -4,6 +4,7 @@ use poulpy_hal::{
     source::Source,
 };
 
+pub use crate::api::GLWESwitchingKeyCompressedEncryptSk;
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
@@ -45,12 +46,12 @@ impl<D: DataMut> GLWESwitchingKeyCompressed<D> {
     }
 }
 
-pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
     fn glwe_switching_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
@@ -67,7 +68,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
         S2: GLWESecretToRef;
 }
 
-impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing,
     Scratch<BE>: ScratchTakeCore<BE>,

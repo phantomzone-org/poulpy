@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::bin_fhe::{
@@ -21,8 +21,8 @@ use crate::bin_fhe::{
     circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyInfos},
 };
 
-impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE>
+impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: CircuitBootstrappingKeyInfos,
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
@@ -67,7 +67,7 @@ where
     fn circuit_bootstrapping_key_prepared_alloc_from_infos<A>(
         &self,
         infos: &A,
-    ) -> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE>
+    ) -> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: CircuitBootstrappingKeyInfos,
     {

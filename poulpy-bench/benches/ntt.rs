@@ -3,7 +3,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 pub fn bench_ntt_ref(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ref::NTT120Ref;
-    use poulpy_hal::reference::ntt120::{NttDFTExecute, NttTable, Primes30};
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTable, Primes30};
     use std::hint::black_box;
 
     let group_name: String = "ntt_ref".to_string();
@@ -32,7 +32,7 @@ pub fn bench_ntt_ref(c: &mut Criterion) {
 pub fn bench_intt_ref(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ref::NTT120Ref;
-    use poulpy_hal::reference::ntt120::{NttDFTExecute, NttTableInv, Primes30};
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTableInv, Primes30};
     use std::hint::black_box;
 
     let group_name: String = "intt_ref".to_string();
@@ -77,7 +77,7 @@ fn bench_ntt_avx(_c: &mut Criterion) {
 pub fn bench_ntt_avx(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_avx::NTT120Avx;
-    use poulpy_hal::reference::ntt120::{NttDFTExecute, NttTable, Primes30};
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTable, Primes30};
     use std::hint::black_box;
 
     let group_name: String = "ntt_avx2_fma".to_string();
@@ -122,7 +122,7 @@ fn bench_intt_avx(_c: &mut Criterion) {
 pub fn bench_intt_avx(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_avx::NTT120Avx;
-    use poulpy_hal::reference::ntt120::{NttDFTExecute, NttTableInv, Primes30};
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTableInv, Primes30};
     use std::hint::black_box;
 
     let group_name: String = "intt_avx2_fma".to_string();

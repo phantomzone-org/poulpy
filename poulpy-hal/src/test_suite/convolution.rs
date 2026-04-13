@@ -2,16 +2,21 @@ use rand::Rng;
 
 use crate::{
     api::{
-        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAdd,
+        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxAddInto,
         VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
         VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{
-        Backend, CnvPVecL, CnvPVecR, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, CnvPVecL, CnvPVecR, DeviceBuf, FillUniform, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VecZnxToMut,
+        VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
+
+type VecZnxBigOwned<BE> = VecZnxBig<DeviceBuf<BE>, BE>;
+type VecZnxDftOwned<BE> = VecZnxDft<DeviceBuf<BE>, BE>;
+type CnvPVecLOwned<BE> = CnvPVecL<DeviceBuf<BE>, BE>;
+type CnvPVecROwned<BE> = CnvPVecR<DeviceBuf<BE>, BE>;
 
 pub fn test_convolution_by_const<M, BE: Backend>(module: &M, base2k: usize)
 where
@@ -36,7 +41,7 @@ where
 
     let mut res_want: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
     let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
-    let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
+    let mut res_big: VecZnxBigOwned<BE> = module.vec_znx_big_alloc(1, res_size);
 
     a.fill_uniform(17, &mut source);
 
@@ -105,14 +110,14 @@ where
 
     let mut res_want: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
     let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
-    let mut res_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, res_size);
-    let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
+    let mut res_dft: VecZnxDftOwned<BE> = module.vec_znx_dft_alloc(1, res_size);
+    let mut res_big: VecZnxBigOwned<BE> = module.vec_znx_big_alloc(1, res_size);
 
     a.fill_uniform(17, &mut source);
     b.fill_uniform(17, &mut source);
 
-    let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(a_cols, a_size);
-    let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(b_cols, b_size);
+    let mut a_prep: CnvPVecLOwned<BE> = module.cnv_pvec_left_alloc(a_cols, a_size);
+    let mut b_prep: CnvPVecROwned<BE> = module.cnv_pvec_right_alloc(b_cols, b_size);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module
@@ -164,7 +169,7 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeInplace<BE>
         + VecZnxBigAlloc<BE>
-        + VecZnxAdd
+        + VecZnxAddInto
         + VecZnxCopy,
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -183,14 +188,14 @@ where
 
     let mut res_want: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
     let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, res_size);
-    let mut res_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, res_size);
-    let mut res_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, res_size);
+    let mut res_dft: VecZnxDftOwned<BE> = module.vec_znx_dft_alloc(1, res_size);
+    let mut res_big: VecZnxBigOwned<BE> = module.vec_znx_big_alloc(1, res_size);
 
     a.fill_uniform(17, &mut source);
     b.fill_uniform(17, &mut source);
 
-    let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(cols, a_size);
-    let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(cols, b_size);
+    let mut a_prep: CnvPVecLOwned<BE> = module.cnv_pvec_left_alloc(cols, a_size);
+    let mut b_prep: CnvPVecROwned<BE> = module.cnv_pvec_right_alloc(cols, b_size);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module
@@ -212,8 +217,8 @@ where
                 module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
 
                 if col_i != col_j {
-                    module.vec_znx_add(&mut tmp_a, 0, &a, col_i, &a, col_j);
-                    module.vec_znx_add(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                    module.vec_znx_add_into(&mut tmp_a, 0, &a, col_i, &a, col_j);
+                    module.vec_znx_add_into(&mut tmp_b, 0, &b, col_i, &b, col_j);
                 } else {
                     module.vec_znx_copy(&mut tmp_a, 0, &a, col_i);
                     module.vec_znx_copy(&mut tmp_b, 0, &b, col_j);

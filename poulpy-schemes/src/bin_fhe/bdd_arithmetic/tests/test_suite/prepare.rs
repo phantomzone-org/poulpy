@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned, Stats},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned, Stats},
     source::Source,
 };
 use rand::Rng;
@@ -40,8 +40,8 @@ where
     let ggsw_infos: GGSWLayout = TEST_GGSW_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let bdd_key_prepared: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk_glwe_prep: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let bdd_key_prepared: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source: Source = Source::new([6u8; 32]);
 

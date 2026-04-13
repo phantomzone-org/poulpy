@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{Backend, DeviceBuf, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -125,7 +125,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
     sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
@@ -168,7 +168,7 @@ where
 
     let log_gap_out = 1;
 
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
     cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
@@ -214,7 +214,7 @@ where
         scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
     res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
@@ -325,7 +325,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
     sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
@@ -366,7 +366,7 @@ where
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
     cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
@@ -404,7 +404,7 @@ where
         scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
     res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());

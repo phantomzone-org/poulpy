@@ -6,24 +6,21 @@
 //!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
 //! - The [`Backend`] trait implementation, which defines scalar types and the
 //!   handle destruction path.
-//! - The [`ModuleNewImpl`] implementation, which allocates the handle on the heap,
-//!   verifies AVX2 availability at runtime, and transfers ownership to the `Module`.
+//! - The [`NttHandleFactory`] implementation, which allocates the handle on the heap
+//!   and verifies AVX2 availability at runtime.
 //! - The [`NttHandleProvider`] impl for [`NTT120AvxHandle`], wiring the handle into
 //!   the blanket `NttModuleHandle` impl provided by `poulpy-hal`.
 
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
-    reference::ntt120::{
-        mat_vec::{BbbMeta, BbcMeta},
-        ntt::{NttTable, NttTableInv},
-        primes::Primes30,
-        types::Q120bScalar,
-        vec_znx_dft::NttHandleProvider,
-    },
+use poulpy_cpu_ref::reference::ntt120::{
+    mat_vec::{BbbMeta, BbcMeta},
+    ntt::{NttTable, NttTableInv},
+    primes::Primes30,
+    types::Q120bScalar,
+    vec_znx_dft::{NttHandleFactory, NttHandleProvider},
 };
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 
 use super::NTT120Avx;
 
@@ -46,7 +43,15 @@ pub struct NTT120AvxHandle {
 impl Backend for NTT120Avx {
     type ScalarPrep = Q120bScalar;
     type ScalarBig = i128;
+    type OwnedBuf = Vec<u8>;
     type Handle = NTT120AvxHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
 
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
@@ -57,27 +62,25 @@ impl Backend for NTT120Avx {
 
 /// # Safety
 ///
-/// The returned `Module` owns the heap-allocated `NTT120AvxHandle`.
-/// `n` must be a power of two >= 2 (asserted by `Module::from_nonnull`).
-/// The NTT tables are built for dimension `n`.
+/// The returned handle must be fully initialized for `n`.
 ///
 /// # Panics
 ///
 /// Panics if the runtime CPU does not support the AVX2 instruction set.
-unsafe impl ModuleNewImpl<Self> for NTT120Avx {
-    fn new_impl(n: u64) -> Module<Self> {
+unsafe impl NttHandleFactory for NTT120AvxHandle {
+    fn create_ntt_handle(n: usize) -> Self {
+        NTT120AvxHandle {
+            table_ntt: NttTable::new(n),
+            table_intt: NttTableInv::new(n),
+            meta_bbc: BbcMeta::new(),
+            meta_bbb: BbbMeta::new(),
+        }
+    }
+
+    fn assert_ntt_runtime_support() {
         if !std::arch::is_x86_feature_detected!("avx2") {
             panic!("arch must support avx2")
         }
-
-        let handle = NTT120AvxHandle {
-            table_ntt: NttTable::new(n as usize),
-            table_intt: NttTableInv::new(n as usize),
-            meta_bbc: BbcMeta::new(),
-            meta_bbb: BbbMeta::new(),
-        };
-        let ptr: NonNull<NTT120AvxHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
     }
 }
 

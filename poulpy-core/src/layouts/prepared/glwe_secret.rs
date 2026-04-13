@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
@@ -54,13 +54,13 @@ pub trait GLWESecretPreparedFactory<B: Backend>
 where
     Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
-    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
+    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<DeviceBuf<B>, B> {
         GLWESecretPrepared {
             data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -101,7 +101,7 @@ impl<B: Backend> GLWESecretPreparedFactory<B> for Module<B> where
 {
 }
 
-impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWESecretPrepared<DeviceBuf<B>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,

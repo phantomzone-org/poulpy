@@ -12,7 +12,7 @@ use poulpy_core::{
 
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -114,11 +114,11 @@ where
             scratch.borrow(),
         );
 
-        let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> =
+        let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
             BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
         bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
-        let mut a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
+        let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
             FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
 
         move || {

@@ -12,7 +12,7 @@ use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGL
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::api::{ModuleLogN, ScratchAvailable, ScratchFromBytes};
-use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
+use poulpy_hal::layouts::{Backend, Data, DataRef, DeviceBuf, Module};
 
 use poulpy_hal::{
     api::ModuleN,
@@ -141,7 +141,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> FheUintPrepared<Vec<u8>, T, BE> {
+    ) -> FheUintPrepared<DeviceBuf<BE>, T, BE> {
         FheUintPrepared {
             bits: (0..T::BITS)
                 .map(|_| GGSWPrepared::alloc(self, base2k, k, dnum, dsize, rank))
@@ -150,7 +150,7 @@ where
         }
     }
 
-    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<Vec<u8>, T, BE>
+    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<DeviceBuf<BE>, T, BE>
     where
         A: GGSWInfos,
     {
@@ -158,7 +158,7 @@ where
     }
 }
 
-impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<Vec<u8>, T, BE> {
+impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<DeviceBuf<BE>, T, BE> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,

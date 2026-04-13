@@ -2,32 +2,32 @@
 //!
 //! # Test inventory
 //!
-//! ## Operations-layer negation (`CKKSCiphertext::neg`)
+//! ## Operations-layer negation (`GLWE<_, CKKS>::neg`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_neg`] | out-of-place negation |
 //!
-//! ## Operations-layer negation (`CKKSCiphertext::neg_inplace`)
+//! ## Operations-layer negation (`GLWE<_, CKKS>::neg_inplace`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_neg_inplace`] | in-place negation |
 
-use crate::layouts::PrecisionInfos;
+use crate::{CKKSInfos, leveled::operations::neg::CKKSNegOps};
 
-use super::helpers::TestContext;
+use super::helpers::{TestBackend as Backend, TestContext};
 use anyhow::Result;
-use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, GLWENegate, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
+use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, GLWENegate, GLWEShift, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNegate,
-        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
     },
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Module, Scratch, ScratchOwned},
 };
 
-// ─── negation out-of-place (CKKSCiphertext::neg) ────────────────────────────
+// ─── negation out-of-place (GLWE<_, CKKS>::neg) ────────────────────────────
 
 /// Negation out-of-place.
 pub fn test_neg<BE: Backend>(ctx: &TestContext<BE>) -> Result<()>
@@ -40,9 +40,8 @@ where
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxCopy
-        + VecZnxLsh<BE>
-        + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>
+        + GLWEShift<BE>
+        + VecZnxRshAddInto<BE>
         + GLWENegate,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -60,7 +59,7 @@ where
     Ok(())
 }
 
-// ─── negation in-place (CKKSCiphertext::neg_inplace) ────────────────────────
+// ─── negation in-place (GLWE<_, CKKS>::neg_inplace) ────────────────────────
 
 /// Negation in-place.
 pub fn test_neg_inplace<BE: Backend>(ctx: &TestContext<BE>)
@@ -73,9 +72,8 @@ where
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxCopy
-        + VecZnxLsh<BE>
-        + VecZnxLshInplace<BE>
-        + VecZnxRshAdd<BE>
+        + GLWEShift<BE>
+        + VecZnxRshAddInto<BE>
         + GLWENegate,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,

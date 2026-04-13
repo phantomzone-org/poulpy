@@ -1,13 +1,7 @@
 use dashu_float::{Context, FBig, ops::DivRemEuclid, round::mode::HalfEven};
 use itertools::izip;
 
-use crate::{
-    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{
-        ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStepInplace, ZnxRef, ZnxZero,
-        get_carry_i128, get_digit_i128, znx_zero_ref,
-    },
-};
+use crate::layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
 
 impl<D: DataMut> VecZnx<D> {
     /// Encodes an `i64` slice into the limb-decomposed (base-2^k) representation.
@@ -53,11 +47,11 @@ impl<D: DataMut> VecZnx<D> {
         // Normalizes and shift if necessary.
         for j in (0..size).rev() {
             if j == size - 1 {
-                ZnxRef::znx_normalize_first_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_first_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             } else if j == 0 {
-                ZnxRef::znx_normalize_final_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_final_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             } else {
-                ZnxRef::znx_normalize_middle_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_middle_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             }
         }
     }
@@ -100,7 +94,7 @@ impl<D: DataMut> VecZnx<D> {
         }
 
         for j in size..a_size {
-            ZnxRef::znx_zero(a.at_mut(col, j));
+            znx_zero_ref(a.at_mut(col, j));
         }
 
         let mut carry: Vec<i64> = vec![0i64; a.n()];
@@ -108,11 +102,11 @@ impl<D: DataMut> VecZnx<D> {
 
         for j in (0..size).rev() {
             if j == size - 1 {
-                ZnxRef::znx_normalize_first_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_first_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             } else if j == 0 {
-                ZnxRef::znx_normalize_final_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_final_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             } else {
-                ZnxRef::znx_normalize_middle_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
+                znx_normalize_middle_step_inplace(base2k, k_rem, a.at_mut(col, j), &mut carry);
             }
         }
     }
@@ -151,11 +145,11 @@ impl<D: DataMut> VecZnx<D> {
             let slice = &mut a.at_mut(col, j)[idx..idx + 1];
 
             if j == size - 1 {
-                ZnxRef::znx_normalize_first_step_inplace(base2k, k_rem, slice, &mut carry);
+                znx_normalize_first_step_inplace(base2k, k_rem, slice, &mut carry);
             } else if j == 0 {
-                ZnxRef::znx_normalize_final_step_inplace(base2k, k_rem, slice, &mut carry);
+                znx_normalize_final_step_inplace(base2k, k_rem, slice, &mut carry);
             } else {
-                ZnxRef::znx_normalize_middle_step_inplace(base2k, k_rem, slice, &mut carry);
+                znx_normalize_middle_step_inplace(base2k, k_rem, slice, &mut carry);
             }
         }
     }
@@ -332,5 +326,101 @@ pub fn div_round_i128(a: i128, b: i128) -> i128 {
         div + a.signum() * b.signum()
     } else {
         div
+    }
+}
+
+fn znx_zero_ref(res: &mut [i64]) {
+    res.fill(0);
+}
+
+#[inline(always)]
+fn get_digit_i64(base2k: usize, x: i64) -> i64 {
+    (x << (u64::BITS - base2k as u32)) >> (u64::BITS - base2k as u32)
+}
+
+#[inline(always)]
+fn get_carry_i64(base2k: usize, x: i64, digit: i64) -> i64 {
+    (x.wrapping_sub(digit)) >> base2k
+}
+
+#[inline(always)]
+fn get_digit_i128(base2k: usize, x: i128) -> i128 {
+    (x << (u128::BITS - base2k as u32)) >> (u128::BITS - base2k as u32)
+}
+
+#[inline(always)]
+fn get_carry_i128(base2k: usize, x: i128, digit: i128) -> i128 {
+    (x.wrapping_sub(digit)) >> base2k
+}
+
+#[inline(always)]
+fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert!(x.len() <= carry.len());
+        assert!(lsh < base2k);
+    }
+
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit_i64(base2k, *x);
+            *c = get_carry_i64(base2k, *x, digit);
+            *x = digit;
+        });
+    } else {
+        let base2k_lsh: usize = base2k - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit_i64(base2k_lsh, *x);
+            *c = get_carry_i64(base2k_lsh, *x, digit);
+            *x = digit << lsh;
+        });
+    }
+}
+
+#[inline(always)]
+fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert!(x.len() <= carry.len());
+        assert!(lsh < base2k);
+    }
+
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit_i64(base2k, *x);
+            let carry: i64 = get_carry_i64(base2k, *x, digit);
+            let digit_plus_c: i64 = digit + *c;
+            *x = get_digit_i64(base2k, digit_plus_c);
+            *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
+        });
+    } else {
+        let base2k_lsh: usize = base2k - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit_i64(base2k_lsh, *x);
+            let carry: i64 = get_carry_i64(base2k_lsh, *x, digit);
+            let digit_plus_c: i64 = (digit << lsh) + *c;
+            *x = get_digit_i64(base2k, digit_plus_c);
+            *c = carry + get_carry_i64(base2k, digit_plus_c, *x);
+        });
+    }
+}
+
+#[inline(always)]
+fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert!(x.len() <= carry.len());
+        assert!(lsh < base2k);
+    }
+
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit_i64(base2k, get_digit_i64(base2k, *x) + *c);
+        });
+    } else {
+        let base2k_lsh: usize = base2k - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit_i64(base2k, (get_digit_i64(base2k_lsh, *x) << lsh) + *c);
+        });
     }
 }
