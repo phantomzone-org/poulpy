@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
-    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -9,41 +9,10 @@ use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef,
-        LWESwitchingKey, Rank, prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef, Rank,
+        prepared::GLWESecretPreparedFactory,
     },
 };
-
-impl LWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyEncrypt<BE>,
-    {
-        module.lwe_switching_key_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut> LWESwitchingKey<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<S1, S2, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk_lwe_in: &S1,
-        sk_lwe_out: &S2,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S1: LWESecretToRef,
-        S2: LWESecretToRef,
-        E: EncryptionInfos,
-        M: LWESwitchingKeyEncrypt<BE>,
-    {
-        module.lwe_switching_key_encrypt_sk(self, sk_lwe_in, sk_lwe_out, enc_infos, source_xe, source_xa, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
@@ -89,7 +58,7 @@ where
         let lvl_1: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
         let lvl_2: usize = self
             .vec_znx_automorphism_inplace_tmp_bytes()
-            .max(GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos));
+            .max(self.glwe_switching_key_encrypt_sk_tmp_bytes(infos));
 
         lvl_0 + lvl_1 + lvl_2
     }

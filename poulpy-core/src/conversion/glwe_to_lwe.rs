@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable},
-    layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, Module, Scratch},
 };
 
 pub use crate::api::{LWEFromGLWE, LWESampleExtract};
@@ -84,35 +84,3 @@ where
 }
 
 impl<BE: Backend> LWEFromGLWEDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE> {}
-
-impl LWE<Vec<u8>> {
-    pub fn from_glwe_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
-    where
-        R: LWEInfos,
-        A: GLWEInfos,
-        K: GGLWEInfos,
-        M: LWEFromGLWE<BE>,
-    {
-        module.lwe_from_glwe_tmp_bytes(lwe_infos, glwe_infos, key_infos)
-    }
-}
-
-impl<D: DataMut> LWE<D> {
-    pub fn sample_extract<A, M>(&mut self, module: &M, a: &A)
-    where
-        A: GLWEToRef,
-        M: LWESampleExtract,
-    {
-        module.lwe_sample_extract(self, a);
-    }
-
-    pub fn from_glwe<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, a_idx: usize, key: &K, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        M: LWEFromGLWE<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.lwe_from_glwe(self, a, a_idx, key, scratch);
-    }
-}

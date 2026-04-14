@@ -2,7 +2,7 @@
 
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
@@ -16,48 +16,6 @@ use crate::{
         prepared::GLWESecretPreparedToRef,
     },
 };
-
-impl<D: DataMut> GGLWECompressed<D> {
-    /// Encrypts a plaintext under a secret key, producing a compressed GGLWE ciphertext.
-    ///
-    /// The plaintext is decomposed across the gadget rows, and each row is encrypted
-    /// as a compressed GLWE ciphertext with seeds derived from `seed` via branching.
-    ///
-    /// - `pt`: the scalar ZNX plaintext to encrypt.
-    /// - `sk`: the GLWE secret key in prepared form.
-    /// - `seed`: seed for deterministic mask generation (branched per row and column).
-    /// - `source_xe`: PRNG source for sampling encryption noise.
-    /// - `scratch`: scratch buffer (see [`GGLWECompressed::encrypt_sk_tmp_bytes`] for sizing).
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, P, S, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        pt: &P,
-        sk: &S,
-        seed: [u8; 32],
-        enc_infos: &E,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        E: EncryptionInfos,
-        M: GGLWECompressedEncryptSk<BE>,
-    {
-        module.gglwe_compressed_encrypt_sk(self, pt, sk, seed, enc_infos, source_xe, scratch);
-    }
-}
-
-impl GGLWECompressed<Vec<u8>> {
-    /// Returns the scratch buffer size in bytes required by [`GGLWECompressed::encrypt_sk`].
-    pub fn encrypt_sk_tmp_bytes<M, BE: Backend, A>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWECompressedEncryptSk<BE>,
-    {
-        module.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
-    }
-}
 
 #[doc(hidden)]
 pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {

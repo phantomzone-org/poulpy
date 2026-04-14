@@ -101,8 +101,8 @@ where
         for value in data.iter().take(1 << digit) {
             pt.encode_coeff_i64(*value, TorusPrecision(base2k.as_u32()), 0);
             let mut ct = GLWE::alloc_from_infos(&glwe_infos);
-            ct.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut ct,
                 &pt,
                 sk_glwe_prep,
                 &glwe_enc_infos,
@@ -124,7 +124,7 @@ where
 
         module.glwe_blind_selection(&mut res, cts_map, &k_enc_prep, bit_start, bit_size, scratch.borrow());
 
-        res.decrypt(module, &mut pt, sk_glwe_prep, scratch.borrow());
+        module.glwe_decrypt(&res, &mut pt, sk_glwe_prep, scratch.borrow());
 
         let idx = ((k >> bit_start) & mask) as usize;
         if !idx.is_multiple_of(3) {

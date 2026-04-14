@@ -161,57 +161,8 @@ where
 
 impl<B: Backend> GLWEAutomorphismKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_automorphism_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_automorphism_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
-    }
-}
-
-impl<B: Backend> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
-    pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
-    where
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-    {
-        module.prepare_glwe_automorphism_key_tmp_bytes(self)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWEAutomorphismKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GetGaloisElement,
-        M: GLWEAutomorphismKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_glwe_automorphism_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `GLWEAutomorphismKeyPreparedFactory` on `Module`.
 
 impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEAutomorphismKeyPrepared<D, B> {
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {

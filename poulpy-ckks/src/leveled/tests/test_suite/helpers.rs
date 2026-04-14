@@ -19,9 +19,9 @@ use poulpy_core::{
     GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring,
     ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
-        GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision,
-        prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
+        TorusPrecision, prepared::GLWESecretPrepared,
     },
     oep::CoreImpl,
 };
@@ -108,21 +108,21 @@ where
         let mut source_xs = Source::new([0u8; 32]);
         let mut sk_raw = GLWESecret::alloc_from_infos(&glwe_infos);
         sk_raw.fill_ternary_hw(params.hw, &mut source_xs);
-        let mut sk = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
-        sk.prepare(&module, &sk_raw);
+        let mut sk = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
+        module.prepare_glwe_secret(&mut sk, &sk_raw);
 
         let mut scratch = ScratchOwned::<BE>::alloc(
             module
                 .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
                 .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
-                .max(GLWETensorKeyPrepared::prepare_tmp_bytes(&module, &tsk_infos))
-                .max(GLWETensorKey::encrypt_sk_tmp_bytes(&module, &tsk_infos)),
+                .max(module.prepare_tensor_key_tmp_bytes(&tsk_infos))
+                .max(module.glwe_tensor_key_encrypt_sk_tmp_bytes(&tsk_infos)),
         );
 
         let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(&module, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
-        let mut tsk_prepared = GLWETensorKeyPrepared::alloc_from_infos(&module, &tsk_infos);
-        tsk_prepared.prepare(&module, &tsk, scratch.borrow());
+        module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
+        let mut tsk_prepared = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prepared, &tsk, scratch.borrow());
 
         // Store keys by the public index used by operations/tests:
         // rotation shift `k` for slot rotations, and `-1` for conjugation.
@@ -135,8 +135,8 @@ where
         for &index in &automorphism_indices {
             let mut atk = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             let galois_element = if index == -1 { -1 } else { module.galois_element(index) };
-            atk.encrypt_sk(
-                &module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut atk,
                 galois_element,
                 &sk_raw,
                 &atk_infos,
@@ -144,8 +144,8 @@ where
                 &mut xe,
                 scratch.borrow(),
             );
-            let mut atk_prepared = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk_infos);
-            atk_prepared.prepare(&module, &atk, scratch.borrow());
+            let mut atk_prepared = module.alloc_glwe_automorphism_key_prepared_from_infos(&atk_infos);
+            module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
             atks.insert(index, atk_prepared);
         }
 

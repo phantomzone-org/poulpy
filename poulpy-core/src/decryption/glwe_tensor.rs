@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchTakeBasic, SvpPPolBytesOf},
+    api::{ScratchAvailable, SvpPPolBytesOf},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
@@ -12,35 +12,6 @@ use crate::{
         prepared::GLWESecretPreparedFactory,
     },
 };
-
-impl GLWETensor<Vec<u8>> {
-    pub fn decrypt_tmp_bytes<A, M, BE: Backend>(module: &M, a_infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWETensorDecrypt<BE>,
-    {
-        module.glwe_tensor_decrypt_tmp_bytes(a_infos)
-    }
-}
-
-impl<DataSelf: DataRef> GLWETensor<DataSelf> {
-    pub fn decrypt<P, PM, S0, S1, M, BE: Backend>(
-        &self,
-        module: &M,
-        pt: &mut GLWEPlaintext<P, PM>,
-        sk: &GLWESecretPrepared<S0, BE>,
-        sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: DataMut,
-        S0: DataRef,
-        S1: DataRef,
-        M: GLWETensorDecrypt<BE>,
-        Scratch<BE>: ScratchTakeBasic,
-    {
-        module.glwe_tensor_decrypt(self, pt, sk, sk_tensor, scratch);
-    }
-}
 
 pub(crate) trait GLWETensorDecryptDefault<BE: Backend>:
     Sized + GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>

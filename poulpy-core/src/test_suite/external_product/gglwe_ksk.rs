@@ -89,9 +89,9 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_in_infos)
-                        | GLWESwitchingKey::external_product_tmp_bytes(module, &gglwe_out_infos, &gglwe_in_infos, &ggsw_infos)
-                        | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos),
+                    (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_in_infos)
+                        | module.gglwe_external_product_tmp_bytes(&gglwe_out_infos, &gglwe_in_infos, &ggsw_infos)
+                        | (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_infos),
                 );
 
                 let r: usize = 1;
@@ -107,12 +107,12 @@ where
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    GLWESecretPrepared::alloc(module, rank_out.into());
-                sk_out_prepared.prepare(module, &sk_out);
+                    module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe_in.encrypt_sk(
-                    module,
+                module.glwe_switching_key_encrypt_sk(
+                    &mut ct_gglwe_in,
                     &sk_in,
                     &sk_out,
                     &gglwe_in_infos,
@@ -121,8 +121,8 @@ where
                     scratch.borrow(),
                 );
 
-                ct_rgsw.encrypt_sk(
-                    module,
+                module.ggsw_encrypt_sk(
+                    &mut ct_rgsw,
                     &pt_rgsw,
                     &sk_out_prepared,
                     &ggsw_infos,
@@ -131,11 +131,11 @@ where
                     scratch.borrow(),
                 );
 
-                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &ct_rgsw);
-                ct_rgsw_prepared.prepare(module, &ct_rgsw, scratch.borrow());
+                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_rgsw);
+                module.ggsw_prepare(&mut ct_rgsw_prepared, &ct_rgsw, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-                ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
+                module.gglwe_external_product(&mut ct_gglwe_out, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
                     module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}
@@ -240,9 +240,9 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_out_infos)
-                        | GLWESwitchingKey::external_product_tmp_bytes(module, &gglwe_out_infos, &gglwe_out_infos, &ggsw_infos)
-                        | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos),
+                    (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_out_infos)
+                        | module.gglwe_external_product_tmp_bytes(&gglwe_out_infos, &gglwe_out_infos, &ggsw_infos)
+                        | (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_infos),
                 );
 
                 let r: usize = 1;
@@ -258,12 +258,12 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    GLWESecretPrepared::alloc(module, rank_out.into());
-                sk_out_prepared.prepare(module, &sk_out);
+                    module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe.encrypt_sk(
-                    module,
+                module.glwe_switching_key_encrypt_sk(
+                    &mut ct_gglwe,
                     &sk_in,
                     &sk_out,
                     &gglwe_out_infos,
@@ -272,8 +272,8 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                     scratch.borrow(),
                 );
 
-                ct_rgsw.encrypt_sk(
-                    module,
+                module.ggsw_encrypt_sk(
+                    &mut ct_rgsw,
                     &pt_rgsw,
                     &sk_out_prepared,
                     &ggsw_infos,
@@ -282,11 +282,11 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                     scratch.borrow(),
                 );
 
-                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &ct_rgsw);
-                ct_rgsw_prepared.prepare(module, &ct_rgsw, scratch.borrow());
+                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_rgsw);
+                module.ggsw_prepare(&mut ct_rgsw_prepared, &ct_rgsw, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-                ct_gglwe.external_product_inplace(module, &ct_rgsw_prepared, scratch.borrow());
+                module.gglwe_external_product_inplace(&mut ct_gglwe, &ct_rgsw_prepared, scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
                     module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i, scratch.borrow()); // * X^{r}

@@ -1,34 +1,16 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, Module, Scratch, ScratchOwned},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
-pub use crate::api::GLWEPublicKeyGenerate;
 use crate::{
     Distribution, EncryptionInfos, GLWEEncryptSk, GetDistribution, GetDistributionMut, ScratchTakeCore,
     layouts::{
-        GLWEInfos, GLWEPublicKey, GLWEToMut,
+        GLWEInfos, GLWEToMut,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
-
-impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate<S, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-    ) where
-        S: GLWESecretPreparedToRef<BE> + GetDistribution,
-        E: EncryptionInfos,
-        M: GLWEPublicKeyGenerate<BE>,
-    {
-        module.glwe_public_key_generate(self, sk, enc_infos, source_xe, source_xa);
-    }
-}
 
 #[doc(hidden)]
 pub trait GLWEPublicKeyGenerateDefault<BE: Backend> {
@@ -75,8 +57,8 @@ where
 
             // Its ok to allocate scratch space here since pk is usually generated only once.
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_encrypt_sk_tmp_bytes(res));
-            res.to_mut()
-                .encrypt_zero_sk(self, sk, enc_infos, source_xe, source_xa, scratch.borrow());
+            let mut res_glwe = res.to_mut();
+            self.glwe_encrypt_zero_sk(&mut res_glwe, sk, enc_infos, source_xe, source_xa, scratch.borrow());
         }
         *res.dist_mut() = *sk.dist();
     }

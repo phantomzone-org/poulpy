@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, Module, Scratch},
 };
 
 pub use crate::api::GGSWAutomorphism;
@@ -12,50 +12,6 @@ use crate::{
         GGSWToRef, GetGaloisElement,
     },
 };
-
-impl GGSW<Vec<u8>> {
-    pub fn automorphism_tmp_bytes<R, A, K, T, M, BE: Backend>(
-        module: &M,
-        res_infos: &R,
-        a_infos: &A,
-        key_infos: &K,
-        tsk_infos: &T,
-    ) -> usize
-    where
-        R: GGSWInfos,
-        A: GGSWInfos,
-        K: GGLWEInfos,
-        T: GGLWEInfos,
-        M: GGSWAutomorphism<BE>,
-    {
-        module.ggsw_automorphism_tmp_bytes(res_infos, a_infos, key_infos, tsk_infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    pub fn automorphism<A, K, T, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        A: GGSWToRef + GGSWInfos,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWAutomorphism<BE>,
-    {
-        module.ggsw_automorphism(self, a, key, tsk, scratch);
-    }
-
-    pub fn automorphism_inplace<K, T, M, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWAutomorphism<BE>,
-    {
-        module.ggsw_automorphism_inplace(self, key, tsk, scratch);
-    }
-}
-
-impl<DataSelf: DataMut> GGSW<DataSelf> {}
 
 #[doc(hidden)]
 pub trait GGSWAutomorphismDefault<BE: Backend>

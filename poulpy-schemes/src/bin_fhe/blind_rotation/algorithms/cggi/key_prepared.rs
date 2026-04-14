@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 use poulpy_core::{
     Distribution,
-    layouts::{GGSWPreparedFactory, LWEInfos, prepared::GGSWPrepared},
+    layouts::{GGSWPreparedFactory, LWEInfos},
 };
 
 use crate::bin_fhe::blind_rotation::{
@@ -26,7 +26,7 @@ where
     {
         BlindRotationKeyPrepared {
             data: (0..infos.n_lwe().as_usize())
-                .map(|_| GGSWPrepared::alloc_from_infos(self, infos))
+                .map(|_| self.alloc_ggsw_prepared_from_infos(infos))
                 .collect(),
             dist: Distribution::NONE,
             x_pow_a: None,
@@ -58,7 +58,7 @@ where
         let n: usize = other.n().as_usize();
 
         for (a, b) in res.data.iter_mut().zip(other.keys.iter()) {
-            a.prepare(self, b, scratch);
+            self.ggsw_prepare(a, b, scratch);
         }
 
         res.dist = other.dist;

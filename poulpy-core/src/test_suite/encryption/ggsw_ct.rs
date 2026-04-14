@@ -48,16 +48,16 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc((module).ggsw_encrypt_sk_tmp_bytes(&ggsw_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            ct.encrypt_sk(
-                module,
+            module.ggsw_encrypt_sk(
+                &mut ct,
                 &pt_scalar,
                 &sk_prepared,
                 &ggsw_infos,
@@ -115,18 +115,18 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGSWCompressed::encrypt_sk_tmp_bytes(module, &ggsw_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc((module).ggsw_compressed_encrypt_sk_tmp_bytes(&ggsw_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
             let seed_xa: [u8; 32] = [1u8; 32];
 
-            ct_compressed.encrypt_sk(
-                module,
+            module.ggsw_compressed_encrypt_sk(
+                &mut ct_compressed,
                 &pt_scalar,
                 &sk_prepared,
                 seed_xa,
@@ -138,7 +138,7 @@ where
             let noise_f = |_col_i: usize| -(k as f64) + DEFAULT_SIGMA_XE.log2() + 0.5;
 
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-            ct.decompress(module, &ct_compressed);
+            module.decompress_ggsw(&mut ct, &ct_compressed);
 
             for row in 0..ct.dnum().as_usize() {
                 for col in 0..ct.rank().as_usize() + 1 {

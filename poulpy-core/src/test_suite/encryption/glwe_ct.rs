@@ -12,7 +12,7 @@ use crate::{
     layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPublicKey, GLWEPublicKeyPreparedFactory, GLWESecret,
         GLWESecretPreparedFactory,
-        compressed::GLWECompressed,
+        compressed::{GLWECompressed, GLWEDecompress},
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
     },
 };
@@ -52,19 +52,21 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_infos).max(module.glwe_noise_tmp_bytes(&glwe_infos)),
+            (module)
+                .glwe_encrypt_sk_tmp_bytes(&glwe_infos)
+                .max(module.glwe_noise_tmp_bytes(&glwe_infos)),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
-        ct.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut ct,
             &pt_want,
             &sk_prepared,
             &glwe_infos,
@@ -73,7 +75,7 @@ where
             scratch.borrow(),
         );
 
-        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+        let noise_have: f64 = module.glwe_noise(&ct, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
 
         assert!(
@@ -119,21 +121,23 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWECompressed::encrypt_sk_tmp_bytes(module, &glwe_infos).max(module.glwe_noise_tmp_bytes(&glwe_infos)),
+            (module)
+                .glwe_compressed_encrypt_sk_tmp_bytes(&glwe_infos)
+                .max(module.glwe_noise_tmp_bytes(&glwe_infos)),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        ct_compressed.encrypt_sk(
-            module,
+        module.glwe_compressed_encrypt_sk(
+            &mut ct_compressed,
             &pt_want,
             &sk_prepared,
             seed_xa,
@@ -143,9 +147,9 @@ where
         );
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
-        ct.decompress(module, &ct_compressed);
+        module.decompress_glwe(&mut ct, &ct_compressed);
 
-        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+        let noise_have: f64 = module.glwe_noise(&ct, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
         assert!(
             noise_have <= noise_want,
@@ -183,19 +187,19 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             module
                 .glwe_noise_tmp_bytes(&glwe_infos)
-                .max(GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_infos)),
+                .max((module).glwe_encrypt_sk_tmp_bytes(&glwe_infos)),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-        ct.encrypt_zero_sk(
-            module,
+        module.glwe_encrypt_zero_sk(
+            &mut ct,
             &sk_prepared,
             &glwe_infos,
             &mut source_xe,
@@ -203,7 +207,7 @@ where
             scratch.borrow(),
         );
 
-        let noise_have: f64 = ct.noise(module, &pt, &sk_prepared, scratch.borrow()).std().log2();
+        let noise_have: f64 = module.glwe_noise(&ct, &pt, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 = DEFAULT_SIGMA_XE.log2() - (k_ct as f64) + 0.5;
         assert!(
             noise_have <= noise_want,
@@ -249,26 +253,26 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             module
                 .glwe_noise_tmp_bytes(&glwe_infos)
-                .max(GLWE::<Vec<u8>, ()>::encrypt_pk_tmp_bytes(module, &glwe_infos)),
+                .max(module.glwe_encrypt_pk_tmp_bytes(&glwe_infos)),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(&glwe_infos);
-        pk.generate(module, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
+        module.glwe_public_key_generate(&mut pk, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
         let mut pk_prepared: GLWEPublicKeyPrepared<DeviceBuf<BE>, BE> =
-            GLWEPublicKeyPrepared::alloc_from_infos(module, &glwe_infos);
-        pk_prepared.prepare(module, &pk);
+            module.alloc_glwe_public_key_prepared_from_infos(&glwe_infos);
+        module.prepare_glwe_public_key(&mut pk_prepared, &pk);
 
-        ct.encrypt_pk(
-            module,
+        module.glwe_encrypt_pk(
+            &mut ct,
             &pt_want,
             &pk_prepared,
             &glwe_infos,
@@ -277,7 +281,7 @@ where
             scratch.borrow(),
         );
 
-        let noise_have: f64 = ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+        let noise_have: f64 = module.glwe_noise(&ct, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
         let noise_want: f64 =
             ((((rank as f64) + 1.0) * n as f64 * 0.5 * DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE).sqrt()).log2() - (k_ct as f64);
         assert!(

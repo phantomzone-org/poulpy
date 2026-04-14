@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
 pub use crate::api::LWEDecrypt;
@@ -8,18 +8,6 @@ use crate::{
     ScratchTakeCore,
     layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos},
 };
-
-impl<DataSelf: DataRef + DataMut> LWE<DataSelf> {
-    pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
-    where
-        P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
-        S: LWESecretToRef,
-        M: LWEDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.lwe_decrypt(self, pt, sk, scratch);
-    }
-}
 
 pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {
     fn lwe_decrypt_tmp_bytes_default<A>(&self, infos: &A) -> usize

@@ -10,6 +10,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPackerOps, GLWERotate, GLWESub,
     ScratchTakeCore,
+    glwe_packer::{glwe_packer_add, glwe_packer_flush, glwe_packer_galois_elements, glwe_packer_tmp_bytes},
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
         GLWESecret, GLWESecretPreparedFactory,
@@ -65,16 +66,16 @@ where
     .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
-            | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
-            | GLWEPacker::tmp_bytes(module, &glwe_out_infos, &key_infos),
+        (module).glwe_encrypt_sk_tmp_bytes(&glwe_out_infos)
+            | (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&key_infos)
+            | glwe_packer_tmp_bytes(module, &glwe_out_infos, &key_infos),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-    sk_dft.prepare(module, &sk);
+    let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+    module.prepare_glwe_secret(&mut sk_dft, &sk);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
@@ -84,13 +85,13 @@ where
 
     pt.encode_vec_i64(&data, pt_k.into());
 
-    let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
+    let gal_els: Vec<i64> = glwe_packer_galois_elements(module);
 
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>> = HashMap::new();
     let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
-        tmp.encrypt_sk(
-            module,
+        module.glwe_automorphism_key_encrypt_sk(
+            &mut tmp,
             *gal_el,
             &sk,
             &key_infos,
@@ -99,8 +100,8 @@ where
             scratch.borrow(),
         );
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-            GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
-        atk_prepared.prepare(module, &tmp, scratch.borrow());
+            module.alloc_glwe_automorphism_key_prepared_from_infos(&tmp);
+        module.prepare_glwe_automorphism_key(&mut atk_prepared, &tmp, scratch.borrow());
         auto_keys.insert(*gal_el, atk_prepared);
     });
 
@@ -110,8 +111,8 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
 
-    ct.encrypt_sk(
-        module,
+    module.glwe_encrypt_sk(
+        &mut ct,
         &pt,
         &sk_dft,
         &glwe_out_infos,
@@ -123,8 +124,8 @@ where
     let log_n: usize = module.log_n();
 
     (0..n >> log_batch).for_each(|i| {
-        ct.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut ct,
             &pt,
             &sk_dft,
             &glwe_out_infos,
@@ -136,14 +137,14 @@ where
         module.glwe_rotate_inplace(-(1 << log_batch), &mut pt, scratch.borrow()); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
-            packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
+            glwe_packer_add(module, &mut packer, Some(&ct), &auto_keys, scratch.borrow());
         } else {
-            packer.add(module, None::<&GLWE<Vec<u8>>>, &auto_keys, scratch.borrow())
+            glwe_packer_add(module, &mut packer, None::<&GLWE<Vec<u8>>>, &auto_keys, scratch.borrow())
         }
     });
 
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-    packer.flush(module, &mut res, scratch.borrow());
+    glwe_packer_flush(module, &mut packer, &mut res, scratch.borrow());
 
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
@@ -155,7 +156,7 @@ where
 
     pt_want.encode_vec_i64(&data, pt_k.into());
 
-    res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
+    module.glwe_decrypt(&res, &mut pt, &sk_dft, scratch.borrow());
 
     module.glwe_sub_inplace(&mut pt, &pt_want);
 

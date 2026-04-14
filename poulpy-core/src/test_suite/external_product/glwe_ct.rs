@@ -90,19 +90,19 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
-                    | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                    | GLWE::external_product_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
+                (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_apply_infos)
+                    | (module).glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
+                    | module.glwe_external_product_tmp_bytes(&glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            ggsw_apply.encrypt_sk(
-                module,
+            module.ggsw_encrypt_sk(
+                &mut ggsw_apply,
                 &pt_ggsw,
                 &sk_prepared,
                 &ggsw_apply_infos,
@@ -111,8 +111,8 @@ where
                 scratch.borrow(),
             );
 
-            glwe_in.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut glwe_in,
                 &pt_in,
                 &sk_prepared,
                 &glwe_in_infos,
@@ -121,10 +121,10 @@ where
                 scratch.borrow(),
             );
 
-            let mut ct_ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
-            ct_ggsw_prepared.prepare(module, &ggsw_apply, scratch.borrow());
+            let mut ct_ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_apply);
+            module.ggsw_prepare(&mut ct_ggsw_prepared, &ggsw_apply, scratch.borrow());
 
-            glwe_out.external_product(module, &glwe_in, &ct_ggsw_prepared, scratch.borrow());
+            module.glwe_external_product(&mut glwe_out, &glwe_in, &ct_ggsw_prepared, scratch.borrow());
 
             module.vec_znx_rotate_inplace(k as i64, &mut pt_in.data, 0, scratch.borrow());
 
@@ -151,7 +151,10 @@ where
                 k_ggsw,
             ) + 1.0;
 
-            let noise = glwe_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2();
+            let noise = module
+                .glwe_noise(&glwe_out, &pt_out, &sk_prepared, scratch.borrow())
+                .std()
+                .log2();
             assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }
@@ -221,19 +224,19 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
-                    | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
-                    | GLWE::external_product_tmp_bytes(module, &glwe_out_infos, &glwe_out_infos, &ggsw_apply_infos),
+                (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_apply_infos)
+                    | (module).glwe_encrypt_sk_tmp_bytes(&glwe_out_infos)
+                    | module.glwe_external_product_tmp_bytes(&glwe_out_infos, &glwe_out_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            ggsw_apply.encrypt_sk(
-                module,
+            module.ggsw_encrypt_sk(
+                &mut ggsw_apply,
                 &pt_ggsw,
                 &sk_prepared,
                 &ggsw_apply_infos,
@@ -242,8 +245,8 @@ where
                 scratch.borrow(),
             );
 
-            glwe_out.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut glwe_out,
                 &pt_want,
                 &sk_prepared,
                 &glwe_out_infos,
@@ -252,10 +255,10 @@ where
                 scratch.borrow(),
             );
 
-            let mut ct_ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
-            ct_ggsw_prepared.prepare(module, &ggsw_apply, scratch.borrow());
+            let mut ct_ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_apply);
+            module.ggsw_prepare(&mut ct_ggsw_prepared, &ggsw_apply, scratch.borrow());
 
-            glwe_out.external_product_inplace(module, &ct_ggsw_prepared, scratch.borrow());
+            module.glwe_external_product_inplace(&mut glwe_out, &ct_ggsw_prepared, scratch.borrow());
 
             module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0, scratch.borrow());
 
@@ -280,7 +283,10 @@ where
                 k_ggsw,
             ) + 1.0;
 
-            let noise = glwe_out.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2();
+            let noise = module
+                .glwe_noise(&glwe_out, &pt_want, &sk_prepared, scratch.borrow())
+                .std()
+                .log2();
             assert!(noise <= max_noise, "noise: {noise} > max_noise: {max_noise}")
         }
     }

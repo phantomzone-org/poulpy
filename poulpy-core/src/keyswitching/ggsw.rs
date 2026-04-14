@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable},
-    layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, Module, Scratch},
 };
 
 pub use crate::api::GGSWKeyswitch;
@@ -9,48 +9,6 @@ use crate::{
     keyswitching::GLWEKeyswitch,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GGLWEToGGSWKeyPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, LWEInfos},
 };
-
-impl GGSW<Vec<u8>> {
-    pub fn keyswitch_tmp_bytes<R, A, K, T, M, BE: Backend>(
-        module: &M,
-        res_infos: &R,
-        a_infos: &A,
-        key_infos: &K,
-        tsk_infos: &T,
-    ) -> usize
-    where
-        R: GGSWInfos,
-        A: GGSWInfos,
-        K: GGLWEInfos,
-        T: GGLWEInfos,
-        M: GGSWKeyswitch<BE>,
-    {
-        module.ggsw_keyswitch_tmp_bytes(res_infos, a_infos, key_infos, tsk_infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    pub fn keyswitch<M, A, K, T, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        A: GGSWToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeyswitch<BE>,
-    {
-        module.ggsw_keyswitch(self, a, key, tsk, scratch);
-    }
-
-    pub fn keyswitch_inplace<M, K, T, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeyswitch<BE>,
-    {
-        module.ggsw_keyswitch_inplace(self, key, tsk, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait GGSWKeyswitchDefault<BE: Backend>

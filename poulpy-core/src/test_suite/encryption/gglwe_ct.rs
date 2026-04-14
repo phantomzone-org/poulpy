@@ -11,8 +11,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
-        GGLWE, GGLWECompressed, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress,
+        GGLWE, GGLWECompressed, GGLWEDecompress, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory,
+        GLWESwitchingKey, GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress,
         prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
     noise::GGLWENoise,
@@ -58,7 +58,7 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_infos));
+                    ScratchOwned::alloc((module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_infos));
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -66,11 +66,11 @@ where
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    GLWESecretPrepared::alloc(module, rank_out.into());
-                sk_out_prepared.prepare(module, &sk_out);
+                    module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
-                ksk.encrypt_sk(
-                    module,
+                module.glwe_switching_key_encrypt_sk(
+                    &mut ksk,
                     &sk_in,
                     &sk_out,
                     &gglwe_infos,
@@ -144,7 +144,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, &gglwe_infos));
+                    ScratchOwned::alloc((module).glwe_switching_key_compressed_encrypt_sk_tmp_bytes(&gglwe_infos));
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -152,13 +152,13 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    GLWESecretPrepared::alloc(module, rank_out.into());
-                sk_out_prepared.prepare(module, &sk_out);
+                    module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
                 let seed_xa = [1u8; 32];
 
-                ksk_compressed.encrypt_sk(
-                    module,
+                module.glwe_switching_key_compressed_encrypt_sk(
+                    &mut ksk_compressed,
                     &sk_in,
                     &sk_out,
                     seed_xa,
@@ -168,7 +168,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                 );
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
-                ksk.decompress(module, &ksk_compressed);
+                module.decompress_glwe_switching_key(&mut ksk, &ksk_compressed);
 
                 let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
@@ -232,7 +232,7 @@ where
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc(GGLWECompressed::encrypt_sk_tmp_bytes(module, &gglwe_infos));
+                    ScratchOwned::alloc((module).gglwe_compressed_encrypt_sk_tmp_bytes(&gglwe_infos));
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -240,13 +240,13 @@ where
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    GLWESecretPrepared::alloc(module, rank_out.into());
-                sk_out_prepared.prepare(module, &sk_out);
+                    module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
                 let seed_xa = [1u8; 32];
 
-                ksk_compressed.encrypt_sk(
-                    module,
+                module.gglwe_compressed_encrypt_sk(
+                    &mut ksk_compressed,
                     &sk_in.data,
                     &sk_out_prepared,
                     seed_xa,
@@ -256,7 +256,7 @@ where
                 );
 
                 let mut ksk: GGLWE<Vec<u8>> = GGLWE::alloc_from_infos(&gglwe_infos);
-                ksk.decompress(module, &ksk_compressed);
+                module.decompress_gglwe(&mut ksk, &ksk_compressed);
 
                 let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 

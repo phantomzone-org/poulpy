@@ -1,25 +1,14 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataRef, Module, Scratch, Stats},
+    layouts::{Backend, Module, Scratch, Stats},
 };
 
 use crate::{
     GLWENormalize, GLWESub, ScratchTakeCore,
     api::GLWENoise,
     decryption::GLWEDecrypt,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToRef, LWEInfos, prepared::GLWESecretPreparedToRef},
+    layouts::{GLWEInfos, GLWEPlaintext, GLWEToRef, LWEInfos, prepared::GLWESecretPreparedToRef},
 };
-
-impl<D: DataRef, M> GLWE<D, M> {
-    pub fn noise<Mod, P, S, BE: Backend>(&self, module: &Mod, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats
-    where
-        Mod: GLWENoise<BE>,
-        P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-    {
-        module.glwe_noise(self, pt_want, sk_prepared, scratch)
-    }
-}
 
 impl<BE: Backend> GLWENoise<BE> for Module<BE>
 where

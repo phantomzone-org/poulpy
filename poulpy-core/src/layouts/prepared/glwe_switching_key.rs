@@ -168,73 +168,9 @@ where
 
 impl<B: Backend> GLWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_switching_key_prepared_from_infos(infos)
-    }
+// module-only API: allocation/size helpers are provided by `GLWESwitchingKeyPreparedFactory` on `Module`.
 
-    pub fn alloc<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
-    where
-        M: GLWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_switching_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_switching_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
-    where
-        M: GLWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWESwitchingKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: GLWESwitchingKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_glwe_switching(self, other, scratch);
-    }
-}
-
-impl<B: Backend> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
-    pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
-    where
-        M: GLWESwitchingKeyPreparedFactory<B>,
-    {
-        module.prepare_glwe_switching_key_tmp_bytes(self)
-    }
-}
+// module-only API: preparation is provided by `GLWESwitchingKeyPreparedFactory` on `Module`.
 
 impl<D: DataRef, BE: Backend> GGLWEPreparedToRef<BE> for GLWESwitchingKeyPrepared<D, BE>
 where

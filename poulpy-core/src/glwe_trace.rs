@@ -18,7 +18,7 @@
 
 use poulpy_hal::{
     api::{ModuleLogN, ScratchAvailable, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
+    layouts::{Backend, CyclotomicOrder, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
 pub use crate::api::GLWETrace;
@@ -29,53 +29,6 @@ use crate::{
         GLWEToRef, GetGaloisElement, LWEInfos,
     },
 };
-
-impl GLWE<Vec<u8>> {
-    /// Returns the Galois elements required by the trace operation.
-    ///
-    /// The caller must provide automorphism keys for each of these
-    /// elements before invoking [`GLWE::trace`] or [`GLWE::trace_inplace`].
-    pub fn trace_galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
-    where
-        M: GLWETrace<BE>,
-    {
-        module.glwe_trace_galois_elements()
-    }
-
-    /// Returns the number of scratch bytes required by [`GLWE::trace`].
-    pub fn trace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        K: GGLWEInfos,
-        M: GLWETrace<BE>,
-    {
-        module.glwe_trace_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<D: DataMut, M> GLWE<D, M> {
-    pub fn trace<A, H, K, Mod, BE: Backend>(&mut self, module: &Mod, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Mod: GLWETrace<BE>,
-    {
-        module.glwe_trace(self, skip, a, keys, scratch);
-    }
-
-    pub fn trace_inplace<H, K, Mod, BE: Backend>(&mut self, module: &Mod, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
-    where
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Mod: GLWETrace<BE>,
-    {
-        module.glwe_trace_inplace(self, skip, keys, scratch);
-    }
-}
 
 #[inline(always)]
 pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {

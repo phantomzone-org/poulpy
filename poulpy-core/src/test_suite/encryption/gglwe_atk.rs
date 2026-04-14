@@ -56,14 +56,22 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> =
-                ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &atk_infos));
+                ScratchOwned::alloc((module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&atk_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
 
-            atk.encrypt_sk(module, p, &sk, &atk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut atk,
+                p,
+                &sk,
+                &atk_infos,
+                &mut source_xe,
+                &mut source_xa,
+                scratch.borrow(),
+            );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
             (0..atk.rank().into()).for_each(|i| {
@@ -75,8 +83,8 @@ where
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
-            sk_out_prepared.prepare(module, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(sk_out.rank());
+            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
             let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
@@ -138,7 +146,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
             let mut source_xe: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> =
-                ScratchOwned::alloc(GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(module, &atk_infos));
+                ScratchOwned::alloc((module).glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(&atk_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -147,7 +155,15 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
 
             let seed_xa: [u8; 32] = [1u8; 32];
 
-            atk_compressed.encrypt_sk(module, p, &sk, seed_xa, &atk_infos, &mut source_xe, scratch.borrow());
+            module.glwe_automorphism_key_compressed_encrypt_sk(
+                &mut atk_compressed,
+                p,
+                &sk,
+                seed_xa,
+                &atk_infos,
+                &mut source_xe,
+                scratch.borrow(),
+            );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
             (0..atk_compressed.rank().into()).for_each(|i| {
@@ -159,11 +175,11 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
-            sk_out_prepared.prepare(module, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(sk_out.rank());
+            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
 
             let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
-            atk.decompress(module, &atk_compressed);
+            module.decompress_automorphism_key(&mut atk, &atk_compressed);
 
             let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 

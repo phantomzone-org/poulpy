@@ -265,16 +265,7 @@ where
 
 impl<B: Backend> GGSWDecompress for Module<B> where Self: GLWEDecompress {}
 
-impl<D: DataMut> GGSW<D> {
-    /// Decompresses a [`GGSWCompressed`] into this standard GGSW.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGSWCompressedToRef,
-        M: GGSWDecompress,
-    {
-        module.decompress_ggsw(self, other);
-    }
-}
+// module-only API: decompression is provided by `GGSWDecompress` on `Module`.
 
 /// Converts a compressed GGSW to a mutably-borrowed variant.
 pub trait GGSWCompressedToMut {

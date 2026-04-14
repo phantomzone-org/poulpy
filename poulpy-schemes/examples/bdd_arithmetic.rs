@@ -4,8 +4,8 @@ use poulpy_core::{
     EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
-        LWESecret, Rank, TorusPrecision,
+        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
+        TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -154,8 +154,8 @@ where
     sk_lwe.fill_binary_block(BINARY_BLOCK_SIZE as usize, &mut source_xs);
 
     // Preparing the private keys
-    let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &glwe_layout);
-    sk_glwe_prepared.prepare(&module, &sk_glwe);
+    let mut sk_glwe_prepared = module.alloc_glwe_secret_prepared_from_infos(&glwe_layout);
+    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
 
     // Creating the public BDD Key
     // This key is required to prepare all Fhe Integers for operations,

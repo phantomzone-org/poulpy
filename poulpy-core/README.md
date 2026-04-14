@@ -68,7 +68,7 @@ let mut atk_compressed: GGLWEAutomorphismKeyCompressed<Vec<u8>> =
     GGLWEAutomorphismKeyCompressed::alloc(...);
 let mut atk: GGLWEAutomorphismKey<Vec<u8>> = 
     GGLWEAutomorphismKey::alloc(...);
-atk.decompress(module, &atk_compressed);
+    module.decompress_automorphism_key(&mut atk, &atk_compressed);
 let mut atk_prep = atk.prepare_alloc(module);
 ```
 
@@ -83,8 +83,8 @@ let mut atk_prep = atk.prepare_alloc(module);
 ```rust
 let mut atk: GGLWEAutomorphismKey<Vec<u8>> =
         GGLWEAutomorphismKey::alloc(...);
-atk.encrypt_sk(...);
-atk.at(row, 0).decrypt(...);
+module.glwe_automorphism_key_encrypt_sk(&mut atk, ...);
+module.glwe_decrypt(&atk.at(row, 0), ...);
 ```
 ## Keyswitching, Automorphism & External Product
 
@@ -94,8 +94,8 @@ This includes subtypes such as `GGLWEAutomorphismKey`.
 For example:
 
 ```rust
-atk.external_product(...);
-ggsw.automorphism(...);
+module.glwe_external_product(...);
+module.ggsw_automorphism(...);
 ```
 
 ---

@@ -70,7 +70,7 @@
 //!
 //! - This crate does **not** provide a complete cryptographic scheme. It is a
 //!   low-level arithmetic layer consumed by higher-level crates such as
-//!   `poulpy-core`, `poulpy-bin-fhe`, and `poulpy-ckks`.
+//!   `poulpy-core` and `poulpy-bin-fhe`.
 //! - It does **not** perform constant-time enforcement. Side-channel resistance
 //!   is the responsibility of the backend and the caller.
 //!

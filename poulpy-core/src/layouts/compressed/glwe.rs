@@ -190,19 +190,7 @@ where
 
 impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
 
-impl<D: DataMut, M> GLWE<D, M> {
-    /// Decompresses a [`GLWECompressed`] into this standard GLWE ciphertext.
-    ///
-    /// The body is copied directly and the mask polynomials are
-    /// regenerated from the compressed ciphertext's PRNG seed.
-    pub fn decompress<O, Mod>(&mut self, module: &Mod, other: &O)
-    where
-        O: GLWECompressedToRef + GLWEInfos,
-        Mod: GLWEDecompress,
-    {
-        module.decompress_glwe(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWEDecompress` on `Module`.
 
 /// Converts a compressed GLWE to an immutably-borrowed variant.
 pub trait GLWECompressedToRef {

@@ -215,16 +215,29 @@ where
                 .expect("ks_glwe enc_infos missing when ks_glwe key exists");
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(sk_glwe.n(), key.rank_out());
             sk_out.fill_ternary_prob(0.5, source_xe);
-            key.encrypt_sk(self, sk_glwe, &sk_out, ks_glwe_infos, source_xe, source_xa, scratch);
-            res.ks_lwe
-                .encrypt_sk(self, sk_lwe, &sk_out, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
+            self.glwe_switching_key_encrypt_sk(key, sk_glwe, &sk_out, ks_glwe_infos, source_xe, source_xa, scratch);
+            self.glwe_to_lwe_key_encrypt_sk(
+                &mut res.ks_lwe,
+                sk_lwe,
+                &sk_out,
+                &enc_infos.ks_lwe,
+                source_xe,
+                source_xa,
+                scratch,
+            );
         } else {
-            res.ks_lwe
-                .encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.ks_lwe, source_xe, source_xa, scratch);
+            self.glwe_to_lwe_key_encrypt_sk(
+                &mut res.ks_lwe,
+                sk_lwe,
+                sk_glwe,
+                &enc_infos.ks_lwe,
+                source_xe,
+                source_xa,
+                scratch,
+            );
         }
 
-        res.cbt
-            .encrypt_sk(self, sk_lwe, sk_glwe, &enc_infos.cbt, source_xe, source_xa, scratch);
+        self.circuit_bootstrapping_key_encrypt_sk(&mut res.cbt, sk_lwe, sk_glwe, &enc_infos.cbt, source_xe, source_xa, scratch);
     }
 }
 
@@ -331,7 +344,7 @@ where
         A: BDDKeyInfos,
     {
         let ks_glwe = if let Some(ks_glwe_infos) = &infos.ks_glwe_infos() {
-            Some(GLWESwitchingKeyPrepared::alloc_from_infos(self, ks_glwe_infos))
+            Some(self.alloc_glwe_switching_key_prepared_from_infos(ks_glwe_infos))
         } else {
             None
         };
@@ -339,7 +352,7 @@ where
         BDDKeyPrepared {
             cbt: CircuitBootstrappingKeyPrepared::alloc_from_infos(self, &infos.cbt_infos()),
             ks_glwe,
-            ks_lwe: GLWEToLWEKeyPrepared::alloc_from_infos(self, &infos.ks_lwe_infos()),
+            ks_lwe: self.alloc_glwe_to_lwe_key_prepared_from_infos(&infos.ks_lwe_infos()),
         }
     }
 
@@ -361,13 +374,13 @@ where
 
         if let Some(key_prep) = &mut res.ks_glwe {
             if let Some(other) = &other.ks_glwe {
-                key_prep.prepare(self, other, scratch);
+                self.prepare_glwe_switching(key_prep, other, scratch);
             } else {
                 panic!("incompatible keys: res has Some(ks_glwe) but other has none")
             }
         }
 
-        res.ks_lwe.prepare(self, &other.ks_lwe, scratch);
+        self.prepare_glwe_to_lwe_key(&mut res.ks_lwe, &other.ks_lwe, scratch);
     }
 }
 impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Module<BE> where

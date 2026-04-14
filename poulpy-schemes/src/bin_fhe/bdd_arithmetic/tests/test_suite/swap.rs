@@ -39,7 +39,7 @@ where
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
 
     let mut s: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-    let mut s_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_infos);
+    let mut s_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_infos);
 
     let a: u32 = source_xa.next_u32();
     let b: u32 = source_xa.next_u32();
@@ -70,8 +70,8 @@ where
 
         let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
         pt.raw_mut()[0] = bit;
-        s.encrypt_sk(
-            module,
+        module.ggsw_encrypt_sk(
+            &mut s,
             &pt,
             sk,
             &ggsw_enc_infos,
@@ -79,7 +79,7 @@ where
             &mut source_xa,
             scratch.borrow(),
         );
-        s_prepared.prepare(module, &s, scratch.borrow());
+        module.ggsw_prepare(&mut s_prepared, &s, scratch.borrow());
 
         module.cswap(&mut a_enc, &mut b_enc, &s_prepared, scratch.borrow());
 

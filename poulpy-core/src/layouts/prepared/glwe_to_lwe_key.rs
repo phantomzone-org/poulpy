@@ -124,58 +124,8 @@ where
 
 impl<B: Backend> GLWEToLWEKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
-impl<B: Backend> GLWEToLWEKeyPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWEToLWEKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_to_lwe_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self
-    where
-        M: GLWEToLWEKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_to_lwe_key_prepared(base2k, k, rank_in, dnum)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEToLWEKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_to_lwe_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize
-    where
-        M: GLWEToLWEKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_to_lwe_key_prepared(base2k, k, rank_in, dnum)
-    }
-}
-
-impl<B: Backend> GLWEToLWEKeyPrepared<DeviceBuf<B>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEToLWEKeyPreparedFactory<B>,
-    {
-        module.prepare_glwe_to_lwe_key_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWEToLWEKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: GLWEToLWEKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_glwe_to_lwe_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `GLWEToLWEKeyPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GLWEToLWEKeyPrepared<D, B>
 where

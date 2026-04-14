@@ -17,39 +17,6 @@ use crate::{
     },
 };
 
-impl GLWE<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGSWInfos,
-        M: GLWEExternalProduct<BE>,
-    {
-        module.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
-
-impl<DataSelf: DataMut, M> GLWE<DataSelf, M> {
-    pub fn external_product<A, B, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Mod: GLWEExternalProduct<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, scratch: &mut Scratch<BE>)
-    where
-        A: GGSWPreparedToRef<BE> + GGSWInfos,
-        Mod: GLWEExternalProduct<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_external_product_inplace(self, a, scratch);
-    }
-}
-
 pub(crate) trait GLWEExternalProductDefault<BE: Backend>:
     Sized
     + GLWEExternalProductInternal<BE>

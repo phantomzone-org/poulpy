@@ -59,11 +59,12 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-            sk_prep.prepare(module, &sk);
+            let mut sk_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+            module.prepare_glwe_secret(&mut sk_prep, &sk);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_infos_in)
+                (module)
+                    .glwe_encrypt_sk_tmp_bytes(&glwe_infos_in)
                     .max(module.glwe_noise_tmp_bytes(&glwe_infos_out)),
             );
 
@@ -73,8 +74,8 @@ where
             let pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
             let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_out);
 
-            ct_in.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut ct_in,
                 &pt_in,
                 &sk_prep,
                 &glwe_infos_in,
@@ -92,7 +93,7 @@ where
             let mut data_conv: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
-            let noise_have = ct_out.noise(module, &pt_out, &sk_prep, scratch.borrow()).std().log2();
+            let noise_have = module.glwe_noise(&ct_out, &pt_out, &sk_prep, scratch.borrow()).std().log2();
             let noise_max = -(k_out as f64) + DEFAULT_SIGMA_XE.log2() + 0.50;
 
             assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}")
@@ -150,16 +151,16 @@ where
     .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        LWEToGLWEKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
-            | GLWE::from_lwe_tmp_bytes(module, &glwe_infos, &lwe_infos, &lwe_to_glwe_infos)
-            | GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_infos),
+        (module).lwe_to_glwe_key_encrypt_sk_tmp_bytes(&lwe_to_glwe_infos)
+            | (module).glwe_from_lwe_tmp_bytes(&glwe_infos, &lwe_infos, &lwe_to_glwe_infos)
+            | (module).glwe_decrypt_tmp_bytes(&glwe_infos),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk_glwe);
-    sk_glwe_prepared.prepare(module, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk_glwe);
+    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -170,8 +171,8 @@ where
     lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    lwe_ct.encrypt_sk(
-        module,
+    module.lwe_encrypt_sk(
+        &mut lwe_ct,
         &lwe_pt,
         &sk_lwe,
         &lwe_infos,
@@ -182,8 +183,8 @@ where
 
     let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
 
-    ksk.encrypt_sk(
-        module,
+    module.lwe_to_glwe_key_encrypt_sk(
+        &mut ksk,
         &sk_lwe,
         &sk_glwe_prepared,
         &lwe_to_glwe_infos,
@@ -194,13 +195,13 @@ where
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut ksk_prepared: LWEToGLWEKeyPrepared<DeviceBuf<BE>, BE> = LWEToGLWEKeyPrepared::alloc_from_infos(module, &ksk);
-    ksk_prepared.prepare(module, &ksk, scratch.borrow());
+    let mut ksk_prepared: LWEToGLWEKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_lwe_to_glwe_key_prepared_from_infos(&ksk);
+    module.prepare_lwe_to_glwe_key(&mut ksk_prepared, &ksk, scratch.borrow());
 
-    glwe_ct.from_lwe(module, &lwe_ct, &ksk_prepared, scratch.borrow());
+    module.glwe_from_lwe(&mut glwe_ct, &lwe_ct, &ksk_prepared, scratch.borrow());
 
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
-    glwe_ct.decrypt(module, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
+    module.glwe_decrypt(&glwe_ct, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
 
     let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.max_k());
 
@@ -271,16 +272,16 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWEToLWEKey::encrypt_sk_tmp_bytes(module, &glwe_to_lwe_infos)
-            | LWE::from_glwe_tmp_bytes(module, &lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
-            | GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_infos),
+        (module).glwe_to_lwe_key_encrypt_sk_tmp_bytes(&glwe_to_lwe_infos)
+            | (module).lwe_from_glwe_tmp_bytes(&lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
+            | (module).glwe_decrypt_tmp_bytes(&glwe_infos),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk_glwe);
-    sk_glwe_prepared.prepare(module, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk_glwe);
+    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -293,8 +294,8 @@ where
     glwe_pt.encode_vec_i64(&data, k_lwe_pt);
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
-    glwe_ct.encrypt_sk(
-        module,
+    module.glwe_encrypt_sk(
+        &mut glwe_ct,
         &glwe_pt,
         &sk_glwe_prepared,
         &glwe_infos,
@@ -305,8 +306,8 @@ where
 
     let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_from_infos(&glwe_to_lwe_infos);
 
-    ksk.encrypt_sk(
-        module,
+    module.glwe_to_lwe_key_encrypt_sk(
+        &mut ksk,
         &sk_lwe,
         &sk_glwe,
         &glwe_to_lwe_infos,
@@ -317,13 +318,13 @@ where
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
-    let mut ksk_prepared: GLWEToLWEKeyPrepared<DeviceBuf<BE>, BE> = GLWEToLWEKeyPrepared::alloc_from_infos(module, &ksk);
-    ksk_prepared.prepare(module, &ksk, scratch.borrow());
+    let mut ksk_prepared: GLWEToLWEKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_to_lwe_key_prepared_from_infos(&ksk);
+    module.prepare_glwe_to_lwe_key(&mut ksk_prepared, &ksk, scratch.borrow());
 
-    lwe_ct.from_glwe(module, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
+    module.lwe_from_glwe(&mut lwe_ct, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
-    lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe, scratch.borrow());
+    module.lwe_decrypt(&lwe_ct, &mut lwe_pt, &sk_lwe, scratch.borrow());
 
     let mut glwe_pt_conv = GLWEPlaintext::<Vec<u8>, ()>::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.max_k());
 

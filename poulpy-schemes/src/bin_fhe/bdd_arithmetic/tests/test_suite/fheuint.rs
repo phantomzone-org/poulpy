@@ -228,6 +228,7 @@ where
 
     let a: u32 = source_xa.next_u32();
 
+    let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(a_enc.encrypt_sk_tmp_bytes(module));
     a_enc.encrypt_sk(
         module,
         a,
@@ -235,11 +236,13 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
+
+    let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(c_enc.decrypt_tmp_bytes(module));
 
     for i in 0..32 {
         a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());
-        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch.borrow()));
+        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch_dec.borrow()));
     }
 }

@@ -129,16 +129,7 @@ impl GLWESecretTensor<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWESecretTensor<D> {
-    pub fn prepare<M, S, BE: Backend>(&mut self, module: &M, other: &S, scratch: &mut Scratch<BE>)
-    where
-        M: GLWESecretTensorFactory<BE>,
-        S: GLWESecretToRef + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_secret_tensor_prepare(self, other, scratch);
-    }
-}
+// module-only API: secret tensor preparation is provided by `GLWESecretTensorFactory` on `Module`.
 
 pub trait GLWESecretTensorFactory<BE: Backend> {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize;
@@ -194,7 +185,7 @@ where
         let rank: usize = a.rank().into();
 
         let (mut a_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, rank.into());
-        a_prepared.prepare(self, a);
+        self.prepare_glwe_secret(&mut a_prepared, a);
 
         let base2k: usize = 17;
 

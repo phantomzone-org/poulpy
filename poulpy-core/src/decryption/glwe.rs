@@ -3,44 +3,13 @@ use poulpy_hal::{
         ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigAddSmallAssign,
         VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataRef, DataViewMut, Module, Scratch},
+    layouts::{Backend, DataViewMut, Module, Scratch},
 };
 
 pub use crate::api::GLWEDecrypt;
 use crate::layouts::{
     GLWE, GLWEInfos, GLWEPlaintextToMut, GLWESecretPrepared, GLWEToRef, LWEInfos, SetGLWEInfos, prepared::GLWESecretPreparedToRef,
 };
-
-impl<M> GLWE<Vec<u8>, M> {
-    /// Returns the number of scratch bytes required by [`GLWE::decrypt`].
-    pub fn decrypt_tmp_bytes<A, Mod, BE: Backend>(module: &Mod, a_infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        Mod: GLWEDecrypt<BE>,
-    {
-        module.glwe_decrypt_tmp_bytes(a_infos)
-    }
-}
-
-impl<DataSelf: DataRef, M> GLWE<DataSelf, M> {
-    /// Decrypts this GLWE ciphertext into a plaintext using the prepared secret key.
-    ///
-    /// Computes `pt = body + mask * secret`, where `body` is the first column
-    /// of the ciphertext and `mask` comprises the remaining columns. The result
-    /// is then normalized into the plaintext decomposition basis.
-    ///
-    /// The plaintext precision `k` is set to the minimum of the plaintext and
-    /// ciphertext precisions.
-    pub fn decrypt<P, S, Mod, BE: Backend>(&self, module: &Mod, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
-    where
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        Mod: GLWEDecrypt<BE>,
-        Scratch<BE>: ScratchTakeBasic,
-    {
-        module.glwe_decrypt(self, pt, sk, scratch);
-    }
-}
 
 pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     Sized

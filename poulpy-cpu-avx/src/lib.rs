@@ -139,7 +139,7 @@
 //!
 //! This crate exports a single public type, [`FFT64Avx`], which is used as a type parameter
 //! to the HAL generic types. Application code typically does not import this crate directly,
-//! but instead uses it via `poulpy_core`, `poulpy_bin_fhe`, or `poulpy_ckks` with runtime backend selection.
+//! but instead uses it via `poulpy_core` or `poulpy_bin_fhe` with runtime backend selection.
 //!
 //! # Versioning and stability
 //!

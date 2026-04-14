@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 pub use crate::api::GLWEFromLWE;
@@ -124,28 +124,4 @@ where
     Self: GLWEKeyswitchDefault<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-}
-
-impl GLWE<Vec<u8>> {
-    pub fn from_lwe_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
-    where
-        R: GLWEInfos,
-        A: LWEInfos,
-        K: GGLWEInfos,
-        M: GLWEFromLWE<BE>,
-    {
-        module.glwe_from_lwe_tmp_bytes(glwe_infos, lwe_infos, key_infos)
-    }
-}
-
-impl<D: DataMut, M> GLWE<D, M> {
-    pub fn from_lwe<A, K, Mod, BE: Backend>(&mut self, module: &Mod, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEFromLWE<BE>,
-        A: LWEToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_from_lwe(self, lwe, ksk, scratch);
-    }
 }

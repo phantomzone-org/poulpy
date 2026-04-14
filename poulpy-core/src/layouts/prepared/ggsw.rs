@@ -156,6 +156,14 @@ where
         );
         self.vmp_prepare(&mut res.data, &other.data, scratch);
     }
+
+    fn ggsw_zero<R>(&self, res: &mut R)
+    where
+        R: GGSWPreparedToMut<B>,
+    {
+        let mut res: GGSWPrepared<&mut [u8], B> = res.to_mut();
+        self.vmp_zero(&mut res.data);
+    }
 }
 
 impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
@@ -163,37 +171,7 @@ impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
 {
 }
 
-impl<B: Backend> GGSWPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGSWInfos,
-        M: GGSWPreparedFactory<B>,
-    {
-        module.alloc_ggsw_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
-    where
-        M: GGSWPreparedFactory<B>,
-    {
-        module.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWPreparedFactory<B>,
-    {
-        module.bytes_of_ggsw_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize
-    where
-        M: GGSWPreparedFactory<B>,
-    {
-        module.bytes_of_ggsw_prepared(base2k, k, dnum, dsize, rank)
-    }
-}
+// module-only API: allocation/size helpers are provided by `GGSWPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
     pub fn data(&self) -> &VmpPMat<D, B> {
@@ -201,33 +179,9 @@ impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
     }
 }
 
-impl<B: Backend> GGSWPrepared<DeviceBuf<B>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWPreparedFactory<B>,
-    {
-        module.ggsw_prepare_tmp_bytes(infos)
-    }
-}
+// module-only API: preparation sizing is provided by `GGSWPreparedFactory` on `Module`.
 
-impl<D: DataMut, B: Backend> GGSWPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGSWToRef,
-        M: GGSWPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.ggsw_prepare(self, other, scratch);
-    }
-
-    pub fn zero<M>(&mut self, module: &M)
-    where
-        M: GGSWPreparedFactory<B>,
-    {
-        module.vmp_zero(&mut self.data);
-    }
-}
+// module-only API: preparation and zeroing are provided by `GGSWPreparedFactory` on `Module`.
 
 pub trait GGSWPreparedToMut<B: Backend> {
     fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B>;

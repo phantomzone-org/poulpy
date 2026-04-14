@@ -76,11 +76,11 @@ where
 
         CircuitBootstrappingKeyPrepared {
             brk: BlindRotationKeyPrepared::alloc(self, &infos.brk_infos()),
-            tsk: GGLWEToGGSWKeyPrepared::alloc_from_infos(self, &infos.tsk_infos()),
+            tsk: self.alloc_gglwe_to_ggsw_key_prepared_from_infos(&infos.tsk_infos()),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {
-                    let key = GLWEAutomorphismKeyPrepared::alloc_from_infos(self, atk_infos);
+                    let key = self.alloc_glwe_automorphism_key_prepared_from_infos(atk_infos);
                     (gal_el, key)
                 })
                 .collect(),
@@ -107,11 +107,11 @@ where
         Scratch<BE>: ScratchAvailable,
     {
         res.brk.prepare(self, &other.brk, scratch);
-        res.tsk.prepare(self, &other.tsk, scratch);
+        self.prepare_gglwe_to_ggsw_key(&mut res.tsk, &other.tsk, scratch);
 
         for (k, a) in res.atk.iter_mut() {
-            a.prepare(
-                self,
+            self.prepare_glwe_automorphism_key(
+                a,
                 other.atk.get(k).unwrap_or_else(|| {
                     panic!("Galois element {k} is present in the prepared key but missing from the source key")
                 }),

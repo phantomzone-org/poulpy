@@ -116,58 +116,8 @@ where
 
 impl<B: Backend> LWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
-impl<B: Backend> LWESwitchingKeyPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_switching_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self
-    where
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_switching_key_prepared(base2k, k, dnum)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_switching_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
-    where
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_switching_key_prepared(base2k, k, dnum)
-    }
-}
-
-impl<B: Backend> LWESwitchingKeyPrepared<DeviceBuf<B>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.prepare_lwe_switching_key_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, B: Backend> LWESwitchingKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: LWESwitchingKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_lwe_switching_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `LWESwitchingKeyPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWESwitchingKeyPrepared<D, B>
 where

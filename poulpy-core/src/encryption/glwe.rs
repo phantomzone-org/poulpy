@@ -5,149 +5,19 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
-    layouts::{Backend, DataMut, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, VecZnxToMut, ZnxInfos, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, VecZnxToMut, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 pub use crate::api::{GLWEEncryptPk, GLWEEncryptSk};
 use crate::{
-    EncryptionInfos, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GetDistribution,
     dist::Distribution,
     layouts::{
         GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, GLWEPrepared, GLWEPreparedToRef, GLWEToMut, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
-
-impl<M> GLWE<Vec<u8>, M> {
-    /// Returns the scratch space (in bytes) required by [`GLWE::encrypt_sk`].
-    pub fn encrypt_sk_tmp_bytes<Mod, A, BE: Backend>(module: &Mod, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        Mod: GLWEEncryptSk<BE>,
-    {
-        module.glwe_encrypt_sk_tmp_bytes(infos)
-    }
-
-    /// Returns the scratch space (in bytes) required by [`GLWE::encrypt_pk`].
-    pub fn encrypt_pk_tmp_bytes<Mod, A, BE: Backend>(module: &Mod, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        Mod: GLWEEncryptPk<BE>,
-    {
-        module.glwe_encrypt_pk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, M> GLWE<D, M> {
-    #[allow(clippy::too_many_arguments)]
-    /// Encrypts a plaintext under a GLWE secret key.
-    ///
-    /// Produces a GLWE ciphertext `ct = (c0, c1, ..., c_{rank})` such that
-    /// decryption under `sk` recovers the plaintext `pt`.
-    ///
-    /// - `pt`: the GLWE plaintext to encrypt.
-    /// - `sk`: the prepared GLWE secret key.
-    /// - `source_xa`: PRNG source for mask sampling.
-    /// - `source_xe`: PRNG source for error sampling.
-    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_sk_tmp_bytes`].
-    pub fn encrypt_sk<P, S, Mod, E, BE: Backend>(
-        &mut self,
-        module: &Mod,
-        pt: &P,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        Mod: GLWEEncryptSk<BE>,
-        E: EncryptionInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-
-    /// Encrypts a zero plaintext under a GLWE secret key.
-    ///
-    /// Equivalent to [`GLWE::encrypt_sk`] with a zero plaintext.
-    ///
-    /// - `sk`: the prepared GLWE secret key.
-    /// - `source_xa`: PRNG source for mask sampling.
-    /// - `source_xe`: PRNG source for error sampling.
-    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_sk_tmp_bytes`].
-    pub fn encrypt_zero_sk<S, Mod, E, BE: Backend>(
-        &mut self,
-        module: &Mod,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S: GLWESecretPreparedToRef<BE>,
-        Mod: GLWEEncryptSk<BE>,
-        E: EncryptionInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_encrypt_zero_sk(self, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    /// Encrypts a plaintext under a GLWE public key.
-    ///
-    /// Produces a GLWE ciphertext by sampling a uniform polynomial `u`,
-    /// multiplying it with the public key, and adding the plaintext and error.
-    ///
-    /// - `pt`: the GLWE plaintext to encrypt.
-    /// - `pk`: the prepared GLWE public key.
-    /// - `source_xu`: PRNG source for uniform sampling of `u`.
-    /// - `source_xe`: PRNG source for error sampling.
-    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_pk_tmp_bytes`].
-    pub fn encrypt_pk<P, K, Mod, E, BE: Backend>(
-        &mut self,
-        module: &Mod,
-        pt: &P,
-        pk: &K,
-        enc_infos: &E,
-        source_xu: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: GLWEPlaintextToRef + GLWEInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
-        E: EncryptionInfos,
-        Mod: GLWEEncryptPk<BE>,
-    {
-        module.glwe_encrypt_pk(self, pt, pk, enc_infos, source_xu, source_xe, scratch);
-    }
-
-    /// Encrypts a zero plaintext under a GLWE public key.
-    ///
-    /// Equivalent to [`GLWE::encrypt_pk`] with a zero plaintext.
-    ///
-    /// - `pk`: the prepared GLWE public key.
-    /// - `source_xu`: PRNG source for uniform sampling.
-    /// - `source_xe`: PRNG source for error sampling.
-    /// - `scratch`: scratch space, sized by [`GLWE::encrypt_pk_tmp_bytes`].
-    pub fn encrypt_zero_pk<K, Mod, E, BE: Backend>(
-        &mut self,
-        module: &Mod,
-        pk: &K,
-        enc_infos: &E,
-        source_xu: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
-        E: EncryptionInfos,
-        Mod: GLWEEncryptPk<BE>,
-    {
-        module.glwe_encrypt_zero_pk(self, pk, enc_infos, source_xu, source_xe, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait GLWEEncryptSkDefault<BE: Backend> {

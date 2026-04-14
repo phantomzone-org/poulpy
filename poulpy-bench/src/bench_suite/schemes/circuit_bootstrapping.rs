@@ -106,8 +106,8 @@ where
     let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
 
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
-    cbt_key.encrypt_sk(
-        &module,
+    module.circuit_bootstrapping_key_encrypt_sk(
+        &mut cbt_key,
         &sk_lwe,
         &sk_glwe,
         &cbt_enc_infos,

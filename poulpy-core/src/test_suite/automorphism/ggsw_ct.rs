@@ -102,10 +102,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_tmp_bytes(module, &ct_in)
-                    | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
-                    | GGLWEToGGSWKey::encrypt_sk_tmp_bytes(module, &tsk)
-                    | GGSW::automorphism_tmp_bytes(module, &ct_out, &ct_in, &auto_key, &tsk),
+                (module).ggsw_encrypt_sk_tmp_bytes(&ct_in)
+                    | (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&auto_key)
+                    | (module).gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&tsk)
+                    | module.ggsw_automorphism_tmp_bytes(&ct_out, &ct_in, &auto_key, &tsk),
             );
 
             let var_xs: f64 = 0.5;
@@ -113,11 +113,11 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            auto_key.encrypt_sk(
-                module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut auto_key,
                 p,
                 &sk,
                 &auto_key_layout,
@@ -125,12 +125,12 @@ where
                 &mut source_xa,
                 scratch.borrow(),
             );
-            tsk.encrypt_sk(module, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            module.gglwe_to_ggsw_key_encrypt_sk(&mut tsk, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            ct_in.encrypt_sk(
-                module,
+            module.ggsw_encrypt_sk(
+                &mut ct_in,
                 &pt_scalar,
                 &sk_prepared,
                 &ggsw_in_layout,
@@ -140,14 +140,14 @@ where
             );
 
             let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
-            auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
+                module.alloc_glwe_automorphism_key_prepared_from_infos(&auto_key_layout);
+            module.prepare_glwe_automorphism_key(&mut auto_key_prepared, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
-                GGLWEToGGSWKeyPrepared::alloc_from_infos(module, &tsk);
-            tsk_prepared.prepare(module, &tsk, scratch.borrow());
+                module.alloc_gglwe_to_ggsw_key_prepared_from_infos(&tsk);
+            module.prepare_gglwe_to_ggsw_key(&mut tsk_prepared, &tsk, scratch.borrow());
 
-            ct_out.automorphism(module, &ct_in, &auto_key_prepared, &tsk_prepared, scratch.borrow());
+            module.ggsw_automorphism(&mut ct_out, &ct_in, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
             module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 
@@ -253,10 +253,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_tmp_bytes(module, &ct)
-                    | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
-                    | GGLWEToGGSWKey::encrypt_sk_tmp_bytes(module, &tsk)
-                    | GGSW::automorphism_tmp_bytes(module, &ct, &ct, &auto_key, &tsk),
+                (module).ggsw_encrypt_sk_tmp_bytes(&ct)
+                    | (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&auto_key)
+                    | (module).gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&tsk)
+                    | module.ggsw_automorphism_tmp_bytes(&ct, &ct, &auto_key, &tsk),
             );
 
             let var_xs: f64 = 0.5;
@@ -264,11 +264,11 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            auto_key.encrypt_sk(
-                module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut auto_key,
                 p,
                 &sk,
                 &auto_key_layout,
@@ -276,12 +276,12 @@ where
                 &mut source_xa,
                 scratch.borrow(),
             );
-            tsk.encrypt_sk(module, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            module.gglwe_to_ggsw_key_encrypt_sk(&mut tsk, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            ct.encrypt_sk(
-                module,
+            module.ggsw_encrypt_sk(
+                &mut ct,
                 &pt_scalar,
                 &sk_prepared,
                 &ggsw_out_layout,
@@ -291,14 +291,14 @@ where
             );
 
             let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
-            auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
+                module.alloc_glwe_automorphism_key_prepared_from_infos(&auto_key_layout);
+            module.prepare_glwe_automorphism_key(&mut auto_key_prepared, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
-                GGLWEToGGSWKeyPrepared::alloc_from_infos(module, &tsk);
-            tsk_prepared.prepare(module, &tsk, scratch.borrow());
+                module.alloc_gglwe_to_ggsw_key_prepared_from_infos(&tsk);
+            module.prepare_gglwe_to_ggsw_key(&mut tsk_prepared, &tsk, scratch.borrow());
 
-            ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());
+            module.ggsw_automorphism_inplace(&mut ct, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
             module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 

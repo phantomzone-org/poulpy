@@ -109,37 +109,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_tensor_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, rank: Rank) -> Self
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_tensor_prepared(rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_tensor_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_tensor_prepared(rank)
-    }
-}
+// module-only API: allocation/size helpers are provided by `GLWESecretTensorPreparedFactory` on `Module`.
 
 impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
     pub fn n(&self) -> Degree {
@@ -151,15 +121,7 @@ impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESecretTensorPrepared<D, B> {
-    pub fn prepare<M, O>(&mut self, module: &M, other: &O)
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-        O: GLWESecretToRef + GetDistribution,
-    {
-        module.prepare_glwe_secret_tensor(self, other);
-    }
-}
+// module-only API: preparation is provided by `GLWESecretTensorPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrepared<D, B> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {

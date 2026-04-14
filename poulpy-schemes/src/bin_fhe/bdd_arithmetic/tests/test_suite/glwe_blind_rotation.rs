@@ -115,7 +115,7 @@ where
                 scratch.borrow(),
             );
 
-            res.decrypt(module, &mut pt, sk_glwe_prep, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt, sk_glwe_prep, scratch.borrow());
 
             assert_eq!(
                 (((k >> bit_start) & mask) << bit_step) as i64,

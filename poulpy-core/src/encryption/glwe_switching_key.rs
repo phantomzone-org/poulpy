@@ -1,58 +1,18 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPrepare, VecZnxSwitchRing},
-    layouts::{Backend, DataMut, Module, ScalarZnx, Scratch},
+    layouts::{Backend, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
-pub use crate::api::{GLWESwitchingKeyEncryptPk, GLWESwitchingKeyEncryptSk};
+pub use crate::api::GLWESwitchingKeyEncryptSk;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::gglwe::GGLWEEncryptSk,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos,
+        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKeyDegreesMut, LWEInfos,
         prepared::GLWESecretPreparedFactory,
     },
 };
-
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyEncryptSk<BE>,
-    {
-        module.glwe_switching_key_encrypt_sk_tmp_bytes(infos)
-    }
-
-    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyEncryptPk<BE>,
-    {
-        module.glwe_switching_key_encrypt_pk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S1, S2, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk_in: &S1,
-        sk_out: &S2,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S1: GLWESecretToRef,
-        S2: GLWESecretToRef,
-        E: EncryptionInfos,
-        M: GLWESwitchingKeyEncryptSk<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_switching_key_encrypt_sk(self, sk_in, sk_out, enc_infos, source_xe, source_xa, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait GLWESwitchingKeyEncryptSkDefault<BE: Backend> {

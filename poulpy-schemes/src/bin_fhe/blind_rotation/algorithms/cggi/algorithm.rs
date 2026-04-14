@@ -81,7 +81,7 @@ where
                             .max(self.vec_znx_idft_apply_tmp_bytes()))))
         } else {
             GLWE::<Vec<u8>, ()>::bytes_of_from_infos(glwe_infos)
-                + GLWE::external_product_tmp_bytes(self, glwe_infos, glwe_infos, brk_infos)
+                + self.glwe_external_product_tmp_bytes(glwe_infos, glwe_infos, brk_infos)
         }
     }
 
@@ -428,7 +428,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, M, BE: Backend>(
     // TODO: first iteration can be optimized to be a gglwe product
     izip!(a.iter(), brk.data.iter()).for_each(|(ai, ski)| {
         // acc_tmp = sk[i] * acc
-        acc_tmp.external_product(module, &out_mut, ski, scratch_1);
+        module.glwe_external_product(&mut acc_tmp, &out_mut, ski, scratch_1);
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
         module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp, scratch_1);

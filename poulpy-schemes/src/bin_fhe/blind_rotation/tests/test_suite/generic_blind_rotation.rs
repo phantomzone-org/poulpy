@@ -80,8 +80,8 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
-    sk_glwe_dft.prepare(module, &sk_glwe);
+    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
+    module.prepare_glwe_secret(&mut sk_glwe_dft, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
@@ -96,8 +96,8 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
 
-    brk.encrypt_sk(
-        module,
+    module.blind_rotation_key_encrypt_sk(
+        &mut brk,
         &sk_glwe_dft,
         &sk_lwe,
         &brk_infos,
@@ -114,8 +114,8 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(
-        module,
+    module.lwe_encrypt_sk(
+        &mut lwe,
         &pt_lwe,
         &sk_lwe,
         &lwe_infos,
@@ -148,7 +148,7 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
 
-    res.decrypt(module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
+    module.glwe_decrypt(&res, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
 

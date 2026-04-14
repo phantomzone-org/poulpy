@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef, ZnxZero},
+    layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef, ZnxZero},
 };
 
 pub use crate::api::{GGSWExpandRows, GGSWFromGGLWE};
@@ -15,29 +15,6 @@ use crate::{
         GLWEInfos, LWEInfos,
     },
 };
-
-impl GGLWE<Vec<u8>> {
-    pub fn from_gglw_tmp_bytes<R, A, M, BE: Backend>(module: &M, res_infos: &R, tsk_infos: &A) -> usize
-    where
-        M: GGSWFromGGLWE<BE>,
-        R: GGSWInfos,
-        A: GGLWEInfos,
-    {
-        module.ggsw_from_gglwe_tmp_bytes(res_infos, tsk_infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    pub fn from_gglwe<G, M, T, BE: Backend>(&mut self, module: &M, gglwe: &G, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        M: GGSWFromGGLWE<BE>,
-        G: GGLWEToRef,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_from_gglwe(self, gglwe, tsk, scratch);
-    }
-}
 
 pub(crate) trait GGSWFromGGLWEDefault<BE: Backend>: GGSWExpandRowsDefault<BE> + GLWECopy
 where

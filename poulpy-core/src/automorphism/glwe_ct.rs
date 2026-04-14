@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxBigAddSmallAssign, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalize,
         VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxNormalize,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig},
+    layouts::{Backend, Module, Scratch, VecZnxBig},
 };
 
 pub use crate::api::GLWEAutomorphism;
@@ -12,133 +12,6 @@ use crate::{
     GLWEKeySwitchInternal, GLWEKeyswitch, GLWENormalize, ScratchTakeCore,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos},
 };
-
-impl GLWE<Vec<u8>> {
-    /// Returns the scratch buffer size in bytes required by the GLWE automorphism operation.
-    pub fn automorphism_tmp_bytes<M, R, A, K, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        K: GGLWEInfos,
-        M: GLWEAutomorphism<BE>,
-    {
-        module.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<DataSelf: DataMut, M> GLWE<DataSelf, M> {
-    /// Applies the Galois automorphism X -> X^k to a GLWE ciphertext `a` using the
-    /// automorphism key `key`, writing the result into `self`.
-    ///
-    /// Internally performs a key-switch followed by the polynomial automorphism on each
-    /// component of the resulting GLWE ciphertext.
-    pub fn automorphism<Mod, A, K, BE: Backend>(&mut self, module: &Mod, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        A: GLWEToRef + GLWEInfos,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism(self, a, key, scratch);
-    }
-
-    /// Computes `self = self + Automorphism(a, key)`.
-    ///
-    /// Applies the automorphism to `a` and adds the result to the current value of `self`,
-    /// fusing the key-switch, automorphism, and addition into a single pass over the
-    /// extended-precision accumulator to reduce normalization overhead.
-    pub fn automorphism_add<Mod, A, K, BE: Backend>(&mut self, module: &Mod, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        A: GLWEToRef + GLWEInfos,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_add(self, a, key, scratch);
-    }
-
-    /// Computes `self = Automorphism(a, key) - a`.
-    ///
-    /// Applies the automorphism to `a` and subtracts `a` from the result,
-    /// fusing the key-switch, automorphism, and subtraction into a single pass over the
-    /// extended-precision accumulator to reduce normalization overhead.
-    pub fn automorphism_sub<Mod, A, K, BE: Backend>(&mut self, module: &Mod, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        A: GLWEToRef + GLWEInfos,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_sub(self, a, key, scratch);
-    }
-
-    /// Computes `self = -(Automorphism(a, key) - a)` i.e. `self = a - Automorphism(a, key)`.
-    ///
-    /// Applies the automorphism to `a`, subtracts `a`, and negates the result,
-    /// fusing all operations into a single pass over the extended-precision accumulator.
-    pub fn automorphism_sub_negate<Mod, A, K, BE: Backend>(&mut self, module: &Mod, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        A: GLWEToRef + GLWEInfos,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_sub_negate(self, a, key, scratch);
-    }
-
-    /// Applies the Galois automorphism X -> X^k to `self` in place using the
-    /// automorphism key `key`.
-    ///
-    /// Internally performs a key-switch followed by the polynomial automorphism on each
-    /// component of the GLWE ciphertext.
-    pub fn automorphism_inplace<Mod, K, BE: Backend>(&mut self, module: &Mod, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_inplace(self, key, scratch);
-    }
-
-    /// Computes `self = self + Automorphism(self, key)` in place.
-    ///
-    /// Applies the automorphism to the current value of `self` and adds the result back,
-    /// fusing the key-switch, automorphism, and addition into a single pass.
-    pub fn automorphism_add_inplace<Mod, K, BE: Backend>(&mut self, module: &Mod, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_add_inplace(self, key, scratch);
-    }
-
-    /// Computes `self = Automorphism(self, key) - self` in place.
-    ///
-    /// Applies the automorphism to the current value of `self` and subtracts the original,
-    /// fusing the key-switch, automorphism, and subtraction into a single pass.
-    pub fn automorphism_sub_inplace<Mod, K, BE: Backend>(&mut self, module: &Mod, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_sub_inplace(self, key, scratch);
-    }
-
-    /// Computes `self = -(Automorphism(self, key) - self)` i.e. `self = self - Automorphism(self, key)` in place.
-    ///
-    /// Applies the automorphism to the current value of `self`, subtracts the original,
-    /// and negates, fusing all operations into a single pass.
-    pub fn automorphism_sub_negate_inplace<Mod, K, BE: Backend>(&mut self, module: &Mod, key: &K, scratch: &mut Scratch<BE>)
-    where
-        Mod: GLWEAutomorphism<BE>,
-        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_automorphism_sub_negate_inplace(self, key, scratch);
-    }
-}
 
 pub(crate) trait GLWEAutomorphismDefault<BE: Backend>:
     Sized

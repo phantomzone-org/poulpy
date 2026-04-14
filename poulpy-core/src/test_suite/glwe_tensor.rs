@@ -12,12 +12,12 @@ use rand::Rng;
 use std::f64::consts::SQRT_2;
 
 use crate::{
-    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring,
-    ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, GLWEMulConst, GLWEMulPlain, GLWESub, GLWETensorDecrypt, GLWETensorKeyEncryptSk,
+    GLWETensoring, ScratchTakeCore,
     layouts::{
         Dsize, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWESecretTensorPrepared, GLWETensor, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPrepared,
-        GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
+        GLWESecretTensorPrepared, GLWESecretTensorPreparedFactory, GLWETensor, GLWETensorKey, GLWETensorKeyLayout,
+        GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
     },
 };
 
@@ -83,8 +83,9 @@ where
         let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                .max(GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_out_infos))
+            (module)
+                .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
+                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
                 .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, 0, &a, &b))
                 .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
                 .max(module.glwe_tensor_relinearize_tmp_bytes(&res_relin, &res_tensor, &tsk_infos)),
@@ -97,21 +98,21 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-        sk_dft.prepare(module, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+        module.prepare_glwe_secret(&mut sk_dft, &sk);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc(module.n().into(), rank.into());
-        sk_tensor.prepare(module, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
 
         let mut sk_tensor_prep: GLWESecretTensorPrepared<DeviceBuf<BE>, BE> =
-            GLWESecretTensorPrepared::alloc(module, rank.into());
-        sk_tensor_prep.prepare(module, &sk_tensor);
+            module.alloc_glwe_secret_tensor_prepared(rank.into());
+        module.prepare_glwe_secret_tensor(&mut sk_tensor_prep, &sk_tensor);
 
         let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(module, &sk, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
 
-        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = GLWETensorKeyPrepared::alloc_from_infos(module, &tsk_infos);
-        tsk_prep.prepare(module, &tsk, scratch.borrow());
+        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prep, &tsk, scratch.borrow());
 
         let scale: usize = 2 * in_base2k;
 
@@ -136,8 +137,8 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut a,
             &pt_in,
             &sk_dft,
             &glwe_in_infos,
@@ -145,8 +146,8 @@ where
             &mut source_xa,
             scratch.borrow(),
         );
-        b.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut b,
             &pt_in,
             &sk_dft,
             &glwe_in_infos,
@@ -158,7 +159,7 @@ where
         for res_offset in 0..scale {
             module.glwe_tensor_apply(&mut res_tensor, scale + res_offset, &a, &b, scratch.borrow());
 
-            res_tensor.decrypt(module, &mut pt_have, &sk_dft, &sk_tensor_prep, scratch.borrow());
+            module.glwe_tensor_decrypt(&res_tensor, &mut pt_have, &sk_dft, &sk_tensor_prep, scratch.borrow());
             module.vec_znx_normalize(
                 pt_want.data_mut(),
                 out_base2k,
@@ -179,7 +180,7 @@ where
             assert!(noise_have - noise_want <= 0.5, "{} > {}", noise_have, noise_want);
 
             module.glwe_tensor_relinearize(&mut res_relin, &res_tensor, &tsk_prep, tsk_prep.size(), scratch.borrow());
-            res_relin.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res_relin, &mut pt_have, &sk_dft, scratch.borrow());
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
             module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
@@ -252,8 +253,9 @@ where
         let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                .max(GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_out_infos))
+            (module)
+                .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
+                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
                 .max(module.glwe_tensor_square_apply_tmp_bytes(&res_square, 0, &a))
                 .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, 0, &a, &a))
                 .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
@@ -268,16 +270,23 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-        sk_dft.prepare(module, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+        module.prepare_glwe_secret(&mut sk_dft, &sk);
 
         let tsk_enc_infos = EncryptionLayout::new_from_default_sigma(tsk_infos).unwrap();
         let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_in_infos).unwrap();
         let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(module, &sk, &tsk_enc_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        module.glwe_tensor_key_encrypt_sk(
+            &mut tsk,
+            &sk,
+            &tsk_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
-        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = GLWETensorKeyPrepared::alloc_from_infos(module, &tsk_infos);
-        tsk_prep.prepare(module, &tsk, scratch.borrow());
+        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prep, &tsk, scratch.borrow());
 
         let scale: usize = 2 * in_base2k;
 
@@ -286,8 +295,8 @@ where
             *i = (source_xa.next_i64() & 7) - 4;
         }
         pt_in.encode_vec_i64(&data, TorusPrecision(scale as u32));
-        a.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut a,
             &pt_in,
             &sk_dft,
             &glwe_enc_infos,
@@ -319,8 +328,8 @@ where
             assert_eq!(res_relin_square.data().raw(), res_relin_tensor.data().raw());
 
             // Decrypt one side to ensure the square path remains functionally valid.
-            res_relin_square.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
-            res_relin_tensor.decrypt(module, &mut pt_want, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res_relin_square, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res_relin_tensor, &mut pt_want, &sk_dft, scratch.borrow());
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
             module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
             let noise_have: f64 = pt_tmp.stats().std().log2();
@@ -375,8 +384,9 @@ where
         let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                .max(GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_out_infos))
+            (module)
+                .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
+                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
                 .max(module.glwe_mul_plain_tmp_bytes(&res, 0, &a, &pt_b)),
         );
 
@@ -387,8 +397,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-        sk_dft.prepare(module, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+        module.prepare_glwe_secret(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
 
@@ -409,8 +419,8 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut a,
             &pt_a,
             &sk_dft,
             &glwe_in_infos,
@@ -422,7 +432,7 @@ where
         for res_offset in 0..scale {
             module.glwe_mul_plain(&mut res, scale + res_offset, &a, &pt_b, scratch.borrow());
 
-            res.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
             module.vec_znx_normalize(
                 pt_want.data_mut(),
                 out_base2k,
@@ -492,8 +502,9 @@ where
         let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
-                .max(GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &glwe_out_infos))
+            (module)
+                .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
+                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
                 .max(module.glwe_mul_const_tmp_bytes(&res, 0, &a, b_size)),
         );
 
@@ -504,8 +515,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-        sk_dft.prepare(module, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+        module.prepare_glwe_secret(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
 
@@ -533,8 +544,8 @@ where
             scratch.borrow(),
         );
 
-        a.encrypt_sk(
-            module,
+        module.glwe_encrypt_sk(
+            &mut a,
             &pt_a,
             &sk_dft,
             &glwe_in_infos,
@@ -546,7 +557,7 @@ where
         for res_offset in 0..scale {
             module.glwe_mul_const(&mut res, scale + res_offset, &a, &b_const, scratch.borrow());
 
-            res.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
             module.vec_znx_normalize(
                 pt_want.data_mut(),
                 out_base2k,

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
@@ -12,38 +12,6 @@ use crate::{
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
-
-impl GGSW<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWEncryptSk<BE>,
-    {
-        module.ggsw_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        pt: &P,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        E: EncryptionInfos,
-        M: GGSWEncryptSk<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait GGSWEncryptSkDefault<BE: Backend> {

@@ -1,58 +1,16 @@
 use poulpy_hal::{
     api::{ScratchAvailable, SvpPPolBytesOf, VecZnxAutomorphism},
-    layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
+    layouts::{Backend, GaloisElement, Module, Scratch},
     source::Source,
 };
 
-pub use crate::api::{GLWEAutomorphismKeyEncryptPk, GLWEAutomorphismKeyEncryptSk};
+pub use crate::api::GLWEAutomorphismKeyEncryptSk;
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPrepared,
-        GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement,
+        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement,
     },
 };
-
-impl GLWEAutomorphismKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEAutomorphismKeyEncryptSk<BE>,
-    {
-        module.glwe_automorphism_key_encrypt_sk_tmp_bytes(infos)
-    }
-
-    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEAutomorphismKeyEncryptPk<BE>,
-    {
-        module.glwe_automorphism_key_encrypt_pk_tmp_bytes(infos)
-    }
-}
-
-impl<DM: DataMut> GLWEAutomorphismKey<DM>
-where
-    Self: GGLWEToRef,
-{
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<S, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        p: i64,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S: GLWESecretToRef,
-        E: EncryptionInfos,
-        M: GLWEAutomorphismKeyEncryptSk<BE>,
-    {
-        module.glwe_automorphism_key_encrypt_sk(self, p, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
@@ -91,7 +49,7 @@ where
         );
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWESecretPrepared::bytes_of_from_infos(self, infos);
+        let lvl_0: usize = self.bytes_of_glwe_secret_prepared_from_infos(infos);
         let lvl_1_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
         let lvl_1_sk: usize = GLWESecret::bytes_of_from_infos(infos);
         let lvl_1: usize = lvl_1_encrypt.max(lvl_1_sk);
@@ -142,7 +100,7 @@ where
                     i,
                 );
             }
-            sk_out_prepared.prepare(self, &sk_out);
+            self.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
         }
 
         self.gglwe_encrypt_sk(res, &sk.data, &sk_out_prepared, enc_infos, source_xe, source_xa, scratch_1);

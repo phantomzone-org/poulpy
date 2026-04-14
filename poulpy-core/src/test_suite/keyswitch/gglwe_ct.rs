@@ -87,12 +87,12 @@ where
                     let mut source_xa: Source = Source::new([0u8; 32]);
 
                     let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(
-                        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s1_infos)
-                            | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos)
-                            | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s2_infos),
+                        (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_s0s1_infos)
+                            | (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_s1s2_infos)
+                            | (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_s0s2_infos),
                     );
                     let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(
-                        GLWESwitchingKey::keyswitch_tmp_bytes(module, &gglwe_s0s2_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
+                        module.gglwe_keyswitch_tmp_bytes(&gglwe_s0s2_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
                             | module.gglwe_noise_tmp_bytes(&gglwe_s0s2_infos),
                     );
 
@@ -106,12 +106,12 @@ where
                     sk2.fill_ternary_prob(0.5, &mut source_xs);
 
                     let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                        GLWESecretPrepared::alloc(module, rank_out_s1s2.into());
-                    sk2_prepared.prepare(module, &sk2);
+                        module.alloc_glwe_secret_prepared(rank_out_s1s2.into());
+                    module.prepare_glwe_secret(&mut sk2_prepared, &sk2);
 
                     // gglwe_{s1}(s0) = s0 -> s1
-                    gglwe_s0s1.encrypt_sk(
-                        module,
+                    module.glwe_switching_key_encrypt_sk(
+                        &mut gglwe_s0s1,
                         &sk0,
                         &sk1,
                         &gglwe_s0s1_infos,
@@ -121,8 +121,8 @@ where
                     );
 
                     // gglwe_{s2}(s1) -> s1 -> s2
-                    gglwe_s1s2.encrypt_sk(
-                        module,
+                    module.glwe_switching_key_encrypt_sk(
+                        &mut gglwe_s1s2,
                         &sk1,
                         &sk2,
                         &gglwe_s1s2_infos,
@@ -132,11 +132,11 @@ where
                     );
 
                     let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                        GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
-                    gglwe_s1s2_prepared.prepare(module, &gglwe_s1s2, scratch_apply.borrow());
+                        module.alloc_glwe_switching_key_prepared_from_infos(&gglwe_s1s2);
+                    module.prepare_glwe_switching(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-                    gglwe_s0s2.keyswitch(module, &gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
+                    module.gglwe_keyswitch(&mut gglwe_s0s2, &gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
 
                     let max_noise: f64 = var_noise_gglwe_product_v2(
                         module.n() as f64,
@@ -229,11 +229,11 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s1_infos)
-                        | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos),
+                    (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_s0s1_infos)
+                        | (module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_s1s2_infos),
                 );
                 let mut scratch_apply: ScratchOwned<BE> = ScratchOwned::alloc(
-                    GLWESwitchingKey::keyswitch_tmp_bytes(module, &gglwe_s0s1_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
+                    module.gglwe_keyswitch_tmp_bytes(&gglwe_s0s1_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
                         | module.gglwe_noise_tmp_bytes(&gglwe_s0s1_infos),
                 );
 
@@ -253,7 +253,7 @@ where
                 );
                 println!(
                     "{}",
-                    GLWESwitchingKey::keyswitch_tmp_bytes(module, &gglwe_s0s1_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
+                    module.gglwe_keyswitch_tmp_bytes(&gglwe_s0s1_infos, &gglwe_s0s1_infos, &gglwe_s1s2_infos)
                 );
 
                 let var_xs: f64 = 0.5;
@@ -267,12 +267,12 @@ where
                 let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk2.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
-                sk2_prepared.prepare(module, &sk2);
+                let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank_out.into());
+                module.prepare_glwe_secret(&mut sk2_prepared, &sk2);
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                gglwe_s0s1.encrypt_sk(
-                    module,
+                module.glwe_switching_key_encrypt_sk(
+                    &mut gglwe_s0s1,
                     &sk0,
                     &sk1,
                     &gglwe_s0s1_infos,
@@ -282,8 +282,8 @@ where
                 );
 
                 // gglwe_{s2}(s1) -> s1 -> s2
-                gglwe_s1s2.encrypt_sk(
-                    module,
+                module.glwe_switching_key_encrypt_sk(
+                    &mut gglwe_s1s2,
                     &sk1,
                     &sk2,
                     &gglwe_s1s2_infos,
@@ -293,8 +293,8 @@ where
                 );
 
                 let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                    GLWESwitchingKeyPrepared::alloc_from_infos(module, &gglwe_s1s2);
-                gglwe_s1s2_prepared.prepare(module, &gglwe_s1s2, scratch_apply.borrow());
+                    module.alloc_glwe_switching_key_prepared_from_infos(&gglwe_s1s2);
+                module.prepare_glwe_switching(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
 
                 // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
                 println!("{} {} {}", gglwe_s0s1.base2k(), gglwe_s0s1.max_k(), gglwe_s0s1.size());
@@ -304,7 +304,7 @@ where
                     gglwe_s1s2_prepared.max_k(),
                     gglwe_s1s2_prepared.size()
                 );
-                gglwe_s0s1.keyswitch_inplace(module, &gglwe_s1s2_prepared, scratch_apply.borrow());
+                module.gglwe_keyswitch_inplace(&mut gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
 
                 let gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = gglwe_s0s1;
 

@@ -39,8 +39,8 @@ pub fn bench_glwe_external_product<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(ggsw_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, ggsw_infos.rank());
-    sk_prepared.prepare(&module, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(ggsw_infos.rank());
+    module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
     let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(ggsw_infos);
@@ -48,16 +48,16 @@ pub fn bench_glwe_external_product<BE: Backend>(
     let mut ct_glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GGSW::encrypt_sk_tmp_bytes(&module, ggsw_infos)
-            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, glwe_infos)
-            | GLWE::external_product_tmp_bytes(&module, glwe_infos, glwe_infos, ggsw_infos),
+        module.ggsw_encrypt_sk_tmp_bytes(ggsw_infos)
+            | module.glwe_encrypt_sk_tmp_bytes(glwe_infos)
+            | module.glwe_external_product_tmp_bytes(glwe_infos, glwe_infos, ggsw_infos),
     );
 
     let ggsw_enc_infos = NoiseInfos::new(ggsw_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
     let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ct_ggsw.encrypt_sk(
-        &module,
+    module.ggsw_encrypt_sk(
+        &mut ct_ggsw,
         &pt,
         &sk_prepared,
         &ggsw_enc_infos,
@@ -65,8 +65,8 @@ pub fn bench_glwe_external_product<BE: Backend>(
         &mut source_xa,
         scratch.borrow(),
     );
-    ct_glwe_in.encrypt_zero_sk(
-        &module,
+    module.glwe_encrypt_zero_sk(
+        &mut ct_glwe_in,
         &sk_prepared,
         &glwe_enc_infos,
         &mut source_xe,
@@ -74,14 +74,14 @@ pub fn bench_glwe_external_product<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
-    ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_ggsw);
+    module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
+            module.glwe_external_product(&mut ct_glwe_out, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
             black_box(());
         })
     });
@@ -109,23 +109,23 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
-    sk_prepared.prepare(&module, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(infos.rank());
+    module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
     let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(infos);
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GGSW::encrypt_sk_tmp_bytes(&module, infos)
-            | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(&module, infos)
-            | GLWE::external_product_tmp_bytes(&module, infos, infos, infos),
+        module.ggsw_encrypt_sk_tmp_bytes(infos)
+            | module.glwe_encrypt_sk_tmp_bytes(infos)
+            | module.glwe_external_product_tmp_bytes(infos, infos, infos),
     );
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ct_ggsw.encrypt_sk(
-        &module,
+    module.ggsw_encrypt_sk(
+        &mut ct_ggsw,
         &pt,
         &sk_prepared,
         &enc_infos,
@@ -133,8 +133,8 @@ where
         &mut source_xa,
         scratch.borrow(),
     );
-    ct_glwe.encrypt_zero_sk(
-        &module,
+    module.glwe_encrypt_zero_sk(
+        &mut ct_glwe,
         &sk_prepared,
         &enc_infos,
         &mut source_xe,
@@ -142,14 +142,14 @@ where
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
-    ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_ggsw);
+    module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct_glwe.external_product_inplace(&module, &ggsw_prepared, scratch.borrow());
+            module.glwe_external_product_inplace(&mut ct_glwe, &ggsw_prepared, scratch.borrow());
             black_box(());
         })
     });

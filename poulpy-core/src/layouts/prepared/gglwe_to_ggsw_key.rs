@@ -184,54 +184,8 @@ where
     }
 }
 
-/// Convenience associated functions for owned (device buffer) allocation and byte-size queries.
-impl<BE: Backend> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> {
-    /// Allocates a new [`GGLWEToGGSWKeyPrepared`] matching the parameters of `infos`.
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.alloc_gglwe_to_ggsw_key_prepared_from_infos(infos)
-    }
-
-    /// Allocates a new [`GGLWEToGGSWKeyPrepared`] with explicit parameters.
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.alloc_gglwe_to_ggsw_key_prepared(base2k, k, rank, dnum, dsize)
-    }
-
-    /// Returns the byte size for a [`GGLWEToGGSWKeyPrepared`] matching `infos`.
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.bytes_of_gglwe_to_ggsw_from_infos(infos)
-    }
-
-    /// Returns the byte size for a [`GGLWEToGGSWKeyPrepared`] with explicit parameters.
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.bytes_of_gglwe_to_ggsw(base2k, k, rank, dnum, dsize)
-    }
-}
-
-impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
-    /// Transforms a standard [`GGLWEToGGSWKey`] (`other`) into the DFT domain, writing into `self`.
-    pub fn prepare<M, O>(&mut self, module: &M, other: &O, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-        O: GGLWEToGGSWKeyToRef,
-        Scratch<BE>: ScratchAvailable,
-    {
-        module.prepare_gglwe_to_ggsw_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `GGLWEToGGSWKeyPreparedFactory` on `Module`.
 
 impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
     /// Returns a mutable reference to the `i`-th prepared GGLWE key element.

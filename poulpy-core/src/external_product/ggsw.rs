@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable},
-    layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxZero},
 };
 
 pub use crate::api::GGSWExternalProduct;
@@ -11,18 +11,6 @@ use crate::{
         prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
 };
-
-impl GGSW<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GGSWInfos,
-        A: GGSWInfos,
-        B: GGSWInfos,
-        M: GGSWExternalProduct<BE>,
-    {
-        module.ggsw_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
 
 #[doc(hidden)]
 pub trait GGSWExternalProductDefault<BE: Backend>
@@ -104,24 +92,3 @@ where
 }
 
 impl<BE: Backend> GGSWExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> + ModuleN {}
-
-impl<DataSelf: DataMut> GGSW<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        M: GGSWExternalProduct<BE>,
-        A: GGSWToRef,
-        B: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        M: GGSWExternalProduct<BE>,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_external_product_inplace(self, a, scratch);
-    }
-}

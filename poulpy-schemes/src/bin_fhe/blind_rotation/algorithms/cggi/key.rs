@@ -55,7 +55,7 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                ggsw.encrypt_sk(self, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch);
+                self.ggsw_encrypt_sk(ggsw, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch);
             }
         }
     }

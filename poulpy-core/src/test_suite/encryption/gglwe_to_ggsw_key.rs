@@ -50,17 +50,27 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGLWEToGGSWKey::encrypt_sk_tmp_bytes(module, &key_infos));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(
+            module, &key_infos,
+        ));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-        key.encrypt_sk(module, &sk, &key_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk(
+            module,
+            &mut key,
+            &sk,
+            &key_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        sk_tensor.prepare(module, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
@@ -119,23 +129,32 @@ where
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> =
-            ScratchOwned::alloc(GGLWEToGGSWKeyCompressed::encrypt_sk_tmp_bytes(module, &key_infos));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+            GGLWEToGGSWKeyCompressedEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(module, &key_infos),
+        );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc(module, rank.into());
-        sk_prepared.prepare(module, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
+        module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
-        key_compressed.encrypt_sk(module, &sk, seed_xa, &key_infos, &mut source_xe, scratch.borrow());
+        GGLWEToGGSWKeyCompressedEncryptSk::gglwe_to_ggsw_key_encrypt_sk(
+            module,
+            &mut key_compressed,
+            &sk,
+            seed_xa,
+            &key_infos,
+            &mut source_xe,
+            scratch.borrow(),
+        );
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
-        key.decompress(module, &key_compressed);
+        module.decompress_gglwe_to_ggsw_key(&mut key, &key_compressed);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        sk_tensor.prepare(module, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 

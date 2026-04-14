@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 pub use crate::api::LWEKeySwitch;
@@ -9,30 +9,6 @@ use crate::{
     keyswitching::GLWEKeyswitch,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision},
 };
-
-impl LWE<Vec<u8>> {
-    pub fn keyswitch_tmp_bytes<M, R, A, K, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
-    where
-        R: LWEInfos,
-        A: LWEInfos,
-        K: GGLWEInfos,
-        M: LWEKeySwitch<BE>,
-    {
-        module.lwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<D: DataMut> LWE<D> {
-    pub fn keyswitch<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
-    where
-        A: LWEToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: LWEKeySwitch<BE>,
-    {
-        module.lwe_keyswitch(self, a, ksk, scratch);
-    }
-}
 
 #[doc(hidden)]
 pub trait LWEKeySwitchDefault<BE: Backend>

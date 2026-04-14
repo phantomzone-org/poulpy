@@ -13,39 +13,6 @@ use crate::{
     layouts::{GGLWEInfos, GGLWEPrepared, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos},
 };
 
-impl GLWE<Vec<u8>> {
-    pub fn keyswitch_tmp_bytes<M, R, A, B, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGLWEInfos,
-        M: GLWEKeyswitch<BE>,
-    {
-        module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<D: DataMut, M> GLWE<D, M> {
-    pub fn keyswitch<A, B, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Mod: GLWEKeyswitch<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_keyswitch(self, a, b, scratch);
-    }
-
-    pub fn keyswitch_inplace<A, Mod, BE: Backend>(&mut self, module: &Mod, a: &A, scratch: &mut Scratch<BE>)
-    where
-        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Mod: GLWEKeyswitch<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_keyswitch_inplace(self, a, scratch);
-    }
-}
-
 pub(crate) trait GLWEKeyswitchDefault<BE: Backend>:
     Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE> + GLWENormalize<BE>
 where

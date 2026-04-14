@@ -85,20 +85,20 @@ where
             module.vec_znx_fill_uniform(in_base2k, &mut pt_in.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
-                    | GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &ct_out)
-                    | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &ct_in)
-                    | GLWE::automorphism_tmp_bytes(module, &ct_out, &ct_in, &autokey),
+                (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&autokey)
+                    | (module).glwe_decrypt_tmp_bytes(&ct_out)
+                    | (module).glwe_encrypt_sk_tmp_bytes(&ct_in)
+                    | module.glwe_automorphism_tmp_bytes(&ct_out, &ct_in, &autokey),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            autokey.encrypt_sk(
-                module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut autokey,
                 p,
                 &sk,
                 &autokey_infos,
@@ -107,8 +107,8 @@ where
                 scratch.borrow(),
             );
 
-            ct_in.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut ct_in,
                 &pt_in,
                 &sk_prepared,
                 &ct_in_infos,
@@ -118,10 +118,10 @@ where
             );
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey_infos);
-            autokey_prepared.prepare(module, &autokey, scratch.borrow());
+                module.alloc_glwe_automorphism_key_prepared_from_infos(&autokey_infos);
+            module.prepare_glwe_automorphism_key(&mut autokey_prepared, &autokey, scratch.borrow());
 
-            ct_out.automorphism(module, &ct_in, &autokey_prepared, scratch.borrow());
+            module.glwe_automorphism(&mut ct_out, &ct_in, &autokey_prepared, scratch.borrow());
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,
@@ -142,7 +142,13 @@ where
             module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
             module.vec_znx_automorphism_inplace(p, &mut pt_out.data, 0, scratch.borrow());
 
-            assert!(ct_out.noise(module, &pt_out, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            assert!(
+                module
+                    .glwe_noise(&ct_out, &pt_out, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }
@@ -205,20 +211,20 @@ where
             module.vec_znx_fill_uniform(out_base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
-                    | GLWE::<Vec<u8>, ()>::decrypt_tmp_bytes(module, &ct)
-                    | GLWE::<Vec<u8>, ()>::encrypt_sk_tmp_bytes(module, &ct)
-                    | GLWE::automorphism_tmp_bytes(module, &ct, &ct, &autokey),
+                (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&autokey)
+                    | (module).glwe_decrypt_tmp_bytes(&ct)
+                    | (module).glwe_encrypt_sk_tmp_bytes(&ct)
+                    | module.glwe_automorphism_tmp_bytes(&ct, &ct, &autokey),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
-            sk_prepared.prepare(module, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
+            module.prepare_glwe_secret(&mut sk_prepared, &sk);
 
-            autokey.encrypt_sk(
-                module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut autokey,
                 p,
                 &sk,
                 &autokey_infos,
@@ -227,8 +233,8 @@ where
                 scratch.borrow(),
             );
 
-            ct.encrypt_sk(
-                module,
+            module.glwe_encrypt_sk(
+                &mut ct,
                 &pt_want,
                 &sk_prepared,
                 &ct_out_infos,
@@ -238,10 +244,10 @@ where
             );
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey);
-            autokey_prepared.prepare(module, &autokey, scratch.borrow());
+                module.alloc_glwe_automorphism_key_prepared_from_infos(&autokey);
+            module.prepare_glwe_automorphism_key(&mut autokey_prepared, &autokey, scratch.borrow());
 
-            ct.automorphism_inplace(module, &autokey_prepared, scratch.borrow());
+            module.glwe_automorphism_inplace(&mut ct, &autokey_prepared, scratch.borrow());
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,
@@ -261,7 +267,7 @@ where
 
             module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
-            assert!(ct.noise(module, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
+            assert!(module.glwe_noise(&ct, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }
     }
 }

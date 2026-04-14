@@ -1,48 +1,12 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
-    layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch},
+    layouts::{Backend, CyclotomicOrder, GaloisElement, Module, Scratch},
 };
 
 use crate::{
     GLWEKeyswitch, ScratchTakeCore,
-    layouts::{
-        GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE, GLWEAutomorphismKey, GetGaloisElement,
-        SetGaloisElement,
-    },
+    layouts::{GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE, GetGaloisElement, SetGaloisElement},
 };
-
-impl GLWEAutomorphismKey<Vec<u8>> {
-    pub fn automorphism_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        K: GGLWEInfos,
-        M: GLWEAutomorphismKeyAutomorphism<BE>,
-    {
-        module.glwe_automorphism_key_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
-    pub fn automorphism<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GLWEAutomorphismKeyAutomorphism<BE>,
-    {
-        module.glwe_automorphism_key_automorphism(self, a, key, scratch);
-    }
-
-    pub fn automorphism_inplace<K, M, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
-    where
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        M: GLWEAutomorphismKeyAutomorphism<BE>,
-    {
-        module.glwe_automorphism_key_automorphism_inplace(self, key, scratch);
-    }
-}
 
 pub(crate) trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
     Sized

@@ -1,67 +1,13 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxZero},
 };
 
 pub use crate::api::GGLWEExternalProduct;
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
-    layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEAutomorphismKey, GLWEInfos, GLWESwitchingKey,
-        prepared::GGSWPreparedToRef,
-    },
+    layouts::{GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEInfos, prepared::GGSWPreparedToRef},
 };
-
-impl GLWEAutomorphismKey<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
-        &self,
-        module: &M,
-        res_infos: &R,
-        a_infos: &A,
-        b_infos: &B,
-    ) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        B: GGSWInfos,
-        M: GGLWEExternalProduct<BE>,
-    {
-        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product_inplace(self, a, scratch);
-    }
-}
-
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        B: GGSWInfos,
-        M: GGLWEExternalProduct<BE>,
-    {
-        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
 
 #[doc(hidden)]
 pub trait GGLWEExternalProductDefault<BE: Backend>
@@ -163,23 +109,4 @@ where
 
 impl<BE: Backend> GGLWEExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
 
-impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product_inplace(self, a, scratch);
-    }
-}
+// module-only API: external product is provided by `GGLWEExternalProduct` on `Module`.
