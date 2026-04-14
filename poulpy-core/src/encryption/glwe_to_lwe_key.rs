@@ -1,55 +1,24 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
-    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::GLWEToLWESwitchingKeyEncryptSk;
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, GLWEToLWEKey, LWEInfos, LWESecret, LWESecretToRef, Rank,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
+        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, LWEInfos, LWESecret, LWESecretToRef, Rank,
+        prepared::GLWESecretPreparedFactory,
     },
 };
 
-impl GLWEToLWEKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyEncryptSk<BE>,
-    {
-        module.glwe_to_lwe_key_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut> GLWEToLWEKey<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S1, S2, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk_lwe: &S1,
-        sk_glwe: &S2,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        M: GLWEToLWESwitchingKeyEncryptSk<BE>,
-        S1: LWESecretToRef,
-        S2: GLWESecretToRef,
-        E: EncryptionInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_to_lwe_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
-    }
-}
-
-pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEToLWESwitchingKeyEncryptSkDefault<BE: Backend> {
     fn glwe_to_lwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn glwe_to_lwe_key_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
@@ -66,7 +35,7 @@ pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
         R: GGLWEToMut + GGLWEInfos;
 }
 
-impl<BE: Backend> GLWEToLWESwitchingKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWEToLWESwitchingKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN
         + GGLWEEncryptSk<BE>
@@ -81,10 +50,10 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWESecretPrepared::bytes_of(self, infos.rank_in());
+        let lvl_0: usize = self.bytes_of_glwe_secret_prepared(infos.rank_in());
         let lvl_1_sk_lwe_as_glwe: usize =
             GLWESecret::bytes_of(self.n().into(), infos.rank_in()) + self.vec_znx_automorphism_inplace_tmp_bytes();
-        let lvl_1_encrypt: usize = GGLWE::encrypt_sk_tmp_bytes(self, infos);
+        let lvl_1_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
 
         lvl_0 + lvl_1_sk_lwe_as_glwe.max(lvl_1_encrypt)
     }
@@ -124,7 +93,7 @@ where
             sk_lwe_as_glwe.data.zero();
             sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
             self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_2);
-            sk_lwe_as_glwe_prep.prepare(self, &sk_lwe_as_glwe);
+            self.prepare_glwe_secret(&mut sk_lwe_as_glwe_prep, &sk_lwe_as_glwe);
         }
 
         self.gglwe_encrypt_sk(

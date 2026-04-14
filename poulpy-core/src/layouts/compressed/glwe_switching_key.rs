@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESwitchingKey,
-    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESwitchingKeyDegrees,
+    GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -184,16 +184,7 @@ where
 
 impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecompress {}
 
-impl<D: DataMut> GLWESwitchingKey<D> {
-    /// Decompresses a [`GLWESwitchingKeyCompressed`] into this standard GLWE switching key.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
-        M: GLWESwitchingKeyDecompress,
-    {
-        module.decompress_glwe_switching_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWESwitchingKeyDecompress` on `Module`.
 
 impl<D: DataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {

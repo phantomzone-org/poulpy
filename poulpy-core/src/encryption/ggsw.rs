@@ -1,9 +1,10 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::GGSWEncryptSk;
 use crate::{
     EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchTakeCore,
     layouts::{
@@ -12,44 +13,12 @@ use crate::{
     },
 };
 
-impl GGSW<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWEncryptSk<BE>,
-    {
-        module.ggsw_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        pt: &P,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        E: EncryptionInfos,
-        M: GGSWEncryptSk<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-}
-
-pub trait GGSWEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGSWEncryptSkDefault<BE: Backend> {
     fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn ggsw_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -66,14 +35,14 @@ pub trait GGSWEncryptSk<BE: Backend> {
         S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<BE: Backend> GGSWEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGSWEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
         + VecZnxNormalizeInplace<BE>
-        + VecZnxAddScalarInplace
+        + VecZnxAddScalarAssign
         + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -83,7 +52,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(infos);
         let lvl_1: usize = self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes());
 
         lvl_0 + lvl_1
@@ -130,7 +99,7 @@ where
         for row_i in 0..res.dnum().into() {
             tmp_pt.data.zero();
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+            self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
             self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
             for col_j in 0..rank + 1 {
                 self.glwe_encrypt_sk_internal(

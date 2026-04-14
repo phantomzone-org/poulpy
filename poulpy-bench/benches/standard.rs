@@ -42,16 +42,16 @@ fn std_svp_apply_dft_to_dft(c: &mut Criterion) {
 
 // ── Layer 1: HAL – coefficient domain (all backends) ────────────────────────
 
-fn std_vec_znx_add(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add; c);
+fn std_vec_znx_add_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add_into; c);
 }
 
 fn std_vec_znx_normalize(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_normalize; c);
 }
 
-fn std_vec_znx_big_add(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add, &p().hal; c);
+fn std_vec_znx_big_add_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_into, &p().hal; c);
 }
 
 fn std_vec_znx_big_normalize(c: &mut Criterion) {
@@ -190,9 +190,9 @@ criterion_group! {
     std_vmp_apply_dft_to_dft,
     std_svp_apply_dft_to_dft,
     // Layer 1 – HAL coefficient-domain,
-    std_vec_znx_add,
+    std_vec_znx_add_into,
     std_vec_znx_normalize,
-    std_vec_znx_big_add,
+    std_vec_znx_big_add_into,
     std_vec_znx_big_normalize,
     // Layer 2 – Core,
     std_glwe_encrypt_sk,

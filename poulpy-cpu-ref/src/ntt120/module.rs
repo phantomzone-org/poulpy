@@ -6,23 +6,21 @@
 //!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
 //! - The [`Backend`] trait implementation, which defines scalar types and the
 //!   handle destruction path.
-//! - The [`ModuleNewImpl`] implementation, which allocates the handle on the heap
-//!   and transfers ownership to the `Module`.
+//! - The [`NttHandleFactory`] implementation, which builds the handle stored
+//!   inside the `Module`.
 //! - The [`NttHandleProvider`] impl for [`NTT120RefHandle`], wiring the handle into
 //!   the blanket `NttModuleHandle` impl provided by `poulpy-hal`.
 
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
-    reference::ntt120::{
-        mat_vec::{BbbMeta, BbcMeta},
-        ntt::{NttTable, NttTableInv},
-        primes::Primes30,
-        types::Q120bScalar,
-        vec_znx_dft::NttHandleProvider,
-    },
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
+
+use crate::reference::ntt120::{
+    mat_vec::{BbbMeta, BbcMeta},
+    ntt::{NttTable, NttTableInv},
+    primes::Primes30,
+    types::Q120bScalar,
+    vec_znx_dft::{NttHandleFactory, NttHandleProvider},
 };
 
 use crate::NTT120Ref;
@@ -46,7 +44,15 @@ pub struct NTT120RefHandle {
 impl Backend for NTT120Ref {
     type ScalarPrep = Q120bScalar;
     type ScalarBig = i128;
+    type OwnedBuf = Vec<u8>;
     type Handle = NTT120RefHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
 
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
@@ -57,19 +63,15 @@ impl Backend for NTT120Ref {
 
 /// # Safety
 ///
-/// The returned `Module` owns the heap-allocated `NTT120RefHandle`.
-/// `n` must be a power of two >= 2 (asserted by `Module::from_nonnull`).
-/// The NTT tables are built for dimension `n`.
-unsafe impl ModuleNewImpl<Self> for NTT120Ref {
-    fn new_impl(n: u64) -> Module<Self> {
-        let handle = NTT120RefHandle {
-            table_ntt: NttTable::new(n as usize),
-            table_intt: NttTableInv::new(n as usize),
+/// The returned handle must be fully initialized for `n`.
+unsafe impl NttHandleFactory for NTT120RefHandle {
+    fn create_ntt_handle(n: usize) -> Self {
+        NTT120RefHandle {
+            table_ntt: NttTable::new(n),
+            table_intt: NttTableInv::new(n),
             meta_bbc: BbcMeta::new(),
             meta_bbb: BbbMeta::new(),
-        };
-        let ptr: NonNull<NTT120RefHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
+        }
     }
 }
 

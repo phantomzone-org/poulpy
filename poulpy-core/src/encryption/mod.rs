@@ -27,6 +27,8 @@
 //! Scratch space requirements for each operation can be queried via companion
 //! `*_tmp_bytes` methods.
 
+#![allow(clippy::too_many_arguments)]
+
 mod compressed;
 mod gglwe;
 mod gglwe_to_ggsw_key;
@@ -41,6 +43,14 @@ mod lwe;
 mod lwe_switching_key;
 mod lwe_to_glwe_key;
 
+pub use crate::api::{
+    DeclaredK, EncryptionInfos, GGLWECompressedEncryptSk, GGLWEEncryptSk, GGLWEToGGSWKeyCompressedEncryptSk,
+    GGLWEToGGSWKeyEncryptSk, GGSWCompressedEncryptSk, GGSWEncryptSk, GLWEAutomorphismKeyCompressedEncryptSk,
+    GLWEAutomorphismKeyEncryptPk, GLWEAutomorphismKeyEncryptSk, GLWECompressedEncryptSk, GLWEEncryptPk, GLWEEncryptSk,
+    GLWEPublicKeyGenerate, GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptPk, GLWESwitchingKeyEncryptSk,
+    GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, GLWEToLWESwitchingKeyEncryptSk, LWEEncryptSk,
+    LWESwitchingKeyEncrypt, LWEToGLWESwitchingKeyEncryptSk,
+};
 pub use compressed::*;
 pub use gglwe::*;
 pub use gglwe_to_ggsw_key::*;
@@ -69,10 +79,6 @@ pub const DEFAULT_SIGMA_XE: f64 = 3.2;
 /// Samples are rejected if their absolute value exceeds this bound.
 pub const DEFAULT_BOUND_XE: f64 = 6.0 * DEFAULT_SIGMA_XE;
 
-pub trait DeclaredK: LWEInfos {
-    fn k(&self) -> TorusPrecision;
-}
-
 impl DeclaredK for LWELayout {
     fn k(&self) -> TorusPrecision {
         self.k
@@ -95,10 +101,6 @@ impl DeclaredK for GGSWLayout {
     fn k(&self) -> TorusPrecision {
         self.k
     }
-}
-
-pub trait EncryptionInfos {
-    fn noise_infos(&self) -> NoiseInfos;
 }
 
 pub struct EncryptionLayout<L> {

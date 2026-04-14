@@ -3,8 +3,8 @@ use std::f64::consts::SQRT_2;
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalar,
-        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddAssign, VecZnxAddInto, VecZnxAddNormal, VecZnxAddScalarAssign,
+        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy,
         VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings,
         VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
         VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
@@ -15,7 +15,6 @@ use crate::{
     layouts::{
         Backend, DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut,
     },
-    reference::znx::znx_copy_ref,
     source::Source,
 };
 
@@ -45,10 +44,13 @@ pub fn test_vec_znx_encode_vec_i64() {
     }
 }
 
-pub fn test_vec_znx_add_scalar<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
-    Module<BR>: VecZnxAddScalar,
-    Module<BT>: VecZnxAddScalar,
+pub fn test_vec_znx_add_scalar_into<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxAddScalarInto,
+    Module<BT>: VecZnxAddScalarInto,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -77,8 +79,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_add_scalar(&mut rest_ref, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
-                module_test.vec_znx_add_scalar(&mut res_test, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                module_ref.vec_znx_add_scalar_into(&mut rest_ref, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                module_test.vec_znx_add_scalar_into(&mut res_test, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
             }
 
             assert_eq!(b.digest_u64(), b_digest);
@@ -88,13 +90,13 @@ where
     }
 }
 
-pub fn test_vec_znx_add_scalar_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_add_scalar_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxAddScalarInplace,
-    Module<BT>: VecZnxAddScalarInplace,
+    Module<BR>: VecZnxAddScalarAssign,
+    Module<BT>: VecZnxAddScalarAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -116,18 +118,18 @@ pub fn test_vec_znx_add_scalar_inplace<BR: Backend, BT: Backend>(
         res_test.raw_mut().copy_from_slice(rest_ref.raw());
 
         for i in 0..cols {
-            module_ref.vec_znx_add_scalar_inplace(&mut rest_ref, i, res_size - 1, &b, i);
-            module_test.vec_znx_add_scalar_inplace(&mut res_test, i, res_size - 1, &b, i);
+            module_ref.vec_znx_add_scalar_assign(&mut rest_ref, i, res_size - 1, &b, i);
+            module_test.vec_znx_add_scalar_assign(&mut res_test, i, res_size - 1, &b, i);
         }
 
         assert_eq!(b.digest_u64(), b_digest);
         assert_eq!(rest_ref, res_test);
     }
 }
-pub fn test_vec_znx_add<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_add_into<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxAdd,
-    Module<BT>: VecZnxAdd,
+    Module<BR>: VecZnxAddInto,
+    Module<BT>: VecZnxAddInto,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -158,8 +160,8 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    module_test.vec_znx_add(&mut res_ref, i, &a, i, &b, i);
-                    module_ref.vec_znx_add(&mut res_test, i, &a, i, &b, i);
+                    module_test.vec_znx_add_into(&mut res_ref, i, &a, i, &b, i);
+                    module_ref.vec_znx_add_into(&mut res_test, i, &a, i, &b, i);
                 }
 
                 assert_eq!(a.digest_u64(), a_digest);
@@ -171,10 +173,10 @@ where
     }
 }
 
-pub fn test_vec_znx_add_inplace<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_add_assign<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxAddInplace,
-    Module<BT>: VecZnxAddInplace,
+    Module<BR>: VecZnxAddAssign,
+    Module<BT>: VecZnxAddAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -196,8 +198,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_ref.vec_znx_add_inplace(&mut res_ref, i, &a, i);
-                module_test.vec_znx_add_inplace(&mut res_test, i, &a, i);
+                module_ref.vec_znx_add_assign(&mut res_ref, i, &a, i);
+                module_test.vec_znx_add_assign(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -278,7 +280,7 @@ pub fn test_vec_znx_automorphism_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -7;
 
@@ -458,7 +460,7 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -7;
 
@@ -699,7 +701,7 @@ pub fn test_vec_znx_rotate_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -5;
 

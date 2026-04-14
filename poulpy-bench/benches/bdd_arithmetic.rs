@@ -5,14 +5,14 @@ use poulpy_core::{
     EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
-        LWESecret, Rank, TorusPrecision,
+        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
+        TorusPrecision,
     },
 };
 
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -31,9 +31,9 @@ use poulpy_schemes::bin_fhe::{
 struct BenchmarkSetup<BE: Backend, BRA: BlindRotationAlgo> {
     module: Module<BE>,
     scratch: ScratchOwned<BE>,
-    a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE>,
-    b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE>,
-    bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE>,
+    a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+    b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+    bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
     glwe_layout: GLWELayout,
 }
 
@@ -94,12 +94,12 @@ where
         scratch.borrow(),
     );
 
-    let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+    let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
     cbt_key_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
-    let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &params.glwe_layout);
-    sk_glwe_prepared.prepare(&module, &sk_glwe);
+    let mut sk_glwe_prepared = module.alloc_glwe_secret_prepared_from_infos(&params.glwe_layout);
+    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
 
     let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&params.bdd_layout).unwrap();
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(params.glwe_layout).unwrap();
@@ -143,16 +143,19 @@ where
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
+    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+        BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     // Input Preparation
     // Before each operation, the inputs to that operation must be prepared
     // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
-    let mut a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
+    let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
     a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
 
-    let mut b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
+    let mut b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
     b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
 
     BenchmarkSetup {
@@ -173,9 +176,9 @@ where
     F: Fn(
         &mut FheUint<Vec<u8>, u32>,
         &Module<BE>,
-        &FheUintPrepared<Vec<u8>, u32, BE>,
-        &FheUintPrepared<Vec<u8>, u32, BE>,
-        &BDDKeyPrepared<Vec<u8>, BRA, BE>,
+        &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+        &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+        &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
         &mut Scratch<BE>,
     ),
 {
@@ -226,9 +229,9 @@ fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
     F: Fn(
             &mut FheUint<Vec<u8>, u32>,
             &Module<BE>,
-            &FheUintPrepared<Vec<u8>, u32, BE>,
-            &FheUintPrepared<Vec<u8>, u32, BE>,
-            &BDDKeyPrepared<Vec<u8>, BRA, BE>,
+            &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+            &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
+            &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
             &mut Scratch<BE>,
         ) + 'static,
 {

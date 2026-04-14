@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
 use crate::layouts::{
@@ -82,7 +82,7 @@ where
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEPrepared<Vec<u8>, BE> {
+    ) -> GGLWEPrepared<DeviceBuf<BE>, BE> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -105,7 +105,7 @@ where
     }
 
     /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
-    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos,
     {
@@ -209,80 +209,9 @@ impl<BE: Backend> GGLWEPreparedFactory<BE> for Module<BE> where
 {
 }
 
-/// Convenience associated functions for owned (`Vec<u8>`) allocation and byte-size queries.
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
-    /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GGLWEPreparedFactory<B>,
-    {
-        module.alloc_gglwe_prepared_from_infos(infos)
-    }
+// module-only API: allocation/size helpers are provided by `GGLWEPreparedFactory` on `Module`.
 
-    /// Allocates a new [`GGLWEPrepared`] with explicit parameters.
-    pub fn alloc<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
-    where
-        M: GGLWEPreparedFactory<B>,
-    {
-        module.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    /// Returns the byte size for a [`GGLWEPrepared`] matching `infos`.
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWEPreparedFactory<B>,
-    {
-        module.bytes_of_gglwe_prepared_from_infos(infos)
-    }
-
-    /// Returns the byte size for a [`GGLWEPrepared`] with explicit parameters.
-    pub fn bytes_of<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
-    where
-        M: GGLWEPreparedFactory<B>,
-    {
-        module.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-}
-
-impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
-    /// Transforms a standard [`GGLWE`] (`other`) into the DFT domain, writing into `self`.
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef,
-        M: GGLWEPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_gglwe(self, other, scratch);
-    }
-}
-
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
-    /// Returns the scratch-space bytes needed by [`prepare`](Self::prepare).
-    pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
-    where
-        M: GGLWEPreparedFactory<B>,
-    {
-        module.prepare_gglwe_tmp_bytes(self)
-    }
-}
+// module-only API: preparation is provided by `GGLWEPreparedFactory` on `Module`.
 
 /// Conversion trait for obtaining a mutable borrowed [`GGLWEPrepared`].
 pub trait GGLWEPreparedToMut<B: Backend> {

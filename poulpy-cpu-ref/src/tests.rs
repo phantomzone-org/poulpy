@@ -52,10 +52,10 @@ mod poulpy_cpu_ntt120 {
         backend_test = crate::NTT120Ref,
         params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
-            test_vec_znx_add => poulpy_hal::test_suite::vec_znx::test_vec_znx_add,
-            test_vec_znx_add_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_inplace,
-            test_vec_znx_add_scalar => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar,
-            test_vec_znx_add_scalar_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar_inplace,
+            test_vec_znx_add_into => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_into,
+            test_vec_znx_add_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_assign,
+            test_vec_znx_add_scalar_into => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar_into,
+            test_vec_znx_add_scalar_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar_assign,
             test_vec_znx_sub => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub,
             test_vec_znx_sub_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub_inplace,
             test_vec_znx_sub_negate_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub_negate_inplace,
@@ -96,10 +96,10 @@ mod poulpy_cpu_ntt120 {
         backend_test = crate::NTT120Ref,
         params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
-            test_vec_znx_big_add => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add,
-            test_vec_znx_big_add_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_inplace,
-            test_vec_znx_big_add_small => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small,
-            test_vec_znx_big_add_small_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_inplace,
+            test_vec_znx_big_add_into => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_into,
+            test_vec_znx_big_add_assign => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_assign,
+            test_vec_znx_big_add_small_into => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_into,
+            test_vec_znx_big_add_small_assign => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_assign,
             test_vec_znx_big_sub => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_sub,
             test_vec_znx_big_sub_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_sub_inplace,
             test_vec_znx_big_automorphism => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_automorphism,
@@ -120,8 +120,8 @@ mod poulpy_cpu_ntt120 {
         backend_test = crate::NTT120Ref,
         params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
-            test_vec_znx_dft_add => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add,
-            test_vec_znx_dft_add_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_inplace,
+            test_vec_znx_dft_add_into => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_into,
+            test_vec_znx_dft_add_assign => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_assign,
             test_vec_znx_dft_sub => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_sub,
             test_vec_znx_dft_sub_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_sub_inplace,
             test_vec_znx_dft_sub_negate_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_sub_negate_inplace,
@@ -151,4 +151,22 @@ mod poulpy_cpu_ntt120 {
             test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
         }
     }
+}
+
+#[cfg(test)]
+mod poulpy_core_fft64 {
+    poulpy_core::core_backend_test_suite!(
+        mod cpu_ref,
+        backend = crate::FFT64Ref,
+        params = TestParams { size: 1<<8, base2k: 17 },
+    );
+}
+
+#[cfg(test)]
+mod poulpy_core_ntt120 {
+    poulpy_core::core_backend_test_suite!(
+        mod cpu_ref,
+        backend = crate::NTT120Ref,
+        params = TestParams { size: 1<<8, base2k: 52 },
+    );
 }

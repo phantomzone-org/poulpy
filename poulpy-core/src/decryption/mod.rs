@@ -19,3 +19,7 @@ mod lwe;
 pub use glwe::*;
 pub use glwe_tensor::*;
 pub use lwe::*;
+
+pub(crate) use glwe::GLWEDecryptDefault;
+pub(crate) use glwe_tensor::GLWETensorDecryptDefault;
+pub(crate) use lwe::LWEDecryptDefault;

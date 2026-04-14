@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -26,8 +26,8 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -94,8 +94,8 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -155,8 +155,8 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -213,8 +213,8 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -228,6 +228,7 @@ where
 
     let a: u32 = source_xa.next_u32();
 
+    let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(a_enc.encrypt_sk_tmp_bytes(module));
     a_enc.encrypt_sk(
         module,
         a,
@@ -235,11 +236,13 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
+
+    let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(c_enc.decrypt_tmp_bytes(module));
 
     for i in 0..32 {
         a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());
-        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch.borrow()));
+        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch_dec.borrow()));
     }
 }

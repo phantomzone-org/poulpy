@@ -1,13 +1,13 @@
 use poulpy_hal::{
     api::{ScratchAvailable, SvpPPolAlloc, SvpPrepare},
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, SvpPPol},
+    layouts::{Backend, DataMut, DataRef, DeviceBuf, Module, ScalarZnx, Scratch, SvpPPolOwned},
 };
 
 use std::marker::PhantomData;
 
 use poulpy_core::{
     Distribution,
-    layouts::{GGSWPreparedFactory, LWEInfos, prepared::GGSWPrepared},
+    layouts::{GGSWPreparedFactory, LWEInfos},
 };
 
 use crate::bin_fhe::blind_rotation::{
@@ -20,13 +20,13 @@ where
     Self: GGSWPreparedFactory<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE>,
     Scratch<BE>: ScratchAvailable,
 {
-    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<Vec<u8>, CGGI, BE>
+    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<DeviceBuf<BE>, CGGI, BE>
     where
         A: BlindRotationKeyInfos,
     {
         BlindRotationKeyPrepared {
             data: (0..infos.n_lwe().as_usize())
-                .map(|_| GGSWPrepared::alloc_from_infos(self, infos))
+                .map(|_| self.alloc_ggsw_prepared_from_infos(infos))
                 .collect(),
             dist: Distribution::NONE,
             x_pow_a: None,
@@ -58,16 +58,16 @@ where
         let n: usize = other.n().as_usize();
 
         for (a, b) in res.data.iter_mut().zip(other.keys.iter()) {
-            a.prepare(self, b, scratch);
+            self.ggsw_prepare(a, b, scratch);
         }
 
         res.dist = other.dist;
 
         if let Distribution::BinaryBlock(_) = other.dist {
-            let mut x_pow_a: Vec<SvpPPol<Vec<u8>, BE>> = Vec::with_capacity(n << 1);
+            let mut x_pow_a: Vec<SvpPPolOwned<BE>> = Vec::with_capacity(n << 1);
             let mut buf: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
             (0..n << 1).for_each(|i| {
-                let mut res: SvpPPol<Vec<u8>, BE> = self.svp_ppol_alloc(1);
+                let mut res: SvpPPolOwned<BE> = self.svp_ppol_alloc(1);
                 set_xai_plus_y(self, i, 0, &mut res, &mut buf);
                 x_pow_a.push(res);
             });

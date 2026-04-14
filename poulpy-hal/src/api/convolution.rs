@@ -1,12 +1,12 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnxBigToMut,
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, DeviceBuf, Scratch, VecZnxBigToMut,
     VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
 };
 
 /// Allocates prepared convolution operands ([`CnvPVecL`], [`CnvPVecR`]).
 pub trait CnvPVecAlloc<BE: Backend> {
-    fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE>;
-    fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, BE>;
+    fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<DeviceBuf<BE>, BE>;
+    fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<DeviceBuf<BE>, BE>;
 }
 
 /// Returns the byte sizes for prepared convolution operands.

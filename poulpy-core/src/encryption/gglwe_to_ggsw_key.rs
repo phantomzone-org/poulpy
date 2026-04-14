@@ -1,49 +1,20 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxCopy},
-    layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, Module, Scratch},
     source::Source,
 };
 
+pub use crate::api::GGLWEToGGSWKeyEncryptSk;
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyToMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWESecretToRef,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
+        GLWESecretToRef, prepared::GLWESecretPreparedFactory,
     },
 };
 
-impl GGLWEToGGSWKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWEToGGSWKeyEncryptSk<BE>,
-    {
-        module.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> GGLWEToGGSWKey<DataSelf> {
-    pub fn encrypt_sk<M, S, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-
-        scratch: &mut Scratch<BE>,
-    ) where
-        M: GGLWEToGGSWKeyEncryptSk<BE>,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos,
-        E: EncryptionInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_to_ggsw_key_encrypt_sk(self, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-}
-
-pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGLWEToGGSWKeyEncryptSkDefault<BE: Backend> {
     fn gglwe_to_ggsw_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
@@ -55,7 +26,6 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
@@ -63,7 +33,7 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
-impl<BE: Backend> GGLWEToGGSWKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGLWEToGGSWKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopy,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -74,7 +44,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let sk_prepared: usize = GLWESecretPrepared::bytes_of(self, infos.rank());
+        let sk_prepared: usize = self.bytes_of_glwe_secret_prepared(infos.rank());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
         let sk_ij: usize = GLWESecret::bytes_of(self.n().into(), infos.rank());
         let lvl_0: usize = sk_prepared;
@@ -113,8 +83,8 @@ where
 
         let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
         let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
-        sk_prepared.prepare(self, sk);
-        sk_tensor.prepare(self, sk, scratch_2);
+        self.prepare_glwe_secret(&mut sk_prepared, sk);
+        self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch_2);
 
         let (mut sk_ij, scratch_3) = scratch_2.take_scalar_znx(self.n(), rank);
 
@@ -123,8 +93,15 @@ where
                 self.vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
-            res.at_mut(i)
-                .encrypt_sk(self, &sk_ij, &sk_prepared, enc_infos, source_xe, source_xa, scratch_3);
+            self.gglwe_encrypt_sk(
+                res.at_mut(i),
+                &sk_ij,
+                &sk_prepared,
+                enc_infos,
+                source_xe,
+                source_xa,
+                scratch_3,
+            );
         }
     }
 }

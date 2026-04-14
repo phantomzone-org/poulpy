@@ -1,13 +1,13 @@
 //! Encrypt / decrypt round-trip test.
 
-use super::helpers::{TestContext, assert_precision};
+use super::helpers::{TestBackend as Backend, TestContext, assert_precision};
 use poulpy_core::{GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
 use poulpy_hal::{
     api::{
         ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
     },
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Module, Scratch, ScratchOwned},
 };
 
 /// Verifies that encrypt → decrypt → decode recovers the original message.
@@ -18,7 +18,7 @@ where
         + GLWEDecrypt<BE>
         + GLWEShift<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxRshAdd<BE>
+        + VecZnxRshAddInto<BE>
         + VecZnxLsh<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes

@@ -2,18 +2,44 @@
 
 use poulpy_core::{
     GLWETensoring, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWEInfos, GLWELayout, GLWETensor, GLWETensorKeyPrepared, LWEInfos, TorusPrecision},
+    layouts::{
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
+        TorusPrecision,
+    },
 };
 use poulpy_hal::{
     api::ScratchAvailable,
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{PrecisionInfos, ciphertext::CKKSCiphertext};
+use crate::{CKKS, CKKSInfos};
 use anyhow::Result;
 
-impl CKKSCiphertext<Vec<u8>> {
-    pub fn mul_relin_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+pub trait CKKSMulOps {
+    fn mul_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        T: GGLWEInfos,
+        Module<BE>: GLWETensoring<BE>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn mul<A, B, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        b: &B,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        B: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+}
+
+impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
+    fn mul_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
@@ -33,20 +59,18 @@ impl CKKSCiphertext<Vec<u8>> {
 
         lvl_0 + lvl_1
     }
-}
-
-impl<D: DataMut> CKKSCiphertext<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn mul<BE: Backend>(
+    fn mul<A, B, BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
+        a: &A,
+        b: &B,
         tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let log_decimal = a.log_decimal();
@@ -54,7 +78,7 @@ impl<D: DataMut> CKKSCiphertext<D> {
         let offset = a.log_hom_rem() + a.log_decimal();
 
         let tensor_layout = GLWELayout {
-            n: self.inner.n(),
+            n: self.n(),
             base2k: self.base2k(),
             k: TorusPrecision(self.max_k().as_u32() + a.base2k().as_u32()),
             rank: self.rank(),
@@ -62,10 +86,13 @@ impl<D: DataMut> CKKSCiphertext<D> {
 
         let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
 
-        module.glwe_tensor_apply(&mut tmp, offset, &a.inner, &b.inner, scratch_1);
+        let a_ref = a.to_ref();
+        let b_ref = b.to_ref();
+        module.glwe_tensor_apply(&mut tmp, offset, &a_ref, &b_ref, scratch_1);
 
         // TODO: Chose correct optimal size based on noise
-        module.glwe_tensor_relinearize(&mut self.inner, &tmp, tsk, tsk.size(), scratch_1);
+        let mut self_view = self.to_mut();
+        module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
 
         self.set_log_hom_rem(a.log_hom_rem() - log_decimal)?;
         self.set_log_decimal(a.log_decimal().max(b.log_decimal()))?;

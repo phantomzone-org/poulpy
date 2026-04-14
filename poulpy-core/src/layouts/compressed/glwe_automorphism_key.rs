@@ -5,8 +5,8 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWECompressedToRef,
-    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEAutomorphismKey, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank,
-    SetGaloisElement, TorusPrecision,
+    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank, SetGaloisElement,
+    TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -154,18 +154,7 @@ where
 
 impl<B: Backend> GLWEAutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
 
-impl<D: DataMut> GLWEAutomorphismKey<D>
-where
-    Self: SetGaloisElement,
-{
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef + GetGaloisElement,
-        M: GLWEAutomorphismKeyDecompress,
-    {
-        module.decompress_automorphism_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWEAutomorphismKeyDecompress` on `Module`.
 
 impl<D: DataRef> GGLWECompressedToRef for GLWEAutomorphismKeyCompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {

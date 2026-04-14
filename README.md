@@ -1,23 +1,23 @@
 
 # 🐙 Poulpy
 
-<p  align="center">
-<img  src="poulpy.png"  />
+<p align="center">
+<img src="poulpy.png" />
 </p>
 
 [![CI](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml)
 
-**Poulpy** is a **fast & modular** FHE library that implements Ring-Learning-With-Errors based homomorphic encryption over the Torus. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771) to represent Torus polynomials. In addition to simpler and more efficient arithmetic than the residue number system (RNS), this representation provides a **common plaintext space** for all schemes and native bridges between any two schemes. Poulpy also decouples the schemes implementations from the polynomial arithmetic backend by being built from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). Leveraging HAL library users can develop applications while being generic over the backend and choose any backend of choice at runtime.
+**Poulpy** is a **fast & modular** FHE library that implements Ring-Learning-With-Errors based homomorphic encryption over the Torus. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771) to represent Torus polynomials. In addition to simpler and more efficient arithmetic than the residue number system (RNS), this representation provides a **common plaintext space** for all schemes and native bridges between any two schemes. Poulpy also decouples scheme implementations from the polynomial arithmetic backend by being built from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). Leveraging the HAL, users can develop applications generic over the backend and choose a backend at runtime.
 
-<p  align="center">
-<img  src="docs/lib_diagram.png"  />
+<p align="center">
+<img src="docs/lib_diagram.png" />
 </p>
 
 ## Library Crates
 
 - **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations other than the layouts (e.g. `VecZnx`, `VmpPmat`).
-- **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-bin-fhe`, `poulpy-ckks`**: backend agnostic crates implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**.
+- **`poulpy-core`**: a backend-agnostic crate implementing scheme-agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. It can be instantiated with any backend crate (e.g. `poulpy-cpu-ref`, `poulpy-cpu-avx`).
+- **`poulpy-schemes`**: backend-agnostic scheme implementations (e.g. CKKS, bin-FHE) built on **`poulpy-core`** and **`poulpy-hal`**.
 - **`poulpy-cpu-ref`**: the reference CPU implementation of **`poulpy-hal`**.
 - **`poulpy-cpu-avx`**: an AVX accelerated CPU implementation of **`poulpy-hal`**.
 
@@ -37,20 +37,20 @@ This provides the following benefits:
 
 - **Simpler implementation**: Since the cyclotomic arithmetic is decoupled from the coefficient representation, the same pipeline (including DFT) can be reused for all limbs (unlike in the RNS representation). The bivariate representation also has straight forward flat, aligned & vectorized memory layout. All these aspects make this representation a prime target for hardware acceleration.
 
-- **Deterministic computation**: Although is it defined on the Torus, bivariate arithmetic remains integer polynomial arithmetic, ensuring all computations are deterministic. The condition being that outputs should be reproducible and identical, regardless of the backend or hardware.
+- **Deterministic computation**: Although it is defined on the Torus, bivariate arithmetic remains integer polynomial arithmetic, ensuring all computations are deterministic. The only requirement is that outputs are reproducible and identical, regardless of the backend or hardware.
 
 ## Installation
 
 - **`poulpy-hal`**: https://crates.io/crates/poulpy-hal
 - **`poulpy-core`**: https://crates.io/crates/poulpy-core
-- **`poulpy-bin-fhe`, `poulpy-ckks`**: https://crates.io/crates/poulpy-schemes
+- **`poulpy-schemes`** (CKKS, bin-FHE): https://crates.io/crates/poulpy-schemes
 - **`poulpy-cpu-ref`**: https://crates.io/crates/poulpy-cpu-ref
 - **`poulpy-cpu-avx`**: https://crates.io/crates/poulpy-cpu-avx
 
 ## Documentation
 
 * Full `cargo doc` documentation is coming soon.
-* Architecture diagrams and design notes will be added in the [`/doc`](./doc) folder.
+* Architecture diagrams and design notes will be added in the [`/docs`](./docs) folder.
 
 ## Contributing
 
@@ -66,15 +66,15 @@ Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICEN
 
 ## Acknowledgement
 
-**Poulpy** is inspired by the modular architecture of [Lattigo](https://github.com/tuneinsight/lattigo) and [TFHE-go](https://github.com/sp301415/tfhe-go), and its development is lead by Lattigo’s co-author and main contributor [@Pro7ech](https://github.com/Pro7ech). Poulpy reflects the experience gained from over five years of designing and maintaining Lattigo, and represents the next evolution in architecture, performance, and backend philosophy.
+**Poulpy** was incubated by [PhantomZone](https://phantom.zone/) with grants from [Ethereum Foundation](https://ethereum.foundation/) and [ENS Foundation](https://docs.ens.domains/dao/foundation/).
 
 ## Citing
 Please use the following BibTex entry for citing Poulpy
 
     @misc{poulpy,
-	    title = {Poulpy v0.4.0},
+	    title = {Poulpy v0.5.0},
 	    howpublished = {Online: \url{https://github.com/phantomzone-org/poulpy}},
-	    month = Nov,
-	    year = 2025,
+	    month = Apr,
+	    year = 2026,
 	    note = {Phantom Zone}
     }

@@ -8,44 +8,51 @@ use std::collections::HashMap;
 
 use super::CKKSTestParams;
 use crate::{
-    layouts::{
-        Metadata,
-        ciphertext::CKKSCiphertext,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
+    CKKS,
+    layouts::plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_znx},
+    leveled::{
+        encryption::{CKKSDecrypt, CKKSEncrypt},
+        operations::mul::CKKSMulOps,
     },
-    leveled::encryption::{decrypt, decrypt_tmp_bytes, encrypt_sk, encrypt_sk_tmp_bytes},
 };
 use poulpy_core::{
     GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring,
     ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
-        GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision,
-        prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
+        TorusPrecision, prepared::GLWESecretPrepared,
     },
+    oep::CoreImpl,
 };
-use poulpy_cpu_ref::{FFT64Ref, fft64::FFT64ModuleHandle};
+use poulpy_cpu_ref::FFT64Ref;
 
 use poulpy_hal::{
     api::{
         ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VecZnxRshAdd,
+        VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
     },
-    layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned},
+    oep::HalImpl,
     source::Source,
 };
+
+pub trait TestBackend: Backend + CoreImpl<Self> + HalImpl<Self> {}
+
+impl<T> TestBackend for T where T: Backend + CoreImpl<T> + HalImpl<T> {}
 
 /// Shared test state: module, keys, and two complex test messages.
 ///
 /// Constructed via [`TestContext::new`] (base), [`TestContext::new_with_tsk`]
 /// (adds tensor key for multiplication), or [`TestContext::new_with_atk`]
 /// (adds automorphism keys for rotation and conjugation).
-pub struct TestContext<BE: Backend> {
+pub struct TestContext<BE: TestBackend> {
     pub module: Module<BE>,
+    pub encoder: Encoder<FFT64Ref>,
     pub params: CKKSTestParams,
-    pub sk: GLWESecretPrepared<Vec<u8>, BE>,
-    pub tsk: GLWETensorKeyPrepared<Vec<u8>, BE>,
-    pub atks: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>>,
+    pub sk: GLWESecretPrepared<DeviceBuf<BE>, BE>,
+    pub tsk: GLWETensorKeyPrepared<DeviceBuf<BE>, BE>,
+    pub atks: HashMap<i64, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>,
     pub scratch_size: usize,
     pub re1: Vec<f64>,
     pub im1: Vec<f64>,
@@ -53,7 +60,7 @@ pub struct TestContext<BE: Backend> {
     pub im2: Vec<f64>,
 }
 
-impl<BE: Backend> TestContext<BE>
+impl<BE: TestBackend> TestContext<BE>
 where
     Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
 {
@@ -69,7 +76,7 @@ where
         self.params.glwe_layout().rank()
     }
 
-    pub fn prec(&self) -> Metadata {
+    pub fn meta(&self) -> CKKS {
         self.params.prec
     }
 
@@ -77,15 +84,15 @@ where
     pub fn new(params: CKKSTestParams, rotations: &[i64]) -> Self
     where
         Module<BE>: poulpy_hal::api::ModuleNew<BE>
-            + GLWEEncryptSk<BE>
-            + GLWEDecrypt<BE>
             + GLWESecretPreparedFactory<BE>
             + GLWETensorKeyEncryptSk<BE>
             + GLWETensorKeyPreparedFactory<BE>
             + GLWEAutomorphismKeyEncryptSk<BE>
             + GLWEAutomorphism<BE>
             + GLWEShift<BE>
-            + GLWETensoring<BE>,
+            + GLWETensoring<BE>
+            + CKKSEncrypt<BE>
+            + CKKSDecrypt<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -101,20 +108,21 @@ where
         let mut source_xs = Source::new([0u8; 32]);
         let mut sk_raw = GLWESecret::alloc_from_infos(&glwe_infos);
         sk_raw.fill_ternary_hw(params.hw, &mut source_xs);
-        let mut sk = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
-        sk.prepare(&module, &sk_raw);
+        let mut sk = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
+        module.prepare_glwe_secret(&mut sk, &sk_raw);
 
         let mut scratch = ScratchOwned::<BE>::alloc(
-            encrypt_sk_tmp_bytes(&module, &params.glwe_layout())
-                .max(decrypt_tmp_bytes(&module, &params.glwe_layout()))
-                .max(GLWETensorKeyPrepared::prepare_tmp_bytes(&module, &tsk_infos))
-                .max(GLWETensorKey::encrypt_sk_tmp_bytes(&module, &tsk_infos)),
+            module
+                .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
+                .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
+                .max(module.prepare_tensor_key_tmp_bytes(&tsk_infos))
+                .max(module.glwe_tensor_key_encrypt_sk_tmp_bytes(&tsk_infos)),
         );
 
         let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        tsk.encrypt_sk(&module, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
-        let mut tsk_prepared = GLWETensorKeyPrepared::alloc_from_infos(&module, &tsk_infos);
-        tsk_prepared.prepare(&module, &tsk, scratch.borrow());
+        module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
+        let mut tsk_prepared = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prepared, &tsk, scratch.borrow());
 
         // Store keys by the public index used by operations/tests:
         // rotation shift `k` for slot rotations, and `-1` for conjugation.
@@ -127,8 +135,8 @@ where
         for &index in &automorphism_indices {
             let mut atk = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             let galois_element = if index == -1 { -1 } else { module.galois_element(index) };
-            atk.encrypt_sk(
-                &module,
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut atk,
                 galois_element,
                 &sk_raw,
                 &atk_infos,
@@ -136,20 +144,22 @@ where
                 &mut xe,
                 scratch.borrow(),
             );
-            let mut atk_prepared = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk_infos);
-            atk_prepared.prepare(&module, &atk, scratch.borrow());
+            let mut atk_prepared = module.alloc_glwe_automorphism_key_prepared_from_infos(&atk_infos);
+            module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
             atks.insert(index, atk_prepared);
         }
 
         let ct_infos = params.glwe_layout();
-        let scratch_size = encrypt_sk_tmp_bytes(&module, &ct_infos)
-            .max(decrypt_tmp_bytes(&module, &ct_infos))
+        let scratch_size = module
+            .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
+            .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
             .max(module.glwe_shift_tmp_bytes())
-            .max(CKKSCiphertext::mul_relin_tmp_bytes(&module, &ct_infos, &tsk_infos))
-            .max(CKKSCiphertext::automorphism_tmp_bytes(&module, &ct_infos, &atk_infos));
+            .max(GLWE::<Vec<u8>, CKKS>::mul_tmp_bytes(&module, &ct_infos, &tsk_infos))
+            .max(module.glwe_automorphism_tmp_bytes(&ct_infos, &ct_infos, &atk_infos));
 
         Self {
             module,
+            encoder: Encoder::<FFT64Ref>::new(m).unwrap(),
             params,
             sk,
             tsk: tsk_prepared,
@@ -162,73 +172,72 @@ where
         }
     }
 
-    pub fn tsk(&self) -> &GLWETensorKeyPrepared<Vec<u8>, BE> {
+    pub fn tsk(&self) -> &GLWETensorKeyPrepared<DeviceBuf<BE>, BE> {
         &self.tsk
     }
 
-    pub fn atks(&self) -> &HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> {
+    pub fn atks(&self) -> &HashMap<i64, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>> {
         &self.atks
     }
 
-    pub fn atk(&self, index: i64) -> &GLWEAutomorphismKeyPrepared<Vec<u8>, BE> {
+    pub fn atk(&self, index: i64) -> &GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> {
         self.atks()
             .get(&index)
             .unwrap_or_else(|| panic!("missing automorphism key for index {index}"))
     }
 
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
-    pub fn encrypt(&self, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> CKKSCiphertext<Vec<u8>>
+    pub fn encrypt(&self, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> GLWE<Vec<u8>, CKKS>
     where
-        Module<BE>: ModuleN + GLWEEncryptSk<BE> + VecZnxRshAdd<BE>,
+        Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE>,
         ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
 
-        pt_rnx.encode_reim(fft_module.get_ifft_table(), re, im);
+        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
 
-        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
+        let mut pt_znx = alloc_znx(self.degree(), self.base2k(), self.meta());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
 
-        let mut ct = CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout()).unwrap();
+        let mut ct = CKKS::alloc_from_infos(&self.params.glwe_layout()).unwrap();
         let mut xa = Source::new([3u8; 32]);
         let mut xe = Source::new([4u8; 32]);
-        encrypt_sk(
-            &self.module,
-            &mut ct,
-            &pt_znx,
-            &self.sk,
-            &self.params.glwe_layout(),
-            &mut xa,
-            &mut xe,
-            scratch,
-        );
+        self.module
+            .ckks_encrypt_sk(
+                &mut ct,
+                &pt_znx,
+                &self.sk,
+                &self.params.glwe_layout(),
+                &mut xa,
+                &mut xe,
+                scratch,
+            )
+            .unwrap();
         ct
     }
 
     /// Decrypts and decodes a ciphertext back to complex slot values.
     pub fn decrypt_decode(
         &self,
-        ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
+        ct: &GLWE<impl poulpy_hal::layouts::DataRef, CKKS>,
         scratch: &mut Scratch<BE>,
     ) -> (Vec<f64>, Vec<f64>)
     where
-        Module<BE>: ModuleN + GLWEDecrypt<BE> + VecZnxLsh<BE> + VecZnxLshInplace<BE> + VecZnxCopy,
+        Module<BE>: ModuleN + GLWEDecrypt<BE> + GLWEShift<BE> + VecZnxLsh<BE> + VecZnxLshInplace<BE> + VecZnxCopy,
         ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
-        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), ct.inner.base2k(), self.params.prec);
-        decrypt(&self.module, &mut pt_znx, ct, &self.sk, scratch);
+        let mut pt_znx = alloc_znx(self.degree(), ct.base2k(), self.params.prec);
+        self.module.ckks_decrypt(&mut pt_znx, ct, &self.sk, scratch).unwrap();
 
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n);
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
         pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
 
         let m = self.params.n / 2;
         let mut re = vec![0.0; m];
         let mut im = vec![0.0; m];
-        pt_rnx.decode_reim(fft_module.get_fft_table(), &mut re, &mut im);
+        self.encoder.decode_reim(&pt_rnx, &mut re, &mut im).unwrap();
 
         (re, im)
     }
@@ -300,29 +309,28 @@ where
     }
 
     /// Allocates a fresh full-precision result ciphertext.
-    pub fn alloc_ct(&self) -> CKKSCiphertext<Vec<u8>> {
-        CKKSCiphertext::alloc_from_infos(&self.params.glwe_layout()).unwrap()
+    pub fn alloc_ct(&self) -> GLWE<Vec<u8>, CKKS> {
+        CKKS::alloc_from_infos(&self.params.glwe_layout()).unwrap()
     }
 
     /// Allocates a ciphertext with one fewer limb than the default (k − base2k).
-    pub fn alloc_ct_reduced_k(&self) -> CKKSCiphertext<Vec<u8>> {
+    pub fn alloc_ct_reduced_k(&self) -> GLWE<Vec<u8>, CKKS> {
         let mut layout = self.params.glwe_layout();
         layout.layout.k = TorusPrecision(layout.layout.k.as_u32() - self.params.base2k as u32);
-        CKKSCiphertext::alloc_from_infos(&layout).unwrap()
+        CKKS::alloc_from_infos(&layout).unwrap()
     }
 
     /// Encodes (re2, im2) into an RNX plaintext via IFFT.
     pub fn encode_pt_rnx(&self) -> CKKSPlaintextRnx<f64> {
-        let fft_module = Module::<FFT64Ref>::new(self.params.n as u64);
-        let mut pt_rnx = CKKSPlaintextRnx::<f64>::alloc(self.params.n);
-        pt_rnx.encode_reim(fft_module.get_ifft_table(), &self.re2, &self.im2);
+        let mut pt_rnx = CKKSPlaintextRnx::<f64>::alloc(self.params.n).unwrap();
+        self.encoder.encode_reim(&mut pt_rnx, &self.re2, &self.im2).unwrap();
         pt_rnx
     }
 
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
     pub fn encode_pt_znx(&self) -> CKKSPlaintextZnx<Vec<u8>> {
         let pt_rnx = self.encode_pt_rnx();
-        let mut pt_znx = CKKSPlaintextZnx::alloc(self.degree(), self.base2k(), self.prec());
+        let mut pt_znx = alloc_znx(self.degree(), self.base2k(), self.meta());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         pt_znx
     }
@@ -331,7 +339,7 @@ where
     pub fn assert_decrypt_precision(
         &self,
         label: &str,
-        ct: &CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
+        ct: &GLWE<impl poulpy_hal::layouts::DataRef, CKKS>,
         want_re: &[f64],
         want_im: &[f64],
         min_bits: f64,

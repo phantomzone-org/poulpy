@@ -4,7 +4,7 @@ use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
     api::{CnvPVecAlloc, Convolution, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc},
-    layouts::{Backend, CnvPVecL, CnvPVecR, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
+    layouts::{Backend, CnvPVecL, CnvPVecR, DeviceBuf, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
     source::Source,
 };
 
@@ -30,7 +30,7 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(1, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
 
@@ -77,7 +77,7 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(1, size);
+        let mut a_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
 
@@ -124,8 +124,8 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(1, size);
-        let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(1, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(1, size);
+        let mut b_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
@@ -182,8 +182,8 @@ where
         let cols = 2;
         let c_size: usize = size + size - 1;
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(cols, size);
-        let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(cols, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(cols, size);
+        let mut b_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(cols, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
@@ -241,7 +241,7 @@ where
         let c_size: usize = size + size - 1;
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut c_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, c_size);
+        let mut c_big: VecZnxBig<DeviceBuf<BE>, BE> = module.vec_znx_big_alloc(1, c_size);
 
         a.fill_uniform(base2k, &mut source);
         let mut b = vec![0i64; size];

@@ -78,6 +78,7 @@ where
                 base2k: infos.base2k(),
                 k: infos.max_k(),
                 data,
+                meta: (),
             },
             scratch,
         )
@@ -126,6 +127,7 @@ where
             GLWEPlaintext {
                 base2k: infos.base2k(),
                 data,
+                meta: (),
             },
             scratch,
         )

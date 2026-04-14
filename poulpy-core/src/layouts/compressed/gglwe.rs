@@ -273,16 +273,7 @@ where
 
 impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform + VecZnxCopy {}
 
-impl<D: DataMut> GGLWE<D> {
-    /// Decompresses a [`GGLWECompressed`] into this standard GGLWE.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef,
-        M: GGLWEDecompress,
-    {
-        module.decompress_gglwe(self, other);
-    }
-}
+// module-only API: decompression is provided by `GGLWEDecompress` on `Module`.
 
 /// Converts a compressed GGLWE to a mutably-borrowed variant.
 pub trait GGLWECompressedToMut {

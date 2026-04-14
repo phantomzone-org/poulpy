@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
 };
 
 use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToRef, GetDegree, LWEInfos, Rank, TorusPrecision};
@@ -42,14 +42,14 @@ where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>,
 {
     /// Allocates a new prepared GLWE with the given parameters.
-    fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<Vec<u8>, B> {
+    fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<DeviceBuf<B>, B> {
         GLWEPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
         }
     }
 
-    fn alloc_glwe_prepared_from_infos<A>(&self, infos: &A) -> GLWEPrepared<Vec<u8>, B>
+    fn alloc_glwe_prepared_from_infos<A>(&self, infos: &A) -> GLWEPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -91,47 +91,9 @@ where
 
 impl<B: Backend> GLWEPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
 
-impl<B: Backend> GLWEPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWEPreparedFactory<B>,
-    {
-        module.alloc_glwe_prepared_from_infos(infos)
-    }
+// module-only API: allocation/size helpers are provided by `GLWEPreparedFactory` on `Module`.
 
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
-    where
-        M: GLWEPreparedFactory<B>,
-    {
-        module.alloc_glwe_prepared(base2k, k, rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWEPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
-    where
-        M: GLWEPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_prepared(base2k, k, rank)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWEPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GLWEToRef,
-        M: GLWEPreparedFactory<B>,
-    {
-        module.prepare_glwe(self, other);
-    }
-}
+// module-only API: preparation is provided by `GLWEPreparedFactory` on `Module`.
 
 pub trait GLWEPreparedToMut<B: Backend> {
     fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B>;
