@@ -154,8 +154,8 @@ where
     sk_lwe.fill_binary_block(BINARY_BLOCK_SIZE as usize, &mut source_xs);
 
     // Preparing the private keys
-    let mut sk_glwe_prepared = module.alloc_glwe_secret_prepared_from_infos(&glwe_layout);
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared = module.glwe_secret_prepared_alloc_from_infos(&glwe_layout);
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     // Creating the public BDD Key
     // This key is required to prepare all Fhe Integers for operations,

@@ -83,8 +83,8 @@ where
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(sk_out.rank());
-            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
+            module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
             let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
 
@@ -175,8 +175,8 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(sk_out.rank());
-            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
+            module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
             let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             module.decompress_automorphism_key(&mut atk, &atk_compressed);

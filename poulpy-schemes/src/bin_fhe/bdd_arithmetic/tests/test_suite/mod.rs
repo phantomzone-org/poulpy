@@ -103,8 +103,8 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
 
         let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(TEST_N_GLWE.into(), TEST_RANK.into());
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_glwe_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(TEST_RANK.into());
-        module.prepare_glwe_secret(&mut sk_glwe_prep, &sk_glwe);
+        let mut sk_glwe_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(TEST_RANK.into());
+        module.glwe_secret_prepare(&mut sk_glwe_prep, &sk_glwe);
 
         let n_lwe: u32 = TEST_N_LWE;
         let block_size: u32 = TEST_BLOCK_SIZE;

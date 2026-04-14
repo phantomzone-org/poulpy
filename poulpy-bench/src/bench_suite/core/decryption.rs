@@ -27,8 +27,8 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(infos.rank());
-    module.prepare_glwe_secret(&mut sk_prepared, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(infos.rank());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);

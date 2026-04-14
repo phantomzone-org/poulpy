@@ -74,7 +74,7 @@ where
     /// Allocates a new [`GGLWEPrepared`] with the given parameters.
     ///
     /// Panics if `dnum * dsize > ceil(k / base2k)`.
-    fn alloc_gglwe_prepared(
+    fn gglwe_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -105,12 +105,12 @@ where
     }
 
     /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
-    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<DeviceBuf<BE>, BE>
+    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_gglwe_prepared(
+        self.gglwe_prepared_alloc(
             infos.base2k(),
             infos.max_k(),
             infos.rank_in(),
@@ -121,7 +121,7 @@ where
     }
 
     /// Returns the byte size required to store a [`GGLWEPrepared`] with the given parameters.
-    fn bytes_of_gglwe_prepared(
+    fn gglwe_prepared_bytes_of(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -148,12 +148,12 @@ where
     }
 
     /// Returns the byte size required to store a [`GGLWEPrepared`] matching `infos`.
-    fn bytes_of_gglwe_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn gglwe_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_gglwe_prepared(
+        self.gglwe_prepared_bytes_of(
             infos.base2k(),
             infos.max_k(),
             infos.rank_in(),
@@ -163,8 +163,8 @@ where
         )
     }
 
-    /// Returns the scratch-space bytes needed by [`prepare_gglwe`](Self::prepare_gglwe).
-    fn prepare_gglwe_tmp_bytes<A>(&self, infos: &A) -> usize
+    /// Returns the scratch-space bytes needed by [`gglwe_prepare`](Self::gglwe_prepare).
+    fn gglwe_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -180,7 +180,7 @@ where
     /// Transforms a standard [`GGLWE`] into the DFT domain, writing the result into `res`.
     ///
     /// Both `res` and `other` must share the same ring degree, base2k, precision, and dsize.
-    fn prepare_gglwe<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
+    fn gglwe_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
     where
         R: GGLWEPreparedToMut<BE>,
         O: GGLWEToRef,
@@ -195,10 +195,10 @@ where
         assert_eq!(res.size(), other.size());
         assert_eq!(res.dsize, other.dsize);
         assert!(
-            scratch.available() >= self.prepare_gglwe_tmp_bytes(&res),
-            "scratch.available(): {} < GGLWEPreparedFactory::prepare_gglwe_tmp_bytes: {}",
+            scratch.available() >= self.gglwe_prepare_tmp_bytes(&res),
+            "scratch.available(): {} < GGLWEPreparedFactory::gglwe_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_gglwe_tmp_bytes(&res)
+            self.gglwe_prepare_tmp_bytes(&res)
         );
         self.vmp_prepare(&mut res.data, &other.data, scratch);
     }

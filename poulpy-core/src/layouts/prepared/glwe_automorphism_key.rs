@@ -84,7 +84,7 @@ pub trait GLWEAutomorphismKeyPreparedFactory<B: Backend>
 where
     Self: GGLWEPreparedFactory<B>,
 {
-    fn alloc_glwe_automorphism_key_prepared(
+    fn glwe_automorphism_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -93,12 +93,12 @@ where
         dsize: Dsize,
     ) -> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B> {
         GLWEAutomorphismKeyPrepared::<DeviceBuf<B>, B> {
-            key: self.alloc_gglwe_prepared(base2k, k, rank, rank, dnum, dsize),
+            key: self.gglwe_prepared_alloc(base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
 
-    fn alloc_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B>
+    fn glwe_automorphism_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
@@ -107,10 +107,10 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.alloc_glwe_automorphism_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.glwe_automorphism_key_prepared_alloc(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
-    fn bytes_of_glwe_automorphism_key_prepared(
+    fn glwe_automorphism_key_prepared_bytes_of(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -118,10 +118,10 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        self.bytes_of_gglwe_prepared(base2k, k, rank, rank, dnum, dsize)
+        self.gglwe_prepared_bytes_of(base2k, k, rank, rank, dnum, dsize)
     }
 
-    fn bytes_of_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_automorphism_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -130,18 +130,18 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.bytes_of_glwe_automorphism_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.glwe_automorphism_key_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
-    fn prepare_glwe_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_automorphism_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_gglwe_tmp_bytes(infos);
+        let lvl_0: usize = self.gglwe_prepare_tmp_bytes(infos);
         lvl_0
     }
 
-    fn prepare_glwe_automorphism_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn glwe_automorphism_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + SetGaloisElement,
         O: GGLWEToRef + GetGaloisElement,
@@ -149,12 +149,12 @@ where
     {
         let res_infos = res.to_mut();
         assert!(
-            scratch.available() >= self.prepare_glwe_automorphism_key_tmp_bytes(&res_infos),
-            "scratch.available(): {} < GLWEAutomorphismKeyPreparedFactory::prepare_glwe_automorphism_key_tmp_bytes: {}",
+            scratch.available() >= self.glwe_automorphism_key_prepare_tmp_bytes(&res_infos),
+            "scratch.available(): {} < GLWEAutomorphismKeyPreparedFactory::glwe_automorphism_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_glwe_automorphism_key_tmp_bytes(&res_infos)
+            self.glwe_automorphism_key_prepare_tmp_bytes(&res_infos)
         );
-        self.prepare_gglwe(res, other, scratch);
+        self.gglwe_prepare(res, other, scratch);
         res.set_p(other.p());
     }
 }

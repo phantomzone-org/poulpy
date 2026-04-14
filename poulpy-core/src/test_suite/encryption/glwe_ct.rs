@@ -60,8 +60,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-        module.prepare_glwe_secret(&mut sk_prepared, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
@@ -129,8 +129,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-        module.prepare_glwe_secret(&mut sk_prepared, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
@@ -193,8 +193,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-        module.prepare_glwe_secret(&mut sk_prepared, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
@@ -259,8 +259,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-        module.prepare_glwe_secret(&mut sk_prepared, &sk);
+        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(&glwe_infos);
         module.glwe_public_key_generate(&mut pk, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
@@ -268,8 +268,8 @@ where
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
         let mut pk_prepared: GLWEPublicKeyPrepared<DeviceBuf<BE>, BE> =
-            module.alloc_glwe_public_key_prepared_from_infos(&glwe_infos);
-        module.prepare_glwe_public_key(&mut pk_prepared, &pk);
+            module.glwe_public_key_prepared_alloc_from_infos(&glwe_infos);
+        module.glwe_public_key_prepare(&mut pk_prepared, &pk);
 
         module.glwe_encrypt_pk(
             &mut ct,

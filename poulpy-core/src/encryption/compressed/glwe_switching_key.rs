@@ -47,7 +47,7 @@ where
         assert_eq!(self.n() as u32, infos.n());
 
         let lvl_0: usize = ScalarZnx::bytes_of(self.n(), infos.rank_in().into());
-        let lvl_1: usize = self.bytes_of_glwe_secret_prepared(infos.rank_out());
+        let lvl_1: usize = self.glwe_secret_prepared_bytes_of(infos.rank_out());
         let lvl_2: usize = ScalarZnx::bytes_of(self.n(), 1).max(self.gglwe_compressed_encrypt_sk_tmp_bytes(infos));
 
         lvl_0 + lvl_1 + lvl_2

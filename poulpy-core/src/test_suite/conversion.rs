@@ -59,8 +59,8 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-            module.prepare_glwe_secret(&mut sk_prep, &sk);
+            let mut sk_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            module.glwe_secret_prepare(&mut sk_prep, &sk);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module)
@@ -159,8 +159,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk_glwe);
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -195,8 +195,8 @@ where
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut ksk_prepared: LWEToGLWEKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_lwe_to_glwe_key_prepared_from_infos(&ksk);
-    module.prepare_lwe_to_glwe_key(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: LWEToGLWEKeyPrepared<DeviceBuf<BE>, BE> = module.lwe_to_glwe_key_prepared_alloc_from_infos(&ksk);
+    module.lwe_to_glwe_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
     module.glwe_from_lwe(&mut glwe_ct, &lwe_ct, &ksk_prepared, scratch.borrow());
 
@@ -280,8 +280,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk_glwe);
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -318,8 +318,8 @@ where
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
-    let mut ksk_prepared: GLWEToLWEKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_to_lwe_key_prepared_from_infos(&ksk);
-    module.prepare_glwe_to_lwe_key(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: GLWEToLWEKeyPrepared<DeviceBuf<BE>, BE> = module.glwe_to_lwe_key_prepared_alloc_from_infos(&ksk);
+    module.glwe_to_lwe_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
     module.lwe_from_glwe(&mut lwe_ct, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
 

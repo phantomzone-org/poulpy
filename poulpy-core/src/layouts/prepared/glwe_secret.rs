@@ -54,32 +54,32 @@ pub trait GLWESecretPreparedFactory<B: Backend>
 where
     Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
-    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<DeviceBuf<B>, B> {
+    fn glwe_secret_prepared_alloc(&self, rank: Rank) -> GLWESecretPrepared<DeviceBuf<B>, B> {
         GLWESecretPrepared {
             data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_glwe_secret_prepared(infos.rank())
+        self.glwe_secret_prepared_alloc(infos.rank())
     }
 
-    fn bytes_of_glwe_secret_prepared(&self, rank: Rank) -> usize {
+    fn glwe_secret_prepared_bytes_of(&self, rank: Rank) -> usize {
         self.bytes_of_svp_ppol(rank.into())
     }
-    fn bytes_of_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_secret_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_glwe_secret_prepared(infos.rank())
+        self.glwe_secret_prepared_bytes_of(infos.rank())
     }
 
-    fn prepare_glwe_secret<R, O>(&self, res: &mut R, other: &O)
+    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution,

@@ -94,8 +94,8 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-            module.prepare_glwe_secret(&mut sk_prepared, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.glwe_automorphism_key_encrypt_sk(
                 &mut autokey,
@@ -118,8 +118,8 @@ where
             );
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_glwe_automorphism_key_prepared_from_infos(&autokey_infos);
-            module.prepare_glwe_automorphism_key(&mut autokey_prepared, &autokey, scratch.borrow());
+                module.glwe_automorphism_key_prepared_alloc_from_infos(&autokey_infos);
+            module.glwe_automorphism_key_prepare(&mut autokey_prepared, &autokey, scratch.borrow());
 
             module.glwe_automorphism(&mut ct_out, &ct_in, &autokey_prepared, scratch.borrow());
 
@@ -220,8 +220,8 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-            module.prepare_glwe_secret(&mut sk_prepared, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.glwe_automorphism_key_encrypt_sk(
                 &mut autokey,
@@ -244,8 +244,8 @@ where
             );
 
             let mut autokey_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_glwe_automorphism_key_prepared_from_infos(&autokey);
-            module.prepare_glwe_automorphism_key(&mut autokey_prepared, &autokey, scratch.borrow());
+                module.glwe_automorphism_key_prepared_alloc_from_infos(&autokey);
+            module.glwe_automorphism_key_prepare(&mut autokey_prepared, &autokey, scratch.borrow());
 
             module.glwe_automorphism_inplace(&mut ct, &autokey_prepared, scratch.borrow());
 

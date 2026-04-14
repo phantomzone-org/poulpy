@@ -98,15 +98,15 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-        module.prepare_glwe_secret(&mut sk_dft, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc(module.n().into(), rank.into());
         module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
 
         let mut sk_tensor_prep: GLWESecretTensorPrepared<DeviceBuf<BE>, BE> =
-            module.alloc_glwe_secret_tensor_prepared(rank.into());
-        module.prepare_glwe_secret_tensor(&mut sk_tensor_prep, &sk_tensor);
+            module.glwe_secret_tensor_prepared_alloc(rank.into());
+        module.glwe_secret_tensor_prepared_prepare(&mut sk_tensor_prep, &sk_tensor);
 
         let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
         module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
@@ -270,8 +270,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-        module.prepare_glwe_secret(&mut sk_dft, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let tsk_enc_infos = EncryptionLayout::new_from_default_sigma(tsk_infos).unwrap();
         let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_in_infos).unwrap();
@@ -397,8 +397,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-        module.prepare_glwe_secret(&mut sk_dft, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
 
@@ -515,8 +515,8 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-        module.prepare_glwe_secret(&mut sk_dft, &sk);
+        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
 

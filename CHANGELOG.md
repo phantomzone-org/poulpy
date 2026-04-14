@@ -21,6 +21,8 @@
 - Move backend conformance suites into `src/test_suite` and keep unit tests separate.
 - Refresh layouts, noise helpers, and utilities to align with the new API surface.
 - Re-export top-level modules to preserve public API ergonomics while routing through the new `api` traits.
+- Standardize prepared allocations on `DeviceBuf` for backend-owned buffers to make data ownership explicit.
+- Rename Module allocation/prepare helpers to struct-first names (e.g. `gglwe_prepared_alloc`, `glwe_secret_prepare`) to match the rest of the API.
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx` (backend reshuffle)
 - Reorganize backend implementations around `hal_impl` modules and `hal_defaults` to mirror the new HAL entrypoint and reduce duplication.

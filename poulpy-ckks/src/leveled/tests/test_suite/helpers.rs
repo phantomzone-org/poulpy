@@ -108,8 +108,8 @@ where
         let mut source_xs = Source::new([0u8; 32]);
         let mut sk_raw = GLWESecret::alloc_from_infos(&glwe_infos);
         sk_raw.fill_ternary_hw(params.hw, &mut source_xs);
-        let mut sk = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
-        module.prepare_glwe_secret(&mut sk, &sk_raw);
+        let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
+        module.glwe_secret_prepare(&mut sk, &sk_raw);
 
         let mut scratch = ScratchOwned::<BE>::alloc(
             module
@@ -144,8 +144,8 @@ where
                 &mut xe,
                 scratch.borrow(),
             );
-            let mut atk_prepared = module.alloc_glwe_automorphism_key_prepared_from_infos(&atk_infos);
-            module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
+            let mut atk_prepared = module.glwe_automorphism_key_prepared_alloc_from_infos(&atk_infos);
+            module.glwe_automorphism_key_prepare(&mut atk_prepared, &atk, scratch.borrow());
             atks.insert(index, atk_prepared);
         }
 

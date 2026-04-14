@@ -104,8 +104,8 @@ where
 
     let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);
 
-    let mut ksk_prepared: LWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_lwe_switching_key_prepared_from_infos(&ksk);
-    module.prepare_lwe_switching_key(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: LWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.lwe_switching_key_prepared_alloc_from_infos(&ksk);
+    module.lwe_switching_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
     module.lwe_keyswitch(&mut lwe_ct_out, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 

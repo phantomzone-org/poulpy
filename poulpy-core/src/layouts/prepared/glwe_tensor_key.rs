@@ -66,7 +66,7 @@ where
         rank: Rank,
     ) -> GLWETensorKeyPrepared<DeviceBuf<B>, B> {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
-        GLWETensorKeyPrepared(self.alloc_gglwe_prepared(base2k, k, Rank(pairs), rank, dnum, dsize))
+        GLWETensorKeyPrepared(self.gglwe_prepared_alloc(base2k, k, Rank(pairs), rank, dnum, dsize))
     }
 
     fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<DeviceBuf<B>, B>
@@ -78,7 +78,7 @@ where
 
     fn bytes_of_tensor_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
-        self.bytes_of_gglwe_prepared(base2k, k, Rank(pairs), rank, dnum, dsize)
+        self.gglwe_prepared_bytes_of(base2k, k, Rank(pairs), rank, dnum, dsize)
     }
 
     fn bytes_of_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> usize
@@ -92,7 +92,7 @@ where
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_gglwe_tmp_bytes(infos);
+        let lvl_0: usize = self.gglwe_prepare_tmp_bytes(infos);
         lvl_0
     }
 
@@ -109,7 +109,7 @@ where
             scratch.available(),
             self.prepare_tensor_key_tmp_bytes(&res_infos)
         );
-        self.prepare_gglwe(res, other, scratch);
+        self.gglwe_prepare(res, other, scratch);
     }
 }
 

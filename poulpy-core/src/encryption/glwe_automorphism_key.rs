@@ -49,7 +49,7 @@ where
         );
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = self.bytes_of_glwe_secret_prepared_from_infos(infos);
+        let lvl_0: usize = self.glwe_secret_prepared_bytes_of_from_infos(infos);
         let lvl_1_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
         let lvl_1_sk: usize = GLWESecret::bytes_of_from_infos(infos);
         let lvl_1: usize = lvl_1_encrypt.max(lvl_1_sk);
@@ -100,7 +100,7 @@ where
                     i,
                 );
             }
-            self.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            self.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
         }
 
         self.gglwe_encrypt_sk(res, &sk.data, &sk_out_prepared, enc_infos, source_xe, source_xa, scratch_1);

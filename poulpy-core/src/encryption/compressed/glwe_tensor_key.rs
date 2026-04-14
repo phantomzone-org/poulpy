@@ -44,7 +44,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let sk_prepared: usize = self.bytes_of_glwe_secret_prepared(infos.rank_out());
+        let sk_prepared: usize = self.glwe_secret_prepared_bytes_of(infos.rank_out());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
 
         let tensor_infos: GGLWELayout = GGLWELayout {
@@ -90,7 +90,7 @@ where
 
         let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
         let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
-        self.prepare_glwe_secret(&mut sk_prepared, sk);
+        self.glwe_secret_prepare(&mut sk_prepared, sk);
         self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch_2);
 
         self.gglwe_compressed_encrypt_sk(res, &sk_tensor.data, &sk_prepared, seed_xa, enc_infos, source_xe, scratch_2);

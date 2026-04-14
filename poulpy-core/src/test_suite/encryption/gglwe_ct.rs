@@ -66,8 +66,8 @@ where
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+                    module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
                 module.glwe_switching_key_encrypt_sk(
                     &mut ksk,
@@ -152,8 +152,8 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+                    module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
                 let seed_xa = [1u8; 32];
 
@@ -240,8 +240,8 @@ where
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+                    module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
                 let seed_xa = [1u8; 32];
 

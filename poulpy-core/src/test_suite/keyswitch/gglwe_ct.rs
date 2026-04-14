@@ -106,8 +106,8 @@ where
                     sk2.fill_ternary_prob(0.5, &mut source_xs);
 
                     let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                        module.alloc_glwe_secret_prepared(rank_out_s1s2.into());
-                    module.prepare_glwe_secret(&mut sk2_prepared, &sk2);
+                        module.glwe_secret_prepared_alloc(rank_out_s1s2.into());
+                    module.glwe_secret_prepare(&mut sk2_prepared, &sk2);
 
                     // gglwe_{s1}(s0) = s0 -> s1
                     module.glwe_switching_key_encrypt_sk(
@@ -132,8 +132,8 @@ where
                     );
 
                     let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                        module.alloc_glwe_switching_key_prepared_from_infos(&gglwe_s1s2);
-                    module.prepare_glwe_switching(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
+                        module.glwe_switching_key_prepared_alloc_from_infos(&gglwe_s1s2);
+                    module.glwe_switching_key_prepare(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
                     module.gglwe_keyswitch(&mut gglwe_s0s2, &gglwe_s0s1, &gglwe_s1s2_prepared, scratch_apply.borrow());
@@ -267,8 +267,8 @@ where
                 let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk2.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk2_prepared, &sk2);
+                let mut sk2_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk2_prepared, &sk2);
 
                 // gglwe_{s1}(s0) = s0 -> s1
                 module.glwe_switching_key_encrypt_sk(
@@ -293,8 +293,8 @@ where
                 );
 
                 let mut gglwe_s1s2_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_switching_key_prepared_from_infos(&gglwe_s1s2);
-                module.prepare_glwe_switching(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
+                    module.glwe_switching_key_prepared_alloc_from_infos(&gglwe_s1s2);
+                module.glwe_switching_key_prepare(&mut gglwe_s1s2_prepared, &gglwe_s1s2, scratch_apply.borrow());
 
                 // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
                 println!("{} {} {}", gglwe_s0s1.base2k(), gglwe_s0s1.max_k(), gglwe_s0s1.size());

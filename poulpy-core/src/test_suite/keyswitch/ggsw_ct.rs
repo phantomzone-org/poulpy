@@ -113,14 +113,14 @@ where
             let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_in_prepared, &sk_in);
+            let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_in_prepared, &sk_in);
 
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
             module.glwe_switching_key_encrypt_sk(
                 &mut ksk,
@@ -153,12 +153,12 @@ where
             );
 
             let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_glwe_switching_key_prepared_from_infos(&ksk);
-            module.prepare_glwe_switching(&mut ksk_prepared, &ksk, scratch.borrow());
+                module.glwe_switching_key_prepared_alloc_from_infos(&ksk);
+            module.glwe_switching_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_gglwe_to_ggsw_key_prepared_from_infos(&tsk);
-            module.prepare_gglwe_to_ggsw_key(&mut tsk_prepared, &tsk, scratch.borrow());
+                module.gglwe_to_ggsw_key_prepared_alloc_from_infos(&tsk);
+            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, scratch.borrow());
 
             module.ggsw_keyswitch(&mut ggsw_out, &ggsw_in, &ksk_prepared, &tsk_prepared, scratch.borrow());
 
@@ -274,14 +274,14 @@ where
             let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_in_prepared, &sk_in);
+            let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_in_prepared, &sk_in);
 
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
             module.glwe_switching_key_encrypt_sk(
                 &mut ksk,
@@ -314,12 +314,12 @@ where
             );
 
             let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_glwe_switching_key_prepared_from_infos(&ksk);
-            module.prepare_glwe_switching(&mut ksk_prepared, &ksk, scratch.borrow());
+                module.glwe_switching_key_prepared_alloc_from_infos(&ksk);
+            module.glwe_switching_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
             let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
-                module.alloc_gglwe_to_ggsw_key_prepared_from_infos(&tsk);
-            module.prepare_gglwe_to_ggsw_key(&mut tsk_prepared, &tsk, scratch.borrow());
+                module.gglwe_to_ggsw_key_prepared_alloc_from_infos(&tsk);
+            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, scratch.borrow());
 
             module.ggsw_keyswitch_inplace(&mut ggsw_out, &ksk_prepared, &tsk_prepared, scratch.borrow());
 

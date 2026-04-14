@@ -76,11 +76,11 @@ where
 
         CircuitBootstrappingKeyPrepared {
             brk: BlindRotationKeyPrepared::alloc(self, &infos.brk_infos()),
-            tsk: self.alloc_gglwe_to_ggsw_key_prepared_from_infos(&infos.tsk_infos()),
+            tsk: self.gglwe_to_ggsw_key_prepared_alloc_from_infos(&infos.tsk_infos()),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {
-                    let key = self.alloc_glwe_automorphism_key_prepared_from_infos(atk_infos);
+                    let key = self.glwe_automorphism_key_prepared_alloc_from_infos(atk_infos);
                     (gal_el, key)
                 })
                 .collect(),
@@ -92,8 +92,8 @@ where
         A: CircuitBootstrappingKeyInfos,
     {
         self.blind_rotation_key_prepare_tmp_bytes(&infos.brk_infos())
-            .max(self.prepare_gglwe_to_ggsw_key_tmp_bytes(&infos.tsk_infos()))
-            .max(self.prepare_glwe_automorphism_key_tmp_bytes(&infos.atk_infos()))
+            .max(self.gglwe_to_ggsw_key_prepare_tmp_bytes(&infos.tsk_infos()))
+            .max(self.glwe_automorphism_key_prepare_tmp_bytes(&infos.atk_infos()))
     }
 
     fn circuit_bootstrapping_key_prepare<DM, DR>(
@@ -107,10 +107,10 @@ where
         Scratch<BE>: ScratchAvailable,
     {
         res.brk.prepare(self, &other.brk, scratch);
-        self.prepare_gglwe_to_ggsw_key(&mut res.tsk, &other.tsk, scratch);
+        self.gglwe_to_ggsw_key_prepare(&mut res.tsk, &other.tsk, scratch);
 
         for (k, a) in res.atk.iter_mut() {
-            self.prepare_glwe_automorphism_key(
+            self.glwe_automorphism_key_prepare(
                 a,
                 other.atk.get(k).unwrap_or_else(|| {
                     panic!("Galois element {k} is present in the prepared key but missing from the source key")

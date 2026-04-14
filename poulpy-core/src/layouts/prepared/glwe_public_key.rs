@@ -58,42 +58,42 @@ pub trait GLWEPublicKeyPreparedFactory<B: Backend>
 where
     Self: GetDegree + GLWEPreparedFactory<B>,
 {
-    fn alloc_glwe_public_key_prepared(
+    fn glwe_public_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank: Rank,
     ) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B> {
         GLWEPublicKeyPrepared {
-            key: self.alloc_glwe_prepared(base2k, k, rank),
+            key: self.glwe_prepared_alloc(base2k, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B>
+    fn glwe_public_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
-        self.alloc_glwe_public_key_prepared(infos.base2k(), infos.max_k(), infos.rank())
+        self.glwe_public_key_prepared_alloc(infos.base2k(), infos.max_k(), infos.rank())
     }
 
-    fn bytes_of_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        self.bytes_of_glwe_prepared(base2k, k, rank)
+    fn glwe_public_key_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        self.glwe_prepared_bytes_of(base2k, k, rank)
     }
 
-    fn bytes_of_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_public_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.bytes_of_glwe_public_key_prepared(infos.base2k(), infos.max_k(), infos.rank())
+        self.glwe_public_key_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.rank())
     }
 
-    fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
+    fn glwe_public_key_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWEPreparedToMut<B> + GetDistributionMut,
         O: GLWEToRef + GetDistribution,
     {
-        self.prepare_glwe(res, other);
+        self.glwe_prepare(res, other);
         *res.dist_mut() = *other.dist();
     }
 }

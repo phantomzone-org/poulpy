@@ -99,7 +99,7 @@ fn setup() -> Setup {
     };
     scratch = ScratchOwned::<BE>::alloc(
         GLWEAutomorphismKey::encrypt_sk_tmp_bytes(&module, &atk_layout)
-            .max(module.prepare_glwe_automorphism_key_tmp_bytes(&atk_layout)),
+            .max(module.glwe_automorphism_key_prepare_tmp_bytes(&atk_layout)),
     );
 
     let atk_enc_infos = EncryptionLayout::new_from_default_sigma(atk_layout).unwrap();

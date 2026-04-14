@@ -83,7 +83,7 @@ pub trait GLWESwitchingKeyPreparedFactory<B: Backend>
 where
     Self: GGLWEPreparedFactory<B>,
 {
-    fn alloc_glwe_switching_key_prepared(
+    fn glwe_switching_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -93,17 +93,17 @@ where
         dsize: Dsize,
     ) -> GLWESwitchingKeyPrepared<DeviceBuf<B>, B> {
         GLWESwitchingKeyPrepared::<DeviceBuf<B>, B> {
-            key: self.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize),
+            key: self.gglwe_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize),
             input_degree: Degree(0),
             output_degree: Degree(0),
         }
     }
 
-    fn alloc_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<DeviceBuf<B>, B>
+    fn glwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
-        self.alloc_glwe_switching_key_prepared(
+        self.glwe_switching_key_prepared_alloc(
             infos.base2k(),
             infos.max_k(),
             infos.rank_in(),
@@ -122,10 +122,10 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        self.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
+        self.gglwe_prepared_bytes_of(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    fn bytes_of_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_switching_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -139,15 +139,15 @@ where
         )
     }
 
-    fn prepare_glwe_switching_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_switching_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_gglwe_tmp_bytes(infos);
+        let lvl_0: usize = self.gglwe_prepare_tmp_bytes(infos);
         lvl_0
     }
 
-    fn prepare_glwe_switching<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn glwe_switching_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
@@ -155,12 +155,12 @@ where
     {
         let res_infos = res.to_mut();
         assert!(
-            scratch.available() >= self.prepare_glwe_switching_key_tmp_bytes(&res_infos),
-            "scratch.available(): {} < GLWESwitchingKeyPreparedFactory::prepare_glwe_switching_key_tmp_bytes: {}",
+            scratch.available() >= self.glwe_switching_key_prepare_tmp_bytes(&res_infos),
+            "scratch.available(): {} < GLWESwitchingKeyPreparedFactory::glwe_switching_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_glwe_switching_key_tmp_bytes(&res_infos)
+            self.glwe_switching_key_prepare_tmp_bytes(&res_infos)
         );
-        self.prepare_gglwe(res, other, scratch);
+        self.gglwe_prepare(res, other, scratch);
         *res.input_degree() = *other.input_degree();
         *res.output_degree() = *other.output_degree();
     }
