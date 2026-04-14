@@ -4,9 +4,9 @@
 
 This backend implements the Poulpy HAL extension traits and can be used by:
 
-- [`poulpy-hal`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-hal)
-- [`poulpy-core`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-core)
-- [`poulpy-schemes` (CKKS, bin-FHE)](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-schemes)
+- [`poulpy-hal`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-hal)
+- [`poulpy-core`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-core)
+- [`poulpy-schemes` (CKKS, bin-FHE)](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-schemes)
 
 ## 🚩 Safety and Requirements
 

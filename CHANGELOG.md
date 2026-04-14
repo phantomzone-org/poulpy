@@ -162,8 +162,8 @@ unsafe impl CoreImpl<MyBackend> for MyBackend {
 
 ## [0.4.3] - 2026-01-16
 
-- Fix [#131](https://github.com/phantomzone-org/poulpy/issues/131)
-- Fix [#130](https://github.com/phantomzone-org/poulpy/issues/130)
+- Fix [#131](https://github.com/poulpy-fhe/poulpy/issues/131)
+- Fix [#130](https://github.com/poulpy-fhe/poulpy/issues/130)
 
 ## [0.4.2] - 2025-12-21
 
