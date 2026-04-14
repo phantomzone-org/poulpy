@@ -5,8 +5,8 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "A backend agnostic crate implementing binary/gate-level RLWE-based FHE"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [features]

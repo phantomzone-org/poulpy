@@ -5,8 +5,8 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "A crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic."
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]

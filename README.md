@@ -5,7 +5,7 @@
 <img src="poulpy.png" />
 </p>
 
-[![CI](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml)
+[![CI](https://github.com/poulpy-fhe/poulpy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/poulpy-fhe/poulpy/actions/workflows/ci.yml)
 
 **Poulpy** is a **fast & modular** FHE library that implements Ring-Learning-With-Errors based homomorphic encryption over the Torus. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771) to represent Torus polynomials. In addition to simpler and more efficient arithmetic than the residue number system (RNS), this representation provides a **common plaintext space** for all schemes and native bridges between any two schemes. Poulpy also decouples scheme implementations from the polynomial arithmetic backend by being built from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). Leveraging the HAL, users can develop applications generic over the backend and choose a backend at runtime.
 
@@ -73,7 +73,7 @@ Please use the following BibTex entry for citing Poulpy
 
     @misc{poulpy,
 	    title = {Poulpy v0.5.0},
-	    howpublished = {Online: \url{https://github.com/phantomzone-org/poulpy}},
+	    howpublished = {Online: \url{https://github.com/poulpy-fhe/poulpy}},
 	    month = Apr,
 	    year = 2026,
 	    note = {Phantom Zone}
