@@ -38,7 +38,13 @@ macro_rules! hal_impl_vmp_ntt_ifma {
             A: VecZnxDftToRef<Self>,
             C: VmpPMatToRef<Self>,
         {
-            <Self as NTTIfmaVmpDefaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, scratch)
+            use poulpy_cpu_ref::reference::ntt_ifma::vmp::ntt_ifma_vmp_apply_dft_to_dft_tmp_bytes;
+            use poulpy_hal::api::TakeSlice;
+            let a_ref: VecZnxDft<&[u8], Self> = a.to_ref();
+            let b_ref: VmpPMat<&[u8], Self> = b.to_ref();
+            let bytes = ntt_ifma_vmp_apply_dft_to_dft_tmp_bytes(a_ref.size(), b_ref.rows(), b_ref.cols_in());
+            let (tmp, _) = scratch.take_slice::<u64>(bytes / std::mem::size_of::<u64>());
+            crate::ntt_ifma::vmp::vmp_apply_dft_to_dft_ifma(module, res, a, b, limb_offset, tmp)
         }
 
         fn vmp_zero<R>(module: &Module<Self>, res: &mut R)

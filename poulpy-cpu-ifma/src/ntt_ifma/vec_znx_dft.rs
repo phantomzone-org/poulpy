@@ -1,14 +1,17 @@
 //! NTT-domain SIMD helpers for [`NTTIfma`](crate::NTTIfma).
 //!
-//! This module contains AVX512-IFMA/VL SIMD helpers for CRT reconstruction
-//! (Garner's algorithm) used by the IFMA inverse-NTT pipeline.
+//! This module contains:
+//!
+//! - AVX512-IFMA/VL SIMD Garner CRT reconstruction helpers used by the consume path.
+//! - The `vec_znx_idft_apply_consume` entry point called by the `hal_impl` macro.
 
-#![allow(dead_code)]
-
+use bytemuck::cast_slice_mut;
 use poulpy_cpu_ref::reference::ntt_ifma::{
     ntt::NttIfmaTableInv,
     primes::{PrimeSetIfma, Primes40},
+    vec_znx_dft::NttIfmaModuleHandle,
 };
+use poulpy_hal::layouts::{Data, Module, VecZnxBig, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxViewMut};
 
 use super::ntt_ifma_avx512::{cond_sub_2q_si256, harvey_modmul_si256, intt_ifma_avx512};
 
@@ -363,4 +366,33 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
             }
         }
     }
+}
+
+/// AVX512-accelerated `vec_znx_idft_apply_consume` for [`NTTIfma`](crate::NTTIfma).
+///
+/// Converts the DFT-domain `VecZnxDft` into a `VecZnxBig` by applying inverse NTT
+/// and in-place CRT compaction (q120b 32 bytes/coeff → i128 16 bytes/coeff) for
+/// each block, then reinterpreting the buffer.
+pub(crate) fn vec_znx_idft_apply_consume<D: Data>(
+    module: &Module<crate::NTTIfma>,
+    mut a: VecZnxDft<D, crate::NTTIfma>,
+) -> VecZnxBig<D, crate::NTTIfma>
+where
+    VecZnxDft<D, crate::NTTIfma>: VecZnxDftToMut<crate::NTTIfma>,
+{
+    let table = module.get_intt_ifma_table();
+
+    let (n, n_blocks, u64_ptr) = {
+        let mut a_mut: VecZnxDft<&mut [u8], crate::NTTIfma> = a.to_mut();
+        let n = a_mut.n();
+        let n_blocks = a_mut.cols() * a_mut.size();
+        let ptr: *mut u64 = {
+            let s = a_mut.raw_mut();
+            cast_slice_mut::<_, u64>(s).as_mut_ptr()
+        };
+        (n, n_blocks, ptr)
+    };
+
+    unsafe { compact_all_blocks(n, n_blocks, u64_ptr, table) };
+    a.into_big()
 }

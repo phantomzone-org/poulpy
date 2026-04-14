@@ -39,18 +39,11 @@
 //! | `ntt_ifma` | NTT-domain backend implementation (`NTTIfma`) |
 //! | `fft64`    | FFT64-domain backend implementation (`FFT64Ifma`) |
 //!
-//! Both `ntt_ifma` and `fft64` contain:
-//!
-//! | Submodule | Responsibility |
-//! |---|---|
-//! | `module` | Backend handle lifecycle, twiddle-table management, `Backend` trait impl |
-//! | `convolution` | AVX-512 convolution kernels (hot-path overrides) |
-//! | `svp` | AVX-512 scalar-vector product kernels |
-//! | `vmp` | AVX-512 vector-matrix product kernels |
-//! | `vec_znx_dft` | CRT compaction helpers for DFT-domain operations |
-//!
-//! Portable operations (scratch, vec_znx, vec_znx_big arithmetic) are handled by
-//! shared defaults from `poulpy-cpu-ref` via the `hal_impl/` macros.
+//! Both backends share `module` (handle lifecycle) and `convolution` (AVX-512
+//! kernels). `ntt_ifma` additionally keeps AVX-512 overrides for `svp`, `vmp`,
+//! `vec_znx_dft` (CRT compaction / consume), and `vec_znx_big_avx512` (i128
+//! arithmetic). Portable operations (scratch, vec_znx) are handled by shared
+//! defaults from `poulpy-cpu-ref` via the `hal_impl/` macros.
 //!
 //! NTT-specific helpers (`ntt_ifma_avx512`, `mat_vec_ifma`) and FFT-specific
 //! helpers (`reim`, `reim4`) live under their respective backend modules.

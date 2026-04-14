@@ -4,6 +4,10 @@
 //! (SVP) operations in the IFMA NTT domain. These kernels can be used to
 //! override the default reference implementations for improved performance.
 
+// SVP pointwise multiply kernel. Currently not wired into HalImpl — the default
+// path already dispatches to SIMD via NttIfmaMulBbc trait impls. This kernel
+// provides a tighter loop (2 coeffs per __m512i) that may be useful as a future
+// override for svp_apply_dft_to_dft.
 #![allow(dead_code)]
 
 use core::arch::x86_64::{

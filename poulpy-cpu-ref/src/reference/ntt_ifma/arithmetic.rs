@@ -43,6 +43,7 @@ const BIG_Q: u128 = Q01 * Q2 as u128;
 /// Barrett multiplier: `mu[k] = floor(2^52 / Q[k])`.
 ///
 /// Used for Harvey-style quotient precomputation.
+#[allow(dead_code)]
 const BARRETT_MU_52: [u64; 3] = {
     let mut mu = [0u64; 3];
     let mut k = 0usize;

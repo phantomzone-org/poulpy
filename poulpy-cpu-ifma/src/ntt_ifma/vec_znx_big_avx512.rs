@@ -1,8 +1,8 @@
 //! Raw AVX-512 kernels for `i128` arithmetic used by the IFMA backend.
 //!
 //! This module contains the low-level SIMD kernels behind the `I128BigOps` and
-//! `I128NormalizeOps` traits. The higher-level loop structure lives in `poulpy-hal`;
-//! this file provides the accelerated per-slice building blocks.
+//! `I128NormalizeOps` traits. The higher-level loop structure lives in the shared
+//! defaults (`poulpy-cpu-ref`); this file provides the accelerated per-slice building blocks.
 //!
 //! # Memory layout
 //!

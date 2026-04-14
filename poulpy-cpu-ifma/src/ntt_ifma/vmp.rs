@@ -4,9 +4,7 @@
 //! (VMP) operations in the IFMA NTT layout. These kernels can be used to
 //! override the default reference implementations for improved performance.
 
-#![allow(dead_code)]
-
-use bytemuck::cast_slice;
+use bytemuck::{cast_slice, cast_slice_mut};
 use core::arch::x86_64::{__m256i, _mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
@@ -161,5 +159,54 @@ unsafe fn vmp_apply_core_simd<const OVERWRITE: bool>(
         for col in active_cols..res_size {
             res_u64[col * 4 * n..(col + 1) * 4 * n].fill(0);
         }
+    }
+}
+
+use poulpy_cpu_ref::reference::ntt_ifma::vec_znx_dft::NttIfmaModuleHandle;
+use poulpy_hal::layouts::{
+    Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
+};
+
+/// AVX512-accelerated VMP apply with SIMD save_blk_add (conditional-subtract
+/// instead of scalar `%`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn vmp_apply_dft_to_dft_ifma<R, A, C>(
+    module: &Module<crate::NTTIfma>,
+    res: &mut R,
+    a: &A,
+    pmat: &C,
+    limb_offset: usize,
+    tmp: &mut [u64],
+) where
+    R: VecZnxDftToMut<crate::NTTIfma>,
+    A: VecZnxDftToRef<crate::NTTIfma>,
+    C: VmpPMatToRef<crate::NTTIfma>,
+{
+    let mut res_ref: VecZnxDft<&mut [u8], crate::NTTIfma> = res.to_mut();
+    let a_ref: VecZnxDft<&[u8], crate::NTTIfma> = a.to_ref();
+    let pmat_ref: VmpPMat<&[u8], crate::NTTIfma> = pmat.to_ref();
+
+    let n = res_ref.n();
+    let nrows = pmat_ref.rows() * pmat_ref.cols_in();
+    let ncols = pmat_ref.cols_out() * pmat_ref.size();
+
+    let res_u64: &mut [u64] = cast_slice_mut(res_ref.raw_mut());
+    let a_u64: &[u64] = cast_slice(a_ref.raw());
+    let pmat_u32: &[u32] = cast_slice(pmat_ref.raw());
+
+    let meta = module.get_bbc_ifma_meta();
+
+    unsafe {
+        vmp_apply_core_simd::<true>(
+            n,
+            res_u64,
+            a_u64,
+            pmat_u32,
+            limb_offset * pmat_ref.cols_out(),
+            nrows,
+            ncols,
+            meta,
+            tmp,
+        );
     }
 }

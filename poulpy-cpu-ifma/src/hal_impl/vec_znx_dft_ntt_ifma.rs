@@ -132,7 +132,7 @@ macro_rules! hal_impl_vec_znx_dft_ntt_ifma {
         where
             VecZnxDft<D, Self>: VecZnxDftToMut<Self>,
         {
-            <Self as NTTIfmaVecZnxDftDefaults<Self>>::vec_znx_idft_apply_consume_default(module, a)
+            crate::ntt_ifma::vec_znx_dft::vec_znx_idft_apply_consume(module, a)
         }
     };
 }

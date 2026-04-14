@@ -4,13 +4,11 @@
 //! operations in the IFMA NTT domain. These kernels can be used to override
 //! the default reference implementations for improved performance.
 
-#![allow(dead_code)]
-
 use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
 use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut};
 
 use super::mat_vec_ifma::{reduce_bbc_ifma_simd, reduce_bbc_ifma_simd_512};
-use super::ntt_ifma_avx512::{cond_sub_2q_si256, ntt_ifma_avx512};
+use super::ntt_ifma_avx512::cond_sub_2q_si256;
 use crate::NTTIfma;
 use core::arch::x86_64::{
     __m256i, __m512i, _mm256_add_epi64, _mm256_loadu_si256, _mm256_madd52hi_epu64, _mm256_madd52lo_epu64, _mm256_set_epi64x,
@@ -38,6 +36,7 @@ unsafe fn bbc_accumulate_ifma_512(acc_lo: &mut __m512i, acc_hi: &mut __m512i, x:
 }
 
 #[target_feature(enable = "avx512vl")]
+#[allow(dead_code)]
 unsafe fn reduce_b_to_c_inplace_ifma(buf: &mut [u64]) {
     let q = <Primes40 as PrimeSetIfma>::Q;
     let q_vec = _mm256_set_epi64x(0, q[2] as i64, q[1] as i64, q[0] as i64);
@@ -54,8 +53,15 @@ unsafe fn reduce_b_to_c_inplace_ifma(buf: &mut [u64]) {
 const MAX_CNV_J_RANGE: usize = 128;
 
 #[target_feature(enable = "avx512ifma,avx512vl")]
-unsafe fn cnv_apply_dft_ifma<R, A, B>(res: &mut R, res_offset: usize, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
+pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
+    res: &mut R,
+    res_offset: usize,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    b: &B,
+    b_col: usize,
+) where
     R: VecZnxDftToMut<NTTIfma>,
     A: CnvPVecLToRef<NTTIfma>,
     B: CnvPVecRToRef<NTTIfma>,
@@ -135,7 +141,7 @@ where
 }
 
 #[target_feature(enable = "avx512ifma,avx512vl")]
-unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
+pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     res: &mut R,
     res_offset: usize,
     res_col: usize,

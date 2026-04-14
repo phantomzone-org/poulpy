@@ -72,6 +72,7 @@ pub use vmp::*;
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// `2^exp mod q` using 128-bit intermediate arithmetic.
+#[allow(dead_code)]
 pub(super) fn pow2_mod_ifma(exp: u64, q: u64) -> u64 {
     let mut result: u64 = 1;
     let mut base: u64 = 2 % q;
