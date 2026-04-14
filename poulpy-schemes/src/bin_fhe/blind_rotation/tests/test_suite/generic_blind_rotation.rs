@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Scratch, ScratchOwned, ZnxView},
+    layouts::{Backend, DeviceBuf, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
 
@@ -10,7 +10,7 @@ use crate::bin_fhe::blind_rotation::{
 };
 
 use poulpy_core::{
-    GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext,
         LWESecret, LWEToRef, prepared::GLWESecretPrepared,
@@ -51,34 +51,37 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
     let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
-    let brk_infos: BlindRotationKeyLayout = BlindRotationKeyLayout {
+    let brk_infos = EncryptionLayout::new_from_default_sigma(BlindRotationKeyLayout {
         n_glwe: n_glwe.into(),
         n_lwe: n_lwe.into(),
         base2k: base2k.into(),
         k: k_brk.into(),
         dnum: rows_brk.into(),
         rank: rank.into(),
-    };
+    })
+    .unwrap();
 
-    let glwe_infos: GLWELayout = GLWELayout {
+    let glwe_infos = EncryptionLayout::new_from_default_sigma(GLWELayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_res.into(),
         rank: rank.into(),
-    };
+    })
+    .unwrap();
 
-    let lwe_infos: LWELayout = LWELayout {
+    let lwe_infos = EncryptionLayout::new_from_default_sigma(LWELayout {
         n: n_lwe.into(),
         k: k_lwe.into(),
         base2k: base2k.into(),
-    };
+    })
+    .unwrap();
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::<BE>::alloc(BlindRotationKey::encrypt_sk_tmp_bytes(module, &brk_infos));
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &glwe_infos);
-    sk_glwe_dft.prepare(module, &sk_glwe);
+    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
+    module.prepare_glwe_secret(&mut sk_glwe_dft, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
@@ -93,12 +96,13 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
 
-    brk.encrypt_sk(
-        module,
+    module.blind_rotation_key_encrypt_sk(
+        &mut brk,
         &sk_glwe_dft,
         &sk_lwe,
-        &mut source_xa,
+        &brk_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -110,7 +114,15 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    module.lwe_encrypt_sk(
+        &mut lwe,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 
@@ -129,14 +141,14 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut brk_prepared: BlindRotationKeyPrepared<Vec<u8>, BRA, BE> = BlindRotationKeyPrepared::alloc(module, &brk);
+    let mut brk_prepared: BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> = BlindRotationKeyPrepared::alloc(module, &brk);
     brk_prepared.prepare(module, &brk, scratch_br.borrow());
 
     brk_prepared.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
 
-    res.decrypt(module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
+    module.glwe_decrypt(&res, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
 

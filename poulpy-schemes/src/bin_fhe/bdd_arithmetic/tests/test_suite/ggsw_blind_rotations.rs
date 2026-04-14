@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, SIGMA, ScratchTakeCore,
+    DEFAULT_SIGMA_XE, EncryptionLayout, GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecretPrepared,
         GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{Backend, DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 use rand::Rng;
@@ -35,7 +35,7 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let module: &Module<BE> = &test_context.module;
-    let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk_glwe_prep: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
@@ -72,9 +72,19 @@ where
 
     let k: u32 = source.next_u32();
 
-    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
-        FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_k_infos);
-    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+    let ggsw_k_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_k_infos).unwrap();
+
+    let mut k_enc_prep: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::<DeviceBuf<BE>, u32, BE>::alloc_from_infos(module, &ggsw_k_infos);
+    k_enc_prep.encrypt_sk(
+        module,
+        k,
+        sk_glwe_prep,
+        &ggsw_k_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let base: [usize; 2] = [module.log_n() >> 1, module.log_n() - (module.log_n() >> 1)];
 
@@ -84,7 +94,7 @@ where
     let mut bit_start: usize = 0;
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_res_infos.size() as f64 * base2k.as_usize() as f64) + SIGMA.log2() + 3.0;
+        let mut noise: f64 = -(ggsw_res_infos.size() as f64 * base2k.as_usize() as f64) + DEFAULT_SIGMA_XE.log2() + 3.0;
         noise += 0.5 * ggsw_res_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_res_infos.log_n() as f64

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::bin_fhe::{
@@ -21,8 +21,8 @@ use crate::bin_fhe::{
     circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyInfos},
 };
 
-impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE>
+impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: CircuitBootstrappingKeyInfos,
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
@@ -67,7 +67,7 @@ where
     fn circuit_bootstrapping_key_prepared_alloc_from_infos<A>(
         &self,
         infos: &A,
-    ) -> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE>
+    ) -> CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: CircuitBootstrappingKeyInfos,
     {
@@ -76,11 +76,11 @@ where
 
         CircuitBootstrappingKeyPrepared {
             brk: BlindRotationKeyPrepared::alloc(self, &infos.brk_infos()),
-            tsk: GGLWEToGGSWKeyPrepared::alloc_from_infos(self, &infos.tsk_infos()),
+            tsk: self.alloc_gglwe_to_ggsw_key_prepared_from_infos(&infos.tsk_infos()),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {
-                    let key = GLWEAutomorphismKeyPrepared::alloc_from_infos(self, atk_infos);
+                    let key = self.alloc_glwe_automorphism_key_prepared_from_infos(atk_infos);
                     (gal_el, key)
                 })
                 .collect(),
@@ -107,11 +107,11 @@ where
         Scratch<BE>: ScratchAvailable,
     {
         res.brk.prepare(self, &other.brk, scratch);
-        res.tsk.prepare(self, &other.tsk, scratch);
+        self.prepare_gglwe_to_ggsw_key(&mut res.tsk, &other.tsk, scratch);
 
         for (k, a) in res.atk.iter_mut() {
-            a.prepare(
-                self,
+            self.prepare_glwe_automorphism_key(
+                a,
                 other.atk.get(k).unwrap_or_else(|| {
                     panic!("Galois element {k} is present in the prepared key but missing from the source key")
                 }),
@@ -169,7 +169,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
         GLWEAutomorphismKeyLayout {
             n: atk.n(),
             base2k: atk.base2k(),
-            k: atk.k(),
+            k: atk.max_k(),
             dnum: atk.dnum(),
             dsize: atk.dsize(),
             rank: atk.rank(),
@@ -181,7 +181,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
             n_glwe: self.brk.n_glwe(),
             n_lwe: self.brk.n_lwe(),
             base2k: self.brk.base2k(),
-            k: self.brk.k(),
+            k: self.brk.max_k(),
             dnum: self.brk.dnum(),
             rank: self.brk.rank(),
         }
@@ -191,7 +191,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
         GGLWEToGGSWKeyLayout {
             n: self.tsk.n(),
             base2k: self.tsk.base2k(),
-            k: self.tsk.k(),
+            k: self.tsk.max_k(),
             dnum: self.tsk.dnum(),
             dsize: self.tsk.dsize(),
             rank: self.tsk.rank(),

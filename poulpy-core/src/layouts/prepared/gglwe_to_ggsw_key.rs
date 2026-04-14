@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -28,10 +28,6 @@ impl<D: Data, BE: Backend> LWEInfos for GGLWEToGGSWKeyPrepared<D, BE> {
 
     fn base2k(&self) -> Base2K {
         self.keys[0].base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.keys[0].k()
     }
 
     fn size(&self) -> usize {
@@ -70,7 +66,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
     /// Allocates a new [`GGLWEToGGSWKeyPrepared`] matching the parameters of `infos`.
     ///
     /// Panics if `rank_in != rank_out`.
-    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos;
 
@@ -84,7 +80,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
         rank: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>;
+    ) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>;
 
     /// Returns the byte size required to store a [`GGLWEToGGSWKeyPrepared`] matching `infos`.
     fn bytes_of_gglwe_to_ggsw_from_infos<A>(&self, infos: &A) -> usize
@@ -113,7 +109,7 @@ impl<BE: Backend> GGLWEToGGSWKeyPreparedFactory<BE> for Module<BE>
 where
     Self: GGLWEPreparedFactory<BE>,
 {
-    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE>
+    fn alloc_gglwe_to_ggsw_key_prepared_from_infos<A>(&self, infos: &A) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE>
     where
         A: GGLWEInfos,
     {
@@ -122,7 +118,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEToGGSWKeyPrepared"
         );
-        self.alloc_gglwe_to_ggsw_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.alloc_gglwe_to_ggsw_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn alloc_gglwe_to_ggsw_key_prepared(
@@ -132,7 +128,7 @@ where
         rank: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEToGGSWKeyPrepared<Vec<u8>, BE> {
+    ) -> GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> {
         GGLWEToGGSWKeyPrepared {
             keys: (0..rank.as_usize())
                 .map(|_| self.alloc_gglwe_prepared(base2k, k, rank, rank, dnum, dsize))
@@ -149,7 +145,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEToGGSWKeyPrepared"
         );
-        self.bytes_of_gglwe_to_ggsw(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.bytes_of_gglwe_to_ggsw(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn bytes_of_gglwe_to_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
@@ -188,54 +184,8 @@ where
     }
 }
 
-/// Convenience associated functions for owned (`Vec<u8>`) allocation and byte-size queries.
-impl<BE: Backend> GGLWEToGGSWKeyPrepared<Vec<u8>, BE> {
-    /// Allocates a new [`GGLWEToGGSWKeyPrepared`] matching the parameters of `infos`.
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.alloc_gglwe_to_ggsw_key_prepared_from_infos(infos)
-    }
-
-    /// Allocates a new [`GGLWEToGGSWKeyPrepared`] with explicit parameters.
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.alloc_gglwe_to_ggsw_key_prepared(base2k, k, rank, dnum, dsize)
-    }
-
-    /// Returns the byte size for a [`GGLWEToGGSWKeyPrepared`] matching `infos`.
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.bytes_of_gglwe_to_ggsw_from_infos(infos)
-    }
-
-    /// Returns the byte size for a [`GGLWEToGGSWKeyPrepared`] with explicit parameters.
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-    {
-        module.bytes_of_gglwe_to_ggsw(base2k, k, rank, dnum, dsize)
-    }
-}
-
-impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
-    /// Transforms a standard [`GGLWEToGGSWKey`] (`other`) into the DFT domain, writing into `self`.
-    pub fn prepare<M, O>(&mut self, module: &M, other: &O, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEToGGSWKeyPreparedFactory<BE>,
-        O: GGLWEToGGSWKeyToRef,
-        Scratch<BE>: ScratchAvailable,
-    {
-        module.prepare_gglwe_to_ggsw_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `GGLWEToGGSWKeyPreparedFactory` on `Module`.
 
 impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
     /// Returns a mutable reference to the `i`-th prepared GGLWE key element.

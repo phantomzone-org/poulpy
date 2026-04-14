@@ -3,6 +3,7 @@ use poulpy_hal::{
     layouts::{Backend, GaloisElement, Module, Scratch},
 };
 
+pub use crate::api::GLWEPackerOps;
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
@@ -17,14 +18,14 @@ use crate::{
 /// Main difference with usual GLWE packing is that
 /// the output is bit-reversed.
 pub struct GLWEPacker {
-    accumulators: Vec<Accumulator>,
+    pub(crate) accumulators: Vec<Accumulator>,
     log_batch: usize,
     counter: usize,
 }
 
 /// [Accumulator] stores intermediate packing result.
 /// There are Log(N) such accumulators in a [GLWEPacker].
-struct Accumulator {
+pub(crate) struct Accumulator {
     data: GLWE<Vec<u8>>,
     value: bool,   // Implicit flag for zero ciphertext
     control: bool, // Can be combined with incoming value
@@ -84,81 +85,112 @@ impl GLWEPacker {
         self.counter = 0;
     }
 
-    /// Number of scratch space bytes required to call [Self::add].
-    pub fn tmp_bytes<R, K, M, BE: Backend>(module: &M, res_infos: &R, key_infos: &K) -> usize
-    where
-        R: GLWEInfos,
-        K: GGLWEInfos,
-        M: GLWEPackerOps<BE>,
-    {
-        GLWE::bytes_of_from_infos(res_infos)
-            + module
-                .glwe_rsh_tmp_byte()
-                .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
+    // module-only API: packing operations are provided as free functions below.
+}
+
+/// Number of scratch space bytes required to call [`glwe_packer_add`].
+pub fn glwe_packer_tmp_bytes<R, K, M, BE: Backend>(module: &M, res_infos: &R, key_infos: &K) -> usize
+where
+    R: GLWEInfos,
+    K: GGLWEInfos,
+    M: GLWEPackerOps<BE>,
+{
+    GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+        + module
+            .glwe_shift_tmp_bytes()
+            .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
+}
+
+/// Returns the Galois elements needed by the GLWE packer.
+pub fn glwe_packer_galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
+where
+    M: GLWETrace<BE>,
+{
+    module.glwe_trace_galois_elements()
+}
+
+/// Adds a GLWE ciphertext to the [`GLWEPacker`].
+pub fn glwe_packer_add<A, K, H, M, BE: Backend>(
+    module: &M,
+    packer: &mut GLWEPacker,
+    a: Option<&A>,
+    auto_keys: &H,
+    scratch: &mut Scratch<BE>,
+) where
+    A: GLWEToRef + GLWEInfos,
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+    H: GLWEAutomorphismKeyHelper<K, BE>,
+    M: GLWEPackerOps<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    assert!(
+        (packer.counter as u32) < packer.accumulators[0].data.n(),
+        "Packing limit of {} reached",
+        packer.accumulators[0].data.n().0 as usize >> packer.log_batch
+    );
+    assert!(
+        scratch.available() >= glwe_packer_tmp_bytes(module, &packer.accumulators[0].data, &auto_keys.automorphism_key_infos()),
+        "scratch.available(): {} < glwe_packer_tmp_bytes: {}",
+        scratch.available(),
+        glwe_packer_tmp_bytes(module, &packer.accumulators[0].data, &auto_keys.automorphism_key_infos())
+    );
+
+    module.packer_add(packer, a, packer.log_batch, auto_keys, scratch);
+    packer.counter += 1 << packer.log_batch;
+}
+
+/// Flushes the packed result into `res`.
+pub fn glwe_packer_flush<R, M, BE: Backend>(module: &M, packer: &mut GLWEPacker, res: &mut R, scratch: &mut Scratch<BE>)
+where
+    R: GLWEToMut + GLWEInfos,
+    M: GLWEPackerOps<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    assert!(packer.counter as u32 == packer.accumulators[0].data.n());
+
+    let out: &GLWE<Vec<u8>> = &packer.accumulators[module.log_n() - packer.log_batch - 1].data;
+
+    if out.base2k() == res.base2k() {
+        module.glwe_copy(res, out)
+    } else {
+        module.glwe_normalize(res, out, scratch);
     }
 
-    pub fn galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
-    where
-        M: GLWETrace<BE>,
-    {
-        module.glwe_trace_galois_elements()
-    }
+    packer.reset();
+}
 
-    /// Adds a GLWE ciphertext to the [GLWEPacker].
-    /// #Arguments
-    ///
-    /// * `module`: static backend FFT tables.
-    /// * `res`: space to append fully packed ciphertext. Only when the number
-    ///   of packed ciphertexts reaches N/2^log_batch is a result written.
-    /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
-    /// * `auto_keys`: an implementation of [`GLWEAutomorphismKeyHelper`], containing `GLWEAutomorphismKeyPrepared` with index of [`Self::galois_elements`].
-    /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
-    pub fn add<A, K, H, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &H, scratch: &mut Scratch<BE>)
-    where
+#[doc(hidden)]
+pub trait GLWEPackerOpsDefault<BE: Backend>
+where
+    Self: Sized
+        + ModuleLogN
+        + GLWEAutomorphism<BE>
+        + GaloisElement
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>
+        + GLWECopy,
+{
+    fn packer_add_default<A, K, H>(
+        &self,
+        packer: &mut GLWEPacker,
+        a: Option<&A>,
+        i: usize,
+        auto_keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
         A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        M: GLWEPackerOps<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(
-            (self.counter as u32) < self.accumulators[0].data.n(),
-            "Packing limit of {} reached",
-            self.accumulators[0].data.n().0 as usize >> self.log_batch
-        );
-        assert!(
-            scratch.available() >= Self::tmp_bytes(module, &self.accumulators[0].data, &auto_keys.automorphism_key_infos()),
-            "scratch.available(): {} < GLWEPacker::tmp_bytes: {}",
-            scratch.available(),
-            Self::tmp_bytes(module, &self.accumulators[0].data, &auto_keys.automorphism_key_infos())
-        );
-
-        module.packer_add(self, a, self.log_batch, auto_keys, scratch);
-        self.counter += 1 << self.log_batch;
-    }
-
-    /// Flush result to`res`.
-    pub fn flush<R, M, BE: Backend>(&mut self, module: &M, res: &mut R, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEInfos,
-        M: GLWEPackerOps<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        assert!(self.counter as u32 == self.accumulators[0].data.n());
-
-        let out: &GLWE<Vec<u8>> = &self.accumulators[module.log_n() - self.log_batch - 1].data;
-
-        if out.base2k() == res.base2k() {
-            module.glwe_copy(res, out)
-        } else {
-            module.glwe_normalize(res, out, scratch);
-        }
-
-        self.reset();
+        pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }
 }
 
-impl<BE: Backend> GLWEPackerOps<BE> for Module<BE> where
+impl<BE: Backend> GLWEPackerOpsDefault<BE> for Module<BE> where
     Self: Sized
         + ModuleLogN
         + GLWEAutomorphism<BE>
@@ -172,31 +204,7 @@ impl<BE: Backend> GLWEPackerOps<BE> for Module<BE> where
 {
 }
 
-pub trait GLWEPackerOps<BE: Backend>
-where
-    Self: Sized
-        + ModuleLogN
-        + GLWEAutomorphism<BE>
-        + GaloisElement
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
-        + GLWECopy,
-{
-    fn packer_add<A, K, H>(&self, packer: &mut GLWEPacker, a: Option<&A>, i: usize, auto_keys: &H, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
-    }
-}
-
-fn pack_core<A, K, H, M, BE: Backend>(
+pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
     module: &M,
     a: Option<&A>,
     accumulators: &mut [Accumulator],
@@ -307,7 +315,7 @@ fn combine<B, K, H, M, BE: Backend>(
             module.glwe_sub(&mut tmp, a, b);
             module.glwe_rsh(1, &mut tmp, scratch_1);
             // a = a * X^-t + b
-            module.glwe_add_inplace(a, b);
+            module.glwe_add_assign(a, b);
 
             module.glwe_rsh(1, a, scratch_1);
             module.glwe_normalize_inplace(&mut tmp, scratch_1);

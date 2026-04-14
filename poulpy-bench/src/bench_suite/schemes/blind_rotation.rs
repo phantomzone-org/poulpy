@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
-    GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout,
         LWESecret, TorusPrecision,
@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, FillUniform, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
@@ -73,23 +73,26 @@ where
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
-    sk_glwe_dft.prepare(&module, &sk_glwe);
+    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&glwe_infos);
+    module.prepare_glwe_secret(&mut sk_glwe_dft, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
+    let brk_enc_infos = EncryptionLayout::new_from_default_sigma(brk_infos).unwrap();
+
     let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
-    brk.encrypt_sk(
-        &module,
+    module.blind_rotation_key_encrypt_sk(
+        &mut brk,
         &sk_glwe_dft,
         &sk_lwe,
-        &mut source_xa,
+        &brk_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
-    let mut brk_prepared: BlindRotationKeyPrepared<Vec<u8>, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
+    let mut brk_prepared: BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
     brk_prepared.prepare(&module, &brk, scratch.borrow());
 
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);

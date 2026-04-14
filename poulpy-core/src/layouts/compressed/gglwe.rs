@@ -60,10 +60,6 @@ impl<D: Data> LWEInfos for GGLWECompressed<D> {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn size(&self) -> usize {
         self.data.size()
     }
@@ -123,7 +119,7 @@ impl GGLWECompressed<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.rank_out(),
             infos.dnum(),
@@ -165,7 +161,7 @@ impl GGLWECompressed<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank_in(),
             infos.dnum(),
             infos.dsize(),
@@ -197,7 +193,6 @@ impl<D: DataRef> GGLWECompressed<D> {
         let rank_in: usize = self.rank_in().into();
         GLWECompressed {
             data: self.data.at(row, col),
-            k: self.k,
             base2k: self.base2k,
             rank: self.rank_out,
             seed: self.seed[rank_in * row + col],
@@ -209,7 +204,6 @@ impl<D: DataMut> GGLWECompressed<D> {
     pub(crate) fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
         let rank_in: usize = self.rank_in().into();
         GLWECompressed {
-            k: self.k,
             base2k: self.base2k,
             rank: self.rank_out,
             data: self.data.at_mut(row, col),
@@ -279,16 +273,7 @@ where
 
 impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform + VecZnxCopy {}
 
-impl<D: DataMut> GGLWE<D> {
-    /// Decompresses a [`GGLWECompressed`] into this standard GGLWE.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef,
-        M: GGLWEDecompress,
-    {
-        module.decompress_gglwe(self, other);
-    }
-}
+// module-only API: decompression is provided by `GGLWEDecompress` on `Module`.
 
 /// Converts a compressed GGLWE to a mutably-borrowed variant.
 pub trait GGLWECompressedToMut {
@@ -299,7 +284,7 @@ pub trait GGLWECompressedToMut {
 impl<D: DataMut> GGLWECompressedToMut for GGLWECompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         GGLWECompressed {
-            k: self.k(),
+            k: self.max_k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             seed: self.seed.clone(),
@@ -318,7 +303,7 @@ pub trait GGLWECompressedToRef {
 impl<D: DataRef> GGLWECompressedToRef for GGLWECompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {
         GGLWECompressed {
-            k: self.k(),
+            k: self.max_k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
             seed: self.seed.clone(),

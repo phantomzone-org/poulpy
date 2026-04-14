@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GLWEEncryptSk, GLWEKeyswitch, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEEncryptSk, GLWEKeyswitch, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyPrepared,
         GLWESwitchingKeyPreparedFactory, prepared::GLWESecretPrepared,
@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 
@@ -39,9 +39,9 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_out);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, gglwe)
-            | GLWE::encrypt_sk_tmp_bytes(&module, glwe_in)
-            | GLWE::keyswitch_tmp_bytes(&module, glwe_out, glwe_in, gglwe),
+        module.glwe_switching_key_encrypt_sk_tmp_bytes(gglwe)
+            | module.glwe_encrypt_sk_tmp_bytes(glwe_in)
+            | module.glwe_keyswitch_tmp_bytes(glwe_out, glwe_in, gglwe),
     );
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -51,24 +51,42 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_in_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, glwe_in.rank());
-    sk_in_prepared.prepare(&module, &sk_in);
+    let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(glwe_in.rank());
+    module.prepare_glwe_secret(&mut sk_in_prepared, &sk_in);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
-    ksk.encrypt_sk(&module, &sk_in, &sk_out, &mut source_xa, &mut source_xe, scratch.borrow());
+    let ksk_enc_infos = NoiseInfos::new(gglwe.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    let glwe_enc_infos = NoiseInfos::new(glwe_in.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
 
-    ct_in.encrypt_zero_sk(&module, &sk_in_prepared, &mut source_xa, &mut source_xe, scratch.borrow());
+    module.glwe_switching_key_encrypt_sk(
+        &mut ksk,
+        &sk_in,
+        &sk_out,
+        &ksk_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
-    let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(&module, &ksk);
-    ksk_prepared.prepare(&module, &ksk, scratch.borrow());
+    module.glwe_encrypt_zero_sk(
+        &mut ct_in,
+        &sk_in_prepared,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+
+    let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_switching_key_prepared_from_infos(&ksk);
+    module.prepare_glwe_switching(&mut ksk_prepared, &ksk, scratch.borrow());
 
     let group_name = format!("glwe_keyswitch::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct_out.keyswitch(&module, &ct_in, &ksk_prepared, scratch.borrow());
+            module.glwe_keyswitch(&mut ct_out, &ct_in, &ksk_prepared, scratch.borrow());
             black_box(());
         })
     });

@@ -1,64 +1,42 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAutomorphism},
-    layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
+    layouts::{Backend, GaloisElement, Module, Scratch},
     source::Source,
 };
 
+pub use crate::api::GLWEAutomorphismKeyCompressedEncryptSk;
 use crate::{
-    GGLWECompressedEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared,
-        GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement, compressed::GLWEAutomorphismKeyCompressed,
+        GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GLWESecretToRef, LWEInfos, SetGaloisElement,
     },
 };
 
-impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, BE: Backend, A>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWEAutomorphismKeyCompressedEncryptSk<BE>,
-    {
-        module.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWEAutomorphismKeyCompressed<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S, BE: Backend>(
-        &mut self,
-        module: &M,
-        p: i64,
-        sk: &S,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S: GLWESecretToRef + GLWEInfos,
-        M: GLWEAutomorphismKeyCompressedEncryptSk<BE>,
-    {
-        module.glwe_automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, source_xe, scratch);
-    }
-}
-
-pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWEAutomorphismKeyCompressedEncryptSkDefault<BE: Backend> {
     fn glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GLWEInfos;
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -68,7 +46,7 @@ where
         A: GGLWEInfos,
     {
         assert_eq!(self.n() as u32, infos.n());
-        let lvl_0: usize = GLWESecretPrepared::bytes_of_from_infos(self, infos);
+        let lvl_0: usize = self.bytes_of_glwe_secret_prepared_from_infos(infos);
         let lvl_1: usize = self
             .gglwe_compressed_encrypt_sk_tmp_bytes(infos)
             .max(GLWESecret::bytes_of_from_infos(infos));
@@ -76,16 +54,19 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         p: i64,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GLWEInfos,
     {
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
@@ -112,10 +93,10 @@ where
                     i,
                 );
             }
-            sk_out_prepared.prepare(self, &sk_out);
+            self.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
         }
 
-        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, source_xe, scratch_1);
+        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, enc_infos, source_xe, scratch_1);
 
         res.set_p(p);
     }

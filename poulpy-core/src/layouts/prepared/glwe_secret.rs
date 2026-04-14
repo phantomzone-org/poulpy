@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank},
 };
 
 /// DFT-domain (prepared) variant of [`GLWESecret`].
@@ -36,10 +36,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
         Base2K(0)
     }
 
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
-    }
-
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }
@@ -58,13 +54,13 @@ pub trait GLWESecretPreparedFactory<B: Backend>
 where
     Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
-    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
+    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<DeviceBuf<B>, B> {
         GLWESecretPrepared {
             data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -105,37 +101,7 @@ impl<B: Backend> GLWESecretPreparedFactory<B> for Module<B> where
 {
 }
 
-impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWESecretPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, rank: Rank) -> Self
-    where
-        M: GLWESecretPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_prepared(rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWESecretPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
-    where
-        M: GLWESecretPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_prepared(rank)
-    }
-}
+// module-only API: allocation/size helpers are provided by `GLWESecretPreparedFactory` on `Module`.
 
 impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     pub fn n(&self) -> Degree {
@@ -147,15 +113,7 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
-    pub fn prepare<M, O>(&mut self, module: &M, other: &O)
-    where
-        M: GLWESecretPreparedFactory<B>,
-        O: GLWESecretToRef + GetDistribution,
-    {
-        module.prepare_glwe_secret(self, other);
-    }
-}
+// module-only API: preparation is provided by `GLWESecretPreparedFactory` on `Module`.
 
 pub trait GLWESecretPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;

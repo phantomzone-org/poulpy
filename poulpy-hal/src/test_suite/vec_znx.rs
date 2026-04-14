@@ -3,8 +3,8 @@ use std::f64::consts::SQRT_2;
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalar,
-        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddAssign, VecZnxAddInto, VecZnxAddNormal, VecZnxAddScalarAssign,
+        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy,
         VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings,
         VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
         VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
@@ -12,8 +12,9 @@ use crate::{
         VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace,
         VecZnxSwitchRing,
     },
-    layouts::{Backend, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::znx_copy_ref,
+    layouts::{
+        Backend, DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -43,10 +44,13 @@ pub fn test_vec_znx_encode_vec_i64() {
     }
 }
 
-pub fn test_vec_znx_add_scalar<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
-    Module<BR>: VecZnxAddScalar,
-    Module<BT>: VecZnxAddScalar,
+pub fn test_vec_znx_add_scalar_into<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxAddScalarInto,
+    Module<BT>: VecZnxAddScalarInto,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -75,8 +79,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_add_scalar(&mut rest_ref, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
-                module_test.vec_znx_add_scalar(&mut res_test, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                module_ref.vec_znx_add_scalar_into(&mut rest_ref, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                module_test.vec_znx_add_scalar_into(&mut res_test, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
             }
 
             assert_eq!(b.digest_u64(), b_digest);
@@ -86,13 +90,13 @@ where
     }
 }
 
-pub fn test_vec_znx_add_scalar_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_add_scalar_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxAddScalarInplace,
-    Module<BT>: VecZnxAddScalarInplace,
+    Module<BR>: VecZnxAddScalarAssign,
+    Module<BT>: VecZnxAddScalarAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -114,18 +118,18 @@ pub fn test_vec_znx_add_scalar_inplace<BR: Backend, BT: Backend>(
         res_test.raw_mut().copy_from_slice(rest_ref.raw());
 
         for i in 0..cols {
-            module_ref.vec_znx_add_scalar_inplace(&mut rest_ref, i, res_size - 1, &b, i);
-            module_test.vec_znx_add_scalar_inplace(&mut res_test, i, res_size - 1, &b, i);
+            module_ref.vec_znx_add_scalar_assign(&mut rest_ref, i, res_size - 1, &b, i);
+            module_test.vec_znx_add_scalar_assign(&mut res_test, i, res_size - 1, &b, i);
         }
 
         assert_eq!(b.digest_u64(), b_digest);
         assert_eq!(rest_ref, res_test);
     }
 }
-pub fn test_vec_znx_add<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_add_into<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxAdd,
-    Module<BT>: VecZnxAdd,
+    Module<BR>: VecZnxAddInto,
+    Module<BT>: VecZnxAddInto,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -156,8 +160,8 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    module_test.vec_znx_add(&mut res_ref, i, &a, i, &b, i);
-                    module_ref.vec_znx_add(&mut res_test, i, &a, i, &b, i);
+                    module_test.vec_znx_add_into(&mut res_ref, i, &a, i, &b, i);
+                    module_ref.vec_znx_add_into(&mut res_test, i, &a, i, &b, i);
                 }
 
                 assert_eq!(a.digest_u64(), a_digest);
@@ -169,10 +173,10 @@ where
     }
 }
 
-pub fn test_vec_znx_add_inplace<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_add_assign<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxAddInplace,
-    Module<BT>: VecZnxAddInplace,
+    Module<BR>: VecZnxAddAssign,
+    Module<BT>: VecZnxAddAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -194,8 +198,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_ref.vec_znx_add_inplace(&mut res_ref, i, &a, i);
-                module_test.vec_znx_add_inplace(&mut res_test, i, &a, i);
+                module_ref.vec_znx_add_assign(&mut res_ref, i, &a, i);
+                module_test.vec_znx_add_assign(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -276,7 +280,7 @@ pub fn test_vec_znx_automorphism_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -7;
 
@@ -456,7 +460,7 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -7;
 
@@ -697,7 +701,7 @@ pub fn test_vec_znx_rotate_inplace<BR: Backend, BT: Backend>(
 
         // Fill a with random i64
         res_ref.fill_uniform(base2k, &mut source);
-        znx_copy_ref(res_test.raw_mut(), res_ref.raw());
+        res_test.raw_mut().copy_from_slice(res_ref.raw());
 
         let p: i64 = -5;
 
@@ -754,17 +758,15 @@ where
 {
     let n: usize = module.n();
     let base2k: usize = 17;
-    let k: usize = 2 * 17;
     let size: usize = 5;
-    let sigma: f64 = 3.2;
-    let bound: f64 = 6.0 * sigma;
-    let mut source: Source = Source::new([0u8; 32]);
+    let noise_infos = NoiseInfos::new(2 * 17, 3.2, 6.0 * 3.2).unwrap();
+    let mut source_xe: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
     let zero: Vec<i64> = vec![0; n];
-    let k_f64: f64 = (1u64 << k as u64) as f64;
+    let k_f64: f64 = (1u64 << noise_infos.k as u64) as f64;
     (0..cols).for_each(|col_i| {
         let mut a: VecZnx<_> = VecZnx::alloc(n, cols, size);
-        module.vec_znx_fill_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
+        module.vec_znx_fill_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {
@@ -772,7 +774,7 @@ where
                 })
             } else {
                 let std: f64 = a.stats(base2k, col_i).std() * k_f64;
-                assert!((std - sigma).abs() < 0.1, "std={std} ~!= {sigma}");
+                assert!((std - noise_infos.sigma).abs() < 0.1, "std={std} ~!= {}", noise_infos.sigma);
             }
         })
     });
@@ -784,19 +786,17 @@ where
 {
     let n: usize = module.n();
     let base2k: usize = 17;
-    let k: usize = 2 * 17;
     let size: usize = 5;
-    let sigma: f64 = 3.2;
-    let bound: f64 = 6.0 * sigma;
-    let mut source: Source = Source::new([0u8; 32]);
+    let noise_infos = NoiseInfos::new(2 * 17, 3.2, 6.0 * 3.2).unwrap();
+    let mut source_xe: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
     let zero: Vec<i64> = vec![0; n];
-    let k_f64: f64 = (1u64 << k as u64) as f64;
+    let k_f64: f64 = (1u64 << noise_infos.k as u64) as f64;
     let sqrt2: f64 = SQRT_2;
     (0..cols).for_each(|col_i| {
         let mut a: VecZnx<_> = VecZnx::alloc(n, cols, size);
-        module.vec_znx_fill_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
-        module.vec_znx_add_normal(base2k, &mut a, col_i, k, &mut source, sigma, bound);
+        module.vec_znx_fill_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
+        module.vec_znx_add_normal(base2k, &mut a, col_i, noise_infos, &mut source_xe);
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {
@@ -804,7 +804,11 @@ where
                 })
             } else {
                 let std: f64 = a.stats(base2k, col_i).std() * k_f64;
-                assert!((std - sigma * sqrt2).abs() < 0.1, "std={std} ~!= {}", sigma * sqrt2);
+                assert!(
+                    (std - noise_infos.sigma * sqrt2).abs() < 0.1,
+                    "std={std} ~!= {}",
+                    noise_infos.sigma * sqrt2
+                );
             }
         })
     });

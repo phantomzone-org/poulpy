@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -22,10 +22,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWETensorKeyPrepared<D, B> {
 
     fn base2k(&self) -> Base2K {
         self.0.base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
     }
 
     fn size(&self) -> usize {
@@ -68,16 +64,16 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> GLWETensorKeyPrepared<Vec<u8>, B> {
+    ) -> GLWETensorKeyPrepared<DeviceBuf<B>, B> {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
         GLWETensorKeyPrepared(self.alloc_gglwe_prepared(base2k, k, Rank(pairs), rank, dnum, dsize))
     }
 
-    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<Vec<u8>, B>
+    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
-        self.alloc_tensor_key_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank_out())
+        self.alloc_tensor_key_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank_out())
     }
 
     fn bytes_of_tensor_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
@@ -89,7 +85,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.bytes_of_tensor_key_prepared(infos.base2k(), infos.k(), infos.rank(), infos.dnum(), infos.dsize())
+        self.bytes_of_tensor_key_prepared(infos.base2k(), infos.max_k(), infos.rank(), infos.dnum(), infos.dsize())
     }
 
     fn prepare_tensor_key_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -119,58 +115,11 @@ where
 
 impl<B: Backend> GLWETensorKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWETensorKeyPreparedFactory<B>,
-    {
-        module.alloc_tensor_key_prepared_from_infos(infos)
-    }
+// module-only API: allocation/size helpers are provided by `GLWETensorKeyPreparedFactory` on `Module`.
 
-    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
-    where
-        M: GLWETensorKeyPreparedFactory<B>,
-    {
-        module.alloc_tensor_key_prepared(base2k, k, dnum, dsize, rank)
-    }
+// module-only API: preparation sizing is provided by `GLWETensorKeyPreparedFactory` on `Module`.
 
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWETensorKeyPreparedFactory<B>,
-    {
-        module.bytes_of_tensor_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GLWETensorKeyPreparedFactory<B>,
-    {
-        module.bytes_of_tensor_key_prepared(base2k, k, rank, dnum, dsize)
-    }
-}
-
-impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWETensorKeyPreparedFactory<B>,
-    {
-        module.prepare_tensor_key_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWETensorKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef,
-        M: GLWETensorKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_tensor_key(self, other, scratch);
-    }
-}
+// module-only API: preparation is provided by `GLWETensorKeyPreparedFactory` on `Module`.
 
 impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GLWETensorKeyPrepared<D, B>
 where

@@ -5,7 +5,7 @@ use rand::Rng;
 
 use poulpy_hal::{
     api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
-    layouts::{Backend, DataViewMut, FillUniform, Module, ScalarZnx, SvpPPol, VecZnx, VecZnxDft},
+    layouts::{Backend, DataViewMut, DeviceBuf, FillUniform, Module, ScalarZnx, SvpPPol, VecZnx, VecZnxDft},
     source::Source,
 };
 
@@ -27,7 +27,7 @@ where
 
         let cols: usize = 2;
 
-        let mut svp: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(cols);
+        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
         let mut a: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), cols);
         let mut source = Source::new([0u8; 32]);
         a.fill_uniform(50, &mut source);
@@ -67,15 +67,15 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
         let mut source = Source::new([0u8; 32]);
 
-        source.fill_bytes(svp.data_mut());
-        source.fill_bytes(res.data_mut());
-        source.fill_bytes(a.data_mut());
+        source.fill_bytes(svp.data_mut().as_mut());
+        source.fill_bytes(res.data_mut().as_mut());
+        source.fill_bytes(a.data_mut().as_mut());
 
         move || {
             for j in 0..cols {
@@ -114,15 +114,15 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
         let mut source = Source::new([0u8; 32]);
 
-        source.fill_bytes(svp.data_mut());
-        source.fill_bytes(res.data_mut());
-        source.fill_bytes(a.data_mut());
+        source.fill_bytes(svp.data_mut().as_mut());
+        source.fill_bytes(res.data_mut().as_mut());
+        source.fill_bytes(a.data_mut().as_mut());
 
         move || {
             for j in 0..cols {
@@ -161,13 +161,13 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
         let mut source = Source::new([0u8; 32]);
 
-        source.fill_bytes(svp.data_mut());
-        source.fill_bytes(res.data_mut());
+        source.fill_bytes(svp.data_mut().as_mut());
+        source.fill_bytes(res.data_mut().as_mut());
 
         move || {
             for j in 0..cols {

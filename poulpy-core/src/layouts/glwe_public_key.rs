@@ -37,10 +37,6 @@ impl<D: Data> LWEInfos for GLWEPublicKey<D> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn n(&self) -> Degree {
         self.key.n()
     }
@@ -59,10 +55,6 @@ impl<D: Data> GLWEInfos for GLWEPublicKey<D> {
 impl LWEInfos for GLWEPublicKeyLayout {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn n(&self) -> Degree {
@@ -85,7 +77,7 @@ impl GLWEPublicKey<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
@@ -99,7 +91,7 @@ impl GLWEPublicKey<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {

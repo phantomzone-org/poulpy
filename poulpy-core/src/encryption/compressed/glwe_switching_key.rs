@@ -1,68 +1,41 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPrepare, VecZnxSwitchRing},
-    layouts::{Backend, DataMut, Module, ScalarZnx, Scratch},
+    layouts::{Backend, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
+pub use crate::api::GLWESwitchingKeyCompressedEncryptSk;
 use crate::{
-    GGLWECompressedEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
-        GLWESwitchingKeyDegreesMut, LWEInfos,
-        compressed::GLWESwitchingKeyCompressed,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
+        GLWESwitchingKeyDegreesMut, LWEInfos, prepared::GLWESecretPreparedFactory,
     },
 };
 
-impl GLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyCompressedEncryptSk<BE>,
-    {
-        module.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut> GLWESwitchingKeyCompressed<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S1, S2, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk_in: &S1,
-        sk_out: &S2,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        S1: GLWESecretToRef,
-        S2: GLWESecretToRef,
-        M: GLWESwitchingKeyCompressedEncryptSk<BE>,
-    {
-        module.glwe_switching_key_compressed_encrypt_sk(self, sk_in, sk_out, seed_xa, source_xe, scratch);
-    }
-}
-
-pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
     fn glwe_switching_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2>(
+    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
 }
 
-impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -74,22 +47,25 @@ where
         assert_eq!(self.n() as u32, infos.n());
 
         let lvl_0: usize = ScalarZnx::bytes_of(self.n(), infos.rank_in().into());
-        let lvl_1: usize = GLWESecretPrepared::bytes_of(self, infos.rank_out());
+        let lvl_1: usize = self.bytes_of_glwe_secret_prepared(infos.rank_out());
         let lvl_2: usize = ScalarZnx::bytes_of(self.n(), 1).max(self.gglwe_compressed_encrypt_sk_tmp_bytes(infos));
 
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2>(
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_switching_key_compressed_encrypt_sk<R, S1, S2, E>(
         &self,
         res: &mut R,
         sk_in: &S1,
         sk_out: &S2,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
     {
@@ -121,7 +97,7 @@ where
 
         sk_out_tmp.dist = sk_out.dist;
 
-        self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, source_xe, scratch_2);
+        self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, enc_infos, source_xe, scratch_2);
 
         *res.input_degree() = sk_in.n();
         *res.output_degree() = sk_out.n();

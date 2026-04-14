@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
         GLWESecretPreparedFactory, Rank, TorusPrecision,
@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -33,7 +33,7 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let module: &Module<BE> = &test_context.module;
-    let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk_glwe_prep: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
@@ -71,9 +71,19 @@ where
 
     let k: u32 = source.next_u32();
 
-    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
-        FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
-    k_enc_prep.encrypt_sk(module, k, sk_glwe_prep, &mut source_xa, &mut source_xe, scratch.borrow());
+    let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
+
+    let mut k_enc_prep: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::<DeviceBuf<BE>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
+    k_enc_prep.encrypt_sk(
+        module,
+        k,
+        sk_glwe_prep,
+        &ggsw_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let base: [usize; 2] = [module.log_n() >> 1, module.log_n() - (module.log_n() >> 1)];
 
@@ -105,7 +115,7 @@ where
                 scratch.borrow(),
             );
 
-            res.decrypt(module, &mut pt, sk_glwe_prep, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt, sk_glwe_prep, scratch.borrow());
 
             assert_eq!(
                 (((k >> bit_start) & mask) << bit_step) as i64,

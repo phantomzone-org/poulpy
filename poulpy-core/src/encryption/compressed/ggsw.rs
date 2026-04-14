@@ -1,12 +1,15 @@
+#![allow(clippy::too_many_arguments)]
+
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxNormalizeInplace},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::GGSWCompressedEncryptSk;
 use crate::{
-    ScratchTakeCore,
-    encryption::{GGSWEncryptSk, GLWEEncryptSkInternal, SIGMA},
+    EncryptionInfos, ScratchTakeCore,
+    encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGSWCompressedSeedMut, GGSWInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},
@@ -14,57 +17,31 @@ use crate::{
     },
 };
 
-impl GGSWCompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWCompressedEncryptSk<BE>,
-    {
-        module.ggsw_compressed_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, BE: Backend>(
-        &mut self,
-        module: &M,
-        pt: &P,
-        sk: &S,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        M: GGSWCompressedEncryptSk<BE>,
-    {
-        module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
-    }
-}
-
-pub trait GGSWCompressedEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GGSWCompressedEncryptSkDefault<BE: Backend> {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
 
-    fn ggsw_compressed_encrypt_sk<R, P, S>(
+    fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<BE: Backend> GGSWCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GGSWCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -76,17 +53,19 @@ where
         lvl_0
     }
 
-    fn ggsw_compressed_encrypt_sk<R, P, S>(
+    fn ggsw_compressed_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
+        enc_infos: &E,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
+        E: EncryptionInfos,
         S: GLWESecretPreparedToRef<BE>,
     {
         let base2k: usize = res.base2k().into();
@@ -121,7 +100,7 @@ where
                 tmp_pt.data.zero();
 
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-                self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+                self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
                 self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
 
                 for col_j in 0..rank + 1 {
@@ -133,15 +112,14 @@ where
 
                     self.glwe_encrypt_sk_internal(
                         res.base2k().into(),
-                        res.k().into(),
                         &mut res.at_mut(row_i, col_j).data,
                         cols,
                         true,
                         Some((&tmp_pt, col_j)),
                         sk,
-                        &mut source_xa_tmp,
+                        enc_infos,
                         source_xe,
-                        SIGMA,
+                        &mut source_xa_tmp,
                         scratch_1,
                     );
                 }

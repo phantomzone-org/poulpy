@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module},
 };
 
 use crate::{
@@ -39,10 +39,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
         self.key.base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.key.k()
-    }
-
     fn size(&self) -> usize {
         self.key.size()
     }
@@ -62,18 +58,23 @@ pub trait GLWEPublicKeyPreparedFactory<B: Backend>
 where
     Self: GetDegree + GLWEPreparedFactory<B>,
 {
-    fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
+    fn alloc_glwe_public_key_prepared(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+    ) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B> {
         GLWEPublicKeyPrepared {
             key: self.alloc_glwe_prepared(base2k, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
-        self.alloc_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
+        self.alloc_glwe_public_key_prepared(infos.base2k(), infos.max_k(), infos.rank())
     }
 
     fn bytes_of_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
@@ -84,7 +85,7 @@ where
     where
         A: GLWEInfos,
     {
-        self.bytes_of_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
+        self.bytes_of_glwe_public_key_prepared(infos.base2k(), infos.max_k(), infos.rank())
     }
 
     fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
@@ -100,47 +101,8 @@ where
 impl<B: Backend> GLWEPublicKeyPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>
 {}
 
-impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWEPublicKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_public_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
-    where
-        M: GLWEPublicKeyPreparedFactory<B>,
-    {
-        module.alloc_glwe_public_key_prepared(base2k, k, rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWEPublicKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_public_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
-    where
-        M: GLWEPublicKeyPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_public_key_prepared(base2k, k, rank)
-    }
-}
-
-impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GLWEToRef + GetDistribution,
-        M: GLWEPublicKeyPreparedFactory<B>,
-    {
-        module.prepare_glwe_public_key(self, other);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `GLWEPublicKeyPreparedFactory` on `Module`.
 
 impl<D: DataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPublicKeyPrepared<D, B>
 where

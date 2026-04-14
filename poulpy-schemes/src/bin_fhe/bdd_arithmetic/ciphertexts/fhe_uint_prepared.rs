@@ -8,11 +8,11 @@ use poulpy_core::layouts::{
     GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWLayout, GGSWPreparedToMut, GGSWPreparedToRef, GLWEAutomorphismKeyHelper,
     GetGaloisElement, LWE,
 };
-use poulpy_core::{GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
+use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::api::{ModuleLogN, ScratchAvailable, ScratchFromBytes};
-use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
+use poulpy_hal::layouts::{Backend, Data, DataRef, DeviceBuf, Module};
 
 use poulpy_hal::{
     api::ModuleN,
@@ -141,24 +141,24 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> FheUintPrepared<Vec<u8>, T, BE> {
+    ) -> FheUintPrepared<DeviceBuf<BE>, T, BE> {
         FheUintPrepared {
             bits: (0..T::BITS)
-                .map(|_| GGSWPrepared::alloc(self, base2k, k, dnum, dsize, rank))
+                .map(|_| self.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank))
                 .collect(),
             _phantom: PhantomData,
         }
     }
 
-    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<Vec<u8>, T, BE>
+    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<DeviceBuf<BE>, T, BE>
     where
         A: GGSWInfos,
     {
-        self.alloc_fhe_uint_prepared(infos.base2k(), infos.k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.alloc_fhe_uint_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 }
 
-impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<Vec<u8>, T, BE> {
+impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<DeviceBuf<BE>, T, BE> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -190,17 +190,20 @@ pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
-    fn fhe_uint_prepared_encrypt_sk<DM, S>(
+    #[allow(clippy::too_many_arguments)]
+    fn fhe_uint_prepared_encrypt_sk<DM, S, E>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
         value: T,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         use poulpy_hal::{api::ScratchTakeBasic, layouts::ZnxZero};
@@ -216,27 +219,30 @@ where
         for i in 0..T::BITS as usize {
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
-            tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);
-            res.bits[i].prepare(self, &tmp_ggsw, scratch_2);
+            self.ggsw_encrypt_sk(&mut tmp_ggsw, &pt, sk, enc_infos, source_xe, source_xa, scratch_2);
+            self.ggsw_prepare(&mut res.bits[i], &tmp_ggsw, scratch_2);
         }
     }
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T, BE> {
-    pub fn encrypt_sk<M, S>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<M, S, E>(
         &mut self,
         module: &M,
         value: T,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: FheUintPreparedEncryptSk<T, BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.fhe_uint_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);
+        module.fhe_uint_prepared_encrypt_sk(self, value, sk, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -260,8 +266,8 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D,
         self.bits[0].base2k()
     }
 
-    fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.bits[0].k()
+    fn size(&self) -> usize {
+        self.bits[0].size()
     }
 
     fn n(&self) -> poulpy_core::layouts::Degree {
@@ -440,18 +446,18 @@ where
                     for (local_bit, dst) in res_bits_chunk.iter_mut().enumerate() {
                         bits.get_bit_lwe(self, start + local_bit, &mut tmp_lwe, ks_glwe, ks_lwe, scratch_2);
                         cbt.execute_to_constant(self, &mut tmp_ggsw, &tmp_lwe, 1, 1, scratch_2);
-                        dst.prepare(self, &tmp_ggsw, scratch_2);
+                        self.ggsw_prepare(dst, &tmp_ggsw, scratch_2);
                     }
                 });
             }
         });
 
         for i in 0..bit_start {
-            res.bits[i].zero(self);
+            self.ggsw_zero(&mut res.bits[i]);
         }
 
         for i in bit_end..T::BITS as usize {
-            res.bits[i].zero(self);
+            self.ggsw_zero(&mut res.bits[i]);
         }
     }
 }

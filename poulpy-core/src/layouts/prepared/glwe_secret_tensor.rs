@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToMut,
-        GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision,
+        GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef, GetDegree, LWEInfos, Rank,
     },
 };
 
@@ -39,10 +39,6 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretTensorPrepared<D, B> {
         Base2K(0)
     }
 
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
-    }
-
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }
@@ -58,8 +54,8 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretTensorPrepared<D, B> {
 }
 
 pub trait GLWESecretTensorPreparedFactory<B: Backend> {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<Vec<u8>, B>;
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>;
+    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos;
 
@@ -78,14 +74,14 @@ impl<B: Backend> GLWESecretTensorPreparedFactory<B> for Module<B>
 where
     Self: GLWESecretPreparedFactory<B>,
 {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<Vec<u8>, B> {
+    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
         GLWESecretTensorPrepared {
             data: self.svp_ppol_alloc(GLWESecretTensor::pairs(rank.into())),
             rank,
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
@@ -113,37 +109,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretTensorPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_tensor_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, rank: Rank) -> Self
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.alloc_glwe_secret_tensor_prepared(rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_tensor_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-    {
-        module.bytes_of_glwe_secret_tensor_prepared(rank)
-    }
-}
+// module-only API: allocation/size helpers are provided by `GLWESecretTensorPreparedFactory` on `Module`.
 
 impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
     pub fn n(&self) -> Degree {
@@ -155,15 +121,7 @@ impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESecretTensorPrepared<D, B> {
-    pub fn prepare<M, O>(&mut self, module: &M, other: &O)
-    where
-        M: GLWESecretTensorPreparedFactory<B>,
-        O: GLWESecretToRef + GetDistribution,
-    {
-        module.prepare_glwe_secret_tensor(self, other);
-    }
-}
+// module-only API: preparation is provided by `GLWESecretTensorPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrepared<D, B> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {

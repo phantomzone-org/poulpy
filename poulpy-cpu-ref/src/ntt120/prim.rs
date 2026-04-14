@@ -1,11 +1,11 @@
 //! Trait implementations for [`NTT120Ref`] — primitive NTT-domain operations.
 //!
-//! Implements all `Ntt*` traits from [`poulpy_hal::reference::ntt120`] for
+//! Implements all `Ntt*` traits from [`crate::reference::ntt120`] for
 //! [`NTT120Ref`], delegating to the `*_ref` scalar functions.
 //!
 //! This mirrors `poulpy_cpu_ref::fft64::reim` for the FFT64 backend.
 
-use poulpy_hal::reference::ntt120::{
+use crate::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
     NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128,
     NttZero,

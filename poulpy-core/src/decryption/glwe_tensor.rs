@@ -1,69 +1,24 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchTakeBasic, SvpPPolBytesOf},
+    api::{ScratchAvailable, SvpPPolBytesOf},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
+pub use crate::api::GLWETensorDecrypt;
 use crate::{
-    GLWEDecrypt, ScratchTakeCore,
+    ScratchTakeCore,
+    decryption::GLWEDecryptDefault,
     layouts::{
         GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared, GLWETensor,
         prepared::GLWESecretPreparedFactory,
     },
 };
 
-impl GLWETensor<Vec<u8>> {
-    pub fn decrypt_tmp_bytes<A, M, BE: Backend>(module: &M, a_infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWETensorDecrypt<BE>,
-    {
-        module.glwe_tensor_decrypt_tmp_bytes(a_infos)
-    }
-}
-
-impl<DataSelf: DataRef> GLWETensor<DataSelf> {
-    pub fn decrypt<P, S0, S1, M, BE: Backend>(
-        &self,
-        module: &M,
-        pt: &mut GLWEPlaintext<P>,
-        sk: &GLWESecretPrepared<S0, BE>,
-        sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: DataMut,
-        S0: DataRef,
-        S1: DataRef,
-        M: GLWETensorDecrypt<BE>,
-        Scratch<BE>: ScratchTakeBasic,
-    {
-        module.glwe_tensor_decrypt(self, pt, sk, sk_tensor, scratch);
-    }
-}
-
-pub trait GLWETensorDecrypt<BE: Backend> {
-    fn glwe_tensor_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: GLWEInfos;
-    fn glwe_tensor_decrypt<R, P, S0, S1>(
-        &self,
-        res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P>,
-        sk: &GLWESecretPrepared<S0, BE>,
-        sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataRef,
-        P: DataMut,
-        S0: DataRef,
-        S1: DataRef;
-}
-
-impl<BE: Backend> GLWETensorDecrypt<BE> for Module<BE>
+pub(crate) trait GLWETensorDecryptDefault<BE: Backend>:
+    Sized + GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>
 where
-    Self: GLWEDecrypt<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_tensor_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_tensor_decrypt_tmp_bytes_default<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
@@ -71,15 +26,15 @@ where
 
         let rank: usize = infos.rank().into();
         let lvl_0: usize = self.bytes_of_glwe_secret_prepared((GLWESecretTensor::pairs(rank) + rank).into());
-        let lvl_1: usize = self.glwe_decrypt_tmp_bytes(infos);
+        let lvl_1: usize = self.glwe_decrypt_tmp_bytes_default(infos);
 
         lvl_0 + lvl_1
     }
 
-    fn glwe_tensor_decrypt<R, P, S0, S1>(
+    fn glwe_tensor_decrypt_default<R, P, PM, S0, S1>(
         &self,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P>,
+        pt: &mut GLWEPlaintext<P, PM>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,
@@ -90,10 +45,10 @@ where
         S1: DataRef,
     {
         assert!(
-            scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes(res),
+            scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes_default(res),
             "scratch.available(): {} < GLWETensorDecrypt::glwe_tensor_decrypt_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_tensor_decrypt_tmp_bytes(res)
+            self.glwe_tensor_decrypt_tmp_bytes_default(res)
         );
 
         let rank: usize = sk.rank().as_usize();
@@ -108,6 +63,13 @@ where
             sk_grouped.data.at_mut(i + rank, 0).copy_from_slice(sk_tensor.data.at(i, 0));
         }
 
-        self.glwe_decrypt(res, pt, &sk_grouped, scratch_1);
+        self.glwe_decrypt_default(res, pt, &sk_grouped, scratch_1);
     }
+}
+
+impl<BE: Backend> GLWETensorDecryptDefault<BE> for Module<BE>
+where
+    Self: GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
 }

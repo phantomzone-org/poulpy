@@ -6,9 +6,14 @@ use crate::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
     },
-    layouts::{Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxDft},
+    layouts::{
+        Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, SvpPPolOwned, VecZnx, VecZnxDft,
+    },
     source::Source,
 };
+
+type VecZnxDftOwned<BE> = VecZnxDft<DeviceBuf<BE>, BE>;
+type VecZnxBigOwned<BE> = crate::layouts::VecZnxBig<DeviceBuf<BE>, BE>;
 
 pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
@@ -45,8 +50,8 @@ where
 
     let scalar_digest: u64 = scalar.digest_u64();
 
-    let mut svp_ref: SvpPPol<Vec<u8>, BR> = module_ref.svp_ppol_alloc(cols);
-    let mut svp_test: SvpPPol<Vec<u8>, BT> = module_test.svp_ppol_alloc(cols);
+    let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
+    let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
         module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
@@ -67,12 +72,12 @@ where
 
         for res_size in [1, 2, 3, 4] {
             // Allocate VecZnxDft from FFT64Ref and module to test
-            let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
-            let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
+            let mut res_dft_ref: VecZnxDftOwned<BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
+            let mut res_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, res_size);
 
             // Fill output with garbage
-            source.fill_bytes(res_dft_ref.data_mut());
-            source.fill_bytes(res_dft_test.data_mut());
+            source.fill_bytes(res_dft_ref.data_mut().as_mut());
+            source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
                 module_ref.svp_apply_dft(&mut res_dft_ref, j, &svp_ref, j, &a, j);
@@ -84,8 +89,8 @@ where
             assert_eq!(svp_test.digest_u64(), svp_test_digest);
             assert_eq!(a.digest_u64(), a_digest);
 
-            let res_big_ref: crate::layouts::VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: crate::layouts::VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
+            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
 
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -137,8 +142,8 @@ where
 
     let scalar_digest: u64 = scalar.digest_u64();
 
-    let mut svp_ref: SvpPPol<Vec<u8>, BR> = module_ref.svp_ppol_alloc(cols);
-    let mut svp_test: SvpPPol<Vec<u8>, BT> = module_test.svp_ppol_alloc(cols);
+    let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
+    let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
         module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
@@ -157,8 +162,8 @@ where
 
         let a_digest: u64 = a.digest_u64();
 
-        let mut a_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, a_size);
-        let mut a_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, a_size);
+        let mut a_dft_ref: VecZnxDftOwned<BR> = module_ref.vec_znx_dft_alloc(cols, a_size);
+        let mut a_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, a_size);
 
         for j in 0..cols {
             module_ref.vec_znx_dft_apply(1, 0, &mut a_dft_ref, j, &a, j);
@@ -172,12 +177,12 @@ where
 
         for res_size in [3] {
             // Allocate VecZnxDft from FFT64Ref and module to test
-            let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
-            let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
+            let mut res_dft_ref: VecZnxDftOwned<BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
+            let mut res_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, res_size);
 
             // Fill output with garbage
-            source.fill_bytes(res_dft_ref.data_mut());
-            source.fill_bytes(res_dft_test.data_mut());
+            source.fill_bytes(res_dft_ref.data_mut().as_mut());
+            source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
                 module_ref.svp_apply_dft_to_dft(&mut res_dft_ref, j, &svp_ref, j, &a_dft_ref, j);
@@ -191,8 +196,8 @@ where
             assert_eq!(svp_test.digest_u64(), svp_test_digest);
             assert_eq!(a.digest_u64(), a_digest);
 
-            let res_big_ref: crate::layouts::VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: crate::layouts::VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
+            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
 
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -247,8 +252,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
 
     let scalar_digest: u64 = scalar.digest_u64();
 
-    let mut svp_ref: SvpPPol<Vec<u8>, BR> = module_ref.svp_ppol_alloc(cols);
-    let mut svp_test: SvpPPol<Vec<u8>, BT> = module_test.svp_ppol_alloc(cols);
+    let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
+    let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
         module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
@@ -265,8 +270,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
         res.fill_uniform(base2k, &mut source);
         let res_digest: u64 = res.digest_u64();
 
-        let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
-        let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
+        let mut res_dft_ref: VecZnxDftOwned<BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
+        let mut res_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, res_size);
 
         for j in 0..cols {
             module_ref.vec_znx_dft_apply(1, 0, &mut res_dft_ref, j, &res, j);
@@ -284,8 +289,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
         assert_eq!(svp_ref.digest_u64(), svp_ref_digest);
         assert_eq!(svp_test.digest_u64(), svp_test_digest);
 
-        let res_big_ref: crate::layouts::VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-        let res_big_test: crate::layouts::VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+        let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
+        let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
 
         let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
         let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);

@@ -1,10 +1,10 @@
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Scratch, SvpPPol};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Scratch, SvpPPolOwned};
 
 use std::marker::PhantomData;
 
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared},
+    layouts::{Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, prepared::GGSWPrepared},
 };
 
 use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyInfos};
@@ -17,7 +17,7 @@ use crate::bin_fhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindR
 /// methods on [`BlindRotationKeyPrepared`] rather than calling these directly.
 pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
     /// Allocates a zero-filled prepared key from a dimension descriptor.
-    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<Vec<u8>, BRA, BE>
+    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: BlindRotationKeyInfos;
 
@@ -42,7 +42,7 @@ pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
         DR: DataRef;
 }
 
-impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA, BE> {
+impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> {
     pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: BlindRotationKeyInfos,
@@ -97,7 +97,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D
 pub struct BlindRotationKeyPrepared<D: Data, BRT: BlindRotationAlgo, B: Backend> {
     pub(crate) data: Vec<GGSWPrepared<D, B>>,
     pub(crate) dist: Distribution,
-    pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
+    pub(crate) x_pow_a: Option<Vec<SvpPPolOwned<B>>>,
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
@@ -114,10 +114,6 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyInfos for Blin
 impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyPrepared<D, BRT, B> {
     fn base2k(&self) -> Base2K {
         self.data[0].base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.data[0].k()
     }
 
     fn n(&self) -> Degree {

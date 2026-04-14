@@ -5,25 +5,25 @@ use rand::Rng;
 
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAlloc,
         VecZnxDftApply, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxIdftApply, VecZnxIdftApplyTmpA,
         VecZnxIdftApplyTmpBytes,
     },
-    layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft},
+    layouts::{Backend, DataViewMut, DeviceBuf, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft},
     source::Source,
 };
 
-pub fn bench_vec_znx_dft_add<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_dft_add_into<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftAdd<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftAddInto<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_add::{label}");
+    let group_name: String = format!("vec_znx_dft_add_into::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftAdd<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAddInto<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -33,17 +33,17 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut b: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut c: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut b: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut c: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
-        source.fill_bytes(a.data_mut());
-        source.fill_bytes(b.data_mut());
-        source.fill_bytes(c.data_mut());
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(b.data_mut().as_mut());
+        source.fill_bytes(c.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
-                module.vec_znx_dft_add(&mut c, i, &a, i, &b, i);
+                module.vec_znx_dft_add_into(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }
@@ -58,17 +58,17 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_dft_add_inplace<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_dft_add_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftAddInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftAddAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_add_inplace::{label}");
+    let group_name: String = format!("vec_znx_dft_add_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftAddInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAddAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -78,16 +78,16 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut c: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut c: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
         // Fill a with random i64
-        source.fill_bytes(a.data_mut());
-        source.fill_bytes(c.data_mut());
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(c.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
-                module.vec_znx_dft_add_inplace(&mut c, i, &a, i);
+                module.vec_znx_dft_add_assign(&mut c, i, &a, i);
             }
             black_box(());
         }
@@ -122,10 +122,10 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut res: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        source.fill_bytes(res.data_mut());
-        source.fill_bytes(a.data_mut());
+        source.fill_bytes(res.data_mut().as_mut());
+        source.fill_bytes(a.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
@@ -166,10 +166,10 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut res: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(cols, size);
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        source.fill_bytes(res.data_mut());
-        source.fill_bytes(a.data_mut());
+        let mut res: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        source.fill_bytes(res.data_mut().as_mut());
+        source.fill_bytes(a.data_mut().as_mut());
 
         let mut scratch = ScratchOwned::alloc(module.vec_znx_idft_apply_tmp_bytes());
 
@@ -209,10 +209,10 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut res: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(cols, size);
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        source.fill_bytes(res.data_mut());
-        source.fill_bytes(a.data_mut());
+        let mut res: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        source.fill_bytes(res.data_mut().as_mut());
+        source.fill_bytes(a.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
@@ -251,13 +251,13 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut b: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut c: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut b: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut c: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
-        source.fill_bytes(a.data_mut());
-        source.fill_bytes(b.data_mut());
-        source.fill_bytes(c.data_mut());
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(b.data_mut().as_mut());
+        source.fill_bytes(c.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
@@ -296,12 +296,12 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut c: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut c: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
         // Fill a with random i64
-        source.fill_bytes(a.data_mut());
-        source.fill_bytes(c.data_mut());
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(c.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
@@ -340,12 +340,12 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut c: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut c: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
 
         // Fill a with random i64
-        source.fill_bytes(a.data_mut());
-        source.fill_bytes(c.data_mut());
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(c.data_mut().as_mut());
 
         move || {
             for i in 0..cols {

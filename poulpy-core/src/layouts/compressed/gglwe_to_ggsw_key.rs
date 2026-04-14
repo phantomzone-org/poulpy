@@ -30,10 +30,6 @@ impl<D: Data> LWEInfos for GGLWEToGGSWKeyCompressed<D> {
         self.keys[0].base2k()
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.keys[0].k()
-    }
-
     fn size(&self) -> usize {
         self.keys[0].size()
     }
@@ -101,7 +97,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
         Self::alloc(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -130,7 +126,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
         Self::bytes_of(
             infos.n(),
             infos.base2k(),
-            infos.k(),
+            infos.max_k(),
             infos.rank(),
             infos.dnum(),
             infos.dsize(),
@@ -207,16 +203,7 @@ where
     }
 }
 
-impl<D: DataMut> GGLWEToGGSWKey<D> {
-    /// Decompresses a [`GGLWEToGGSWKeyCompressed`] into this standard key.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        M: GGLWEToGGSWKeyDecompress,
-        O: GGLWEToGGSWKeyCompressedToRef,
-    {
-        module.decompress_gglwe_to_ggsw_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GGLWEToGGSWKeyDecompress` on `Module`.
 
 /// Converts a compressed GGLWE-to-GGSW key to an immutably-borrowed variant.
 pub trait GGLWEToGGSWKeyCompressedToRef {

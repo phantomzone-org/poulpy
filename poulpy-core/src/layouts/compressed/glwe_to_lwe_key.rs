@@ -7,7 +7,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEInfos, GGLWEToMut, GLWEInfos,
-    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, GLWEToLWEKey, LWEInfos, Rank, TorusPrecision,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 
@@ -21,10 +21,6 @@ pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GLWESwitchingKeyC
 impl<D: Data> LWEInfos for GLWEToLWESwitchingKeyCompressed<D> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
     }
 
     fn n(&self) -> Degree {
@@ -104,7 +100,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             1,
             "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
         );
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank_in(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
@@ -156,15 +152,7 @@ where
 
 impl<B: Backend> GLWEToLWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
-impl<D: DataMut> GLWEToLWEKey<D> {
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
-        M: GLWEToLWESwitchingKeyDecompress,
-    {
-        module.decompress_glwe_to_lwe_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWEToLWESwitchingKeyDecompress` on `Module`.
 
 impl<D: DataRef> GGLWECompressedToRef for GLWEToLWESwitchingKeyCompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {

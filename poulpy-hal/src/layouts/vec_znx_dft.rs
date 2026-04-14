@@ -6,11 +6,9 @@ use std::{
 
 use rand_distr::num_traits::Zero;
 
-use crate::{
-    alloc_aligned,
-    layouts::{
-        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, VecZnxBig, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
-    },
+use crate::layouts::{
+    Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, Located, VecZnxBig, ZnxInfos, ZnxView,
+    ZnxViewMut, ZnxZero,
 };
 
 /// Polynomial vector in DFT (evaluation) domain.
@@ -124,11 +122,12 @@ where
     }
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
+impl<B: Backend> VecZnxDft<DeviceBuf<B>, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_vec_znx_dft(n, cols, size));
+        let data: DeviceBuf<B> =
+            Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_vec_znx_dft(n, cols, size)));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             size,
@@ -140,9 +139,9 @@ impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::bytes_of_vec_znx_dft(n, cols, size));
-        crate::assert_alignment(data.as_ptr());
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             size,
@@ -152,8 +151,8 @@ impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
     }
 }
 
-/// Owned `VecZnxDft` backed by a `Vec<u8>`.
-pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
+/// Owned `VecZnxDft` backed by a backend-owned buffer.
+pub type VecZnxDftOwned<B> = VecZnxDft<DeviceBuf<B>, B>;
 
 impl<D: Data, B: Backend> VecZnxDft<D, B> {
     /// Constructs a `VecZnxDft` from raw parts without validation.

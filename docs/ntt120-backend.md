@@ -113,7 +113,7 @@ All OEP traits are fully AVX2-accelerated. Requires `enable-avx` feature and
 ### `module.rs`
 - `NTT120AvxHandle { table_ntt, table_intt, meta_bbc, meta_bbb }` — same fields as `NTT120RefHandle`
 - `unsafe impl NttHandleProvider for NTT120AvxHandle`
-- `ModuleNewImpl` includes AVX2 runtime CPUID check
+- `NttHandleFactory` includes AVX2 runtime CPUID check
 
 ### `ntt_avx.rs`
 - AVX2 NTT butterfly kernels; variable bit-shifts via `_mm256_srl_epi64(x, _mm_cvtsi64_si128(h))`

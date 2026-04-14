@@ -1,22 +1,22 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
-        LWESecret, Rank, TorusPrecision,
+        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
+        TorusPrecision,
     },
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
+        Add, BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
+        ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
@@ -154,27 +154,40 @@ where
     sk_lwe.fill_binary_block(BINARY_BLOCK_SIZE as usize, &mut source_xs);
 
     // Preparing the private keys
-    let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &glwe_layout);
-    sk_glwe_prepared.prepare(&module, &sk_glwe);
+    let mut sk_glwe_prepared = module.alloc_glwe_secret_prepared_from_infos(&glwe_layout);
+    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
 
     // Creating the public BDD Key
     // This key is required to prepare all Fhe Integers for operations,
     // and for performing the operations themselves
+    let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_layout).unwrap();
+
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    bdd_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &bdd_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     ////////// Input Encryption
     // Encrypting the inputs
     let input_a = 255_u32;
     let input_b = 30_u32;
 
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_layout).unwrap();
+
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
     a_enc.encrypt_sk(
         &module,
         input_a,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -183,8 +196,9 @@ where
         &module,
         input_b,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
@@ -192,16 +206,16 @@ where
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
+    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     // Input Preparation
     // Before each operation, the inputs to that operation must be prepared
     // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
-    let mut a_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
 
-    let mut b_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
 
     // Allocating the intermediate ciphertext c_enc
@@ -211,7 +225,7 @@ where
     c_enc.add(&module, &a_enc_prepared, &b_enc_prepared, &bdd_key_prepared, scratch.borrow());
 
     // Preparing the intermediate result ciphertext, c_enc, for the next operation
-    let mut c_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut c_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     c_enc_prepared.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
 
     // Creating the output ciphertext d_enc
@@ -258,8 +272,9 @@ where
             &module,
             *input,
             &sk_glwe_prepared,
-            &mut source_xa,
+            &glwe_enc_infos,
             &mut source_xe,
+            &mut source_xa,
             scratch.borrow(),
         );
         inputs_a_enc_vec.push(next_input);
@@ -275,11 +290,12 @@ where
         &module,
         input_selector,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
-    let mut input_selector_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
+    let mut input_selector_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
     input_selector_enc_prepared.prepare(&module, &input_selector_enc, &bdd_key_prepared, scratch.borrow());
 

@@ -1,63 +1,39 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable},
-    layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, Module, Scratch},
     source::Source,
 };
 
+pub use crate::api::GLWETensorKeyEncryptSk;
 use crate::{
-    GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWELayout, GGLWEToMut, GLWEInfos, GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef,
-        GLWETensorKey,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
+        prepared::GLWESecretPreparedFactory,
     },
 };
 
-impl GLWETensorKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWETensorKeyEncryptSk<BE>,
-    {
-        module.glwe_tensor_key_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
-    pub fn encrypt_sk<M, S, BE: Backend>(
-        &mut self,
-        module: &M,
-        sk: &S,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        M: GLWETensorKeyEncryptSk<BE>,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
-    }
-}
-
-pub trait GLWETensorKeyEncryptSk<BE: Backend> {
+#[doc(hidden)]
+pub trait GLWETensorKeyEncryptSkDefault<BE: Backend> {
     fn glwe_tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn glwe_tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
-impl<BE: Backend> GLWETensorKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWETensorKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GLWESecretTensorFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -68,13 +44,13 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let sk_prepared: usize = GLWESecretPrepared::bytes_of(self, infos.rank_out());
+        let sk_prepared: usize = self.bytes_of_glwe_secret_prepared(infos.rank_out());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
 
         let tensor_infos: GGLWELayout = GGLWELayout {
             n: infos.n(),
             base2k: infos.base2k(),
-            k: infos.k(),
+            k: infos.max_k(),
             rank_in: GLWESecretTensor::pairs(infos.rank().into()).into(),
             rank_out: infos.rank_out(),
             dnum: infos.dnum(),
@@ -90,15 +66,17 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn glwe_tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S, E>(
         &self,
         res: &mut R,
         sk: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
+        E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         assert_eq!(res.rank_out(), sk.rank());
@@ -112,9 +90,9 @@ where
 
         let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
         let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
-        sk_prepared.prepare(self, sk);
-        sk_tensor.prepare(self, sk, scratch_2);
+        self.prepare_glwe_secret(&mut sk_prepared, sk);
+        self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch_2);
 
-        self.gglwe_encrypt_sk(res, &sk_tensor.data, &sk_prepared, source_xa, source_xe, scratch_2);
+        self.gglwe_encrypt_sk(res, &sk_tensor.data, &sk_prepared, enc_infos, source_xe, source_xa, scratch_2);
     }
 }

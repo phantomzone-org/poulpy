@@ -1,15 +1,15 @@
 use crate::{
     api::{ModuleN, ModuleNew},
     layouts::{Backend, Module},
-    oep::ModuleNewImpl,
+    oep::HalImpl,
 };
 
 impl<B> ModuleNew<B> for Module<B>
 where
-    B: Backend + ModuleNewImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn new(n: u64) -> Self {
-        B::new_impl(n)
+        <B as HalImpl<B>>::new(n)
     }
 }
 

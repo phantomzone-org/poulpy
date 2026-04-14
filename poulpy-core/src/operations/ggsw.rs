@@ -3,22 +3,22 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch},
 };
 
+pub use crate::api::GGSWRotate;
 use crate::{
     GLWERotate, ScratchTakeCore,
     layouts::{GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWEInfos},
 };
 
-impl<BE: Backend> GGSWRotate<BE> for Module<BE> where Module<BE>: GLWERotate<BE> {}
-
-pub trait GGSWRotate<BE: Backend>
+#[doc(hidden)]
+pub trait GGSWRotateDefault<BE: Backend>
 where
     Self: GLWERotate<BE>,
 {
-    fn ggsw_rotate_tmp_bytes(&self) -> usize {
+    fn ggsw_rotate_tmp_bytes_default(&self) -> usize {
         self.glwe_rotate_tmp_bytes()
     }
 
-    fn ggsw_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
+    fn ggsw_rotate_default<R, A>(&self, k: i64, res: &mut R, a: &A)
     where
         R: GGSWToMut,
         A: GGSWToRef,
@@ -39,16 +39,16 @@ where
         }
     }
 
-    fn ggsw_rotate_inplace<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn ggsw_rotate_inplace_default<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
     {
         assert!(
-            scratch.available() >= self.ggsw_rotate_tmp_bytes(),
+            scratch.available() >= self.ggsw_rotate_tmp_bytes_default(),
             "scratch.available(): {} < GGSWRotate::ggsw_rotate_tmp_bytes: {}",
             scratch.available(),
-            self.ggsw_rotate_tmp_bytes()
+            self.ggsw_rotate_tmp_bytes_default()
         );
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
 
@@ -62,3 +62,5 @@ where
         }
     }
 }
+
+impl<BE: Backend> GGSWRotateDefault<BE> for Module<BE> where Module<BE>: GLWERotate<BE> {}

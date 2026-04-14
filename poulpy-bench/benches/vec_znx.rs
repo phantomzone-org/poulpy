@@ -1,10 +1,10 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-fn bench_vec_znx_add(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add; c);
+fn bench_vec_znx_add_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add_into; c);
 }
-fn bench_vec_znx_add_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add_inplace; c);
+fn bench_vec_znx_add_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_add_assign; c);
 }
 fn bench_vec_znx_sub(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx::bench_vec_znx_sub; c);
@@ -61,8 +61,8 @@ fn bench_vec_znx_mul_xp_minus_one_inplace(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = poulpy_bench::criterion_config();
-    targets = bench_vec_znx_add,
-    bench_vec_znx_add_inplace,
+    targets = bench_vec_znx_add_into,
+    bench_vec_znx_add_assign,
     bench_vec_znx_sub,
     bench_vec_znx_sub_inplace,
     bench_vec_znx_sub_negate_inplace,

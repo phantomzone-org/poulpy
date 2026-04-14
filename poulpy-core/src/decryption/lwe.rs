@@ -1,42 +1,16 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
 };
 
+pub use crate::api::LWEDecrypt;
 use crate::{
     ScratchTakeCore,
-    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos, TorusPrecision},
+    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos},
 };
 
-impl<DataSelf: DataRef + DataMut> LWE<DataSelf> {
-    pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
-    where
-        P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
-        S: LWESecretToRef,
-        M: LWEDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.lwe_decrypt(self, pt, sk, scratch);
-    }
-}
-
-pub trait LWEDecrypt<BE: Backend> {
-    fn lwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
-    where
-        R: LWEToRef,
-        P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
-        S: LWESecretToRef,
-        Scratch<BE>: ScratchTakeCore<BE>;
-    fn lwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: LWEInfos;
-}
-
-impl<BE: Backend> LWEDecrypt<BE> for Module<BE>
-where
-    Self: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-{
-    fn lwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
+pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {
+    fn lwe_decrypt_tmp_bytes_default<A>(&self, infos: &A) -> usize
     where
         A: LWEInfos,
     {
@@ -46,7 +20,7 @@ where
         lvl_0 + lvl_1
     }
 
-    fn lwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    fn lwe_decrypt_default<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: LWEToRef,
         P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
@@ -61,10 +35,10 @@ where
             assert_eq!(res.n(), sk.n());
         }
         assert!(
-            scratch.available() >= self.lwe_decrypt_tmp_bytes(res),
+            scratch.available() >= self.lwe_decrypt_tmp_bytes_default(res),
             "scratch.available(): {} < LWEDecrypt::lwe_decrypt_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_decrypt_tmp_bytes(res)
+            self.lwe_decrypt_tmp_bytes_default(res)
         );
 
         let (mut tmp, scratch_1) = scratch.take_lwe_plaintext(res);
@@ -80,7 +54,7 @@ where
         let pt_base2k = pt.base2k().into();
         let res_base2k = res.base2k().into();
         self.vec_znx_normalize(&mut pt.to_mut().data, pt_base2k, 0, 0, tmp.data(), res_base2k, 0, scratch_1);
-
-        pt.set_k(TorusPrecision(res.k().0.min(pt.size() as u32 * res.base2k().0)));
     }
 }
+
+impl<BE: Backend> LWEDecryptDefault<BE> for Module<BE> where Self: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {}

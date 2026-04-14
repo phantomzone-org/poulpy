@@ -7,6 +7,7 @@ use std::{
 use bytemuck::Pod;
 use rand_distr::num_traits::Zero;
 
+use crate::layouts::DataMut;
 use crate::{
     GALOISGENERATOR,
     api::{ModuleLogN, ModuleN},
@@ -29,8 +30,14 @@ pub trait Backend: Sized + Sync + Send {
     type ScalarBig: Copy + Zero + Display + Debug + Pod;
     /// Scalar type for DFT-domain (prepared) polynomial representations.
     type ScalarPrep: Copy + Zero + Display + Debug + Pod;
+    /// Owned byte buffer for backend-prepared layouts and scratch.
+    type OwnedBuf: DataMut;
     /// Opaque backend handle type (e.g. precomputed FFT twiddle factors).
     type Handle: 'static;
+    /// Allocates a backend-owned byte buffer of `len` bytes.
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf;
+    /// Wraps/Uploads a host byte buffer into a backend-owned buffer.
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf;
     /// Bytes size of `ScalarBig`.
     fn size_of_scalar_big() -> usize {
         size_of::<Self::ScalarBig>()
