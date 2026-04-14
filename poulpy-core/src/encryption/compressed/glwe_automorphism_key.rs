@@ -46,7 +46,7 @@ where
         A: GGLWEInfos,
     {
         assert_eq!(self.n() as u32, infos.n());
-        let lvl_0: usize = self.bytes_of_glwe_secret_prepared_from_infos(infos);
+        let lvl_0: usize = self.glwe_secret_prepared_bytes_of_from_infos(infos);
         let lvl_1: usize = self
             .gglwe_compressed_encrypt_sk_tmp_bytes(infos)
             .max(GLWESecret::bytes_of_from_infos(infos));
@@ -93,7 +93,7 @@ where
                     i,
                 );
             }
-            self.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+            self.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
         }
 
         self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, enc_infos, source_xe, scratch_1);

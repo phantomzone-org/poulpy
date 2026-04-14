@@ -247,8 +247,8 @@ where
             self.glwe_automorphism_key_encrypt_sk(atk, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
         }
 
-        let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = self.alloc_glwe_secret_prepared(brk_infos.rank());
-        self.prepare_glwe_secret(&mut sk_glwe_prepared, sk_glwe);
+        let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
+        self.glwe_secret_prepare(&mut sk_glwe_prepared, sk_glwe);
 
         self.blind_rotation_key_encrypt_sk(
             &mut res.brk,

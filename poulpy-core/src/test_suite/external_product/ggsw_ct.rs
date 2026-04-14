@@ -99,8 +99,8 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_prepared, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.ggsw_encrypt_sk(
                 &mut ggsw_apply,
@@ -122,7 +122,7 @@ where
                 scratch.borrow(),
             );
 
-            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_apply);
+            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
             module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, scratch.borrow());
 
             module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
@@ -238,8 +238,8 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-            module.prepare_glwe_secret(&mut sk_prepared, &sk);
+            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.ggsw_encrypt_sk(
                 &mut ggsw_apply,
@@ -261,7 +261,7 @@ where
                 scratch.borrow(),
             );
 
-            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_apply);
+            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
             module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, scratch.borrow());
 
             module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, scratch.borrow());

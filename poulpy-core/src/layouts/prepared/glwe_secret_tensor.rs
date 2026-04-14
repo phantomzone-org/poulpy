@@ -54,17 +54,17 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretTensorPrepared<D, B> {
 }
 
 pub trait GLWESecretTensorPreparedFactory<B: Backend> {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>;
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>;
+    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos;
 
-    fn bytes_of_glwe_secret_tensor_prepared(&self, rank: Rank) -> usize;
-    fn bytes_of_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_secret_tensor_prepared_bytes_of(&self, rank: Rank) -> usize;
+    fn glwe_secret_tensor_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos;
 
-    fn prepare_glwe_secret_tensor<R, O>(&self, res: &mut R, other: &O)
+    fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution;
@@ -74,38 +74,38 @@ impl<B: Backend> GLWESecretTensorPreparedFactory<B> for Module<B>
 where
     Self: GLWESecretPreparedFactory<B>,
 {
-    fn alloc_glwe_secret_tensor_prepared(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
+    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
         GLWESecretTensorPrepared {
             data: self.svp_ppol_alloc(GLWESecretTensor::pairs(rank.into())),
             rank,
             dist: Distribution::NONE,
         }
     }
-    fn alloc_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_glwe_secret_tensor_prepared(infos.rank())
+        self.glwe_secret_tensor_prepared_alloc(infos.rank())
     }
 
-    fn bytes_of_glwe_secret_tensor_prepared(&self, rank: Rank) -> usize {
+    fn glwe_secret_tensor_prepared_bytes_of(&self, rank: Rank) -> usize {
         self.bytes_of_svp_ppol(GLWESecretTensor::pairs(rank.into()))
     }
-    fn bytes_of_glwe_secret_tensor_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_secret_tensor_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_glwe_secret_prepared(infos.rank())
+        self.glwe_secret_prepared_bytes_of(infos.rank())
     }
 
-    fn prepare_glwe_secret_tensor<R, O>(&self, res: &mut R, other: &O)
+    fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution,
     {
-        self.prepare_glwe_secret(res, other);
+        self.glwe_secret_prepare(res, other);
     }
 }
 

@@ -45,8 +45,8 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(atk_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(atk_infos.rank_out());
-    module.prepare_glwe_secret(&mut sk_prepared, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(atk_infos.rank_out());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -67,8 +67,8 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     );
 
     let mut atk_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-        module.alloc_glwe_automorphism_key_prepared_from_infos(&atk);
-    module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
+        module.glwe_automorphism_key_prepared_alloc_from_infos(&atk);
+    module.glwe_automorphism_key_prepare(&mut atk_prepared, &atk, scratch.borrow());
 
     let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);

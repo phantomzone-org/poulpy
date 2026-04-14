@@ -144,7 +144,7 @@ where
     ) -> FheUintPrepared<DeviceBuf<BE>, T, BE> {
         FheUintPrepared {
             bits: (0..T::BITS)
-                .map(|_| self.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank))
+                .map(|_| self.ggsw_prepared_alloc(base2k, k, dnum, dsize, rank))
                 .collect(),
             _phantom: PhantomData,
         }

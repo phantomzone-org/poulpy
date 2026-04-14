@@ -46,8 +46,8 @@ fn main() {
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_ct_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.alloc_glwe_secret_prepared(rank);
-    module.prepare_glwe_secret(&mut sk_prepared, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.glwe_secret_prepared_alloc(rank);
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     module.vec_znx_fill_uniform(base2k.into(), &mut pt_want.data, 0, &mut source_xa);
 

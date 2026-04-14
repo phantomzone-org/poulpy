@@ -74,8 +74,8 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared_from_infos(&sk);
-    module.prepare_glwe_secret(&mut sk_dft, &sk);
+    let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+    module.glwe_secret_prepare(&mut sk_dft, &sk);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
@@ -100,8 +100,8 @@ where
             scratch.borrow(),
         );
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
-            module.alloc_glwe_automorphism_key_prepared_from_infos(&tmp);
-        module.prepare_glwe_automorphism_key(&mut atk_prepared, &tmp, scratch.borrow());
+            module.glwe_automorphism_key_prepared_alloc_from_infos(&tmp);
+        module.glwe_automorphism_key_prepare(&mut atk_prepared, &tmp, scratch.borrow());
         auto_keys.insert(*gal_el, atk_prepared);
     });
 

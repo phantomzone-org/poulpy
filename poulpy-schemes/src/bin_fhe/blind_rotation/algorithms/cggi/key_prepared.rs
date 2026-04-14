@@ -26,7 +26,7 @@ where
     {
         BlindRotationKeyPrepared {
             data: (0..infos.n_lwe().as_usize())
-                .map(|_| self.alloc_ggsw_prepared_from_infos(infos))
+                .map(|_| self.ggsw_prepared_alloc_from_infos(infos))
                 .collect(),
             dist: Distribution::NONE,
             x_pow_a: None,

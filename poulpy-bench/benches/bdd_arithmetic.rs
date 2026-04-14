@@ -98,8 +98,8 @@ where
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
     cbt_key_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
-    let mut sk_glwe_prepared = module.alloc_glwe_secret_prepared_from_infos(&params.glwe_layout);
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared = module.glwe_secret_prepared_alloc_from_infos(&params.glwe_layout);
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&params.bdd_layout).unwrap();
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(params.glwe_layout).unwrap();

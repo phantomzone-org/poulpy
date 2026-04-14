@@ -344,7 +344,7 @@ where
         A: BDDKeyInfos,
     {
         let ks_glwe = if let Some(ks_glwe_infos) = &infos.ks_glwe_infos() {
-            Some(self.alloc_glwe_switching_key_prepared_from_infos(ks_glwe_infos))
+            Some(self.glwe_switching_key_prepared_alloc_from_infos(ks_glwe_infos))
         } else {
             None
         };
@@ -352,7 +352,7 @@ where
         BDDKeyPrepared {
             cbt: CircuitBootstrappingKeyPrepared::alloc_from_infos(self, &infos.cbt_infos()),
             ks_glwe,
-            ks_lwe: self.alloc_glwe_to_lwe_key_prepared_from_infos(&infos.ks_lwe_infos()),
+            ks_lwe: self.glwe_to_lwe_key_prepared_alloc_from_infos(&infos.ks_lwe_infos()),
         }
     }
 
@@ -361,7 +361,7 @@ where
         A: BDDKeyInfos,
     {
         self.circuit_bootstrapping_key_prepare_tmp_bytes(&infos.cbt_infos())
-            .max(self.prepare_glwe_to_lwe_key_tmp_bytes(&infos.ks_lwe_infos()))
+            .max(self.glwe_to_lwe_key_prepare_tmp_bytes(&infos.ks_lwe_infos()))
     }
 
     fn prepare_bdd_key<DM, DR>(&self, res: &mut BDDKeyPrepared<DM, BRA, BE>, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
@@ -374,13 +374,13 @@ where
 
         if let Some(key_prep) = &mut res.ks_glwe {
             if let Some(other) = &other.ks_glwe {
-                self.prepare_glwe_switching(key_prep, other, scratch);
+                self.glwe_switching_key_prepare(key_prep, other, scratch);
             } else {
                 panic!("incompatible keys: res has Some(ks_glwe) but other has none")
             }
         }
 
-        self.prepare_glwe_to_lwe_key(&mut res.ks_lwe, &other.ks_lwe, scratch);
+        self.glwe_to_lwe_key_prepare(&mut res.ks_lwe, &other.ks_lwe, scratch);
     }
 }
 impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Module<BE> where

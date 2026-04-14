@@ -55,46 +55,46 @@ pub trait LWEToGLWEKeyPreparedFactory<B: Backend>
 where
     Self: GLWESwitchingKeyPreparedFactory<B>,
 {
-    fn alloc_lwe_to_glwe_key_prepared(
+    fn lwe_to_glwe_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_out: Rank,
         dnum: Dnum,
     ) -> LWEToGLWEKeyPrepared<DeviceBuf<B>, B> {
-        LWEToGLWEKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
+        LWEToGLWEKeyPrepared(self.glwe_switching_key_prepared_alloc(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
     }
-    fn alloc_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> LWEToGLWEKeyPrepared<DeviceBuf<B>, B>
+    fn lwe_to_glwe_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> LWEToGLWEKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
-        self.alloc_lwe_to_glwe_key_prepared(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
+        self.lwe_to_glwe_key_prepared_alloc(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
-    fn bytes_of_lwe_to_glwe_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
+    fn lwe_to_glwe_key_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
         self.bytes_of_glwe_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1))
     }
 
-    fn bytes_of_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
-        self.bytes_of_lwe_to_glwe_key_prepared(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
+        self.lwe_to_glwe_key_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
-    fn prepare_lwe_to_glwe_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_glwe_switching_key_tmp_bytes(infos);
+        let lvl_0: usize = self.glwe_switching_key_prepare_tmp_bytes(infos);
         lvl_0
     }
 
-    fn prepare_lwe_to_glwe_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn lwe_to_glwe_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
@@ -102,12 +102,12 @@ where
     {
         let res_infos = res.to_mut();
         assert!(
-            scratch.available() >= self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos),
-            "scratch.available(): {} < LWEToGLWEKeyPreparedFactory::prepare_lwe_to_glwe_key_tmp_bytes: {}",
+            scratch.available() >= self.lwe_to_glwe_key_prepare_tmp_bytes(&res_infos),
+            "scratch.available(): {} < LWEToGLWEKeyPreparedFactory::lwe_to_glwe_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos)
+            self.lwe_to_glwe_key_prepare_tmp_bytes(&res_infos)
         );
-        self.prepare_glwe_switching(res, other, scratch);
+        self.glwe_switching_key_prepare(res, other, scratch);
     }
 }
 

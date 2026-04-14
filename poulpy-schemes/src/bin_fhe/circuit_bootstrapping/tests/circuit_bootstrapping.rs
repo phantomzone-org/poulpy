@@ -125,8 +125,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let data: i64 = 1;
 
@@ -214,7 +214,7 @@ where
         scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
     module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
     module.glwe_external_product_inplace(&mut ct_glwe, &res_prepared, scratch.borrow());
@@ -325,8 +325,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(rank.into());
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let data: i64 = 1;
 
@@ -404,7 +404,7 @@ where
         scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
     module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
     module.glwe_external_product_inplace(&mut ct_glwe, &res_prepared, scratch.borrow());

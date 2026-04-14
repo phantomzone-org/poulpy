@@ -39,7 +39,7 @@ where
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
 
     let mut s: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-    let mut s_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ggsw_infos);
+    let mut s_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_infos);
 
     let a: u32 = source_xa.next_u32();
     let b: u32 = source_xa.next_u32();

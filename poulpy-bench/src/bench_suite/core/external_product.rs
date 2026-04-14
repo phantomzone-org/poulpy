@@ -39,8 +39,8 @@ pub fn bench_glwe_external_product<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(ggsw_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(ggsw_infos.rank());
-    module.prepare_glwe_secret(&mut sk_prepared, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(ggsw_infos.rank());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
     let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(ggsw_infos);
@@ -74,7 +74,7 @@ pub fn bench_glwe_external_product<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ct_ggsw);
     module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product::{label}");
@@ -109,8 +109,8 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(infos.rank());
-    module.prepare_glwe_secret(&mut sk_prepared, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(infos.rank());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let pt = ScalarZnx::alloc(n, 1);
     let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(infos);
@@ -142,7 +142,7 @@ where
         scratch.borrow(),
     );
 
-    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_ggsw);
+    let mut ggsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ct_ggsw);
     module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, scratch.borrow());
 
     let group_name = format!("glwe_external_product_inplace::{label}");

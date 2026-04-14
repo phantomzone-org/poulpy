@@ -107,8 +107,8 @@ where
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+                    module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
                 module.glwe_switching_key_encrypt_sk(
@@ -131,7 +131,7 @@ where
                     scratch.borrow(),
                 );
 
-                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_rgsw);
+                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ct_rgsw);
                 module.ggsw_prepare(&mut ct_rgsw_prepared, &ct_rgsw, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
@@ -258,8 +258,8 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
                 let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
-                    module.alloc_glwe_secret_prepared(rank_out.into());
-                module.prepare_glwe_secret(&mut sk_out_prepared, &sk_out);
+                    module.glwe_secret_prepared_alloc(rank_out.into());
+                module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
                 // gglwe_{s1}(s0) = s0 -> s1
                 module.glwe_switching_key_encrypt_sk(
@@ -282,7 +282,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<BE: crate::test_suite::
                     scratch.borrow(),
                 );
 
-                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.alloc_ggsw_prepared_from_infos(&ct_rgsw);
+                let mut ct_rgsw_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ct_rgsw);
                 module.ggsw_prepare(&mut ct_rgsw_prepared, &ct_rgsw, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)

@@ -25,7 +25,7 @@ where
         assert_eq!(self.n() as u32, infos.n());
 
         let rank: usize = infos.rank().into();
-        let lvl_0: usize = self.bytes_of_glwe_secret_prepared((GLWESecretTensor::pairs(rank) + rank).into());
+        let lvl_0: usize = self.glwe_secret_prepared_bytes_of((GLWESecretTensor::pairs(rank) + rank).into());
         let lvl_1: usize = self.glwe_decrypt_tmp_bytes_default(infos);
 
         lvl_0 + lvl_1

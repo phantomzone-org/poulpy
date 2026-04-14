@@ -51,8 +51,8 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_secret_prepared(glwe_in.rank());
-    module.prepare_glwe_secret(&mut sk_in_prepared, &sk_in);
+    let mut sk_in_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(glwe_in.rank());
+    module.glwe_secret_prepare(&mut sk_in_prepared, &sk_in);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(glwe_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -79,8 +79,8 @@ pub fn bench_glwe_keyswitch<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_glwe_switching_key_prepared_from_infos(&ksk);
-    module.prepare_glwe_switching(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: GLWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.glwe_switching_key_prepared_alloc_from_infos(&ksk);
+    module.glwe_switching_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
 
     let group_name = format!("glwe_keyswitch::{label}");
     let mut group = c.benchmark_group(group_name);

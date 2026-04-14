@@ -50,7 +50,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = self.bytes_of_glwe_secret_prepared(infos.rank_in());
+        let lvl_0: usize = self.glwe_secret_prepared_bytes_of(infos.rank_in());
         let lvl_1_sk_lwe_as_glwe: usize =
             GLWESecret::bytes_of(self.n().into(), infos.rank_in()) + self.vec_znx_automorphism_inplace_tmp_bytes();
         let lvl_1_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
@@ -93,7 +93,7 @@ where
             sk_lwe_as_glwe.data.zero();
             sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
             self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_2);
-            self.prepare_glwe_secret(&mut sk_lwe_as_glwe_prep, &sk_lwe_as_glwe);
+            self.glwe_secret_prepare(&mut sk_lwe_as_glwe_prep, &sk_lwe_as_glwe);
         }
 
         self.gglwe_encrypt_sk(

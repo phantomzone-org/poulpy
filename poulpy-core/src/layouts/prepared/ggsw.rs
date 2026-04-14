@@ -55,7 +55,7 @@ where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B> + VmpZero<B>,
 {
     /// Allocates a new prepared GGSW with the given parameters.
-    fn alloc_ggsw_prepared(
+    fn ggsw_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -89,15 +89,15 @@ where
         }
     }
 
-    fn alloc_ggsw_prepared_from_infos<A>(&self, infos: &A) -> GGSWPrepared<DeviceBuf<B>, B>
+    fn ggsw_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGSWPrepared<DeviceBuf<B>, B>
     where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_ggsw_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.ggsw_prepared_alloc(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
-    fn bytes_of_ggsw_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
+    fn ggsw_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -115,12 +115,12 @@ where
         self.bytes_of_vmp_pmat(dnum.into(), (rank + 1).into(), (rank + 1).into(), size)
     }
 
-    fn bytes_of_ggsw_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn ggsw_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_ggsw_prepared(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
+        self.ggsw_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.dnum(), infos.dsize(), infos.rank())
     }
 
     fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize

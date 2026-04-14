@@ -42,32 +42,32 @@ where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>,
 {
     /// Allocates a new prepared GLWE with the given parameters.
-    fn alloc_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<DeviceBuf<B>, B> {
+    fn glwe_prepared_alloc(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPrepared<DeviceBuf<B>, B> {
         GLWEPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
         }
     }
 
-    fn alloc_glwe_prepared_from_infos<A>(&self, infos: &A) -> GLWEPrepared<DeviceBuf<B>, B>
+    fn glwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWEPrepared<DeviceBuf<B>, B>
     where
         A: GLWEInfos,
     {
-        self.alloc_glwe_prepared(infos.base2k(), infos.max_k(), infos.rank())
+        self.glwe_prepared_alloc(infos.base2k(), infos.max_k(), infos.rank())
     }
 
-    fn bytes_of_glwe_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+    fn glwe_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
         self.bytes_of_vec_znx_dft((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
     }
 
-    fn bytes_of_glwe_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.bytes_of_glwe_prepared(infos.base2k(), infos.max_k(), infos.rank())
+        self.glwe_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.rank())
     }
 
-    fn prepare_glwe<R, O>(&self, res: &mut R, other: &O)
+    fn glwe_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWEPreparedToMut<B>,
         O: GLWEToRef,

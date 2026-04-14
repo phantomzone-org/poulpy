@@ -157,8 +157,8 @@ fn main() {
 
     // GLWE secret prepared (opaque backend dependant write only struct)
     let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> =
-        module.alloc_glwe_secret_prepared(rank.into());
-    module.prepare_glwe_secret(&mut sk_glwe_prepared, &sk_glwe);
+        module.glwe_secret_prepared_alloc(rank.into());
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     // Plaintext value to circuit bootstrap
     let data: i64 = 1 % (1 << k_lwe_pt);
@@ -275,7 +275,7 @@ fn main() {
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let mut res_prepared: GGSWPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.alloc_ggsw_prepared_from_infos(&res);
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.ggsw_prepared_alloc_from_infos(&res);
     module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
     // Apply GLWE x GGSW
