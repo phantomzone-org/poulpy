@@ -155,6 +155,7 @@ where
             .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
             .max(module.glwe_shift_tmp_bytes())
             .max(GLWE::<Vec<u8>, CKKS>::mul_tmp_bytes(&module, &ct_infos, &tsk_infos))
+            .max(GLWE::<Vec<u8>, CKKS>::square_tmp_bytes(&module, &ct_infos, &tsk_infos))
             .max(module.glwe_automorphism_tmp_bytes(&ct_infos, &ct_infos, &atk_infos));
 
         Self {
@@ -287,6 +288,22 @@ where
         let im = (0..m)
             .map(|j| self.im1[((j as i64 + k).rem_euclid(m as i64)) as usize])
             .collect();
+        (re, im)
+    }
+
+    pub fn want_square(&self) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+
+        let mut re = vec![0.0f64; m];
+        let mut im = vec![0.0f64; m];
+
+        for i in 0..m {
+            let re1 = self.re1[i];
+            let im1 = self.im1[i];
+
+            re[i] = re1 * re1 - im1 * im1;
+            im[i] = 2.0 * re1 * im1;
+        }
         (re, im)
     }
 

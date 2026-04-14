@@ -1,4 +1,31 @@
-//! Multiplication tests: ct × ct, ct × pt, ct × const, ct × int, and sequential depth chains.
+//! Multiplication tests: ct × ct and ct² (square).
+//!
+//! # Test inventory
+//!
+//! ## ct × ct multiplication (`GLWE<_, CKKS>::mul`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_mul_ct_aligned`] | both inputs at same `log_hom_rem()` |
+//! | `test_mul_ct_delta_a_lt_b` | *(commented out)* `a.log_hom_rem() < b.log_hom_rem()` — requires alignment |
+//! | `test_mul_ct_delta_a_gt_b` | *(commented out)* `a.log_hom_rem() > b.log_hom_rem()` — requires alignment |
+//! | [`test_mul_ct_smaller_output`] | output has smaller `max_k()` than inputs |
+//!
+//! ## ct² squaring (`GLWE<_, CKKS>::square`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_square_ct_aligned`] | square at default precision |
+//! | [`test_square_ct_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
+//! | [`test_square_ct_smaller_output`] | square into smaller output buffer |
+
+use crate::CKKSInfos;
+use crate::layouts::CKKSRescaleOps;
+use crate::leveled::{
+    encryption::CKKSDecrypt,
+    operations::mul::CKKSMulOps,
+    tests::test_suite::helpers::{TestBackend as Backend, TestContext},
+};
 
 use poulpy_core::{
     GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorDecrypt, GLWETensoring, ScratchTakeCore,
@@ -13,13 +40,21 @@ use poulpy_hal::{
     layouts::{Module, Scratch, ScratchOwned},
 };
 
-use crate::leveled::{
-    encryption::CKKSDecrypt,
-    operations::mul::CKKSMulOps,
-    tests::test_suite::helpers::{TestBackend as Backend, TestContext},
-};
+// All test functions share this where clause:
+//
+//   Module<BE>: ModuleN + ModuleNew<BE> + VecZnxRshAddInto<BE>
+//             + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes
+//             + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEShift<BE>
+//             + GLWETensoring<BE> + VecZnxLshInplace<BE> + VecZnxCopy
+//             + GLWESecretTensorPreparedFactory<BE> + GLWETensorDecrypt<BE>
+//             + Convolution<BE> + VecZnxBigAddAssign<BE> + VecZnxBigNormalize<BE>
+//             + VecZnxIdftApplyConsume<BE> + CKKSDecrypt<BE>
+//   ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>
+//   Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable
 
-/// ct × ct multiplication with both inputs at the same log_delta.
+// ─── ct × ct out-of-place (GLWE<_, CKKS>::mul) ─────────────────────────────────
+
+/// ct × ct multiplication with both inputs at the same log_hom_rem().
 pub fn test_mul_ct_aligned<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
@@ -55,696 +90,163 @@ where
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/*
+// TODO: mul does not yet align inputs with mismatched log_hom_rem() (unlike add).
+//       The offset computation uses only `a`'s metadata, so these tests produce
+//       garbage when a.log_hom_rem() != b.log_hom_rem().
 
-/// Verifies the aligned fast-path variant: `mul_aligned`.
-pub fn test_mul_aligned<BE: Backend>(ctx: &TestContext<BE>)
+// /// ct × ct, a.log_hom_rem() < b.log_hom_rem() (a rescaled by one limb).
+// pub fn test_mul_ct_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>) { ... }
+
+// /// ct × ct, a.log_hom_rem() > b.log_hom_rem() (b rescaled by one limb).
+// pub fn test_mul_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) { ... }
+
+/// ct × ct, output buffer has smaller max_k than inputs (offset > 0).
+pub fn test_mul_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
+        + VecZnxRshAddInto<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
         + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
+        + GLWETensoring<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy
+        + GLWESecretTensorPreparedFactory<BE>
+        + GLWETensorDecrypt<BE>
+        + Convolution<BE>
+        + VecZnxBigAddAssign<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + CKKSDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
+    let mut scratch = ctx.alloc_scratch();
+    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul();
 
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, ctx.tsk())),
-    );
+    let mut ct_res = ctx.alloc_ct_reduced_k();
+    ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let ct2 = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
-
-    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_aligned(&ctx.module, &mut ct_res, &ct1, &ct2, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("mul_aligned result", &ct_res);
-
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re2[j] - ctx.im1[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
-    assert_precision("mul_aligned re", &re_out, &want_re, 20.0);
-    assert_precision("mul_aligned im", &im_out, &want_im, 20.0);
+    ctx.assert_decrypt_precision("mul_ct smaller_output", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
 }
 
-/// Verifies ct × ct squaring and rescale round-trip.
-pub fn test_square<BE: Backend>(ctx: &TestContext<BE>)
+// ─── ct² squaring (GLWE<_, CKKS>::square) ───────────────────────────────────────
+
+/// ct² at default precision (same as fresh encryption).
+pub fn test_square_ct_aligned<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
+        + VecZnxRshAddInto<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
         + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
+        + GLWETensoring<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy
+        + GLWESecretTensorPreparedFactory<BE>
+        + GLWETensorDecrypt<BE>
+        + Convolution<BE>
+        + VecZnxBigAddAssign<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + CKKSDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_square();
 
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
-    );
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    assert_valid_ciphertext("square input", &ct);
-
-    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut ct_res, &ct, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("square result", &ct_res);
-
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re1[j] - ctx.im1[j] * ctx.im1[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| 2.0 * ctx.re1[j] * ctx.im1[j]).collect();
-    assert_precision("square re", &re_out, &want_re, 20.0);
-    assert_precision("square im", &im_out, &want_im, 20.0);
+    ctx.assert_decrypt_precision("square_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/// Verifies repeated `square` on an operand whose `size` has shrunk below its
-/// allocation via prior rescales.
-pub fn test_square_size_reduced_input<BE: Backend>(ctx: &TestContext<BE>)
+/// ct² after rescaling the input by one limb (reduced log_hom_rem()).
+pub fn test_square_ct_rescaled_input<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
+        + VecZnxRshAddInto<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
         + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
+        + GLWETensoring<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy
+        + GLWESecretTensorPreparedFactory<BE>
+        + GLWETensorDecrypt<BE>
+        + Convolution<BE>
+        + VecZnxBigAddAssign<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + CKKSDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
 
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
-    );
+    // Drop by one limb before squaring.
+    ct.rescale_inplace(&ctx.module, ctx.params.base2k, scratch.borrow()).unwrap();
+    let (want_re, want_im) = ctx.want_square();
 
-    let re_in: Vec<f64> = (0..m).map(|i| 0.4 * (1.0 - 2.0 * (i as f64) / (m as f64))).collect();
-    let im_in: Vec<f64> = (0..m).map(|i| 0.2 * (2.0 * (i as f64) / (m as f64) - 1.0)).collect();
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let x = ctx.encrypt(&re_in, &im_in, &mut scratch);
-
-    let mut cur = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut cur, &x, ctx.tsk(), scratch.borrow());
-    for level in 1..4 {
-        let mut next = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-        square(&ctx.module, &mut next, &cur, ctx.tsk(), scratch.borrow());
-        assert_valid_ciphertext(&format!("square level {level}"), &next);
-        cur = next;
-    }
-
-    let (re_out, im_out) = ctx.decrypt_decode(&cur, &mut scratch);
-    let mut want_re = re_in.clone();
-    let mut want_im = im_in.clone();
-    for _ in 0..4 {
-        for j in 0..m {
-            let (r, i) = (want_re[j], want_im[j]);
-            want_re[j] = r * r - i * i;
-            want_im[j] = 2.0 * r * i;
-        }
-    }
-    assert_precision("square size-reduced re", &re_out, &want_re, 25.0);
-    assert_precision("square size-reduced im", &im_out, &want_im, 25.0);
+    let expected_lhr = ct.log_hom_rem() - ct.log_decimal();
+    assert_eq!(ct_res.log_hom_rem(), expected_lhr, "rescaled: result log_hom_rem()");
+    ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
 }
 
-/// Verifies `mul(x^4, x^4)` when both operands have `size < max_size`.
-pub fn test_mul_size_reduced_inputs<BE: Backend>(ctx: &TestContext<BE>)
+/// ct² into an output buffer with smaller max_k (one limb narrower).
+pub fn test_square_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
+        + VecZnxRshAddInto<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
         + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, ctx.tsk())),
-    );
-
-    let re_in: Vec<f64> = (0..m).map(|i| 0.4 * (1.0 - 2.0 * (i as f64) / (m as f64))).collect();
-    let im_in: Vec<f64> = (0..m).map(|i| 0.2 * (2.0 * (i as f64) / (m as f64) - 1.0)).collect();
-
-    let x = ctx.encrypt(&re_in, &im_in, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul(&ctx.module, &mut x2, &x, &x, ctx.tsk(), scratch.borrow());
-    let mut x4 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul(&ctx.module, &mut x4, &x2, &x2, ctx.tsk(), scratch.borrow());
-    let mut x8 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul(&ctx.module, &mut x8, &x4, &x4, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("x8 = mul(x4, x4)", &x8);
-
-    let (re_out, im_out) = ctx.decrypt_decode(&x8, &mut scratch);
-    let mut want_re = re_in.clone();
-    let mut want_im = im_in.clone();
-    for _ in 0..3 {
-        for j in 0..m {
-            let (r, i) = (want_re[j], want_im[j]);
-            want_re[j] = r * r - i * i;
-            want_im[j] = 2.0 * r * i;
-        }
-    }
-    assert_precision("mul size-reduced re", &re_out, &want_re, 25.0);
-    assert_precision("mul size-reduced im", &im_out, &want_im, 25.0);
-}
-
-/// Verifies ct × ct multiplication when `k_a != k_b`.
-///
-/// The result active precision window should stay at `min(k_a, k_b)`.
-pub fn test_mul_mismatched_k<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + ModuleNew<BE>
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
         + GLWETensoring<BE>
-        + GLWENormalize<BE>
-        + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy
+        + GLWESecretTensorPreparedFactory<BE>
+        + GLWETensorDecrypt<BE>
+        + Convolution<BE>
+        + VecZnxBigAddAssign<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + CKKSDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let degree = Degree(ctx.params.n);
-    let k_hi = TorusPrecision(ctx.params.k);
-    let k_lo = TorusPrecision(ctx.params.k - ctx.params.base2k);
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_square();
 
-    let ct_hi = CKKS::alloc(degree, base2k, k_hi, ctx.params.log_delta);
-    let ct_lo = CKKS::alloc(degree, base2k, k_lo, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_hi)
-            .max(encrypt_sk_tmp_bytes(&ctx.module, &ct_lo))
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_hi))
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_lo))
-            .max(mul_tmp_bytes(&ctx.module, &ct_hi, &ct_lo, ctx.tsk())),
-    );
+    let mut ct_res = ctx.alloc_ct_reduced_k();
+    ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let a = ctx.encrypt_with_k(&ctx.re1, &ctx.im1, k_hi, &mut scratch);
-    let b = ctx.encrypt_with_k(&ctx.re2, &ctx.im2, k_lo, &mut scratch);
-    assert_valid_ciphertext("mul_mismatched_k lhs", &a);
-    assert_valid_ciphertext("mul_mismatched_k rhs", &b);
-
-    let mut ct_res = CKKS::alloc(degree, base2k, k_lo, ctx.params.log_delta);
-    mul(&ctx.module, &mut ct_res, &a, &b, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("mul_mismatched_k result", &ct_res);
-
-    let expected_k = TorusPrecision(k_lo.0 - ctx.params.log_delta);
-    assert_eq!(
-        ct_res.k(),
-        expected_k,
-        "mul should keep the smaller active precision window"
-    );
-
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re2[j] - ctx.im1[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
-    assert_precision("mul mismatched_k re", &re_out, &want_re, 20.0);
-    assert_precision("mul mismatched_k im", &im_out, &want_im, 20.0);
-}
-
-/// Verifies ct × ct multiplication when the operands use different
-/// `torus_scale_bits`.
-///
-/// The result scale should be `max(torus_scale_bits_a, torus_scale_bits_b)`.
-pub fn test_mul_mismatched_delta<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + ModuleNew<BE>
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
-        + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let degree = Degree(ctx.params.n);
-    let k = TorusPrecision(ctx.params.k);
-    let log_delta_hi = ctx.params.log_delta;
-    let log_delta_lo = ctx.params.log_delta - 6;
-
-    let ct_hi = CKKS::alloc(degree, base2k, k, log_delta_hi);
-    let ct_lo = CKKS::alloc(degree, base2k, k, log_delta_lo);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_hi)
-            .max(encrypt_sk_tmp_bytes(&ctx.module, &ct_lo))
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_hi))
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_lo))
-            .max(mul_tmp_bytes(&ctx.module, &ct_hi, &ct_lo, ctx.tsk())),
-    );
-
-    let mut pt_hi = CKKSPlaintext::alloc(degree, base2k, log_delta_hi);
-    encode(&mut pt_hi, &ctx.re1, &ctx.im1);
-    let mut pt_lo = CKKSPlaintext::alloc(degree, base2k, log_delta_lo);
-    encode(&mut pt_lo, &ctx.re2, &ctx.im2);
-
-    let enc_infos = NoiseInfos::new(k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-
-    let mut xa = Source::new([7u8; 32]);
-    let mut xe = Source::new([8u8; 32]);
-    let mut a = CKKS::alloc(degree, base2k, k, log_delta_hi);
-    encrypt_sk(&ctx.module, &mut a, &pt_hi, &ctx.sk, &enc_infos, &mut xa, &mut xe, scratch.borrow());
-
-    let mut xa = Source::new([9u8; 32]);
-    let mut xe = Source::new([10u8; 32]);
-    let mut b = CKKS::alloc(degree, base2k, k, log_delta_lo);
-    encrypt_sk(&ctx.module, &mut b, &pt_lo, &ctx.sk, &enc_infos, &mut xa, &mut xe, scratch.borrow());
-    assert_valid_ciphertext("mul_mismatched_delta lhs", &a);
-    assert_valid_ciphertext("mul_mismatched_delta rhs", &b);
-
-    let mut ct_res = CKKS::alloc(degree, base2k, k, log_delta_hi);
-    mul(&ctx.module, &mut ct_res, &a, &b, ctx.tsk(), scratch.borrow());
-    assert_valid_ciphertext("mul_mismatched_delta result", &ct_res);
-
-    assert_eq!(
-        ct_res.torus_scale_bits(), log_delta_hi,
-        "mul should keep the larger scale after rescale"
-    );
-    assert_eq!(
-        ct_res.k(),
-        TorusPrecision(k.0 - log_delta_lo),
-        "mul should consume visible active precision during rescale"
-    );
-
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re2[j] - ctx.im1[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
-    assert_precision("mul mismatched_delta re", &re_out, &want_re, 20.0);
-    assert_precision("mul mismatched_delta im", &im_out, &want_im, 20.0);
-}
-
-/// Verifies ct × compact pt multiplication (out-of-place and in-place).
-pub fn test_mul_pt<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEMulPlain<BE> + GLWEShift<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
-
-    let mut pt2 = CKKSPlaintext::alloc(degree, base2k, ctx.params.log_delta);
-    encode(&mut pt2, &ctx.re2, &ctx.im2);
-
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.re2[j] - ctx.im1[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * ctx.im2[j] + ctx.im1[j] * ctx.re2[j]).collect();
-
-    let ct1 = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    assert_valid_ciphertext("mul_pt input", &ct1);
-    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_pt(&ctx.module, &mut ct_res, &ct1, &pt2, scratch.borrow());
-    assert_valid_ciphertext("mul_pt result", &ct_res);
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("mul_pt re", &re_out, &want_re, 20.0);
-    assert_precision("mul_pt im", &im_out, &want_im, 20.0);
-
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    mul_pt_inplace(&ctx.module, &mut ct_ip, &pt2, scratch.borrow());
-    assert_valid_ciphertext("mul_pt_inplace result", &ct_ip);
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("mul_pt_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("mul_pt_inplace im", &im_ip, &want_im, 20.0);
-}
-
-/// Verifies ct × complex constant multiplication (out-of-place and in-place).
-pub fn test_mul_const<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEMulPlain<BE> + GLWEShift<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_const_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
-
-    let (c_re, c_im) = (0.7, -0.5);
-    let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * c_re - ctx.im1[j] * c_im).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| ctx.re1[j] * c_im + ctx.im1[j] * c_re).collect();
-
-    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    assert_valid_ciphertext("mul_const input", &ct);
-    let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_const(&ctx.module, &mut ct_res, &ct, c_re, c_im, scratch.borrow());
-    assert_valid_ciphertext("mul_const result", &ct_res);
-    let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-    assert_precision("mul_const re", &re_out, &want_re, 20.0);
-    assert_precision("mul_const im", &im_out, &want_im, 20.0);
-
-    let mut ct_ip = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    mul_const_inplace(&ctx.module, &mut ct_ip, c_re, c_im, scratch.borrow());
-    assert_valid_ciphertext("mul_const_inplace result", &ct_ip);
-    let (re_ip, im_ip) = ctx.decrypt_decode(&ct_ip, &mut scratch);
-    assert_precision("mul_const_inplace re", &re_ip, &want_re, 20.0);
-    assert_precision("mul_const_inplace im", &im_ip, &want_im, 20.0);
-}
-
-/// Verifies ct × small integer multiplication (no rescale).
-pub fn test_mul_int<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedFactory<BE> + GLWEMulConst<BE>,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mul_scratch = crate::leveled::operations::mul::mul_int_tmp_bytes(&ctx.module, &ct_tmp, 1);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_scratch),
-    );
-
-    for c in [-3i64, -1, 1, 2, 5] {
-        let ct = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-        assert_valid_ciphertext(&format!("mul_int input({c})"), &ct);
-        let mut ct_res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-        crate::leveled::operations::mul::mul_int(&ctx.module, &mut ct_res, &ct, c, scratch.borrow());
-        assert_valid_ciphertext(&format!("mul_int result({c})"), &ct_res);
-
-        let (re_out, im_out) = ctx.decrypt_decode(&ct_res, &mut scratch);
-        let cf = c as f64;
-        let want_re: Vec<f64> = (0..m).map(|j| ctx.re1[j] * cf).collect();
-        let want_im: Vec<f64> = (0..m).map(|j| ctx.im1[j] * cf).collect();
-        assert_precision(&format!("mul_int({c}) re"), &re_out, &want_re, 20.0);
-        assert_precision(&format!("mul_int({c}) im"), &im_out, &want_im, 20.0);
-    }
-}
-
-/// Squaring chain + mul_const_inplace chain at the given depth.
-///
-/// The squaring chain exercises repeated ct × ct multiplication with rescale.
-/// The mul_const_inplace chain exercises repeated ct × constant with rescale.
-/// Both verify precision at each level.
-pub fn test_sequential_mul<BE: Backend>(ctx: &TestContext<BE>, depth: usize)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
-        + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEMulConst<BE>
-        + poulpy_core::GLWEAdd,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, ctx.tsk()))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
-
-    // values in (-1, 1) with nonzero imaginary part
-    let re_in: Vec<f64> = (0..m).map(|i| 0.9 * (1.0 - 2.0 * (i as f64) / (m as f64))).collect();
-    let im_in: Vec<f64> = (0..m).map(|i| 0.3 * (2.0 * (i as f64) / (m as f64) - 1.0)).collect();
-
-    let mut pt_in = CKKSPlaintext::alloc(degree, base2k, ctx.params.log_delta);
-    encode(&mut pt_in, &re_in, &im_in);
-
-    // squaring chain
-    let mut ct = ctx.encrypt(&re_in, &im_in, &mut scratch);
-    assert_valid_ciphertext("sequential_mul square start", &ct);
-    let mut want_re = re_in.clone();
-    let mut want_im = im_in.clone();
-
-    for level in 0..depth {
-        assert!(ct.max_k().0 > ctx.params.log_delta, "level {level}: k exhausted");
-        let mut ct_next = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-        mul(&ctx.module, &mut ct_next, &ct, &ct, ctx.tsk(), scratch.borrow());
-        ct = ct_next;
-        assert_valid_ciphertext(&format!("sequential_mul square level {level}"), &ct);
-
-        for j in 0..m {
-            let (r, i) = (want_re[j], want_im[j]);
-            want_re[j] = r * r - i * i;
-            want_im[j] = 2.0 * r * i;
-        }
-
-        let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch);
-        assert_precision(&format!("seq_mul level {level} re"), &re_out, &want_re, 20.0);
-        assert_precision(&format!("seq_mul level {level} im"), &im_out, &want_im, 20.0);
-    }
-
-    // mul_const_inplace chain
-    let mut ct2 = ctx.encrypt(&re_in, &im_in, &mut scratch);
-    assert_valid_ciphertext("sequential_mul const start", &ct2);
-    let scale = 0.8f64;
-    let mut want_re2 = re_in.clone();
-    let mut want_im2 = im_in.clone();
-    for level in 0..depth {
-        if ct2.k().0 <= ct2.torus_scale_bits() {
-            break;
-        }
-        mul_const_inplace(&ctx.module, &mut ct2, scale, 0.0, scratch.borrow());
-        assert_valid_ciphertext(&format!("sequential_mul const level {level}"), &ct2);
-        for v in want_re2.iter_mut() {
-            *v *= scale;
-        }
-        for v in want_im2.iter_mut() {
-            *v *= scale;
-        }
-        let (re_out, im_out) = ctx.decrypt_decode(&ct2, &mut scratch);
-        assert_precision(&format!("seq_const level {level} re"), &re_out, &want_re2, 20.0);
-        assert_precision(&format!("seq_const level {level} im"), &im_out, &want_im2, 20.0);
-    }
-}
-
-/// Regression guard for the `mul`/`square` cost model.
-///
-/// After `drop_torus_precision` halves `k`, subsequent `mul_tmp_bytes` and
-/// `square_tmp_bytes` queries must return strictly smaller scratch
-/// requirements than the full-level ciphertext. This enforces the leveled
-/// CKKS cost invariant that shrunk ciphertexts compute cheaper — not just
-/// semantically, but operationally.
-pub fn test_mul_tmp_bytes_scales_with_size<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + ModuleNew<BE>
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
-        + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let base2k = Base2K(ctx.params.base2k);
-    let k_full = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_full = CKKS::alloc(degree, base2k, k_full, ctx.params.log_delta);
-    let mut ct_shrunk = CKKS::alloc(degree, base2k, k_full, ctx.params.log_delta);
-
-    // Drop to roughly half the full precision, aligned to base2k.
-    let half_limbs = (ct_full.size() / 2).max(1);
-    let k_half = TorusPrecision(base2k.0 * half_limbs as u32);
-    assert!(k_half.0 < k_full.0, "need a real precision drop to test cost scaling");
-    assert!(
-        k_half.0 >= ct_shrunk.torus_scale_bits(),
-        "halved k must still cover torus_scale_bits"
-    );
-    drop_torus_precision(&mut ct_shrunk, k_half);
-
-    let full_bytes = mul_tmp_bytes(&ctx.module, &ct_full, &ct_full, ctx.tsk());
-    let shrunk_bytes = mul_tmp_bytes(&ctx.module, &ct_shrunk, &ct_shrunk, ctx.tsk());
-    assert!(
-        shrunk_bytes < full_bytes,
-        "mul_tmp_bytes must scale down after drop_torus_precision (full={full_bytes}, shrunk={shrunk_bytes})"
-    );
-
-    let full_sq_bytes = square_tmp_bytes(&ctx.module, &ct_full, ctx.tsk());
-    let shrunk_sq_bytes = square_tmp_bytes(&ctx.module, &ct_shrunk, ctx.tsk());
-    assert!(
-        shrunk_sq_bytes < full_sq_bytes,
-        "square_tmp_bytes must scale down after drop_torus_precision (full={full_sq_bytes}, shrunk={shrunk_sq_bytes})"
+    ctx.assert_decrypt_precision(
+        "square_ct smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        scratch.borrow(),
     );
 }
-
-/// Deep squaring chain regression: X -> X^2 -> X^4 -> ... -> X^128.
-///
-/// Asserts that precision degrades gracefully (~1 bit per level, no
-/// catastrophic single-step drop) through the full multiplicative depth.
-pub fn test_deep_square_chain<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWETensoring<BE>
-        + GLWENormalize<BE>
-        + GLWEShift<BE>
-        + GLWETensorKeyEncryptSk<BE>
-        + GLWETensorKeyPreparedFactory<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, ctx.tsk())),
-    );
-
-    // Use 256th roots of unity as inputs: w^t = exp(2 pi i t / 256).
-    let tau = 2.0 * std::f64::consts::PI;
-    let re_in: Vec<f64> = (0..m).map(|i| (tau * (i % 256) as f64 / 256.0).cos()).collect();
-    let im_in: Vec<f64> = (0..m).map(|i| (tau * (i % 256) as f64 / 256.0).sin()).collect();
-
-    let mut ct = ctx.encrypt(&re_in, &im_in, &mut scratch);
-    assert_valid_ciphertext("deep_square start", &ct);
-
-    let mut want_re = re_in;
-    let mut want_im = im_in;
-
-    // Measure initial precision of X^1.
-    let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch);
-    let mut max_err = 0.0f64;
-    for (g, w) in re_out.iter().zip(want_re.iter()).chain(im_out.iter().zip(want_im.iter())) {
-        max_err = max_err.max((g - w).abs());
-    }
-    let mut prev_prec = if max_err == 0.0 { f64::INFINITY } else { -max_err.log2() };
-    println!(
-        "deep_square X^1: k={} size={} prec={prev_prec:.2} bits",
-        ct.k().0, ct.size()
-    );
-    let max_depth = 15;
-
-    for level in 0..max_depth {
-        if ct.k().0 <= ct.torus_scale_bits() {
-            break;
-        }
-        let mut ct_next = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-        square(&ctx.module, &mut ct_next, &ct, ctx.tsk(), scratch.borrow());
-        ct = ct_next;
-        assert_valid_ciphertext(&format!("deep_square level {level}"), &ct);
-
-        let exp = 1usize << (level + 1);
-        for j in 0..m {
-            let (r, i) = (want_re[j], want_im[j]);
-            want_re[j] = r * r - i * i;
-            want_im[j] = 2.0 * r * i;
-        }
-
-        let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch);
-        let mut max_err = 0.0f64;
-        for (g, w) in re_out.iter().zip(want_re.iter()) {
-            max_err = max_err.max((g - w).abs());
-        }
-        for (g, w) in im_out.iter().zip(want_im.iter()) {
-            max_err = max_err.max((g - w).abs());
-        }
-        let prec = if max_err == 0.0 { f64::INFINITY } else { -max_err.log2() };
-        let drop = prev_prec - prec;
-        println!(
-            "deep_square X^{exp}: k={} size={} prec={prec:.2} bits (drop={drop:.2})",
-            ct.k().0, ct.size()
-        );
-
-        assert!(
-            drop < 3.0,
-            "deep_square X^{exp}: catastrophic precision drop {drop:.2} bits (prev={prev_prec:.2}, now={prec:.2})"
-        );
-        assert!(
-            prec > 15.0,
-            "deep_square X^{exp}: precision {prec:.2} bits fell below 15-bit floor"
-        );
-
-        prev_prec = prec;
-    }
-}
-*/
