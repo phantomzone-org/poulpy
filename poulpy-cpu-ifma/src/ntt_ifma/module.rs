@@ -6,24 +6,21 @@
 //!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
 //! - The [`Backend`] trait implementation, which defines scalar types and the
 //!   handle destruction path.
-//! - The [`ModuleNewImpl`] implementation, which allocates the handle on the heap,
-//!   verifies AVX512-IFMA availability at runtime, and transfers ownership to the `Module`.
+//! - The [`NttIfmaHandleFactory`] implementation, which allocates the handle on the heap
+//!   and verifies AVX512-IFMA availability at runtime.
 //! - The [`NttIfmaHandleProvider`] impl for [`NTTIfmaHandle`], wiring the handle into
-//!   the blanket `NttIfmaModuleHandle` impl provided by `poulpy-hal`.
+//!   the blanket `NttIfmaModuleHandle` impl provided by `poulpy-cpu-ref`.
 
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
-    reference::ntt_ifma::{
-        mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
-        ntt::{NttIfmaTable, NttIfmaTableInv},
-        primes::Primes40,
-        vec_znx_dft::NttIfmaHandleProvider,
-    },
-    reference::ntt120::types::Q120bScalar,
+use poulpy_cpu_ref::reference::ntt_ifma::{
+    mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
+    ntt::{NttIfmaTable, NttIfmaTableInv},
+    primes::Primes40,
+    vec_znx_dft::{NttIfmaHandleFactory, NttIfmaHandleProvider},
 };
+use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 
 use crate::NTTIfma;
 
@@ -46,7 +43,15 @@ pub struct NTTIfmaHandle {
 impl Backend for NTTIfma {
     type ScalarPrep = Q120bScalar;
     type ScalarBig = i128;
+    type OwnedBuf = Vec<u8>;
     type Handle = NTTIfmaHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
 
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
@@ -57,15 +62,22 @@ impl Backend for NTTIfma {
 
 /// # Safety
 ///
-/// The returned `Module` owns the heap-allocated `NTTIfmaHandle`.
-/// `n` must be a power of two >= 2 (asserted by `Module::from_nonnull`).
-/// The NTT tables are built for dimension `n`.
+/// The returned handle must be fully initialized for `n`.
 ///
 /// # Panics
 ///
 /// Panics if the runtime CPU does not support the AVX512-IFMA instruction set.
-unsafe impl ModuleNewImpl<Self> for NTTIfma {
-    fn new_impl(n: u64) -> Module<Self> {
+unsafe impl NttIfmaHandleFactory for NTTIfmaHandle {
+    fn create_ntt_ifma_handle(n: usize) -> Self {
+        NTTIfmaHandle {
+            table_ntt: NttIfmaTable::new(n),
+            table_intt: NttIfmaTableInv::new(n),
+            meta_bbc: BbcIfmaMeta::new(),
+            meta_bbb: BbbIfmaMeta::new(),
+        }
+    }
+
+    fn assert_ntt_ifma_runtime_support() {
         #[cfg(target_arch = "x86_64")]
         if !std::arch::is_x86_feature_detected!("avx512ifma") {
             panic!("NTTIfma requires x86_64 with AVX512-IFMA support");
@@ -73,22 +85,13 @@ unsafe impl ModuleNewImpl<Self> for NTTIfma {
 
         #[cfg(not(target_arch = "x86_64"))]
         panic!("NTTIfma requires x86_64 with AVX512-IFMA support");
-
-        let handle = NTTIfmaHandle {
-            table_ntt: NttIfmaTable::new(n as usize),
-            table_intt: NttIfmaTableInv::new(n as usize),
-            meta_bbc: BbcIfmaMeta::new(),
-            meta_bbb: BbbIfmaMeta::new(),
-        };
-        let ptr: NonNull<NTTIfmaHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
     }
 }
 
 /// # Safety
 ///
 /// The returned references are valid for the lifetime of `&self`.
-/// All fields are fully initialised in [`NTTIfma::new_impl`].
+/// All fields are fully initialised in [`NttIfmaHandleFactory::create_ntt_ifma_handle`].
 unsafe impl NttIfmaHandleProvider for NTTIfmaHandle {
     fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40> {
         &self.table_ntt

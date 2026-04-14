@@ -2,19 +2,13 @@ mod convolution;
 mod module;
 mod reim;
 mod reim4;
-mod scratch;
-mod svp;
-mod vec_znx;
-mod vec_znx_big;
-mod vec_znx_dft;
-mod vmp;
 
 /// AVX-512F-accelerated CPU backend for Poulpy HAL.
 ///
 /// `FFT64Ifma` is a zero-sized marker type that selects the AVX-512F-optimized CPU backend
 /// when used as the type parameter `B` in [`Module<B>`](poulpy_hal::layouts::Module)
-/// and related HAL types. It implements all open extension point (OEP) traits from
-/// `poulpy_hal::oep` using hand-tuned AVX-512F SIMD intrinsics and assembly kernels.
+/// and related HAL types. It implements the unified `HalImpl` trait via macros in
+/// `hal_impl.rs`, using hand-tuned AVX-512F SIMD intrinsics and assembly kernels.
 ///
 /// # Backend characteristics
 ///
@@ -62,4 +56,5 @@ pub struct FFT64Ifma {}
 pub mod tests;
 
 #[allow(unused_imports)]
+pub use poulpy_cpu_ref::reference::fft64::module::FFTModuleHandle;
 pub use reim::{ReimFFTIfma, ReimIFFTIfma};

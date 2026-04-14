@@ -6,24 +6,22 @@
 //!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
 //! - The [`Backend`] trait implementation, which defines scalar types and the
 //!   handle destruction path.
-//! - The [`ModuleNewImpl`] implementation, which allocates the handle on the heap
-//!   and transfers ownership to the `Module`.
+//! - The [`NttIfmaHandleFactory`] implementation, which builds the handle stored
+//!   inside the `Module`.
 //! - The [`NttIfmaHandleProvider`] impl for [`NTTIfmaRefHandle`], wiring the handle into
 //!   the blanket `NttIfmaModuleHandle` impl provided by `poulpy-hal`.
 
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
-    reference::ntt_ifma::{
-        mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
-        ntt::{NttIfmaTable, NttIfmaTableInv},
-        primes::Primes40,
-        vec_znx_dft::NttIfmaHandleProvider,
-    },
-    reference::ntt120::types::Q120bScalar,
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
+
+use crate::reference::ntt_ifma::{
+    mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
+    ntt::{NttIfmaTable, NttIfmaTableInv},
+    primes::Primes40,
+    vec_znx_dft::{NttIfmaHandleFactory, NttIfmaHandleProvider},
 };
+use crate::reference::ntt120::types::Q120bScalar;
 
 use crate::NTTIfmaRef;
 
@@ -46,7 +44,15 @@ pub struct NTTIfmaRefHandle {
 impl Backend for NTTIfmaRef {
     type ScalarPrep = Q120bScalar;
     type ScalarBig = i128;
+    type OwnedBuf = Vec<u8>;
     type Handle = NTTIfmaRefHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
 
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
@@ -57,26 +63,22 @@ impl Backend for NTTIfmaRef {
 
 /// # Safety
 ///
-/// The returned `Module` owns the heap-allocated `NTTIfmaRefHandle`.
-/// `n` must be a power of two >= 2 (asserted by `Module::from_nonnull`).
-/// The NTT tables are built for dimension `n`.
-unsafe impl ModuleNewImpl<Self> for NTTIfmaRef {
-    fn new_impl(n: u64) -> Module<Self> {
-        let handle = NTTIfmaRefHandle {
-            table_ntt: NttIfmaTable::new(n as usize),
-            table_intt: NttIfmaTableInv::new(n as usize),
+/// The returned handle must be fully initialized for `n`.
+unsafe impl NttIfmaHandleFactory for NTTIfmaRefHandle {
+    fn create_ntt_ifma_handle(n: usize) -> Self {
+        NTTIfmaRefHandle {
+            table_ntt: NttIfmaTable::new(n),
+            table_intt: NttIfmaTableInv::new(n),
             meta_bbc: BbcIfmaMeta::new(),
             meta_bbb: BbbIfmaMeta::new(),
-        };
-        let ptr: NonNull<NTTIfmaRefHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
+        }
     }
 }
 
 /// # Safety
 ///
 /// The returned references are valid for the lifetime of `&self`.
-/// All fields are fully initialised in [`NTTIfmaRef::new_impl`].
+/// All fields are fully initialised in [`NttIfmaHandleFactory::create_ntt_ifma_handle`].
 unsafe impl NttIfmaHandleProvider for NTTIfmaRefHandle {
     fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40> {
         &self.table_ntt

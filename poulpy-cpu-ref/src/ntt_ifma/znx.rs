@@ -4,7 +4,7 @@
 //! delegate to the same `_ref` functions as `poulpy-cpu-ref` -- these operate on plain
 //! `&[i64]` slices, which are backend-independent.
 
-use poulpy_hal::reference::znx::{
+use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,

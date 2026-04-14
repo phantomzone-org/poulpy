@@ -13,6 +13,18 @@ use crate::reference::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
         reim4::{Reim4BlkMatVec, Reim4Convolution},
     },
+    ntt_ifma::{
+        NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64,
+        convolution::{
+            ntt_ifma_cnv_apply_dft, ntt_ifma_cnv_apply_dft_tmp_bytes, ntt_ifma_cnv_by_const_apply,
+            ntt_ifma_cnv_by_const_apply_tmp_bytes, ntt_ifma_cnv_pairwise_apply_dft, ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes,
+            ntt_ifma_cnv_prepare_left, ntt_ifma_cnv_prepare_left_tmp_bytes, ntt_ifma_cnv_prepare_right,
+            ntt_ifma_cnv_prepare_right_tmp_bytes, ntt_ifma_cnv_prepare_self, ntt_ifma_cnv_prepare_self_tmp_bytes,
+        },
+        ntt::NttIfmaTable,
+        primes::Primes40,
+        vec_znx_dft::NttIfmaModuleHandle,
+    },
     ntt120::{
         NttDFTExecute, NttFromZnx64,
         convolution::{
@@ -403,3 +415,183 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
 }
 
 impl<BE: Backend> NTT120ConvolutionDefaults<BE> for BE {}
+
+#[doc(hidden)]
+pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
+    fn cnv_prepare_left_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_prepare_left_tmp_bytes(module.n())
+    }
+
+    fn cnv_prepare_left_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
+    where
+        Module<BE>: NttIfmaModuleHandle,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>>,
+        Scratch<BE>: TakeSlice,
+        R: CnvPVecLToMut<BE>,
+        A: VecZnxToRef,
+    {
+        let bytes = ntt_ifma_cnv_prepare_left_tmp_bytes(module.n());
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt_ifma_cnv_prepare_left::<R, A, BE>(module, res, a, mask, tmp);
+    }
+
+    fn cnv_prepare_right_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_prepare_right_tmp_bytes(module.n())
+    }
+
+    fn cnv_prepare_right_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
+    where
+        Module<BE>: NttIfmaModuleHandle,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+        Scratch<BE>: TakeSlice,
+        R: CnvPVecRToMut<BE>,
+        A: VecZnxToRef + ZnxInfos,
+    {
+        let bytes = ntt_ifma_cnv_prepare_right_tmp_bytes(module.n());
+        let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
+        ntt_ifma_cnv_prepare_right::<R, A, BE>(module, res, a, mask, tmp);
+    }
+
+    fn cnv_apply_dft_tmp_bytes_default(
+        _module: &Module<BE>,
+        res_size: usize,
+        _res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_apply_dft_tmp_bytes(res_size, a_size, b_size)
+    }
+
+    fn cnv_by_const_apply_tmp_bytes_default(
+        _module: &Module<BE>,
+        res_size: usize,
+        _res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarBig = i128, ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_by_const_apply_tmp_bytes(res_size, a_size, b_size)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_by_const_apply_default<R, A>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &[i64],
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarBig = i128, ScalarPrep = Q120bScalar>,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxBigToMut<BE>,
+        A: VecZnxToRef,
+    {
+        let bytes = ntt_ifma_cnv_by_const_apply_tmp_bytes(0, 0, 0);
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt_ifma_cnv_by_const_apply::<R, A, BE>(res, res_offset, res_col, a, a_col, b, tmp);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_apply_dft_default<R, A, B>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: NttIfmaModuleHandle,
+        BE: Backend<ScalarPrep = Q120bScalar>,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>,
+    {
+        let bytes = ntt_ifma_cnv_apply_dft_tmp_bytes(0, 0, 0);
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt_ifma_cnv_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, a_col, b, b_col, tmp);
+    }
+
+    fn cnv_pairwise_apply_dft_tmp_bytes_default(
+        _module: &Module<BE>,
+        res_size: usize,
+        _res_offset: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes(res_size, a_size, b_size)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_pairwise_apply_dft_default<R, A, B>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_offset: usize,
+        res_col: usize,
+        a: &A,
+        b: &B,
+        i: usize,
+        j: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: NttIfmaModuleHandle,
+        BE: Backend<ScalarPrep = Q120bScalar>,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>,
+    {
+        let bytes = ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes(0, 0, 0);
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt_ifma_cnv_pairwise_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, b, i, j, tmp);
+    }
+
+    fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+    {
+        ntt_ifma_cnv_prepare_self_tmp_bytes(module.n())
+    }
+
+    fn cnv_prepare_self_default<L, R, A>(
+        module: &Module<BE>,
+        left: &mut L,
+        right: &mut R,
+        a: &A,
+        mask: i64,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: NttIfmaModuleHandle,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+        Scratch<BE>: TakeSlice,
+        L: CnvPVecLToMut<BE>,
+        R: CnvPVecRToMut<BE>,
+        A: VecZnxToRef + ZnxInfos,
+    {
+        let bytes = ntt_ifma_cnv_prepare_self_tmp_bytes(module.n());
+        let (tmp, _) = scratch.take_slice::<u8>(bytes);
+        ntt_ifma_cnv_prepare_self::<L, R, A, BE>(module, left, right, a, mask, tmp);
+    }
+}
+
+impl<BE: Backend> NTTIfmaConvolutionDefaults<BE> for BE {}

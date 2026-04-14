@@ -3,7 +3,7 @@ use core::arch::x86_64::{
     _mm512_sra_epi64, _mm512_srli_epi64, _mm512_storeu_si512, _mm512_sub_epi64,
 };
 
-/// Multiply/divide by a power of two with rounding matching [poulpy_hal::reference::znx::znx_mul_power_of_two_ref].
+/// Multiply/divide by a power of two with rounding matching [poulpy_cpu_ref::reference::znx::znx_mul_power_of_two_ref].
 ///
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
@@ -70,7 +70,7 @@ pub unsafe fn znx_mul_power_of_two_ifma(k: i64, res: &mut [i64], a: &[i64]) {
 }
 
 /// Multiply/divide inplace by a power of two with rounding matching
-/// [poulpy_hal::reference::znx::znx_mul_power_of_two_inplace_ref].
+/// [poulpy_cpu_ref::reference::znx::znx_mul_power_of_two_inplace_ref].
 ///
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
@@ -125,7 +125,7 @@ pub unsafe fn znx_mul_power_of_two_inplace_ifma(k: i64, res: &mut [i64]) {
 }
 
 /// Multiply/divide by a power of two and add on the result with rounding matching
-/// [poulpy_hal::reference::znx::znx_mul_power_of_two_inplace_ref].
+/// [poulpy_cpu_ref::reference::znx::znx_mul_power_of_two_inplace_ref].
 ///
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);

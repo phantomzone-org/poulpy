@@ -24,12 +24,9 @@ mod convolution;
 pub(crate) mod mat_vec_ifma;
 mod module;
 mod prim;
-mod scratch;
 mod svp;
-mod vec_znx;
-mod vec_znx_big;
 mod vec_znx_big_avx512;
-mod vec_znx_dft;
+pub(crate) mod vec_znx_dft;
 mod vmp;
 mod znx;
 
@@ -42,8 +39,8 @@ mod tests;
 ///
 /// `NTTIfma` is a zero-sized marker type that selects the AVX512-IFMA accelerated IFMA backend
 /// when used as the type parameter `B` in [`poulpy_hal::layouts::Module<B>`](poulpy_hal::layouts::Module)
-/// and related HAL types. It implements all open extension point (OEP) traits from
-/// `poulpy_hal::oep`.
+/// and related HAL types. It implements the unified [`HalImpl`](poulpy_hal::oep::HalImpl) trait
+/// via macros in `hal_impl.rs`.
 ///
 /// # Backend characteristics
 ///
@@ -61,3 +58,7 @@ mod tests;
 /// `NTTIfma` is `Send + Sync` (derived from being a zero-sized, field-less struct).
 #[derive(Debug, Clone, Copy)]
 pub struct NTTIfma;
+
+use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps};
+impl I128BigOps for NTTIfma {}
+impl I128NormalizeOps for NTTIfma {}

@@ -1,23 +1,13 @@
-//! Polynomial convolution for [`NTTIfma`](crate::NTTIfma).
+//! Polynomial convolution AVX512 kernels for [`NTTIfma`](crate::NTTIfma).
 //!
-//! The outer convolution pipeline is shared with the reference IFMA backend, while
-//! the hot `apply_dft` and `pairwise_apply_dft` paths are replaced here with
-//! AVX512-IFMA implementations.
+//! This module contains AVX512-IFMA SIMD kernels for polynomial convolution
+//! operations in the IFMA NTT domain. These kernels can be used to override
+//! the default reference implementations for improved performance.
 
-use bytemuck::cast_slice_mut;
-use poulpy_hal::{
-    api::TakeSlice,
-    layouts::{
-        CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Module, Scratch, VecZnxBigToMut, VecZnxDftToMut, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
-    },
-    oep::ConvolutionImpl,
-    reference::ntt_ifma::convolution::{
-        ntt_ifma_cnv_apply_dft_tmp_bytes, ntt_ifma_cnv_by_const_apply, ntt_ifma_cnv_by_const_apply_tmp_bytes,
-        ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes, ntt_ifma_cnv_prepare_left, ntt_ifma_cnv_prepare_left_tmp_bytes,
-    },
-    reference::ntt120::types::Q120bScalar,
-};
+#![allow(dead_code)]
+
+use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
+use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut};
 
 use super::mat_vec_ifma::{reduce_bbc_ifma_simd, reduce_bbc_ifma_simd_512};
 use super::ntt_ifma_avx512::{cond_sub_2q_si256, ntt_ifma_avx512};
@@ -28,10 +18,7 @@ use core::arch::x86_64::{
     _mm512_madd52lo_epu64, _mm512_setzero_si512, _mm512_storeu_si512,
 };
 
-use poulpy_hal::reference::ntt_ifma::{
-    NttIfmaModuleHandle,
-    primes::{PrimeSetIfma, Primes40},
-};
+use poulpy_cpu_ref::reference::ntt_ifma::primes::{PrimeSetIfma, Primes40};
 
 #[inline(always)]
 unsafe fn bbc_accumulate_ifma(acc_lo: &mut __m256i, acc_hi: &mut __m256i, x: __m256i, y: __m256i) {
@@ -254,150 +241,5 @@ unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
 
     for j in min_size..res_size {
         res.at_mut(res_col, j).fill(Q120bScalar([0; 4]));
-    }
-}
-
-unsafe impl ConvolutionImpl<Self> for NTTIfma
-where
-    Scratch<Self>: TakeSlice,
-{
-    fn cnv_prepare_left_tmp_bytes_impl(module: &Module<Self>, _res_size: usize, _a_size: usize) -> usize {
-        ntt_ifma_cnv_prepare_left_tmp_bytes(module.n())
-    }
-
-    fn cnv_prepare_left_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
-    where
-        R: CnvPVecLToMut<Self>,
-        A: VecZnxToRef,
-    {
-        let bytes = Self::cnv_prepare_left_tmp_bytes_impl(module, 0, 0);
-        let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt_ifma_cnv_prepare_left::<_, _, Self>(module, res, a, tmp);
-    }
-
-    fn cnv_prepare_right_tmp_bytes_impl(module: &Module<Self>, _res_size: usize, _a_size: usize) -> usize {
-        let _ = module;
-        0
-    }
-
-    fn cnv_prepare_right_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
-    where
-        R: CnvPVecRToMut<Self>,
-        A: VecZnxToRef + poulpy_hal::layouts::ZnxInfos,
-    {
-        let _ = scratch;
-        let mut res = res.to_mut();
-        let a = a.to_ref();
-        let table = module.get_ntt_ifma_table();
-        let cols = res.cols();
-        let res_size = res.size();
-        let min_size = res_size.min(a.size());
-
-        for col in 0..cols {
-            for j in 0..min_size {
-                let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, j));
-                <Self as poulpy_hal::reference::ntt_ifma::NttIfmaFromZnx64>::ntt_ifma_from_znx64(res_u64, a.at(col, j));
-                unsafe { ntt_ifma_avx512::<Primes40>(table, res_u64) };
-                unsafe { reduce_b_to_c_inplace_ifma(res_u64) };
-            }
-            for j in min_size..res_size {
-                cast_slice_mut::<_, u64>(res.at_mut(col, j)).fill(0);
-            }
-        }
-    }
-
-    fn cnv_apply_dft_tmp_bytes_impl(
-        _module: &Module<Self>,
-        res_size: usize,
-        _res_offset: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize {
-        ntt_ifma_cnv_apply_dft_tmp_bytes(res_size, a_size, b_size)
-    }
-
-    fn cnv_by_const_apply_tmp_bytes_impl(
-        _module: &Module<Self>,
-        res_size: usize,
-        _res_offset: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize {
-        ntt_ifma_cnv_by_const_apply_tmp_bytes(res_size, a_size, b_size)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn cnv_by_const_apply_impl<R, A>(
-        _module: &Module<Self>,
-        res: &mut R,
-        res_offset: usize,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-        b: &[i64],
-        scratch: &mut Scratch<Self>,
-    ) where
-        R: VecZnxBigToMut<Self>,
-        A: VecZnxToRef,
-    {
-        let bytes = ntt_ifma_cnv_by_const_apply_tmp_bytes(0, 0, 0);
-        let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt_ifma_cnv_by_const_apply::<_, _, Self>(res, res_offset, res_col, a, a_col, b, tmp);
-    }
-
-    /// # Limits
-    ///
-    /// The j-range `(b_size).min(k+1) - max(0, k - (a_size - 1))` per output
-    /// coefficient must not exceed `MAX_CNV_J_RANGE` (= 128, defined in this
-    /// module). For practical CKKS parameters this holds since `b_size` is
-    /// small. Violations panic in debug builds.
-    #[allow(clippy::too_many_arguments)]
-    fn cnv_apply_dft_impl<R, A, B>(
-        module: &Module<Self>,
-        res: &mut R,
-        res_offset: usize,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        scratch: &mut Scratch<Self>,
-    ) where
-        R: VecZnxDftToMut<Self>,
-        A: poulpy_hal::layouts::CnvPVecLToRef<Self>,
-        B: poulpy_hal::layouts::CnvPVecRToRef<Self>,
-    {
-        let _ = (module, scratch);
-        unsafe { cnv_apply_dft_ifma(res, res_offset, res_col, a, a_col, b, b_col) };
-    }
-
-    fn cnv_pairwise_apply_dft_tmp_bytes(
-        _module: &Module<Self>,
-        res_size: usize,
-        _res_offset: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize {
-        ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes(res_size, a_size, b_size)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn cnv_pairwise_apply_dft_impl<R, A, B>(
-        module: &Module<Self>,
-        res: &mut R,
-        res_offset: usize,
-        res_col: usize,
-        a: &A,
-        b: &B,
-        col_0: usize,
-        col_1: usize,
-        scratch: &mut Scratch<Self>,
-    ) where
-        R: VecZnxDftToMut<Self>,
-        A: poulpy_hal::layouts::CnvPVecLToRef<Self>,
-        B: poulpy_hal::layouts::CnvPVecRToRef<Self>,
-    {
-        let _ = (module, scratch);
-        unsafe { cnv_pairwise_apply_dft_ifma(res, res_offset, res_col, a, b, col_0, col_1) };
     }
 }

@@ -1,24 +1,22 @@
 use std::ptr::NonNull;
 
-use poulpy_hal::{
-    layouts::{Backend, Module},
-    oep::ModuleNewImpl,
-    reference::{
-        fft64::{
-            convolution::I64Ops,
-            reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
-            reim4::{Reim4BlkMatVec, Reim4Convolution},
-        },
-        znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
-            ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-            ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-            ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-            ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
-            znx_copy_ref, znx_rotate, znx_zero_ref,
-        },
+use poulpy_cpu_ref::reference::{
+    fft64::{
+        convolution::I64Ops,
+        module::{FFT64HandleFactory, FFTHandleProvider},
+        reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_zero_ref},
+        reim4::{Reim4BlkMatVec, Reim4Convolution},
+    },
+    znx::{
+        ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
+        ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
+        ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+        ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
+        ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref,
+        znx_rotate, znx_zero_ref,
     },
 };
+use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 
 use crate::{
     FFT64Ifma,
@@ -82,7 +80,15 @@ pub struct FFT64IfmaHandle {
 impl Backend for FFT64Ifma {
     type ScalarPrep = f64;
     type ScalarBig = i64;
+    type OwnedBuf = Vec<u8>;
     type Handle = FFT64IfmaHandle;
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        assert_alignment(bytes.as_ptr());
+        bytes
+    }
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
             drop(Box::from_raw(handle.as_ptr()));
@@ -92,75 +98,29 @@ impl Backend for FFT64Ifma {
 
 /// # Safety
 ///
-/// This implementation is marked `unsafe` because it constructs a `Module` with a raw pointer
-/// to heap-allocated data. The caller (HAL) must ensure:
-/// - The returned module is used correctly according to HAL contracts.
-/// - The module's lifetime management calls `Backend::destroy()` exactly once.
-///
-/// # Panics
-///
-/// Panics if the runtime CPU does not support the AVX-512F instruction set.
-/// This check is performed via `std::arch::is_x86_feature_detected!()`.
-///
-/// # CPU feature detection
-///
-/// The runtime check ensures that calling SIMD intrinsics does not result in `SIGILL`.
-/// This is necessary because compile-time target features may differ from runtime CPU capabilities
-/// (e.g., cross-compilation or running on heterogeneous clusters).
-unsafe impl ModuleNewImpl<Self> for FFT64Ifma {
-    fn new_impl(n: u64) -> Module<Self> {
+/// The returned handle must be fully initialized for `n`.
+unsafe impl FFT64HandleFactory for FFT64IfmaHandle {
+    fn create_fft64_handle(n: usize) -> Self {
+        FFT64IfmaHandle {
+            table_fft: ReimFFTTable::new(n >> 1),
+            table_ifft: ReimIFFTTable::new(n >> 1),
+        }
+    }
+
+    fn assert_fft64_runtime_support() {
         if !std::arch::is_x86_feature_detected!("avx512f") {
             panic!("FFT64Ifma requires x86_64 with AVX512F support");
         }
-
-        let handle: FFT64IfmaHandle = FFT64IfmaHandle {
-            table_fft: ReimFFTTable::new(n as usize >> 1),
-            table_ifft: ReimIFFTTable::new(n as usize >> 1),
-        };
-        // Leak Box to get a stable NonNull pointer
-        let ptr: NonNull<FFT64IfmaHandle> = NonNull::from(Box::leak(Box::new(handle)));
-        unsafe { Module::from_nonnull(ptr, n) }
     }
 }
 
-/// Extension trait providing access to FFT/IFFT tables from a `Module<FFT64Ifma>`.
-///
-/// This trait abstracts access to the backend-specific [`FFT64IfmaHandle`] stored in
-/// the module, allowing internal functions to retrieve precomputed twiddle factors
-/// without unsafe pointer dereferencing at the call site.
-///
-/// # Safety
-///
-/// Implementations must ensure that:
-/// - The returned reference lifetime is tied to the module's lifetime.
-/// - The underlying handle pointer is valid and properly aligned.
-/// - The twiddle tables are immutable (no `&mut` access).
-///
-/// The `Module` type guarantees these invariants via its construction and lifetime management.
-pub trait FFT64IfmaModuleHandle {
-    /// Returns a shared reference to the forward FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_fft_table(&self) -> &ReimFFTTable<f64>;
-
-    /// Returns a shared reference to the inverse FFT twiddle table.
-    ///
-    /// # Complexity
-    ///
-    /// O(1) — simple pointer dereference.
-    fn get_ifft_table(&self) -> &ReimIFFTTable<f64>;
-}
-
-impl FFT64IfmaModuleHandle for Module<FFT64Ifma> {
+unsafe impl FFTHandleProvider<f64> for FFT64IfmaHandle {
     fn get_fft_table(&self) -> &ReimFFTTable<f64> {
-        let h: &FFT64IfmaHandle = unsafe { &*self.ptr() };
-        &h.table_fft
+        &self.table_fft
     }
+
     fn get_ifft_table(&self) -> &ReimIFFTTable<f64> {
-        let h: &FFT64IfmaHandle = unsafe { &*self.ptr() };
-        &h.table_ifft
+        &self.table_ifft
     }
 }
 

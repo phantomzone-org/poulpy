@@ -8,23 +8,24 @@
 //! # Architecture
 //!
 //! `poulpy-hal` defines a hardware abstraction layer (HAL) via the [`Backend`](poulpy_hal::layouts::Backend)
-//! trait and a family of _open extension point_ (OEP) traits in [`poulpy_hal::oep`]. This crate
-//! implements every OEP trait for the [`NTTIfmaRef`] backend by delegating to the reference
-//! functions provided by `poulpy_hal::reference::ntt_ifma`.
+//! trait and the single [`HalImpl`](poulpy_hal::oep::HalImpl) trait. This crate implements
+//! `HalImpl` for the [`NTTIfmaRef`] backend by delegating to shared default trait impls in
+//! `hal_defaults`, which in turn call the portable reference functions in
+//! `crate::reference::ntt_ifma`.
 //!
 //! The internal modules are organised by operation domain:
 //!
 //! | Module          | Domain                                                         |
 //! |-----------------|----------------------------------------------------------------|
 //! | `module`        | Backend handle lifecycle, NTT table management                 |
-//! | `scratch`       | Temporary memory allocation and arena-style sub-allocation     |
+//! | `scratch`       | Temporary memory allocation, now provided by shared `poulpy-hal` portable defaults |
 //! | `znx`           | Single ring element (`Z[X]/(X^n+1)`) arithmetic               |
-//! | `vec_znx`       | Vectors of ring elements (limb decomposition)                  |
-//! | `vec_znx_big`   | Large-coefficient (i128) ring element vectors                  |
-//! | `vec_znx_dft`   | NTT-domain ring element vectors (forward/inverse NTT)         |
-//! | `convolution`   | Polynomial convolution (stub)                                  |
-//! | `svp`           | Scalar-vector product in NTT domain                            |
-//! | `vmp`           | Vector-matrix product in NTT domain                            |
+//! | `vec_znx`       | Vectors of ring elements, now provided by shared `poulpy-hal` portable defaults |
+//! | `vec_znx_big`   | Large-coefficient (i128) ring element vectors, now provided by shared NTT IFMA defaults |
+//! | `vec_znx_dft`   | NTT-domain ring element vectors, now provided by shared NTT IFMA defaults |
+//! | `convolution`   | Polynomial convolution, now provided by shared NTT IFMA defaults |
+//! | `svp`           | Scalar-vector product in NTT domain, now provided by shared NTT IFMA defaults |
+//! | `vmp`           | Vector-matrix product in NTT domain, now provided by shared NTT IFMA defaults |
 //!
 //! # Scalar types
 //!
@@ -51,7 +52,7 @@ mod scratch;
 mod svp;
 mod vec_znx;
 mod vec_znx_big;
-mod vec_znx_dft;
+pub(crate) mod vec_znx_dft;
 mod vmp;
 mod znx;
 
@@ -61,9 +62,8 @@ pub use module::NTTIfmaRefHandle;
 ///
 /// `NTTIfmaRef` is a zero-sized marker type that selects the reference NTT-IFMA CPU backend
 /// when used as the type parameter `B` in [`poulpy_hal::layouts::Module<B>`](poulpy_hal::layouts::Module)
-/// and related HAL types. It implements all open extension point (OEP) traits from
-/// `poulpy_hal::oep` by delegating to the portable reference functions in
-/// `poulpy_hal::reference::ntt_ifma`.
+/// and related HAL types. It implements the [`HalImpl`](poulpy_hal::oep::HalImpl) trait
+/// by delegating to the portable reference functions in `crate::reference::ntt_ifma`.
 ///
 /// # Backend characteristics
 ///

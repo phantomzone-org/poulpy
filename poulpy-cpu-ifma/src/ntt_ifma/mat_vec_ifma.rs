@@ -36,7 +36,7 @@ use core::arch::x86_64::{
 
 use super::ntt_ifma_avx512::{cond_sub_2q_si256, cond_sub_2q_si512, harvey_modmul_si256, harvey_modmul_si512};
 
-use poulpy_hal::reference::ntt_ifma::{
+use poulpy_cpu_ref::reference::ntt_ifma::{
     mat_vec::BbcIfmaMeta,
     primes::{PrimeSetIfma, Primes40},
 };
@@ -417,7 +417,7 @@ pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_ifma(
 #[cfg(all(test, target_feature = "avx512ifma", target_feature = "avx512vl"))]
 mod tests {
     use super::*;
-    use poulpy_hal::reference::ntt_ifma::{
+    use poulpy_cpu_ref::reference::ntt_ifma::{
         arithmetic::{b_ifma_from_znx64_ref, c_ifma_from_b_ref},
         mat_vec::{
             BbcIfmaMeta, vec_mat1col_product_bbc_ifma_ref, vec_mat1col_product_x2_bbc_ifma_ref,

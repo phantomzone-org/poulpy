@@ -4,7 +4,7 @@
 //! NTT execution, b/c domain conversion, BBC multiply-accumulate, and basic
 //! transform-domain arithmetic on q120b values.
 
-use poulpy_hal::reference::ntt_ifma::{
+use poulpy_cpu_ref::reference::ntt_ifma::{
     NttIfmaAdd, NttIfmaAddInplace, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
     NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateInplace, NttIfmaSub, NttIfmaSubInplace,
     NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
@@ -24,7 +24,7 @@ use core::arch::x86_64::{
     _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512, _mm512_sub_epi64,
 };
 
-use poulpy_hal::reference::ntt120::{
+use poulpy_cpu_ref::reference::ntt120::{
     NttAdd, NttAddInplace, NttCopy, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttZero,
 };
 
@@ -37,7 +37,7 @@ fn q2_vec() -> __m256i {
 
 /// Q_SHIFTED_IFMA duplicated for 512-bit: `[2Q0,2Q1,2Q2,0, 2Q0,2Q1,2Q2,0]`.
 const Q2_512: [u64; 8] = {
-    let q = <Primes40 as poulpy_hal::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
     [2 * q[0], 2 * q[1], 2 * q[2], 0, 2 * q[0], 2 * q[1], 2 * q[2], 0]
 };
 
@@ -198,14 +198,14 @@ unsafe fn simd_negate_inplace(res: &mut [u64]) {
 
 /// Q vector (not 2Q) for c_from_b reduction: `[Q[0], Q[1], Q[2], 0]`.
 fn q_vec() -> __m256i {
-    use poulpy_hal::reference::ntt_ifma::primes::{PrimeSetIfma, Primes40};
+    use poulpy_cpu_ref::reference::ntt_ifma::primes::{PrimeSetIfma, Primes40};
     let q = <Primes40 as PrimeSetIfma>::Q;
     unsafe { _mm256_set_epi64x(0, q[2] as i64, q[1] as i64, q[0] as i64) }
 }
 
 /// `oq[k] = Q[k] - (2^63 mod Q[k])` for negative i64 handling.
 const OQ_IFMA: [u64; 4] = {
-    let q = <Primes40 as poulpy_hal::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
     let mut oq = [0u64; 4];
     let mut k = 0;
     while k < 3 {
@@ -219,7 +219,7 @@ const OQ_IFMA: [u64; 4] = {
 ///
 /// Since Q[k] ≈ 2^40, `2^40 mod Q[k] = 2^40 - Q[k]` which is small (< 2^22).
 const POW40_MOD_Q_IFMA: [u64; 4] = {
-    let q = <Primes40 as poulpy_hal::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
     let pow40 = 1u64 << 40;
     // All three primes are < 2^40, so pow40 mod Q[k] = pow40 - Q[k]
     [pow40 - q[0], pow40 - q[1], pow40 - q[2], 0]
@@ -288,7 +288,7 @@ unsafe fn simd_b_from_znx64(n: usize, res: &mut [u64], a: &[i64]) {
 unsafe fn simd_c_from_b(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_512 = {
-            let q = <Primes40 as poulpy_hal::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+            let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
             let arr: [u64; 8] = [q[0], q[1], q[2], 0, q[0], q[1], q[2], 0];
             _mm512_loadu_si512(arr.as_ptr() as *const __m512i)
         };

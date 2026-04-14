@@ -25,9 +25,9 @@
 //! # Architecture
 //!
 //! `poulpy_hal` defines a hardware abstraction layer (HAL) via the
-//! [`Backend`](poulpy_hal::layouts::Backend) trait and a family of open
-//! extension point (OEP) traits in [`poulpy_hal::oep`]. This crate implements
-//! every OEP trait for both [`NTTIfma`] and [`FFT64Ifma`] using AVX-512
+//! [`Backend`](poulpy_hal::layouts::Backend) trait and the single
+//! [`HalImpl`](poulpy_hal::oep::HalImpl) trait. This crate implements
+//! `HalImpl` for both [`NTTIfma`] and [`FFT64Ifma`] using AVX-512
 //! intrinsics on hot paths and the portable reference logic where
 //! coefficient-domain code is backend-independent.
 //!
@@ -39,19 +39,18 @@
 //! | `ntt_ifma` | NTT-domain backend implementation (`NTTIfma`) |
 //! | `fft64`    | FFT64-domain backend implementation (`FFT64Ifma`) |
 //!
-//! Both `ntt_ifma` and `fft64` follow the same internal organization:
+//! Both `ntt_ifma` and `fft64` contain:
 //!
 //! | Submodule | Responsibility |
 //! |---|---|
-//! | `module` | Backend handle lifecycle and twiddle-table management |
-//! | `scratch` | Arena-style scratch allocation |
-//! | `znx` | Single ring element trait wiring (delegates to `znx_ifma`) |
-//! | `vec_znx` | Coefficient-domain vector operations |
-//! | `vec_znx_big` | Large-coefficient (`i128` for NTT, `i64` for FFT) vector operations |
-//! | `vec_znx_dft` | Frequency-domain vector operations |
-//! | `convolution` | Polynomial convolution |
-//! | `svp` | Scalar-vector product in the frequency domain |
-//! | `vmp` | Vector-matrix product in the frequency domain |
+//! | `module` | Backend handle lifecycle, twiddle-table management, `Backend` trait impl |
+//! | `convolution` | AVX-512 convolution kernels (hot-path overrides) |
+//! | `svp` | AVX-512 scalar-vector product kernels |
+//! | `vmp` | AVX-512 vector-matrix product kernels |
+//! | `vec_znx_dft` | CRT compaction helpers for DFT-domain operations |
+//!
+//! Portable operations (scratch, vec_znx, vec_znx_big arithmetic) are handled by
+//! shared defaults from `poulpy-cpu-ref` via the `hal_impl/` macros.
 //!
 //! NTT-specific helpers (`ntt_ifma_avx512`, `mat_vec_ifma`) and FFT-specific
 //! helpers (`reim`, `reim4`) live under their respective backend modules.
@@ -105,7 +104,7 @@
 //! - **Shared cold paths** — coefficient-domain operations that are not
 //!   performance critical reuse the same backend-independent logic as the
 //!   reference backend.
-//! - **Cross-backend tested** — every OEP trait is tested against the
+//! - **Cross-backend tested** — every `HalImpl` method is tested against the
 //!   `poulpy_cpu_ref` reference backends via the shared `cross_backend_test_suite!`
 //!   harness, plus per-primitive unit tests for AVX-512 helpers.
 //!
@@ -164,8 +163,18 @@ compile_error!(
 );
 
 mod fft64;
+mod hal_impl;
 mod ntt_ifma;
 mod znx_ifma;
 
 pub use fft64::{FFT64Ifma, ReimFFTIfma, ReimIFFTIfma};
 pub use ntt_ifma::NTTIfma;
+
+use poulpy_core::oep::CoreImpl;
+unsafe impl CoreImpl<FFT64Ifma> for FFT64Ifma {
+    poulpy_core::impl_core_default_methods!(FFT64Ifma);
+}
+
+unsafe impl CoreImpl<NTTIfma> for NTTIfma {
+    poulpy_core::impl_core_default_methods!(NTTIfma);
+}

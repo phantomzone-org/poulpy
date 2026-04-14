@@ -80,7 +80,7 @@ pub unsafe fn znx_extract_digit_addmul_ifma(base2k: usize, lsh: usize, res: &mut
 
     // scalar tail
     if !n.is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_extract_digit_addmul_ref;
+        use poulpy_cpu_ref::reference::znx::znx_extract_digit_addmul_ref;
 
         let off: usize = span << 3;
         znx_extract_digit_addmul_ref(base2k, lsh, &mut res[off..], &mut src[off..]);
@@ -120,7 +120,7 @@ pub unsafe fn znx_normalize_digit_ifma(base2k: usize, res: &mut [i64], src: &mut
 
     // scalar tail
     if !n.is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_digit_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_digit_ref;
 
         let off: usize = span << 3;
         znx_normalize_digit_ref(base2k, &mut res[off..], &mut src[off..]);
@@ -161,7 +161,7 @@ pub unsafe fn znx_normalize_first_step_carry_only_ifma(base2k: usize, lsh: usize
 
     // tail
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_first_step_carry_only_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_first_step_carry_only_ref;
 
         znx_normalize_first_step_carry_only_ref(base2k, lsh, &x[span << 3..], &mut carry[span << 3..]);
     }
@@ -216,7 +216,7 @@ pub unsafe fn znx_normalize_first_step_inplace_ifma(base2k: usize, lsh: usize, x
 
     // tail
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_first_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_first_step_inplace_ref;
 
         znx_normalize_first_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
@@ -295,7 +295,7 @@ pub unsafe fn znx_normalize_first_step_ifma<const OVERWRITE: bool>(
 
     // tail
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_first_step_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_first_step_ref;
 
         znx_normalize_first_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 3..], &a[span << 3..], &mut carry[span << 3..]);
     }
@@ -367,7 +367,7 @@ pub unsafe fn znx_normalize_middle_step_carry_only_ifma(base2k: usize, lsh: usiz
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_middle_step_carry_only_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_carry_only_ref;
 
         znx_normalize_middle_step_carry_only_ref(base2k, lsh, &x[span << 3..], &mut carry[span << 3..]);
     }
@@ -441,7 +441,7 @@ pub unsafe fn znx_normalize_middle_step_inplace_ifma(base2k: usize, lsh: usize, 
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_middle_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_inplace_ref;
 
         znx_normalize_middle_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
@@ -535,7 +535,7 @@ pub unsafe fn znx_normalize_middle_step_ifma<const OVERWRITE: bool>(
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_middle_step_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_ref;
 
         znx_normalize_middle_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 3..], &a[span << 3..], &mut carry[span << 3..]);
     }
@@ -611,7 +611,7 @@ pub unsafe fn znx_normalize_middle_step_sub_ifma(base2k: usize, lsh: usize, x: &
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_middle_step_sub_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_sub_ref;
 
         znx_normalize_middle_step_sub_ref(base2k, lsh, &mut x[span << 3..], &a[span << 3..], &mut carry[span << 3..]);
     }
@@ -674,7 +674,7 @@ pub unsafe fn znx_normalize_final_step_inplace_ifma(base2k: usize, lsh: usize, x
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_final_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_inplace_ref;
 
         znx_normalize_final_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
@@ -756,7 +756,7 @@ pub unsafe fn znx_normalize_final_step_ifma<const OVERWRITE: bool>(
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_final_step_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_ref;
 
         znx_normalize_final_step_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 3..], &a[span << 3..], &mut carry[span << 3..]);
     }
@@ -822,7 +822,7 @@ pub unsafe fn znx_normalize_final_step_sub_ifma(base2k: usize, lsh: usize, x: &m
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_hal::reference::znx::znx_normalize_final_step_sub_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_sub_ref;
 
         znx_normalize_final_step_sub_ref(base2k, lsh, &mut x[span << 3..], &a[span << 3..], &mut carry[span << 3..]);
     }
@@ -834,7 +834,7 @@ pub unsafe fn znx_normalize_final_step_sub_ifma(base2k: usize, lsh: usize, x: &m
 
 #[cfg(test)]
 mod tests {
-    use poulpy_hal::reference::znx::{
+    use poulpy_cpu_ref::reference::znx::{
         get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref,
         znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref, znx_normalize_first_step_inplace_ref,
         znx_normalize_first_step_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
@@ -1034,7 +1034,7 @@ mod tests {
 
     #[target_feature(enable = "avx512f")]
     unsafe fn test_znx_normalize_middle_step_ifma_internal() {
-        use poulpy_hal::reference::znx::znx_normalize_middle_step_sub_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_sub_ref;
 
         let a: [i64; 8] = X_DATA;
         let base2k = 12;
@@ -1137,7 +1137,7 @@ mod tests {
 
     #[target_feature(enable = "avx512f")]
     unsafe fn test_znx_normalize_final_step_ifma_internal() {
-        use poulpy_hal::reference::znx::znx_normalize_final_step_sub_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_sub_ref;
 
         let a: [i64; 8] = X_DATA;
         let base2k = 12;

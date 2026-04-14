@@ -17,7 +17,7 @@ use core::arch::x86_64::{
 
 use std::mem::size_of;
 
-use poulpy_hal::reference::ntt_ifma::{
+use poulpy_cpu_ref::reference::ntt_ifma::{
     ntt::{NttIfmaTable, NttIfmaTableInv},
     primes::PrimeSetIfma,
 };
@@ -454,7 +454,7 @@ pub(crate) unsafe fn intt_ifma_avx512<P: PrimeSetIfma>(table: &NttIfmaTableInv<P
 #[cfg(test)]
 mod tests {
     use super::*;
-    use poulpy_hal::reference::ntt_ifma::{
+    use poulpy_cpu_ref::reference::ntt_ifma::{
         arithmetic::b_ifma_from_znx64_ref,
         ntt::{NttIfmaTable, NttIfmaTableInv, intt_ifma_ref, ntt_ifma_ref},
         primes::Primes40,
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn harvey_modmul_simd_vs_scalar() {
-        use poulpy_hal::reference::ntt_ifma::ntt::{harvey_modmul, harvey_quotient};
+        use poulpy_cpu_ref::reference::ntt_ifma::ntt::{harvey_modmul, harvey_quotient};
 
         let q_arr = Primes40::Q;
         for &q in &q_arr {

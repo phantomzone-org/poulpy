@@ -36,7 +36,7 @@ pub fn ntt_ifma_cnv_prepare_left_tmp_bytes(_n: usize) -> usize {
     0
 }
 
-pub fn ntt_ifma_cnv_prepare_left<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, _tmp: &mut [u8])
+pub fn ntt_ifma_cnv_prepare_left<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, _mask: i64, _tmp: &mut [u8])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>>,
     R: CnvPVecLToMut<BE>,
@@ -65,7 +65,7 @@ pub fn ntt_ifma_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
     4 * n * size_of::<u64>()
 }
 
-pub fn ntt_ifma_cnv_prepare_right<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, tmp: &mut [u64])
+pub fn ntt_ifma_cnv_prepare_right<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, _mask: i64, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
     R: CnvPVecRToMut<BE>,
@@ -300,4 +300,31 @@ pub fn ntt_ifma_cnv_pairwise_apply_dft<R, A, B, BE>(
     for j in min_size..res_size {
         cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).fill(0);
     }
+}
+
+pub fn ntt_ifma_cnv_prepare_self_tmp_bytes(n: usize) -> usize {
+    ntt_ifma_cnv_prepare_left_tmp_bytes(n).max(ntt_ifma_cnv_prepare_right_tmp_bytes(n))
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn ntt_ifma_cnv_prepare_self<L, R, A, BE>(
+    module: &impl NttIfmaModuleHandle,
+    left: &mut L,
+    right: &mut R,
+    a: &A,
+    mask: i64,
+    tmp: &mut [u8],
+) where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+    L: CnvPVecLToMut<BE>,
+    R: CnvPVecRToMut<BE>,
+    A: VecZnxToRef + ZnxInfos,
+{
+    // Prepare left side.
+    ntt_ifma_cnv_prepare_left::<L, A, BE>(module, left, a, mask, tmp);
+    // Prepare right side reusing the same source.
+    let right_bytes = ntt_ifma_cnv_prepare_right_tmp_bytes(a.n());
+    let (prefix, _) = tmp.split_at_mut(right_bytes);
+    let tmp_u64: &mut [u64] = bytemuck::cast_slice_mut(prefix);
+    ntt_ifma_cnv_prepare_right::<R, A, BE>(module, right, a, mask, tmp_u64);
 }

@@ -569,6 +569,7 @@ dependencies = [
  "itertools 0.14.0",
  "once_cell",
  "paste",
+ "poulpy-core",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",

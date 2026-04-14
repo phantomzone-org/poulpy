@@ -28,7 +28,7 @@
 
 use std::marker::PhantomData;
 
-use crate::alloc_aligned;
+use poulpy_hal::alloc_aligned;
 
 use super::primes::{PrimeSetIfma, modq_pow64};
 

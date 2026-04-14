@@ -9,7 +9,7 @@
 //!   these traits, and since the u64 slice layout (4 x u64 per coefficient, 3 active
 //!   lanes + 1 padding) is the same, the implementations are identical.
 
-use poulpy_hal::reference::ntt_ifma::{
+use crate::reference::ntt_ifma::{
     NttIfmaAdd, NttIfmaAddInplace, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
     NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateInplace, NttIfmaSub, NttIfmaSubInplace,
     NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
@@ -23,7 +23,7 @@ use poulpy_hal::reference::ntt_ifma::{
     types::Q_SHIFTED_IFMA,
 };
 
-use poulpy_hal::reference::ntt120::{
+use crate::reference::ntt120::{
     NttAdd, NttAddInplace, NttCopy, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttZero,
 };
 

@@ -23,7 +23,7 @@ mod ifft_avx512;
 pub(crate) use conversion::*;
 pub(crate) use fft_vec_avx512::*;
 
-use poulpy_hal::reference::fft64::reim::{ReimFFTExecute, ReimFFTTable, ReimIFFTTable};
+use poulpy_cpu_ref::reference::fft64::reim::{ReimFFTExecute, ReimFFTTable, ReimIFFTTable};
 use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::fft64::reim::{fft_avx512::fft_avx512, ifft_avx512::ifft_avx512};

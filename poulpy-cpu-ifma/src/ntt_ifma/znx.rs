@@ -1,10 +1,10 @@
 //! Single ring element (`Z[X]/(X^n+1)`) arithmetic for [`NTTIfma`](super::NTTIfma).
 //!
-//! Implements the `Znx*` traits from `poulpy_hal::reference::znx`. All implementations
+//! Implements the `Znx*` traits from `poulpy_cpu_ref::reference::znx`. All implementations
 //! delegate to the AVX512-accelerated functions in `crate::znx_ifma` (same kernels used
 //! by `FFT64Ifma`). These operate on plain `&[i64]` slices and are backend-independent.
 
-use poulpy_hal::reference::znx::{
+use poulpy_cpu_ref::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,

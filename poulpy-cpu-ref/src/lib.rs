@@ -50,3 +50,7 @@ unsafe impl CoreImpl<FFT64Ref> for FFT64Ref {
 unsafe impl CoreImpl<NTT120Ref> for NTT120Ref {
     poulpy_core::impl_core_default_methods!(NTT120Ref);
 }
+
+unsafe impl CoreImpl<NTTIfmaRef> for NTTIfmaRef {
+    poulpy_core::impl_core_default_methods!(NTTIfmaRef);
+}

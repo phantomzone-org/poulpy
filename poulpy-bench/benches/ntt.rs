@@ -124,7 +124,7 @@ fn bench_ntt_ifma(_c: &mut Criterion) {
 pub fn bench_ntt_ifma(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ifma::NTTIfma;
-    use poulpy_hal::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTable, primes::Primes40};
+    use poulpy_cpu_ref::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTable, primes::Primes40};
     use std::hint::black_box;
 
     let group_name: String = "ntt_ifma_avx512".to_string();
@@ -171,7 +171,7 @@ fn bench_intt_ifma(_c: &mut Criterion) {
 pub fn bench_intt_ifma(c: &mut Criterion) {
     use criterion::BenchmarkId;
     use poulpy_cpu_ifma::NTTIfma;
-    use poulpy_hal::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTableInv, primes::Primes40};
+    use poulpy_cpu_ref::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTableInv, primes::Primes40};
     use std::hint::black_box;
 
     let group_name: String = "intt_ifma_avx512".to_string();

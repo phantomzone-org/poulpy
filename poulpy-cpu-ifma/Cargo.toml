@@ -15,6 +15,7 @@ enable-ifma = []
 [dependencies]
 bytemuck = {workspace = true}
 poulpy-hal = {workspace = true}
+poulpy-core = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}

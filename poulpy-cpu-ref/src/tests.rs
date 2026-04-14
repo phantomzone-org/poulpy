@@ -75,7 +75,7 @@ mod poulpy_cpu_ntt120 {
             test_vec_znx_mul_xp_minus_one_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_mul_xp_minus_one_inplace,
             test_vec_znx_normalize => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize,
             test_vec_znx_normalize_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize_inplace,
-            test_vec_znx_switch_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_switch_ring,
+            test_vec_znx_merge_rings => poulpy_hal::test_suite::vec_znx::test_vec_znx_merge_rings,
             test_vec_znx_split_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_split_ring,
             test_vec_znx_copy => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy,
         }

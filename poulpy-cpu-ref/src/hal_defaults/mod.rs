@@ -7,11 +7,11 @@ pub mod vec_znx_big;
 pub mod vec_znx_dft;
 pub mod vmp_pmat;
 
-pub use convolution::{FFT64ConvolutionDefaults, NTT120ConvolutionDefaults};
-pub use module::{FFT64ModuleDefaults, NTT120ModuleDefaults};
+pub use convolution::{FFT64ConvolutionDefaults, NTT120ConvolutionDefaults, NTTIfmaConvolutionDefaults};
+pub use module::{FFT64ModuleDefaults, NTT120ModuleDefaults, NTTIfmaModuleDefaults};
 pub use scratch::HalScratchDefaults;
-pub use svp_ppol::{FFT64SvpDefaults, NTT120SvpDefaults};
+pub use svp_ppol::{FFT64SvpDefaults, NTT120SvpDefaults, NTTIfmaSvpDefaults};
 pub use vec_znx::HalVecZnxDefaults;
-pub use vec_znx_big::{FFT64VecZnxBigDefaults, NTT120VecZnxBigDefaults};
-pub use vec_znx_dft::{FFT64VecZnxDftDefaults, NTT120VecZnxDftDefaults};
-pub use vmp_pmat::{FFT64VmpDefaults, NTT120VmpDefaults};
+pub use vec_znx_big::{FFT64VecZnxBigDefaults, NTT120VecZnxBigDefaults, NTTIfmaVecZnxBigDefaults};
+pub use vec_znx_dft::{FFT64VecZnxDftDefaults, NTT120VecZnxDftDefaults, NTTIfmaVecZnxDftDefaults};
+pub use vmp_pmat::{FFT64VmpDefaults, NTT120VmpDefaults, NTTIfmaVmpDefaults};

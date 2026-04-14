@@ -2,11 +2,11 @@
 
 **Poulpy-CPU-IFMA** is a Rust crate that provides an **AVX512-IFMA accelerated CPU backend for Poulpy**.
 
-This backend implements the Poulpy HAL extension traits and can be used by:
+This backend implements the Poulpy HAL unified `HalImpl` trait and can be used by:
 
-- [`poulpy-hal`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-hal)
-- [`poulpy-core`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-core)
-- [`poulpy-bin-fhe`, `poulpy-ckks`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-schemes)
+- [`poulpy-hal`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-hal)
+- [`poulpy-core`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-core)
+- [`poulpy-bin-fhe`, `poulpy-ckks`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-schemes)
 
 ## Safety and Requirements
 
@@ -72,14 +72,8 @@ Once compiled with `enable-ifma`, the backend can be used transparently anywhere
 
 To implement your own Poulpy backend (SIMD or accelerator):
 
-1. Define a backend struct
-2. Implement the open extension traits from `poulpy-hal/oep`
-3. Implement the `Backend` trait
+1. Define a backend struct and implement the `Backend` trait
+2. Implement the unified `HalImpl` trait (via macros delegating to `hal_defaults`, or manually)
+3. Implement the `CoreImpl` trait from `poulpy-core` (via the `impl_core_default_methods!` macro)
 
-Your backend will automatically integrate with:
-
-- `poulpy-hal`
-- `poulpy-core`
-- `poulpy-bin-fhe`, `poulpy-ckks`
-
-No modifications to those crates are required. The HAL provides the extension points.
+Your backend will automatically integrate with `poulpy-hal`, `poulpy-core`, `poulpy-bin-fhe`, and `poulpy-ckks`. No modifications to those crates are required.

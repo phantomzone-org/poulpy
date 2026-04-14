@@ -662,7 +662,7 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [
 
 #[cfg(all(test, target_feature = "avx512f"))]
 mod tests {
-    use poulpy_hal::reference::fft64::reim4::{
+    use poulpy_cpu_ref::reference::fft64::reim4::{
         reim4_convolution_1coeff_ref, reim4_convolution_2coeffs_ref, reim4_extract_1blk_from_reim_contiguous_ref,
         reim4_save_1blk_to_reim_contiguous_ref, reim4_vec_mat1col_product_ref, reim4_vec_mat2cols_product_ref,
     };
