@@ -66,7 +66,7 @@ Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICEN
 
 ## Acknowledgement
 
-**Poulpy** is inspired by the modular architecture of [Lattigo](https://github.com/tuneinsight/lattigo) and [TFHE-go](https://github.com/sp301415/tfhe-go), and its development is led by Lattigo’s co-author and main contributor [@Pro7ech](https://github.com/Pro7ech). Poulpy reflects the experience gained from over five years of designing and maintaining Lattigo, and represents the next evolution in architecture, performance, and backend philosophy.
+**Poulpy** was incubated by [PhantomZone](https://phantom.zone/) with grants from [Ethereum Foundation](https://ethereum.foundation/) and [ENS Foundation](https://docs.ens.domains/dao/foundation/).
 
 ## Citing
 Please use the following BibTex entry for citing Poulpy
