@@ -199,3 +199,23 @@ fn square_ct_rescaled_input() {
 fn square_ct_smaller_output() {
     crate::leveled::tests::test_suite::mul::test_square_ct_smaller_output(&CTX);
 }
+
+#[test]
+fn mul_pow2() {
+    crate::leveled::tests::test_suite::pow2::test_mul_pow2(&CTX);
+}
+
+#[test]
+fn mul_pow2_inplace() {
+    crate::leveled::tests::test_suite::pow2::test_mul_pow2_inplace(&CTX);
+}
+
+#[test]
+fn div_pow2() {
+    crate::leveled::tests::test_suite::pow2::test_div_pow2(&CTX);
+}
+
+#[test]
+fn div_pow2_inplace() {
+    crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace(&CTX);
+}

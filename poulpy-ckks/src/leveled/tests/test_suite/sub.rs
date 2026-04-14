@@ -129,7 +129,7 @@ where
         expected_delta,
         "a_lt_b: result must use min log_hom_rem"
     );
-    ctx.assert_decrypt_precision("sub_ct a_lt_b", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("sub_ct a_lt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct-ct out-of-place, a.log_hom_rem() > b.log_hom_rem() (a is shifted to align with b).
@@ -167,7 +167,7 @@ where
         expected_delta,
         "a_gt_b: result must use min log_hom_rem"
     );
-    ctx.assert_decrypt_precision("sub_ct a_gt_b", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("sub_ct a_gt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct-ct out-of-place, output buffer has smaller max_k than inputs (offset > 0).
@@ -206,7 +206,7 @@ where
         expected_delta,
         "smaller_output: log_hom_rem must be reduced by offset"
     );
-    ctx.assert_decrypt_precision("sub_ct smaller_output", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("sub_ct smaller_output", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 // ─── ct-ct in-place (GLWE<_, CKKS>::sub_inplace) ────────────────────────────
@@ -281,7 +281,7 @@ where
         expected_delta,
         "sub_inplace self_lt: log_hom_rem must stay at self's value"
     );
-    ctx.assert_decrypt_precision("sub_ct_inplace self_lt", &ct_self, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("sub_ct_inplace self_lt", &ct_self, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct-ct in-place, self.log_hom_rem() > a.log_hom_rem() (self is shifted down to align with a).
@@ -320,7 +320,7 @@ where
         expected_delta,
         "sub_inplace self_gt: log_hom_rem must drop to a's value"
     );
-    ctx.assert_decrypt_precision("sub_ct_inplace self_gt", &ct_self, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("sub_ct_inplace self_gt", &ct_self, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 // ─── ct - compact ZNX plaintext (GLWE<_, CKKS>::sub_pt_znx[_inplace]) ────────

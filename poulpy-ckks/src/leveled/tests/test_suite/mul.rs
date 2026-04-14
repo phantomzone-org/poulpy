@@ -132,7 +132,7 @@ where
     let mut ct_res = ctx.alloc_ct_reduced_k();
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("mul_ct smaller_output", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_ct smaller_output", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 // ─── ct² squaring (GLWE<_, CKKS>::square) ───────────────────────────────────────
@@ -207,7 +207,7 @@ where
 
     let expected_lhr = ct.log_hom_rem() - ct.log_decimal();
     assert_eq!(ct_res.log_hom_rem(), expected_lhr, "rescaled: result log_hom_rem()");
-    ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct² into an output buffer with smaller max_k (one limb narrower).

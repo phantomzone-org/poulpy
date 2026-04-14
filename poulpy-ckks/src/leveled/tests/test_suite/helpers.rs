@@ -273,6 +273,22 @@ where
         (re, im)
     }
 
+    pub fn want_mul_pow2(&self, bits: usize) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let scale = (1u64 << bits) as f64;
+        let re = (0..m).map(|j| self.re1[j] * scale).collect();
+        let im = (0..m).map(|j| self.im1[j] * scale).collect();
+        (re, im)
+    }
+
+    pub fn want_div_pow2(&self, bits: usize) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let scale = (1u64 << bits) as f64;
+        let re = (0..m).map(|j| self.re1[j] / scale).collect();
+        let im = (0..m).map(|j| self.im1[j] / scale).collect();
+        (re, im)
+    }
+
     pub fn want_conjugate(&self) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
         let re = (0..m).map(|j| self.re1[j]).collect();

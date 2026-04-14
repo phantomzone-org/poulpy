@@ -1,0 +1,154 @@
+//! Multiplication and division by a power of two.
+//!
+//! These operations shift the GLWE payload without altering CKKS metadata
+//! (`log_decimal`, `log_hom_rem`).
+//!
+//! # Test inventory
+//!
+//! ## `GLWE<_, CKKS>::mul_pow2` / `mul_pow2_inplace`
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_mul_pow2`] | out-of-place, message × 2^bits |
+//! | [`test_mul_pow2_inplace`] | in-place, message × 2^bits |
+//!
+//! ## `GLWE<_, CKKS>::div_pow2` / `div_pow2_inplace`
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_div_pow2`] | out-of-place, message / 2^bits |
+//! | [`test_div_pow2_inplace`] | in-place, message / 2^bits |
+
+use crate::CKKSInfos;
+use crate::leveled::operations::pow2::CKKSPow2Ops;
+
+use super::helpers::{TestBackend as Backend, TestContext};
+use poulpy_core::{GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore, layouts::GLWESecretPreparedFactory};
+use poulpy_hal::{
+    api::{
+        ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLshInplace, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
+    },
+    layouts::{Module, Scratch, ScratchOwned},
+};
+
+const SHIFT_BITS: usize = 7;
+
+// ─── mul_pow2 (message × 2^bits) ───────────────────────────────────────────────
+
+/// Out-of-place multiplication by 2^bits.
+pub fn test_mul_pow2<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxRshAddInto<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
+
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.mul_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+
+    assert_eq!(ct_res.log_hom_rem(), ct.log_hom_rem(), "mul_pow2 must preserve log_hom_rem()");
+    assert_eq!(ct_res.log_decimal(), ct.log_decimal(), "mul_pow2 must preserve log_decimal()");
+    ctx.assert_decrypt_precision("mul_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// In-place multiplication by 2^bits.
+pub fn test_mul_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxRshAddInto<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let expected_lhr = ct.log_hom_rem();
+    let expected_ld = ct.log_decimal();
+    let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
+
+    ct.mul_pow2_inplace(&ctx.module, SHIFT_BITS, scratch.borrow()).unwrap();
+
+    assert_eq!(ct.log_hom_rem(), expected_lhr, "mul_pow2_inplace must preserve log_hom_rem()");
+    assert_eq!(ct.log_decimal(), expected_ld, "mul_pow2_inplace must preserve log_decimal()");
+    ctx.assert_decrypt_precision("mul_pow2_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+// ─── div_pow2 (message / 2^bits) ───────────────────────────────────────────────
+
+/// Out-of-place division by 2^bits.
+pub fn test_div_pow2<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWECopy
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxRshAddInto<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
+
+    let mut ct_res = ctx.alloc_ct();
+    ct_res.div_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+
+    assert_eq!(ct_res.log_hom_rem(), ct.log_hom_rem(), "div_pow2 must preserve log_hom_rem()");
+    assert_eq!(ct_res.log_decimal(), ct.log_decimal(), "div_pow2 must preserve log_decimal()");
+    ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// In-place division by 2^bits.
+pub fn test_div_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>)
+where
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEShift<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxRshAddInto<BE>
+        + VecZnxLshInplace<BE>
+        + VecZnxCopy,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(&ctx.re1, &ctx.im1, scratch.borrow());
+    let expected_lhr = ct.log_hom_rem();
+    let expected_ld = ct.log_decimal();
+    let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
+
+    ct.div_pow2_inplace(&ctx.module, SHIFT_BITS, scratch.borrow()).unwrap();
+
+    assert_eq!(ct.log_hom_rem(), expected_lhr, "div_pow2_inplace must preserve log_hom_rem()");
+    assert_eq!(ct.log_decimal(), expected_ld, "div_pow2_inplace must preserve log_decimal()");
+    ctx.assert_decrypt_precision("div_pow2_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+}
