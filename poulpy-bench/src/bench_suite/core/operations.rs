@@ -10,7 +10,7 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_add<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_into<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEAdd,
 {
@@ -21,18 +21,18 @@ where
     let a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
 
-    let group_name = format!("glwe_add::{label}");
+    let group_name = format!("glwe_add_into::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_add(&mut res, &a, &b);
+            module.glwe_add_into(&mut res, &a, &b);
             black_box(());
         })
     });
     group.finish();
 }
 
-pub fn bench_glwe_add_inplace<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEAdd,
 {
@@ -42,11 +42,11 @@ where
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
 
-    let group_name = format!("glwe_add_inplace::{label}");
+    let group_name = format!("glwe_add_assign::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_add_inplace(&mut res, &b);
+            module.glwe_add_assign(&mut res, &b);
             black_box(());
         })
     });

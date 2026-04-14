@@ -2,55 +2,22 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, ScratchTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
 
+pub use crate::api::LWEEncryptSk;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
 };
 
-impl LWE<Vec<u8>> {
-    /// Returns the scratch space (in bytes) required by [`LWE::encrypt_sk`].
-    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
-    where
-        A: LWEInfos,
-        M: LWEEncryptSk<BE>,
-    {
-        module.lwe_encrypt_sk_tmp_bytes(infos)
-    }
-}
-
-impl<DataSelf: DataMut> LWE<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<P, S, M, E, BE: Backend>(
-        &mut self,
-        module: &M,
-        pt: &P,
-        sk: &S,
-        enc_infos: &E,
-        source_xe: &mut Source,
-        source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        P: LWEPlaintextToRef,
-        S: LWESecretToRef,
-        M: LWEEncryptSk<BE>,
-        E: EncryptionInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.lwe_encrypt_sk(self, pt, sk, enc_infos, source_xe, source_xa, scratch);
-    }
-}
-
-pub trait LWEEncryptSk<BE: Backend> {
-    /// Returns the scratch space (in bytes) required by [`LWE::encrypt_sk`].
+#[doc(hidden)]
+pub trait LWEEncryptSkDefault<BE: Backend> {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: LWEInfos;
 
-    #[allow(clippy::too_many_arguments)]
     fn lwe_encrypt_sk<R, P, S, E>(
         &self,
         res: &mut R,
@@ -68,7 +35,7 @@ pub trait LWEEncryptSk<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<BE: Backend> LWEEncryptSk<BE> for Module<BE>
+impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
 where
     Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeBasic + ScratchAvailable,

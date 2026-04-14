@@ -203,16 +203,7 @@ where
     }
 }
 
-impl<D: DataMut> GGLWEToGGSWKey<D> {
-    /// Decompresses a [`GGLWEToGGSWKeyCompressed`] into this standard key.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        M: GGLWEToGGSWKeyDecompress,
-        O: GGLWEToGGSWKeyCompressedToRef,
-    {
-        module.decompress_gglwe_to_ggsw_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GGLWEToGGSWKeyDecompress` on `Module`.
 
 /// Converts a compressed GGLWE-to-GGSW key to an immutably-borrowed variant.
 pub trait GGLWEToGGSWKeyCompressedToRef {

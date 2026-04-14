@@ -24,7 +24,6 @@
 //! | `reim`          | Real/imaginary interleaved FFT primitives                 |
 //! | `convolution`   | Polynomial convolution via FFT, by-constant, and pairwise |
 //! | `svp`           | Scalar-vector product in frequency domain                 |
-//! | `vmp`           | Vector-matrix product in frequency domain                 |
 //!
 //! # Scalar types
 //!
@@ -140,7 +139,7 @@
 //!
 //! This crate exports a single public type, [`FFT64Avx`], which is used as a type parameter
 //! to the HAL generic types. Application code typically does not import this crate directly,
-//! but instead uses it via `poulpy_core`, `poulpy_bin_fhe`, or `poulpy_ckks` with runtime backend selection.
+//! but instead uses it via `poulpy_core` or `poulpy_bin_fhe` with runtime backend selection.
 //!
 //! # Versioning and stability
 //!
@@ -166,8 +165,18 @@ compile_error!("feature `enable-avx` requires AVX2. Build with RUSTFLAGS=\"-C ta
 compile_error!("feature `enable-avx` requires FMA. Build with RUSTFLAGS=\"-C target-feature=+fma\".");
 
 mod fft64;
+mod hal_impl;
 mod ntt120;
 mod znx_avx;
 
 pub use fft64::{FFT64Avx, ReimFFTAvx, ReimIFFTAvx};
 pub use ntt120::NTT120Avx;
+
+use poulpy_core::oep::CoreImpl;
+unsafe impl CoreImpl<FFT64Avx> for FFT64Avx {
+    poulpy_core::impl_core_default_methods!(FFT64Avx);
+}
+
+unsafe impl CoreImpl<NTT120Avx> for NTT120Avx {
+    poulpy_core::impl_core_default_methods!(NTT120Avx);
+}

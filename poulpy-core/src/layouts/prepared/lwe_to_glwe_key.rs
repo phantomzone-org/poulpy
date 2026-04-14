@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -55,46 +55,46 @@ pub trait LWEToGLWEKeyPreparedFactory<B: Backend>
 where
     Self: GLWESwitchingKeyPreparedFactory<B>,
 {
-    fn alloc_lwe_to_glwe_key_prepared(
+    fn lwe_to_glwe_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_out: Rank,
         dnum: Dnum,
-    ) -> LWEToGLWEKeyPrepared<Vec<u8>, B> {
-        LWEToGLWEKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
+    ) -> LWEToGLWEKeyPrepared<DeviceBuf<B>, B> {
+        LWEToGLWEKeyPrepared(self.glwe_switching_key_prepared_alloc(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
     }
-    fn alloc_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> LWEToGLWEKeyPrepared<Vec<u8>, B>
+    fn lwe_to_glwe_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> LWEToGLWEKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
-        self.alloc_lwe_to_glwe_key_prepared(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
+        self.lwe_to_glwe_key_prepared_alloc(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
-    fn bytes_of_lwe_to_glwe_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
+    fn lwe_to_glwe_key_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
         self.bytes_of_glwe_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1))
     }
 
-    fn bytes_of_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWEToGLWEKey");
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWEToGLWEKey");
-        self.bytes_of_lwe_to_glwe_key_prepared(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
+        self.lwe_to_glwe_key_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
-    fn prepare_lwe_to_glwe_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_glwe_switching_key_tmp_bytes(infos);
+        let lvl_0: usize = self.glwe_switching_key_prepare_tmp_bytes(infos);
         lvl_0
     }
 
-    fn prepare_lwe_to_glwe_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn lwe_to_glwe_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
@@ -102,69 +102,19 @@ where
     {
         let res_infos = res.to_mut();
         assert!(
-            scratch.available() >= self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos),
-            "scratch.available(): {} < LWEToGLWEKeyPreparedFactory::prepare_lwe_to_glwe_key_tmp_bytes: {}",
+            scratch.available() >= self.lwe_to_glwe_key_prepare_tmp_bytes(&res_infos),
+            "scratch.available(): {} < LWEToGLWEKeyPreparedFactory::lwe_to_glwe_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_lwe_to_glwe_key_tmp_bytes(&res_infos)
+            self.lwe_to_glwe_key_prepare_tmp_bytes(&res_infos)
         );
-        self.prepare_glwe_switching(res, other, scratch);
+        self.glwe_switching_key_prepare(res, other, scratch);
     }
 }
 
 impl<B: Backend> LWEToGLWEKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
-impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: LWEToGLWEKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_to_glwe_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
-    where
-        M: LWEToGLWEKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_to_glwe_key_prepared(base2k, k, rank_out, dnum)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWEToGLWEKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_to_glwe_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize
-    where
-        M: LWEToGLWEKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_to_glwe_key_prepared(base2k, k, rank_out, dnum)
-    }
-}
-
-impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWEToGLWEKeyPreparedFactory<B>,
-    {
-        module.prepare_lwe_to_glwe_key_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, B: Backend> LWEToGLWEKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: LWEToGLWEKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_lwe_to_glwe_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `LWEToGLWEKeyPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWEToGLWEKeyPrepared<D, B>
 where

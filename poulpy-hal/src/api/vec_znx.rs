@@ -40,36 +40,44 @@ pub trait VecZnxNormalizeInplace<B: Backend> {
         A: VecZnxToMut;
 }
 
-pub trait VecZnxAdd {
+pub trait VecZnxAddInto {
     /// Adds the selected column of `a` to the selected column of `b` and writes the result on the selected column of `res`.
-    fn vec_znx_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_add_into<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
         B: VecZnxToRef;
 }
 
-pub trait VecZnxAddInplace {
+pub trait VecZnxAddAssign {
     /// Adds the selected column of `a` to the selected column of `res` and writes the result on the selected column of `res`.
-    fn vec_znx_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_add_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxAddScalar {
+pub trait VecZnxAddScalarInto {
     /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
-    where
+    fn vec_znx_add_scalar_into<R, A, B>(
+        &self,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
         R: VecZnxToMut,
         A: ScalarZnxToRef,
         B: VecZnxToRef;
 }
 
-pub trait VecZnxAddScalarInplace {
+pub trait VecZnxAddScalarAssign {
     /// Adds the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_add_scalar_assign<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: ScalarZnxToRef;
@@ -159,10 +167,10 @@ pub trait VecZnxLsh<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxLshAdd<B: Backend> {
+pub trait VecZnxLshAddInto<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_add<R, A>(
+    fn vec_znx_lsh_add_into<R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -198,10 +206,10 @@ pub trait VecZnxRsh<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxRshAdd<B: Backend> {
+pub trait VecZnxRshAddInto<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_add<R, A>(
+    fn vec_znx_rsh_add_into<R, A>(
         &self,
         base2k: usize,
         k: usize,

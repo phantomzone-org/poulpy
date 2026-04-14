@@ -2,58 +2,176 @@
 
 use poulpy_core::{
     GLWETensoring, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWEInfos, GLWETensor, GLWETensorKeyPrepared, LWEInfos},
+    layouts::{
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
+        TorusPrecision,
+    },
 };
 use poulpy_hal::{
     api::ScratchAvailable,
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::ciphertext::CKKSCiphertext;
+use crate::{CKKS, CKKSInfos};
 use anyhow::Result;
 
-impl CKKSCiphertext<Vec<u8>> {
-    pub fn mul_relin_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+pub trait CKKSMulOps {
+    fn mul_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
-        Module<BE>: GLWETensoring<BE>,
-    {
-        let lvl_0 = GLWETensor::bytes_of_from_infos(res);
-        let lvl_1 = module
-            .glwe_tensor_apply_tmp_bytes(res, 0, res, res)
-            .max(module.glwe_tensor_relinearize_tmp_bytes(res, res, tsk));
+        Module<BE>: GLWETensoring<BE>;
 
-        lvl_0 + lvl_1
-    }
-}
+    fn square_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        T: GGLWEInfos,
+        Module<BE>: GLWETensoring<BE>;
 
-impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn mul_relin<BE: Backend>(
+    #[allow(clippy::too_many_arguments)]
+    fn mul<A, B, BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
+        a: &A,
+        b: &B,
         tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        B: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn square<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+}
+
+impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
+    fn mul_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        T: GGLWEInfos,
+        Module<BE>: GLWETensoring<BE>,
+    {
+        let glwe_layout = GLWELayout {
+            n: res.n(),
+            base2k: res.base2k(),
+            k: TorusPrecision(res.max_k().as_u32() + 4 * res.base2k().as_u32()),
+            rank: res.rank(),
+        };
+
+        let lvl_0 = GLWETensor::bytes_of_from_infos(&glwe_layout);
+        let lvl_1 = module
+            .glwe_tensor_apply_tmp_bytes(&glwe_layout, 0, res, res)
+            .max(module.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
+
+        lvl_0 + lvl_1
+    }
+    fn mul<A, B, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        b: &B,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let a_max_k = a.inner.max_k().as_usize();
-        let a_decimal = a_max_k - a.log_delta;
+        let log_decimal = a.log_decimal();
 
-        let offset = a_max_k;
+        let offset = a.log_hom_rem() + a.log_decimal();
 
-        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&self.inner);
+        let tensor_layout = GLWELayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: TorusPrecision(self.max_k().as_u32() + a.base2k().as_u32()),
+            rank: self.rank(),
+        };
 
-        module.glwe_tensor_apply(&mut tmp, offset, &a.inner, &b.inner, scratch_1);
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+
+        let a_ref = a.to_ref();
+        let b_ref = b.to_ref();
+        module.glwe_tensor_apply(&mut tmp, offset, &a_ref, &b_ref, scratch_1);
 
         // TODO: Chose correct optimal size based on noise
-        module.glwe_tensor_relinearize(&mut self.inner, &tmp, tsk, tsk.size(), scratch_1);
+        let mut self_view = self.to_mut();
+        module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
 
-        self.log_delta = a.log_delta - a_decimal;
+        self.set_log_hom_rem(a.log_hom_rem() - log_decimal)?;
+        self.set_log_decimal(a.log_decimal().max(b.log_decimal()))?;
+        Ok(())
+    }
+
+    fn square_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        T: GGLWEInfos,
+        Module<BE>: GLWETensoring<BE>,
+    {
+        let glwe_layout = GLWELayout {
+            n: res.n(),
+            base2k: res.base2k(),
+            k: TorusPrecision(res.max_k().as_u32() + 4 * res.base2k().as_u32()),
+            rank: res.rank(),
+        };
+
+        let lvl_0 = GLWETensor::bytes_of_from_infos(&glwe_layout);
+        let lvl_1 = module
+            .glwe_tensor_square_apply_tmp_bytes(&glwe_layout, 0, res)
+            .max(module.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
+
+        lvl_0 + lvl_1
+    }
+
+    fn square<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let log_decimal = a.log_decimal();
+
+        let offset = a.log_hom_rem() + a.log_decimal();
+
+        let tensor_layout = GLWELayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: TorusPrecision(self.max_k().as_u32() + a.base2k().as_u32()),
+            rank: self.rank(),
+        };
+
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+
+        let a_ref = a.to_ref();
+        module.glwe_tensor_square_apply(&mut tmp, offset, &a_ref, scratch_1);
+
+        // TODO: Chose correct optimal size based on noise
+        let mut self_view = self.to_mut();
+        module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
+
+        self.set_log_hom_rem(a.log_hom_rem() - log_decimal)?;
+        self.set_log_decimal(a.log_decimal())?;
         Ok(())
     }
 }

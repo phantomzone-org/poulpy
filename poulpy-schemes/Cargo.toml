@@ -5,13 +5,13 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "A backend agnostic crate implementing binary/gate-level RLWE-based FHE"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [features]
-enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx"]
-enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-core/enable-ifma"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx"]
+enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma"]
 
 [dependencies]
 criterion = {workspace = true}

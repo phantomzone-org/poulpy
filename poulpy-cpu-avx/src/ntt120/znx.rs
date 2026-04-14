@@ -1,10 +1,10 @@
 //! Single ring element (`Z[X]/(X^n+1)`) arithmetic for [`NTT120Avx`](super::NTT120Avx).
 //!
-//! Implements the `Znx*` traits from `poulpy_hal::reference::znx`. All implementations
+//! Implements the `Znx*` traits from `poulpy_cpu_ref::reference::znx`. All implementations
 //! delegate to the AVX2-accelerated functions in `crate::znx_avx` (same kernels used
 //! by `FFT64Avx`). These operate on plain `&[i64]` slices and are backend-independent.
 
-use poulpy_hal::reference::znx::{
+use poulpy_cpu_ref::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,

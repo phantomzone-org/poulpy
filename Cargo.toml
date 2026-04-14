@@ -11,9 +11,9 @@ poulpy-cpu-ifma = {path = "poulpy-cpu-ifma"}
 poulpy-schemes = {path = "poulpy-schemes"}
 poulpy-ckks = {path = "poulpy-ckks"}
 dashu-float = "0.4"
-rand = "0.10.0"
+rand = "0.10.1"
 rand_chacha = "0.10.0"
-rand_core = "0.10.0"
+rand_core = "0.10.1"
 rand_distr = "0.6.0"
 itertools = "0.14.0"
 criterion = "0.8.2"

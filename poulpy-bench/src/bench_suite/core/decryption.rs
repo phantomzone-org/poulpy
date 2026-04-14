@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -27,18 +27,18 @@ where
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, infos.rank());
-    sk_prepared.prepare(&module, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(infos.rank());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
 
     let mut scratch: ScratchOwned<BE> =
-        ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(&module, infos) | GLWE::decrypt_tmp_bytes(&module, infos));
+        ScratchOwned::alloc(module.glwe_encrypt_sk_tmp_bytes(infos) | module.glwe_decrypt_tmp_bytes(infos));
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    ct.encrypt_zero_sk(
-        &module,
+    module.glwe_encrypt_zero_sk(
+        &mut ct,
         &sk_prepared,
         &enc_infos,
         &mut source_xe,
@@ -50,7 +50,7 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct.decrypt(&module, &mut pt, &sk_prepared, scratch.borrow());
+            module.glwe_decrypt(&ct, &mut pt, &sk_prepared, scratch.borrow());
             black_box(());
         })
     });

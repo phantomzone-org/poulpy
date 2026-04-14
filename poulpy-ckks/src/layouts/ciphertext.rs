@@ -1,107 +1,172 @@
-//! CKKS ciphertext layout.
+//! CKKS metadata attached to [`GLWE`].
 //!
-//! A [`CKKSCiphertext`] pairs a rank-1 [`GLWE`] ciphertext with scaling and
-//! precision metadata.
+//! A CKKS ciphertext is represented as `GLWE<D, CKKS>`, where `CKKS` carries
+//! scheme-specific metadata (precision, offsets, scale).
 
-use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision};
-use poulpy_hal::{
-    api::VecZnxLshInplace,
-    layouts::{Backend, Data, DataMut, Module, Scratch},
+use poulpy_core::{
+    GLWEShift, ScratchTakeCore,
+    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToRef, LWEInfos, Rank, TorusPrecision},
 };
+use poulpy_hal::layouts::{Backend, Data, DataMut, Module, Scratch};
 
-/// Encrypted CKKS value carrying a GLWE ciphertext and CKKS metadata.
-///
-/// ## Three-level precision hierarchy
-///
-/// | Field | Meaning | Changes on |
-/// |-------|---------|------------|
-/// | `inner.k()` / `size` | Physical precision — how many torus limbs are stored | `drop_torus_precision`, `rescale`, `mul` |
-/// | `offset_bits` | Message position — where the message sits in the torus | `drop_torus_precision`, `rescale`, `mul` |
-/// | `torus_scale_bits` | Torus scaling factor carried by the ciphertext | `drop_scaling_precision`, `rescale`, `mul` |
-///
-/// The **prefix property** of the bivariate representation allows
-/// torus precision to be reduced without destroying the message: the dominant
-/// limbs are preserved, and only the least-significant limbs are dropped.
-///
-/// ## Invariants
-///
-/// - `offset_bits >= torus_scale_bits`
-/// - `inner.size() == div_ceil(inner.k(), base2k)` — the active limb count is
-///   always consistent with `k`. All `(k, size)` updates must go through
-///   [`CKKSCiphertext::set_active_k`].
-/// - **Storage invariant:** every inactive tail limb `inner.data[col, size..max_size]`
-///   is zero across every column. A shrunk ciphertext is therefore
-///   operationally identical to a freshly allocated one at the same `k`:
-///   downstream operations whose cost depends on `size()` see no stale data,
-///   and the storage cost of a leveled operation scales with the reduced
-///   `size`, not the original `max_size`. The invariant is re-established by
-///   [`CKKSCiphertext::zero_inactive_tail`] after any operation that shrinks
-///   `size`.
-///
-/// Message extraction: `message ≈ phase · 2^{offset_bits} / 2^{torus_scale_bits}`.
-pub struct CKKSCiphertext<D: Data> {
-    pub inner: GLWE<D>,
-    pub log_delta: usize,
-}
+use crate::{CKKS, CKKSInfos};
+use anyhow::Result;
 
-impl CKKSCiphertext<Vec<u8>> {
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        Self {
-            inner: GLWE::alloc(n, base2k, k, rank),
-            log_delta: 0,
-        }
+impl CKKS {
+    pub fn alloc(n: Degree, k: TorusPrecision, base2k: Base2K) -> GLWE<Vec<u8>, CKKS> {
+        GLWE::alloc_with_meta(n, base2k, k, Rank(1), CKKS::default())
     }
 
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub fn alloc_from_infos<A>(infos: &A) -> Result<GLWE<Vec<u8>, CKKS>>
     where
         A: GLWEInfos,
     {
-        Self {
-            inner: GLWE::alloc_from_infos(infos),
-            log_delta: 0,
-        }
+        Ok(GLWE::alloc_with_meta(
+            infos.n(),
+            infos.base2k(),
+            infos.max_k(),
+            infos.rank(),
+            CKKS::default(),
+        ))
+    }
+}
+
+impl<D: Data> CKKSInfos for GLWE<D, CKKS> {
+    fn meta(&self) -> CKKS {
+        self.meta
     }
 
+    fn log_decimal(&self) -> usize {
+        self.meta.log_decimal
+    }
+
+    fn log_hom_rem(&self) -> usize {
+        self.meta.log_hom_rem
+    }
+
+    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
+        anyhow::ensure!(self.max_k().as_usize() - self.log_hom_rem() >= log_decimal);
+        self.meta.log_decimal = log_decimal;
+        Ok(())
+    }
+
+    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
+        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= log_hom_rem);
+        self.meta.log_hom_rem = log_hom_rem;
+        Ok(())
+    }
+}
+
+pub trait CKKSMaintainOps {
     /// Reallocates the owned backing buffer so capacity matches `size` limb count.
-    pub fn drop_limbs(&mut self, size: usize) {
-        self.inner.drop_limbs(size);
+    /// Fails if dropping limbs would reduce the gap between log_hom_rem and max_k
+    /// below log_decimal.
+    fn reallocate_limbs_checked(&mut self, size: usize) -> Result<()>;
+    /// Reallocates the owned backing buffer such that [Self::max_k()] >= [Self::log_decimal()] + [Self::log_hom_rem()].
+    fn compact_limbs(&mut self) -> Result<()>;
+}
+
+impl CKKSMaintainOps for GLWE<Vec<u8>, CKKS> {
+    fn reallocate_limbs_checked(&mut self, size: usize) -> Result<()> {
+        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= size * self.base2k().as_usize());
+        self.data_mut().reallocate_limbs(size);
+        Ok(())
+    }
+
+    fn compact_limbs(&mut self) -> Result<()> {
+        let size = (self.max_k().as_usize() - self.log_decimal() + self.log_hom_rem()).div_ceil(self.base2k().as_usize());
+        self.reallocate_limbs_checked(size)?;
+        Ok(())
     }
 }
 
-impl<D: Data> CKKSCiphertext<D> {
-    pub fn delta(&self) -> usize {
-        self.log_delta
-    }
+pub trait CKKSRescaleOps {
+    fn rescale_inplace<BE: Backend>(&mut self, module: &Module<BE>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        Module<BE>: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>;
+    fn rescale<O, BE: Backend>(&mut self, module: &Module<BE>, k: usize, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        Module<BE>: GLWEShift<BE>,
+        O: GLWEToRef + CKKSInfos,
+        Scratch<BE>: ScratchTakeCore<BE>;
+    fn align_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        other: &mut GLWE<impl DataMut, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn rescale_inplace<BE: Backend>(&mut self, module: &Module<BE>, k: usize, scratch: &mut Scratch<BE>)
+impl<D: DataMut> CKKSRescaleOps for GLWE<D, CKKS> {
+    fn rescale_inplace<BE: Backend>(&mut self, module: &Module<BE>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
-        Module<BE>: VecZnxLshInplace<BE>,
+        Module<BE>: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        if k == 0 {
-            return;
-        }
-
-        assert!(self.log_delta >= k);
-
-        let base2k = self.inner.base2k().as_usize();
-        let cols = self.inner.rank().as_usize() + 1;
-        for col_i in 0..cols {
-            module.vec_znx_lsh_inplace(base2k, k, self.inner.data_mut(), col_i, scratch);
-        }
-
-        self.log_delta -= k;
+        anyhow::ensure!(self.log_hom_rem() >= k);
+        module.glwe_lsh_inplace(self, k, scratch);
+        self.set_log_hom_rem(self.log_hom_rem() - k)?;
+        Ok(())
     }
 
-    pub fn align_inplace<BE: Backend>(&mut self, module: &Module<BE>, other: &mut Self, scratch: &mut Scratch<BE>)
+    fn rescale<O, BE: Backend>(&mut self, module: &Module<BE>, k: usize, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
     where
-        Module<BE>: VecZnxLshInplace<BE>,
+        Module<BE>: GLWEShift<BE>,
+        O: GLWEToRef + CKKSInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        if self.log_delta < other.log_delta {
-            other.rescale_inplace(module, other.log_delta - self.log_delta, scratch);
+        anyhow::ensure!(self.log_hom_rem() >= k);
+        module.glwe_lsh(self, other, k, scratch);
+        self.meta = other.meta();
+        self.set_log_hom_rem(self.log_hom_rem() - k)?;
+        Ok(())
+    }
+
+    fn align_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        other: &mut GLWE<impl DataMut, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        if self.log_hom_rem() < other.log_hom_rem() {
+            other.rescale_inplace(module, other.log_hom_rem() - self.log_hom_rem(), scratch)
         } else {
-            self.rescale_inplace(module, self.log_delta - other.log_delta, scratch);
+            self.rescale_inplace(module, self.log_hom_rem() - other.log_hom_rem(), scratch)
         }
+    }
+}
+
+pub(crate) trait CKKSOffset {
+    fn offset_binary<A, B>(&self, a: &A, b: &B) -> usize
+    where
+        A: LWEInfos + CKKSInfos,
+        B: LWEInfos + CKKSInfos;
+    fn offset_unary<A>(&self, a: &A) -> usize
+    where
+        A: LWEInfos + CKKSInfos;
+}
+
+impl<D: Data> CKKSOffset for GLWE<D, CKKS> {
+    fn offset_binary<A, B>(&self, a: &A, b: &B) -> usize
+    where
+        A: LWEInfos + CKKSInfos,
+        B: LWEInfos + CKKSInfos,
+    {
+        a.max_k().min(b.max_k()).as_usize().saturating_sub(self.max_k().as_usize())
+    }
+
+    fn offset_unary<A>(&self, a: &A) -> usize
+    where
+        A: LWEInfos + CKKSInfos,
+    {
+        a.max_k().as_usize().saturating_sub(self.max_k().as_usize())
     }
 }

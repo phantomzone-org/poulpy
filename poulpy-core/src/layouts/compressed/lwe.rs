@@ -141,15 +141,7 @@ where
 
 impl<B: Backend> LWEDecompress for Module<B> where Self: VecZnxFillUniform {}
 
-impl<D: DataMut> LWE<D> {
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: LWECompressedToRef,
-        M: LWEDecompress,
-    {
-        module.decompress_lwe(self, other);
-    }
-}
+// module-only API: decompression is provided by `LWEDecompress` on `Module`.
 
 pub trait LWECompressedToRef {
     fn to_ref(&self) -> LWECompressed<&[u8]>;

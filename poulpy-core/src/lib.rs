@@ -3,8 +3,10 @@
 //! `poulpy-core` implements the cryptographic building blocks of a
 //! Ring-LWE (RLWE) fully homomorphic encryption (FHE) scheme on top
 //! of the hardware-abstraction layer provided by [`poulpy_hal`].
-//! All operations are expressed as traits on [`poulpy_hal::layouts::Module<BE>`],
-//! making the crate portable across CPU, AVX, and future backends.
+//! The public operation traits live in [`api`], while their blanket
+//! implementations on [`poulpy_hal::layouts::Module<BE>`] delegate to
+//! backend extension points in [`oep`]. This makes the crate portable
+//! across CPU, AVX, and future backends.
 //!
 //! # Architecture
 //!
@@ -48,6 +50,7 @@
 //!
 //! | Module | Responsibility |
 //! |---|---|
+//! | [`api`] | Safe, user-facing operation traits |
 //! | [`layouts`] | Type definitions for all ciphertext, key, plaintext, and secret layouts |
 //! | encryption | Secret-key, public-key, and compressed encryption |
 //! | decryption | Decryption of GLWE, LWE, and tensor ciphertexts |
@@ -63,9 +66,11 @@
 //! | dist | Secret-key distribution descriptors |
 //! | scratch | Arena-style scratch allocation for ciphertext temporaries |
 
+pub mod api;
 mod automorphism;
 mod conversion;
 mod decryption;
+mod delegates;
 mod dist;
 mod encryption;
 mod external_product;
@@ -74,6 +79,7 @@ mod glwe_packing;
 mod glwe_trace;
 mod keyswitching;
 mod noise;
+pub mod oep;
 mod operations;
 mod scratch;
 mod utils;
@@ -95,4 +101,7 @@ pub use scratch::*;
 
 pub use encryption::DEFAULT_SIGMA_XE;
 
-pub mod tests;
+pub mod test_suite;
+
+#[cfg(test)]
+mod tests;

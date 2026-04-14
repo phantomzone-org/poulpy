@@ -1,57 +1,44 @@
 use poulpy_hal::{
     api::{
-        CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAdd, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub,
-        VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
+        CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAddAssign, VecZnxAddInto,
+        VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
+        VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
-    reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
 };
 
+pub use crate::api::{
+    GLWEAdd, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWEMulXpMinusOne, GLWENegate, GLWENormalize, GLWERotate, GLWEShift, GLWESub,
+    GLWETensoring,
+};
 use crate::{
     GGLWEProduct, ScratchTakeCore,
     layouts::{
         Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
-        TorusPrecision,
     },
 };
 
-/// Multiplication of a GLWE ciphertext by a constant polynomial.
-///
-/// Computes `res = a * b * 2^(res_offset * base2k)` where `b` is a
-/// small integer polynomial given as an `i64` slice. The result
-/// precision in `res` is truncated to `res.k()` bits.
-///
-/// Requires scratch space obtainable via [`GLWEMulConst::glwe_mul_const_tmp_bytes`].
-pub trait GLWEMulConst<BE: Backend> {
-    /// Returns the scratch buffer size in bytes needed by
-    /// [`GLWEMulConst::glwe_mul_const`] and [`GLWEMulConst::glwe_mul_const_inplace`].
+#[doc(hidden)]
+pub trait GLWEMulConstDefault<BE: Backend> {
     fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
 
-    /// Computes `res = a * b * 2^(res_offset * base2k)` out-of-place.
-    ///
-    /// `b` is a constant polynomial represented as an `i64` slice.
-    /// `res` and `a` must have the same rank.
     fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef;
 
-    /// Computes `res = res * b * 2^(res_offset * base2k)` in-place.
-    ///
-    /// `b` is a constant polynomial represented as an `i64` slice.
     fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
 }
 
-impl<BE: Backend> GLWEMulConst<BE> for Module<BE>
+impl<BE: Backend> GLWEMulConstDefault<BE> for Module<BE>
 where
     Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -150,7 +137,7 @@ where
     }
 }
 
-impl<BE: Backend> GLWEMulPlain<BE> for Module<BE>
+impl<BE: Backend> GLWEMulPlainDefault<BE> for Module<BE>
 where
     Self: Sized
         + ModuleN
@@ -200,12 +187,12 @@ where
         lvl_0 + lvl_1.max(lvl_2)
     }
 
-    fn glwe_mul_plain<R, A, B>(
+    fn glwe_mul_plain<R, A, B, BM>(
         &self,
         res: &mut GLWE<R>,
         res_offset: usize,
         a: &GLWE<A>,
-        b: &GLWEPlaintext<B>,
+        b: &GLWEPlaintext<B, BM>,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -229,8 +216,8 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
             (0, -((a_base2k - (res_offset % a_base2k)) as i64))
@@ -253,8 +240,13 @@ where
         }
     }
 
-    fn glwe_mul_plain_inplace<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWEPlaintext<A>, scratch: &mut Scratch<BE>)
-    where
+    fn glwe_mul_plain_inplace<R, A, AM>(
+        &self,
+        res: &mut GLWE<R>,
+        res_offset: usize,
+        a: &GLWEPlaintext<A, AM>,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: DataMut,
         A: DataRef,
     {
@@ -275,8 +267,8 @@ where
         let (mut res_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, res.size());
         let (mut a_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, a.size());
 
-        self.cnv_prepare_left(&mut res_prep, res.data(), scratch_2);
-        self.cnv_prepare_right(&mut a_prep, a.data(), scratch_2);
+        self.cnv_prepare_left(&mut res_prep, res.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut a_prep, a.data(), !0i64, scratch_2);
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
             (0, -((a_base2k - (res_offset % a_base2k)) as i64))
@@ -299,112 +291,56 @@ where
     }
 }
 
-/// Multiplication of a GLWE ciphertext by a plaintext polynomial.
-///
-/// Computes `res = a * b * 2^(res_offset * base2k)` where `b` is a
-/// [`GLWEPlaintext`]. Both `a` and `b` must share the same `base2k`.
-///
-/// Requires scratch space obtainable via [`GLWEMulPlain::glwe_mul_plain_tmp_bytes`].
-pub trait GLWEMulPlain<BE: Backend> {
-    /// Returns the scratch buffer size in bytes needed by
-    /// [`GLWEMulPlain::glwe_mul_plain`] and [`GLWEMulPlain::glwe_mul_plain_inplace`].
+#[doc(hidden)]
+pub trait GLWEMulPlainDefault<BE: Backend> {
     fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
-    /// Computes `res = a * b * 2^(res_offset * base2k)` out-of-place.
-    ///
-    /// `a` and `b` must have the same `base2k`. `res` and `a` must have the same rank.
-    fn glwe_mul_plain<R, A, B>(
+    fn glwe_mul_plain<R, A, B, BM>(
         &self,
         res: &mut GLWE<R>,
         res_offset: usize,
         a: &GLWE<A>,
-        b: &GLWEPlaintext<B>,
+        b: &GLWEPlaintext<B, BM>,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
 
-    /// Computes `res = res * a * 2^(res_offset * base2k)` in-place.
-    ///
-    /// `res` and `a` must have the same `base2k` and rank.
-    fn glwe_mul_plain_inplace<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWEPlaintext<A>, scratch: &mut Scratch<BE>)
-    where
+    fn glwe_mul_plain_inplace<R, A, AM>(
+        &self,
+        res: &mut GLWE<R>,
+        res_offset: usize,
+        a: &GLWEPlaintext<A, AM>,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: DataMut,
         A: DataRef;
 }
 
-/// Tensor product of two GLWE ciphertexts and relinearization.
-///
-/// The tensor product expands two rank-k GLWE ciphertexts into a
-/// [`GLWETensor`] of rank `(k+1)*(k+2)/2 - 1`, which can then be
-/// relinearized back to a rank-k GLWE using a tensor key.
-///
-/// Requires scratch space obtainable via the corresponding `_tmp_bytes` methods.
-pub trait GLWETensoring<BE: Backend> {
-    /// Returns the scratch buffer size in bytes needed by
-    /// [`GLWETensoring::glwe_tensor_apply`].
+#[doc(hidden)]
+pub trait GLWETensoringDefault<BE: Backend> {
+    fn glwe_tensor_square_apply_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos;
+
     fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
-    /// Returns the scratch buffer size in bytes needed by
-    /// [`GLWETensoring::glwe_tensor_square_apply`].
-    ///
-    /// The default implementation reuses [`GLWETensoring::glwe_tensor_apply_tmp_bytes`]
-    /// with identical operands.
-    fn glwe_tensor_square_apply_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A) -> usize
+    fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
-    {
-        self.glwe_tensor_apply_tmp_bytes(res, res_offset, a, a)
-    }
+        B: GGLWEInfos;
 
-    /// Computes `res = (a (x) b) * 2^(res_offset * a_base2k)`.
-    ///
-    /// Requires `a.base2k() == b.base2k()` and `a.rank() == b.rank()`.
-    /// The result precision is truncated to `res.max_k().min(a.max_k() + b.max_k() + k * a_base2k)`.
-    ///
-    /// Uses Karatsuba-style pairwise convolution to reduce the number
-    /// of NTT multiplications.
-    fn glwe_tensor_apply<R, A, B>(
-        &self,
-        res: &mut GLWETensor<R>,
-        res_offset: usize,
-        a: &GLWE<A>,
-        b: &GLWE<B>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef;
-
-    /// Computes `res = (a (x) a) * 2^(res_offset * a_base2k)`.
-    ///
-    /// This is the self-convolution counterpart of
-    /// [`GLWETensoring::glwe_tensor_apply`]. The default implementation
-    /// reuses the generic tensor product path with identical operands.
-    fn glwe_tensor_square_apply<R, A>(&self, res: &mut GLWETensor<R>, res_offset: usize, a: &GLWE<A>, scratch: &mut Scratch<BE>)
-    where
-        R: DataMut,
-        A: DataRef,
-    {
-        self.glwe_tensor_apply(res, res_offset, a, a, scratch);
-    }
-
-    /// Relinearizes a tensor product back to a standard GLWE ciphertext.
-    ///
-    /// Computes `res = a * tsk` where `a` is the tensor product output
-    /// and `tsk` is the prepared tensor switching key. The cross-product
-    /// columns of `a` are multiplied by `tsk` via a GGLWE product, then
-    /// the standard columns are added back.
     fn glwe_tensor_relinearize<R, A, B>(
         &self,
         res: &mut GLWE<R>,
@@ -417,16 +353,25 @@ pub trait GLWETensoring<BE: Backend> {
         A: DataRef,
         B: DataRef;
 
-    /// Returns the scratch buffer size in bytes needed by
-    /// [`GLWETensoring::glwe_tensor_relinearize`].
-    fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
+    fn glwe_tensor_square_apply<R, A>(&self, res: &mut GLWETensor<R>, res_offset: usize, a: &GLWE<A>, scratch: &mut Scratch<BE>)
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGLWEInfos;
+        R: DataMut,
+        A: DataRef;
+
+    fn glwe_tensor_apply<R, A, B>(
+        &self,
+        res: &mut GLWETensor<R>,
+        res_offset: usize,
+        a: &GLWE<A>,
+        b: &GLWE<B>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
 }
 
-impl<BE: Backend> GLWETensoring<BE> for Module<BE>
+impl<BE: Backend> GLWETensoringDefault<BE> for Module<BE>
 where
     Self: Sized
         + ModuleN
@@ -437,13 +382,13 @@ where
         + Convolution<BE>
         + VecZnxSubInplace
         + VecZnxNegate
-        + VecZnxAddInplace
+        + VecZnxAddAssign
         + VecZnxBigNormalizeTmpBytes
         + VecZnxCopy
         + VecZnxNormalize<BE>
         + VecZnxDftApply<BE>
         + GGLWEProduct<BE>
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -613,13 +558,13 @@ where
 
         if res_base2k == key_base2k {
             for i in 0..cols {
-                self.vec_znx_big_add_small_inplace(&mut res_big, i, a.data(), i);
+                self.vec_znx_big_add_small_assign(&mut res_big, i, a.data(), i);
             }
         } else {
             let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), 1, a_dft_size);
             for i in 0..cols {
                 self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, a.data(), a_base2k, i, scratch_3);
-                self.vec_znx_big_add_small_inplace(&mut res_big, i, &a_conv, 0);
+                self.vec_znx_big_add_small_assign(&mut res_big, i, &a_conv, 0);
             }
         }
 
@@ -647,7 +592,7 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, a.size());
 
-        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), scratch_2);
+        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), !0i64, scratch_2);
         let (mut diag_terms, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, res.size());
 
         let (res_offset_hi, res_offset_lo) = if res_offset < a_base2k {
@@ -720,8 +665,8 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), scratch_2);
+        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
 
         // Example for rank=3
         //
@@ -790,189 +735,33 @@ where
                     let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
                     self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset_lo, 0, &res_big, a_base2k, 0, scratch_3);
 
-                    self.vec_znx_add_inplace(res.data_mut(), col_i + j, &tmp, 0);
+                    self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
                 }
             }
         }
     }
 }
-
-pub trait GLWEAdd
-where
-    Self: ModuleN + VecZnxAdd + VecZnxCopy + VecZnxAddInplace + VecZnxZero,
-{
-    fn glwe_add<R, A, B>(&self, res: &mut R, a: &A, b: &B)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        B: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWE<&[u8]> = &b.to_ref();
-
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(b.n(), self.n() as u32);
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.base2k(), b.base2k());
-        assert_eq!(res.base2k(), b.base2k());
-
-        if a.rank() == 0 {
-            assert_eq!(res.rank(), b.rank());
-        } else if b.rank() == 0 {
-            assert_eq!(res.rank(), a.rank());
-        } else {
-            assert_eq!(res.rank(), a.rank());
-            assert_eq!(res.rank(), b.rank());
-        }
-
-        let min_col: usize = (a.rank().min(b.rank()) + 1).into();
-        let max_col: usize = (a.rank().max(b.rank()) + 1).into();
-        let self_col: usize = (res.rank() + 1).into();
-
-        for i in 0..min_col {
-            self.vec_znx_add(res.data_mut(), i, a.data(), i, b.data(), i);
-        }
-
-        if a.rank() > b.rank() {
-            for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, a.data(), i);
-            }
-        } else {
-            for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, b.data(), i);
-            }
-        }
-
-        for i in max_col..self_col {
-            self.vec_znx_zero(res.data_mut(), i);
-        }
-    }
-
-    fn glwe_add_inplace<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(res.base2k(), a.base2k());
-        assert!(res.rank() >= a.rank());
-
-        for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_add_inplace(res.data_mut(), i, a.data(), i);
-        }
-    }
-}
-
-impl<BE: Backend> GLWEAdd for Module<BE> where Self: ModuleN + VecZnxAdd + VecZnxCopy + VecZnxAddInplace + VecZnxZero {}
+impl<BE: Backend> GLWEAdd for Module<BE> where Self: ModuleN + VecZnxAddInto + VecZnxCopy + VecZnxAddAssign + VecZnxZero {}
 
 impl<BE: Backend> GLWESub for Module<BE> where
     Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubInplace + VecZnxSubNegateInplace
 {
 }
 
-pub trait GLWESub
-where
-    Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubInplace + VecZnxSubNegateInplace,
+impl<BE: Backend> GLWENegate for Module<BE> where Self: VecZnxNegate + VecZnxNegateInplace + VecZnxZero + ModuleN {}
+
+impl<BE: Backend> GLWERotateDefault<BE> for Module<BE> where
+    Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZero
 {
-    fn glwe_sub<R, A, B>(&self, res: &mut R, a: &A, b: &B)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        B: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWE<&[u8]> = &b.to_ref();
-
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(b.n(), self.n() as u32);
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.base2k(), res.base2k());
-        assert_eq!(b.base2k(), res.base2k());
-
-        if a.rank() == 0 {
-            assert_eq!(res.rank(), b.rank());
-        } else if b.rank() == 0 {
-            assert_eq!(res.rank(), a.rank());
-        } else {
-            assert_eq!(res.rank(), a.rank());
-            assert_eq!(res.rank(), b.rank());
-        }
-
-        let min_col: usize = (a.rank().min(b.rank()) + 1).into();
-        let max_col: usize = (a.rank().max(b.rank()) + 1).into();
-        let self_col: usize = (res.rank() + 1).into();
-
-        for i in 0..min_col {
-            self.vec_znx_sub(res.data_mut(), i, a.data(), i, b.data(), i);
-        }
-
-        if a.rank() > b.rank() {
-            for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, a.data(), i);
-            }
-        } else {
-            for i in min_col..max_col {
-                self.vec_znx_negate(res.data_mut(), i, b.data(), i);
-            }
-        }
-
-        for i in max_col..self_col {
-            self.vec_znx_zero(res.data_mut(), i);
-        }
-    }
-
-    fn glwe_sub_inplace<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(res.base2k(), a.base2k());
-        assert!(res.rank() == a.rank() || a.rank() == 0);
-
-        for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_inplace(res.data_mut(), i, a.data(), i);
-        }
-    }
-
-    fn glwe_sub_negate_inplace<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(res.base2k(), a.base2k());
-        assert!(res.rank() == a.rank() || a.rank() == 0);
-
-        for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_negate_inplace(res.data_mut(), i, a.data(), i);
-        }
-    }
 }
 
-impl<BE: Backend> GLWERotate<BE> for Module<BE> where Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxZero {}
-
-pub trait GLWERotate<BE: Backend>
+#[doc(hidden)]
+pub trait GLWERotateDefault<BE: Backend>
 where
-    Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxZero,
+    Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZero,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
-        let lvl_0: usize = vec_znx_rotate_inplace_tmp_bytes(self.n());
-        lvl_0
+        self.vec_znx_rotate_inplace_tmp_bytes()
     }
 
     fn glwe_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
@@ -1017,9 +806,13 @@ where
     }
 }
 
-impl<BE: Backend> GLWEMulXpMinusOne<BE> for Module<BE> where Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE> {}
+impl<BE: Backend> GLWEMulXpMinusOneDefault<BE> for Module<BE> where
+    Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE>
+{
+}
 
-pub trait GLWEMulXpMinusOne<BE: Backend>
+#[doc(hidden)]
+pub trait GLWEMulXpMinusOneDefault<BE: Backend>
 where
     Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE>,
 {
@@ -1056,38 +849,10 @@ where
 
 impl<BE: Backend> GLWECopy for Module<BE> where Self: ModuleN + VecZnxCopy + VecZnxZero {}
 
-pub trait GLWECopy
-where
-    Self: ModuleN + VecZnxCopy + VecZnxZero,
-{
-    fn glwe_copy<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.n(), self.n() as u32);
-        assert!(res.rank() == a.rank() || a.rank() == 0);
-
-        let min_rank: usize = res.rank().min(a.rank()).as_usize() + 1;
-
-        for i in 0..min_rank {
-            self.vec_znx_copy(res.data_mut(), i, a.data(), i);
-        }
-
-        for i in min_rank..(res.rank() + 1).into() {
-            self.vec_znx_zero(res.data_mut(), i);
-        }
-    }
-}
-
-impl<BE: Backend> GLWEShift<BE> for Module<BE> where
+impl<BE: Backend> GLWEShiftDefault<BE> for Module<BE> where
     Self: ModuleN
         + VecZnxRshInplace<BE>
-        + VecZnxLshAdd<BE>
+        + VecZnxLshAddInto<BE>
         + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
@@ -1096,11 +861,12 @@ impl<BE: Backend> GLWEShift<BE> for Module<BE> where
 {
 }
 
-pub trait GLWEShift<BE: Backend>
+#[doc(hidden)]
+pub trait GLWEShiftDefault<BE: Backend>
 where
     Self: ModuleN
         + VecZnxRshInplace<BE>
-        + VecZnxLshAdd<BE>
+        + VecZnxLshAddInto<BE>
         + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
@@ -1198,7 +964,7 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_add(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            self.vec_znx_lsh_add_into(base2k, k, res.data_mut(), i, a.data(), i, scratch);
         }
     }
 
@@ -1229,12 +995,13 @@ where
     }
 }
 
-impl<BE: Backend> GLWENormalize<BE> for Module<BE> where
+impl<BE: Backend> GLWENormalizeDefault<BE> for Module<BE> where
     Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes
 {
 }
 
-pub trait GLWENormalize<BE: Backend>
+#[doc(hidden)]
+pub trait GLWENormalizeDefault<BE: Backend>
 where
     Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
 {
@@ -1243,77 +1010,61 @@ where
         lvl_0
     }
 
-    /// Usage:
-    /// let mut tmp_b: Option<GLWE<&mut [u8]>> = None;
-    /// let (b_conv, scratch_1) = glwe_maybe_convert_in_place(self, b, res.base2k().as_u32(), &mut tmp_b, scratch);
     fn glwe_maybe_cross_normalize_to_ref<'a, A>(
         &self,
         glwe: &'a A,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>, // caller-owned scratch-backed temp
+        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
         scratch: &'a mut Scratch<BE>,
     ) -> (GLWE<&'a [u8]>, &'a mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        // No conversion: just use the original GLWE
         if glwe.base2k().as_usize() == target_base2k {
-            // Drop any previous temp; it's stale for this base
             tmp_slot.take();
             return (glwe.to_ref(), scratch);
         }
 
-        // Conversion: allocate a temporary GLWE in scratch
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
         let (tmp, scratch2) = scratch.take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        // Get a mutable handle to the temp and normalize into it
         let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
         self.glwe_normalize(tmp_ref, glwe, scratch2);
 
-        // Return a trait-object view of the temp
         (tmp_ref.to_ref(), scratch2)
     }
 
-    /// Usage:
-    /// let mut tmp_b: Option<GLWE<&mut [u8]>> = None;
-    /// let (b_conv, scratch_1) = glwe_maybe_convert_in_place(self, b, res.base2k().as_u32(), &mut tmp_b, scratch);
     fn glwe_maybe_cross_normalize_to_mut<'a, A>(
         &self,
         glwe: &'a mut A,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>, // caller-owned scratch-backed temp
+        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
         scratch: &'a mut Scratch<BE>,
     ) -> (GLWE<&'a mut [u8]>, &'a mut Scratch<BE>)
     where
         A: GLWEToMut + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        // No conversion: just use the original GLWE
         if glwe.base2k().as_usize() == target_base2k {
-            // Drop any previous temp; it's stale for this base
             tmp_slot.take();
             return (glwe.to_mut(), scratch);
         }
 
-        // Conversion: allocate a temporary GLWE in scratch
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
         let (tmp, scratch2) = scratch.take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        // Get a mutable handle to the temp and normalize into it
         let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
         self.glwe_normalize(tmp_ref, glwe, scratch2);
 
-        // Return a trait-object view of the temp
         (tmp_ref.to_mut(), scratch2)
     }
 
@@ -1358,37 +1109,5 @@ where
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_normalize_inplace(res.base2k().into(), res.data_mut(), i, scratch);
         }
-    }
-}
-
-#[allow(dead_code)]
-// c = op(a, b)
-fn set_k_binary(c: &impl GLWEInfos, a: &impl GLWEInfos, b: &impl GLWEInfos) -> TorusPrecision {
-    // If either operands is a ciphertext
-    if a.rank() != 0 || b.rank() != 0 {
-        // If a is a plaintext (but b ciphertext)
-        let k = if a.rank() == 0 {
-            b.max_k()
-        // If b is a plaintext (but a ciphertext)
-        } else if b.rank() == 0 {
-            a.max_k()
-        // If a & b are both ciphertexts
-        } else {
-            a.max_k().min(b.max_k())
-        };
-        k.min(c.max_k())
-    // If a & b are both plaintexts
-    } else {
-        c.max_k()
-    }
-}
-
-#[allow(dead_code)]
-// a = op(a, b)
-fn set_k_unary(a: &impl GLWEInfos, b: &impl GLWEInfos) -> TorusPrecision {
-    if a.rank() != 0 || b.rank() != 0 {
-        a.max_k().min(b.max_k())
-    } else {
-        a.max_k()
     }
 }

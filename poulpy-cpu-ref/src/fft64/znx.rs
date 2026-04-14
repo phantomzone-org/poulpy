@@ -1,6 +1,6 @@
 //! Single ring element (`Z[X]/(X^n+1)`) arithmetic for [`FFT64Ref`](crate::FFT64Ref).
 //!
-//! Implements the `Znx*` traits from `poulpy_hal::reference::znx`, covering
+//! Implements the `Znx*` traits from `crate::reference::znx`, covering
 //! coefficient-wise addition, subtraction, negation, power-of-two multiplication,
 //! Galois automorphisms (`X -> X^k`), rotation, ring switching, and multi-step
 //! normalization (carry propagation across a base-2^k decomposition).
@@ -12,7 +12,7 @@
 //! Every implementation delegates directly to the corresponding `_ref` function
 //! and is marked `#[inline(always)]` to eliminate call overhead.
 
-use poulpy_hal::reference::znx::{
+use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,

@@ -2,31 +2,50 @@
 //!
 //! Negates each column of the GLWE ciphertext.
 
-use crate::layouts::ciphertext::CKKSCiphertext;
+use crate::{CKKS, CKKSInfos, layouts::CKKSRescaleOps};
+use anyhow::Result;
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchTakeCore,
+    layouts::{GLWE, GLWEToRef, LWEInfos},
+};
 use poulpy_hal::{
-    api::{VecZnxNegate, VecZnxNegateInplace},
-    layouts::{Backend, DataMut, DataRef, Module},
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch},
 };
 
-impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn neg<BE: Backend>(&mut self, module: &Module<BE>, ct: &CKKSCiphertext<impl DataRef>)
+pub trait CKKSNegOps {
+    fn neg<O, BE: Backend>(&mut self, module: &Module<BE>, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
     where
-        Module<BE>: VecZnxNegate,
+        Module<BE>: GLWENegate + GLWEShift<BE>,
+        O: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
+    where
+        Module<BE>: GLWENegate;
+}
+
+impl<D: DataMut> CKKSNegOps for GLWE<D, CKKS> {
+    fn neg<O, BE: Backend>(&mut self, module: &Module<BE>, other: &O, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        Module<BE>: GLWENegate + GLWEShift<BE>,
+        O: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let ncols = ct.inner.data().cols;
-        for i in 0..ncols {
-            module.vec_znx_negate(self.inner.data_mut(), i, ct.inner.data(), i);
+        if self.max_k() < other.effective_k() {
+            self.rescale(module, (other.max_k() - self.effective_k()).into(), other, scratch)?;
+            module.glwe_negate_inplace(self);
+        } else {
+            module.glwe_negate(self, other);
+            self.meta = other.meta();
         }
-        self.log_delta = ct.log_delta;
+        Ok(())
     }
 
-    pub fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
+    fn neg_inplace<BE: Backend>(&mut self, module: &Module<BE>)
     where
-        Module<BE>: VecZnxNegateInplace,
+        Module<BE>: GLWENegate,
     {
-        let ncols = self.inner.data().cols;
-        for i in 0..ncols {
-            module.vec_znx_negate_inplace(self.inner.data_mut(), i);
-        }
+        module.glwe_negate_inplace(self);
     }
 }

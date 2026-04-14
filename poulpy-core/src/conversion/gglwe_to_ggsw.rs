@@ -1,12 +1,13 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef, ZnxZero},
+    layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VecZnxToRef, ZnxZero},
 };
 
+pub use crate::api::{GGSWExpandRows, GGSWFromGGLWE};
 use crate::{
     GGLWEProduct, GLWECopy, ScratchTakeCore,
     layouts::{
@@ -15,43 +16,20 @@ use crate::{
     },
 };
 
-impl GGLWE<Vec<u8>> {
-    pub fn from_gglw_tmp_bytes<R, A, M, BE: Backend>(module: &M, res_infos: &R, tsk_infos: &A) -> usize
-    where
-        M: GGSWFromGGLWE<BE>,
-        R: GGSWInfos,
-        A: GGLWEInfos,
-    {
-        module.ggsw_from_gglwe_tmp_bytes(res_infos, tsk_infos)
-    }
-}
-
-impl<D: DataMut> GGSW<D> {
-    pub fn from_gglwe<G, M, T, BE: Backend>(&mut self, module: &M, gglwe: &G, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        M: GGSWFromGGLWE<BE>,
-        G: GGLWEToRef,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.ggsw_from_gglwe(self, gglwe, tsk, scratch);
-    }
-}
-
-impl<BE: Backend> GGSWFromGGLWE<BE> for Module<BE>
+pub(crate) trait GGSWFromGGLWEDefault<BE: Backend>: GGSWExpandRowsDefault<BE> + GLWECopy
 where
-    Self: GGSWExpandRows<BE> + GLWECopy,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn ggsw_from_gglwe_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
+    fn ggsw_from_gglwe_tmp_bytes_default<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
     where
         R: GGSWInfos,
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos);
+        let lvl_0: usize = self.ggsw_expand_rows_tmp_bytes_default(res_infos, tsk_infos);
         lvl_0
     }
 
-    fn ggsw_from_gglwe<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
+    fn ggsw_from_gglwe_default<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         A: GGLWEToRef,
@@ -69,62 +47,43 @@ where
         assert_eq!(tsk.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
         assert!(
-            scratch.available() >= self.ggsw_from_gglwe_tmp_bytes(res, tsk),
+            scratch.available() >= self.ggsw_from_gglwe_tmp_bytes_default(res, tsk),
             "scratch.available(): {} < GGSWFromGGLWE::ggsw_from_gglwe_tmp_bytes: {}",
             scratch.available(),
-            self.ggsw_from_gglwe_tmp_bytes(res, tsk)
+            self.ggsw_from_gglwe_tmp_bytes_default(res, tsk)
         );
 
         for row in 0..res.dnum().into() {
             self.glwe_copy(&mut res.at_mut(row, 0), &a.at(row, 0));
         }
 
-        self.ggsw_expand_row(res, tsk, scratch);
+        self.ggsw_expand_row_default(res, tsk, scratch);
     }
 }
 
-pub trait GGSWFromGGLWE<BE: Backend> {
-    fn ggsw_from_gglwe_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
-    where
-        R: GGSWInfos,
-        A: GGLWEInfos;
-
-    fn ggsw_from_gglwe<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        R: GGSWToMut,
-        A: GGLWEToRef,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
-}
-
-pub trait GGSWExpandRows<BE: Backend> {
-    fn ggsw_expand_rows_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
-    where
-        R: GGSWInfos,
-        A: GGLWEInfos;
-
-    fn ggsw_expand_row<R, T>(&self, res: &mut R, tsk: &T, scratch: &mut Scratch<BE>)
-    where
-        R: GGSWToMut,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
-}
-
-impl<BE: Backend> GGSWExpandRows<BE> for Module<BE>
+impl<BE: Backend> GGSWFromGGLWEDefault<BE> for Module<BE>
 where
-    Self: GGLWEProduct<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxDftBytesOf
-        + VecZnxDftApply<BE>
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigAddSmallInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxCopy,
+    Self: GGSWExpandRowsDefault<BE> + GLWECopy,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn ggsw_expand_rows_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
+}
+
+pub(crate) trait GGSWExpandRowsDefault<BE: Backend>:
+    GGLWEProduct<BE>
+    + VecZnxBigNormalize<BE>
+    + VecZnxBigNormalizeTmpBytes
+    + VecZnxBigBytesOf
+    + VecZnxDftBytesOf
+    + VecZnxDftApply<BE>
+    + VecZnxNormalize<BE>
+    + VecZnxNormalizeTmpBytes
+    + VecZnxBigAddSmallAssign<BE>
+    + VecZnxIdftApplyConsume<BE>
+    + VecZnxCopy
+where
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn ggsw_expand_rows_tmp_bytes_default<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
     where
         R: GGSWInfos,
         A: GGLWEInfos,
@@ -154,7 +113,7 @@ where
         lvl_0 + lvl_1.max(lvl_2)
     }
 
-    fn ggsw_expand_row<R, T>(&self, res: &mut R, tsk: &T, scratch: &mut Scratch<BE>)
+    fn ggsw_expand_row_default<R, T>(&self, res: &mut R, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
@@ -167,10 +126,10 @@ where
         let tsk_base2k: usize = tsk.base2k().into();
 
         assert!(
-            scratch.available() >= self.ggsw_expand_rows_tmp_bytes(res, tsk),
+            scratch.available() >= self.ggsw_expand_rows_tmp_bytes_default(res, tsk),
             "scratch.available(): {} < GGSWExpandRows::ggsw_expand_rows_tmp_bytes: {}",
             scratch.available(),
-            self.ggsw_expand_rows_tmp_bytes(res, tsk)
+            self.ggsw_expand_rows_tmp_bytes_default(res, tsk)
         );
 
         let rank: usize = res.rank().into();
@@ -203,6 +162,23 @@ where
     }
 }
 
+impl<BE: Backend> GGSWExpandRowsDefault<BE> for Module<BE>
+where
+    Self: GGLWEProduct<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxDftApply<BE>
+        + VecZnxNormalize<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxBigAddSmallAssign<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxCopy,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+}
+
 fn ggsw_expand_rows_internal<M, R, C, A, T, BE: Backend>(
     module: &M,
     row: usize,
@@ -215,7 +191,7 @@ fn ggsw_expand_rows_internal<M, R, C, A, T, BE: Backend>(
     R: GGSWToMut,
     C: VecZnxToRef,
     A: VecZnxDftToRef<BE>,
-    M: GGLWEProduct<BE> + VecZnxIdftApplyConsume<BE> + VecZnxBigAddSmallInplace<BE> + VecZnxBigNormalize<BE>,
+    M: GGLWEProduct<BE> + VecZnxIdftApplyConsume<BE> + VecZnxBigAddSmallAssign<BE> + VecZnxBigNormalize<BE>,
     T: GGLWEToGGSWKeyPreparedToRef<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -272,7 +248,7 @@ fn ggsw_expand_rows_internal<M, R, C, A, T, BE: Backend>(
         // (-(x0s0 + x1s1 + x2s2) + s0(a0s0 + a1s1 + a2s2), x0 -(a0s0 + a1s1 + a2s2) + M[i], x1, x2)
         // =
         // (-(x0s0 + x1s1 + x2s2), x0 + M[i], x1, x2)
-        module.vec_znx_big_add_small_inplace(&mut res_big, col, a_0, 0);
+        module.vec_znx_big_add_small_assign(&mut res_big, col, a_0, 0);
 
         let res_base2k: usize = res.base2k().as_usize();
 

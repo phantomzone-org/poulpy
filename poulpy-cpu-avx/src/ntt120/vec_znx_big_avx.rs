@@ -22,13 +22,13 @@
 //! `lsh != 0` have dedicated kernels; scalar fallback only when `base2k > 64`
 //! or `n < 4`.
 //!
-//! [`I128NormalizeOps`]: poulpy_hal::reference::ntt120::I128NormalizeOps
-//! [`I128BigOps`]: poulpy_hal::reference::ntt120::I128BigOps
+//! [`I128NormalizeOps`]: poulpy_cpu_ref::reference::ntt120::I128NormalizeOps
+//! [`I128BigOps`]: poulpy_cpu_ref::reference::ntt120::I128BigOps
 
 use std::arch::x86_64::*;
 
 use itertools::izip;
-use poulpy_hal::reference::znx::{get_carry_i128, get_digit_i128};
+use poulpy_cpu_ref::reference::znx::{get_carry_i128, get_digit_i128};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scalar fallback helpers (used as tails in AVX2 kernels)

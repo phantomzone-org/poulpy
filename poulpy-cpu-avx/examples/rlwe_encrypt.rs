@@ -18,10 +18,10 @@ use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
+        VecZnxBigAddSmallAssign, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
         VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
-    layouts::{Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, ZnxInfos},
+    layouts::{DeviceBuf, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, ZnxInfos},
     source::Source,
 };
 
@@ -59,7 +59,7 @@ fn main() {
     // Fill the second column with random values: ct = (0, a)
     module.vec_znx_fill_uniform(base2k, &mut ct, 1, &mut source);
 
-    let mut buf_dft: VecZnxDft<Vec<u8>, BackendImpl> = module.vec_znx_dft_alloc(1, ct_size);
+    let mut buf_dft: VecZnxDft<DeviceBuf<BackendImpl>, BackendImpl> = module.vec_znx_dft_alloc(1, ct_size);
 
     module.vec_znx_dft_apply(1, 0, &mut buf_dft, 0, &ct, 1);
 
@@ -74,7 +74,7 @@ fn main() {
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    let mut buf_big: VecZnxBig<Vec<u8>, BackendImpl> = module.vec_znx_big_alloc(1, ct_size);
+    let mut buf_big: VecZnxBig<DeviceBuf<BackendImpl>, BackendImpl> = module.vec_znx_big_alloc(1, ct_size);
     module.vec_znx_idft_apply_tmpa(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
@@ -136,7 +136,7 @@ fn main() {
     module.vec_znx_idft_apply_tmpa(&mut buf_big, 0, &mut buf_dft, 0);
 
     // BIG(c1 * s) + ct[0]
-    module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);
+    module.vec_znx_big_add_small_assign(&mut buf_big, 0, &ct, 0);
 
     // m + e <- BIG(ct[1] * s + ct[0])
     let mut res = VecZnx::alloc(module.n(), 1, ct_size);

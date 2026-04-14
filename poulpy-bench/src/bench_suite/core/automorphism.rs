@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, NoiseInfos, Scratch, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -45,19 +45,19 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(atk_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(&module, atk_infos.rank_out());
-    sk_prepared.prepare(&module, &sk);
+    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(atk_infos.rank_out());
+    module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWEAutomorphismKey::encrypt_sk_tmp_bytes(&module, atk_infos)
-            | GLWE::encrypt_sk_tmp_bytes(&module, glwe_infos)
-            | GLWE::automorphism_tmp_bytes(&module, glwe_infos, glwe_infos, atk_infos),
+        module.glwe_automorphism_key_encrypt_sk_tmp_bytes(atk_infos)
+            | module.glwe_encrypt_sk_tmp_bytes(glwe_infos)
+            | module.glwe_automorphism_tmp_bytes(glwe_infos, glwe_infos, atk_infos),
     );
 
     let atk_enc_infos = NoiseInfos::new(atk_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    atk.encrypt_sk(
-        &module,
+    module.glwe_automorphism_key_encrypt_sk(
+        &mut atk,
         p,
         &sk,
         &atk_enc_infos,
@@ -66,15 +66,16 @@ pub fn bench_glwe_automorphism<BE: Backend>(
         scratch.borrow(),
     );
 
-    let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> = GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &atk);
-    module.prepare_glwe_automorphism_key(&mut atk_prepared, &atk, scratch.borrow());
+    let mut atk_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+        module.glwe_automorphism_key_prepared_alloc_from_infos(&atk);
+    module.glwe_automorphism_key_prepare(&mut atk_prepared, &atk, scratch.borrow());
 
     let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
 
     let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    ct_in.encrypt_zero_sk(
-        &module,
+    module.glwe_encrypt_zero_sk(
+        &mut ct_in,
         &sk_prepared,
         &glwe_enc_infos,
         &mut source_xe,
@@ -86,7 +87,7 @@ pub fn bench_glwe_automorphism<BE: Backend>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            ct_out.automorphism(&module, &ct_in, &atk_prepared, scratch.borrow());
+            module.glwe_automorphism(&mut ct_out, &ct_in, &atk_prepared, scratch.borrow());
             black_box(());
         })
     });

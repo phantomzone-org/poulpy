@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -57,47 +57,47 @@ pub trait LWESwitchingKeyPreparedFactory<B: Backend>
 where
     Self: GLWESwitchingKeyPreparedFactory<B>,
 {
-    fn alloc_lwe_switching_key_prepared(
+    fn lwe_switching_key_prepared_alloc(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         dnum: Dnum,
-    ) -> LWESwitchingKeyPrepared<Vec<u8>, B> {
-        LWESwitchingKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1)))
+    ) -> LWESwitchingKeyPrepared<DeviceBuf<B>, B> {
+        LWESwitchingKeyPrepared(self.glwe_switching_key_prepared_alloc(base2k, k, Rank(1), Rank(1), dnum, Dsize(1)))
     }
 
-    fn alloc_lwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> LWESwitchingKeyPrepared<Vec<u8>, B>
+    fn lwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> LWESwitchingKeyPrepared<DeviceBuf<B>, B>
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
         debug_assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
-        self.alloc_lwe_switching_key_prepared(infos.base2k(), infos.max_k(), infos.dnum())
+        self.lwe_switching_key_prepared_alloc(infos.base2k(), infos.max_k(), infos.dnum())
     }
 
-    fn bytes_of_lwe_switching_key_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
+    fn lwe_switching_key_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
         self.bytes_of_glwe_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
     }
 
-    fn bytes_of_lwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn lwe_switching_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
         debug_assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
         debug_assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
-        self.bytes_of_lwe_switching_key_prepared(infos.base2k(), infos.max_k(), infos.dnum())
+        self.lwe_switching_key_prepared_bytes_of(infos.base2k(), infos.max_k(), infos.dnum())
     }
 
-    fn prepare_lwe_switching_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn lwe_switching_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = self.prepare_glwe_switching_key_tmp_bytes(infos);
+        let lvl_0: usize = self.glwe_switching_key_prepare_tmp_bytes(infos);
         lvl_0
     }
-    fn prepare_lwe_switching_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn lwe_switching_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
@@ -105,69 +105,19 @@ where
     {
         let res_infos = res.to_mut();
         assert!(
-            scratch.available() >= self.prepare_lwe_switching_key_tmp_bytes(&res_infos),
-            "scratch.available(): {} < LWESwitchingKeyPreparedFactory::prepare_lwe_switching_key_tmp_bytes: {}",
+            scratch.available() >= self.lwe_switching_key_prepare_tmp_bytes(&res_infos),
+            "scratch.available(): {} < LWESwitchingKeyPreparedFactory::lwe_switching_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.prepare_lwe_switching_key_tmp_bytes(&res_infos)
+            self.lwe_switching_key_prepare_tmp_bytes(&res_infos)
         );
-        self.prepare_glwe_switching(res, other, scratch);
+        self.glwe_switching_key_prepare(res, other, scratch);
     }
 }
 
 impl<B: Backend> LWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
-impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_switching_key_prepared_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self
-    where
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.alloc_lwe_switching_key_prepared(base2k, k, dnum)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_switching_key_prepared_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
-    where
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.bytes_of_lwe_switching_key_prepared(base2k, k, dnum)
-    }
-}
-
-impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: LWESwitchingKeyPreparedFactory<B>,
-    {
-        module.prepare_lwe_switching_key_tmp_bytes(infos)
-    }
-}
-
-impl<D: DataMut, B: Backend> LWESwitchingKeyPrepared<D, B> {
-    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: LWESwitchingKeyPreparedFactory<B>,
-        Scratch<B>: ScratchAvailable,
-    {
-        module.prepare_lwe_switching_key(self, other, scratch);
-    }
-}
+// module-only API: allocation, sizing, and preparation are provided by
+// `LWESwitchingKeyPreparedFactory` on `Module`.
 
 impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWESwitchingKeyPrepared<D, B>
 where

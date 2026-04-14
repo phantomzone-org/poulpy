@@ -7,3 +7,5 @@ pub use gglwe::*;
 pub use ggsw::*;
 pub use glwe::*;
 pub use lwe::*;
+
+pub(crate) use glwe::GLWEKeyswitchDefault;

@@ -10,11 +10,11 @@ fn infos() -> poulpy_core::layouts::GLWELayout {
     }
 }
 
-fn bench_glwe_add(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add, &infos(); c);
+fn bench_glwe_add_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add_into, &infos(); c);
 }
-fn bench_glwe_add_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add_inplace, &infos(); c);
+fn bench_glwe_add_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_add_assign, &infos(); c);
 }
 fn bench_glwe_sub(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::core::operations::bench_glwe_sub, &infos(); c);
@@ -38,8 +38,8 @@ fn bench_glwe_mul_plain_inplace(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = poulpy_bench::criterion_config();
-    targets = bench_glwe_add,
-    bench_glwe_add_inplace,
+    targets = bench_glwe_add_into,
+    bench_glwe_add_assign,
     bench_glwe_sub,
     bench_glwe_sub_inplace,
     bench_glwe_normalize,

@@ -1,12 +1,12 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Scratch, VecZnxBigToMut,
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, DeviceBuf, Scratch, VecZnxBigToMut,
     VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
 };
 
 /// Allocates prepared convolution operands ([`CnvPVecL`], [`CnvPVecR`]).
 pub trait CnvPVecAlloc<BE: Backend> {
-    fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<Vec<u8>, BE>;
-    fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<Vec<u8>, BE>;
+    fn cnv_pvec_left_alloc(&self, cols: usize, size: usize) -> CnvPVecL<DeviceBuf<BE>, BE>;
+    fn cnv_pvec_right_alloc(&self, cols: usize, size: usize) -> CnvPVecR<DeviceBuf<BE>, BE>;
 }
 
 /// Returns the byte sizes for prepared convolution operands.
@@ -24,7 +24,7 @@ pub trait Convolution<BE: Backend> {
     fn cnv_prepare_left_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
     /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the left
     /// operand of a bivariate convolution.
-    fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_left<R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
@@ -33,7 +33,7 @@ pub trait Convolution<BE: Backend> {
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
     /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the right
     /// operand of a bivariate convolution.
-    fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_right<R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         A: VecZnxToRef + ZnxInfos;
@@ -145,7 +145,7 @@ pub trait Convolution<BE: Backend> {
     /// Prepares both left and right convolution operands from the same input polynomial,
     /// sharing the FFT/NTT computation. This is an optimization for self-convolution
     /// (squaring) where both operands are the same polynomial.
-    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn cnv_prepare_self<L, R, A>(&self, left: &mut L, right: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
         R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,

@@ -11,9 +11,7 @@ mod gglwe;
 mod ggsw;
 mod glwe;
 
-pub use gglwe::*;
-pub use ggsw::*;
-pub use glwe::*;
+pub use crate::api::{GGLWENoise, GGSWNoise, GLWENoise};
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]

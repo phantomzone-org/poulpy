@@ -50,35 +50,35 @@ pub trait VecZnxBigAddNormal<B: Backend> {
     );
 }
 
-pub trait VecZnxBigAdd<B: Backend> {
+pub trait VecZnxBigAddInto<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
+    fn vec_znx_big_add_into<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>,
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddInplace<B: Backend> {
+pub trait VecZnxBigAddAssign<B: Backend> {
     /// Adds `a` to `b` and stores the result on `b`.
-    fn vec_znx_big_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_add_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddSmall<B: Backend> {
+pub trait VecZnxBigAddSmallInto<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add_small<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
+    fn vec_znx_big_add_small_into<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>,
         C: VecZnxToRef;
 }
 
-pub trait VecZnxBigAddSmallInplace<B: Backend> {
+pub trait VecZnxBigAddSmallAssign<B: Backend> {
     /// Adds `a` to `b` and stores the result on `b`.
-    fn vec_znx_big_add_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_add_small_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;

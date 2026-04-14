@@ -2,12 +2,6 @@ mod convolution;
 mod module;
 mod reim;
 mod reim4;
-mod scratch;
-mod svp;
-mod vec_znx;
-mod vec_znx_big;
-mod vec_znx_dft;
-mod vmp;
 
 /// AVX2/FMA-accelerated CPU backend for Poulpy HAL.
 ///
@@ -61,4 +55,6 @@ pub struct FFT64Avx {}
 #[cfg(test)]
 pub mod tests;
 
+#[allow(unused_imports)]
+pub use poulpy_cpu_ref::reference::fft64::module::FFTModuleHandle;
 pub use reim::{ReimFFTAvx, ReimIFFTAvx};

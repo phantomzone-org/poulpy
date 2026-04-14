@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWECompressedToRef,
-    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWETensorKey, LWEInfos, Rank, TorusPrecision,
+    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use std::fmt;
 
@@ -148,15 +148,7 @@ where
 
 impl<B: Backend> GLWETensorKeyDecompress for Module<B> where Self: GGLWEDecompress {}
 
-impl<D: DataMut> GLWETensorKey<D> {
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef,
-        M: GLWETensorKeyDecompress,
-    {
-        module.decompress_tensor_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWETensorKeyDecompress` on `Module`.
 
 impl<D: DataMut> GGLWECompressedToMut for GLWETensorKeyCompressed<D>
 where

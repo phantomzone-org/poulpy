@@ -7,12 +7,9 @@
 //!
 //! | Type | Role |
 //! |------|------|
-//! | [`ciphertext::CKKSCiphertext`] | Encrypted CKKS value: GLWE ciphertext + offset / torus-scale metadata |
-//! | [`plaintext::CKKSPlaintext`] | Compact plaintext: integer polynomial with minimal limbs |
-//! | [`tensor::CKKSTensor`] | Intermediate tensor product result between tensor and relinearize |
-//! | [`keys`] | Relinearization and automorphism keys (standard + prepared) |
+//! | `GLWE<D, CKKS>` | Encrypted CKKS value: GLWE ciphertext + offset / torus-scale metadata |
 
 pub mod ciphertext;
-pub mod keys;
 pub mod plaintext;
-pub mod tensor;
+
+pub use ciphertext::{CKKSMaintainOps, CKKSRescaleOps};

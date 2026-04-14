@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEInfos, GGLWEToMut, GLWEInfos,
-    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, LWEToGLWEKey, Rank, TorusPrecision,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 use std::fmt;
@@ -151,15 +151,7 @@ where
 
 impl<B: Backend> LWEToGLWEKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
-impl<D: DataMut> LWEToGLWEKey<D> {
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
-        M: LWEToGLWEKeyDecompress,
-    {
-        module.decompress_lwe_to_glwe_key(self, other);
-    }
-}
+// module-only API: decompression is provided by `LWEToGLWEKeyDecompress` on `Module`.
 
 impl<D: DataRef> GGLWECompressedToRef for LWEToGLWEKeyCompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {

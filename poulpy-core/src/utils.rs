@@ -2,7 +2,7 @@ use crate::layouts::{GLWEPlaintext, LWEInfos, LWEPlaintext, TorusPrecision};
 use dashu_float::{FBig, round::mode::HalfEven};
 use poulpy_hal::layouts::{DataMut, DataRef, Stats};
 
-impl<D: DataMut> GLWEPlaintext<D> {
+impl<D: DataMut, M> GLWEPlaintext<D, M> {
     /// Encodes a slice of `i64` values into the plaintext's coefficient slots.
     ///
     /// Values are scaled by `2^k` and decomposed into the base-2k limb
@@ -24,7 +24,7 @@ impl<D: DataMut> GLWEPlaintext<D> {
     }
 }
 
-impl<D: DataRef> GLWEPlaintext<D> {
+impl<D: DataRef, M> GLWEPlaintext<D, M> {
     /// Decodes the plaintext coefficients into a slice of `i64` values
     /// using `k` bits of torus precision.
     pub fn decode_vec_i64(&self, data: &mut [i64], k: TorusPrecision) {

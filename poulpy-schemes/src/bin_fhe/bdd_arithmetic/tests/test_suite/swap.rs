@@ -5,7 +5,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned, ZnxViewMut},
+    layouts::{Backend, DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
 };
 use rand::Rng;
@@ -28,7 +28,7 @@ where
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -39,7 +39,7 @@ where
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
 
     let mut s: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-    let mut s_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_infos);
+    let mut s_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_infos);
 
     let a: u32 = source_xa.next_u32();
     let b: u32 = source_xa.next_u32();
@@ -70,8 +70,8 @@ where
 
         let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
         pt.raw_mut()[0] = bit;
-        s.encrypt_sk(
-            module,
+        module.ggsw_encrypt_sk(
+            &mut s,
             &pt,
             sk,
             &ggsw_enc_infos,
@@ -79,7 +79,7 @@ where
             &mut source_xa,
             scratch.borrow(),
         );
-        s_prepared.prepare(module, &s, scratch.borrow());
+        module.ggsw_prepare(&mut s_prepared, &s, scratch.borrow());
 
         module.cswap(&mut a_enc, &mut b_enc, &s_prepared, scratch.borrow());
 
@@ -100,7 +100,7 @@ where
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -162,7 +162,7 @@ where
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -193,7 +193,7 @@ where
     let mut retriever: GLWEBlindRetriever = GLWEBlindRetriever::alloc(&glwe_infos, data.len());
     for idx in 0..data.len() as u32 {
         let offset = 2;
-        let mut idx_enc: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(module, &ggsw_infos);
+        let mut idx_enc: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(module, &ggsw_infos);
         idx_enc.encrypt_sk(
             module,
             idx << offset,

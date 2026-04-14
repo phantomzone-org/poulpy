@@ -4,9 +4,9 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::{
-    alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxView},
+use crate::layouts::{
+    Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, Located, ReaderFrom, WriterTo,
+    ZnxInfos, ZnxView,
 };
 
 /// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
@@ -72,11 +72,11 @@ impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
     }
 }
 
-impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B> {
+impl<B: Backend> SvpPPol<DeviceBuf<B>, B> {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_svp_ppol(n, cols));
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_svp_ppol(n, cols)));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             _phantom: PhantomData,
@@ -86,9 +86,9 @@ impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B> {
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::bytes_of_svp_ppol(n, cols));
-        crate::assert_alignment(data.as_ptr());
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             _phantom: PhantomData,
@@ -96,8 +96,8 @@ impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B> {
     }
 }
 
-/// Owned `SvpPPol` backed by a `Vec<u8>`.
-pub type SvpPPolOwned<B> = SvpPPol<Vec<u8>, B>;
+/// Owned `SvpPPol` backed by a backend-owned buffer.
+pub type SvpPPolOwned<B> = SvpPPol<DeviceBuf<B>, B>;
 
 /// Borrow an `SvpPPol` as a shared reference view.
 pub trait SvpPPolToRef<B: Backend> {

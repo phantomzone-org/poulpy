@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, Scratch},
     source::Source,
 };
 
@@ -244,17 +244,23 @@ where
         assert!(sk_glwe.dist() != &Distribution::NONE);
 
         for (p, atk) in res.atk.iter_mut() {
-            atk.encrypt_sk(self, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
+            self.glwe_automorphism_key_encrypt_sk(atk, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
         }
 
-        let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
-        sk_glwe_prepared.prepare(self, sk_glwe);
+        let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
+        self.glwe_secret_prepare(&mut sk_glwe_prepared, sk_glwe);
 
-        res.brk
-            .encrypt_sk(self, &sk_glwe_prepared, sk_lwe, &enc_infos.brk, source_xe, source_xa, scratch);
+        self.blind_rotation_key_encrypt_sk(
+            &mut res.brk,
+            &sk_glwe_prepared,
+            sk_lwe,
+            &enc_infos.brk,
+            source_xe,
+            source_xa,
+            scratch,
+        );
 
-        res.tsk
-            .encrypt_sk(self, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
+        self.gglwe_to_ggsw_key_encrypt_sk(&mut res.tsk, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
     }
 }
 

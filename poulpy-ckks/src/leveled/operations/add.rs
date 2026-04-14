@@ -5,28 +5,103 @@
 
 use std::fmt::Debug;
 
-use crate::layouts::{
-    ciphertext::CKKSCiphertext,
-    plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, PrecisionLayout},
+use crate::{
+    CKKS, CKKSInfos,
+    layouts::{
+        ciphertext::CKKSOffset,
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, attach_meta},
+    },
+    leveled::operations::pt_znx::CKKSPlaintextZnxOps,
 };
 use poulpy_core::{
-    GLWEAdd, GLWECopy, GLWEShift, ScratchTakeCore,
-    layouts::{GLWEPlaintextLayout, LWEInfos},
+    GLWEAdd, GLWEShift, ScratchTakeCore,
+    layouts::{GLWE, GLWEPlaintextLayout, LWEInfos},
 };
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxRshAdd},
+    api::{ScratchAvailable, VecZnxRshAddInto},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use anyhow::Result;
 use rand_distr::num_traits::{Float, FloatConst};
 
-impl<D: DataMut> CKKSCiphertext<D> {
-    pub fn add<BE: Backend>(
+pub trait CKKSAddOps {
+    fn add<BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
+        a: &GLWE<impl DataRef, CKKS>,
+        b: &GLWE<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEAdd + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn add_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &GLWE<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEAdd + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn add_pt_znx<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &GLWE<impl DataRef, CKKS>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn add_pt_znx_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: VecZnxRshAddInto<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn add_pt_rnx<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &GLWE<impl DataRef, CKKS>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion;
+
+    fn add_pt_rnx_inplace<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        F: Float + FloatConst + Debug,
+        Module<BE>: VecZnxRshAddInto<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion;
+}
+
+impl<D: DataMut> CKKSAddOps for GLWE<D, CKKS> {
+    fn add<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &GLWE<impl DataRef, CKKS>,
+        b: &GLWE<impl DataRef, CKKS>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -35,128 +110,125 @@ impl<D: DataMut> CKKSCiphertext<D> {
     {
         // If the destination has less precision than the aligned inputs, shift
         // the computation down by `offset` bits before writing the result.
-        let offset = a
-            .inner
-            .max_k()
-            .min(b.inner.max_k())
-            .as_usize()
-            .saturating_sub(self.inner.max_k().as_usize());
+        let offset = self.offset_binary(a, b);
 
-        if offset == 0 && a.log_delta == b.log_delta {
-            module.glwe_add(&mut self.inner, &a.inner, &b.inner);
-        } else if a.log_delta <= b.log_delta {
-            module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
-            module.glwe_lsh_add(&mut self.inner, &b.inner, b.log_delta - a.log_delta + offset, scratch);
+        if offset == 0 && a.log_hom_rem() == b.log_hom_rem() {
+            module.glwe_add_into(self, a, b);
+        } else if a.log_hom_rem() <= b.log_hom_rem() {
+            module.glwe_lsh(self, a, offset, scratch);
+            module.glwe_lsh_add(self, b, b.log_hom_rem() - a.log_hom_rem() + offset, scratch);
         } else {
-            module.glwe_lsh(&mut self.inner, &b.inner, offset, scratch);
-            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_delta - b.log_delta + offset, scratch);
+            module.glwe_lsh(self, b, offset, scratch);
+            module.glwe_lsh_add(self, a, a.log_hom_rem() - b.log_hom_rem() + offset, scratch);
         }
 
-        self.log_delta = a.log_delta.min(b.log_delta) - offset;
+        self.set_log_hom_rem(a.log_hom_rem().min(b.log_hom_rem()) - offset)?;
 
         Ok(())
     }
 
-    pub fn add_inplace<BE: Backend>(
+    fn add_inplace<BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
+        a: &GLWE<impl DataRef, CKKS>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEAdd + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        if self.log_delta < a.log_delta {
-            module.glwe_lsh_add(&mut self.inner, &a.inner, a.log_delta - self.log_delta, scratch);
-        } else if self.log_delta > a.log_delta {
-            module.glwe_lsh_inplace(&mut self.inner, self.log_delta - a.log_delta, scratch);
-            module.glwe_add_inplace(&mut self.inner, &a.inner);
+        let self_log_hom_rem = self.log_hom_rem();
+
+        if self_log_hom_rem < a.log_hom_rem() {
+            module.glwe_lsh_add(self, a, a.log_hom_rem() - self_log_hom_rem, scratch);
+        } else if self_log_hom_rem > a.log_hom_rem() {
+            module.glwe_lsh_inplace(self, self_log_hom_rem - a.log_hom_rem(), scratch);
+            module.glwe_add_assign(self, a);
         } else {
-            module.glwe_add_inplace(&mut self.inner, &a.inner);
+            module.glwe_add_assign(self, a);
         }
 
-        self.log_delta = self.log_delta.min(a.log_delta);
+        self.set_log_hom_rem(self_log_hom_rem.min(a.log_hom_rem()))?;
 
         Ok(())
     }
 
-    pub fn add_pt_znx<BE: Backend>(
+    fn add_pt_znx<BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
+        a: &GLWE<impl DataRef, CKKS>,
         pt_znx: &CKKSPlaintextZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshAdd<BE> + GLWEShift<BE>,
+        Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let offset = a.inner.max_k().as_usize().saturating_sub(self.inner.max_k().as_usize());
-        module.glwe_lsh(&mut self.inner, &a.inner, offset, scratch);
-        self.log_delta = a.log_delta - offset;
+        let offset = self.offset_unary(a);
+        module.glwe_lsh(self, a, offset, scratch);
+        self.set_log_hom_rem(a.log_hom_rem() - offset)?;
         self.add_pt_znx_inplace(module, pt_znx, scratch)?;
         Ok(())
     }
 
-    pub fn add_pt_znx_inplace<BE: Backend>(
+    fn add_pt_znx_inplace<BE: Backend>(
         &mut self,
         module: &Module<BE>,
         pt_znx: &CKKSPlaintextZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshAdd<BE>,
+        Module<BE>: VecZnxRshAddInto<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        pt_znx.add_to(module, self.inner.data_mut(), self.log_delta, scratch);
+        module.ckks_add_pt_znx(self, pt_znx, scratch)?;
         Ok(())
     }
 
-    pub fn add_pt_rnx<F, BE: Backend>(
+    fn add_pt_rnx<F, BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &CKKSCiphertext<impl DataRef>,
+        a: &GLWE<impl DataRef, CKKS>,
         pt_rnx: &CKKSPlaintextRnx<F>,
-        prec: PrecisionLayout,
+        prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         F: Float + FloatConst + Debug,
-        Module<BE>: VecZnxRshAdd<BE> + GLWECopy + GLWEShift<BE>,
+        Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
     {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
             n: module.n().into(),
-            base2k: self.inner.base2k(),
-            k: prec.k(self.inner.base2k()),
+            base2k: self.base2k(),
+            k: prec.min_k(self.base2k()),
         });
-        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        let mut pt_znx = attach_meta(pt_glwe, prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         self.add_pt_znx(module, a, &pt_znx, scratch_1)?;
         Ok(())
     }
 
-    pub fn add_pt_rnx_inplace<F, BE: Backend>(
+    fn add_pt_rnx_inplace<F, BE: Backend>(
         &mut self,
         module: &Module<BE>,
         pt_rnx: &CKKSPlaintextRnx<F>,
-        prec: PrecisionLayout,
+        prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         F: Float + FloatConst + Debug,
-        Module<BE>: VecZnxRshAdd<BE>,
+        Module<BE>: VecZnxRshAddInto<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
     {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
             n: module.n().into(),
-            base2k: self.inner.base2k(),
-            k: prec.k(self.inner.base2k()),
+            base2k: self.base2k(),
+            k: prec.min_k(self.base2k()),
         });
-        let mut pt_znx = CKKSPlaintextZnx { data: pt_glwe, prec };
+        let mut pt_znx = attach_meta(pt_glwe, prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         self.add_pt_znx_inplace(module, &pt_znx, scratch_1)?;
         Ok(())

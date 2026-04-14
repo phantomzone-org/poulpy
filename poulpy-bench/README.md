@@ -93,7 +93,7 @@ Field reference:
 | Section | Field | Applies to | Description |
 |---|---|---|---|
 | `backends` | `["label", ...]` | shell script | Backends to run: `fft64-ref`, `ntt120-ref`, `fft64-avx`, `ntt120-avx`, `ntt-ifma`. AVX or IFMA features are auto-enabled when matching backends are listed. Omit to run all compiled-in backends. |
-| `run` | `["name", ...]` | shell script | What to run. Binary names (e.g. `"vec_znx_big"`) run the whole binary; function names (e.g. `"vec_znx_big_add"`) are used as a Criterion filter across the default binary set. Mix freely. Omit or leave empty to run the default set in full. |
+| `run` | `["name", ...]` | shell script | What to run. Binary names (e.g. `"vec_znx_big"`) run the whole binary; function names (e.g. `"vec_znx_big_add_into"`) are used as a Criterion filter across the default binary set. Mix freely. Omit or leave empty to run the default set in full. |
 | `hal.sweeps` | `[[log_n, cols, size], ...]` | `vec_znx_big`, `vec_znx_dft`, `svp` | Sweep points for generic HAL ops |
 | `cnv.sweeps` | `[[log_n, size], ...]` | `convolution` | Sweep points for convolution |
 | `vmp.sweeps` | `[[log_n, rows, cols_in, cols_out, size], ...]` | `vmp` | Sweep points for VMP |
@@ -206,10 +206,10 @@ RUSTFLAGS="-C target-feature=+avx512f,+avx512ifma,+avx512vl" \
   cargo bench -p poulpy-bench --bench vec_znx_dft -- ntt-ifma
 
 # only the add benchmark, all backends
-cargo bench -p poulpy-bench --bench vec_znx -- vec_znx_add
+cargo bench -p poulpy-bench --bench vec_znx -- vec_znx_add_into
 
 # one specific backend × operation
-cargo bench -p poulpy-bench --bench vec_znx -- "vec_znx_add::fft64-ref"
+cargo bench -p poulpy-bench --bench vec_znx -- "vec_znx_add_into::fft64-ref"
 
 # all encryption benchmarks, AVX only
 cargo bench -p poulpy-bench --bench encryption --features enable-avx -- avx

@@ -4,14 +4,14 @@ version = "0.5.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "Consolidated benchmark suite for poulpy"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 publish = false
 readme = "README.md"
 
 [features]
-enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx", "poulpy-ckks/enable-avx"]
-enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma", "poulpy-schemes/enable-ifma", "poulpy-ckks/enable-ifma"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx"]
+enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma", "poulpy-schemes/enable-ifma"]
 # enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
 
 [dependencies]
@@ -22,7 +22,6 @@ serde_json = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 poulpy-schemes = {workspace = true}
-poulpy-ckks = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
 poulpy-cpu-ifma = {workspace = true, optional = true}
@@ -104,10 +103,5 @@ harness = false
 name = "standard"
 harness = false
 
-# NOTE: ckks_leveled bench is temporarily disabled because it references the pre-refactor
-# CKKS API (encoding module, CKKSPlaintext, plaintext_prepared, offset_bits/torus_scale_bits
-# fields, add/sub/conjugate/etc free functions). It needs to be rewritten against the new
-# leveled API before it can be re-enabled.
-# [[bench]]
-# name = "ckks_leveled"
-# harness = false
+
+

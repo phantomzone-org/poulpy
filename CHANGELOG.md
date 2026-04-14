@@ -1,5 +1,109 @@
 # CHANGELOG
 
+## [Unreleased] - 2026-04-13
+
+### Build & Docs
+- Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.
+- Update `rust-toolchain.toml` (nightly toolchain) to keep build expectations aligned.
+- Add acknowledgements for PZ, EF, and ENS in the root README.
+
+### `poulpy-hal` (major OEP refactor)
+- Replace legacy OEP modules with the unified `oep::HalImpl` entrypoint to provide one consistent extension surface for backends.
+- Add family defaults for `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution` to reduce backend boilerplate and make overrides explicit.
+- Remove legacy OEP traits and per-family OEP modules; update delegates to route through `HalImpl` and simplify dispatch.
+- Update layouts and encoding helpers to match the new dispatch surface.
+- Refresh HAL test suites to align with the new defaults and dispatch.
+- Add family-level module/scratch defaults to cut backend boilerplate and centralize scratch sizing.
+
+### `poulpy-core` (API split + test suite re-org)
+- Split public APIs into `api` trait modules backed by `delegates` and `oep` layers to separate user-facing traits from backend hooks and dispatch.
+- Reorganize encryption, decryption, conversions, keyswitching, external products, and operations to match the new API structure.
+- Move backend conformance suites into `src/test_suite` and keep unit tests separate.
+- Refresh layouts, noise helpers, and utilities to align with the new API surface.
+- Re-export top-level modules to preserve public API ergonomics while routing through the new `api` traits.
+- Standardize prepared allocations on `DeviceBuf` for backend-owned buffers to make data ownership explicit.
+- Rename Module allocation/prepare helpers to struct-first names (e.g. `gglwe_prepared_alloc`, `glwe_secret_prepare`) to match the rest of the API.
+
+### `poulpy-cpu-ref` / `poulpy-cpu-avx` (backend reshuffle)
+- Reorganize backend implementations around `hal_impl` modules and `hal_defaults` to mirror the new HAL entrypoint and reduce duplication.
+- Remove legacy per-family FFT64/NTT120 modules; route implementations through the new HAL defaults to keep a single source of truth.
+- Update FFT64/NTT120 reference kernels, normalization, and shift helpers to keep behavior aligned with the new dispatch path.
+- Flatten AVX test module paths to remove redundant crate prefixes.
+- Split backend code into family-specific `hal_impl/*` modules (module/scratch/vec_znx/vmp/svp/convolution) for clearer override points.
+
+### `poulpy-schemes`
+- Update bin-FHE BDD arithmetic, blind rotation, and test suites for the new core/HAL APIs.
+- Refresh scheme examples and library wiring; remove the redundant `poulpy-schemes/README.md`.
+- Align bin-FHE key/prepared layouts and circuit helpers with the refactored core layouts.
+
+### Fixes
+- Avoid under-allocating scratch space in bin-FHE scheme tests via new FheUint/BDD tmp-bytes helpers.
+- Make AVX backend optional (`enable-avx`) to prevent build failures on non-AVX machines.
+
+### `poulpy-bench`
+- Align benchmark suites with the new HAL/core APIs and update parameter examples.
+
+### Migration (before/after)
+
+**HAL backend wiring** moved from per-family OEP traits to a single `HalImpl` entrypoint with defaults.
+
+Before (legacy OEP traits):
+
+```rust
+use poulpy_hal::oep::{VecZnxImpl, VecZnxTmpBytesImpl};
+
+unsafe impl VecZnxImpl<FFT64Avx> for FFT64Avx {
+    fn vec_znx_add_into<R, A, B>(/* ... */) { /* AVX impl */ }
+}
+
+unsafe impl VecZnxTmpBytesImpl<FFT64Avx> for FFT64Avx {
+    fn vec_znx_add_tmp_bytes(/* ... */) -> usize { /* ... */ }
+}
+```
+
+After (unified `HalImpl` + defaults):
+
+```rust
+use poulpy_hal::oep::HalImpl;
+
+unsafe impl HalImpl<FFT64Avx> for FFT64Avx {
+    hal_impl_vec_znx!();      // default VecZnx wiring
+    hal_impl_module_fft64!(); // FFT64-specific hooks
+    // override only the hot paths you need
+}
+```
+
+**Core API override hooks**: `poulpy-core` dispatches through `poulpy-hal::Module<BE>` by default, but a backend can override core algorithms directly by implementing `CoreImpl`.
+
+Before (default core behavior via HAL + core APIs):
+
+```rust
+use poulpy_core::api::GLWEAdd;
+use poulpy_hal::layouts::Module;
+
+// Uses default core algorithms routed through Module<BE>
+module.glwe_add(&mut out, &a, &b);
+```
+
+After (override selected core ops in the backend):
+
+```rust
+use poulpy_core::oep::{CoreImpl, impl_core_default_methods};
+
+unsafe impl CoreImpl<MyBackend> for MyBackend {
+    impl_core_default_methods!(MyBackend); // keep defaults
+
+    fn glwe_add<R, A, B>(module: &Module<MyBackend>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToMut + GLWEInfos,
+        A: GLWEToRef + GLWEInfos,
+        B: GLWEToRef + GLWEInfos,
+    {
+        // custom fast path here
+    }
+}
+```
+
 ## [0.5.0] - 2026-03-31
 
 ### `poulpy-bench` (new crate)
@@ -21,10 +125,17 @@
 - Remove `VmpApplyDftToDftAdd` and `SvpApplyDftToDftAdd` traits; merge additive variant into `VmpApplyDftToDft` / `SvpApplyDftToDft` via a new `limb_offset` parameter.
   These traits accumulated VMP results directly into a scattered output buffer, causing severe cache misses. Writing into a contiguous temporary buffer and folding with `VecZnxDftAddInplace` is ~2× faster.
 - Remove all associated OEP (`VmpApplyDftToDftAddImpl`, `VmpApplyDftToDftAddTmpBytesImpl`, `SvpApplyDftToDftAddImpl`), delegate, and bench-suite plumbing.
+- Add family defaults for `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution`.
+- Add portable defaults for `scratch` and `vec_znx` in `HalImpl`, reducing backend boilerplate.
+- Remove legacy OEP traits for `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution`; use `HalImpl` + defaults instead.
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx`
 - Update FFT64 and NTT120 `vmp_apply_dft_to_dft` implementations to accept `limb_offset` directly, replacing the separate `_add` codepath.
 - NTT120 AVX2 (`arithmetic_avx.rs`): add `reduce_b_and_apply_crt` that fuses the CRT multiply into the Barrett reduction pass, using new compile-time constants `POW32_CRT` and `POW16_CRT`; apply to `compact_all_blocks` to reduce instruction count by a factor of ~2x.
+- Drop legacy backend-specific VMP/Convolution OEP impl modules; rely on HAL family defaults.
+- Drop legacy backend-specific `scratch`/`vec_znx` impl modules and FFT64 `vec_znx_big` impls; NTT120 `vec_znx_big` now only provides the i128 ops hooks for HAL defaults.
+- Drop legacy backend-specific `svp` impl modules; rely on HAL family defaults.
+- Remove legacy `vec_znx_dft` OEP traits; use `HalImpl` family defaults instead.
 
 ### `poulpy-core`
 - Rewrite external product (`glwe_external_product_internal`) and GLWE keyswitching inner loops to write intermediate per-digit VMP results into a dedicated temporary buffer before accumulating with `VecZnxDftAddInplace`, avoiding scattered-write cache thrashing. `where` bounds updated accordingly.
@@ -58,8 +169,8 @@
 
 ## [0.4.3] - 2026-01-16
 
-- Fix [#131](https://github.com/phantomzone-org/poulpy/issues/131)
-- Fix [#130](https://github.com/phantomzone-org/poulpy/issues/130)
+- Fix [#131](https://github.com/poulpy-fhe/poulpy/issues/131)
+- Fix [#130](https://github.com/poulpy-fhe/poulpy/issues/130)
 
 ## [0.4.2] - 2025-12-21
 

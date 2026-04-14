@@ -1,16 +1,16 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 
-fn bench_vec_znx_big_add(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add, &poulpy_bench::params::BenchParams::get().hal; c);
+fn bench_vec_znx_big_add_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_into, &poulpy_bench::params::BenchParams::get().hal; c);
 }
-fn bench_vec_znx_big_add_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_inplace, &poulpy_bench::params::BenchParams::get().hal; c);
+fn bench_vec_znx_big_add_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_assign, &poulpy_bench::params::BenchParams::get().hal; c);
 }
-fn bench_vec_znx_big_add_small(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_small, &poulpy_bench::params::BenchParams::get().hal; c);
+fn bench_vec_znx_big_add_small_into(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_small_into, &poulpy_bench::params::BenchParams::get().hal; c);
 }
-fn bench_vec_znx_big_add_small_inplace(c: &mut Criterion) {
-    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_small_inplace, &poulpy_bench::params::BenchParams::get().hal; c);
+fn bench_vec_znx_big_add_small_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_add_small_assign, &poulpy_bench::params::BenchParams::get().hal; c);
 }
 fn bench_vec_znx_big_automorphism(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_automorphism, &poulpy_bench::params::BenchParams::get().hal; c);
@@ -46,10 +46,10 @@ fn bench_vec_znx_big_sub_small_b(c: &mut Criterion) {
 criterion_group! {
     name = benches;
     config = poulpy_bench::criterion_config();
-    targets = bench_vec_znx_big_add,
-    bench_vec_znx_big_add_inplace,
-    bench_vec_znx_big_add_small,
-    bench_vec_znx_big_add_small_inplace,
+    targets = bench_vec_znx_big_add_into,
+    bench_vec_znx_big_add_assign,
+    bench_vec_znx_big_add_small_into,
+    bench_vec_znx_big_add_small_assign,
     bench_vec_znx_big_automorphism,
     bench_vec_znx_automorphism_inplace,
     bench_vec_znx_big_negate,

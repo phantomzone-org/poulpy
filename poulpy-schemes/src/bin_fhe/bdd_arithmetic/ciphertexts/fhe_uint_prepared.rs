@@ -12,7 +12,7 @@ use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGL
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::api::{ModuleLogN, ScratchAvailable, ScratchFromBytes};
-use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
+use poulpy_hal::layouts::{Backend, Data, DataRef, DeviceBuf, Module};
 
 use poulpy_hal::{
     api::ModuleN,
@@ -141,16 +141,16 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> FheUintPrepared<Vec<u8>, T, BE> {
+    ) -> FheUintPrepared<DeviceBuf<BE>, T, BE> {
         FheUintPrepared {
             bits: (0..T::BITS)
-                .map(|_| GGSWPrepared::alloc(self, base2k, k, dnum, dsize, rank))
+                .map(|_| self.ggsw_prepared_alloc(base2k, k, dnum, dsize, rank))
                 .collect(),
             _phantom: PhantomData,
         }
     }
 
-    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<Vec<u8>, T, BE>
+    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<DeviceBuf<BE>, T, BE>
     where
         A: GGSWInfos,
     {
@@ -158,7 +158,7 @@ where
     }
 }
 
-impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<Vec<u8>, T, BE> {
+impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<DeviceBuf<BE>, T, BE> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -219,8 +219,8 @@ where
         for i in 0..T::BITS as usize {
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
-            tmp_ggsw.encrypt_sk(self, &pt, sk, enc_infos, source_xe, source_xa, scratch_2);
-            res.bits[i].prepare(self, &tmp_ggsw, scratch_2);
+            self.ggsw_encrypt_sk(&mut tmp_ggsw, &pt, sk, enc_infos, source_xe, source_xa, scratch_2);
+            self.ggsw_prepare(&mut res.bits[i], &tmp_ggsw, scratch_2);
         }
     }
 }
@@ -446,18 +446,18 @@ where
                     for (local_bit, dst) in res_bits_chunk.iter_mut().enumerate() {
                         bits.get_bit_lwe(self, start + local_bit, &mut tmp_lwe, ks_glwe, ks_lwe, scratch_2);
                         cbt.execute_to_constant(self, &mut tmp_ggsw, &tmp_lwe, 1, 1, scratch_2);
-                        dst.prepare(self, &tmp_ggsw, scratch_2);
+                        self.ggsw_prepare(dst, &tmp_ggsw, scratch_2);
                     }
                 });
             }
         });
 
         for i in 0..bit_start {
-            res.bits[i].zero(self);
+            self.ggsw_zero(&mut res.bits[i]);
         }
 
         for i in bit_end..T::BITS as usize {
-            res.bits[i].zero(self);
+            self.ggsw_zero(&mut res.bits[i]);
         }
     }
 }
