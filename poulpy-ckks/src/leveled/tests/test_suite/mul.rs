@@ -21,7 +21,7 @@
 
 use crate::leveled::{
     operations::mul::CKKSMulOps,
-    tests::test_suite::helpers::{TestContext, TestMulBackend as Backend},
+    tests::test_suite::helpers::{TestContext, TestMulBackend as Backend, assert_mul_output_meta},
 };
 
 use poulpy_hal::api::ScratchOwnedBorrow;
@@ -35,6 +35,7 @@ pub fn test_mul_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct_aligned", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -51,6 +52,7 @@ pub fn test_mul_ct_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct a_lt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("mul_ct a_lt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -67,6 +69,7 @@ pub fn test_mul_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct a_gt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("mul_ct a_gt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -78,6 +81,7 @@ pub fn test_mul_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct smaller_output", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("mul_ct smaller_output", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -90,7 +94,24 @@ pub fn test_square_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("square_ct_aligned", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision("square_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// ct² after the input has already been rescaled by one limb.
+pub fn test_square_ct_rescaled_input<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(
+        ctx.max_k() - ctx.base2k().as_usize() + 1,
+        &ctx.re1,
+        &ctx.im1,
+        scratch.borrow(),
+    );
+    let (want_re, want_im) = ctx.want_square();
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("square_ct_rescaled_input", &ct_res, &ct, &ct);
+    ctx.assert_decrypt_precision("square_ct_rescaled_input", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct² into an output buffer with smaller k.
@@ -100,5 +121,6 @@ pub fn test_square_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("square_ct_smaller_output", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }

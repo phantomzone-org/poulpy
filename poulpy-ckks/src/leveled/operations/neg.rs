@@ -4,7 +4,7 @@
 
 use crate::{
     CKKS, CKKSInfos,
-    layouts::{CKKSRescaleOps, ciphertext::CKKSOffset},
+    layouts::ciphertext::CKKSOffset,
 };
 use anyhow::Result;
 use poulpy_core::{
@@ -37,7 +37,9 @@ impl<D: DataMut> CKKSNegOps for GLWE<D, CKKS> {
     {
         let offset = self.offset_unary(other);
         if offset != 0 {
-            self.rescale(module, offset, other, scratch)?;
+            module.glwe_lsh(self, other, offset, scratch);
+            self.meta = other.meta();
+            self.set_log_hom_rem(other.log_hom_rem() - offset)?;
             module.glwe_negate_inplace(self);
         } else {
             module.glwe_negate(self, other);

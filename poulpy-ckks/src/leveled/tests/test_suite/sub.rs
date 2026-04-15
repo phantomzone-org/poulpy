@@ -35,9 +35,9 @@
 //! | [`test_sub_pt_rnx`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
 //! | [`test_sub_pt_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
-use crate::leveled::operations::sub::CKKSSubOps;
+use crate::{CKKSInfos, leveled::operations::sub::CKKSSubOps};
 
-use super::helpers::{TestContext, TestSubBackend as Backend};
+use super::helpers::{TestContext, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── ct-ct out-of-place (GLWE<_, CKKS>::sub) ────────────────────────────────
@@ -50,6 +50,7 @@ pub fn test_sub_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+    assert_binary_output_meta("sub_ct_aligned", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("sub_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -66,6 +67,7 @@ pub fn test_sub_ct_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+    assert_binary_output_meta("sub_ct a_lt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("sub_ct a_lt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -82,6 +84,7 @@ pub fn test_sub_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+    assert_binary_output_meta("sub_ct a_gt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("sub_ct a_gt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -97,6 +100,7 @@ pub fn test_sub_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+    assert_binary_output_meta("sub_ct smaller_output", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("sub_ct smaller_output", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -108,7 +112,10 @@ pub fn test_sub_ct_inplace_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_sub();
+    let expected_log_hom_rem = ct1.log_hom_rem().min(ct2.log_hom_rem());
+    let expected_log_decimal = ct1.log_decimal().max(ct2.log_decimal());
     ct1.sub_inplace(&ctx.module, &ct2, scratch.borrow()).unwrap();
+    assert_ct_meta("sub_ct_inplace_aligned", &ct1, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("sub_ct_inplace_aligned", &ct1, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -123,7 +130,10 @@ pub fn test_sub_ct_inplace_self_lt<BE: Backend>(ctx: &TestContext<BE>) {
     );
     let ct_other = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_sub();
+    let expected_log_hom_rem = ct_self.log_hom_rem().min(ct_other.log_hom_rem());
+    let expected_log_decimal = ct_self.log_decimal().max(ct_other.log_decimal());
     ct_self.sub_inplace(&ctx.module, &ct_other, scratch.borrow()).unwrap();
+    assert_ct_meta("sub_ct_inplace self_lt", &ct_self, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("sub_ct_inplace self_lt", &ct_self, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -138,7 +148,10 @@ pub fn test_sub_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
         scratch.borrow(),
     );
     let (want_re, want_im) = ctx.want_sub();
+    let expected_log_hom_rem = ct_self.log_hom_rem().min(ct_other.log_hom_rem());
+    let expected_log_decimal = ct_self.log_decimal().max(ct_other.log_decimal());
     ct_self.sub_inplace(&ctx.module, &ct_other, scratch.borrow()).unwrap();
+    assert_ct_meta("sub_ct_inplace self_gt", &ct_self, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("sub_ct_inplace self_gt", &ct_self, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -150,7 +163,10 @@ pub fn test_sub_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx();
     let (want_re, want_im) = ctx.want_sub();
+    let expected_log_decimal = ct.log_decimal();
+    let expected_log_hom_rem = ct.log_hom_rem();
     ct.sub_pt_znx_inplace(&ctx.module, &pt_znx, scratch.borrow()).unwrap();
+    assert_ct_meta("sub_pt_znx_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("sub_pt_znx_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -162,6 +178,7 @@ pub fn test_sub_pt_znx<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.sub_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
+    assert_unary_output_meta("sub_pt_znx", &ct_res, &ct1);
     ctx.assert_decrypt_precision("sub_pt_znx", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -173,8 +190,11 @@ pub fn test_sub_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx();
     let (want_re, want_im) = ctx.want_sub();
+    let expected_log_decimal = ct.log_decimal();
+    let expected_log_hom_rem = ct.log_hom_rem();
     ct.sub_pt_rnx_inplace(&ctx.module, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
+    assert_ct_meta("sub_pt_rnx_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("sub_pt_rnx_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -188,6 +208,7 @@ pub fn test_sub_pt_rnx<BE: Backend>(ctx: &TestContext<BE>) {
     ct_res
         .sub_pt_rnx(&ctx.module, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
+    assert_unary_output_meta("sub_pt_rnx", &ct_res, &ct1);
     ctx.assert_decrypt_precision("sub_pt_rnx", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -202,6 +223,7 @@ pub fn test_sub_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.sub_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
+    assert_unary_output_meta("sub_pt_znx smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision(
         "sub_pt_znx smaller_output",
         &ct_res,
@@ -225,6 +247,7 @@ pub fn test_sub_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     ct_res
         .sub_pt_rnx(&ctx.module, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
+    assert_unary_output_meta("sub_pt_rnx smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision(
         "sub_pt_rnx smaller_output",
         &ct_res,

@@ -14,9 +14,9 @@
 //! |----------|----------------|
 //! | [`test_rotate_inplace`] | in-place rotation for each requested shift |
 
-use crate::leveled::operations::rotate::CKKSRotateOps;
+use crate::{CKKSInfos, leveled::operations::rotate::CKKSRotateOps};
 
-use super::helpers::{TestContext, TestRotateBackend as Backend};
+use super::helpers::{TestContext, TestRotateBackend as Backend, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── rotation out-of-place (GLWE<_, CKKS>::rotate) ─────────────────────────
@@ -29,6 +29,7 @@ pub fn test_rotate_aligned<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct_res = ctx.alloc_ct(ctx.max_k());
         ct_res.rotate(&ctx.module, &ct, r, ctx.atks(), scratch.borrow()).unwrap();
+        assert_unary_output_meta(&format!("rotate({r})"), &ct_res, &ct);
         ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
     }
 }
@@ -41,6 +42,7 @@ pub fn test_rotate_smaller_output<BE: Backend>(ctx: &TestContext<BE>, rotations:
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
         ct_res.rotate(&ctx.module, &ct, r, ctx.atks(), scratch.borrow()).unwrap();
+        assert_unary_output_meta(&format!("rotate smaller_output({r})"), &ct_res, &ct);
         ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
     }
 }
@@ -53,7 +55,10 @@ pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
     for &r in rotations {
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+        let expected_log_decimal = ct.log_decimal();
+        let expected_log_hom_rem = ct.log_hom_rem();
         ct.rotate_inplace(&ctx.module, r, ctx.atks(), scratch.borrow());
+        assert_ct_meta(&format!("rotate_inplace({r})"), &ct, expected_log_decimal, expected_log_hom_rem);
         ctx.assert_decrypt_precision(
             &format!("rotate_inplace({r})"),
             &ct,

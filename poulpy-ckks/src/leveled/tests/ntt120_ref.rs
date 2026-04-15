@@ -151,6 +151,11 @@ fn neg() -> Result<()> {
 }
 
 #[test]
+fn neg_smaller_output() -> Result<()> {
+    crate::leveled::tests::test_suite::neg::test_neg_smaller_output(&CTX)
+}
+
+#[test]
 fn neg_inplace() {
     crate::leveled::tests::test_suite::neg::test_neg_inplace(&CTX);
 }
@@ -207,6 +212,11 @@ fn mul_ct_smaller_output() {
 #[test]
 fn square_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_square_ct_aligned(&CTX);
+}
+
+#[test]
+fn square_ct_rescaled_input() {
+    crate::leveled::tests::test_suite::mul::test_square_ct_rescaled_input(&CTX);
 }
 
 #[test]

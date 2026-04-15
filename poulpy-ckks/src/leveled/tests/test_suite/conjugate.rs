@@ -14,9 +14,9 @@
 //! |----------|----------------|
 //! | [`test_conjugate_inplace`] | in-place conjugation |
 
-use crate::leveled::operations::conjugate::CKKSConjugateOps;
+use crate::{CKKSInfos, leveled::operations::conjugate::CKKSConjugateOps};
 
-use super::helpers::{TestContext, TestRotateBackend as Backend};
+use super::helpers::{TestContext, TestRotateBackend as Backend, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── conjugation out-of-place (GLWE<_, CKKS>::conjugate) ───────────────────
@@ -29,6 +29,7 @@ pub fn test_conjugate_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let conj_key = ctx.atk(-1);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.conjugate(&ctx.module, &ct1, conj_key, scratch.borrow()).unwrap();
+    assert_unary_output_meta("conjugate", &ct_res, &ct1);
     ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -40,6 +41,7 @@ pub fn test_conjugate_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let conj_key = ctx.atk(-1);
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.conjugate(&ctx.module, &ct1, conj_key, scratch.borrow()).unwrap();
+    assert_unary_output_meta("conjugate smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -51,6 +53,9 @@ pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_conjugate();
     let conj_key = ctx.atk(-1);
+    let expected_log_decimal = ct.log_decimal();
+    let expected_log_hom_rem = ct.log_hom_rem();
     ct.conjugate_inplace(&ctx.module, conj_key, scratch.borrow());
+    assert_ct_meta("conjugate_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }

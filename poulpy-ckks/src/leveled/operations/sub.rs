@@ -118,6 +118,7 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
             module.glwe_lsh_sub(self, b, offset, scratch);
         }
 
+        self.set_log_decimal(a.log_decimal().max(b.log_decimal()))?;
         self.set_log_hom_rem(a.log_hom_rem().min(b.log_hom_rem()) - offset)?;
 
         Ok(())
@@ -159,6 +160,7 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
     {
         let offset = self.offset_unary(a);
         module.glwe_lsh(self, a, offset, scratch);
+        self.meta = a.meta();
         self.set_log_hom_rem(a.log_hom_rem() - offset)?;
         self.sub_pt_znx_inplace(module, pt_znx, scratch)?;
         Ok(())

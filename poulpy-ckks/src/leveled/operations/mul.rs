@@ -66,15 +66,11 @@ where
     let res_log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
     let res_log_decimal = a.log_decimal().max(b.log_decimal());
 
-    println!("res.max_k(): {} {res_log_hom_rem} {res_log_decimal}", res.max_k());
-
     // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
     let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
 
     // cnv_offset that takes into account `res_offset`
     let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
-
-    println!("res_offset: {res_offset}");
 
     (res_log_hom_rem - res_offset, res_log_decimal, cnv_offset)
 }

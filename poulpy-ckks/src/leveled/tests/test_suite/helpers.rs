@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use super::CKKSTestParams;
 use crate::{
     CKKS, CKKSInfos,
-    layouts::plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta},
+    layouts::{ciphertext::CKKSOffset, plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta}},
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
         operations::{mul::CKKSMulOps, pt_znx::CKKSPlaintextZnxOps},
@@ -29,7 +29,7 @@ use poulpy_cpu_ref::FFT64Ref;
 
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRshAddInto, VecZnxRshSub},
-    layouts::{Backend, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned, ZnxView},
+    layouts::{Backend, DataRef, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned, ZnxView},
     oep::HalImpl,
     source::Source,
 };
@@ -557,4 +557,39 @@ pub fn assert_precision(label: &str, got: &[f64], want: &[f64], min_bits: f64) {
         sample.1,
         sample.2
     );
+}
+
+pub fn assert_ct_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, log_decimal: usize, log_hom_rem: usize) {
+    assert_eq!(ct.log_decimal(), log_decimal, "{label}: unexpected log_decimal");
+    assert_eq!(ct.log_hom_rem(), log_hom_rem, "{label}: unexpected log_hom_rem");
+}
+
+pub fn assert_unary_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, input: &GLWE<impl DataRef, CKKS>) {
+    assert_ct_meta(label, ct, input.log_decimal(), input.log_hom_rem() - ct.offset_unary(input));
+}
+
+pub fn assert_binary_output_meta(
+    label: &str,
+    ct: &GLWE<impl DataRef, CKKS>,
+    a: &GLWE<impl DataRef, CKKS>,
+    b: &GLWE<impl DataRef, CKKS>,
+) {
+    assert_ct_meta(
+        label,
+        ct,
+        a.log_decimal().max(b.log_decimal()),
+        a.log_hom_rem().min(b.log_hom_rem()) - ct.offset_binary(a, b),
+    );
+}
+
+pub fn assert_mul_output_meta(
+    label: &str,
+    ct: &GLWE<impl DataRef, CKKS>,
+    a: &GLWE<impl DataRef, CKKS>,
+    b: &GLWE<impl DataRef, CKKS>,
+) {
+    let log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
+    let log_decimal = a.log_decimal().max(b.log_decimal());
+    let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
+    assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);
 }
