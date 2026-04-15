@@ -189,6 +189,15 @@ fn rotate_inplace() {
 fn mul_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
+#[test]
+fn mul_ct_delta_a_gt_b() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_gt_b(&CTX);
+}
+
+#[test]
+fn mul_ct_delta_a_lt_b() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_lt_b(&CTX);
+}
 
 #[test]
 fn mul_ct_smaller_output() {

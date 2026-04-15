@@ -19,15 +19,11 @@
 //! | [`test_square_ct_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
 //! | [`test_square_ct_smaller_output`] | square into smaller output buffer |
 
-use crate::{
-    CKKS, CKKSInfos,
-    leveled::{
-        operations::mul::CKKSMulOps,
-        tests::test_suite::helpers::{TestContext, TestMulBackend as Backend},
-    },
+use crate::leveled::{
+    operations::mul::CKKSMulOps,
+    tests::test_suite::helpers::{TestContext, TestMulBackend as Backend},
 };
 
-use poulpy_core::{GLWEDecrypt, layouts::GLWEPlaintext};
 use poulpy_hal::api::ScratchOwnedBorrow;
 // ─── ct × ct out-of-place (GLWE<_, CKKS>::mul) ─────────────────────────────────
 
@@ -36,22 +32,9 @@ pub fn test_mul_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
-
     let (want_re, want_im) = ctx.want_mul();
-
-    let mut pt = GLWEPlaintext::<Vec<u8>, CKKS>::alloc_from_infos(&ct1);
-
-    println!("ct1: k:{} log_decimal:{}", ct1.effective_k(), ct1.log_decimal());
-    println!("ct2: k:{} log_decimal:{}", ct2.effective_k(), ct2.log_decimal());
-
-    ctx.module.glwe_decrypt(&ct1, &mut pt, &ctx.sk, scratch.borrow());
-    println!("ct1: {pt}");
-    ctx.module.glwe_decrypt(&ct2, &mut pt, &ctx.sk, scratch.borrow());
-    println!("ct2: {pt}");
-
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
-
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 

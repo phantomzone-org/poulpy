@@ -314,10 +314,10 @@ impl<BE: TestContextBackend> TestContext<BE> {
             tsk: tsk_prepared,
             atks,
             scratch_size,
-            re1: (0..m).map(|i| 1.0).collect(),
-            im1: (0..m).map(|i| 0.0).collect(),
-            re2: (0..m).map(|i| 1.0).collect(),
-            im2: (0..m).map(|i| 0.0).collect(),
+            re1: (0..m).map(|i| 16.0 * (i as f64) / (m as f64) - 8.0).collect(),
+            im1: (0..m).map(|i| 16.0 - 2.0 * (i as f64) / (m as f64)).collect(),
+            re2: (0..m).map(|i| 0.8 * (1.0 - (i as f64) / (m as f64)) - 0.4).collect(),
+            im2: (0..m).map(|i| -0.6 * (i as f64) / (m as f64)).collect(),
         }
     }
 }
