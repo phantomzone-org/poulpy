@@ -142,8 +142,8 @@ pub fn convolution_by_const_apply_tmp_bytes(res_size: usize, a_size: usize, b_si
 }
 
 pub fn convolution_by_const_apply<R, A, BE>(
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -166,7 +166,7 @@ pub fn convolution_by_const_apply<R, A, BE>(
 
     let bound: usize = a_size + b_size - 1;
     let min_size: usize = res_size.min(bound);
-    let offset: usize = res_offset.min(bound);
+    let offset: usize = cnv_offset.min(bound);
 
     let a_sl: usize = n * a.cols();
     let res_sl: usize = n * res.cols();
@@ -197,8 +197,8 @@ pub fn convolution_apply_dft_tmp_bytes(res_size: usize, a_size: usize, b_size: u
 
 #[allow(clippy::too_many_arguments)]
 pub fn convolution_apply_dft<R, A, B, BE>(
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -226,7 +226,7 @@ pub fn convolution_apply_dft<R, A, B, BE>(
 
     let bound: usize = a_size + b_size - 1;
     let min_size: usize = res_size.min(bound);
-    let offset: usize = res_offset.min(bound);
+    let offset: usize = cnv_offset.min(bound);
 
     let dst: &mut [f64] = res.raw_mut();
     let a_raw: &[f64] = a.raw();
@@ -254,8 +254,8 @@ pub fn convolution_pairwise_apply_dft_tmp_bytes(res_size: usize, a_size: usize, 
 
 #[allow(clippy::too_many_arguments)]
 pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     b: &B,
@@ -269,7 +269,7 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     B: CnvPVecRToRef<BE>,
 {
     if col_i == col_j {
-        convolution_apply_dft(res, res_offset, res_col, a, col_i, b, col_j, tmp);
+        convolution_apply_dft(cnv_offset, res, res_col, a, col_i, b, col_j, tmp);
         return;
     }
 
@@ -294,7 +294,7 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
 
     let bound: usize = a_size + b_size - 1;
     let min_size: usize = res_size.min(bound);
-    let offset: usize = res_offset.min(bound);
+    let offset: usize = cnv_offset.min(bound);
 
     let res_raw: &mut [f64] = res.raw_mut();
     let a_raw: &[f64] = a.raw();

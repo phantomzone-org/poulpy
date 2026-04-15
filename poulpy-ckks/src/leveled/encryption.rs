@@ -115,6 +115,7 @@ where
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
         let mut full_pt = attach_meta(full_pt, ct.meta());
         self.glwe_decrypt(ct, &mut full_pt, sk, scratch_rest);
+        println!("full_pt: {full_pt}");
         self.ckks_extract_pt_znx(pt, &full_pt, scratch_rest)?;
         Ok(())
     }

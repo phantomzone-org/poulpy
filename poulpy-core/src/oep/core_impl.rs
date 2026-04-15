@@ -356,7 +356,7 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
 
     // Operations
-    fn glwe_mul_const_tmp_bytes<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
@@ -364,7 +364,7 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
     fn glwe_mul_const<R, A>(
         module: &Module<BE>,
         res: &mut GLWE<R>,
-        res_offset: usize,
+        cnv_offset: usize,
         a: &GLWE<A>,
         b: &[i64],
         scratch: &mut Scratch<BE>,
@@ -372,11 +372,11 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         R: DataMut,
         A: DataRef;
 
-    fn glwe_mul_const_inplace<R>(module: &Module<BE>, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<R>(module: &Module<BE>, res: &mut GLWE<R>, cnv_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
 
-    fn glwe_mul_plain_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_mul_plain_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -384,8 +384,8 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
 
     fn glwe_mul_plain<R, A, B, BM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWE<A>,
         b: &GLWEPlaintext<B, BM>,
         scratch: &mut Scratch<BE>,
@@ -396,29 +396,29 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
 
     fn glwe_mul_plain_inplace<R, A, AM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWEPlaintext<A, AM>,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef;
 
-    fn glwe_tensor_apply_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_apply_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
-    fn glwe_tensor_square_apply_tmp_bytes<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A) -> usize
+    fn glwe_tensor_square_apply_tmp_bytes<R, A>(module: &Module<BE>, res: &R, a: &A) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
 
     fn glwe_tensor_apply<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWETensor<R>,
-        res_offset: usize,
         a: &GLWE<A>,
         b: &GLWE<B>,
         scratch: &mut Scratch<BE>,

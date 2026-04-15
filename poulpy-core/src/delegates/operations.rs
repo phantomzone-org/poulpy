@@ -26,27 +26,27 @@ where
     BE: Backend + CoreImpl<BE>,
     Module<BE>: GLWEMulConstDefault<BE>,
 {
-    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
     {
-        BE::glwe_mul_const_tmp_bytes(self, res, res_offset, a, b_size)
+        BE::glwe_mul_const_tmp_bytes(self, res, a, b_size)
     }
 
-    fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, res_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef,
     {
-        BE::glwe_mul_const(self, res, res_offset, a, b, scratch)
+        BE::glwe_mul_const(self, res, cnv_offset, a, b, scratch)
     }
 
-    fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, res_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
     {
-        BE::glwe_mul_const_inplace(self, res, res_offset, b, scratch)
+        BE::glwe_mul_const_inplace(self, res, cnv_offset, b, scratch)
     }
 }
 
@@ -55,19 +55,20 @@ where
     BE: Backend + CoreImpl<BE>,
     Module<BE>: GLWEMulPlainDefault<BE>,
 {
-    fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos,
     {
-        BE::glwe_mul_plain_tmp_bytes(self, res, res_offset, a, b)
+        BE::glwe_mul_plain_tmp_bytes(self, res, a, b)
     }
 
     fn glwe_mul_plain<R, A, B, BM>(
         &self,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
+
         a: &GLWE<A>,
         b: &GLWEPlaintext<B, BM>,
         scratch: &mut Scratch<BE>,
@@ -76,20 +77,21 @@ where
         A: DataRef,
         B: DataRef,
     {
-        BE::glwe_mul_plain(self, res, res_offset, a, b, scratch)
+        BE::glwe_mul_plain(self, cnv_offset, res, a, b, scratch)
     }
 
     fn glwe_mul_plain_inplace<R, A, AM>(
         &self,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
+
         a: &GLWEPlaintext<A, AM>,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
     {
-        BE::glwe_mul_plain_inplace(self, res, res_offset, a, scratch)
+        BE::glwe_mul_plain_inplace(self, cnv_offset, res, a, scratch)
     }
 }
 
@@ -98,27 +100,27 @@ where
     BE: Backend + CoreImpl<BE>,
     Module<BE>: GLWETensoringDefault<BE>,
 {
-    fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_apply_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos,
     {
-        BE::glwe_tensor_apply_tmp_bytes(self, res, res_offset, a, b)
+        BE::glwe_tensor_apply_tmp_bytes(self, res, a, b)
     }
 
-    fn glwe_tensor_square_apply_tmp_bytes<R, A>(&self, res: &R, res_offset: usize, a: &A) -> usize
+    fn glwe_tensor_square_apply_tmp_bytes<R, A>(&self, res: &R, a: &A) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
     {
-        BE::glwe_tensor_square_apply_tmp_bytes(self, res, res_offset, a)
+        BE::glwe_tensor_square_apply_tmp_bytes(self, res, a)
     }
 
     fn glwe_tensor_apply<R, A, B>(
         &self,
+        cnv_offset: usize,
         res: &mut GLWETensor<R>,
-        res_offset: usize,
         a: &GLWE<A>,
         b: &GLWE<B>,
         scratch: &mut Scratch<BE>,
@@ -127,7 +129,7 @@ where
         A: DataRef,
         B: DataRef,
     {
-        BE::glwe_tensor_apply(self, res, res_offset, a, b, scratch)
+        BE::glwe_tensor_apply(self, cnv_offset, res, a, b, scratch)
     }
 
     fn glwe_tensor_relinearize<R, A, B>(

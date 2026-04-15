@@ -13,14 +13,12 @@ use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
 use crate::{CKKS, CKKSInfos};
 
 #[derive(Debug, Clone)]
-pub struct CKKSPlaintextRnx<F>(Vec<F>)
-where
-    F: Float + FloatConst + Debug;
+pub struct CKKSPlaintextRnx<F>(Vec<F>);
 
 /// CKKS plaintext in the ZNX (torus) domain.
 pub type CKKSPlaintextZnx<D> = GLWEPlaintext<D, CKKS>;
 
-pub fn alloc_znx(n: Degree, base2k: Base2K, prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
+pub fn alloc_pt_znx(n: Degree, base2k: Base2K, prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
     GLWEPlaintext::alloc_with_meta(n, base2k, prec.min_k(base2k), prec)
 }
 
@@ -137,12 +135,14 @@ where
     }
 }
 
-impl<F: Float + FloatConst + Debug> CKKSPlaintextRnx<F> {
+impl<F: Zero + Clone> CKKSPlaintextRnx<F> {
     pub fn alloc(n: usize) -> Result<Self> {
         anyhow::ensure!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Ok(Self(vec![F::zero(); n]))
     }
+}
 
+impl<F> CKKSPlaintextRnx<F> {
     pub fn n(&self) -> usize {
         self.0.len()
     }
@@ -261,7 +261,7 @@ mod tests {
         let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
         rnx.0.copy_from_slice(&values);
 
-        let mut znx = alloc_znx(n.into(), base2k.into(), prec);
+        let mut znx = alloc_pt_znx(n.into(), base2k.into(), prec);
         rnx.to_znx::<NTT120Ref>(&mut znx).unwrap();
 
         let mut rnx_out = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
@@ -317,16 +317,16 @@ mod tests {
         // Encode to ZNX.
         let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
         rnx.0.copy_from_slice(&values);
-        let mut pt = alloc_znx(n.into(), base2k.into(), prec);
+        let mut pt = alloc_pt_znx(n.into(), base2k.into(), prec);
         rnx.to_znx::<NTT120Ref>(&mut pt).unwrap();
 
-        let mut dst = alloc_znx(n.into(), base2k.into(), prec);
+        let mut dst = alloc_pt_znx(n.into(), base2k.into(), prec);
 
         // Add the plaintext at the correct offset via module helper.
         module.ckks_add_pt_znx(&mut dst, &pt, scratch.borrow()).unwrap();
 
         // Extract the bottom-aligned plaintext and decode.
-        let mut pt_out = alloc_znx(n.into(), base2k.into(), prec);
+        let mut pt_out = alloc_pt_znx(n.into(), base2k.into(), prec);
         module.ckks_extract_pt_znx(&mut pt_out, &dst, scratch.borrow()).unwrap();
 
         assert_eq!(pt.data(), pt_out.data())

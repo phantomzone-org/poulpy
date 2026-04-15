@@ -4,9 +4,10 @@
 //! the rotation amount. The public API is expressed in terms of the slot
 //! shift `k`, and the provided key store is indexed by that same shift.
 
-use crate::{CKKS, CKKSInfos};
+use crate::{CKKS, CKKSInfos, layouts::ciphertext::CKKSOffset};
+use anyhow::Result;
 use poulpy_core::{
-    GLWEAutomorphism, ScratchTakeCore,
+    GLWEAutomorphism, GLWEShift, ScratchTakeCore,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToRef, GetGaloisElement},
 };
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
@@ -19,9 +20,16 @@ pub trait CKKSRotateOps {
         Module<BE>: GLWEAutomorphism<BE>;
 
     /// `self = Rotate(ct, k)` — rotates slots by `k` positions.
-    fn rotate<O, H, K, BE: Backend>(&mut self, module: &Module<BE>, other: &O, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    fn rotate<O, H, K, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        other: &O,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE>,
+        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
         O: GLWEToRef + GLWEInfos + CKKSInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -47,9 +55,16 @@ impl<D: DataMut> CKKSRotateOps for GLWE<D, CKKS> {
     }
 
     /// `self = Rotate(ct, k)` — rotates slots by `k` positions.
-    fn rotate<O, H, K, BE: Backend>(&mut self, module: &Module<BE>, other: &O, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    fn rotate<O, H, K, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        other: &O,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE>,
+        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
         O: GLWEToRef + GLWEInfos + CKKSInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -59,8 +74,19 @@ impl<D: DataMut> CKKSRotateOps for GLWE<D, CKKS> {
         let key = keys
             .get_automorphism_key(k)
             .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
-        module.glwe_automorphism(self, other, key, scratch);
+
+        let offset = self.offset_unary(other);
+
+        if offset != 0 {
+            module.glwe_lsh(self, other, offset, scratch);
+            module.glwe_automorphism_inplace(self, key, scratch);
+        } else {
+            module.glwe_automorphism(self, other, key, scratch);
+        }
+
         self.meta = other.meta();
+        self.set_log_hom_rem(self.log_hom_rem() - offset)?;
+        Ok(())
     }
 
     /// `self = Rotate(self, k)` — rotates slots by `k` positions in place.

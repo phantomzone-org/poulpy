@@ -251,7 +251,7 @@ pub fn ntt120_cnv_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize, _b_size:
 ///                                                      b[b_col,       j, n_i] )
 /// ```
 ///
-/// where `k_abs = k + res_offset`, `j_min = max(0, k_abs − a.size() + 1)`,
+/// where `k_abs = k + cnv_offset`, `j_min = max(0, k_abs − a.size() + 1)`,
 /// `j_max = min(k_abs + 1, b.size())`, and `bbc` denotes the
 /// `accum_mul_q120_bc` + `accum_to_q120b` product.
 ///
@@ -260,8 +260,8 @@ pub fn ntt120_cnv_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize, _b_size:
 #[allow(clippy::too_many_arguments)]
 pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
     module: &impl NttModuleHandle,
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -286,7 +286,7 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -339,13 +339,13 @@ pub fn ntt120_cnv_by_const_apply_tmp_bytes(_res_size: usize, _a_size: usize, _b_
 /// res[res_col, k, n_i] = Σ_{j=j_min}^{j_max-1}  a[a_col, k_abs−j, n_i]  ×  b[j]
 /// ```
 ///
-/// where `k_abs = k + res_offset`.
+/// where `k_abs = k + cnv_offset`.
 /// Output limbs `min_size..res.size()` are zeroed.
 /// `_tmp` is unused.
 #[allow(clippy::too_many_arguments)]
 pub fn ntt120_cnv_by_const_apply<R, A, BE>(
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -364,7 +364,7 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -418,8 +418,8 @@ pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize,
 #[allow(clippy::too_many_arguments)]
 pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     module: &impl NttModuleHandle,
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     b: &B,
@@ -433,7 +433,7 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     B: CnvPVecRToRef<BE>,
 {
     if col_i == col_j {
-        ntt120_cnv_apply_dft(module, res, res_offset, res_col, a, col_i, b, col_j, &mut []);
+        ntt120_cnv_apply_dft(module, cnv_offset, res, res_col, a, col_i, b, col_j, &mut []);
         return;
     }
 
@@ -449,7 +449,7 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
