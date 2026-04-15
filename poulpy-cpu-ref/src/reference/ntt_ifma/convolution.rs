@@ -99,8 +99,8 @@ pub fn ntt_ifma_cnv_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize, _b_siz
 #[allow(clippy::too_many_arguments)]
 pub fn ntt_ifma_cnv_apply_dft<R, A, B, BE>(
     _module: &impl NttIfmaModuleHandle,
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -124,7 +124,7 @@ pub fn ntt_ifma_cnv_apply_dft<R, A, B, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -157,8 +157,8 @@ pub fn ntt_ifma_cnv_by_const_apply_tmp_bytes(_res_size: usize, _a_size: usize, _
 
 #[allow(clippy::too_many_arguments)]
 pub fn ntt_ifma_cnv_by_const_apply<R, A, BE>(
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -177,7 +177,7 @@ pub fn ntt_ifma_cnv_by_const_apply<R, A, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -205,8 +205,8 @@ pub fn ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes(_res_size: usize, _a_size: usiz
 #[allow(clippy::too_many_arguments)]
 pub fn ntt_ifma_cnv_pairwise_apply_dft<R, A, B, BE>(
     _module: &impl NttIfmaModuleHandle,
+    cnv_offset: usize,
     res: &mut R,
-    res_offset: usize,
     res_col: usize,
     a: &A,
     b: &B,
@@ -229,7 +229,7 @@ pub fn ntt_ifma_cnv_pairwise_apply_dft<R, A, B, BE>(
         let b_size = b.size();
         let bound = a_size + b_size - 1;
         let min_size = res_size.min(bound);
-        let offset = res_offset.min(bound);
+        let offset = cnv_offset.min(bound);
 
         for k in 0..min_size {
             let k_abs = k + offset;
@@ -267,7 +267,7 @@ pub fn ntt_ifma_cnv_pairwise_apply_dft<R, A, B, BE>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;

@@ -3,8 +3,6 @@
 //! Provides ct+ct, ct+pt in ZNX form, and ct+pt in RNX form, each in
 //! out-of-place and in-place form.
 
-use std::fmt::Debug;
-
 use crate::{
     CKKS, CKKSInfos,
     layouts::{
@@ -23,7 +21,6 @@ use poulpy_hal::{
 };
 
 use anyhow::Result;
-use rand_distr::num_traits::{Float, FloatConst};
 
 pub trait CKKSAddOps {
     fn add<BE: Backend>(
@@ -77,7 +74,6 @@ pub trait CKKSAddOps {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion;
@@ -90,7 +86,6 @@ pub trait CKKSAddOps {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshAddInto<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion;
@@ -194,7 +189,6 @@ impl<D: DataMut> CKKSAddOps for GLWE<D, CKKS> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
@@ -218,7 +212,6 @@ impl<D: DataMut> CKKSAddOps for GLWE<D, CKKS> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshAddInto<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion,

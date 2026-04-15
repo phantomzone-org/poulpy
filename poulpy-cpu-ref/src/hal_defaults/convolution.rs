@@ -92,8 +92,8 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -105,8 +105,8 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_by_const_apply_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -119,8 +119,8 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_by_const_apply_default<R, A>(
         _module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -136,14 +136,14 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
         let a: VecZnx<&[u8]> = a.to_ref();
         let bytes = convolution_by_const_apply_tmp_bytes(res.size(), a.size(), b.len());
         let (tmp, _) = scratch.take_slice::<i64>(bytes / size_of::<i64>());
-        convolution_by_const_apply(&mut res, res_offset, res_col, &a, a_col, b, tmp);
+        convolution_by_const_apply(cnv_offset, &mut res, res_col, &a, a_col, b, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_default<R, A, B>(
         _module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -162,13 +162,13 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
         let b: CnvPVecR<&[u8], BE> = b.to_ref();
         let bytes = convolution_apply_dft_tmp_bytes(res.size(), a.size(), b.size());
         let (tmp, _) = scratch.take_slice::<f64>(bytes / size_of::<f64>());
-        convolution_apply_dft(&mut res, res_offset, res_col, &a, a_col, &b, b_col, tmp);
+        convolution_apply_dft(cnv_offset, &mut res, res_col, &a, a_col, &b, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -181,8 +181,8 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_pairwise_apply_dft_default<R, A, B>(
         _module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         b: &B,
@@ -201,7 +201,7 @@ pub trait FFT64ConvolutionDefaults<BE: Backend>: Backend {
         let b: CnvPVecR<&[u8], BE> = b.to_ref();
         let bytes = convolution_pairwise_apply_dft_tmp_bytes(res.size(), a.size(), b.size());
         let (tmp, _) = scratch.take_slice::<f64>(bytes / size_of::<f64>());
-        convolution_pairwise_apply_dft(&mut res, res_offset, res_col, &a, &b, i, j, tmp);
+        convolution_pairwise_apply_dft(cnv_offset, &mut res, res_col, &a, &b, i, j, tmp);
     }
 
     fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, res_size: usize, a_size: usize) -> usize
@@ -280,8 +280,8 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -293,8 +293,8 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_by_const_apply_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -307,8 +307,8 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_by_const_apply_default<R, A>(
         _module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -322,14 +322,14 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt120_cnv_by_const_apply_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_by_const_apply::<R, A, BE>(res, res_offset, res_col, a, a_col, b, tmp);
+        ntt120_cnv_by_const_apply::<R, A, BE>(cnv_offset, res, res_col, a, a_col, b, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -346,13 +346,13 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt120_cnv_apply_dft_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, a_col, b, b_col, tmp);
+        ntt120_cnv_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, a_col, b, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -365,8 +365,8 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_pairwise_apply_dft_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         b: &B,
@@ -383,7 +383,7 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt120_cnv_pairwise_apply_dft_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_pairwise_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, b, i, j, tmp);
+        ntt120_cnv_pairwise_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, b, i, j, tmp);
     }
 
     fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
@@ -460,8 +460,8 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -473,8 +473,8 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
 
     fn cnv_by_const_apply_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -487,8 +487,8 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_by_const_apply_default<R, A>(
         _module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -502,14 +502,14 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt_ifma_cnv_by_const_apply_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt_ifma_cnv_by_const_apply::<R, A, BE>(res, res_offset, res_col, a, a_col, b, tmp);
+        ntt_ifma_cnv_by_const_apply::<R, A, BE>(cnv_offset, res, res_col, a, a_col, b, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -526,13 +526,13 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt_ifma_cnv_apply_dft_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt_ifma_cnv_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, a_col, b, b_col, tmp);
+        ntt_ifma_cnv_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, a_col, b, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
         _module: &Module<BE>,
+        _cnv_offset: usize,
         res_size: usize,
-        _res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize
@@ -545,8 +545,8 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_pairwise_apply_dft_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         b: &B,
@@ -563,7 +563,7 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     {
         let bytes = ntt_ifma_cnv_pairwise_apply_dft_tmp_bytes(0, 0, 0);
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt_ifma_cnv_pairwise_apply_dft::<R, A, B, BE>(module, res, res_offset, res_col, a, b, i, j, tmp);
+        ntt_ifma_cnv_pairwise_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, b, i, j, tmp);
     }
 
     fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize

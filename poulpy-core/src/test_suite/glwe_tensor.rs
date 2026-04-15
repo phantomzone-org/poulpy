@@ -86,7 +86,7 @@ where
             (module)
                 .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
                 .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
-                .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, 0, &a, &b))
+                .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, &a, &b))
                 .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
                 .max(module.glwe_tensor_relinearize_tmp_bytes(&res_relin, &res_tensor, &tsk_infos)),
         );
@@ -157,7 +157,7 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_tensor_apply(&mut res_tensor, scale + res_offset, &a, &b, scratch.borrow());
+            module.glwe_tensor_apply(scale + res_offset, &mut res_tensor, &a, &b, scratch.borrow());
 
             module.glwe_tensor_decrypt(&res_tensor, &mut pt_have, &sk_dft, &sk_tensor_prep, scratch.borrow());
             module.vec_znx_normalize(
@@ -256,8 +256,8 @@ where
             (module)
                 .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
                 .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
-                .max(module.glwe_tensor_square_apply_tmp_bytes(&res_square, 0, &a))
-                .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, 0, &a, &a))
+                .max(module.glwe_tensor_square_apply_tmp_bytes(&res_square, &a))
+                .max(module.glwe_tensor_apply_tmp_bytes(&res_tensor, &a, &a))
                 .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
                 .max(module.glwe_tensor_relinearize_tmp_bytes(&res_relin_square, &res_square, &tsk_infos))
                 .max(module.glwe_tensor_relinearize_tmp_bytes(&res_relin_tensor, &res_tensor, &tsk_infos)),
@@ -306,8 +306,8 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_tensor_square_apply(&mut res_square, scale + res_offset, &a, scratch.borrow());
-            module.glwe_tensor_apply(&mut res_tensor, scale + res_offset, &a, &a, scratch.borrow());
+            module.glwe_tensor_square_apply(scale + res_offset, &mut res_square, &a, scratch.borrow());
+            module.glwe_tensor_apply(scale + res_offset, &mut res_tensor, &a, &a, scratch.borrow());
 
             assert_eq!(res_square.data().raw(), res_tensor.data().raw());
 
@@ -386,8 +386,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             (module)
                 .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
-                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
-                .max(module.glwe_mul_plain_tmp_bytes(&res, 0, &a, &pt_b)),
+                .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos)),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
@@ -429,8 +428,10 @@ where
             scratch.borrow(),
         );
 
+        let mut scratch_cnv = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(&res, &a, &pt_b));
+
         for res_offset in 0..scale {
-            module.glwe_mul_plain(&mut res, scale + res_offset, &a, &pt_b, scratch.borrow());
+            module.glwe_mul_plain(scale + res_offset, &mut res, &a, &pt_b, scratch_cnv.borrow());
 
             module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
             module.vec_znx_normalize(
@@ -505,7 +506,7 @@ where
             (module)
                 .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
                 .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
-                .max(module.glwe_mul_const_tmp_bytes(&res, 0, &a, b_size)),
+                .max(module.glwe_mul_const_tmp_bytes(&res, &a, b_size)),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
@@ -555,7 +556,7 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_mul_const(&mut res, scale + res_offset, &a, &b_const, scratch.borrow());
+            module.glwe_mul_const(scale + res_offset, &mut res, &a, &b_const, scratch.borrow());
 
             module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
             module.vec_znx_normalize(

@@ -155,13 +155,13 @@ where
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain(&mut ct_out, 0, &ct_in, &pt, scratch.borrow());
+            module.glwe_mul_plain(0, &mut ct_out, &ct_in, &pt, scratch.borrow());
             black_box(());
         })
     });
@@ -179,13 +179,13 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain_inplace(&mut ct, 0, &pt, scratch.borrow());
+            module.glwe_mul_plain_inplace(0, &mut ct, &pt, scratch.borrow());
             black_box(());
         })
     });

@@ -160,13 +160,16 @@ impl<D: Data> CKKSOffset for GLWE<D, CKKS> {
         A: LWEInfos + CKKSInfos,
         B: LWEInfos + CKKSInfos,
     {
-        a.max_k().min(b.max_k()).as_usize().saturating_sub(self.max_k().as_usize())
+        a.effective_k()
+            .min(b.effective_k())
+            .as_usize()
+            .saturating_sub(self.max_k().as_usize())
     }
 
     fn offset_unary<A>(&self, a: &A) -> usize
     where
         A: LWEInfos + CKKSInfos,
     {
-        a.max_k().as_usize().saturating_sub(self.max_k().as_usize())
+        a.effective_k().as_usize().saturating_sub(self.max_k().as_usize())
     }
 }

@@ -55,19 +55,19 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module
-            .cnv_by_const_apply_tmp_bytes(res_size, 0, a_size, b_size)
+            .cnv_by_const_apply_tmp_bytes(0, res_size, a_size, b_size)
             .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
     for a_col in 0..a.cols() {
-        for offset in 0..res_size {
-            module.cnv_by_const_apply(&mut res_big, offset, 0, &a, a_col, &b_const, scratch.borrow());
+        for cnv_offset in 0..res_size {
+            module.cnv_by_const_apply(cnv_offset, &mut res_big, 0, &a, a_col, &b_const, scratch.borrow());
             module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
 
             bivariate_convolution_naive(
                 module,
                 base2k,
-                (offset + 1) as i64,
+                (cnv_offset + 1) as i64,
                 &mut res_want,
                 0,
                 &a,
@@ -121,7 +121,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module
-            .cnv_apply_dft_tmp_bytes(res_size, 0, a_size, b_size)
+            .cnv_apply_dft_tmp_bytes(0, res_size, a_size, b_size)
             .max(module.cnv_prepare_left_tmp_bytes(res_size, a_size))
             .max(module.cnv_prepare_right_tmp_bytes(res_size, b_size))
             .max(module.vec_znx_big_normalize_tmp_bytes()),
@@ -132,8 +132,8 @@ where
 
     for a_col in 0..a.cols() {
         for b_col in 0..b.cols() {
-            for offset in 0..res_size {
-                module.cnv_apply_dft(&mut res_dft, offset, 0, &a_prep, a_col, &b_prep, b_col, scratch.borrow());
+            for cnv_offset in 0..res_size {
+                module.cnv_apply_dft(cnv_offset, &mut res_dft, 0, &a_prep, a_col, &b_prep, b_col, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
                 module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
@@ -141,7 +141,7 @@ where
                 bivariate_convolution_naive(
                     module,
                     base2k,
-                    (offset + 1) as i64,
+                    (cnv_offset + 1) as i64,
                     &mut res_want,
                     0,
                     &a,
@@ -210,8 +210,8 @@ where
 
     for col_i in 0..cols {
         for col_j in 0..cols {
-            for offset in 0..res_size {
-                module.cnv_pairwise_apply_dft(&mut res_dft, offset, 0, &a_prep, &b_prep, col_i, col_j, scratch.borrow());
+            for cnv_offset in 0..res_size {
+                module.cnv_pairwise_apply_dft(cnv_offset, &mut res_dft, 0, &a_prep, &b_prep, col_i, col_j, scratch.borrow());
 
                 module.vec_znx_idft_apply_tmpa(&mut res_big, 0, &mut res_dft, 0);
                 module.vec_znx_big_normalize(&mut res_have, base2k, 0, 0, &res_big, base2k, 0, scratch.borrow());
@@ -227,7 +227,7 @@ where
                 bivariate_convolution_naive(
                     module,
                     base2k,
-                    (offset + 1) as i64,
+                    (cnv_offset + 1) as i64,
                     &mut res_want,
                     0,
                     &tmp_a,

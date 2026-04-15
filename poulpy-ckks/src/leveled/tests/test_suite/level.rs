@@ -1,6 +1,6 @@
 //! Level-management tests: rescale-adjacent helpers, scale-preserving division, and precision drops.
 
-use super::helpers::{TestContext, assert_precision, assert_valid_ciphertext};
+use super::helpers::{TestContext, TestLevelBackend, assert_precision, assert_valid_ciphertext};
 use crate::{
     layouts::ciphertext::CKKS,
     leveled::{
@@ -11,29 +11,14 @@ use crate::{
         },
     },
 };
-use poulpy_core::{
-    GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWE, GLWESecretPreparedFactory, LWEInfos, TorusPrecision},
-};
+use poulpy_core::layouts::{Base2K, Degree, GLWE, LWEInfos, TorusPrecision};
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, ScratchOwned},
 };
 
 /// Verifies scale-preserving division by `2^bits` (out-of-place and in-place).
-pub fn test_div_pow2<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWECopy
-        + GLWEShift<BE>
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_div_pow2<BE: TestLevelBackend>(ctx: &TestContext<BE>) {
     let bits = 7usize;
     let scale = (1u64 << bits) as f64;
     let m = ctx.module.n() / 2;
@@ -81,19 +66,7 @@ where
 
 /// Verifies division by `2^bits` while reducing `torus_scale_bits` by the same amount.
 /// Decoding should still recover the original message, but with fewer scale bits.
-pub fn test_drop_scaling_precision<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWECopy
-        + GLWEShift<BE>
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_drop_scaling_precision<BE: TestLevelBackend>(ctx: &TestContext<BE>) {
     let bits = 7usize;
     let m = ctx.module.n() / 2;
     let base2k = Base2K(ctx.params.base2k);
@@ -154,17 +127,7 @@ where
 
 /// Verifies prefix truncation: lowering the torus precision updates `offset_bits`
 /// but preserves the decoded message and `torus_scale_bits`.
-pub fn test_drop_torus_precision<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalize<BE>
-        + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_drop_torus_precision<BE: TestLevelBackend>(ctx: &TestContext<BE>) {
     let degree = Degree(ctx.params.n);
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);

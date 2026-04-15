@@ -55,7 +55,7 @@ const MAX_CNV_J_RANGE: usize = 128;
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     res: &mut R,
-    res_offset: usize,
+    cnv_offset: usize,
     res_col: usize,
     a: &A,
     a_col: usize,
@@ -77,7 +77,7 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -143,7 +143,7 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     res: &mut R,
-    res_offset: usize,
+    cnv_offset: usize,
     res_col: usize,
     a: &A,
     b: &B,
@@ -155,7 +155,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     B: CnvPVecRToRef<NTTIfma>,
 {
     if col_0 == col_1 {
-        unsafe { cnv_apply_dft_ifma(res, res_offset, res_col, a, col_0, b, col_1) };
+        unsafe { cnv_apply_dft_ifma(res, cnv_offset, res_col, a, col_0, b, col_1) };
         return;
     }
 
@@ -170,7 +170,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
 
     let bound = a_size + b_size - 1;
     let min_size = res_size.min(bound);
-    let offset = res_offset.min(bound);
+    let offset = cnv_offset.min(bound);
     // Values are in [0, 2q) per lane. After adding two: [0, 4q) < 2^42.
     // This fits within MADD52's 52-bit input window, so no intermediate
     // reduction is needed — the accumulation is still mathematically exact.

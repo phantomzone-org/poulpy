@@ -3,8 +3,6 @@
 //! Provides ct-ct, ct-pt in ZNX form, and ct-pt in RNX form, each in
 //! out-of-place and in-place form.
 
-use std::fmt::Debug;
-
 use crate::{
     CKKS, CKKSInfos,
     layouts::{
@@ -23,7 +21,6 @@ use poulpy_hal::{
 };
 
 use anyhow::Result;
-use rand_distr::num_traits::{Float, FloatConst};
 
 pub trait CKKSSubOps {
     fn sub_tmp_bytes<BE: Backend>(module: &Module<BE>) -> usize
@@ -74,7 +71,6 @@ pub trait CKKSSubOps {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshSub<BE> + GLWEShift<BE>,
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -88,7 +84,6 @@ pub trait CKKSSubOps {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshSub<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion;
@@ -192,7 +187,6 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshSub<BE> + GLWEShift<BE>,
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -217,7 +211,6 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        F: Float + FloatConst + Debug,
         Module<BE>: VecZnxRshSub<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextRnx<F>: CKKSPlaintextConversion,

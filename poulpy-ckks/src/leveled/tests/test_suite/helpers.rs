@@ -8,31 +8,28 @@ use std::collections::HashMap;
 
 use super::CKKSTestParams;
 use crate::{
-    CKKS,
-    layouts::plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_znx},
+    CKKS, CKKSInfos,
+    layouts::plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta},
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
-        operations::mul::CKKSMulOps,
+        operations::{mul::CKKSMulOps, pt_znx::CKKSPlaintextZnxOps},
     },
 };
 use poulpy_core::{
-    GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEShift, GLWETensorKeyEncryptSk, GLWETensoring,
-    ScratchTakeCore,
+    EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEDecrypt, GLWEMulPlain, GLWENegate,
+    GLWENormalize, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
-        GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
-        TorusPrecision, prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
+        GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
+        prepared::GLWESecretPrepared,
     },
     oep::CoreImpl,
 };
 use poulpy_cpu_ref::FFT64Ref;
 
 use poulpy_hal::{
-    api::{
-        ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxLsh, VecZnxLshInplace, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VecZnxRshAddInto,
-    },
-    layouts::{Backend, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned},
+    api::{ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRshAddInto, VecZnxRshSub},
+    layouts::{Backend, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned, ZnxView},
     oep::HalImpl,
     source::Source,
 };
@@ -40,6 +37,172 @@ use poulpy_hal::{
 pub trait TestBackend: Backend + CoreImpl<Self> + HalImpl<Self> {}
 
 impl<T> TestBackend for T where T: Backend + CoreImpl<T> + HalImpl<T> {}
+
+pub trait TestContextBackend: TestBackend
+where
+    Module<Self>: ModuleNew<Self>
+        + ModuleN
+        + GLWESecretPreparedFactory<Self>
+        + GLWETensorKeyEncryptSk<Self>
+        + GLWETensorKeyPreparedFactory<Self>
+        + GLWEAutomorphismKeyEncryptSk<Self>
+        + GLWEAutomorphism<Self>
+        + GLWETensoring<Self>
+        + CKKSEncrypt<Self>
+        + CKKSDecrypt<Self>,
+    ScratchOwned<Self>: ScratchOwnedAlloc<Self> + ScratchOwnedBorrow<Self>,
+    Scratch<Self>: ScratchTakeCore<Self>,
+{
+}
+
+impl<T> TestContextBackend for T
+where
+    T: TestBackend,
+    Module<T>: ModuleNew<T>
+        + ModuleN
+        + GLWESecretPreparedFactory<T>
+        + GLWETensorKeyEncryptSk<T>
+        + GLWETensorKeyPreparedFactory<T>
+        + GLWEAutomorphismKeyEncryptSk<T>
+        + GLWEAutomorphism<T>
+        + GLWETensoring<T>
+        + CKKSEncrypt<T>
+        + CKKSDecrypt<T>,
+    ScratchOwned<T>: ScratchOwnedAlloc<T> + ScratchOwnedBorrow<T>,
+    Scratch<T>: ScratchTakeCore<T>,
+{
+}
+
+pub trait TestCiphertextBackend: TestBackend
+where
+    Module<Self>: CKKSEncrypt<Self> + CKKSDecrypt<Self>,
+    ScratchOwned<Self>: ScratchOwnedAlloc<Self> + ScratchOwnedBorrow<Self>,
+    Scratch<Self>: ScratchTakeCore<Self>,
+{
+}
+
+impl<T> TestCiphertextBackend for T
+where
+    T: TestBackend,
+    Module<T>: CKKSEncrypt<T> + CKKSDecrypt<T>,
+    ScratchOwned<T>: ScratchOwnedAlloc<T> + ScratchOwnedBorrow<T>,
+    Scratch<T>: ScratchTakeCore<T>,
+{
+}
+
+pub trait TestAddBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWEAdd + GLWEShift<Self> + VecZnxRshAddInto<Self>,
+    Scratch<Self>: ScratchAvailable,
+{
+}
+
+impl<T> TestAddBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWEAdd + GLWEShift<T> + VecZnxRshAddInto<T>,
+    Scratch<T>: ScratchAvailable,
+{
+}
+
+pub trait TestSubBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWESub + GLWEShift<Self> + VecZnxRshSub<Self>,
+    Scratch<Self>: ScratchAvailable,
+{
+}
+
+impl<T> TestSubBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWESub + GLWEShift<T> + VecZnxRshSub<T>,
+    Scratch<T>: ScratchAvailable,
+{
+}
+
+pub trait TestNegBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWENegate + GLWEShift<Self>,
+    Scratch<Self>: ScratchAvailable,
+{
+}
+
+impl<T> TestNegBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWENegate + GLWEShift<T>,
+    Scratch<T>: ScratchAvailable,
+{
+}
+
+pub trait TestRotateBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWEAutomorphism<Self>,
+    Scratch<Self>: ScratchAvailable,
+{
+}
+
+impl<T> TestRotateBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWEAutomorphism<T>,
+    Scratch<T>: ScratchAvailable,
+{
+}
+
+pub trait TestMulBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWETensoring<Self> + GLWEShift<Self>,
+    Scratch<Self>: ScratchAvailable,
+{
+}
+
+impl<T> TestMulBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWETensoring<T> + GLWEShift<T>,
+    Scratch<T>: ScratchAvailable,
+{
+}
+
+pub trait TestPow2Backend: TestCiphertextBackend
+where
+    Module<Self>: GLWEShift<Self> + GLWECopy,
+{
+}
+
+impl<T> TestPow2Backend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWEShift<T> + GLWECopy,
+{
+}
+
+pub trait TestLevelBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWEShift<Self> + GLWECopy,
+{
+}
+
+impl<T> TestLevelBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWEShift<T> + GLWECopy,
+{
+}
+
+pub trait TestCompositionBackend: TestCiphertextBackend
+where
+    Module<Self>: GLWEAdd + GLWEMulPlain<Self> + GLWENormalize<Self> + GLWEShift<Self> + GLWETensoring<Self>,
+{
+}
+
+impl<T> TestCompositionBackend for T
+where
+    T: TestCiphertextBackend,
+    Module<T>: GLWEAdd + GLWEMulPlain<T> + GLWENormalize<T> + GLWEShift<T> + GLWETensoring<T>,
+{
+}
 
 /// Shared test state: module, keys, and two complex test messages.
 ///
@@ -60,10 +223,7 @@ pub struct TestContext<BE: TestBackend> {
     pub im2: Vec<f64>,
 }
 
-impl<BE: TestBackend> TestContext<BE>
-where
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-{
+impl<BE: TestBackend> TestContext<BE> {
     pub fn degree(&self) -> Degree {
         self.params.n.into()
     }
@@ -72,30 +232,18 @@ where
         self.params.base2k.into()
     }
 
-    pub fn rank(&self) -> poulpy_core::layouts::Rank {
-        self.params.glwe_layout().rank()
-    }
-
     pub fn meta(&self) -> CKKS {
         self.params.prec
     }
 
+    pub fn max_k(&self) -> usize {
+        self.params.k
+    }
+}
+
+impl<BE: TestContextBackend> TestContext<BE> {
     /// Creates a base context with a prepared secret key and two test messages.
-    pub fn new(params: CKKSTestParams, rotations: &[i64]) -> Self
-    where
-        Module<BE>: poulpy_hal::api::ModuleNew<BE>
-            + GLWESecretPreparedFactory<BE>
-            + GLWETensorKeyEncryptSk<BE>
-            + GLWETensorKeyPreparedFactory<BE>
-            + GLWEAutomorphismKeyEncryptSk<BE>
-            + GLWEAutomorphism<BE>
-            + GLWEShift<BE>
-            + GLWETensoring<BE>
-            + CKKSEncrypt<BE>
-            + CKKSDecrypt<BE>,
-        ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
+    pub fn new(params: CKKSTestParams, rotations: &[i64]) -> Self {
         let module = Module::<BE>::new(params.n as u64);
         let m = module.n() / 2;
         let glwe_infos = params.glwe_layout();
@@ -172,7 +320,9 @@ where
             im2: (0..m).map(|i| -0.6 * (i as f64) / (m as f64)).collect(),
         }
     }
+}
 
+impl<BE: TestBackend> TestContext<BE> {
     pub fn tsk(&self) -> &GLWETensorKeyPrepared<DeviceBuf<BE>, BE> {
         &self.tsk
     }
@@ -188,32 +338,28 @@ where
     }
 
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
-    pub fn encrypt(&self, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> GLWE<Vec<u8>, CKKS>
+    pub fn encrypt(&self, k: usize, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> GLWE<Vec<u8>, CKKS>
     where
-        Module<BE>: ModuleN + GLWEEncryptSk<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE>,
-        ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
+        Module<BE>: CKKSEncrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
 
         self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
 
-        let mut pt_znx = alloc_znx(self.degree(), self.base2k(), self.meta());
+        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), self.meta());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
 
-        let mut ct = CKKS::alloc_from_infos(&self.params.glwe_layout()).unwrap();
+        let mut ct = self.alloc_ct(k);
         let mut xa = Source::new([3u8; 32]);
         let mut xe = Source::new([4u8; 32]);
+
+        let mut layout = self.params.glwe_layout().layout;
+        layout.k = k.into();
+        let enc_infos = EncryptionLayout::new_from_default_sigma(layout).unwrap();
+
         self.module
-            .ckks_encrypt_sk(
-                &mut ct,
-                &pt_znx,
-                &self.sk,
-                &self.params.glwe_layout(),
-                &mut xa,
-                &mut xe,
-                scratch,
-            )
+            .ckks_encrypt_sk(&mut ct, &pt_znx, &self.sk, &enc_infos, &mut xa, &mut xe, scratch)
             .unwrap();
         ct
     }
@@ -225,12 +371,19 @@ where
         scratch: &mut Scratch<BE>,
     ) -> (Vec<f64>, Vec<f64>)
     where
-        Module<BE>: ModuleN + GLWEDecrypt<BE> + GLWEShift<BE> + VecZnxLsh<BE> + VecZnxLshInplace<BE> + VecZnxCopy,
-        ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
+        Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let mut pt_znx = alloc_znx(self.degree(), ct.base2k(), self.params.prec);
-        self.module.ckks_decrypt(&mut pt_znx, ct, &self.sk, scratch).unwrap();
+        let mut pt_znx = alloc_pt_znx(self.degree().into(), ct.base2k(), self.params.prec);
+        let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
+        let mut full_pt = attach_meta(full_pt, ct.meta());
+        self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);
+        println!("full_pt: {full_pt}");
+        assert!(
+            full_pt.data().at(0, 0).iter().all(|&x| x == 0),
+            "invalid decryption, plaintext overflow: {full_pt}"
+        );
+        self.module.ckks_extract_pt_znx(&mut pt_znx, &full_pt, scratch_rest).unwrap();
 
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
         pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
@@ -341,15 +494,10 @@ where
         (re, im)
     }
 
-    /// Allocates a fresh full-precision result ciphertext.
-    pub fn alloc_ct(&self) -> GLWE<Vec<u8>, CKKS> {
-        CKKS::alloc_from_infos(&self.params.glwe_layout()).unwrap()
-    }
-
     /// Allocates a ciphertext with one fewer limb than the default (k − base2k).
-    pub fn alloc_ct_reduced_k(&self) -> GLWE<Vec<u8>, CKKS> {
+    pub fn alloc_ct(&self, k: usize) -> GLWE<Vec<u8>, CKKS> {
         let mut layout = self.params.glwe_layout();
-        layout.layout.k = TorusPrecision(layout.layout.k.as_u32() - self.params.base2k as u32);
+        layout.layout.k = k.into();
         CKKS::alloc_from_infos(&layout).unwrap()
     }
 
@@ -363,7 +511,7 @@ where
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
     pub fn encode_pt_znx(&self) -> CKKSPlaintextZnx<Vec<u8>> {
         let pt_rnx = self.encode_pt_rnx();
-        let mut pt_znx = alloc_znx(self.degree(), self.base2k(), self.meta());
+        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), self.meta());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         pt_znx
     }
@@ -378,8 +526,7 @@ where
         min_bits: f64,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: ModuleN + GLWEDecrypt<BE> + VecZnxLsh<BE> + VecZnxLshInplace<BE> + VecZnxCopy,
-        ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
+        Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let (re_out, im_out) = self.decrypt_decode(ct, scratch);

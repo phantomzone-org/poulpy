@@ -1,6 +1,6 @@
 //! Composition tests: multi-step CKKS evaluation paths that combine primitives.
 
-use super::helpers::{TestContext, assert_precision};
+use super::helpers::{TestCompositionBackend, TestContext, assert_precision};
 use crate::layouts::{ciphertext::CKKS, plaintext_prepared::CKKSPlaintextPrepared};
 use crate::leveled::{
     encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
@@ -10,13 +10,10 @@ use crate::leveled::{
         mul::{mul, mul_prepared_pt, mul_pt_tmp_bytes, mul_tmp_bytes, square, square_tmp_bytes},
     },
 };
-use poulpy_core::{
-    GLWEAdd, GLWENormalize, GLWEDecrypt, GLWEEncryptSk, GLWEMulPlain, GLWEShift, GLWETensoring, ScratchTakeCore,
-    layouts::{Base2K, Degree, GLWE, GLWESecretPreparedFactory, TorusPrecision},
-};
+use poulpy_core::layouts::{Base2K, Degree, GLWE, TorusPrecision};
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, ScratchOwned},
 };
 
 fn poly2_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, f64), c2: (f64, f64)) -> (Vec<f64>, Vec<f64>) {
@@ -60,19 +57,7 @@ fn mul_by_y_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, 
 }
 
 /// Adding two prepared-plaintext products computed from the same branch stays accurate.
-pub fn test_prepared_linear_sum<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWEAdd,
-    Module<BE>: VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
     let degree = Degree(ctx.params.n);
@@ -108,20 +93,7 @@ where
 }
 
 /// A prepared `c1*x + c2*x^2` sum spans mixed offsets and stays accurate.
-pub fn test_prepared_poly2_sum<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
-        + GLWETensoring<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let tsk = ctx.tsk();
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
@@ -168,20 +140,7 @@ where
 }
 
 /// Explicit alignment remains a no-op-compatible path for the prepared poly2 sum.
-pub fn test_prepared_poly2_sum_aligned<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
-        + GLWETensoring<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_poly2_sum_aligned<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let tsk = ctx.tsk();
     let base2k = Base2K(ctx.params.base2k);
     let k = TorusPrecision(ctx.params.k);
@@ -225,19 +184,7 @@ where
 }
 
 /// A prepared `c*x^2` branch keeps its natural lower offset and decrypts correctly after alignment.
-pub fn test_prepared_poly2_term_align<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWENormalize<BE>
-        + GLWETensoring<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_poly2_term_align<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let tsk = ctx.tsk();
     let m = ctx.module.n() / 2;
     let base2k = Base2K(ctx.params.base2k);
@@ -304,19 +251,7 @@ where
 }
 
 /// A prepared `c*x^2` branch decrypts correctly with its own lower-precision metadata.
-pub fn test_prepared_poly2_term<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWENormalize<BE>
-        + GLWETensoring<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_poly2_term<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let tsk = ctx.tsk();
     let m = ctx.module.n() / 2;
     let base2k = Base2K(ctx.params.base2k);
@@ -371,20 +306,7 @@ where
 }
 
 /// Evaluates `y * (c0 + c1*x + c2*x^2)` with encrypted `x` and `y`.
-pub fn test_prepared_poly2_mul<BE: Backend>(ctx: &TestContext<BE>)
-where
-    Module<BE>: ModuleN
-        + GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWEMulPlain<BE>
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>
-        + GLWETensoring<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+pub fn test_prepared_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let tsk = ctx.tsk();
     let m = ctx.module.n() / 2;
     let zero = vec![0.0; m];

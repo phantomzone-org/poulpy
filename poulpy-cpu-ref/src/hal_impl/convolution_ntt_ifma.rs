@@ -26,33 +26,33 @@ macro_rules! hal_impl_convolution_ntt_ifma {
 
         fn cnv_apply_dft_tmp_bytes(
             module: &Module<Self>,
+            cnv_offset: usize,
             res_size: usize,
-            res_offset: usize,
             a_size: usize,
             b_size: usize,
         ) -> usize {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_apply_dft_tmp_bytes_default(
-                module, res_size, res_offset, a_size, b_size,
+                module, cnv_offset, res_size, a_size, b_size,
             )
         }
 
         fn cnv_by_const_apply_tmp_bytes(
             module: &Module<Self>,
+            cnv_offset: usize,
             res_size: usize,
-            res_offset: usize,
             a_size: usize,
             b_size: usize,
         ) -> usize {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_by_const_apply_tmp_bytes_default(
-                module, res_size, res_offset, a_size, b_size,
+                module, cnv_offset, res_size, a_size, b_size,
             )
         }
 
         #[allow(clippy::too_many_arguments)]
         fn cnv_by_const_apply<R, A>(
             module: &Module<Self>,
+            cnv_offset: usize,
             res: &mut R,
-            res_offset: usize,
             res_col: usize,
             a: &A,
             a_col: usize,
@@ -63,15 +63,15 @@ macro_rules! hal_impl_convolution_ntt_ifma {
             A: VecZnxToRef,
         {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_by_const_apply_default(
-                module, res, res_offset, res_col, a, a_col, b, scratch,
+                module, cnv_offset, res, res_col, a, a_col, b, scratch,
             )
         }
 
         #[allow(clippy::too_many_arguments)]
         fn cnv_apply_dft<R, A, B>(
             module: &Module<Self>,
+            cnv_offset: usize,
             res: &mut R,
-            res_offset: usize,
             res_col: usize,
             a: &A,
             a_col: usize,
@@ -84,27 +84,27 @@ macro_rules! hal_impl_convolution_ntt_ifma {
             B: CnvPVecRToRef<Self>,
         {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_apply_dft_default(
-                module, res, res_offset, res_col, a, a_col, b, b_col, scratch,
+                module, cnv_offset, res, res_col, a, a_col, b, b_col, scratch,
             )
         }
 
         fn cnv_pairwise_apply_dft_tmp_bytes(
             module: &Module<Self>,
+            cnv_offset: usize,
             res_size: usize,
-            res_offset: usize,
             a_size: usize,
             b_size: usize,
         ) -> usize {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_pairwise_apply_dft_tmp_bytes_default(
-                module, res_size, res_offset, a_size, b_size,
+                module, cnv_offset, res_size, a_size, b_size,
             )
         }
 
         #[allow(clippy::too_many_arguments)]
         fn cnv_pairwise_apply_dft<R, A, B>(
             module: &Module<Self>,
+            cnv_offset: usize,
             res: &mut R,
-            res_offset: usize,
             res_col: usize,
             a: &A,
             b: &B,
@@ -117,7 +117,7 @@ macro_rules! hal_impl_convolution_ntt_ifma {
             B: CnvPVecRToRef<Self>,
         {
             <Self as NTTIfmaConvolutionDefaults<Self>>::cnv_pairwise_apply_dft_default(
-                module, res, res_offset, res_col, a, b, i, j, scratch,
+                module, cnv_offset, res, res_col, a, b, i, j, scratch,
             )
         }
 
