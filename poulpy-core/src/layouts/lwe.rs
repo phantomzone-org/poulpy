@@ -23,6 +23,7 @@ pub trait LWEInfos {
     fn max_k(&self) -> TorusPrecision {
         TorusPrecision(self.size() as u32 * self.base2k().as_u32())
     }
+
     /// Returns the base-2-log of the limb width used for the RNS/CRT representation.
     fn base2k(&self) -> Base2K;
     /// Returns the number of limbs, i.e. `ceil(k / base2k)`.

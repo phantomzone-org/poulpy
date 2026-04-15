@@ -50,7 +50,7 @@ pub trait CKKSInfos {
     fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()>;
     fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()>;
 
-    fn effective_k(&self) -> TorusPrecision {
-        (self.log_decimal() + self.log_hom_rem()).into()
+    fn effective_k(&self) -> usize {
+        self.log_decimal() + self.log_hom_rem()
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     api::{GLWEDecrypt, GLWETensorDecrypt, LWEDecrypt},
     layouts::{
         GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretPreparedToRef, GLWESecretTensorPrepared,
-        GLWETensor, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetGLWEInfos, SetLWEInfos,
+        GLWETensor, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
     oep::CoreImpl,
 };
@@ -23,7 +23,7 @@ where
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: crate::layouts::GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         BE::glwe_decrypt(self, res, pt, sk, scratch)

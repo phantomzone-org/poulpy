@@ -54,7 +54,7 @@ impl<D: DataMut> CKKSPow2Ops for GLWE<D, CKKS> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let offset = self.offset_unary(other);
-        module.glwe_lsh(self, other, bits, scratch);
+        module.glwe_lsh(self, other, bits + offset, scratch);
         self.meta = other.meta();
         self.set_log_hom_rem(self.log_hom_rem() - offset)?;
         Ok(())

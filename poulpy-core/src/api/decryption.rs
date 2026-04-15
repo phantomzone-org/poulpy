@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
 
 use crate::layouts::{
     GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretPreparedToRef, GLWESecretTensorPrepared,
-    GLWETensor, GLWEToRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetGLWEInfos, SetLWEInfos,
+    GLWETensor, GLWEToRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
 };
 
 pub trait GLWEDecrypt<BE: Backend> {
@@ -13,7 +13,7 @@ pub trait GLWEDecrypt<BE: Backend> {
     fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos;
 }
 

@@ -28,12 +28,12 @@ pub trait GLWEMulConstDefault<BE: Backend> {
         R: GLWEInfos,
         A: GLWEInfos;
 
-    fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, cnv_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef;
 
-    fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, cnv_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
 }
@@ -63,7 +63,7 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_mul_const<R, A>(&self, res: &mut GLWE<R>, cnv_offset: usize, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
         A: DataRef,
@@ -99,7 +99,7 @@ where
         }
     }
 
-    fn glwe_mul_const_inplace<R>(&self, res: &mut GLWE<R>, cnv_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut,
     {
@@ -188,12 +188,15 @@ where
         lvl_0 + lvl_1.max(lvl_2)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain<R, A, B, BM>(
         &self,
-        res: &mut GLWE<R>,
         cnv_offset: usize,
+        res: &mut GLWE<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -208,8 +211,10 @@ where
             self.glwe_mul_plain_tmp_bytes(res, a, b)
         );
 
-        let a_base2k: usize = a.base2k().as_usize();
-        assert_eq!(b.base2k().as_usize(), a_base2k);
+        let ab_base2k: usize = a.base2k().as_usize();
+        assert_eq!(b.base2k().as_usize(), ab_base2k);
+        assert_eq!(a_effective_k.div_ceil(ab_base2k), a.size());
+        assert_eq!(b_effective_k.div_ceil(ab_base2k), b.size());
         let res_base2k: usize = res.base2k().as_usize();
 
         let cols: usize = res.rank().as_usize() + 1;
@@ -217,13 +222,16 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
+        let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
+        let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
 
-        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
-            (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
+        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch_2);
+
+        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
+            (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
         } else {
-            ((cnv_offset / a_base2k).saturating_sub(1), (cnv_offset % a_base2k) as i64)
+            ((cnv_offset / ab_base2k).saturating_sub(1), (cnv_offset % ab_base2k) as i64)
         };
 
         let res_dft_size = res
@@ -237,15 +245,27 @@ where
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, 0, scratch_3);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
 
-            self.vec_znx_big_normalize(res.data_mut(), res_base2k, cnv_offset_lo, i, &res_big, a_base2k, 0, scratch_3);
+            self.vec_znx_big_normalize(
+                res.data_mut(),
+                res_base2k,
+                cnv_offset_lo,
+                i,
+                &res_big,
+                ab_base2k,
+                0,
+                scratch_3,
+            );
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace<R, A, AM>(
         &self,
-        res: &mut GLWE<R>,
         cnv_offset: usize,
+        res: &mut GLWE<R>,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -259,22 +279,26 @@ where
             self.glwe_mul_plain_tmp_bytes(res_ref, res_ref, a)
         );
 
-        let a_base2k: usize = a.base2k().as_usize();
-        let res_base2k: usize = res.base2k().as_usize();
-        assert_eq!(res_base2k, a_base2k);
+        let ab_base2k: usize = a.base2k().as_usize();
+        assert_eq!(res.base2k().as_usize(), ab_base2k);
+        assert_eq!(res_effective_k.div_ceil(ab_base2k), res.size());
+        assert_eq!(a_effective_k.div_ceil(ab_base2k), a.size());
 
         let cols: usize = res.rank().as_usize() + 1;
 
         let (mut res_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, res.size());
         let (mut a_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, a.size());
 
-        self.cnv_prepare_left(&mut res_prep, res.data(), !0i64, scratch_2);
-        self.cnv_prepare_right(&mut a_prep, a.data(), !0i64, scratch_2);
+        let mask_res = msb_mask_bottom_limb(ab_base2k, res_effective_k);
+        let mask_a = msb_mask_bottom_limb(ab_base2k, a_effective_k);
 
-        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
-            (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
+        self.cnv_prepare_left(&mut res_prep, res.data(), mask_res, scratch_2);
+        self.cnv_prepare_right(&mut a_prep, a.data(), mask_a, scratch_2);
+
+        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
+            (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
         } else {
-            ((cnv_offset / a_base2k).saturating_sub(1), (cnv_offset % a_base2k) as i64)
+            ((cnv_offset / ab_base2k).saturating_sub(1), (cnv_offset % ab_base2k) as i64)
         };
 
         let res_dft_size = res
@@ -287,7 +311,7 @@ where
             let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &res_prep, i, &a_prep, 0, scratch_3);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            self.vec_znx_big_normalize(res.data_mut(), res_base2k, cnv_offset_lo, i, &res_big, a_base2k, 0, scratch_3);
+            self.vec_znx_big_normalize(res.data_mut(), ab_base2k, cnv_offset_lo, i, &res_big, ab_base2k, 0, scratch_3);
         }
     }
 }
@@ -300,12 +324,15 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         A: GLWEInfos,
         B: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain<R, A, B, BM>(
         &self,
-        res: &mut GLWE<R>,
         cnv_offset: usize,
+        res: &mut GLWE<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -314,9 +341,11 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
 
     fn glwe_mul_plain_inplace<R, A, AM>(
         &self,
-        res: &mut GLWE<R>,
         cnv_offset: usize,
+        res: &mut GLWE<R>,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -354,17 +383,27 @@ pub trait GLWETensoringDefault<BE: Backend> {
         A: DataRef,
         B: DataRef;
 
-    fn glwe_tensor_square_apply<R, A>(&self, res: &mut GLWETensor<R>, cnv_offset: usize, a: &GLWE<A>, scratch: &mut Scratch<BE>)
-    where
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_square_apply<R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: DataMut,
         A: DataRef;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_apply<R, A, B>(
         &self,
-        res: &mut GLWETensor<R>,
         cnv_offset: usize,
+        res: &mut GLWETensor<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -576,8 +615,14 @@ where
         }
     }
 
-    fn glwe_tensor_square_apply<R, A>(&self, res: &mut GLWETensor<R>, cnv_offset: usize, a: &GLWE<A>, scratch: &mut Scratch<BE>)
-    where
+    fn glwe_tensor_square_apply<R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: DataMut,
         A: DataRef,
     {
@@ -589,13 +634,18 @@ where
         );
 
         let a_base2k: usize = a.base2k().as_usize();
+
+        assert_eq!(a_effective_k.div_ceil(a_base2k), a.size());
+
         let res_base2k: usize = res.base2k().as_usize();
         let cols: usize = res.rank().as_usize() + 1;
 
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, a.size());
 
-        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), !0i64, scratch_2);
+        let a_mask = msb_mask_bottom_limb(a_base2k, a_effective_k);
+
+        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), a_mask, scratch_2);
         let (mut diag_terms, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, res.size());
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
@@ -618,8 +668,9 @@ where
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res_dft_size);
             self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
-            self.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
 
+            // TODO: Do we need 2 copies?
+            self.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
             self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
         }
 
@@ -635,6 +686,7 @@ where
                 self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
                 self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
 
+                // TODO: Do we need copy?
                 self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
             }
         }
@@ -642,10 +694,12 @@ where
 
     fn glwe_tensor_apply<R, A, B>(
         &self,
-        res: &mut GLWETensor<R>,
         cnv_offset: usize,
+        res: &mut GLWETensor<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -659,8 +713,11 @@ where
             self.glwe_tensor_apply_tmp_bytes(res, a, b)
         );
 
-        let a_base2k: usize = a.base2k().as_usize();
-        assert_eq!(b.base2k().as_usize(), a_base2k);
+        let ab_base2k: usize = a.base2k().as_usize();
+        assert_eq!(b.base2k().as_usize(), ab_base2k);
+        assert_eq!(a_effective_k.div_ceil(ab_base2k), a.size());
+        assert_eq!(b_effective_k.div_ceil(ab_base2k), b.size());
+
         let res_base2k: usize = res.base2k().as_usize();
 
         let cols: usize = res.rank().as_usize() + 1;
@@ -668,8 +725,11 @@ where
         let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
         let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, b.size());
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), !0i64, scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), !0i64, scratch_2);
+        let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
+        let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
+
+        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch_2);
+        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch_2);
 
         // Example for rank=3
         //
@@ -689,10 +749,10 @@ where
 
         // Derive the offset. If cnv_offset < a_base2k, then we shift to a negative offset
         // since the convolution doesn't support negative offset (yet).
-        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
-            (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
+        let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
+            (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
         } else {
-            ((cnv_offset / a_base2k).saturating_sub(1), (cnv_offset % a_base2k) as i64)
+            ((cnv_offset / ab_base2k).saturating_sub(1), (cnv_offset % ab_base2k) as i64)
         };
 
         let res_dft_size = res
@@ -708,7 +768,7 @@ where
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_3);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res_dft_size);
-            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_4);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_4);
 
             self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
 
@@ -736,7 +796,7 @@ where
                     self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_3);
                     let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
                     let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                    self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_3);
+                    self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_3);
 
                     self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
                 }
@@ -744,6 +804,15 @@ where
         }
     }
 }
+
+#[inline]
+pub fn msb_mask_bottom_limb(base2k: usize, k: usize) -> i64 {
+    match k % base2k {
+        0 => !0i64,
+        r => (!0i64) << (base2k - r),
+    }
+}
+
 impl<BE: Backend> GLWEAdd for Module<BE> where Self: ModuleN + VecZnxAddInto + VecZnxCopy + VecZnxAddAssign + VecZnxZero {}
 
 impl<BE: Backend> GLWESub for Module<BE> where

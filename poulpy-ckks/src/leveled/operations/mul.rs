@@ -56,6 +56,29 @@ pub trait CKKSMulOps {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
+fn get_mul_params<R, A, B>(res: &R, a: &A, b: &B) -> (usize, usize, usize)
+where
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+    B: LWEInfos + CKKSInfos,
+{
+    // Value before considering res size
+    let res_log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
+    let res_log_decimal = a.log_decimal().max(b.log_decimal());
+
+    println!("res.max_k(): {} {res_log_hom_rem} {res_log_decimal}", res.max_k());
+
+    // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
+    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+
+    // cnv_offset that takes into account `res_offset`
+    let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
+
+    println!("res_offset: {res_offset}");
+
+    (res_log_hom_rem - res_offset, res_log_decimal, cnv_offset)
+}
+
 impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
     fn mul_tmp_bytes<R, T, BE: Backend>(module: &Module<BE>, res: &R, tsk: &T) -> usize
     where
@@ -91,20 +114,12 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let a_k = a.effective_k().as_usize();
-        let b_k = b.effective_k().as_usize();
-        let res_k = self.max_k().as_usize().min(a_k).min(b_k);
-
-        let log_decimal = a.log_decimal();
-
-        let cnv_offset = a_k + b.log_decimal() + 52;
-
-        println!("cnv_offset: {cnv_offset}");
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, b);
 
         let tensor_layout = GLWELayout {
             n: self.n(),
             base2k: self.base2k(),
-            k: TorusPrecision(self.max_k().as_u32() + a.base2k().as_u32()),
+            k: a.max_k().max(b.max_k()), //TODO: optimize
             rank: self.rank(),
         };
 
@@ -112,17 +127,23 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
 
         let a_ref = a.to_ref();
         let b_ref = b.to_ref();
-        module.glwe_tensor_apply(cnv_offset, &mut tmp, &a_ref, &b_ref, scratch_1);
+        module.glwe_tensor_apply(
+            cnv_offset,
+            &mut tmp,
+            &a_ref,
+            a.effective_k(),
+            &b_ref,
+            b.effective_k(),
+            scratch_1,
+        );
 
         // TODO: Chose correct optimal size based on noise
         let mut self_view = self.to_mut();
         module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
 
-        self.set_log_hom_rem(208)?;
-        self.set_log_decimal(a.log_decimal().max(b.log_decimal()))?;
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
 
-        println!("self.set_log_hom_rem: {}", self.log_hom_rem());
-        println!("self.log_decimal: {}", self.log_decimal());
         Ok(())
     }
 
@@ -159,28 +180,26 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let log_decimal = a.log_decimal();
-
-        let offset = a.log_hom_rem() + a.log_decimal();
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, a);
 
         let tensor_layout = GLWELayout {
             n: self.n(),
             base2k: self.base2k(),
-            k: TorusPrecision(self.max_k().as_u32() + a.base2k().as_u32()),
+            k: a.max_k(), //TODO: optimize
             rank: self.rank(),
         };
 
         let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
 
         let a_ref = a.to_ref();
-        module.glwe_tensor_square_apply(offset, &mut tmp, &a_ref, scratch_1);
+        module.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
 
         // TODO: Chose correct optimal size based on noise
         let mut self_view = self.to_mut();
         module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
 
-        self.set_log_hom_rem(a.log_hom_rem() - log_decimal)?;
-        self.set_log_decimal(a.log_decimal())?;
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
         Ok(())
     }
 }

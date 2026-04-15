@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -13,12 +13,10 @@ pub struct GLWETensor<D: Data> {
     pub(crate) rank: Rank,
 }
 
-impl<D: DataMut> SetGLWEInfos for GLWETensor<D> {
+impl<D: DataMut> SetLWEInfos for GLWETensor<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
-
-    fn set_k(&mut self, _k: TorusPrecision) {}
 }
 
 impl<D: DataRef> GLWETensor<D> {
@@ -114,7 +112,6 @@ impl<D: DataRef> GLWEToRef for GLWETensor<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.max_k(),
             data: self.data.to_ref(),
             meta: (),
         }
@@ -125,7 +122,6 @@ impl<D: DataMut> GLWEToMut for GLWETensor<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.max_k(),
             data: self.data.to_mut(),
             meta: (),
         }

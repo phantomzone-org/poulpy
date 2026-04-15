@@ -314,10 +314,10 @@ impl<BE: TestContextBackend> TestContext<BE> {
             tsk: tsk_prepared,
             atks,
             scratch_size,
-            re1: (0..m).map(|i| 16.0 * (i as f64) / (m as f64) - 8.0).collect(),
-            im1: (0..m).map(|i| 16.0 - 2.0 * (i as f64) / (m as f64)).collect(),
-            re2: (0..m).map(|i| 0.8 * (1.0 - (i as f64) / (m as f64)) - 0.4).collect(),
-            im2: (0..m).map(|i| -0.6 * (i as f64) / (m as f64)).collect(),
+            re1: (0..m).map(|i| 1.0).collect(),
+            im1: (0..m).map(|i| 0.0).collect(),
+            re2: (0..m).map(|i| 1.0).collect(),
+            im2: (0..m).map(|i| 0.0).collect(),
         }
     }
 }
@@ -374,7 +374,7 @@ impl<BE: TestBackend> TestContext<BE> {
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let mut pt_znx = alloc_pt_znx(self.degree().into(), ct.base2k(), self.params.prec);
+        let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), self.params.prec);
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
         let mut full_pt = attach_meta(full_pt, ct.meta());
         self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);

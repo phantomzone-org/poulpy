@@ -151,10 +151,8 @@ impl<D: DataMut> FillUniform for GGSW<D> {
 impl<D: DataRef> GGSW<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         let data = self.data.at(row, col);
-        let k = TorusPrecision(self.base2k.0 * data.size() as u32);
         GLWE {
             base2k: self.base2k,
-            k,
             data,
             meta: (),
         }
@@ -165,13 +163,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
-        let k = TorusPrecision(base2k.0 * data.size() as u32);
-        GLWE {
-            base2k,
-            k,
-            data,
-            meta: (),
-        }
+        GLWE { base2k, data, meta: () }
     }
 }
 
