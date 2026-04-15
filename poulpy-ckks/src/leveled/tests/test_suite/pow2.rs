@@ -9,7 +9,7 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_pow2`] | out-of-place, message × 2^bits |
+//! | [`test_mul_pow2_aligned`] | out-of-place, message × 2^bits |
 //! | [`test_mul_pow2_smaller_output`] | out-of-place into a smaller output buffer |
 //! | [`test_mul_pow2_inplace`] | in-place, message × 2^bits |
 //!
@@ -17,13 +17,13 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_div_pow2`] | out-of-place, message / 2^bits |
+//! | [`test_div_pow2_aligned`] | out-of-place, message / 2^bits |
 //! | [`test_div_pow2_smaller_output`] | out-of-place into a smaller output buffer |
 //! | [`test_div_pow2_inplace`] | in-place, message / 2^bits |
 
-use crate::{CKKSInfos, leveled::operations::pow2::CKKSPow2Ops};
+use crate::{CKKSCompositionError, CKKSInfos, leveled::operations::pow2::CKKSPow2Ops};
 
-use super::helpers::{TestContext, TestPow2Backend as Backend, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{TestContext, TestPow2Backend as Backend, assert_ckks_error, assert_ct_meta, assert_unary_output_meta};
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
@@ -86,7 +86,12 @@ pub fn test_div_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.div_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
     let offset = ct.effective_k().saturating_sub(ct_res.max_k().as_usize());
-    assert_ct_meta("div_pow2 smaller_output", &ct_res, ct.log_decimal(), ct.log_hom_rem() - SHIFT_BITS - offset);
+    assert_ct_meta(
+        "div_pow2 smaller_output",
+        &ct_res,
+        ct.log_decimal(),
+        ct.log_hom_rem() - SHIFT_BITS - offset,
+    );
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
@@ -100,4 +105,22 @@ pub fn test_div_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     ct.div_pow2_inplace(SHIFT_BITS).unwrap();
     assert_ct_meta("div_pow2_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("div_pow2_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// In-place division by too large a power of two must return a clear metadata error.
+pub fn test_div_pow2_inplace_explicit_error<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let available_log_hom_rem = ct.log_hom_rem();
+    let required_bits = available_log_hom_rem + 1;
+    let err = ct.div_pow2_inplace(required_bits).unwrap_err();
+    assert_ckks_error(
+        "div_pow2_inplace_explicit_error",
+        &err,
+        CKKSCompositionError::InsufficientHomomorphicCapacity {
+            op: "div_pow2_inplace",
+            available_log_hom_rem,
+            required_bits,
+        },
+    );
 }

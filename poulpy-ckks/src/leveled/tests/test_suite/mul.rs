@@ -19,9 +19,12 @@
 //! | [`test_square_ct_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
 //! | [`test_square_ct_smaller_output`] | square into smaller output buffer |
 
-use crate::leveled::{
-    operations::mul::CKKSMulOps,
-    tests::test_suite::helpers::{TestContext, TestMulBackend as Backend, assert_mul_output_meta},
+use crate::{
+    CKKSCompositionError, CKKSInfos,
+    leveled::{
+        operations::mul::CKKSMulOps,
+        tests::test_suite::helpers::{TestContext, TestMulBackend as Backend, assert_ckks_error, assert_mul_output_meta},
+    },
 };
 
 use poulpy_hal::api::ScratchOwnedBorrow;
@@ -111,7 +114,14 @@ pub fn test_square_ct_rescaled_input<BE: Backend>(ctx: &TestContext<BE>) {
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
     assert_mul_output_meta("square_ct_rescaled_input", &ct_res, &ct, &ct);
-    ctx.assert_decrypt_precision("square_ct_rescaled_input", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "square_ct_rescaled_input",
+        &ct_res,
+        &want_re,
+        &want_im,
+        20.0,
+        scratch.borrow(),
+    );
 }
 
 /// ct² into an output buffer with smaller k.
@@ -123,4 +133,26 @@ pub fn test_square_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
     assert_mul_output_meta("square_ct_smaller_output", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// Multiplication with inconsistent metadata must fail explicitly instead of panicking on usize underflow.
+pub fn test_mul_ct_explicit_metadata_error<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let mut ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
+    ct1.set_log_hom_rem(8).unwrap();
+    ct2.set_log_hom_rem(9).unwrap();
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    let err = ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap_err();
+    assert_ckks_error(
+        "mul_ct_explicit_metadata_error",
+        &err,
+        CKKSCompositionError::MultiplicationPrecisionUnderflow {
+            op: "mul",
+            lhs_log_hom_rem: 8,
+            rhs_log_hom_rem: 9,
+            lhs_log_decimal: ctx.meta().log_decimal,
+            rhs_log_decimal: ctx.meta().log_decimal,
+        },
+    );
 }

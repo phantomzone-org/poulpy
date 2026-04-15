@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-use crate::{CKKS, CKKSInfos, layouts::ciphertext::CKKSOffset};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
 
 pub trait CKKSConjugateOps {
     fn conjugate_tmp_bytes<C, K, BE: Backend>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
@@ -71,7 +71,7 @@ impl<D: DataMut> CKKSConjugateOps for GLWE<D, CKKS> {
         }
 
         self.meta = other.meta();
-        self.set_log_hom_rem(self.log_hom_rem() - offset)?;
+        self.set_log_hom_rem(checked_log_hom_rem_sub("conjugate", self.log_hom_rem(), offset)?)?;
         Ok(())
     }
 

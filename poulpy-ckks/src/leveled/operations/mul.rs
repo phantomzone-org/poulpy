@@ -12,7 +12,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{CKKS, CKKSInfos};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, checked_mul_log_hom_rem};
 use anyhow::Result;
 
 pub trait CKKSMulOps {
@@ -56,14 +56,14 @@ pub trait CKKSMulOps {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
-fn get_mul_params<R, A, B>(res: &R, a: &A, b: &B) -> (usize, usize, usize)
+fn get_mul_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
 where
     R: LWEInfos + CKKSInfos,
     A: LWEInfos + CKKSInfos,
     B: LWEInfos + CKKSInfos,
 {
     // Value before considering res size
-    let res_log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
+    let res_log_hom_rem = checked_mul_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
     let res_log_decimal = a.log_decimal().max(b.log_decimal());
 
     // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
@@ -72,7 +72,11 @@ where
     // cnv_offset that takes into account `res_offset`
     let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
 
-    (res_log_hom_rem - res_offset, res_log_decimal, cnv_offset)
+    Ok((
+        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
+        res_log_decimal,
+        cnv_offset,
+    ))
 }
 
 impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
@@ -110,7 +114,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, b);
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, b)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),
@@ -176,7 +180,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, a);
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, a)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),

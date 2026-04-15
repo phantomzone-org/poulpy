@@ -58,7 +58,12 @@ pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
         let expected_log_decimal = ct.log_decimal();
         let expected_log_hom_rem = ct.log_hom_rem();
         ct.rotate_inplace(&ctx.module, r, ctx.atks(), scratch.borrow());
-        assert_ct_meta(&format!("rotate_inplace({r})"), &ct, expected_log_decimal, expected_log_hom_rem);
+        assert_ct_meta(
+            &format!("rotate_inplace({r})"),
+            &ct,
+            expected_log_decimal,
+            expected_log_hom_rem,
+        );
         ctx.assert_decrypt_precision(
             &format!("rotate_inplace({r})"),
             &ct,

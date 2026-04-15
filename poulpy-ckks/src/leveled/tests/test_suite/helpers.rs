@@ -8,8 +8,11 @@ use std::collections::HashMap;
 
 use super::CKKSTestParams;
 use crate::{
-    CKKS, CKKSInfos,
-    layouts::{ciphertext::CKKSOffset, plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta}},
+    CKKS, CKKSCompositionError, CKKSInfos,
+    layouts::{
+        ciphertext::CKKSOffset,
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta},
+    },
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
         operations::{mul::CKKSMulOps, pt_znx::CKKSPlaintextZnxOps},
@@ -562,6 +565,11 @@ pub fn assert_precision(label: &str, got: &[f64], want: &[f64], min_bits: f64) {
 pub fn assert_ct_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, log_decimal: usize, log_hom_rem: usize) {
     assert_eq!(ct.log_decimal(), log_decimal, "{label}: unexpected log_decimal");
     assert_eq!(ct.log_hom_rem(), log_hom_rem, "{label}: unexpected log_hom_rem");
+}
+
+pub fn assert_ckks_error(label: &str, err: &anyhow::Error, want: CKKSCompositionError) {
+    let got = err.downcast_ref::<CKKSCompositionError>();
+    assert_eq!(got, Some(&want), "{label}: unexpected error: {err}");
 }
 
 pub fn assert_unary_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, input: &GLWE<impl DataRef, CKKS>) {

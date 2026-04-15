@@ -37,7 +37,9 @@
 
 use crate::{CKKSInfos, leveled::operations::sub::CKKSSubOps};
 
-use super::helpers::{TestContext, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{
+    TestContext, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta,
+};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── ct-ct out-of-place (GLWE<_, CKKS>::sub) ────────────────────────────────

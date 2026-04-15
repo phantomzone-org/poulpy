@@ -35,9 +35,13 @@
 //! | [`test_add_pt_rnx`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
 //! | [`test_add_pt_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
-use crate::{CKKSInfos, leveled::operations::add::CKKSAddOps};
+use crate::{CKKSCompositionError, CKKSInfos, layouts::plaintext::alloc_pt_znx, leveled::operations::add::CKKSAddOps};
 
-use super::helpers::{TestAddBackend as Backend, TestContext, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{
+    TestAddBackend as Backend, TestContext, assert_binary_output_meta, assert_ckks_error, assert_ct_meta,
+    assert_unary_output_meta,
+};
+use poulpy_core::layouts::{Base2K, LWEInfos};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── ct+ct out-of-place (GLWE<_, CKKS>::add) ────────────────────────────────
@@ -255,5 +259,22 @@ pub fn test_add_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
         &want_im,
         20.0,
         scratch.borrow(),
+    );
+}
+
+/// ct + ZNX plaintext must reject mismatched base2k with an explicit error.
+pub fn test_add_pt_znx_base2k_mismatch_error<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let pt_znx = alloc_pt_znx(ctx.degree(), Base2K((ctx.base2k().as_usize() / 2) as u32), ctx.meta());
+    let err = ct.add_pt_znx_inplace(&ctx.module, &pt_znx, scratch.borrow()).unwrap_err();
+    assert_ckks_error(
+        "add_pt_znx_base2k_mismatch",
+        &err,
+        CKKSCompositionError::PlaintextBase2KMismatch {
+            op: "ckks_add_pt_znx",
+            ct_base2k: ctx.base2k().as_usize(),
+            pt_base2k: pt_znx.base2k().as_usize(),
+        },
     );
 }

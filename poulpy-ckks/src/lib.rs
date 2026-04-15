@@ -24,9 +24,15 @@
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 
+mod error;
 pub mod layouts;
 pub mod leveled;
 use anyhow::Result;
+pub use error::CKKSCompositionError;
+pub(crate) use error::{
+    checked_log_hom_rem_sub, checked_mul_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_log_decimal_fits,
+    ensure_log_hom_rem_fits, ensure_plaintext_alignment,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CKKS {

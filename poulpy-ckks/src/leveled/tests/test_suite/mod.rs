@@ -80,6 +80,7 @@ pub mod add;
 //pub mod composition;
 pub mod conjugate;
 pub mod encryption;
+pub mod errors;
 pub mod helpers;
 //pub mod level;
 //pub mod metadata;
