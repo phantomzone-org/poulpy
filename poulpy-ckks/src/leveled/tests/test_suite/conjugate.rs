@@ -6,7 +6,8 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_conjugate`] | out-of-place conjugation |
+//! | [`test_conjugate_aligned`] | out-of-place conjugation |
+//! | [`test_conjugate_smaller_output`] | out-of-place conjugation |
 //!
 //! ## Operations-layer conjugation (`GLWE<_, CKKS>::conjugate_inplace`)
 //!

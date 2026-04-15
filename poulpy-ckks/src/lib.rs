@@ -60,3 +60,27 @@ pub trait CKKSInfos {
         self.log_decimal() + self.log_hom_rem()
     }
 }
+
+impl CKKSInfos for CKKS {
+    fn meta(&self) -> CKKS {
+        *self
+    }
+
+    fn log_decimal(&self) -> usize {
+        self.log_decimal
+    }
+
+    fn log_hom_rem(&self) -> usize {
+        self.log_hom_rem
+    }
+
+    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
+        self.log_decimal = log_decimal;
+        Ok(())
+    }
+
+    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
+        self.log_hom_rem = log_hom_rem;
+        Ok(())
+    }
+}

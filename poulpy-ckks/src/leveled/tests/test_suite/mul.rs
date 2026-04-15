@@ -11,6 +11,14 @@
 //! | [`test_mul_ct_delta_a_gt_b`] | `a.log_hom_rem() > b.log_hom_rem()` |
 //! | [`test_mul_ct_smaller_output`] | output has smaller `max_k()` than inputs |
 //!
+//! ## ct x ct inplace ct-ct (`GLWE<_, CKKS>::mul_inplace`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_mul_ct_inplace_aligned`] | `self.log_hom_rem() == a.log_hom_rem()` |
+//! | [`test_mul_ct_inplace_self_lt`] | `self.log_hom_rem() < a.log_hom_rem()` → a shifted to align with self |
+//! | [`test_mul_ct_inplace_self_gt`] | `self.log_hom_rem() > a.log_hom_rem()` → self shifted to align with a |
+//!
 //! ## ct² squaring (`GLWE<_, CKKS>::square`)
 //!
 //! | Function | Path exercised |
@@ -86,6 +94,54 @@ pub fn test_mul_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     ct_res.mul(&ctx.module, &ct1, &ct2, ctx.tsk(), scratch.borrow()).unwrap();
     assert_mul_output_meta("mul_ct smaller_output", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("mul_ct smaller_output", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+// ─── ct × ct out-of-place (GLWE<_, CKKS>::mul_inplace) ─────────────────────────────────
+
+/// ct × ct multiplication with both inputs at the same log_hom_rem().
+pub fn test_mul_ct_inplace_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct_res = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul();
+    let ct_res_meta = ct_res.meta();
+    ct_res.mul_inplace(&ctx.module, &ct1, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct_aligned", &ct_res, &ct_res_meta, &ct1);
+    ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// ct-ct in-place, self.log_hom_rem() < a.log_hom_rem() (a is shifted down to align with self).
+pub fn test_mul_ct_inplace_self_lt<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct_res = ctx.encrypt(
+        ctx.max_k() - ctx.base2k().as_usize() - 1,
+        &ctx.re1,
+        &ctx.im1,
+        scratch.borrow(),
+    );
+    let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul();
+    let ct_res_meta = ct_res.meta();
+    ct_res.mul_inplace(&ctx.module, &ct1, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct_aligned", &ct_res, &ct_res_meta, &ct1);
+    ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// ct-ct in-place, self.log_hom_rem() > a.log_hom_rem() (a is shifted down to align with self).
+pub fn test_mul_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct_res = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct1 = ctx.encrypt(
+        ctx.max_k() - ctx.base2k().as_usize() - 1,
+        &ctx.re2,
+        &ctx.im2,
+        scratch.borrow(),
+    );
+    let (want_re, want_im) = ctx.want_mul();
+    let ct_res_meta = ct_res.meta();
+    ct_res.mul_inplace(&ctx.module, &ct1, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("mul_ct_aligned", &ct_res, &ct_res_meta, &ct1);
+    ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 // ─── ct² squaring (GLWE<_, CKKS>::square) ───────────────────────────────────────

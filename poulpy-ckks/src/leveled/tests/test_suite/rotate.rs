@@ -6,7 +6,7 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_rotate`] | out-of-place rotation for each requested shift |
+//! | [`test_rotate_aligned`] | out-of-place rotation for each requested shift |
 //!
 //! ## Operations-layer rotation (`GLWE<_, CKKS>::rotate_inplace`)
 //!

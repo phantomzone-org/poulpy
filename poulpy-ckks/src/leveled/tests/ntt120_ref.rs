@@ -235,6 +235,21 @@ fn mul_ct_smaller_output() {
 }
 
 #[test]
+fn mul_ct_inplace_aligned() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_aligned(&CTX);
+}
+
+#[test]
+fn mul_ct_inplace_self_lt() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_lt(&CTX);
+}
+
+#[test]
+fn mul_ct_inplace_self_gt() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_gt(&CTX);
+}
+
+#[test]
 fn square_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_square_ct_aligned(&CTX);
 }

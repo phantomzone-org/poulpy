@@ -590,12 +590,7 @@ pub fn assert_binary_output_meta(
     );
 }
 
-pub fn assert_mul_output_meta(
-    label: &str,
-    ct: &GLWE<impl DataRef, CKKS>,
-    a: &GLWE<impl DataRef, CKKS>,
-    b: &GLWE<impl DataRef, CKKS>,
-) {
+pub fn assert_mul_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
     let log_decimal = a.log_decimal().max(b.log_decimal());
     let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());

@@ -43,6 +43,19 @@ pub trait CKKSMulOps {
         B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    #[allow(clippy::too_many_arguments)]
+    fn mul_inplace<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
     fn square<A, BE: Backend>(
         &mut self,
         module: &Module<BE>,
@@ -134,6 +147,51 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
             a.effective_k(),
             &b_ref,
             b.effective_k(),
+            scratch_1,
+        );
+
+        // TODO: Chose correct optimal size based on noise
+        let mut self_view = self.to_mut();
+        module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
+
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
+
+        Ok(())
+    }
+
+    fn mul_inplace<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, self, a)?;
+
+        let tensor_layout = GLWELayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: self.max_k().max(a.max_k()), //TODO: optimize
+            rank: self.rank(),
+        };
+
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+
+        let self_ref = self.to_ref();
+        let a_ref = a.to_ref();
+        module.glwe_tensor_apply(
+            cnv_offset,
+            &mut tmp,
+            &self_ref,
+            self.effective_k(),
+            &a_ref,
+            a.effective_k(),
             scratch_1,
         );
 

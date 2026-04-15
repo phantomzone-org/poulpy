@@ -6,7 +6,7 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_neg`] | out-of-place negation |
+//! | [`test_neg_aligned`] | out-of-place negation |
 //! | [`test_neg_smaller_output`] | out-of-place negation into a smaller output buffer |
 //!
 //! ## Operations-layer negation (`GLWE<_, CKKS>::neg_inplace`)
