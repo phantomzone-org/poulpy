@@ -1,6 +1,20 @@
 # CHANGELOG
 
-## [Unreleased] - 2026-04-13
+## [Unreleased] - 2026-04-15
+
+### `poulpy-hal`
+- Fix the convolution API by renaming the output-shift parameter to `cnv_offset`, moving it to the front of the apply calls, and updating delegates and conformance tests to match the corrected calling convention.
+
+### `poulpy-core`
+- Thread the corrected convolution-offset semantics through GLWE constant/plaintext multiply and tensoring paths so scratch sizing, truncation, and normalization all use the same convention.
+- Pass explicit effective-k information into convolution-backed multiply/tensor routines and mask partial bottom limbs correctly instead of assuming every input uses its full stored limb width.
+- Refresh GLWE tensor tests to cover the updated convolution API and the corrected effective-width handling.
+
+### `poulpy-cpu-ref` / `poulpy-cpu-avx`
+- Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
+
+### `poulpy-bench`
+- Update core and HAL convolution benchmarks to the new convolution API.
 
 ### Build & Docs
 - Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.
