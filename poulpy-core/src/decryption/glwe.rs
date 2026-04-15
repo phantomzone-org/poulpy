@@ -8,7 +8,7 @@ use poulpy_hal::{
 
 pub use crate::api::GLWEDecrypt;
 use crate::layouts::{
-    GLWE, GLWEInfos, GLWEPlaintextToMut, GLWESecretPrepared, GLWEToRef, LWEInfos, SetGLWEInfos, prepared::GLWESecretPreparedToRef,
+    GLWE, GLWEInfos, GLWEPlaintextToMut, GLWESecretPrepared, GLWEToRef, LWEInfos, SetLWEInfos, prepared::GLWESecretPreparedToRef,
 };
 
 pub(crate) trait GLWEDecryptDefault<BE: Backend>:
@@ -42,7 +42,7 @@ where
     fn glwe_decrypt_default<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         let res: &GLWE<&[u8]> = &res.to_ref();

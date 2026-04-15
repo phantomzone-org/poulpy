@@ -53,18 +53,18 @@ where
         <BE as HalImpl<BE>>::cnv_prepare_right(self, res, a, mask, scratch);
     }
 
-    fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
-        <BE as HalImpl<BE>>::cnv_apply_dft_tmp_bytes(self, res_size, res_offset, a_size, b_size)
+    fn cnv_apply_dft_tmp_bytes(&self, res_size: usize, cnv_offset: usize, a_size: usize, b_size: usize) -> usize {
+        <BE as HalImpl<BE>>::cnv_apply_dft_tmp_bytes(self, res_size, cnv_offset, a_size, b_size)
     }
 
-    fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
-        <BE as HalImpl<BE>>::cnv_by_const_apply_tmp_bytes(self, res_size, res_offset, a_size, b_size)
+    fn cnv_by_const_apply_tmp_bytes(&self, res_size: usize, cnv_offset: usize, a_size: usize, b_size: usize) -> usize {
+        <BE as HalImpl<BE>>::cnv_by_const_apply_tmp_bytes(self, res_size, cnv_offset, a_size, b_size)
     }
 
     fn cnv_by_const_apply<R, A>(
         &self,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -74,13 +74,13 @@ where
         R: VecZnxBigToMut<BE>,
         A: VecZnxToRef,
     {
-        <BE as HalImpl<BE>>::cnv_by_const_apply(self, res, res_offset, res_col, a, a_col, b, scratch);
+        <BE as HalImpl<BE>>::cnv_by_const_apply(self, cnv_offset, res, res_col, a, a_col, b, scratch);
     }
 
     fn cnv_apply_dft<R, A, B>(
         &self,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -92,17 +92,17 @@ where
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>,
     {
-        <BE as HalImpl<BE>>::cnv_apply_dft(self, res, res_offset, res_col, a, a_col, b, b_col, scratch);
+        <BE as HalImpl<BE>>::cnv_apply_dft(self, cnv_offset, res, res_col, a, a_col, b, b_col, scratch);
     }
 
-    fn cnv_pairwise_apply_dft_tmp_bytes(&self, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize {
-        <BE as HalImpl<BE>>::cnv_pairwise_apply_dft_tmp_bytes(self, res_size, res_offset, a_size, b_size)
+    fn cnv_pairwise_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize {
+        <BE as HalImpl<BE>>::cnv_pairwise_apply_dft_tmp_bytes(self, res_size, cnv_offset, a_size, b_size)
     }
 
     fn cnv_pairwise_apply_dft<R, A, B>(
         &self,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         b: &B,
@@ -114,7 +114,7 @@ where
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>,
     {
-        <BE as HalImpl<BE>>::cnv_pairwise_apply_dft(self, res, res_offset, res_col, a, b, i, j, scratch);
+        <BE as HalImpl<BE>>::cnv_pairwise_apply_dft(self, cnv_offset, res, res_col, a, b, i, j, scratch);
     }
 
     fn cnv_prepare_self_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize {

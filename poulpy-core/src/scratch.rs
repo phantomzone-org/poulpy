@@ -76,7 +76,6 @@ where
         (
             GLWE {
                 base2k: infos.base2k(),
-                k: infos.max_k(),
                 data,
                 meta: (),
             },

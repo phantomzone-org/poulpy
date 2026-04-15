@@ -5,7 +5,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -29,14 +29,6 @@ where
             rank: self.rank(),
         }
     }
-}
-
-/// Trait for mutating GLWE parameters in place.
-pub trait SetGLWEInfos {
-    /// Sets the limb width `base2k`.
-    fn set_base2k(&mut self, base2k: Base2K);
-    /// Sets the active torus precision `k`.
-    fn set_k(&mut self, k: TorusPrecision);
 }
 
 /// Plain-data snapshot of the parameters that describe a [`GLWE`] ciphertext.
@@ -82,17 +74,12 @@ impl GLWEInfos for GLWELayout {
 pub struct GLWE<D: Data, M = ()> {
     pub(crate) data: VecZnx<D>,
     pub(crate) base2k: Base2K,
-    pub(crate) k: TorusPrecision,
     pub meta: M,
 }
 
-impl<D: DataMut, M> SetGLWEInfos for GLWE<D, M> {
+impl<D: DataMut, M> SetLWEInfos for GLWE<D, M> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
-    }
-
-    fn set_k(&mut self, k: TorusPrecision) {
-        self.k = k
     }
 }
 
@@ -108,11 +95,6 @@ impl<D: Data, M> GLWE<D, M> {
     /// after a precision-consuming rescale.
     pub fn max_size(&self) -> usize {
         self.data.max_size
-    }
-
-    /// Returns the active torus precision. Alias for [`max_k`](LWEInfos::max_k).
-    pub fn k(&self) -> TorusPrecision {
-        self.k
     }
 }
 
@@ -149,7 +131,6 @@ impl<D: DataRef, M: Clone> ToOwnedDeep for GLWE<D, M> {
         GLWE {
             data: self.data.to_owned_deep(),
             base2k: self.base2k,
-            k: self.k,
             meta: self.meta.clone(),
         }
     }
@@ -196,7 +177,6 @@ impl<M> GLWE<Vec<u8>, M> {
         GLWE {
             data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
             meta: M::default(),
         }
     }
@@ -205,7 +185,6 @@ impl<M> GLWE<Vec<u8>, M> {
         GLWE {
             data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
             meta,
         }
     }
@@ -238,7 +217,6 @@ impl<D: DataMut, M: Default> ReaderFrom for GLWE<D, M> {
     /// Deserialises a [`GLWE`] in little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
-        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.data.read_from(reader)?;
         self.meta = M::default();
         Ok(())
@@ -249,7 +227,6 @@ impl<D: DataRef, M> WriterTo for GLWE<D, M> {
     /// Serialises the [`GLWE`] in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
-        writer.write_u32::<LittleEndian>(self.k.0)?;
         self.data.write_to(writer)
     }
 }
@@ -264,7 +241,6 @@ impl<D: DataRef, M> GLWEToRef for GLWE<D, M> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.k,
             data: self.data.to_ref(),
             meta: (),
         }
@@ -281,7 +257,6 @@ impl<D: DataMut, M> GLWEToMut for GLWE<D, M> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.k,
             data: self.data.to_mut(),
             meta: (),
         }

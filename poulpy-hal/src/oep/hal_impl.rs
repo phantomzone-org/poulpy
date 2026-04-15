@@ -607,12 +607,12 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         R: crate::layouts::CnvPVecRToMut<BE>,
         A: VecZnxToRef + crate::layouts::ZnxInfos;
 
-    fn cnv_apply_dft_tmp_bytes(module: &Module<BE>, res_size: usize, res_offset: usize, a_size: usize, b_size: usize) -> usize;
+    fn cnv_apply_dft_tmp_bytes(module: &Module<BE>, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize;
 
     fn cnv_by_const_apply_tmp_bytes(
         module: &Module<BE>,
+        cnv_offset: usize,
         res_size: usize,
-        res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize;
@@ -620,8 +620,8 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_by_const_apply<R, A>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -634,8 +634,8 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_apply_dft<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         a_col: usize,
@@ -649,8 +649,8 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
 
     fn cnv_pairwise_apply_dft_tmp_bytes(
         module: &Module<BE>,
+        cnv_offset: usize,
         res_size: usize,
-        res_offset: usize,
         a_size: usize,
         b_size: usize,
     ) -> usize;
@@ -658,8 +658,8 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
     #[allow(clippy::too_many_arguments)]
     fn cnv_pairwise_apply_dft<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut R,
-        res_offset: usize,
         res_col: usize,
         a: &A,
         b: &B,

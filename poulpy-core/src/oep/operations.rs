@@ -19,15 +19,15 @@ use crate::{
 
 #[doc(hidden)]
 pub trait CoreOperationsDefaults<BE: Backend>: Backend {
-    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
 
     fn glwe_mul_const_default<R, A>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWE<A>,
         b: &[i64],
         scratch: &mut Scratch<BE>,
@@ -37,63 +37,84 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
 
     fn glwe_mul_const_inplace_default<R>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         b: &[i64],
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut;
 
-    fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_default<R, A, B, BM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<R, A, AM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef;
 
-    fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos;
 
-    fn glwe_tensor_square_apply_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A) -> usize
+    fn glwe_tensor_square_apply_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_apply_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWETensor<R>,
-        res_offset: usize,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_square_apply_default<R, A>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef;
 
     fn glwe_tensor_relinearize_default<R, A, B>(
         module: &Module<BE>,
@@ -281,18 +302,18 @@ where
         + GLWEPackerOpsDefault<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_tmp_bytes(module, res, res_offset, a, b_size)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_tmp_bytes(module, res, a, b_size)
     }
 
     fn glwe_mul_const_default<R, A>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWE<A>,
         b: &[i64],
         scratch: &mut Scratch<BE>,
@@ -300,88 +321,134 @@ where
         R: DataMut,
         A: DataRef,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, res, res_offset, a, b, scratch)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
     }
 
     fn glwe_mul_const_inplace_default<R>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         b: &[i64],
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_inplace(module, res, res_offset, b, scratch)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_inplace(module, cnv_offset, res, b, scratch)
     }
 
-    fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos,
     {
-        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_tmp_bytes(module, res, res_offset, a, b)
+        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_tmp_bytes(module, res, a, b)
     }
 
     fn glwe_mul_plain_default<R, A, B, BM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef,
     {
-        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain(module, res, res_offset, a, b, scratch)
+        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            b,
+            b_effective_k,
+            scratch,
+        )
     }
 
     fn glwe_mul_plain_inplace_default<R, A, AM>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWE<R>,
-        res_offset: usize,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
     {
-        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_inplace(module, res, res_offset, a, scratch)
+        <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_inplace(
+            module,
+            cnv_offset,
+            res,
+            res_effective_k,
+            a,
+            a_effective_k,
+            scratch,
+        )
     }
 
-    fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, res_offset: usize, a: &A, b: &B) -> usize
+    fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GLWEInfos,
     {
-        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply_tmp_bytes(module, res, res_offset, a, b)
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply_tmp_bytes(module, res, a, b)
     }
 
-    fn glwe_tensor_square_apply_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, res_offset: usize, a: &A) -> usize
+    fn glwe_tensor_square_apply_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
     {
-        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply_tmp_bytes(module, res, res_offset, a)
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply_tmp_bytes(module, res, a)
     }
 
     fn glwe_tensor_apply_default<R, A, B>(
         module: &Module<BE>,
+        cnv_offset: usize,
         res: &mut GLWETensor<R>,
-        res_offset: usize,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef,
     {
-        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(module, res, res_offset, a, b, scratch)
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            b,
+            b_effective_k,
+            scratch,
+        )
+    }
+
+    fn glwe_tensor_square_apply_default<R, A>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply(module, cnv_offset, res, a, a_effective_k, scratch)
     }
 
     fn glwe_tensor_relinearize_default<R, A, B>(
@@ -651,26 +718,18 @@ where
 #[macro_export]
 macro_rules! impl_core_operations_default_methods {
     ($be:ty) => {
-        fn glwe_mul_const_tmp_bytes<R, A>(
-            module: &poulpy_hal::layouts::Module<$be>,
-            res: &R,
-            res_offset: usize,
-            a: &A,
-            b_size: usize,
-        ) -> usize
+        fn glwe_mul_const_tmp_bytes<R, A>(module: &poulpy_hal::layouts::Module<$be>, res: &R, a: &A, b_size: usize) -> usize
         where
             R: $crate::layouts::GLWEInfos,
             A: $crate::layouts::GLWEInfos,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_tmp_bytes_default(
-                module, res, res_offset, a, b_size,
-            )
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_tmp_bytes_default(module, res, a, b_size)
         }
 
         fn glwe_mul_const<R, A>(
             module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
-            res_offset: usize,
             a: &$crate::layouts::GLWE<A>,
             b: &[i64],
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
@@ -678,107 +737,141 @@ macro_rules! impl_core_operations_default_methods {
             R: poulpy_hal::layouts::DataMut,
             A: poulpy_hal::layouts::DataRef,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_default(module, res, res_offset, a, b, scratch)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_default(module, cnv_offset, res, a, b, scratch)
         }
 
         fn glwe_mul_const_inplace<R>(
             module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
-            res_offset: usize,
             b: &[i64],
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
             R: poulpy_hal::layouts::DataMut,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_inplace_default(module, res, res_offset, b, scratch)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_const_inplace_default(module, cnv_offset, res, b, scratch)
         }
 
-        fn glwe_mul_plain_tmp_bytes<R, A, B>(
-            module: &poulpy_hal::layouts::Module<$be>,
-            res: &R,
-            res_offset: usize,
-            a: &A,
-            b: &B,
-        ) -> usize
+        fn glwe_mul_plain_tmp_bytes<R, A, B>(module: &poulpy_hal::layouts::Module<$be>, res: &R, a: &A, b: &B) -> usize
         where
             R: $crate::layouts::GLWEInfos,
             A: $crate::layouts::GLWEInfos,
             B: $crate::layouts::GLWEInfos,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_tmp_bytes_default(module, res, res_offset, a, b)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_tmp_bytes_default(module, res, a, b)
         }
 
         fn glwe_mul_plain<R, A, B, BM>(
             module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
-            res_offset: usize,
             a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
             b: &$crate::layouts::GLWEPlaintext<B, BM>,
+            b_effective_k: usize,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
             R: poulpy_hal::layouts::DataMut,
             A: poulpy_hal::layouts::DataRef,
             B: poulpy_hal::layouts::DataRef,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_default(module, res, res_offset, a, b, scratch)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                b,
+                b_effective_k,
+                scratch,
+            )
         }
 
         fn glwe_mul_plain_inplace<R, A, AM>(
             module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
-            res_offset: usize,
+            res_effective_k: usize,
             a: &$crate::layouts::GLWEPlaintext<A, AM>,
+            a_effective_k: usize,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
             R: poulpy_hal::layouts::DataMut,
             A: poulpy_hal::layouts::DataRef,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_inplace_default(module, res, res_offset, a, scratch)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_inplace_default(
+                module,
+                cnv_offset,
+                res,
+                res_effective_k,
+                a,
+                a_effective_k,
+                scratch,
+            )
         }
 
-        fn glwe_tensor_apply_tmp_bytes<R, A, B>(
-            module: &poulpy_hal::layouts::Module<$be>,
-            res: &R,
-            res_offset: usize,
-            a: &A,
-            b: &B,
-        ) -> usize
+        fn glwe_tensor_apply_tmp_bytes<R, A, B>(module: &poulpy_hal::layouts::Module<$be>, res: &R, a: &A, b: &B) -> usize
         where
             R: $crate::layouts::GLWEInfos,
             A: $crate::layouts::GLWEInfos,
             B: $crate::layouts::GLWEInfos,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_tmp_bytes_default(module, res, res_offset, a, b)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_tmp_bytes_default(module, res, a, b)
         }
 
-        fn glwe_tensor_square_apply_tmp_bytes<R, A>(
-            module: &poulpy_hal::layouts::Module<$be>,
-            res: &R,
-            res_offset: usize,
-            a: &A,
-        ) -> usize
+        fn glwe_tensor_square_apply_tmp_bytes<R, A>(module: &poulpy_hal::layouts::Module<$be>, res: &R, a: &A) -> usize
         where
             R: $crate::layouts::GLWEInfos,
             A: $crate::layouts::GLWEInfos,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_square_apply_tmp_bytes_default(
-                module, res, res_offset, a,
-            )
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_square_apply_tmp_bytes_default(module, res, a)
         }
 
         fn glwe_tensor_apply<R, A, B>(
             module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
             res: &mut $crate::layouts::GLWETensor<R>,
-            res_offset: usize,
             a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
             b: &$crate::layouts::GLWE<B>,
+            b_effective_k: usize,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
             R: poulpy_hal::layouts::DataMut,
             A: poulpy_hal::layouts::DataRef,
             B: poulpy_hal::layouts::DataRef,
         {
-            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_default(module, res, res_offset, a, b, scratch)
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                b,
+                b_effective_k,
+                scratch,
+            )
+        }
+
+        fn glwe_tensor_square_apply<R, A>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
+            res: &mut $crate::layouts::GLWETensor<R>,
+            a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
+            scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+        ) where
+            R: poulpy_hal::layouts::DataMut,
+            A: poulpy_hal::layouts::DataRef,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_square_apply_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                scratch,
+            )
         }
 
         fn glwe_tensor_relinearize<R, A, B>(

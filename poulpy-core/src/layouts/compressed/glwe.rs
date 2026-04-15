@@ -6,7 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -160,7 +160,7 @@ where
     /// Decompresses `other` into `res` by copying the body and regenerating the mask.
     fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEToMut + SetGLWEInfos,
+        R: GLWEToMut + SetLWEInfos,
         O: GLWECompressedToRef + GLWEInfos,
     {
         {

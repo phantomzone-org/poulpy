@@ -1,6 +1,6 @@
 use poulpy_core::{
     GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext},
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -155,13 +155,21 @@ where
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain(&mut ct_out, 0, &ct_in, &pt, scratch.borrow());
+            module.glwe_mul_plain(
+                0,
+                &mut ct_out,
+                &ct_in,
+                ct_in.max_k().as_usize(),
+                &pt,
+                pt.max_k().as_usize(),
+                scratch.borrow(),
+            );
             black_box(());
         })
     });
@@ -179,13 +187,20 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain_inplace(&mut ct, 0, &pt, scratch.borrow());
+            module.glwe_mul_plain_inplace(
+                0,
+                &mut ct,
+                infos.max_k().as_usize(),
+                &pt,
+                pt.max_k().as_usize(),
+                scratch.borrow(),
+            );
             black_box(());
         })
     });
