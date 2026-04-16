@@ -155,19 +155,30 @@ compile_error!(
     "feature `enable-ifma` requires AVX512VL. Build with RUSTFLAGS=\"-C target-feature=+avx512f,+avx512ifma,+avx512vl\"."
 );
 
+// Keep the crate as a true opt-in backend: without `enable-ifma`, none of the
+// AVX-512 modules or their unit tests are compiled.
+#[cfg(feature = "enable-ifma")]
 mod fft64;
+#[cfg(feature = "enable-ifma")]
 mod hal_impl;
+#[cfg(feature = "enable-ifma")]
 mod ntt_ifma;
+#[cfg(feature = "enable-ifma")]
 mod znx_ifma;
 
+#[cfg(feature = "enable-ifma")]
 pub use fft64::{FFT64Ifma, ReimFFTIfma, ReimIFFTIfma};
+#[cfg(feature = "enable-ifma")]
 pub use ntt_ifma::NTTIfma;
 
+#[cfg(feature = "enable-ifma")]
 use poulpy_core::oep::CoreImpl;
+#[cfg(feature = "enable-ifma")]
 unsafe impl CoreImpl<FFT64Ifma> for FFT64Ifma {
     poulpy_core::impl_core_default_methods!(FFT64Ifma);
 }
 
+#[cfg(feature = "enable-ifma")]
 unsafe impl CoreImpl<NTTIfma> for NTTIfma {
     poulpy_core::impl_core_default_methods!(NTTIfma);
 }

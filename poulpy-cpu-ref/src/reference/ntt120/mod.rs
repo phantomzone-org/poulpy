@@ -303,3 +303,44 @@ pub trait NttExtract1BlkContiguous {
     /// Copy x2-block `blk` from `src` into `dst`.
     fn ntt_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]);
 }
+
+/// Pack a row range of q120b x2-blocks into the u32 layout expected by BBC kernels.
+///
+/// `a` is a column-start q120b slice with row stride `row_stride` (in `u64` units).
+/// For each row, block `blk` is reduced to canonical residues and written to `dst`
+/// as 16 u32 values in x2 q120b/u32 layout.
+pub trait NttPackLeft1BlkX2 {
+    /// Pack `row_count` q120b x2-blocks for block `blk`.
+    fn ntt_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize);
+}
+
+/// Pack a row range of q120c x2-blocks in reversed row order.
+///
+/// `a` is a column-start q120c slice with row stride `row_stride` (in `u32` units).
+/// For each row, block `blk` is copied to `dst` in reversed row order so convolution
+/// windows can consume contiguous slices directly.
+pub trait NttPackRight1BlkX2 {
+    /// Pack `row_count` q120c x2-blocks for block `blk` in reversed row order.
+    fn ntt_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize);
+}
+
+/// Pack a row range of pairwise-summed q120b x2-blocks into the u32 layout expected by BBC kernels.
+///
+/// `a` and `b` are column-start q120b slices with row stride `row_stride` (in `u64` units).
+/// For each row, block `blk` (two consecutive coefficients) is reduced to canonical residues,
+/// summed mod `Q`, and written to `dst` as 16 u32 values:
+/// `[r0, 0, r1, 0, r2, 0, r3, 0, r0', 0, ..., r3', 0]`.
+pub trait NttPairwisePackLeft1BlkX2 {
+    /// Pack `row_count` pairwise-summed q120b x2-blocks for block `blk`.
+    fn ntt_pairwise_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], b: &[u64], row_count: usize, row_stride: usize, blk: usize);
+}
+
+/// Pack a row range of pairwise-summed q120c x2-blocks.
+///
+/// `a` and `b` are column-start q120c slices with row stride `row_stride` (in `u32` units).
+/// For each row, block `blk` is written to `dst` in reversed row order so convolution windows
+/// can consume contiguous slices directly.
+pub trait NttPairwisePackRight1BlkX2 {
+    /// Pack `row_count` pairwise-summed q120c x2-blocks for block `blk`.
+    fn ntt_pairwise_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], b: &[u32], row_count: usize, row_stride: usize, blk: usize);
+}

@@ -881,10 +881,6 @@ mod tests {
 
     #[test]
     fn test_get_digit_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_get_digit_ifma_internal();
         }
@@ -910,10 +906,6 @@ mod tests {
 
     #[test]
     fn test_get_carry_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_get_carry_ifma_internal();
         }
@@ -940,10 +932,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_first_step_inplace_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_first_step_inplace_ifma_internal();
         }
@@ -993,10 +981,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_first_step_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_first_step_ifma_internal();
         }
@@ -1023,10 +1007,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_middle_step_inplace_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_middle_step_inplace_ifma_internal();
         }
@@ -1096,10 +1076,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_middle_step_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_middle_step_ifma_internal();
         }
@@ -1126,10 +1102,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_final_step_inplace_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_final_step_inplace_ifma_internal();
         }
@@ -1199,10 +1171,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_final_step_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             test_znx_normalize_final_step_ifma_internal();
         }
@@ -1229,10 +1197,6 @@ mod tests {
 
     #[test]
     fn test_znx_extract_digit_addmul_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             znx_extract_digit_addmul_ifma_internal();
         }
@@ -1254,10 +1218,6 @@ mod tests {
 
     #[test]
     fn test_znx_normalize_digit_internal_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        }
         unsafe {
             znx_normalize_digit_ifma_internal();
         }

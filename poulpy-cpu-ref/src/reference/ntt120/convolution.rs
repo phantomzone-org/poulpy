@@ -36,13 +36,9 @@ use crate::{
         VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        NttDFTExecute, NttFromZnx64,
-        arithmetic::{b_from_znx64_masked_ref, b_from_znx64_ref, c_from_b_ref},
-        mat_vec::{accum_mul_q120_bc, accum_to_q120b},
-        ntt::{NttTable, ntt_ref},
-        primes::{PrimeSet, Primes30},
-        types::Q120bScalar,
-        vec_znx_dft::NttModuleHandle,
+        NttAddInplace, NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2, NttPackLeft1BlkX2,
+        NttPackRight1BlkX2, NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2, ntt::NttTable, primes::Primes30,
+        types::Q120bScalar, vec_znx_dft::NttModuleHandle,
     },
 };
 
@@ -122,7 +118,7 @@ pub fn ntt120_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
 /// Limbs of `res` beyond `a.size()` are zeroed.
 pub fn ntt120_cnv_prepare_right<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, a: &A, mask: i64, tmp: &mut [u64])
 where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB,
     R: CnvPVecRToMut<BE>,
     A: VecZnxToRef,
 {
@@ -137,18 +133,18 @@ where
     for col in 0..cols {
         // All limbs except the last: unmasked fast path.
         for j in 0..min_size.saturating_sub(1) {
-            b_from_znx64_ref::<Primes30>(n, tmp, a.at(col, j));
-            ntt_ref(table, tmp);
+            BE::ntt_from_znx64(tmp, a.at(col, j));
+            BE::ntt_dft_execute(table, tmp);
             let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, j));
-            c_from_b_ref::<Primes30>(n, res_u32, tmp);
+            BE::ntt_c_from_b(n, res_u32, tmp);
         }
         // Last active limb: masked path.
         if min_size > 0 {
             let last = min_size - 1;
-            b_from_znx64_masked_ref::<Primes30>(n, tmp, a.at(col, last), mask);
-            ntt_ref(table, tmp);
+            BE::ntt_from_znx64_masked(tmp, a.at(col, last), mask);
+            BE::ntt_dft_execute(table, tmp);
             let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, last));
-            c_from_b_ref::<Primes30>(n, res_u32, tmp);
+            BE::ntt_c_from_b(n, res_u32, tmp);
         }
         for j in min_size..res_size {
             cast_slice_mut::<_, u32>(res.at_mut(col, j)).fill(0);
@@ -174,7 +170,7 @@ pub fn ntt120_cnv_prepare_self_tmp_bytes(_n: usize) -> usize {
 /// For each column and limb:
 /// 1. Map i64 → q120b via `BE::ntt_from_znx64` into the left buffer.
 /// 2. Apply forward NTT in-place on the left buffer via `BE::ntt_dft_execute`.
-/// 3. Convert the NTT-domain q120b (left) → q120c (right) via `c_from_b_ref`.
+/// 3. Convert the NTT-domain q120b (left) → q120c (right) via `BE::ntt_c_from_b`.
 ///
 /// This saves one full `b_from_znx64 + NTT` per (col, limb) compared to
 /// calling `prepare_left` + `prepare_right` separately.
@@ -186,7 +182,7 @@ pub fn ntt120_cnv_prepare_self<L, R, A, BE>(
     mask: i64,
     _tmp: &mut [u8],
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB,
     L: CnvPVecLToMut<BE>,
     R: CnvPVecRToMut<BE>,
     A: VecZnxToRef,
@@ -210,7 +206,7 @@ pub fn ntt120_cnv_prepare_self<L, R, A, BE>(
             }
             let left_u64: &[u64] = cast_slice(left.at(col, j));
             let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, j));
-            c_from_b_ref::<Primes30>(n, right_u32, left_u64);
+            BE::ntt_c_from_b(n, right_u32, left_u64);
         }
         // Last active limb: masked path.
         if min_size > 0 {
@@ -222,7 +218,7 @@ pub fn ntt120_cnv_prepare_self<L, R, A, BE>(
             }
             let left_u64: &[u64] = cast_slice(left.at(col, last));
             let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, last));
-            c_from_b_ref::<Primes30>(n, right_u32, left_u64);
+            BE::ntt_c_from_b(n, right_u32, left_u64);
         }
         for j in min_size..res_size {
             cast_slice_mut::<_, u64>(left.at_mut(col, j)).fill(0);
@@ -237,26 +233,25 @@ pub fn ntt120_cnv_prepare_self<L, R, A, BE>(
 
 /// Scratch bytes required by [`ntt120_cnv_apply_dft`].
 ///
-/// Returns 0: accumulators are kept on the stack.
-pub fn ntt120_cnv_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize, _b_size: usize) -> usize {
-    0
+/// Stores packed full-row x2 blocks for `a` and `b`.
+pub fn ntt120_cnv_apply_dft_tmp_bytes(_res_size: usize, a_size: usize, b_size: usize) -> usize {
+    (16 * (a_size + b_size)) * size_of::<u32>()
 }
 
 /// Compute the DFT-domain bivariate convolution `res[k] = Σ a[j] ⊙ b[k−j]`.
 ///
-/// For each output limb `k ∈ [0, min_size)` and each NTT coefficient `n_i`:
+/// For each output limb `k ∈ [0, min_size)` and each x2 NTT block:
 ///
 /// ```text
-/// res[res_col, k, n_i] = Σ_{j=j_min}^{j_max-1}  bbc( a[a_col, k_abs−j, n_i],
-///                                                      b[b_col,       j, n_i] )
+/// res[res_col, k, blk] = Σ_{j=j_min}^{j_max-1}  bbc_x2( a[a_col, k_abs−j, blk],
+///                                                         b[b_col,       j, blk] )
 /// ```
 ///
 /// where `k_abs = k + cnv_offset`, `j_min = max(0, k_abs − a.size() + 1)`,
-/// `j_max = min(k_abs + 1, b.size())`, and `bbc` denotes the
-/// `accum_mul_q120_bc` + `accum_to_q120b` product.
+/// `j_max = min(k_abs + 1, b.size())`, and `bbc_x2` denotes the backend
+/// x2 q120b × q120c dot-product kernel.
 ///
 /// Output limbs `min_size..res.size()` are zeroed.
-/// `_tmp` is unused (accumulators live on the stack).
 #[allow(clippy::too_many_arguments)]
 pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
     module: &impl NttModuleHandle,
@@ -267,9 +262,9 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
     a_col: usize,
     b: &B,
     b_col: usize,
-    _tmp: &mut [u8],
+    tmp: &mut [u8],
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc1ColX2 + NttPackLeft1BlkX2 + NttPackRight1BlkX2,
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
@@ -278,35 +273,58 @@ pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
     let a: CnvPVecL<&[u8], BE> = a.to_ref();
     let b: CnvPVecR<&[u8], BE> = b.to_ref();
 
-    let meta = module.get_bbc_meta();
     let n = res.n();
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.size();
+    if res_size == 0 || a_size == 0 || b_size == 0 {
+        for j in 0..res_size {
+            cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).fill(0);
+        }
+        return;
+    }
 
     let bound = a_size + b_size - 1;
-    let min_size = res_size.min(bound);
     let offset = cnv_offset.min(bound);
+    let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
-    for k in 0..min_size {
-        let k_abs = k + offset;
-        let j_min = k_abs.saturating_sub(a_size - 1);
-        let j_max = (k_abs + 1).min(b_size);
+    let meta = module.get_bbc_meta();
+    let a_cols = a.cols();
+    let b_cols = b.cols();
+    let n_blks = n / 2;
+    let a_row_stride_u64 = 4 * n * a_cols;
+    let b_row_stride_u32 = 8 * n * b_cols;
+    let a_col_offset_u64 = 4 * n * a_col;
+    let b_col_offset_u32 = 8 * n * b_col;
+    let a_raw_u64: &[u64] = cast_slice(a.raw());
+    let b_raw_u32: &[u32] = cast_slice(b.raw());
 
-        let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
+    let (prefix, tmp_u32, suffix) = unsafe { tmp.align_to_mut::<u32>() };
+    debug_assert!(prefix.is_empty());
+    debug_assert!(suffix.is_empty());
+    debug_assert!(tmp_u32.len() >= 16 * (a_size + b_size));
+    let (a_tmp, b_tmp) = tmp_u32.split_at_mut(16 * a_size);
 
-        for n_i in 0..n {
-            let mut s = [0u64; 8];
-            for j in j_min..j_max {
-                let ai: &[u32; 8] = cast_slice::<_, u32>(a.at(a_col, k_abs - j))[8 * n_i..8 * n_i + 8]
-                    .try_into()
-                    .unwrap();
-                let bi: &[u32; 8] = cast_slice::<_, u32>(b.at(b_col, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
-                accum_mul_q120_bc(&mut s, ai, bi);
-            }
-            let mut r4 = [0u64; 4];
-            accum_to_q120b::<Primes30>(&mut r4, &s, meta);
-            res_u64[4 * n_i..4 * n_i + 4].copy_from_slice(&r4);
+    for blk in 0..n_blks {
+        BE::ntt_pack_left_1blk_x2(a_tmp, &a_raw_u64[a_col_offset_u64..], a_size, a_row_stride_u64, blk);
+        BE::ntt_pack_right_1blk_x2(b_tmp, &b_raw_u32[b_col_offset_u32..], b_size, b_row_stride_u32, blk);
+
+        for k in 0..min_size {
+            let k_abs = k + offset;
+            let j_min = k_abs.saturating_sub(a_size - 1);
+            let j_max = (k_abs + 1).min(b_size);
+            let ell = j_max - j_min;
+            let a_start = k_abs + 1 - j_max;
+            let b_start = b_size - j_max;
+
+            let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
+            BE::ntt_mul_bbc_1col_x2(
+                meta,
+                ell,
+                &mut res_u64[8 * blk..8 * blk + 8],
+                &a_tmp[16 * a_start..],
+                &b_tmp[16 * b_start..],
+            );
         }
     }
 
@@ -361,10 +379,16 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.len();
+    if res_size == 0 || a_size == 0 || b_size == 0 {
+        for j in 0..res_size {
+            res.at_mut(res_col, j).fill(0i128);
+        }
+        return;
+    }
 
     let bound = a_size + b_size - 1;
-    let min_size = res_size.min(bound);
     let offset = cnv_offset.min(bound);
+    let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
     for k in 0..min_size {
         let k_abs = k + offset;
@@ -391,9 +415,14 @@ pub fn ntt120_cnv_by_const_apply<R, A, BE>(
 
 /// Scratch bytes required by [`ntt120_cnv_pairwise_apply_dft`].
 ///
-/// Returns 0: dual accumulators are kept on the stack.
-pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize, _b_size: usize) -> usize {
-    0
+/// Stores one packed x2-block row-set for the summed left operand and one
+/// reversed packed x2-block row-set for the summed right operand.
+pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(res_size: usize, a_size: usize, b_size: usize) -> usize {
+    if a_size == 0 || b_size == 0 || res_size == 0 {
+        0
+    } else {
+        (16 * (a_size + b_size) * size_of::<u32>()).max(ntt120_cnv_apply_dft_tmp_bytes(res_size, a_size, b_size))
+    }
 }
 
 /// Compute the pairwise DFT-domain convolution:
@@ -406,15 +435,19 @@ pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(_res_size: usize, _a_size: usize,
 ///
 /// When `col_i == col_j` this delegates to [`ntt120_cnv_apply_dft`].
 ///
-/// For each output limb `k` and NTT coefficient `n_i`:
+/// For each x2 NTT block, the pairwise sums are packed once:
 /// ```text
-/// a_sum = (a[col_i, k_abs-j] + a[col_j, k_abs-j])  mod Q
-/// b_sum =  b[col_i, j]       + b[col_j, j]          (lazy)
-/// res[res_col, k, n_i] = Σ_j accum_mul_q120_bc(a_sum, b_sum)
+/// a_blk[row] = block_x2(a[col_i, row] + a[col_j, row]) mod Q
+/// b_blk[row] = block_x2(b[col_i, b_size-1-row] + b[col_j, b_size-1-row])
+/// ```
+///
+/// Then each output limb consumes contiguous windows from those packed rows:
+/// ```text
+/// res[res_col, k, blk] =
+///     Σ_{row=a_start}^{a_start+ell-1} bbc_x2(a_blk[row], b_blk[b_size-j_max + (row-a_start)])
 /// ```
 ///
 /// Output limbs `min_size..res.size()` are zeroed.
-/// `_tmp` is unused.
 #[allow(clippy::too_many_arguments)]
 pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     module: &impl NttModuleHandle,
@@ -425,15 +458,22 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     b: &B,
     col_i: usize,
     col_j: usize,
-    _tmp: &mut [u8],
+    tmp: &mut [u8],
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar>,
+    BE: Backend<ScalarPrep = Q120bScalar>
+        + NttAddInplace
+        + NttMulBbc1ColX2
+        + NttMulBbc2ColsX2
+        + NttPackLeft1BlkX2
+        + NttPackRight1BlkX2
+        + NttPairwisePackLeft1BlkX2
+        + NttPairwisePackRight1BlkX2,
     R: VecZnxDftToMut<BE>,
     A: CnvPVecLToRef<BE>,
     B: CnvPVecRToRef<BE>,
 {
     if col_i == col_j {
-        ntt120_cnv_apply_dft(module, cnv_offset, res, res_col, a, col_i, b, col_j, &mut []);
+        ntt120_cnv_apply_dft(module, cnv_offset, res, res_col, a, col_i, b, col_j, tmp);
         return;
     }
 
@@ -446,55 +486,69 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.size();
+    if res_size == 0 || a_size == 0 || b_size == 0 {
+        for j in 0..res_size {
+            cast_slice_mut::<_, u64>(res.at_mut(res_col, j)).fill(0);
+        }
+        return;
+    }
+
+    let a_cols = a.cols();
+    let b_cols = b.cols();
 
     let bound = a_size + b_size - 1;
-    let min_size = res_size.min(bound);
     let offset = cnv_offset.min(bound);
+    let min_size = res_size.min((bound + 1).saturating_sub(offset));
+    let n_blks = n / 2;
+    let a_row_stride_u64 = 4 * n * a_cols;
+    let b_row_stride_u32 = 8 * n * b_cols;
+    let a_col_offset_u64_i = 4 * n * col_i;
+    let a_col_offset_u64_j = 4 * n * col_j;
+    let b_col_offset_u32_i = 8 * n * col_i;
+    let b_col_offset_u32_j = 8 * n * col_j;
+    let a_raw_u64: &[u64] = cast_slice(a.raw());
+    let b_raw_u32: &[u32] = cast_slice(b.raw());
 
-    for k in 0..min_size {
-        let k_abs = k + offset;
-        let j_min = k_abs.saturating_sub(a_size - 1);
-        let j_max = (k_abs + 1).min(b_size);
+    let (prefix, tmp_u32, suffix) = unsafe { tmp.align_to_mut::<u32>() };
+    debug_assert!(prefix.is_empty());
+    debug_assert!(suffix.is_empty());
+    debug_assert!(tmp_u32.len() >= 16 * (a_size + b_size));
+    let (a_tmp, b_tmp) = tmp_u32.split_at_mut(16 * a_size);
 
-        let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
+    for blk in 0..n_blks {
+        BE::ntt_pairwise_pack_left_1blk_x2(
+            a_tmp,
+            &a_raw_u64[a_col_offset_u64_i..],
+            &a_raw_u64[a_col_offset_u64_j..],
+            a_size,
+            a_row_stride_u64,
+            blk,
+        );
+        BE::ntt_pairwise_pack_right_1blk_x2(
+            b_tmp,
+            &b_raw_u32[b_col_offset_u32_i..],
+            &b_raw_u32[b_col_offset_u32_j..],
+            b_size,
+            b_row_stride_u32,
+            blk,
+        );
 
-        for n_i in 0..n {
-            // Compute (a[col_i] + a[col_j]) ⊙ (b[col_i] + b[col_j]):
-            // sum operands first, then one bbc product per j.
-            //
-            // q120b values (a side) can be full 64-bit after NTT butterflies.
-            // Reconstruct each u64 residue from its two u32 halves, reduce mod Q_k,
-            // then form a_sum with hi = 0 (sum < 2*Q_k < 2^31 fits in one u32).
-            //
-            // q120c values (b side) come from c_from_b_ref so each entry < Q_k < 2^30.
-            // The u32 sums stay below 2*Q_k < 2^31 and do not overflow.
-            let mut s = [0u64; 8];
-            for j in j_min..j_max {
-                let ai: &[u32; 8] = cast_slice::<_, u32>(a.at(col_i, k_abs - j))[8 * n_i..8 * n_i + 8]
-                    .try_into()
-                    .unwrap();
-                let aj: &[u32; 8] = cast_slice::<_, u32>(a.at(col_j, k_abs - j))[8 * n_i..8 * n_i + 8]
-                    .try_into()
-                    .unwrap();
-                let bi: &[u32; 8] = cast_slice::<_, u32>(b.at(col_i, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
-                let bj: &[u32; 8] = cast_slice::<_, u32>(b.at(col_j, j))[8 * n_i..8 * n_i + 8].try_into().unwrap();
-                let mut a_sum = [0u32; 8];
-                let mut b_sum = [0u32; 8];
-                for k in 0..4 {
-                    let q = Primes30::Q[k] as u64;
-                    // Reconstruct the full u64 residue from the two u32 halves.
-                    let ai_k = (ai[2 * k] as u64) | ((ai[2 * k + 1] as u64) << 32);
-                    let aj_k = (aj[2 * k] as u64) | ((aj[2 * k + 1] as u64) << 32);
-                    // Reduce mod Q_k so the sum fits in a u32 (hi stays 0).
-                    a_sum[2 * k] = ((ai_k % q) + (aj_k % q)) as u32;
-                    b_sum[2 * k] = bi[2 * k] + bj[2 * k];
-                    b_sum[2 * k + 1] = bi[2 * k + 1] + bj[2 * k + 1];
-                }
-                accum_mul_q120_bc(&mut s, &a_sum, &b_sum);
-            }
-            let mut r = [0u64; 4];
-            accum_to_q120b::<Primes30>(&mut r, &s, meta);
-            res_u64[4 * n_i..4 * n_i + 4].copy_from_slice(&r);
+        for k in 0..min_size {
+            let k_abs = k + offset;
+            let j_min = k_abs.saturating_sub(a_size - 1);
+            let j_max = (k_abs + 1).min(b_size);
+            let ell = j_max - j_min;
+            let a_start = k_abs + 1 - j_max;
+            let b_start = b_size - j_max;
+            let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
+
+            BE::ntt_mul_bbc_1col_x2(
+                meta,
+                ell,
+                &mut res_u64[8 * blk..8 * blk + 8],
+                &a_tmp[16 * a_start..],
+                &b_tmp[16 * b_start..],
+            );
         }
     }
 

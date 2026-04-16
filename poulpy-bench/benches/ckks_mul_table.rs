@@ -2,6 +2,8 @@
 //!
 //! Prints a formatted table comparable to the OpenFHE CKKS benchmark.
 //! Does not use criterion - runs warmup + timed iterations directly.
+//!
+//! cargo bench -p poulpy-bench --bench ckks_mul_table
 
 use std::hint::black_box;
 use std::time::Instant;

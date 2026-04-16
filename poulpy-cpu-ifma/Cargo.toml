@@ -9,6 +9,9 @@ repository = "https://github.com/phantomzone-org/poulpy"
 homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
+[lib]
+doctest = false
+
 [features]
 enable-ifma = []
 

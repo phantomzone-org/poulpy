@@ -26,7 +26,8 @@ use crate::reference::{
         vec_znx_dft::NttIfmaModuleHandle,
     },
     ntt120::{
-        NttDFTExecute, NttFromZnx64,
+        NttAddInplace, NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2, NttPackLeft1BlkX2,
+        NttPackRight1BlkX2, NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2,
         convolution::{
             ntt120_cnv_apply_dft, ntt120_cnv_apply_dft_tmp_bytes, ntt120_cnv_by_const_apply, ntt120_cnv_by_const_apply_tmp_bytes,
             ntt120_cnv_pairwise_apply_dft, ntt120_cnv_pairwise_apply_dft_tmp_bytes, ntt120_cnv_prepare_left,
@@ -268,7 +269,7 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
     fn cnv_prepare_right_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar>,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB,
         Scratch<BE>: TakeSlice,
         R: CnvPVecRToMut<BE>,
         A: VecZnxToRef + ZnxInfos,
@@ -338,15 +339,23 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar>,
+        BE: Backend<ScalarPrep = Q120bScalar>
+            + NttAddInplace
+            + NttMulBbc1ColX2
+            + NttMulBbc2ColsX2
+            + NttPackLeft1BlkX2
+            + NttPackRight1BlkX2,
         Scratch<BE>: TakeSlice,
         R: VecZnxDftToMut<BE>,
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>,
     {
-        let bytes = ntt120_cnv_apply_dft_tmp_bytes(0, 0, 0);
+        let mut res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let a_ref: CnvPVecL<&[u8], BE> = a.to_ref();
+        let b_ref: CnvPVecR<&[u8], BE> = b.to_ref();
+        let bytes = ntt120_cnv_apply_dft_tmp_bytes(res_ref.size(), a_ref.size(), b_ref.size());
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
-        ntt120_cnv_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, a_col, b, b_col, tmp);
+        ntt120_cnv_apply_dft::<_, _, _, BE>(module, cnv_offset, &mut res_ref, res_col, &a_ref, a_col, &b_ref, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
@@ -375,13 +384,23 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar>,
+        BE: Backend<ScalarPrep = Q120bScalar>
+            + NttAddInplace
+            + NttMulBbc1ColX2
+            + NttMulBbc2ColsX2
+            + NttPackLeft1BlkX2
+            + NttPackRight1BlkX2
+            + NttPairwisePackLeft1BlkX2
+            + NttPairwisePackRight1BlkX2,
         Scratch<BE>: TakeSlice,
         R: VecZnxDftToMut<BE>,
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>,
     {
-        let bytes = ntt120_cnv_pairwise_apply_dft_tmp_bytes(0, 0, 0);
+        let res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let a_ref: CnvPVecL<&[u8], BE> = a.to_ref();
+        let b_ref: CnvPVecR<&[u8], BE> = b.to_ref();
+        let bytes = ntt120_cnv_pairwise_apply_dft_tmp_bytes(res_ref.size(), a_ref.size(), b_ref.size());
         let (tmp, _) = scratch.take_slice::<u8>(bytes);
         ntt120_cnv_pairwise_apply_dft::<R, A, B, BE>(module, cnv_offset, res, res_col, a, b, i, j, tmp);
     }
@@ -402,7 +421,7 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>>,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB,
         Scratch<BE>: TakeSlice,
         L: CnvPVecLToMut<BE>,
         R: CnvPVecRToMut<BE>,

@@ -663,11 +663,7 @@ fn test_fft_avx512() {
         }
     }
 
-    if std::is_x86_feature_detected!("avx512f") {
-        for log_m in 0..16 {
-            unsafe { internal(log_m) }
-        }
-    } else {
-        eprintln!("skipping: CPU lacks avx512f");
+    for log_m in 0..16 {
+        unsafe { internal(log_m) }
     }
 }

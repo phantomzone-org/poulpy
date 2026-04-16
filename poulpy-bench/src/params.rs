@@ -30,6 +30,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Each entry is `[log_n, cols, size]`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HalSweepParams {
     pub sweeps: Vec<[usize; 3]>,
 }
@@ -46,6 +47,7 @@ impl Default for HalSweepParams {
 ///
 /// Each entry is `[log_n, size]`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CnvSweepParams {
     pub sweeps: Vec<[usize; 2]>,
 }
@@ -62,6 +64,7 @@ impl Default for CnvSweepParams {
 ///
 /// Each entry is `[log_n, rows, cols_in, cols_out, size]`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct VmpSweepParams {
     pub sweeps: Vec<[usize; 5]>,
 }
@@ -82,6 +85,7 @@ impl Default for VmpSweepParams {
 
 /// Sweep parameters for `svp_prepare` (just a list of `log_n` values).
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SvpPrepareParams {
     pub log_n: Vec<usize>,
 }
@@ -96,6 +100,7 @@ impl Default for SvpPrepareParams {
 
 /// Core GLWE layout parameters used by all core-layer and scheme-layer benchmarks.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct CoreParams {
     pub n: u32,
     pub base2k: u32,
@@ -138,6 +143,7 @@ pub struct BenchParams {
     /// When empty or absent, the script runs its built-in default set.
     /// Available names: `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `convolution`,
     /// `svp`, `vmp`, `fft`, `ntt`, `operations`, `encryption`, `decryption`,
+    /// `glwe_tensor`,
     /// `automorphism`, `external_product`, `keyswitch`,
     /// `blind_rotate`, `circuit_bootstrapping`, `bdd_prepare`, `bdd_arithmetic`,
     /// `ckks_leveled`, `standard`.

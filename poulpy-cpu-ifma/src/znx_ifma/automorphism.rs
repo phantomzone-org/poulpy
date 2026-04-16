@@ -101,10 +101,6 @@ mod tests {
 
     #[test]
     fn test_znx_automorphism_ifma() {
-        if !std::is_x86_feature_detected!("avx512f") {
-            eprintln!("skipping: CPU lacks avx512f");
-            return;
-        };
         unsafe {
             test_znx_automorphism_internal();
         }
