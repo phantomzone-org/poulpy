@@ -24,9 +24,15 @@
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 
+mod error;
 pub mod layouts;
 pub mod leveled;
 use anyhow::Result;
+pub use error::CKKSCompositionError;
+pub(crate) use error::{
+    checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_log_decimal_fits,
+    ensure_log_hom_rem_fits, ensure_plaintext_alignment,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CKKS {
@@ -50,7 +56,31 @@ pub trait CKKSInfos {
     fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()>;
     fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()>;
 
-    fn effective_k(&self) -> TorusPrecision {
-        (self.log_decimal() + self.log_hom_rem()).into()
+    fn effective_k(&self) -> usize {
+        self.log_decimal() + self.log_hom_rem()
+    }
+}
+
+impl CKKSInfos for CKKS {
+    fn meta(&self) -> CKKS {
+        *self
+    }
+
+    fn log_decimal(&self) -> usize {
+        self.log_decimal
+    }
+
+    fn log_hom_rem(&self) -> usize {
+        self.log_hom_rem
+    }
+
+    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
+        self.log_decimal = log_decimal;
+        Ok(())
+    }
+
+    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
+        self.log_hom_rem = log_hom_rem;
+        Ok(())
     }
 }

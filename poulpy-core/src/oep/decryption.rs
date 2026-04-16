@@ -5,7 +5,7 @@ use crate::{
     decryption::{GLWEDecryptDefault, GLWETensorDecryptDefault, LWEDecryptDefault},
     layouts::{
         GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretPreparedToRef, GLWESecretTensorPrepared,
-        GLWETensor, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetGLWEInfos, SetLWEInfos,
+        GLWETensor, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
 };
 
@@ -18,7 +18,7 @@ pub trait CoreDecryptionDefaults<BE: Backend>: Backend {
     fn glwe_decrypt_default<R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: crate::layouts::GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos;
 
     fn lwe_decrypt_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
@@ -65,7 +65,7 @@ where
     fn glwe_decrypt_default<R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: crate::layouts::GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
     {
         <Module<BE> as GLWEDecryptDefault<BE>>::glwe_decrypt_default(module, res, pt, sk, scratch)
@@ -130,7 +130,7 @@ macro_rules! impl_core_decryption_default_methods {
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
             R: $crate::layouts::GLWEToRef + $crate::layouts::GLWEInfos,
-            P: $crate::layouts::GLWEPlaintextToMut + $crate::layouts::GLWEInfos + $crate::layouts::SetGLWEInfos,
+            P: $crate::layouts::GLWEPlaintextToMut + $crate::layouts::GLWEInfos + $crate::layouts::SetLWEInfos,
             S: $crate::layouts::GLWESecretPreparedToRef<$be> + $crate::layouts::GLWEInfos,
         {
             <$be as $crate::oep::CoreDecryptionDefaults<$be>>::glwe_decrypt_default(module, res, pt, sk, scratch)

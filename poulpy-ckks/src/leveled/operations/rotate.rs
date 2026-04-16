@@ -4,7 +4,7 @@
 //! the rotation amount. The public API is expressed in terms of the slot
 //! shift `k`, and the provided key store is indexed by that same shift.
 
-use crate::{CKKS, CKKSInfos, layouts::ciphertext::CKKSOffset};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchTakeCore,
@@ -85,7 +85,7 @@ impl<D: DataMut> CKKSRotateOps for GLWE<D, CKKS> {
         }
 
         self.meta = other.meta();
-        self.set_log_hom_rem(self.log_hom_rem() - offset)?;
+        self.set_log_hom_rem(checked_log_hom_rem_sub("rotate", self.log_hom_rem(), offset)?)?;
         Ok(())
     }
 

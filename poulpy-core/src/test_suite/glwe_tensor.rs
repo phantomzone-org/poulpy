@@ -157,7 +157,15 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_tensor_apply(scale + res_offset, &mut res_tensor, &a, &b, scratch.borrow());
+            module.glwe_tensor_apply(
+                scale + res_offset,
+                &mut res_tensor,
+                &a,
+                a.max_k().as_usize(),
+                &b,
+                b.max_k().as_usize(),
+                scratch.borrow(),
+            );
 
             module.glwe_tensor_decrypt(&res_tensor, &mut pt_have, &sk_dft, &sk_tensor_prep, scratch.borrow());
             module.vec_znx_normalize(
@@ -306,8 +314,22 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_tensor_square_apply(scale + res_offset, &mut res_square, &a, scratch.borrow());
-            module.glwe_tensor_apply(scale + res_offset, &mut res_tensor, &a, &a, scratch.borrow());
+            module.glwe_tensor_square_apply(
+                scale + res_offset,
+                &mut res_square,
+                &a,
+                a.max_k().as_usize(),
+                scratch.borrow(),
+            );
+            module.glwe_tensor_apply(
+                scale + res_offset,
+                &mut res_tensor,
+                &a,
+                a.max_k().as_usize(),
+                &a,
+                a.max_k().as_usize(),
+                scratch.borrow(),
+            );
 
             assert_eq!(res_square.data().raw(), res_tensor.data().raw());
 
@@ -431,7 +453,15 @@ where
         let mut scratch_cnv = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(&res, &a, &pt_b));
 
         for res_offset in 0..scale {
-            module.glwe_mul_plain(scale + res_offset, &mut res, &a, &pt_b, scratch_cnv.borrow());
+            module.glwe_mul_plain(
+                scale + res_offset,
+                &mut res,
+                &a,
+                a.max_k().as_usize(),
+                &pt_b,
+                pt_b.max_k().as_usize(),
+                scratch_cnv.borrow(),
+            );
 
             module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
             module.vec_znx_normalize(

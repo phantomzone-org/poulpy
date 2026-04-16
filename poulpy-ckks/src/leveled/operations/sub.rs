@@ -4,7 +4,7 @@
 //! out-of-place and in-place form.
 
 use crate::{
-    CKKS, CKKSInfos,
+    CKKS, CKKSInfos, checked_log_hom_rem_sub,
     layouts::{
         ciphertext::CKKSOffset,
         plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, attach_meta},
@@ -118,7 +118,9 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
             module.glwe_lsh_sub(self, b, offset, scratch);
         }
 
-        self.set_log_hom_rem(a.log_hom_rem().min(b.log_hom_rem()) - offset)?;
+        let log_hom_rem = checked_log_hom_rem_sub("sub", a.log_hom_rem().min(b.log_hom_rem()), offset)?;
+        self.set_log_decimal(a.log_decimal().max(b.log_decimal()))?;
+        self.set_log_hom_rem(log_hom_rem)?;
 
         Ok(())
     }
@@ -159,7 +161,8 @@ impl<D: DataMut> CKKSSubOps for GLWE<D, CKKS> {
     {
         let offset = self.offset_unary(a);
         module.glwe_lsh(self, a, offset, scratch);
-        self.set_log_hom_rem(a.log_hom_rem() - offset)?;
+        self.meta = a.meta();
+        self.set_log_hom_rem(checked_log_hom_rem_sub("sub_pt_znx", a.log_hom_rem(), offset)?)?;
         self.sub_pt_znx_inplace(module, pt_znx, scratch)?;
         Ok(())
     }

@@ -10,7 +10,7 @@ use poulpy_hal::{
 };
 use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
 
-use crate::{CKKS, CKKSInfos};
+use crate::{CKKS, CKKSInfos, ensure_log_decimal_fits, ensure_log_hom_rem_fits};
 
 #[derive(Debug, Clone)]
 pub struct CKKSPlaintextRnx<F>(Vec<F>);
@@ -227,13 +227,13 @@ impl<D: Data> CKKSInfos for GLWEPlaintext<D, CKKS> {
     }
 
     fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
-        anyhow::ensure!(self.max_k().as_usize() - self.log_hom_rem() >= log_decimal);
+        ensure_log_decimal_fits(self.max_k().as_usize(), self.log_hom_rem(), log_decimal)?;
         self.meta.log_decimal = log_decimal;
         Ok(())
     }
 
     fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
-        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= log_hom_rem);
+        ensure_log_hom_rem_fits(self.max_k().as_usize(), self.log_decimal(), log_hom_rem)?;
         self.meta.log_hom_rem = log_hom_rem;
         Ok(())
     }

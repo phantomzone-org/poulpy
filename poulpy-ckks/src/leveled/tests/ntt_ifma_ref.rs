@@ -196,13 +196,13 @@ fn mul_ct_smaller_output() {
 }
 
 #[test]
-fn square_ct_aligned() {
-    crate::leveled::tests::test_suite::mul::test_square_ct_aligned(&CTX);
+fn square_aligned() {
+    crate::leveled::tests::test_suite::mul::test_square_aligned(&CTX);
 }
 
 #[test]
-fn square_ct_smaller_output() {
-    crate::leveled::tests::test_suite::mul::test_square_ct_smaller_output(&CTX);
+fn square_smaller_output() {
+    crate::leveled::tests::test_suite::mul::test_square_smaller_output(&CTX);
 }
 
 #[test]

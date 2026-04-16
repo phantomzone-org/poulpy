@@ -2,7 +2,7 @@
 //!
 //! Negates each column of the GLWE ciphertext.
 
-use crate::{CKKS, CKKSInfos, layouts::CKKSRescaleOps};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
 use anyhow::Result;
 use poulpy_core::{
     GLWENegate, GLWEShift, ScratchTakeCore,
@@ -32,8 +32,11 @@ impl<D: DataMut> CKKSNegOps for GLWE<D, CKKS> {
         O: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        if self.max_k() < other.effective_k() {
-            self.rescale(module, (other.max_k() - self.effective_k()).into(), other, scratch)?;
+        let offset = self.offset_unary(other);
+        if offset != 0 {
+            module.glwe_lsh(self, other, offset, scratch);
+            self.meta = other.meta();
+            self.set_log_hom_rem(checked_log_hom_rem_sub("neg", other.log_hom_rem(), offset)?)?;
             module.glwe_negate_inplace(self);
         } else {
             module.glwe_negate(self, other);

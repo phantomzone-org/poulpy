@@ -4,7 +4,7 @@
 //! metadata (`log_decimal`, `log_hom_rem`).  The decoded message becomes
 //! `message * 2^bits` (for `mul_pow2`) or `message / 2^bits` (for `div_pow2`).
 
-use crate::{CKKS, CKKSInfos, layouts::ciphertext::CKKSOffset};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
 use anyhow::Result;
 use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore, layouts::GLWE};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
@@ -54,9 +54,9 @@ impl<D: DataMut> CKKSPow2Ops for GLWE<D, CKKS> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let offset = self.offset_unary(other);
-        module.glwe_lsh(self, other, bits, scratch);
+        module.glwe_lsh(self, other, bits + offset, scratch);
         self.meta = other.meta();
-        self.set_log_hom_rem(self.log_hom_rem() - offset)?;
+        self.set_log_hom_rem(checked_log_hom_rem_sub("mul_pow2", self.log_hom_rem(), offset)?)?;
         Ok(())
     }
 
@@ -85,13 +85,13 @@ impl<D: DataMut> CKKSPow2Ops for GLWE<D, CKKS> {
         let offset = self.offset_unary(other);
         module.glwe_lsh(self, other, offset, scratch);
         self.meta = other.meta();
-        self.set_log_hom_rem(self.log_hom_rem() - bits - offset)?;
+        self.set_log_hom_rem(checked_log_hom_rem_sub("div_pow2", self.log_hom_rem(), bits + offset)?)?;
         Ok(())
     }
 
     /// In-place: `self /= 2^bits`.
     fn div_pow2_inplace(&mut self, bits: usize) -> Result<()> {
-        self.set_log_hom_rem(self.log_hom_rem() - bits)?;
+        self.set_log_hom_rem(checked_log_hom_rem_sub("div_pow2_inplace", self.log_hom_rem(), bits)?)?;
         Ok(())
     }
 }

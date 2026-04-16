@@ -16,6 +16,26 @@ fn encrypt_decrypt() {
 }
 
 #[test]
+fn set_log_decimal_out_of_range_error() {
+    crate::leveled::tests::test_suite::errors::test_set_log_decimal_out_of_range_error(&CTX);
+}
+
+#[test]
+fn set_log_hom_rem_out_of_range_error() {
+    crate::leveled::tests::test_suite::errors::test_set_log_hom_rem_out_of_range_error(&CTX);
+}
+
+#[test]
+fn reallocate_limbs_checked_error() {
+    crate::leveled::tests::test_suite::errors::test_reallocate_limbs_checked_error(&CTX);
+}
+
+#[test]
+fn add_pt_znx_alignment_error() {
+    crate::leveled::tests::test_suite::errors::test_add_pt_znx_alignment_error(&CTX);
+}
+
+#[test]
 fn add_ct_aligned() {
     crate::leveled::tests::test_suite::add::test_add_ct_aligned(&CTX);
 }
@@ -73,6 +93,11 @@ fn add_pt_rnx_aligned() {
 #[test]
 fn add_pt_znx_smaller_output() {
     crate::leveled::tests::test_suite::add::test_add_pt_znx_smaller_output(&CTX);
+}
+
+#[test]
+fn add_pt_znx_base2k_mismatch_error() {
+    crate::leveled::tests::test_suite::add::test_add_pt_znx_base2k_mismatch_error(&CTX);
 }
 
 #[test]
@@ -151,6 +176,11 @@ fn neg() -> Result<()> {
 }
 
 #[test]
+fn neg_smaller_output() -> Result<()> {
+    crate::leveled::tests::test_suite::neg::test_neg_smaller_output(&CTX)
+}
+
+#[test]
 fn neg_inplace() {
     crate::leveled::tests::test_suite::neg::test_neg_inplace(&CTX);
 }
@@ -189,6 +219,15 @@ fn rotate_inplace() {
 fn mul_ct_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_aligned(&CTX);
 }
+#[test]
+fn mul_ct_delta_a_gt_b() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_gt_b(&CTX);
+}
+
+#[test]
+fn mul_ct_delta_a_lt_b() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_lt_b(&CTX);
+}
 
 #[test]
 fn mul_ct_smaller_output() {
@@ -196,13 +235,53 @@ fn mul_ct_smaller_output() {
 }
 
 #[test]
-fn square_ct_aligned() {
-    crate::leveled::tests::test_suite::mul::test_square_ct_aligned(&CTX);
+fn mul_ct_inplace_aligned() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_aligned(&CTX);
 }
 
 #[test]
-fn square_ct_smaller_output() {
-    crate::leveled::tests::test_suite::mul::test_square_ct_smaller_output(&CTX);
+fn mul_ct_inplace_self_lt() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_lt(&CTX);
+}
+
+#[test]
+fn mul_ct_inplace_self_gt() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_gt(&CTX);
+}
+
+#[test]
+fn square_aligned() {
+    crate::leveled::tests::test_suite::mul::test_square_aligned(&CTX);
+}
+
+#[test]
+fn square_rescaled_input() {
+    crate::leveled::tests::test_suite::mul::test_square_rescaled_input(&CTX);
+}
+
+#[test]
+fn square_inplace() {
+    crate::leveled::tests::test_suite::mul::test_square_rescaled_input(&CTX);
+}
+
+#[test]
+fn square_smaller_output() {
+    crate::leveled::tests::test_suite::mul::test_square_smaller_output(&CTX);
+}
+
+#[test]
+fn mul_pt_znx_aligned() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_znx_aligned(&CTX);
+}
+
+#[test]
+fn mul_pt_znx_smaller_output() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_znx_smaller_output(&CTX);
+}
+
+#[test]
+fn mul_ct_explicit_metadata_error() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_explicit_metadata_error(&CTX);
 }
 
 #[test]
@@ -233,4 +312,9 @@ fn div_pow2_smaller_output() {
 #[test]
 fn div_pow2_inplace() {
     crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace(&CTX);
+}
+
+#[test]
+fn div_pow2_inplace_explicit_error() {
+    crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace_explicit_error(&CTX);
 }

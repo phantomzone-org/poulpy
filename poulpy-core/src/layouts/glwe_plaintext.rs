@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPlaintextLayout {
@@ -37,12 +37,10 @@ pub struct GLWEPlaintext<D: Data, M = ()> {
     pub meta: M,
 }
 
-impl<D: DataMut, M> SetGLWEInfos for GLWEPlaintext<D, M> {
+impl<D: DataMut, M> SetLWEInfos for GLWEPlaintext<D, M> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
-
-    fn set_k(&mut self, _k: TorusPrecision) {}
 }
 
 impl<D: Data, M> LWEInfos for GLWEPlaintext<D, M> {
@@ -119,7 +117,6 @@ impl<D: DataRef, M> GLWEToRef for GLWEPlaintext<D, M> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.max_k(),
             data: self.data.to_ref(),
             meta: (),
         }
@@ -130,7 +127,6 @@ impl<D: DataMut, M> GLWEToMut for GLWEPlaintext<D, M> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,
-            k: self.max_k(),
             data: self.data.to_mut(),
             meta: (),
         }

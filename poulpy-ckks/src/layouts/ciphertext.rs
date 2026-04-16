@@ -9,7 +9,7 @@ use poulpy_core::{
 };
 use poulpy_hal::layouts::{Backend, Data, DataMut, Module, Scratch};
 
-use crate::{CKKS, CKKSInfos};
+use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, ensure_limb_count_fits, ensure_log_decimal_fits, ensure_log_hom_rem_fits};
 use anyhow::Result;
 
 impl CKKS {
@@ -45,13 +45,13 @@ impl<D: Data> CKKSInfos for GLWE<D, CKKS> {
     }
 
     fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
-        anyhow::ensure!(self.max_k().as_usize() - self.log_hom_rem() >= log_decimal);
+        ensure_log_decimal_fits(self.max_k().as_usize(), self.log_hom_rem(), log_decimal)?;
         self.meta.log_decimal = log_decimal;
         Ok(())
     }
 
     fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
-        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= log_hom_rem);
+        ensure_log_hom_rem_fits(self.max_k().as_usize(), self.log_decimal(), log_hom_rem)?;
         self.meta.log_hom_rem = log_hom_rem;
         Ok(())
     }
@@ -68,7 +68,7 @@ pub trait CKKSMaintainOps {
 
 impl CKKSMaintainOps for GLWE<Vec<u8>, CKKS> {
     fn reallocate_limbs_checked(&mut self, size: usize) -> Result<()> {
-        anyhow::ensure!(self.max_k().as_usize() - self.log_decimal() >= size * self.base2k().as_usize());
+        ensure_limb_count_fits(self.max_k().as_usize(), self.log_decimal(), self.base2k().as_usize(), size)?;
         self.data_mut().reallocate_limbs(size);
         Ok(())
     }
@@ -107,9 +107,9 @@ impl<D: DataMut> CKKSRescaleOps for GLWE<D, CKKS> {
         Module<BE>: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        anyhow::ensure!(self.log_hom_rem() >= k);
+        let log_hom_rem = checked_log_hom_rem_sub("rescale_inplace", self.log_hom_rem(), k)?;
         module.glwe_lsh_inplace(self, k, scratch);
-        self.set_log_hom_rem(self.log_hom_rem() - k)?;
+        self.set_log_hom_rem(log_hom_rem)?;
         Ok(())
     }
 
@@ -119,10 +119,10 @@ impl<D: DataMut> CKKSRescaleOps for GLWE<D, CKKS> {
         O: GLWEToRef + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        anyhow::ensure!(self.log_hom_rem() >= k);
+        let log_hom_rem = checked_log_hom_rem_sub("rescale", other.log_hom_rem(), k)?;
         module.glwe_lsh(self, other, k, scratch);
         self.meta = other.meta();
-        self.set_log_hom_rem(self.log_hom_rem() - k)?;
+        self.set_log_hom_rem(log_hom_rem)?;
         Ok(())
     }
 
@@ -160,16 +160,13 @@ impl<D: Data> CKKSOffset for GLWE<D, CKKS> {
         A: LWEInfos + CKKSInfos,
         B: LWEInfos + CKKSInfos,
     {
-        a.effective_k()
-            .min(b.effective_k())
-            .as_usize()
-            .saturating_sub(self.max_k().as_usize())
+        a.effective_k().min(b.effective_k()).saturating_sub(self.max_k().as_usize())
     }
 
     fn offset_unary<A>(&self, a: &A) -> usize
     where
         A: LWEInfos + CKKSInfos,
     {
-        a.effective_k().as_usize().saturating_sub(self.max_k().as_usize())
+        a.effective_k().saturating_sub(self.max_k().as_usize())
     }
 }

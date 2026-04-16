@@ -17,7 +17,7 @@ use crate::{
         GLWECompressedToMut, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEPlaintextToRef, GLWEPreparedToRef,
         GLWESecretPrepared, GLWESecretPreparedToRef, GLWESecretTensorPrepared, GLWESecretToRef, GLWESwitchingKeyDegreesMut,
         GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEPlaintextToMut,
-        LWEPlaintextToRef, LWESecretToRef, LWEToMut, LWEToRef, SetGLWEInfos, SetGaloisElement, SetLWEInfos,
+        LWEPlaintextToRef, LWESecretToRef, LWEToMut, LWEToRef, SetGaloisElement, SetLWEInfos,
     },
 };
 
@@ -174,7 +174,7 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
     fn glwe_decrypt<R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetGLWEInfos,
+        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToRef<BE> + GLWEInfos;
 
     fn lwe_decrypt_tmp_bytes<A>(module: &Module<BE>, infos: &A) -> usize
@@ -363,8 +363,8 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
 
     fn glwe_mul_const<R, A>(
         module: &Module<BE>,
-        res: &mut GLWE<R>,
         cnv_offset: usize,
+        res: &mut GLWE<R>,
         a: &GLWE<A>,
         b: &[i64],
         scratch: &mut Scratch<BE>,
@@ -372,7 +372,7 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         R: DataMut,
         A: DataRef;
 
-    fn glwe_mul_const_inplace<R>(module: &Module<BE>, res: &mut GLWE<R>, cnv_offset: usize, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<R>(module: &Module<BE>, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
 
@@ -387,7 +387,9 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -398,7 +400,9 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -420,12 +424,25 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         cnv_offset: usize,
         res: &mut GLWETensor<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
+
+    fn glwe_tensor_square_apply<R, A>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef;
 
     fn glwe_tensor_relinearize<R, A, B>(
         module: &Module<BE>,

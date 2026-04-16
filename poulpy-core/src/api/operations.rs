@@ -113,23 +113,29 @@ pub trait GLWEMulPlain<BE: Backend> {
         A: GLWEInfos,
         B: GLWEInfos;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain<R, A, B, BM>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWEPlaintext<B, BM>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace<R, A, AM>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
+        res_effective_k: usize,
         a: &GLWEPlaintext<A, AM>,
+        a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -151,25 +157,32 @@ pub trait GLWETensoring<BE: Backend> {
         self.glwe_tensor_apply_tmp_bytes(res, a, a)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_apply<R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWETensor<R>,
         a: &GLWE<A>,
+        a_effective_k: usize,
         b: &GLWE<B>,
+        b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef;
 
-    fn glwe_tensor_square_apply<R, A>(&self, cnv_offset: usize, res: &mut GLWETensor<R>, a: &GLWE<A>, scratch: &mut Scratch<BE>)
-    where
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_square_apply<R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: DataMut,
-        A: DataRef,
-    {
-        self.glwe_tensor_apply(cnv_offset, res, a, a, scratch);
-    }
+        A: DataRef;
 
     fn glwe_tensor_relinearize<R, A, B>(
         &self,
