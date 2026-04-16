@@ -319,9 +319,19 @@ impl<D: DataRef> WriterTo for ScalarZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;
+        let coeff_bytes = self.n * self.cols * size_of::<i64>();
         let buf: &[u8] = self.data.as_ref();
-        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
-        writer.write_all(buf)?;
+        if buf.len() < coeff_bytes {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "ScalarZnx buffer too small: self.data.len()={} < coeff_bytes={coeff_bytes}",
+                    buf.len()
+                ),
+            ));
+        }
+        writer.write_u64::<LittleEndian>(coeff_bytes as u64)?;
+        writer.write_all(&buf[..coeff_bytes])?;
         Ok(())
     }
 }
