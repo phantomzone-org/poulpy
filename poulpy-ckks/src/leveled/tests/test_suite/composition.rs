@@ -1,22 +1,40 @@
 //! Composition tests: multi-step CKKS evaluation paths that combine primitives.
 
-use super::helpers::{TestCompositionBackend, TestContext, assert_precision};
-use crate::layouts::{ciphertext::CKKS, plaintext_prepared::CKKSPlaintextPrepared};
-use crate::leveled::{
-    encryption::{decrypt_tmp_bytes, encrypt_sk_tmp_bytes},
-    operations::{
-        add::{add_aligned, add_inplace, add_prepared_pt_inplace},
-        align::{align_to, align_to_tmp_bytes},
-        mul::{mul, mul_prepared_pt, mul_pt_tmp_bytes, mul_tmp_bytes, square, square_tmp_bytes},
-    },
+use super::helpers::{TestCompositionBackend, TestContext, TestVector, assert_ckks_error};
+use crate::{
+    CKKS, CKKSCompositionError, CKKSInfos,
+    leveled::operations::{add::CKKSAddOps, mul::CKKSMulOps},
 };
-use poulpy_core::layouts::{Base2K, Degree, GLWE, TorusPrecision};
+use poulpy_core::layouts::GLWE;
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, ScratchOwned},
+    layouts::ScratchOwned,
 };
 
-fn poly2_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, f64), c2: (f64, f64)) -> (Vec<f64>, Vec<f64>) {
+fn constant_rnx<BE: super::helpers::TestBackend>(
+    ctx: &TestContext<BE>,
+    c: (f64, f64),
+) -> crate::layouts::plaintext::CKKSPlaintextRnx<f64> {
+    let m = ctx.params.n / 2;
+    ctx.encode_pt_rnx(&vec![c.0; m], &vec![c.1; m])
+}
+
+fn alloc_composition_scratch<BE: TestCompositionBackend>(ctx: &TestContext<BE>) -> ScratchOwned<BE>
+where
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+{
+    let ct_infos = ctx.params.glwe_layout();
+    let prec = ctx.meta();
+    let mul_pt_rnx = GLWE::<Vec<u8>, CKKS>::mul_pt_rnx_tmp_bytes(&ctx.module, &ct_infos, &ct_infos, &prec);
+    ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_rnx))
+}
+
+fn poly2_expected<BE: super::helpers::TestBackend>(
+    ctx: &TestContext<BE>,
+    c0: (f64, f64),
+    c1: (f64, f64),
+    c2: (f64, f64),
+) -> (Vec<f64>, Vec<f64>) {
     let m = ctx.module.n() / 2;
     let want_re: Vec<f64> = (0..m)
         .map(|j| {
@@ -39,7 +57,11 @@ fn poly2_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, f64
     (want_re, want_im)
 }
 
-fn same_offset_expected(ctx: &TestContext<impl Backend>, c1: (f64, f64), c2: (f64, f64)) -> (Vec<f64>, Vec<f64>) {
+fn same_offset_expected<BE: super::helpers::TestBackend>(
+    ctx: &TestContext<BE>,
+    c1: (f64, f64),
+    c2: (f64, f64),
+) -> (Vec<f64>, Vec<f64>) {
     let m = ctx.module.n() / 2;
     let coeff_re = c1.0 + c2.0;
     let coeff_im = c1.1 + c2.1;
@@ -48,7 +70,12 @@ fn same_offset_expected(ctx: &TestContext<impl Backend>, c1: (f64, f64), c2: (f6
     (want_re, want_im)
 }
 
-fn mul_by_y_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, f64), c2: (f64, f64)) -> (Vec<f64>, Vec<f64>) {
+fn mul_by_y_expected<BE: super::helpers::TestBackend>(
+    ctx: &TestContext<BE>,
+    c0: (f64, f64),
+    c1: (f64, f64),
+    c2: (f64, f64),
+) -> (Vec<f64>, Vec<f64>) {
     let m = ctx.module.n() / 2;
     let (poly_re, poly_im) = poly2_expected(ctx, c0, c1, c2);
     let want_re: Vec<f64> = (0..m).map(|j| poly_re[j] * ctx.re2[j] - poly_im[j] * ctx.im2[j]).collect();
@@ -56,299 +83,195 @@ fn mul_by_y_expected(ctx: &TestContext<impl Backend>, c0: (f64, f64), c1: (f64, 
     (want_re, want_im)
 }
 
-/// Adding two prepared-plaintext products computed from the same branch stays accurate.
-pub fn test_prepared_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp)),
-    );
+/// Adding two plaintext-scaled copies of the same ciphertext stays accurate.
+pub fn test_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+    let mut scratch = alloc_composition_scratch(ctx);
 
     let c1 = (0.625, -0.125);
     let c2 = (-0.375, 0.25);
-    let pt1 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c1, scratch.borrow());
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
+    let pt1 = constant_rnx(ctx, c1);
+    let pt2 = constant_rnx(ctx, c2);
     let (want_re, want_im) = same_offset_expected(ctx, c1, c2);
 
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
-    mul_prepared_pt(&ctx.module, &mut term2, &x, &pt2, scratch.borrow());
+    let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    // `alloc_ct` takes the total stored width `k`. For `x * pt`, the output
+    // effective width is `x.effective_k() - log_decimal`, which is numerically
+    // equal to `x.log_hom_rem()` in these tests.
+    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
+    let mut term2 = ctx.alloc_ct(x.log_hom_rem());
+    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
+    term2.mul_pt_rnx(&ctx.module, &x, &pt2, ctx.meta(), scratch.borrow()).unwrap();
 
     assert_eq!(
-        term1.offset_bits(),
-        term2.offset_bits(),
-        "linear branches must share the same offset"
+        term1.log_hom_rem(),
+        term2.log_hom_rem(),
+        "linear branches should remain aligned"
     );
-    add_inplace(&ctx.module, &mut term1, &term2, scratch.borrow());
+    term1.add_inplace(&ctx.module, &term2, scratch.borrow()).unwrap();
 
-    let (re_out, im_out) = ctx.decrypt_decode(&term1, &mut scratch);
-    assert_precision("prepared_linear_sum re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_linear_sum im", &im_out, &want_im, 20.0);
+    ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/// A prepared `c1*x + c2*x^2` sum spans mixed offsets and stays accurate.
-pub fn test_prepared_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let tsk = ctx.tsk();
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, tsk))
-            .max(align_to_tmp_bytes(&ctx.module, &ct_tmp, k)),
-    );
+/// A mixed `c1*x + c2*x^2` composition remains decryptable and accurate.
+pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+    let mut scratch = alloc_composition_scratch(ctx);
 
     let c1 = (0.625, -0.125);
     let c2 = (-0.375, 0.25);
-    let pt1 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c1, scratch.borrow());
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
+    let pt1 = constant_rnx(ctx, c1);
+    let pt2 = constant_rnx(ctx, c2);
     let (want_re, want_im) = poly2_expected(ctx, (0.0, 0.0), c1, c2);
 
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
+    let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    // Likewise, `square` consumes one `log_decimal` chunk, so the post-square
+    // effective width is `x.effective_k() - log_decimal == x.log_hom_rem()`.
+    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
-    mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
+    // These allocations still mean "result effective_k", not "headroom only".
+    // The equality with `log_hom_rem()` is specific to these operation chains.
+    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
+    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
+    term2
+        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .unwrap();
 
-    assert_eq!(
-        term1.torus_scale_bits(),
-        term2.torus_scale_bits(),
-        "poly2 branches must remain add-compatible"
+    assert!(
+        term1.log_hom_rem() > term2.log_hom_rem(),
+        "x^2 branch should consume more precision"
     );
-    assert_ne!(
-        term1.offset_bits(),
-        term2.offset_bits(),
-        "poly2 branches should expose different natural offsets"
-    );
-    add_inplace(&ctx.module, &mut term1, &term2, scratch.borrow());
+    let mut sum = ctx.alloc_ct(term2.effective_k());
+    sum.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
 
-    let (re_out, im_out) = ctx.decrypt_decode(&term1, &mut scratch);
-    assert_precision("prepared_poly2_sum re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_poly2_sum im", &im_out, &want_im, 20.0);
+    ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-/// Explicit alignment remains a no-op-compatible path for the prepared poly2 sum.
-pub fn test_prepared_poly2_sum_aligned<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let tsk = ctx.tsk();
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, tsk))
-            .max(align_to_tmp_bytes(&ctx.module, &ct_tmp, k)),
-    );
-
-    let c1 = (0.625, -0.125);
-    let c2 = (-0.375, 0.25);
-    let pt1 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c1, scratch.borrow());
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
-    let (want_re, want_im) = poly2_expected(ctx, (0.0, 0.0), c1, c2);
-
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
-
-    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
-    mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
-
-    let target_offset = term1.offset_bits().max(term2.offset_bits());
-    let target_k = TorusPrecision(target_offset);
-    let mut aligned1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut aligned2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut sum = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    align_to(&ctx.module, &mut aligned1, &term1, target_offset, target_k, scratch.borrow());
-    align_to(&ctx.module, &mut aligned2, &term2, target_offset, target_k, scratch.borrow());
-    add_aligned(&ctx.module, &mut sum, &aligned1, &aligned2);
-
-    let (re_out, im_out) = ctx.decrypt_decode(&sum, &mut scratch);
-    assert_precision("prepared_poly2_sum_aligned re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_poly2_sum_aligned im", &im_out, &want_im, 20.0);
-}
-
-/// A prepared `c*x^2` branch keeps its natural lower offset and decrypts correctly after alignment.
-pub fn test_prepared_poly2_term_align<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let tsk = ctx.tsk();
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, tsk))
-            .max(align_to_tmp_bytes(&ctx.module, &ct_tmp, k)),
-    );
-
-    let c2 = (-0.375, 0.25);
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
-
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
-
-    let mut term = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term, &x2, &pt2, scratch.borrow());
-
-    let want_re: Vec<f64> = (0..m)
-        .map(|j| {
-            let x_re = ctx.re1[j];
-            let x_im = ctx.im1[j];
-            let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c2.0 * x2_re - c2.1 * x2_im
-        })
-        .collect();
-    let want_im: Vec<f64> = (0..m)
-        .map(|j| {
-            let x_re = ctx.re1[j];
-            let x_im = ctx.im1[j];
-            let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c2.0 * x2_im + c2.1 * x2_re
-        })
-        .collect();
-
-    let natural_offset = k.0 - 2 * ctx.params.log_delta;
-    let align_offset = k.0 - ctx.params.log_delta;
-    assert_eq!(
-        term.offset_bits(),
-        natural_offset,
-        "x2 branch must consume visible offset precision"
-    );
-    let mut aligned = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    align_to(
-        &ctx.module,
-        &mut aligned,
-        &term,
-        align_offset,
-        TorusPrecision(align_offset),
-        scratch.borrow(),
-    );
-
-    let (re_out, im_out) = ctx.decrypt_decode(&aligned, &mut scratch);
-    assert_precision("prepared_poly2_term_align re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_poly2_term_align im", &im_out, &want_im, 20.0);
-}
-
-/// A prepared `c*x^2` branch decrypts correctly with its own lower-precision metadata.
-pub fn test_prepared_poly2_term<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let tsk = ctx.tsk();
-    let m = ctx.module.n() / 2;
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, tsk))
-            .max(align_to_tmp_bytes(&ctx.module, &ct_tmp, k)),
-    );
-
-    let c2 = (-0.375, 0.25);
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
-
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
-
-    let mut term = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term, &x2, &pt2, scratch.borrow());
-
-    let want_re: Vec<f64> = (0..m)
-        .map(|j| {
-            let x_re = ctx.re1[j];
-            let x_im = ctx.im1[j];
-            let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c2.0 * x2_re - c2.1 * x2_im
-        })
-        .collect();
-    let want_im: Vec<f64> = (0..m)
-        .map(|j| {
-            let x_re = ctx.re1[j];
-            let x_im = ctx.im1[j];
-            let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c2.0 * x2_im + c2.1 * x2_re
-        })
-        .collect();
-
-    assert_eq!(
-        term.offset_bits(),
-        k.0 - 2 * ctx.params.log_delta,
-        "x2 branch must consume visible offset precision"
-    );
-    let (re_out, im_out) = ctx.decrypt_decode(&term, &mut scratch);
-    assert_precision("prepared_poly2_term re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_poly2_term im", &im_out, &want_im, 20.0);
-}
-
-/// Evaluates `y * (c0 + c1*x + c2*x^2)` with encrypted `x` and `y`.
-pub fn test_prepared_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
-    let tsk = ctx.tsk();
-    let m = ctx.module.n() / 2;
-    let zero = vec![0.0; m];
-    let base2k = Base2K(ctx.params.base2k);
-    let k = TorusPrecision(ctx.params.k);
-    let degree = Degree(ctx.params.n);
-    let ct_tmp = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut scratch = ScratchOwned::<BE>::alloc(
-        encrypt_sk_tmp_bytes(&ctx.module, &ct_tmp)
-            .max(decrypt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(mul_pt_tmp_bytes(&ctx.module, &ct_tmp))
-            .max(square_tmp_bytes(&ctx.module, &ct_tmp, tsk))
-            .max(mul_tmp_bytes(&ctx.module, &ct_tmp, &ct_tmp, tsk)),
-    );
+/// Adding a constant plaintext to `c1*x + c2*x^2` keeps the expected value.
+pub fn test_poly2_sum_with_const<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+    let mut scratch = alloc_composition_scratch(ctx);
 
     let c0 = (0.125, -0.0625);
     let c1 = (0.625, -0.125);
     let c2 = (-0.375, 0.25);
-    let pt0 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c0, scratch.borrow());
-    let pt1 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c1, scratch.borrow());
-    let pt2 = CKKSPlaintextPrepared::from_const(&ctx.module, degree, base2k, k, ctx.params.log_delta, c2, scratch.borrow());
+    let pt0 = constant_rnx(ctx, c0);
+    let pt1 = constant_rnx(ctx, c1);
+    let pt2 = constant_rnx(ctx, c2);
+    let (want_re, want_im) = poly2_expected(ctx, c0, c1, c2);
+
+    let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    // `square` output width matches `x.log_hom_rem()` here only because
+    // squaring drops one `log_decimal` chunk from `x.effective_k()`.
+    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
+
+    // `mul_pt_rnx` again allocates by post-op effective width; using
+    // `log_hom_rem()` is a numeric shortcut that holds for this fixture.
+    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
+    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
+    term2
+        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .unwrap();
+    let mut poly = ctx.alloc_ct(term2.effective_k());
+    poly.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
+    poly.add_pt_rnx_inplace(&ctx.module, &pt0, ctx.meta(), scratch.borrow())
+        .unwrap();
+
+    ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// Evaluates `y * (c0 + c1*x + c2*x^2)` with encrypted `x` and `y`.
+pub fn test_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+    let mut scratch = alloc_composition_scratch(ctx);
+
+    let c0 = (0.125, -0.0625);
+    let c1 = (0.625, -0.125);
+    let c2 = (-0.375, 0.25);
+    let pt0 = constant_rnx(ctx, c0);
+    let pt1 = constant_rnx(ctx, c1);
+    let pt2 = constant_rnx(ctx, c2);
     let (want_re, want_im) = mul_by_y_expected(ctx, c0, c1, c2);
 
-    let x = ctx.encrypt(&ctx.re1, &ctx.im1, &mut scratch);
-    let y = ctx.encrypt(&ctx.re2, &ctx.im2, &mut scratch);
-    let mut x2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    square(&ctx.module, &mut x2, &x, tsk, scratch.borrow());
+    let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let y = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
+    // Here too, the allocated `k` is the post-square effective width, which
+    // happens to equal `x.log_hom_rem()` for CKKS square in this setup.
+    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let mut poly = ctx.encrypt(&zero, &zero, &mut scratch);
-    add_prepared_pt_inplace(&ctx.module, &mut poly, &pt0);
+    // The same caution applies below: `log_hom_rem()` is not semantically the
+    // ciphertext width, it just matches the required post-op width here.
+    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
+    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
+    term2
+        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .unwrap();
+    let mut poly = ctx.alloc_ct(term2.effective_k());
+    poly.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
+    poly.add_pt_rnx_inplace(&ctx.module, &pt0, ctx.meta(), scratch.borrow())
+        .unwrap();
 
-    let mut term1 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    let mut term2 = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul_prepared_pt(&ctx.module, &mut term1, &x, &pt1, scratch.borrow());
-    mul_prepared_pt(&ctx.module, &mut term2, &x2, &pt2, scratch.borrow());
-    add_inplace(&ctx.module, &mut poly, &term1, scratch.borrow());
-    add_inplace(&ctx.module, &mut poly, &term2, scratch.borrow());
+    let mut res = ctx.alloc_ct(ctx.max_k());
+    res.mul(&ctx.module, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
 
-    let mut res = CKKS::alloc(degree, base2k, k, ctx.params.log_delta);
-    mul(&ctx.module, &mut res, &y, &poly, tsk, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, 18.0, scratch.borrow());
+}
 
-    let (re_out, im_out) = ctx.decrypt_decode(&res, &mut scratch);
-    assert_precision("prepared_poly2_mul re", &re_out, &want_re, 20.0);
-    assert_precision("prepared_poly2_mul im", &im_out, &want_im, 20.0);
+/// Repeated squaring on unit-circle slots should exhaust HE capacity before it blows up numerically.
+pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+    let mut scratch = alloc_composition_scratch(ctx);
+    let (mut want_re, mut want_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let mut squares = 0usize;
+
+    while ct.log_hom_rem() >= ct.log_decimal() {
+        let prev_log_hom_rem = ct.log_hom_rem();
+        let prev_log_decimal = ct.log_decimal();
+        let next_k = ct.effective_k() - ct.log_decimal();
+        let mut next = ctx.alloc_ct(next_k);
+        next.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+        assert_eq!(
+            next.log_decimal(),
+            prev_log_decimal,
+            "square should preserve log_decimal across repeated squaring",
+        );
+        assert_eq!(
+            next.log_hom_rem(),
+            prev_log_hom_rem - prev_log_decimal,
+            "square should consume exactly one log_decimal chunk of HE capacity",
+        );
+        (want_re, want_im) = ctx.want_square_from(&want_re, &want_im);
+        ct = next;
+        squares += 1;
+    }
+
+    assert!(squares > 0, "expected at least one square");
+    assert!(
+        ct.log_hom_rem() < ct.log_decimal(),
+        "expected squaring to consume all HE capacity"
+    );
+    ctx.assert_decrypt_precision(
+        "repeated_square_exhausts_capacity",
+        &ct,
+        &want_re,
+        &want_im,
+        10.0,
+        scratch.borrow(),
+    );
+
+    let mut no_capacity = ctx.alloc_ct(ctx.max_k());
+    let err = no_capacity.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap_err();
+    assert_ckks_error(
+        "repeated_square_exhausts_capacity",
+        &err,
+        CKKSCompositionError::MultiplicationPrecisionUnderflow {
+            op: "mul",
+            lhs_log_hom_rem: ct.log_hom_rem(),
+            rhs_log_hom_rem: ct.log_hom_rem(),
+            lhs_log_decimal: ct.log_decimal(),
+            rhs_log_decimal: ct.log_decimal(),
+        },
+    );
 }
