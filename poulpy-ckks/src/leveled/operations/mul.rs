@@ -1,10 +1,10 @@
 //! CKKS ciphertext multiplication.
 
 use poulpy_core::{
-    GLWETensoring, ScratchTakeCore,
+    GLWEMulPlain, GLWETensoring, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
-        TorusPrecision,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWETensor, GLWETensorKeyPrepared,
+        GLWEToMut, GLWEToRef, LWEInfos, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -12,7 +12,11 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, checked_mul_log_hom_rem};
+use crate::{
+    CKKS, CKKSInfos, checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem,
+    error::checked_mul_pt_log_hom_rem,
+    layouts::plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, attach_meta},
+};
 use anyhow::Result;
 
 pub trait CKKSMulOps {
@@ -28,7 +32,18 @@ pub trait CKKSMulOps {
         T: GGLWEInfos,
         Module<BE>: GLWETensoring<BE>;
 
-    #[allow(clippy::too_many_arguments)]
+    fn mul_pt_znx_tmp_bytes<R, A, BE: Backend>(module: &Module<BE>, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Module<BE>: GLWEMulPlain<BE>;
+
+    fn mul_pt_rnx_tmp_bytes<R, A, BE: Backend>(module: &Module<BE>, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Module<BE>: GLWEMulPlain<BE>;
+
     fn mul<A, B, BE: Backend>(
         &mut self,
         module: &Module<BE>,
@@ -43,7 +58,6 @@ pub trait CKKSMulOps {
         B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    #[allow(clippy::too_many_arguments)]
     fn mul_inplace<A, BE: Backend>(
         &mut self,
         module: &Module<BE>,
@@ -77,29 +91,54 @@ pub trait CKKSMulOps {
     where
         Module<BE>: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
-}
 
-fn get_mul_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
-where
-    R: LWEInfos + CKKSInfos,
-    A: LWEInfos + CKKSInfos,
-    B: LWEInfos + CKKSInfos,
-{
-    // Value before considering res size
-    let res_log_hom_rem = checked_mul_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
-    let res_log_decimal = a.log_decimal().max(b.log_decimal());
+    fn mul_pt_znx<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        pt_znx: &GLWEPlaintext<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
-    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+    fn mul_pt_znx_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_znx: &GLWEPlaintext<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    // cnv_offset that takes into account `res_offset`
-    let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
+    fn mul_pt_rnx<A, F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    Ok((
-        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
-        res_log_decimal,
-        cnv_offset,
-    ))
+    fn mul_pt_rnx_inplace<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
 impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
@@ -112,7 +151,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         let glwe_layout = GLWELayout {
             n: res.n(),
             base2k: res.base2k(),
-            k: TorusPrecision(res.max_k().as_u32() + 4 * res.base2k().as_u32()),
+            k: TorusPrecision(res.max_k().as_u32()),
             rank: res.rank(),
         };
 
@@ -137,7 +176,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         B: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, b)?;
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(self, a, b)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),
@@ -182,7 +221,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, self, a)?;
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(self, self, a)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),
@@ -224,7 +263,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         let glwe_layout = GLWELayout {
             n: res.n(),
             base2k: res.base2k(),
-            k: TorusPrecision(res.max_k().as_u32() + 4 * res.base2k().as_u32()),
+            k: TorusPrecision(res.max_k().as_u32()),
             rank: res.rank(),
         };
 
@@ -248,7 +287,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, a, a)?;
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(self, a, a)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),
@@ -281,7 +320,7 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         Module<BE>: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, self, self)?;
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(self, self, self)?;
 
         let tensor_layout = GLWELayout {
             n: self.n(),
@@ -302,4 +341,185 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
         self.set_log_decimal(res_log_decimal)?;
         Ok(())
     }
+
+    fn mul_pt_znx_tmp_bytes<R, A, BE: Backend>(module: &Module<BE>, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Module<BE>: GLWEMulPlain<BE>,
+    {
+        let b_infos = GLWEPlaintextLayout {
+            n: res.n(),
+            base2k: res.base2k(),
+            k: b.min_k(res.base2k()),
+        };
+        module.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
+    }
+
+    fn mul_pt_rnx_tmp_bytes<R, A, BE: Backend>(module: &Module<BE>, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Module<BE>: GLWEMulPlain<BE>,
+    {
+        let b_infos = GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: res.base2k(),
+            k: b.min_k(res.base2k()),
+        };
+        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(&b_infos) + module.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
+    }
+
+    fn mul_pt_znx<A, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        pt_znx: &GLWEPlaintext<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_pt_params(self, a, pt_znx)?;
+
+        module.glwe_mul_plain(
+            cnv_offset,
+            &mut self.to_mut(),
+            &a.to_ref(),
+            a.effective_k(),
+            pt_znx,
+            pt_znx.max_k().as_usize(),
+            scratch,
+        );
+
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
+
+        Ok(())
+    }
+
+    fn mul_pt_znx_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_znx: &GLWEPlaintext<impl DataRef, CKKS>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_pt_params(self, self, pt_znx)?;
+
+        let self_effective_k = self.effective_k();
+
+        module.glwe_mul_plain_inplace(
+            cnv_offset,
+            &mut self.to_mut(),
+            self_effective_k,
+            pt_znx,
+            pt_znx.max_k().as_usize(),
+            scratch,
+        );
+
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
+
+        Ok(())
+    }
+
+    fn mul_pt_rnx<A, F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        a: &A,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        A: GLWEToRef + LWEInfos + CKKSInfos,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.base2k(),
+            k: prec.min_k(self.base2k()),
+        });
+
+        let mut pt_znx = attach_meta(pt_glwe, prec);
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.mul_pt_znx(module, a, &pt_znx, scratch_1)
+    }
+
+    fn mul_pt_rnx_inplace<F, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt_rnx: &CKKSPlaintextRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWEMulPlain<BE>,
+        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
+            n: module.n().into(),
+            base2k: self.base2k(),
+            k: prec.min_k(self.base2k()),
+        });
+
+        let mut pt_znx = attach_meta(pt_glwe, prec);
+        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        self.mul_pt_znx_inplace(module, &pt_znx, scratch_1)
+    }
+}
+
+fn get_mul_ct_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
+where
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+    B: LWEInfos + CKKSInfos,
+{
+    // Value before considering res size
+    let res_log_hom_rem = checked_mul_ct_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
+    let res_log_decimal = a.log_decimal().max(b.log_decimal());
+
+    // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
+    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+
+    // cnv_offset that takes into account `res_offset`
+    let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
+
+    Ok((
+        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
+        res_log_decimal,
+        cnv_offset,
+    ))
+}
+
+fn get_mul_pt_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
+where
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+    B: LWEInfos + CKKSInfos,
+{
+    // Value before considering res size
+    let res_log_hom_rem = checked_mul_pt_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
+    let res_log_decimal = a.log_decimal();
+
+    // Offset to accomodate `res_log_hom_rem` to `res.max_k()`
+    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+
+    // cnv_offset that takes into account `res_offset`
+    let cnv_offset = b.max_k().as_usize() + res_offset;
+
+    Ok((
+        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
+        res_log_decimal,
+        cnv_offset,
+    ))
 }

@@ -204,7 +204,7 @@ pub(crate) fn ensure_plaintext_alignment(
     Ok(available - pt_max_k)
 }
 
-pub(crate) fn checked_mul_log_hom_rem(
+pub(crate) fn checked_mul_ct_log_hom_rem(
     op: &'static str,
     lhs_log_hom_rem: usize,
     rhs_log_hom_rem: usize,
@@ -224,4 +224,23 @@ pub(crate) fn checked_mul_log_hom_rem(
             }
             .into()
         })
+}
+
+pub(crate) fn checked_mul_pt_log_hom_rem(
+    op: &'static str,
+    lhs_log_hom_rem: usize,
+    rhs_log_hom_rem: usize,
+    lhs_log_decimal: usize,
+    rhs_log_decimal: usize,
+) -> Result<usize> {
+    lhs_log_hom_rem.checked_sub(rhs_log_decimal).ok_or_else(|| {
+        CKKSCompositionError::MultiplicationPrecisionUnderflow {
+            op,
+            lhs_log_hom_rem,
+            rhs_log_hom_rem,
+            lhs_log_decimal,
+            rhs_log_decimal,
+        }
+        .into()
+    })
 }
