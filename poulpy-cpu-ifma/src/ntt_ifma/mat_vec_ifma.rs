@@ -274,23 +274,67 @@ pub(crate) unsafe fn vec_mat1col_product_bbc_ifma(
     y: &[u32],
 ) {
     unsafe {
-        let mut acc_lo = _mm256_setzero_si256();
-        let mut acc_hi = _mm256_setzero_si256();
+        // 4-way unrolling: 8 independent accumulator chains to better saturate
+        // the VPMADD52 pipeline (6-cycle latency, 2/cycle throughput on Zen 5).
+        let mut acc_lo0 = _mm256_setzero_si256();
+        let mut acc_hi0 = _mm256_setzero_si256();
+        let mut acc_lo1 = _mm256_setzero_si256();
+        let mut acc_hi1 = _mm256_setzero_si256();
+        let mut acc_lo2 = _mm256_setzero_si256();
+        let mut acc_hi2 = _mm256_setzero_si256();
+        let mut acc_lo3 = _mm256_setzero_si256();
+        let mut acc_hi3 = _mm256_setzero_si256();
 
         let mut x_ptr = x.as_ptr() as *const __m256i;
         let mut y_ptr = y.as_ptr() as *const __m256i;
+        let quads = ell / 4;
 
-        for _ in 0..ell {
-            let xv = _mm256_loadu_si256(x_ptr);
-            let yv = _mm256_loadu_si256(y_ptr);
+        for _ in 0..quads {
+            let xv0 = _mm256_loadu_si256(x_ptr);
+            let yv0 = _mm256_loadu_si256(y_ptr);
+            let xv1 = _mm256_loadu_si256(x_ptr.add(1));
+            let yv1 = _mm256_loadu_si256(y_ptr.add(1));
+            let xv2 = _mm256_loadu_si256(x_ptr.add(2));
+            let yv2 = _mm256_loadu_si256(y_ptr.add(2));
+            let xv3 = _mm256_loadu_si256(x_ptr.add(3));
+            let yv3 = _mm256_loadu_si256(y_ptr.add(3));
 
-            acc_lo = _mm256_madd52lo_epu64(acc_lo, xv, yv);
-            acc_hi = _mm256_madd52hi_epu64(acc_hi, xv, yv);
+            acc_lo0 = _mm256_madd52lo_epu64(acc_lo0, xv0, yv0);
+            acc_hi0 = _mm256_madd52hi_epu64(acc_hi0, xv0, yv0);
+            acc_lo1 = _mm256_madd52lo_epu64(acc_lo1, xv1, yv1);
+            acc_hi1 = _mm256_madd52hi_epu64(acc_hi1, xv1, yv1);
+            acc_lo2 = _mm256_madd52lo_epu64(acc_lo2, xv2, yv2);
+            acc_hi2 = _mm256_madd52hi_epu64(acc_hi2, xv2, yv2);
+            acc_lo3 = _mm256_madd52lo_epu64(acc_lo3, xv3, yv3);
+            acc_hi3 = _mm256_madd52hi_epu64(acc_hi3, xv3, yv3);
 
-            x_ptr = x_ptr.add(1);
-            y_ptr = y_ptr.add(1);
+            x_ptr = x_ptr.add(4);
+            y_ptr = y_ptr.add(4);
         }
 
+        // Handle remainder (0-3 elements)
+        let rem = ell % 4;
+        if rem >= 2 {
+            let xv0 = _mm256_loadu_si256(x_ptr);
+            let yv0 = _mm256_loadu_si256(y_ptr);
+            let xv1 = _mm256_loadu_si256(x_ptr.add(1));
+            let yv1 = _mm256_loadu_si256(y_ptr.add(1));
+            acc_lo0 = _mm256_madd52lo_epu64(acc_lo0, xv0, yv0);
+            acc_hi0 = _mm256_madd52hi_epu64(acc_hi0, xv0, yv0);
+            acc_lo1 = _mm256_madd52lo_epu64(acc_lo1, xv1, yv1);
+            acc_hi1 = _mm256_madd52hi_epu64(acc_hi1, xv1, yv1);
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(2);
+        }
+        if rem % 2 == 1 {
+            let xv = _mm256_loadu_si256(x_ptr);
+            let yv = _mm256_loadu_si256(y_ptr);
+            acc_lo0 = _mm256_madd52lo_epu64(acc_lo0, xv, yv);
+            acc_hi0 = _mm256_madd52hi_epu64(acc_hi0, xv, yv);
+        }
+
+        let acc_lo = _mm256_add_epi64(_mm256_add_epi64(acc_lo0, acc_lo1), _mm256_add_epi64(acc_lo2, acc_lo3));
+        let acc_hi = _mm256_add_epi64(_mm256_add_epi64(acc_hi0, acc_hi1), _mm256_add_epi64(acc_hi2, acc_hi3));
         let r = reduce_bbc_ifma_simd(acc_lo, acc_hi);
         _mm256_storeu_si256(res.as_mut_ptr() as *mut __m256i, r);
     }
@@ -325,24 +369,41 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma(
     unsafe {
         // Both paired rows fit in a single __m512i (2 × 4 u64 lanes).
         // Lanes [0..4] = pair A (4 limbs), lanes [4..8] = pair B (4 limbs).
-        let mut acc_lo = _mm512_setzero_si512();
-        let mut acc_hi = _mm512_setzero_si512();
+        let mut acc_lo0 = _mm512_setzero_si512();
+        let mut acc_hi0 = _mm512_setzero_si512();
+        let mut acc_lo1 = _mm512_setzero_si512();
+        let mut acc_hi1 = _mm512_setzero_si512();
 
         let mut x_ptr = x.as_ptr() as *const __m512i;
         let mut y_ptr = y.as_ptr() as *const __m512i;
+        let pairs = ell / 2;
 
-        for _ in 0..ell {
+        for _ in 0..pairs {
             let xv = _mm512_loadu_si512(x_ptr);
             let yv = _mm512_loadu_si512(y_ptr);
-            acc_lo = _mm512_madd52lo_epu64(acc_lo, xv, yv);
-            acc_hi = _mm512_madd52hi_epu64(acc_hi, xv, yv);
+            let xv_next = _mm512_loadu_si512(x_ptr.add(1));
+            let yv_next = _mm512_loadu_si512(y_ptr.add(1));
+            acc_lo0 = _mm512_madd52lo_epu64(acc_lo0, xv, yv);
+            acc_hi0 = _mm512_madd52hi_epu64(acc_hi0, xv, yv);
+            acc_lo1 = _mm512_madd52lo_epu64(acc_lo1, xv_next, yv_next);
+            acc_hi1 = _mm512_madd52hi_epu64(acc_hi1, xv_next, yv_next);
 
-            x_ptr = x_ptr.add(1);
-            y_ptr = y_ptr.add(1);
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(2);
+        }
+
+        if !ell.is_multiple_of(2) {
+            let xv = _mm512_loadu_si512(x_ptr);
+            let yv = _mm512_loadu_si512(y_ptr);
+            acc_lo0 = _mm512_madd52lo_epu64(acc_lo0, xv, yv);
+            acc_hi0 = _mm512_madd52hi_epu64(acc_hi0, xv, yv);
         }
 
         // Reduce both pairs in one call.
-        _mm512_storeu_si512(res.as_mut_ptr() as *mut __m512i, reduce_bbc_ifma_simd_512(acc_lo, acc_hi));
+        _mm512_storeu_si512(
+            res.as_mut_ptr() as *mut __m512i,
+            reduce_bbc_ifma_simd_512(_mm512_add_epi64(acc_lo0, acc_lo1), _mm512_add_epi64(acc_hi0, acc_hi1)),
+        );
     }
 }
 
@@ -378,35 +439,133 @@ pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_ifma(
     unsafe {
         // Pack the two pairs (A and B) of each column into a single __m512i.
         // Lanes [0..4] = pair A, lanes [4..8] = pair B.
-        let mut acc_lo_c0 = _mm512_setzero_si512();
-        let mut acc_hi_c0 = _mm512_setzero_si512();
-        let mut acc_lo_c1 = _mm512_setzero_si512();
-        let mut acc_hi_c1 = _mm512_setzero_si512();
+        let mut acc_lo_c0_0 = _mm512_setzero_si512();
+        let mut acc_hi_c0_0 = _mm512_setzero_si512();
+        let mut acc_lo_c1_0 = _mm512_setzero_si512();
+        let mut acc_hi_c1_0 = _mm512_setzero_si512();
+        let mut acc_lo_c0_1 = _mm512_setzero_si512();
+        let mut acc_hi_c0_1 = _mm512_setzero_si512();
+        let mut acc_lo_c1_1 = _mm512_setzero_si512();
+        let mut acc_hi_c1_1 = _mm512_setzero_si512();
 
         let mut x_ptr = x.as_ptr() as *const __m512i;
         let mut y_ptr = y.as_ptr() as *const __m512i;
+        let pairs = ell / 2;
 
-        for _ in 0..ell {
+        for _ in 0..pairs {
             // Load x pair: [xa | xb] in one __m512i.
             let xv = _mm512_loadu_si512(x_ptr);
+            let xv_next = _mm512_loadu_si512(x_ptr.add(1));
 
             // Column 0: [yc0a | yc0b] in one __m512i.
             let yc0 = _mm512_loadu_si512(y_ptr);
-            acc_lo_c0 = _mm512_madd52lo_epu64(acc_lo_c0, xv, yc0);
-            acc_hi_c0 = _mm512_madd52hi_epu64(acc_hi_c0, xv, yc0);
-
             // Column 1: [yc1a | yc1b] in one __m512i (next 64 bytes after col0).
             let yc1 = _mm512_loadu_si512(y_ptr.add(1));
-            acc_lo_c1 = _mm512_madd52lo_epu64(acc_lo_c1, xv, yc1);
-            acc_hi_c1 = _mm512_madd52hi_epu64(acc_hi_c1, xv, yc1);
+            let yc0_next = _mm512_loadu_si512(y_ptr.add(2));
+            let yc1_next = _mm512_loadu_si512(y_ptr.add(3));
 
-            x_ptr = x_ptr.add(1);
-            y_ptr = y_ptr.add(2);
+            acc_lo_c0_0 = _mm512_madd52lo_epu64(acc_lo_c0_0, xv, yc0);
+            acc_hi_c0_0 = _mm512_madd52hi_epu64(acc_hi_c0_0, xv, yc0);
+            acc_lo_c1_0 = _mm512_madd52lo_epu64(acc_lo_c1_0, xv, yc1);
+            acc_hi_c1_0 = _mm512_madd52hi_epu64(acc_hi_c1_0, xv, yc1);
+            acc_lo_c0_1 = _mm512_madd52lo_epu64(acc_lo_c0_1, xv_next, yc0_next);
+            acc_hi_c0_1 = _mm512_madd52hi_epu64(acc_hi_c0_1, xv_next, yc0_next);
+            acc_lo_c1_1 = _mm512_madd52lo_epu64(acc_lo_c1_1, xv_next, yc1_next);
+            acc_hi_c1_1 = _mm512_madd52hi_epu64(acc_hi_c1_1, xv_next, yc1_next);
+
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(4);
+        }
+
+        if !ell.is_multiple_of(2) {
+            let xv = _mm512_loadu_si512(x_ptr);
+            let yc0 = _mm512_loadu_si512(y_ptr);
+            let yc1 = _mm512_loadu_si512(y_ptr.add(1));
+            acc_lo_c0_0 = _mm512_madd52lo_epu64(acc_lo_c0_0, xv, yc0);
+            acc_hi_c0_0 = _mm512_madd52hi_epu64(acc_hi_c0_0, xv, yc0);
+            acc_lo_c1_0 = _mm512_madd52lo_epu64(acc_lo_c1_0, xv, yc1);
+            acc_hi_c1_0 = _mm512_madd52hi_epu64(acc_hi_c1_0, xv, yc1);
         }
 
         let res_ptr = res.as_mut_ptr() as *mut __m512i;
-        _mm512_storeu_si512(res_ptr, reduce_bbc_ifma_simd_512(acc_lo_c0, acc_hi_c0));
-        _mm512_storeu_si512(res_ptr.add(1), reduce_bbc_ifma_simd_512(acc_lo_c1, acc_hi_c1));
+        _mm512_storeu_si512(
+            res_ptr,
+            reduce_bbc_ifma_simd_512(
+                _mm512_add_epi64(acc_lo_c0_0, acc_lo_c0_1),
+                _mm512_add_epi64(acc_hi_c0_0, acc_hi_c0_1),
+            ),
+        );
+        _mm512_storeu_si512(
+            res_ptr.add(1),
+            reduce_bbc_ifma_simd_512(
+                _mm512_add_epi64(acc_lo_c1_0, acc_lo_c1_1),
+                _mm512_add_epi64(acc_hi_c1_0, acc_hi_c1_1),
+            ),
+        );
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// x2-block, up to four columns: strided source x and 4-column tiled matrix
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// AVX512-IFMA x2-block inner product over a row-strided source vector and a
+/// row-interleaved matrix tile of up to four columns.
+///
+/// This kernel is tailored for IFMA VMP:
+/// - `src_x` is the full DFT vector buffer, laid out as `ell` rows of length `4 * n`.
+/// - `blk` selects the current x2-block (`2` coefficients, `8` u64 values) inside each row.
+/// - `y_tile` stores one matrix tile for this block in row-major order:
+///   `[row0 col0, row0 col1, ..., row1 col0, row1 col1, ...]`.
+///
+/// `tile_cols` is the number of active columns in the tile (1..=4), `start_col`
+/// is the first sub-column to consume, and `col_count` is the number of
+/// consecutive columns to compute.
+#[target_feature(enable = "avx512ifma,avx512vl")]
+pub(crate) unsafe fn vec_mat4cols_product_x2_strided_ifma(
+    _meta: &BbcIfmaMeta<Primes40>,
+    ell: usize,
+    n: usize,
+    blk: usize,
+    res: &mut [u64],
+    src_x: &[u64],
+    y_tile: &[u32],
+    tile_cols: usize,
+    start_col: usize,
+    col_count: usize,
+) {
+    debug_assert!((1..=4).contains(&tile_cols));
+    debug_assert!(start_col < tile_cols);
+    debug_assert!(col_count > 0);
+    debug_assert!(start_col + col_count <= tile_cols);
+    debug_assert!(res.len() >= 8 * col_count);
+
+    unsafe {
+        let mut acc_lo = [_mm512_setzero_si512(); 4];
+        let mut acc_hi = [_mm512_setzero_si512(); 4];
+        let coeff_idx = blk * 2;
+        let y_stride = tile_cols * 16;
+
+        for row in 0..ell {
+            let x_off = row * 4 * n + 4 * coeff_idx;
+            let xv = _mm512_loadu_si512(src_x.as_ptr().add(x_off) as *const __m512i);
+
+            let row_ptr = y_tile.as_ptr().add(row * y_stride + start_col * 16) as *const __m512i;
+            let mut col = 0usize;
+            while col < col_count {
+                let yv = _mm512_loadu_si512(row_ptr.add(col));
+                acc_lo[col] = _mm512_madd52lo_epu64(acc_lo[col], xv, yv);
+                acc_hi[col] = _mm512_madd52hi_epu64(acc_hi[col], xv, yv);
+                col += 1;
+            }
+        }
+
+        for col in 0..col_count {
+            _mm512_storeu_si512(
+                res.as_mut_ptr().add(8 * col) as *mut __m512i,
+                reduce_bbc_ifma_simd_512(acc_lo[col], acc_hi[col]),
+            );
+        }
     }
 }
 
@@ -552,5 +711,59 @@ mod tests {
         vec_mat2cols_product_x2_bbc_ifma_ref(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_ifma, res_ref, "vec_mat2cols_product_x2_bbc: IFMA vs ref mismatch");
+    }
+
+    /// IFMA direct strided 4-column kernel matches four reference 1-column calls.
+    #[test]
+    fn vec_mat4cols_product_x2_strided_ifma_vs_ref() {
+        let ell = 8usize;
+        let n = 8usize;
+        let blk = 1usize;
+        let coeff_idx = blk * 2;
+        let meta = BbcIfmaMeta::<Primes40>::new();
+
+        let x_coeffs = make_q120b_u32(2 * ell, 7);
+        let mut src_x = vec![0u64; ell * 4 * n];
+        let mut x_contig = Vec::with_capacity(16 * ell);
+        for row in 0..ell {
+            let coeff0 = &x_coeffs[16 * row..16 * row + 8];
+            let coeff1 = &x_coeffs[16 * row + 8..16 * row + 16];
+            x_contig.extend_from_slice(coeff0);
+            x_contig.extend_from_slice(coeff1);
+
+            let dst = &mut src_x[row * 4 * n + 4 * coeff_idx..row * 4 * n + 4 * coeff_idx + 8];
+            for (j, chunk) in coeff0.chunks_exact(2).enumerate() {
+                dst[j] = chunk[0] as u64 | ((chunk[1] as u64) << 32);
+            }
+            for (j, chunk) in coeff1.chunks_exact(2).enumerate() {
+                dst[4 + j] = chunk[0] as u64 | ((chunk[1] as u64) << 32);
+            }
+        }
+
+        let mut y_tile = Vec::with_capacity(64 * ell);
+        let mut y_cols = Vec::new();
+        for seed in [2, 9, 23, 31] {
+            y_cols.push(make_q120c_u32(2 * ell, seed));
+        }
+        for row in 0..ell {
+            for y_col in &y_cols {
+                y_tile.extend_from_slice(&y_col[16 * row..16 * row + 16]);
+            }
+        }
+
+        let mut res_ifma = vec![0u64; 32];
+        let mut res_ref = vec![0u64; 32];
+
+        unsafe { vec_mat4cols_product_x2_strided_ifma(&meta, ell, n, blk, &mut res_ifma, &src_x, &y_tile, 4, 0, 4) };
+
+        for (col, y_col) in y_cols.iter().enumerate() {
+            let mut y_contig = Vec::with_capacity(16 * ell);
+            for row in 0..ell {
+                y_contig.extend_from_slice(&y_col[16 * row..16 * row + 16]);
+            }
+            vec_mat1col_product_x2_bbc_ifma_ref(&meta, ell, &mut res_ref[8 * col..8 * (col + 1)], &x_contig, &y_contig);
+        }
+
+        assert_eq!(res_ifma, res_ref, "vec_mat4cols_product_x2_strided: IFMA vs ref mismatch");
     }
 }

@@ -35,6 +35,61 @@ unsafe fn bbc_accumulate_ifma_512(acc_lo: &mut __m512i, acc_hi: &mut __m512i, x:
     }
 }
 
+#[inline(always)]
+unsafe fn bbc_mul_store_ifma_512(res_ptr: *mut __m256i, n: usize, a_ptr: *const __m256i, b_ptr: *const __m256i) {
+    let mut n_i = 0usize;
+    while n_i + 2 <= n {
+        let x = unsafe { _mm512_loadu_si512(a_ptr.add(n_i) as *const __m512i) };
+        let y = unsafe { _mm512_loadu_si512(b_ptr.add(n_i) as *const __m512i) };
+        let acc_lo = unsafe { _mm512_madd52lo_epu64(_mm512_setzero_si512(), x, y) };
+        let acc_hi = unsafe { _mm512_madd52hi_epu64(_mm512_setzero_si512(), x, y) };
+        unsafe { _mm512_storeu_si512(res_ptr.add(n_i) as *mut __m512i, reduce_bbc_ifma_simd_512(acc_lo, acc_hi)) };
+        n_i += 2;
+    }
+
+    if n_i < n {
+        let x = unsafe { _mm256_loadu_si256(a_ptr.add(n_i)) };
+        let y = unsafe { _mm256_loadu_si256(b_ptr.add(n_i)) };
+        let acc_lo = unsafe { _mm256_madd52lo_epu64(_mm256_setzero_si256(), x, y) };
+        let acc_hi = unsafe { _mm256_madd52hi_epu64(_mm256_setzero_si256(), x, y) };
+        unsafe { _mm256_storeu_si256(res_ptr.add(n_i), reduce_bbc_ifma_simd(acc_lo, acc_hi)) };
+    }
+}
+
+#[inline(always)]
+unsafe fn bbc_mul_store_2_ifma_512(
+    res_ptr: *mut __m256i,
+    n: usize,
+    a0_ptr: *const __m256i,
+    b0_ptr: *const __m256i,
+    a1_ptr: *const __m256i,
+    b1_ptr: *const __m256i,
+) {
+    let mut n_i = 0usize;
+    while n_i + 2 <= n {
+        let x0 = unsafe { _mm512_loadu_si512(a0_ptr.add(n_i) as *const __m512i) };
+        let y0 = unsafe { _mm512_loadu_si512(b0_ptr.add(n_i) as *const __m512i) };
+        let x1 = unsafe { _mm512_loadu_si512(a1_ptr.add(n_i) as *const __m512i) };
+        let y1 = unsafe { _mm512_loadu_si512(b1_ptr.add(n_i) as *const __m512i) };
+        let mut acc_lo = unsafe { _mm512_madd52lo_epu64(_mm512_setzero_si512(), x0, y0) };
+        let mut acc_hi = unsafe { _mm512_madd52hi_epu64(_mm512_setzero_si512(), x0, y0) };
+        unsafe { bbc_accumulate_ifma_512(&mut acc_lo, &mut acc_hi, x1, y1) };
+        unsafe { _mm512_storeu_si512(res_ptr.add(n_i) as *mut __m512i, reduce_bbc_ifma_simd_512(acc_lo, acc_hi)) };
+        n_i += 2;
+    }
+
+    if n_i < n {
+        let x0 = unsafe { _mm256_loadu_si256(a0_ptr.add(n_i)) };
+        let y0 = unsafe { _mm256_loadu_si256(b0_ptr.add(n_i)) };
+        let x1 = unsafe { _mm256_loadu_si256(a1_ptr.add(n_i)) };
+        let y1 = unsafe { _mm256_loadu_si256(b1_ptr.add(n_i)) };
+        let mut acc_lo = unsafe { _mm256_madd52lo_epu64(_mm256_setzero_si256(), x0, y0) };
+        let mut acc_hi = unsafe { _mm256_madd52hi_epu64(_mm256_setzero_si256(), x0, y0) };
+        unsafe { bbc_accumulate_ifma(&mut acc_lo, &mut acc_hi, x1, y1) };
+        unsafe { _mm256_storeu_si256(res_ptr.add(n_i), reduce_bbc_ifma_simd(acc_lo, acc_hi)) };
+    }
+}
+
 #[target_feature(enable = "avx512vl")]
 #[allow(dead_code)]
 unsafe fn reduce_b_to_c_inplace_ifma(buf: &mut [u64]) {
@@ -92,6 +147,22 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
         );
 
         let res_ptr = res.at_mut_ptr(res_col, k) as *mut __m256i;
+
+        if j_count == 1 {
+            let a_ptr = a.at_ptr(a_col, k_abs - j_min) as *const __m256i;
+            let b_ptr = b.at_ptr(b_col, j_min) as *const __m256i;
+            unsafe { bbc_mul_store_ifma_512(res_ptr, n, a_ptr, b_ptr) };
+            continue;
+        }
+
+        if j_count == 2 {
+            let a0_ptr = a.at_ptr(a_col, k_abs - j_min) as *const __m256i;
+            let b0_ptr = b.at_ptr(b_col, j_min) as *const __m256i;
+            let a1_ptr = a.at_ptr(a_col, k_abs - (j_min + 1)) as *const __m256i;
+            let b1_ptr = b.at_ptr(b_col, j_min + 1) as *const __m256i;
+            unsafe { bbc_mul_store_2_ifma_512(res_ptr, n, a0_ptr, b0_ptr, a1_ptr, b1_ptr) };
+            continue;
+        }
 
         // Hoist at_ptr: precompute base pointers for all j values
         let mut a_bases = [core::ptr::null::<__m256i>(); MAX_CNV_J_RANGE];
@@ -187,6 +258,43 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
         );
 
         let res_ptr = res.at_mut_ptr(res_col, k) as *mut __m256i;
+
+        if j_count == 1 {
+            let a_sum_ptr = a.at_ptr(col_0, k_abs - j_min) as *const __m256i;
+            let b_sum_ptr = b.at_ptr(col_0, j_min) as *const __m256i;
+            let a1_ptr = a.at_ptr(col_1, k_abs - j_min) as *const __m256i;
+            let b1_ptr = b.at_ptr(col_1, j_min) as *const __m256i;
+
+            let mut n_i = 0usize;
+            while n_i + 2 <= n {
+                unsafe {
+                    let a_sum = _mm512_add_epi64(
+                        _mm512_loadu_si512(a_sum_ptr.add(n_i) as *const __m512i),
+                        _mm512_loadu_si512(a1_ptr.add(n_i) as *const __m512i),
+                    );
+                    let b_sum = _mm512_add_epi64(
+                        _mm512_loadu_si512(b_sum_ptr.add(n_i) as *const __m512i),
+                        _mm512_loadu_si512(b1_ptr.add(n_i) as *const __m512i),
+                    );
+                    let acc_lo = _mm512_madd52lo_epu64(_mm512_setzero_si512(), a_sum, b_sum);
+                    let acc_hi = _mm512_madd52hi_epu64(_mm512_setzero_si512(), a_sum, b_sum);
+                    _mm512_storeu_si512(res_ptr.add(n_i) as *mut __m512i, reduce_bbc_ifma_simd_512(acc_lo, acc_hi));
+                }
+                n_i += 2;
+            }
+
+            if n_i < n {
+                unsafe {
+                    let a_sum = _mm256_add_epi64(_mm256_loadu_si256(a_sum_ptr.add(n_i)), _mm256_loadu_si256(a1_ptr.add(n_i)));
+                    let b_sum = _mm256_add_epi64(_mm256_loadu_si256(b_sum_ptr.add(n_i)), _mm256_loadu_si256(b1_ptr.add(n_i)));
+                    let acc_lo = _mm256_madd52lo_epu64(_mm256_setzero_si256(), a_sum, b_sum);
+                    let acc_hi = _mm256_madd52hi_epu64(_mm256_setzero_si256(), a_sum, b_sum);
+                    _mm256_storeu_si256(res_ptr.add(n_i), reduce_bbc_ifma_simd(acc_lo, acc_hi));
+                }
+            }
+
+            continue;
+        }
 
         // Hoist at_ptr: precompute base pointers for all j values (4 pointers per j)
         let mut a0_bases = [core::ptr::null::<__m256i>(); MAX_CNV_J_RANGE];

@@ -38,10 +38,10 @@ use crate::reference::{
     },
 };
 use poulpy_hal::{
-    api::TakeSlice,
+    api::{TakeSlice, VecZnxDftAddAssign, VecZnxDftBytesOf},
     layouts::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef,
-        ZnxInfos,
+        ZnxInfos, ZnxZero,
     },
 };
 
@@ -103,6 +103,51 @@ pub trait FFT64VmpDefaults<BE: Backend>: Backend {
         let bytes = fft64_vmp_apply_dft_to_dft_tmp_bytes(a_ref.size(), b_ref.rows(), b_ref.cols_in());
         let (tmp, _) = scratch.take_slice::<f64>(bytes / size_of::<f64>());
         fft64_vmp_apply_dft_to_dft(&mut res_ref, &a_ref, &b_ref, limb_offset, tmp);
+    }
+
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes_default(
+        module: &Module<BE>,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarPrep = f64>,
+        Module<BE>: VecZnxDftBytesOf,
+    {
+        let _ = b_size;
+        module.bytes_of_vec_znx_dft(b_cols_out, res_size) + fft64_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
+    }
+
+    fn vmp_apply_dft_to_dft_accumulate_default<R, A, C>(
+        module: &Module<BE>,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
+        Module<BE>: VecZnxDftBytesOf + VecZnxDftAddAssign<BE>,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxDftToMut<BE>,
+        A: VecZnxDftToRef<BE>,
+        C: VmpPMatToRef<BE>,
+    {
+        let res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let cols = res_ref.cols();
+        let size = res_ref.size();
+        let bytes = module.bytes_of_vec_znx_dft(cols, size);
+        let (tmp_bytes, scratch_1) = scratch.take_slice::<u8>(bytes);
+        let mut tmp = VecZnxDft::<&mut [u8], BE>::from_data(tmp_bytes, module.n(), cols, size);
+        tmp.zero();
+        Self::vmp_apply_dft_to_dft_default(module, &mut tmp, a, b, limb_offset, scratch_1);
+        for col in 0..cols {
+            module.vec_znx_dft_add_assign(res, col, &tmp, col);
+        }
     }
 
     fn vmp_zero_default<R>(_module: &Module<BE>, res: &mut R)
@@ -176,6 +221,51 @@ pub trait NTT120VmpDefaults<BE: Backend>: Backend {
         ntt120_vmp_apply_dft_to_dft::<_, _, _, BE>(module, &mut res_ref, &a_ref, &b_ref, limb_offset, tmp);
     }
 
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes_default(
+        module: &Module<BE>,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+        Module<BE>: VecZnxDftBytesOf,
+    {
+        module.bytes_of_vec_znx_dft(b_cols_out, res_size.min(b_size))
+            + ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
+    }
+
+    fn vmp_apply_dft_to_dft_accumulate_default<R, A, C>(
+        module: &Module<BE>,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: NttModuleHandle + VecZnxDftBytesOf + VecZnxDftAddAssign<BE>,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxDftToMut<BE>,
+        A: VecZnxDftToRef<BE>,
+        C: VmpPMatToRef<BE>,
+    {
+        let res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let cols = res_ref.cols();
+        let size = res_ref.size();
+        let bytes = module.bytes_of_vec_znx_dft(cols, size);
+        let (tmp_bytes, scratch_1) = scratch.take_slice::<u8>(bytes);
+        let mut tmp = VecZnxDft::<&mut [u8], BE>::from_data(tmp_bytes, module.n(), cols, size);
+        tmp.zero();
+        Self::vmp_apply_dft_to_dft_default(module, &mut tmp, a, b, limb_offset, scratch_1);
+        for col in 0..cols {
+            module.vec_znx_dft_add_assign(res, col, &tmp, col);
+        }
+    }
+
     fn vmp_zero_default<R>(_module: &Module<BE>, res: &mut R)
     where
         R: VmpPMatToMut<BE>,
@@ -245,6 +335,51 @@ pub trait NTTIfmaVmpDefaults<BE: Backend>: Backend {
         let bytes = ntt_ifma_vmp_apply_dft_to_dft_tmp_bytes(a_ref.size(), b_ref.rows(), b_ref.cols_in());
         let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
         ntt_ifma_vmp_apply_dft_to_dft::<_, _, _, BE>(module, &mut res_ref, &a_ref, &b_ref, limb_offset, tmp);
+    }
+
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes_default(
+        module: &Module<BE>,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize
+    where
+        BE: Backend<ScalarPrep = Q120bScalar>,
+        Module<BE>: VecZnxDftBytesOf,
+    {
+        module.bytes_of_vec_znx_dft(b_cols_out, res_size.min(b_size))
+            + ntt_ifma_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
+    }
+
+    fn vmp_apply_dft_to_dft_accumulate_default<R, A, C>(
+        module: &Module<BE>,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Module<BE>: NttIfmaModuleHandle + VecZnxDftBytesOf + VecZnxDftAddAssign<BE>,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaExtract1BlkContiguous + NttIfmaMulBbc1ColX2 + NttIfmaMulBbc2ColsX2,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxDftToMut<BE>,
+        A: VecZnxDftToRef<BE>,
+        C: VmpPMatToRef<BE>,
+    {
+        let res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let cols = res_ref.cols();
+        let size = res_ref.size();
+        let bytes = module.bytes_of_vec_znx_dft(cols, size);
+        let (tmp_bytes, scratch_1) = scratch.take_slice::<u8>(bytes);
+        let mut tmp = VecZnxDft::<&mut [u8], BE>::from_data(tmp_bytes, module.n(), cols, size);
+        tmp.zero();
+        Self::vmp_apply_dft_to_dft_default(module, &mut tmp, a, b, limb_offset, scratch_1);
+        for col in 0..cols {
+            module.vec_znx_dft_add_assign(res, col, &tmp, col);
+        }
     }
 
     fn vmp_zero_default<R>(_module: &Module<BE>, res: &mut R)

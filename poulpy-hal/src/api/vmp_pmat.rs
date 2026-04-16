@@ -68,6 +68,20 @@ pub trait VmpApplyDftToDftTmpBytes {
     ) -> usize;
 }
 
+#[allow(clippy::too_many_arguments)]
+/// Returns scratch bytes required for [`VmpApplyDftToDftAccumulate`].
+pub trait VmpApplyDftToDftAccumulateTmpBytes {
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+        &self,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize;
+}
+
 pub trait VmpApplyDftToDft<B: Backend> {
     /// Applies the vector matrix product [crate::layouts::VecZnxDft] x [crate::layouts::VmpPMat].
     ///
@@ -95,6 +109,22 @@ pub trait VmpApplyDftToDft<B: Backend> {
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyDftToDftTmpBytes::vmp_apply_dft_to_dft_tmp_bytes].
     fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, pmat: &C, limb_offset: usize, scratch: &mut Scratch<B>)
     where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>,
+        C: VmpPMatToRef<B>;
+}
+
+pub trait VmpApplyDftToDftAccumulate<B: Backend> {
+    /// Applies the vector-matrix product and accumulates into the destination:
+    /// `res += a · pmat`, shifted by `limb_offset`.
+    fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
+        &self,
+        res: &mut R,
+        a: &A,
+        pmat: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>;

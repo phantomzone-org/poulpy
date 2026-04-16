@@ -576,7 +576,30 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         b_size: usize,
     ) -> usize;
 
+    #[allow(clippy::too_many_arguments)]
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+        module: &Module<BE>,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize;
+
     fn vmp_apply_dft_to_dft<R, A, C>(
+        module: &Module<BE>,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: crate::layouts::VecZnxDftToMut<BE>,
+        A: crate::layouts::VecZnxDftToRef<BE>,
+        C: crate::layouts::VmpPMatToRef<BE>;
+
+    fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
         module: &Module<BE>,
         res: &mut R,
         a: &A,

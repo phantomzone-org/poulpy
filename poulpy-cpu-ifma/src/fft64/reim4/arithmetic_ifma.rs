@@ -258,7 +258,10 @@ pub fn reim4_vec_mat2cols_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64],
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
 pub fn reim4_vec_mat2cols_2ndcol_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-    use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+    use core::arch::x86_64::{
+        __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
+        _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2,
+    };
 
     #[cfg(debug_assertions)]
     {
@@ -268,34 +271,33 @@ pub fn reim4_vec_mat2cols_2ndcol_product_ifma(nrows: usize, dst: &mut [f64], u: 
     }
 
     unsafe {
-        let mut re1: __m256d = _mm256_setzero_pd();
-        let mut im1: __m256d = _mm256_setzero_pd();
+        // Packed accumulators: acc_a = [Σ ur*ar | Σ ui*ai], acc_b = [Σ ur*ai | Σ ui*ar]
+        let mut acc_a: __m512d = _mm512_setzero_pd();
+        let mut acc_b: __m512d = _mm512_setzero_pd();
 
         let mut u_ptr: *const f64 = u.as_ptr();
         let mut v_ptr: *const f64 = v.as_ptr().add(8); // Offset to 2nd column
 
         for _ in 0..nrows {
-            let ur: __m256d = _mm256_loadu_pd(u_ptr);
-            let ui: __m256d = _mm256_loadu_pd(u_ptr.add(4));
+            let u_full: __m512d = _mm512_loadu_pd(u_ptr); // [ur(4) | ui(4)]
+            let v_full: __m512d = _mm512_loadu_pd(v_ptr); // [ar(4) | ai(4)]
+            let v_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(v_full, v_full); // [ai(4) | ar(4)]
 
-            let ar: __m256d = _mm256_loadu_pd(v_ptr);
-            let ai: __m256d = _mm256_loadu_pd(v_ptr.add(4));
-
-            // re1 = ui*ai - re1;
-            re1 = _mm256_fmsub_pd(ui, ai, re1);
-            // im1 = im1 + ur*ai;
-            im1 = _mm256_fmadd_pd(ur, ai, im1);
-            // re1 = ur*ar - re1;
-            re1 = _mm256_fmsub_pd(ur, ar, re1);
-            // im1 = im1 + ui*ar;
-            im1 = _mm256_fmadd_pd(ui, ar, im1);
+            acc_a = _mm512_fmadd_pd(u_full, v_full, acc_a); // [ur*ar | ui*ai]
+            acc_b = _mm512_fmadd_pd(u_full, v_swap, acc_b); // [ur*ai | ui*ar]
 
             u_ptr = u_ptr.add(8);
             v_ptr = v_ptr.add(16);
         }
 
-        _mm256_storeu_pd(dst.as_mut_ptr(), re1);
-        _mm256_storeu_pd(dst.as_mut_ptr().add(4), im1);
+        // re = Σ ur*ar - Σ ui*ai, im = Σ ur*ai + Σ ui*ar
+        let lo_a: __m256d = _mm512_castpd512_pd256(acc_a);
+        let hi_a: __m256d = _mm512_extractf64x4_pd::<1>(acc_a);
+        let lo_b: __m256d = _mm512_castpd512_pd256(acc_b);
+        let hi_b: __m256d = _mm512_extractf64x4_pd::<1>(acc_b);
+
+        _mm256_storeu_pd(dst.as_mut_ptr(), _mm256_sub_pd(lo_a, hi_a));
+        _mm256_storeu_pd(dst.as_mut_ptr().add(4), _mm256_add_pd(lo_b, hi_b));
     }
 }
 
@@ -303,53 +305,47 @@ pub fn reim4_vec_mat2cols_2ndcol_product_ifma(nrows: usize, dst: &mut [f64], u: 
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
 pub unsafe fn reim4_convolution_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-    use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+    use core::arch::x86_64::{
+        __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
+        _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2, _mm512_storeu_pd,
+    };
 
     unsafe {
-        // Scalar guard — same semantics as reference implementation
         if k >= a_size + b_size {
-            let zero: __m256d = _mm256_setzero_pd();
-            let dst_ptr: *mut f64 = dst.as_mut_ptr();
-            _mm256_storeu_pd(dst_ptr, zero);
-            _mm256_storeu_pd(dst_ptr.add(4), zero);
+            _mm512_storeu_pd(dst.as_mut_ptr(), _mm512_setzero_pd());
             return;
         }
 
         let j_min: usize = k.saturating_sub(a_size - 1);
         let j_max: usize = (k + 1).min(b_size);
 
-        // acc_re = dst[0..4], acc_im = dst[4..8]
-        let mut acc_re: __m256d = _mm256_setzero_pd();
-        let mut acc_im: __m256d = _mm256_setzero_pd();
+        // Packed accumulators: acc_a = [Σ ar*br | Σ ai*bi], acc_b = [Σ ar*bi | Σ ai*br]
+        let mut acc_a: __m512d = _mm512_setzero_pd();
+        let mut acc_b: __m512d = _mm512_setzero_pd();
 
         let mut a_ptr: *const f64 = a.as_ptr().add(8 * (k - j_min));
         let mut b_ptr: *const f64 = b.as_ptr().add(8 * j_min);
 
         for _ in 0..j_max - j_min {
-            // Load a[(k - j)]
-            let ar: __m256d = _mm256_loadu_pd(a_ptr);
-            let ai: __m256d = _mm256_loadu_pd(a_ptr.add(4));
+            let a_full: __m512d = _mm512_loadu_pd(a_ptr); // [ar(4) | ai(4)]
+            let b_full: __m512d = _mm512_loadu_pd(b_ptr); // [br(4) | bi(4)]
+            let b_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(b_full, b_full); // [bi(4) | br(4)]
 
-            // Load b[j]
-            let br: __m256d = _mm256_loadu_pd(b_ptr);
-            let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
-
-            // acc_re = ai*bi - acc_re
-            acc_re = _mm256_fmsub_pd(ai, bi, acc_re);
-            // acc_im = ar*bi - acc_im
-            acc_im = _mm256_fmadd_pd(ar, bi, acc_im);
-            // acc_re = ar*br - acc_re
-            acc_re = _mm256_fmsub_pd(ar, br, acc_re);
-            // acc_im = acc_im + ai*br
-            acc_im = _mm256_fmadd_pd(ai, br, acc_im);
+            acc_a = _mm512_fmadd_pd(a_full, b_full, acc_a); // [ar*br | ai*bi]
+            acc_b = _mm512_fmadd_pd(a_full, b_swap, acc_b); // [ar*bi | ai*br]
 
             a_ptr = a_ptr.sub(8);
             b_ptr = b_ptr.add(8);
         }
 
-        // Store accumulators into dst
-        _mm256_storeu_pd(dst.as_mut_ptr(), acc_re);
-        _mm256_storeu_pd(dst.as_mut_ptr().add(4), acc_im);
+        // re = Σ ar*br - Σ ai*bi, im = Σ ar*bi + Σ ai*br
+        let lo_a: __m256d = _mm512_castpd512_pd256(acc_a);
+        let hi_a: __m256d = _mm512_extractf64x4_pd::<1>(acc_a);
+        let lo_b: __m256d = _mm512_castpd512_pd256(acc_b);
+        let hi_b: __m256d = _mm512_extractf64x4_pd::<1>(acc_b);
+
+        _mm256_storeu_pd(dst.as_mut_ptr(), _mm256_sub_pd(lo_a, hi_a));
+        _mm256_storeu_pd(dst.as_mut_ptr().add(4), _mm256_add_pd(lo_b, hi_b));
     }
 }
 
@@ -357,7 +353,10 @@ pub unsafe fn reim4_convolution_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
 pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-    use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fnmadd_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+    use core::arch::x86_64::{
+        __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
+        _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2, _mm512_storeu_pd,
+    };
 
     debug_assert!(a.len() >= 8 * a_size);
     debug_assert!(b.len() >= 8 * b_size);
@@ -366,25 +365,21 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
     let k1: usize = k + 1;
     let bound: usize = a_size + b_size;
 
-    // Since k is a multiple of two, if either k0 or k1 are out of range,
-    // both are.
     if k0 >= bound {
         unsafe {
-            let zero: __m256d = _mm256_setzero_pd();
-            let dst_ptr: *mut f64 = dst.as_mut_ptr();
-            _mm256_storeu_pd(dst_ptr, zero);
-            _mm256_storeu_pd(dst_ptr.add(4), zero);
-            _mm256_storeu_pd(dst_ptr.add(8), zero);
-            _mm256_storeu_pd(dst_ptr.add(12), zero);
+            let zero: __m512d = _mm512_setzero_pd();
+            _mm512_storeu_pd(dst.as_mut_ptr(), zero);
+            _mm512_storeu_pd(dst.as_mut_ptr().add(8), zero);
         }
         return;
     }
 
     unsafe {
-        let mut acc_re_k0: __m256d = _mm256_setzero_pd();
-        let mut acc_im_k0: __m256d = _mm256_setzero_pd();
-        let mut acc_re_k1: __m256d = _mm256_setzero_pd();
-        let mut acc_im_k1: __m256d = _mm256_setzero_pd();
+        // Packed accumulators per coefficient: acc_a = [Σ ar*br | Σ ai*bi], acc_b = [Σ ar*bi | Σ ai*br]
+        let mut acc_a_k0: __m512d = _mm512_setzero_pd();
+        let mut acc_b_k0: __m512d = _mm512_setzero_pd();
+        let mut acc_a_k1: __m512d = _mm512_setzero_pd();
+        let mut acc_b_k1: __m512d = _mm512_setzero_pd();
 
         let j0_min: usize = (k0 + 1).saturating_sub(a_size);
         let j0_max: usize = (k0 + 1).min(b_size);
@@ -393,17 +388,13 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
             let mut a_k0_ptr: *const f64 = a.as_ptr().add(8 * (k0 - j0_min));
             let mut b_ptr: *const f64 = b.as_ptr().add(8 * j0_min);
 
-            // Region 1: contributions to k0 only, j ∈ [j0_min, j1_min)
             for _ in 0..j0_max - j0_min {
-                let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let br: __m256d = _mm256_loadu_pd(b_ptr);
-                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let b_full: __m512d = _mm512_loadu_pd(b_ptr);
+                let b_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(b_full, b_full);
 
-                acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
-                acc_re_k0 = _mm256_fnmadd_pd(ai, bi, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ar, bi, acc_im_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
+                acc_a_k0 = _mm512_fmadd_pd(a0_full, b_full, acc_a_k0);
+                acc_b_k0 = _mm512_fmadd_pd(a0_full, b_swap, acc_b_k0);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 b_ptr = b_ptr.add(8);
@@ -418,41 +409,28 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
 
             // Region 1: contributions to k0 only, j ∈ [j0_min, j1_min)
             for _ in 0..j1_min - j0_min {
-                let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let br: __m256d = _mm256_loadu_pd(b_ptr);
-                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let b_full: __m512d = _mm512_loadu_pd(b_ptr);
+                let b_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(b_full, b_full);
 
-                acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
-                acc_re_k0 = _mm256_fnmadd_pd(ai, bi, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ar, bi, acc_im_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
+                acc_a_k0 = _mm512_fmadd_pd(a0_full, b_full, acc_a_k0);
+                acc_b_k0 = _mm512_fmadd_pd(a0_full, b_swap, acc_b_k0);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 b_ptr = b_ptr.add(8);
             }
 
             // Region 2: overlap, contributions to both k0 and k1, j ∈ [j1_min, j0_max)
-            // We can save one load on b.
             for _ in 0..j0_max - j1_min {
-                let ar0: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai0: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-                let br: __m256d = _mm256_loadu_pd(b_ptr);
-                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let a1_full: __m512d = _mm512_loadu_pd(a_k1_ptr);
+                let b_full: __m512d = _mm512_loadu_pd(b_ptr);
+                let b_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(b_full, b_full);
 
-                // k0
-                acc_re_k0 = _mm256_fmadd_pd(ar0, br, acc_re_k0);
-                acc_re_k0 = _mm256_fnmadd_pd(ai0, bi, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ar0, bi, acc_im_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai0, br, acc_im_k0);
-
-                // k1
-                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-                acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                acc_a_k0 = _mm512_fmadd_pd(a0_full, b_full, acc_a_k0);
+                acc_b_k0 = _mm512_fmadd_pd(a0_full, b_swap, acc_b_k0);
+                acc_a_k1 = _mm512_fmadd_pd(a1_full, b_full, acc_a_k1);
+                acc_b_k1 = _mm512_fmadd_pd(a1_full, b_swap, acc_b_k1);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 a_k1_ptr = a_k1_ptr.sub(8);
@@ -461,27 +439,34 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
 
             // Region 3: contributions to k1 only, j ∈ [j0_max, j1_max)
             for _ in 0..j1_max - j0_max {
-                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-                let br: __m256d = _mm256_loadu_pd(b_ptr);
-                let bi: __m256d = _mm256_loadu_pd(b_ptr.add(4));
+                let a1_full: __m512d = _mm512_loadu_pd(a_k1_ptr);
+                let b_full: __m512d = _mm512_loadu_pd(b_ptr);
+                let b_swap: __m512d = _mm512_shuffle_f64x2::<0b01_00_11_10>(b_full, b_full);
 
-                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-                acc_re_k1 = _mm256_fnmadd_pd(ai1, bi, acc_re_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ar1, bi, acc_im_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                acc_a_k1 = _mm512_fmadd_pd(a1_full, b_full, acc_a_k1);
+                acc_b_k1 = _mm512_fmadd_pd(a1_full, b_swap, acc_b_k1);
 
                 a_k1_ptr = a_k1_ptr.sub(8);
                 b_ptr = b_ptr.add(8);
             }
         }
 
-        // Store both coefficients
+        // re = Σ ar*br - Σ ai*bi, im = Σ ar*bi + Σ ai*br
         let dst_ptr = dst.as_mut_ptr();
-        _mm256_storeu_pd(dst_ptr, acc_re_k0);
-        _mm256_storeu_pd(dst_ptr.add(4), acc_im_k0);
-        _mm256_storeu_pd(dst_ptr.add(8), acc_re_k1);
-        _mm256_storeu_pd(dst_ptr.add(12), acc_im_k1);
+
+        let lo_a0: __m256d = _mm512_castpd512_pd256(acc_a_k0);
+        let hi_a0: __m256d = _mm512_extractf64x4_pd::<1>(acc_a_k0);
+        let lo_b0: __m256d = _mm512_castpd512_pd256(acc_b_k0);
+        let hi_b0: __m256d = _mm512_extractf64x4_pd::<1>(acc_b_k0);
+        _mm256_storeu_pd(dst_ptr, _mm256_sub_pd(lo_a0, hi_a0));
+        _mm256_storeu_pd(dst_ptr.add(4), _mm256_add_pd(lo_b0, hi_b0));
+
+        let lo_a1: __m256d = _mm512_castpd512_pd256(acc_a_k1);
+        let hi_a1: __m256d = _mm512_extractf64x4_pd::<1>(acc_a_k1);
+        let lo_b1: __m256d = _mm512_castpd512_pd256(acc_b_k1);
+        let hi_b1: __m256d = _mm512_extractf64x4_pd::<1>(acc_b_k1);
+        _mm256_storeu_pd(dst_ptr.add(8), _mm256_sub_pd(lo_a1, hi_a1));
+        _mm256_storeu_pd(dst_ptr.add(12), _mm256_add_pd(lo_b1, hi_b1));
     }
 }
 
@@ -489,50 +474,36 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
 pub unsafe fn reim4_convolution_by_real_const_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
-    use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_loadu_pd, _mm256_set1_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+    use core::arch::x86_64::{__m512d, _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_set1_pd, _mm512_setzero_pd, _mm512_storeu_pd};
 
     unsafe {
         let b_size: usize = b.len();
 
         if k >= a_size + b_size {
-            let zero: __m256d = _mm256_setzero_pd();
-            let dst_ptr: *mut f64 = dst.as_mut_ptr();
-            _mm256_storeu_pd(dst_ptr, zero);
-            _mm256_storeu_pd(dst_ptr.add(4), zero);
+            _mm512_storeu_pd(dst.as_mut_ptr(), _mm512_setzero_pd());
             return;
         }
 
         let j_min: usize = k.saturating_sub(a_size - 1);
         let j_max: usize = (k + 1).min(b_size);
 
-        // acc_re = dst[0..4], acc_im = dst[4..8]
-        let mut acc_re: __m256d = _mm256_setzero_pd();
-        let mut acc_im: __m256d = _mm256_setzero_pd();
+        // Packed accumulator: [Σ ar*br | Σ ai*br]
+        let mut acc: __m512d = _mm512_setzero_pd();
 
         let mut a_ptr: *const f64 = a.as_ptr().add(8 * (k - j_min));
         let mut b_ptr: *const f64 = b.as_ptr().add(j_min);
 
         for _ in 0..j_max - j_min {
-            // Load a[(k - j)]
-            let ar: __m256d = _mm256_loadu_pd(a_ptr);
-            let ai: __m256d = _mm256_loadu_pd(a_ptr.add(4));
+            let a_full: __m512d = _mm512_loadu_pd(a_ptr); // [ar(4) | ai(4)]
+            let br: __m512d = _mm512_set1_pd(*b_ptr); // broadcast scalar to all 8 lanes
 
-            // Load scalar b[j] and broadcast
-            let br: __m256d = _mm256_set1_pd(*b_ptr);
-
-            // Complex * real:
-            // re += ar * br
-            // im += ai * br
-            acc_re = _mm256_fmadd_pd(ar, br, acc_re);
-            acc_im = _mm256_fmadd_pd(ai, br, acc_im);
+            acc = _mm512_fmadd_pd(a_full, br, acc); // [ar*br | ai*br]
 
             a_ptr = a_ptr.sub(8);
             b_ptr = b_ptr.add(1);
         }
 
-        // Store accumulators into dst
-        _mm256_storeu_pd(dst.as_mut_ptr(), acc_re);
-        _mm256_storeu_pd(dst.as_mut_ptr().add(4), acc_im);
+        _mm512_storeu_pd(dst.as_mut_ptr(), acc);
     }
 }
 
@@ -540,7 +511,7 @@ pub unsafe fn reim4_convolution_by_real_const_1coeff_ifma(k: usize, dst: &mut [f
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
 pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
-    use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_loadu_pd, _mm256_set1_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+    use core::arch::x86_64::{__m512d, _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_set1_pd, _mm512_setzero_pd, _mm512_storeu_pd};
 
     let b_size: usize = b.len();
 
@@ -550,25 +521,19 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [
     let k1: usize = k + 1;
     let bound: usize = a_size + b_size;
 
-    // Since k is a multiple of two, if either k0 or k1 are out of range,
-    // both are.
     if k0 >= bound {
         unsafe {
-            let zero: __m256d = _mm256_setzero_pd();
-            let dst_ptr: *mut f64 = dst.as_mut_ptr();
-            _mm256_storeu_pd(dst_ptr, zero);
-            _mm256_storeu_pd(dst_ptr.add(4), zero);
-            _mm256_storeu_pd(dst_ptr.add(8), zero);
-            _mm256_storeu_pd(dst_ptr.add(12), zero);
+            let zero: __m512d = _mm512_setzero_pd();
+            _mm512_storeu_pd(dst.as_mut_ptr(), zero);
+            _mm512_storeu_pd(dst.as_mut_ptr().add(8), zero);
         }
         return;
     }
 
     unsafe {
-        let mut acc_re_k0: __m256d = _mm256_setzero_pd();
-        let mut acc_im_k0: __m256d = _mm256_setzero_pd();
-        let mut acc_re_k1: __m256d = _mm256_setzero_pd();
-        let mut acc_im_k1: __m256d = _mm256_setzero_pd();
+        // Packed accumulators: [Σ ar*br | Σ ai*br] per coefficient
+        let mut acc_k0: __m512d = _mm512_setzero_pd();
+        let mut acc_k1: __m512d = _mm512_setzero_pd();
 
         let j0_min: usize = (k0 + 1).saturating_sub(a_size);
         let j0_max: usize = (k0 + 1).min(b_size);
@@ -577,15 +542,11 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [
             let mut a_k0_ptr: *const f64 = a.as_ptr().add(8 * (k0 - j0_min));
             let mut b_ptr: *const f64 = b.as_ptr().add(j0_min);
 
-            // Contributions to k0 only
             for _ in 0..j0_max - j0_min {
-                let ar: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let br: __m256d = _mm256_set1_pd(*b_ptr);
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let br: __m512d = _mm512_set1_pd(*b_ptr);
 
-                // complex * real
-                acc_re_k0 = _mm256_fmadd_pd(ar, br, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai, br, acc_im_k0);
+                acc_k0 = _mm512_fmadd_pd(a0_full, br, acc_k0);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 b_ptr = b_ptr.add(1);
@@ -600,33 +561,23 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [
 
             // Region 1: k0 only, j ∈ [j0_min, j1_min)
             for _ in 0..j1_min - j0_min {
-                let ar0: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai0: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let br: __m256d = _mm256_set1_pd(*b_ptr);
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let br: __m512d = _mm512_set1_pd(*b_ptr);
 
-                acc_re_k0 = _mm256_fmadd_pd(ar0, br, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai0, br, acc_im_k0);
+                acc_k0 = _mm512_fmadd_pd(a0_full, br, acc_k0);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 b_ptr = b_ptr.add(1);
             }
 
             // Region 2: overlap, contributions to both k0 and k1, j ∈ [j1_min, j0_max)
-            // Still “save one load on b”: we broadcast once and reuse.
             for _ in 0..j0_max - j1_min {
-                let ar0: __m256d = _mm256_loadu_pd(a_k0_ptr);
-                let ai0: __m256d = _mm256_loadu_pd(a_k0_ptr.add(4));
-                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-                let br: __m256d = _mm256_set1_pd(*b_ptr);
+                let a0_full: __m512d = _mm512_loadu_pd(a_k0_ptr);
+                let a1_full: __m512d = _mm512_loadu_pd(a_k1_ptr);
+                let br: __m512d = _mm512_set1_pd(*b_ptr);
 
-                // k0
-                acc_re_k0 = _mm256_fmadd_pd(ar0, br, acc_re_k0);
-                acc_im_k0 = _mm256_fmadd_pd(ai0, br, acc_im_k0);
-
-                // k1
-                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                acc_k0 = _mm512_fmadd_pd(a0_full, br, acc_k0);
+                acc_k1 = _mm512_fmadd_pd(a1_full, br, acc_k1);
 
                 a_k0_ptr = a_k0_ptr.sub(8);
                 a_k1_ptr = a_k1_ptr.sub(8);
@@ -635,24 +586,18 @@ pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [
 
             // Region 3: k1 only, j ∈ [j0_max, j1_max)
             for _ in 0..j1_max - j0_max {
-                let ar1: __m256d = _mm256_loadu_pd(a_k1_ptr);
-                let ai1: __m256d = _mm256_loadu_pd(a_k1_ptr.add(4));
-                let br: __m256d = _mm256_set1_pd(*b_ptr);
+                let a1_full: __m512d = _mm512_loadu_pd(a_k1_ptr);
+                let br: __m512d = _mm512_set1_pd(*b_ptr);
 
-                acc_re_k1 = _mm256_fmadd_pd(ar1, br, acc_re_k1);
-                acc_im_k1 = _mm256_fmadd_pd(ai1, br, acc_im_k1);
+                acc_k1 = _mm512_fmadd_pd(a1_full, br, acc_k1);
 
                 a_k1_ptr = a_k1_ptr.sub(8);
                 b_ptr = b_ptr.add(1);
             }
         }
 
-        // Store both coefficients
-        let dst_ptr = dst.as_mut_ptr();
-        _mm256_storeu_pd(dst_ptr, acc_re_k0);
-        _mm256_storeu_pd(dst_ptr.add(4), acc_im_k0);
-        _mm256_storeu_pd(dst_ptr.add(8), acc_re_k1);
-        _mm256_storeu_pd(dst_ptr.add(12), acc_im_k1);
+        _mm512_storeu_pd(dst.as_mut_ptr(), acc_k0);
+        _mm512_storeu_pd(dst.as_mut_ptr().add(8), acc_k1);
     }
 }
 

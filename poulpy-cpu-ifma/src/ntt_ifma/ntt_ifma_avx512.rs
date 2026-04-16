@@ -163,7 +163,21 @@ unsafe fn ntt_iter_first_ifma(
         let data_512 = begin as *mut __m512i;
         let omega_512 = po_omega as *const __m512i;
         let quot_512 = po_quot as *const __m512i;
-        for i in 0..pairs {
+        let unrolled_pairs = pairs / 2;
+        for i in 0..unrolled_pairs {
+            let base = i * 2;
+            let x0 = _mm512_loadu_si512(data_512.add(base));
+            let omega0 = _mm512_loadu_si512(omega_512.add(base));
+            let omega_quot0 = _mm512_loadu_si512(quot_512.add(base));
+            let x1 = _mm512_loadu_si512(data_512.add(base + 1));
+            let omega1 = _mm512_loadu_si512(omega_512.add(base + 1));
+            let omega_quot1 = _mm512_loadu_si512(quot_512.add(base + 1));
+            _mm512_storeu_si512(data_512.add(base), harvey_modmul_si512(x0, omega0, omega_quot0, q_512));
+            _mm512_storeu_si512(data_512.add(base + 1), harvey_modmul_si512(x1, omega1, omega_quot1, q_512));
+        }
+
+        if !pairs.is_multiple_of(2) {
+            let i = pairs - 1;
             let x = _mm512_loadu_si512(data_512.add(i));
             let omega = _mm512_loadu_si512(omega_512.add(i));
             let omega_quot = _mm512_loadu_si512(quot_512.add(i));
@@ -223,13 +237,44 @@ unsafe fn ntt_iter_ifma(
             let pairs = remaining / 2;
             let omega_512 = po_omega as *const __m512i;
             let quot_512 = po_quot as *const __m512i;
-            for p in 0..pairs {
+            let unrolled_pairs = pairs / 2;
+            for p in 0..unrolled_pairs {
+                let base = p * 2;
+
+                let av0 = _mm512_loadu_si512(ptr1 as *const __m512i);
+                let bv0 = _mm512_loadu_si512(ptr2 as *const __m512i);
+                let omega0 = _mm512_loadu_si512(omega_512.add(base));
+                let omega_quot0 = _mm512_loadu_si512(quot_512.add(base));
+                let sum0 = cond_sub_2q_si512(_mm512_add_epi64(av0, bv0), q2_512);
+                let diff0 = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av0, q2_512), bv0), q2_512);
+
+                let av1 = _mm512_loadu_si512(ptr1.add(2) as *const __m512i);
+                let bv1 = _mm512_loadu_si512(ptr2.add(2) as *const __m512i);
+                let omega1 = _mm512_loadu_si512(omega_512.add(base + 1));
+                let omega_quot1 = _mm512_loadu_si512(quot_512.add(base + 1));
+                let sum1 = cond_sub_2q_si512(_mm512_add_epi64(av1, bv1), q2_512);
+                let diff1 = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av1, q2_512), bv1), q2_512);
+
+                _mm512_storeu_si512(ptr1 as *mut __m512i, sum0);
+                _mm512_storeu_si512(ptr2 as *mut __m512i, harvey_modmul_si512(diff0, omega0, omega_quot0, q_512));
+                _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, sum1);
+                _mm512_storeu_si512(
+                    ptr2.add(2) as *mut __m512i,
+                    harvey_modmul_si512(diff1, omega1, omega_quot1, q_512),
+                );
+
+                ptr1 = ptr1.add(4);
+                ptr2 = ptr2.add(4);
+            }
+
+            if !pairs.is_multiple_of(2) {
+                let tail_pair = pairs - 1;
                 let av = _mm512_loadu_si512(ptr1 as *const __m512i);
                 let bv = _mm512_loadu_si512(ptr2 as *const __m512i);
                 let sum = cond_sub_2q_si512(_mm512_add_epi64(av, bv), q2_512);
                 let diff = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av, q2_512), bv), q2_512);
-                let omega = _mm512_loadu_si512(omega_512.add(p));
-                let omega_quot = _mm512_loadu_si512(quot_512.add(p));
+                let omega = _mm512_loadu_si512(omega_512.add(tail_pair));
+                let omega_quot = _mm512_loadu_si512(quot_512.add(tail_pair));
                 _mm512_storeu_si512(ptr1 as *mut __m512i, sum);
                 _mm512_storeu_si512(ptr2 as *mut __m512i, harvey_modmul_si512(diff, omega, omega_quot, q_512));
                 ptr1 = ptr1.add(2);
@@ -293,11 +338,41 @@ unsafe fn intt_iter_ifma(
             let pairs = remaining / 2;
             let omega_512 = po_omega as *const __m512i;
             let quot_512 = po_quot as *const __m512i;
-            for p in 0..pairs {
+            let unrolled_pairs = pairs / 2;
+            for p in 0..unrolled_pairs {
+                let base = p * 2;
+
+                let av0 = _mm512_loadu_si512(ptr1 as *const __m512i);
+                let bv0 = _mm512_loadu_si512(ptr2 as *const __m512i);
+                let omega0 = _mm512_loadu_si512(omega_512.add(base));
+                let omega_quot0 = _mm512_loadu_si512(quot_512.add(base));
+                let bo0 = harvey_modmul_si512(bv0, omega0, omega_quot0, q_512);
+                let sum0 = cond_sub_2q_si512(_mm512_add_epi64(av0, bo0), q2_512);
+                let diff0 = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av0, q2_512), bo0), q2_512);
+
+                let av1 = _mm512_loadu_si512(ptr1.add(2) as *const __m512i);
+                let bv1 = _mm512_loadu_si512(ptr2.add(2) as *const __m512i);
+                let omega1 = _mm512_loadu_si512(omega_512.add(base + 1));
+                let omega_quot1 = _mm512_loadu_si512(quot_512.add(base + 1));
+                let bo1 = harvey_modmul_si512(bv1, omega1, omega_quot1, q_512);
+                let sum1 = cond_sub_2q_si512(_mm512_add_epi64(av1, bo1), q2_512);
+                let diff1 = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av1, q2_512), bo1), q2_512);
+
+                _mm512_storeu_si512(ptr1 as *mut __m512i, sum0);
+                _mm512_storeu_si512(ptr2 as *mut __m512i, diff0);
+                _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, sum1);
+                _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, diff1);
+
+                ptr1 = ptr1.add(4);
+                ptr2 = ptr2.add(4);
+            }
+
+            if !pairs.is_multiple_of(2) {
+                let tail_pair = pairs - 1;
                 let av = _mm512_loadu_si512(ptr1 as *const __m512i);
                 let bv = _mm512_loadu_si512(ptr2 as *const __m512i);
-                let omega = _mm512_loadu_si512(omega_512.add(p));
-                let omega_quot = _mm512_loadu_si512(quot_512.add(p));
+                let omega = _mm512_loadu_si512(omega_512.add(tail_pair));
+                let omega_quot = _mm512_loadu_si512(quot_512.add(tail_pair));
                 let bo = harvey_modmul_si512(bv, omega, omega_quot, q_512);
                 let sum = cond_sub_2q_si512(_mm512_add_epi64(av, bo), q2_512);
                 let diff = cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av, q2_512), bo), q2_512);
