@@ -446,7 +446,7 @@ impl NttIfmaCFromB for NTTIfma {
 impl NttIfmaMulBbc1ColX2 for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
-        unsafe { vec_mat1col_product_x2_bbc_ifma(meta, ell, res, a, b) };
+        unsafe { vec_mat1col_product_x2_bbc_ifma::<false>(meta, ell, res, a, b) };
     }
 }
 

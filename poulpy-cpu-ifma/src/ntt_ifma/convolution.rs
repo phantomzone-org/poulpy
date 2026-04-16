@@ -20,7 +20,7 @@ use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, VecZnxDftToMut, ZnxInfos
 use super::mat_vec_ifma::vec_mat1col_product_x2_bbc_ifma;
 
 use crate::NTTIfma;
-use core::arch::x86_64::{__m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512};
+use core::arch::x86_64::{__m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pack kernels
@@ -235,7 +235,7 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                vec_mat1col_product_x2_bbc_ifma(
+                vec_mat1col_product_x2_bbc_ifma::<true>(
                     &meta,
                     ell,
                     &mut res_u64[8 * blk..8 * blk + 8],
@@ -249,6 +249,9 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     for j in min_size..res_size {
         res.at_mut(res_col, j).fill(Q120bScalar([0; 4]));
     }
+    // Order the non-temporal stores from the kernel against any subsequent
+    // load of `res` (e.g. by the next stage of the FHE pipeline).
+    _mm_sfence();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,7 +356,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                vec_mat1col_product_x2_bbc_ifma(
+                vec_mat1col_product_x2_bbc_ifma::<true>(
                     &meta,
                     ell,
                     &mut res_u64[8 * blk..8 * blk + 8],
@@ -367,4 +370,5 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     for j in min_size..res_size {
         res.at_mut(res_col, j).fill(Q120bScalar([0; 4]));
     }
+    _mm_sfence();
 }

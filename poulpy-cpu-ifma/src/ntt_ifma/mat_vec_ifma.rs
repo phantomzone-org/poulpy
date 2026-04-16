@@ -31,7 +31,7 @@ use core::arch::x86_64::{
     __m256i, __m512i, _mm256_add_epi64, _mm256_and_si256, _mm256_loadu_si256, _mm256_madd52hi_epu64, _mm256_madd52lo_epu64,
     _mm256_mul_epu32, _mm256_set1_epi64x, _mm256_setzero_si256, _mm256_srli_epi64, _mm256_storeu_si256, _mm512_add_epi64,
     _mm512_and_si512, _mm512_loadu_si512, _mm512_madd52hi_epu64, _mm512_madd52lo_epu64, _mm512_mul_epu32, _mm512_set1_epi64,
-    _mm512_setzero_si512, _mm512_srli_epi64, _mm512_storeu_si512,
+    _mm512_setzero_si512, _mm512_srli_epi64, _mm512_storeu_si512, _mm512_stream_si512,
 };
 
 use super::ntt_ifma_avx512::{cond_sub_2q_si256, cond_sub_2q_si512, harvey_modmul_si256, harvey_modmul_si512};
@@ -358,8 +358,15 @@ pub(crate) unsafe fn vec_mat1col_product_bbc_ifma(
 ///
 /// Caller must ensure AVX512-IFMA and AVX512-VL support. Slice lengths must
 /// satisfy `x.len() >= 16 * ell`, `y.len() >= 16 * ell`, `res.len() >= 8`.
+///
+/// `NT_STORE`: when `true`, the final result is committed via
+/// `_mm512_stream_si512` (cache-bypassing). The caller MUST then issue an
+/// `_mm_sfence` before any subsequent load of the destination, and `res` must
+/// be 64-byte aligned. Use this when the kernel writes a hot output buffer
+/// that won't be re-read in the current loop and would otherwise evict
+/// matrix cache lines.
 #[target_feature(enable = "avx512ifma,avx512vl")]
-pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma(
+pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma<const NT_STORE: bool>(
     _meta: &BbcIfmaMeta<Primes40>,
     ell: usize,
     res: &mut [u64],
@@ -400,10 +407,13 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma(
         }
 
         // Reduce both pairs in one call.
-        _mm512_storeu_si512(
-            res.as_mut_ptr() as *mut __m512i,
-            reduce_bbc_ifma_simd_512(_mm512_add_epi64(acc_lo0, acc_lo1), _mm512_add_epi64(acc_hi0, acc_hi1)),
-        );
+        let result = reduce_bbc_ifma_simd_512(_mm512_add_epi64(acc_lo0, acc_lo1), _mm512_add_epi64(acc_hi0, acc_hi1));
+        let res_ptr = res.as_mut_ptr() as *mut __m512i;
+        if NT_STORE {
+            _mm512_stream_si512(res_ptr, result);
+        } else {
+            _mm512_storeu_si512(res_ptr, result);
+        }
     }
 }
 
@@ -602,7 +612,7 @@ mod tests {
         let mut res_ifma = vec![0u64; 8];
         let mut res_ref = vec![0u64; 8];
 
-        unsafe { vec_mat1col_product_x2_bbc_ifma(&meta, ell, &mut res_ifma, &x, &y) };
+        unsafe { vec_mat1col_product_x2_bbc_ifma::<false>(&meta, ell, &mut res_ifma, &x, &y) };
         vec_mat1col_product_x2_bbc_ifma_ref(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_ifma, res_ref, "vec_mat1col_product_x2_bbc: IFMA vs ref mismatch");

@@ -7,7 +7,7 @@
 
 use bytemuck::{cast_slice, cast_slice_mut};
 use core::arch::x86_64::{
-    __m256i, __m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512, _mm512_stream_si512, _mm_sfence,
+    __m256i, __m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512, _mm512_stream_si512,
 };
 use std::mem::size_of;
 
@@ -118,10 +118,16 @@ where
 
             for blk_j in 0..n_blks {
                 let pmat_off = blk_j * block_stride + dst_base;
-                pmat_u32[pmat_off..pmat_off + 16].copy_from_slice(&tmp_c[16 * blk_j..16 * blk_j + 16]);
+                unsafe {
+                    _mm512_stream_si512(
+                        pmat_u32.as_mut_ptr().add(pmat_off) as *mut __m512i,
+                        _mm512_loadu_si512(tmp_c.as_ptr().add(16 * blk_j) as *const __m512i),
+                    );
+                }
             }
         }
     }
+    unsafe { _mm_sfence() };
 }
 
 #[inline(always)]
@@ -282,7 +288,7 @@ pub(crate) fn vmp_apply_dft_to_dft_ifma<R, A, C>(
 
     let res_u64: &mut [u64] = cast_slice_mut(res_ref.raw_mut());
     let a_u64: &[u64] = cast_slice(a_ref.raw());
-    let pmat_u32: &[u32] = cast_slice(pmat_ref.data().as_ref());
+    let pmat_u32: &[u32] = cast_slice(pmat_ref.data());
 
     unsafe {
         vmp_apply_core_2col_simd::<true>(
@@ -325,7 +331,7 @@ pub(crate) fn vmp_apply_dft_to_dft_accumulate_ifma<R, A, C>(
 
     let res_u64: &mut [u64] = cast_slice_mut(res_ref.raw_mut());
     let a_u64: &[u64] = cast_slice(a_ref.raw());
-    let pmat_u32: &[u32] = cast_slice(pmat_ref.data().as_ref());
+    let pmat_u32: &[u32] = cast_slice(pmat_ref.data());
 
     unsafe {
         vmp_apply_core_2col_simd::<false>(
