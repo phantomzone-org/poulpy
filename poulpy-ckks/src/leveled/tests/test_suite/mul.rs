@@ -2,7 +2,7 @@
 //!
 //! # Test inventory
 //!
-//! ## ct × ct multiplication (`GLWE<_, CKKS>::mul`)
+//! ## ct × ct multiplication out of place (`GLWE<_, CKKS>::mul`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
@@ -19,13 +19,19 @@
 //! | [`test_mul_ct_inplace_self_lt`] | `self.log_hom_rem() < a.log_hom_rem()` → a shifted to align with self |
 //! | [`test_mul_ct_inplace_self_gt`] | `self.log_hom_rem() > a.log_hom_rem()` → self shifted to align with a |
 //!
-//! ## ct² squaring (`GLWE<_, CKKS>::square`)
+//! ## ct² squaring out of place (`GLWE<_, CKKS>::square`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_square_ct_aligned`] | square at default precision |
-//! | [`test_square_ct_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
-//! | [`test_square_ct_smaller_output`] | square into smaller output buffer |
+//! | [`test_square_aligned`] | square at default precision |
+//! | [`test_square_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
+//! | [`test_square_smaller_output`] | square into smaller output buffer |
+//!
+//! ## ct² squaring inplace (`GLWE<_, CKKS>::square_inplace`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_square_inplace`] | square at default precision |
 
 use crate::{
     CKKSCompositionError, CKKSInfos,
@@ -144,21 +150,21 @@ pub fn test_mul_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
-// ─── ct² squaring (GLWE<_, CKKS>::square) ───────────────────────────────────────
+// ─── ct² squaring out of place (GLWE<_, CKKS>::square) ───────────────────────────────────────
 
 /// ct² at default precision (same as fresh encryption).
-pub fn test_square_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_square_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
-    assert_mul_output_meta("square_ct_aligned", &ct_res, &ct, &ct);
-    ctx.assert_decrypt_precision("square_ct_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    assert_mul_output_meta("square_aligned", &ct_res, &ct, &ct);
+    ctx.assert_decrypt_precision("square_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct² after the input has already been rescaled by one limb.
-pub fn test_square_ct_rescaled_input<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_square_rescaled_input<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(
         ctx.max_k() - ctx.base2k().as_usize() + 1,
@@ -169,26 +175,32 @@ pub fn test_square_ct_rescaled_input<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
-    assert_mul_output_meta("square_ct_rescaled_input", &ct_res, &ct, &ct);
-    ctx.assert_decrypt_precision(
-        "square_ct_rescaled_input",
-        &ct_res,
-        &want_re,
-        &want_im,
-        20.0,
-        scratch.borrow(),
-    );
+    assert_mul_output_meta("square_rescaled_input", &ct_res, &ct, &ct);
+    ctx.assert_decrypt_precision("square_rescaled_input", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// ct² into an output buffer with smaller k.
-pub fn test_square_ct_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_square_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
-    assert_mul_output_meta("square_ct_smaller_output", &ct_res, &ct, &ct);
-    ctx.assert_decrypt_precision("square_ct rescaled", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    assert_mul_output_meta("square_smaller_output", &ct_res, &ct, &ct);
+    ctx.assert_decrypt_precision("square rescaled", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+// ─── ct² squaring inplace (GLWE<_, CKKS>::square) ───────────────────────────────────────
+
+/// ct² inplace.
+pub fn test_square_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let (want_re, want_im) = ctx.want_square();
+    let ct_in_meta = ct.meta();
+    ct.square_inplace(&ctx.module, ctx.tsk(), scratch.borrow()).unwrap();
+    assert_mul_output_meta("square_smaller_output", &ct, &ct_in_meta, &ct_in_meta);
+    ctx.assert_decrypt_precision("square rescaled", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// Multiplication with inconsistent metadata must fail explicitly instead of panicking on usize underflow.

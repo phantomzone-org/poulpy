@@ -67,6 +67,16 @@ pub trait CKKSMulOps {
         Module<BE>: GLWETensoring<BE>,
         A: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn square_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
 fn get_mul_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
@@ -251,6 +261,38 @@ impl<D: DataMut> CKKSMulOps for GLWE<D, CKKS> {
 
         let a_ref = a.to_ref();
         module.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
+
+        // TODO: Chose correct optimal size based on noise
+        let mut self_view = self.to_mut();
+        module.glwe_tensor_relinearize(&mut self_view, &tmp, tsk, tsk.size(), scratch_1);
+
+        self.set_log_hom_rem(res_log_hom_rem)?;
+        self.set_log_decimal(res_log_decimal)?;
+        Ok(())
+    }
+
+    fn square_inplace<BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Module<BE>: GLWETensoring<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_params(self, self, self)?;
+
+        let tensor_layout = GLWELayout {
+            n: self.n(),
+            base2k: self.base2k(),
+            k: self.max_k(), //TODO: optimize
+            rank: self.rank(),
+        };
+
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+
+        module.glwe_tensor_square_apply(cnv_offset, &mut tmp, &self.to_ref(), self.effective_k(), scratch_1);
 
         // TODO: Chose correct optimal size based on noise
         let mut self_view = self.to_mut();
