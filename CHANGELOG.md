@@ -4,24 +4,6 @@
 
 ### `poulpy-hal`
 - Fix the convolution API by renaming the output-shift parameter to `cnv_offset`, moving it to the front of the apply calls, and updating delegates and conformance tests to match the corrected calling convention.
-
-### `poulpy-core`
-- Thread the corrected convolution-offset semantics through GLWE constant/plaintext multiply and tensoring paths so scratch sizing, truncation, and normalization all use the same convention.
-- Pass explicit effective-k information into convolution-backed multiply/tensor routines and mask partial bottom limbs correctly instead of assuming every input uses its full stored limb width.
-- Refresh GLWE tensor tests to cover the updated convolution API and the corrected effective-width handling.
-
-### `poulpy-cpu-ref` / `poulpy-cpu-avx`
-- Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
-
-### `poulpy-bench`
-- Update core and HAL convolution benchmarks to the new convolution API.
-
-### Build & Docs
-- Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.
-- Update `rust-toolchain.toml` (nightly toolchain) to keep build expectations aligned.
-- Add acknowledgements for PZ, EF, and ENS in the root README.
-
-### `poulpy-hal` (major OEP refactor)
 - Replace legacy OEP modules with the unified `oep::HalImpl` entrypoint to provide one consistent extension surface for backends.
 - Add family defaults for `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution` to reduce backend boilerplate and make overrides explicit.
 - Remove legacy OEP traits and per-family OEP modules; update delegates to route through `HalImpl` and simplify dispatch.
@@ -29,7 +11,11 @@
 - Refresh HAL test suites to align with the new defaults and dispatch.
 - Add family-level module/scratch defaults to cut backend boilerplate and centralize scratch sizing.
 
-### `poulpy-core` (API split + test suite re-org)
+### `poulpy-core`
+- Thread the corrected convolution-offset semantics through GLWE constant/plaintext multiply and tensoring paths so scratch sizing, truncation, and normalization all use the same convention.
+- Pass explicit effective-k information into convolution-backed multiply/tensor routines and mask partial bottom limbs correctly instead of assuming every input uses its full stored limb width.
+- Refresh GLWE tensor tests to cover the updated convolution API and the corrected effective-width handling.
+- Fix tensoring noise blowup when output operand had a smaller size than the input operand.
 - Split public APIs into `api` trait modules backed by `delegates` and `oep` layers to separate user-facing traits from backend hooks and dispatch.
 - Reorganize encryption, decryption, conversions, keyswitching, external products, and operations to match the new API structure.
 - Move backend conformance suites into `src/test_suite` and keep unit tests separate.
@@ -38,7 +24,8 @@
 - Standardize prepared allocations on `DeviceBuf` for backend-owned buffers to make data ownership explicit.
 - Rename Module allocation/prepare helpers to struct-first names (e.g. `gglwe_prepared_alloc`, `glwe_secret_prepare`) to match the rest of the API.
 
-### `poulpy-cpu-ref` / `poulpy-cpu-avx` (backend reshuffle)
+### `poulpy-cpu-ref` / `poulpy-cpu-avx`
+- Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
 - Reorganize backend implementations around `hal_impl` modules and `hal_defaults` to mirror the new HAL entrypoint and reduce duplication.
 - Remove legacy per-family FFT64/NTT120 modules; route implementations through the new HAL defaults to keep a single source of truth.
 - Update FFT64/NTT120 reference kernels, normalization, and shift helpers to keep behavior aligned with the new dispatch path.
@@ -55,7 +42,13 @@
 - Make AVX backend optional (`enable-avx`) to prevent build failures on non-AVX machines.
 
 ### `poulpy-bench`
+- Update core and HAL convolution benchmarks to the new convolution API.
 - Align benchmark suites with the new HAL/core APIs and update parameter examples.
+
+### Build & Docs
+- Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.
+- Update `rust-toolchain.toml` (nightly toolchain) to keep build expectations aligned.
+- Add acknowledgements for PZ, EF, and ENS in the root README.
 
 ### Migration (before/after)
 
@@ -296,15 +289,13 @@ unsafe impl CoreImpl<MyBackend> for MyBackend {
 - Add additional operations, such as splice_u8, splice_u16 and sign extension.
 - Add `GLWEBlindRetriever` and `GLWEBlindRetrieval`: a `GGSW`-based blind reversible retrieval (enables to instantiate encrypted ROM/RAM like object).
 - Improved Cmux speed
+- Added `sign` argument to GGSW-based blind rotation, which enables to choose the rotation direction of the test vector.
 
 ### `poulpy-cpu-ref`
 - A new crate that provides the reference CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_ref**.
 
 ### `poulpy-cpu-avx`
 - A new crate that provides an AVX/FMA accelerated CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_avx**.
-
-### `poulpy-schemes`
- - Added `sign` argument to GGSW-based blind rotation, which enables to choose the rotation direction of the test vector.
 
 ## [0.3.2] - 2025-10-27
 
