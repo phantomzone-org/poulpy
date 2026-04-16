@@ -9,6 +9,9 @@ repository = "https://github.com/poulpy-fhe/poulpy"
 homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
 
+[lib]
+doctest = false
+
 [features]
 enable-avx = []
 
