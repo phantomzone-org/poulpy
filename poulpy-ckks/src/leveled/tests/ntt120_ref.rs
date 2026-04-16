@@ -51,6 +51,11 @@ fn add_ct_delta_a_gt_b() {
 }
 
 #[test]
+fn add_ct_delta_log_decimal() {
+    crate::leveled::tests::test_suite::add::test_add_ct_delta_log_decimal(&CTX);
+}
+
+#[test]
 fn add_ct_aligned_smaller_output() {
     crate::leveled::tests::test_suite::add::test_add_ct_aligned_smaller_output(&CTX);
 }
@@ -81,6 +86,11 @@ fn add_pt_znx_aligned() {
 }
 
 #[test]
+fn add_pt_znx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::add::test_add_pt_znx_delta_log_decimal(&CTX);
+}
+
+#[test]
 fn add_pt_rnx_inplace() {
     crate::leveled::tests::test_suite::add::test_add_pt_rnx_inplace(&CTX);
 }
@@ -88,6 +98,11 @@ fn add_pt_rnx_inplace() {
 #[test]
 fn add_pt_rnx_aligned() {
     crate::leveled::tests::test_suite::add::test_add_pt_rnx_aligned(&CTX);
+}
+
+#[test]
+fn add_pt_rnx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::add::test_add_pt_rnx_delta_log_decimal(&CTX);
 }
 
 #[test]
@@ -121,6 +136,11 @@ fn sub_ct_delta_a_gt_b() {
 }
 
 #[test]
+fn sub_ct_delta_log_decimal() {
+    crate::leveled::tests::test_suite::sub::test_sub_ct_delta_log_decimal(&CTX);
+}
+
+#[test]
 fn sub_ct_smaller_output() {
     crate::leveled::tests::test_suite::sub::test_sub_ct_smaller_output(&CTX);
 }
@@ -151,6 +171,11 @@ fn sub_pt_znx() {
 }
 
 #[test]
+fn sub_pt_znx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_znx_delta_log_decimal(&CTX);
+}
+
+#[test]
 fn sub_pt_rnx_inplace() {
     crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_inplace(&CTX);
 }
@@ -158,6 +183,11 @@ fn sub_pt_rnx_inplace() {
 #[test]
 fn sub_pt_rnx() {
     crate::leveled::tests::test_suite::sub::test_sub_pt_rnx(&CTX);
+}
+
+#[test]
+fn sub_pt_rnx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_delta_log_decimal(&CTX);
 }
 
 #[test]
@@ -230,6 +260,11 @@ fn mul_ct_delta_a_lt_b() {
 }
 
 #[test]
+fn mul_ct_delta_log_decimal() {
+    crate::leveled::tests::test_suite::mul::test_mul_ct_delta_log_decimal(&CTX);
+}
+
+#[test]
 fn mul_ct_smaller_output() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_smaller_output(&CTX);
 }
@@ -261,7 +296,7 @@ fn square_rescaled_input() {
 
 #[test]
 fn square_inplace() {
-    crate::leveled::tests::test_suite::mul::test_square_rescaled_input(&CTX);
+    crate::leveled::tests::test_suite::mul::test_square_inplace(&CTX);
 }
 
 #[test]
@@ -272,6 +307,11 @@ fn square_smaller_output() {
 #[test]
 fn mul_pt_znx_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_pt_znx_aligned(&CTX);
+}
+
+#[test]
+fn mul_pt_znx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_znx_delta_log_decimal(&CTX);
 }
 
 #[test]
@@ -287,6 +327,11 @@ fn mul_pt_znx_inplace() {
 #[test]
 fn mul_pt_rnx_aligned() {
     crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_aligned(&CTX);
+}
+
+#[test]
+fn mul_pt_rnx_delta_log_decimal() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_delta_log_decimal(&CTX);
 }
 
 #[test]
@@ -337,4 +382,29 @@ fn div_pow2_inplace() {
 #[test]
 fn div_pow2_inplace_explicit_error() {
     crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace_explicit_error(&CTX);
+}
+
+#[test]
+fn composition_linear_sum() {
+    crate::leveled::tests::test_suite::composition::test_linear_sum(&CTX);
+}
+
+#[test]
+fn composition_poly2_sum() {
+    crate::leveled::tests::test_suite::composition::test_poly2_sum(&CTX);
+}
+
+#[test]
+fn composition_poly2_sum_with_const() {
+    crate::leveled::tests::test_suite::composition::test_poly2_sum_with_const(&CTX);
+}
+
+#[test]
+fn composition_poly2_mul() {
+    crate::leveled::tests::test_suite::composition::test_poly2_mul(&CTX);
+}
+
+#[test]
+fn composition_repeated_square_exhausts_capacity() {
+    crate::leveled::tests::test_suite::composition::test_repeated_square_exhausts_capacity(&CTX);
 }

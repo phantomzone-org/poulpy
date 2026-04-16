@@ -4,7 +4,7 @@
 //! evaluation keys, and two pairs of test messages.  It provides convenience
 //! methods for encrypt, decrypt-and-decode, and scratch allocation.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, f64::consts::TAU};
 
 use super::CKKSTestParams;
 use crate::{
@@ -207,6 +207,12 @@ where
 {
 }
 
+#[derive(Clone, Copy)]
+pub enum TestVector {
+    First,
+    Second,
+}
+
 /// Shared test state: module, keys, and two complex test messages.
 ///
 /// Constructed via [`TestContext::new`] (base), [`TestContext::new_with_tsk`]
@@ -241,6 +247,13 @@ impl<BE: TestBackend> TestContext<BE> {
 
     pub fn max_k(&self) -> usize {
         self.params.k
+    }
+
+    pub fn precision_at(&self, log_decimal: usize) -> CKKS {
+        CKKS {
+            log_decimal,
+            log_hom_rem: 0,
+        }
     }
 }
 
@@ -317,15 +330,26 @@ impl<BE: TestContextBackend> TestContext<BE> {
             tsk: tsk_prepared,
             atks,
             scratch_size,
-            re1: (0..m).map(|i| 16.0 * (i as f64) / (m as f64) - 8.0).collect(),
-            im1: (0..m).map(|i| 16.0 - 2.0 * (i as f64) / (m as f64)).collect(),
-            re2: (0..m).map(|i| 0.8 * (1.0 - (i as f64) / (m as f64)) - 0.4).collect(),
-            im2: (0..m).map(|i| -0.6 * (i as f64) / (m as f64)).collect(),
+            re1: (0..m).map(|i| (TAU * (i as f64 + 0.25) / m as f64).cos()).collect(),
+            im1: (0..m).map(|i| (TAU * (i as f64 + 0.25) / m as f64).sin()).collect(),
+            re2: (0..m)
+                .map(|i| (TAU * (5.0 * i as f64 + 3.0) / (2.0 * m as f64)).cos())
+                .collect(),
+            im2: (0..m)
+                .map(|i| (TAU * (5.0 * i as f64 + 3.0) / (2.0 * m as f64)).sin())
+                .collect(),
         }
     }
 }
 
 impl<BE: TestBackend> TestContext<BE> {
+    pub fn test_vector(&self, which: TestVector) -> (&[f64], &[f64]) {
+        match which {
+            TestVector::First => (&self.re1, &self.im1),
+            TestVector::Second => (&self.re2, &self.im2),
+        }
+    }
+
     pub fn tsk(&self) -> &GLWETensorKeyPrepared<DeviceBuf<BE>, BE> {
         &self.tsk
     }
@@ -346,11 +370,26 @@ impl<BE: TestBackend> TestContext<BE> {
         Module<BE>: CKKSEncrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        self.encrypt_with_prec(k, re, im, self.meta(), scratch)
+    }
+
+    pub fn encrypt_with_prec(
+        &self,
+        k: usize,
+        re: &[f64],
+        im: &[f64],
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> GLWE<Vec<u8>, CKKS>
+    where
+        Module<BE>: CKKSEncrypt<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
 
         self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
 
-        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), self.meta());
+        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
 
         let mut ct = self.alloc_ct(k);
@@ -377,7 +416,7 @@ impl<BE: TestBackend> TestContext<BE> {
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), self.params.prec);
+        let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), self.precision_at(ct.log_decimal()));
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
         let mut full_pt = attach_meta(full_pt, ct.meta());
         self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);
@@ -414,16 +453,24 @@ impl<BE: TestBackend> TestContext<BE> {
 
     /// Returns element-wise (re1+re2, im1+im2).
     pub fn want_add(&self) -> (Vec<f64>, Vec<f64>) {
+        self.want_add_from(&self.re1, &self.im1, &self.re2, &self.im2)
+    }
+
+    pub fn want_add_from(&self, a_re: &[f64], a_im: &[f64], b_re: &[f64], b_im: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
-        let re = (0..m).map(|j| self.re1[j] + self.re2[j]).collect();
-        let im = (0..m).map(|j| self.im1[j] + self.im2[j]).collect();
+        let re = (0..m).map(|j| a_re[j] + b_re[j]).collect();
+        let im = (0..m).map(|j| a_im[j] + b_im[j]).collect();
         (re, im)
     }
 
     pub fn want_sub(&self) -> (Vec<f64>, Vec<f64>) {
+        self.want_sub_from(&self.re1, &self.im1, &self.re2, &self.im2)
+    }
+
+    pub fn want_sub_from(&self, a_re: &[f64], a_im: &[f64], b_re: &[f64], b_im: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
-        let re = (0..m).map(|j| self.re1[j] - self.re2[j]).collect();
-        let im = (0..m).map(|j| self.im1[j] - self.im2[j]).collect();
+        let re = (0..m).map(|j| a_re[j] - b_re[j]).collect();
+        let im = (0..m).map(|j| a_im[j] - b_im[j]).collect();
         (re, im)
     }
 
@@ -450,6 +497,13 @@ impl<BE: TestBackend> TestContext<BE> {
         (re, im)
     }
 
+    pub fn scale_slots(&self, re: &[f64], im: &[f64], bits: isize) -> (Vec<f64>, Vec<f64>) {
+        let scale = (2.0f64).powi(bits as i32);
+        let re = re.iter().map(|x| x * scale).collect();
+        let im = im.iter().map(|x| x * scale).collect();
+        (re, im)
+    }
+
     pub fn want_conjugate(&self) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
         let re = (0..m).map(|j| self.re1[j]).collect();
@@ -469,14 +523,18 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     pub fn want_square(&self) -> (Vec<f64>, Vec<f64>) {
+        self.want_square_from(&self.re1, &self.im1)
+    }
+
+    pub fn want_square_from(&self, re_in: &[f64], im_in: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
 
         let mut re = vec![0.0f64; m];
         let mut im = vec![0.0f64; m];
 
         for i in 0..m {
-            let re1 = self.re1[i];
-            let im1 = self.im1[i];
+            let re1 = re_in[i];
+            let im1 = im_in[i];
 
             re[i] = re1 * re1 - im1 * im1;
             im[i] = 2.0 * re1 * im1;
@@ -485,16 +543,20 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     pub fn want_mul(&self) -> (Vec<f64>, Vec<f64>) {
+        self.want_mul_from(&self.re1, &self.im1, &self.re2, &self.im2)
+    }
+
+    pub fn want_mul_from(&self, a_re: &[f64], a_im: &[f64], b_re: &[f64], b_im: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let m = self.params.n / 2;
 
         let mut re = vec![0.0f64; m];
         let mut im = vec![0.0f64; m];
 
         for i in 0..m {
-            let re1 = self.re1[i];
-            let im1 = self.im1[i];
-            let re2 = self.re2[i];
-            let im2 = self.im2[i];
+            let re1 = a_re[i];
+            let im1 = a_im[i];
+            let re2 = b_re[i];
+            let im2 = b_im[i];
 
             re[i] = re1 * re2 - im1 * im2;
             im[i] = re1 * im2 + re2 * im1;
@@ -518,10 +580,34 @@ impl<BE: TestBackend> TestContext<BE> {
 
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
     pub fn encode_pt_znx(&self, re: &[f64], im: &[f64]) -> CKKSPlaintextZnx<Vec<u8>> {
+        self.encode_pt_znx_with_prec(re, im, self.meta())
+    }
+
+    pub fn encode_pt_znx_with_prec(&self, re: &[f64], im: &[f64], prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
         let pt_rnx = self.encode_pt_rnx(re, im);
-        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), self.meta());
+        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         pt_znx
+    }
+
+    pub fn quantized_slots(&self, re: &[f64], im: &[f64], prec: CKKS) -> (Vec<f64>, Vec<f64>) {
+        let pt_znx = self.encode_pt_znx_with_prec(re, im, prec);
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
+        pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
+
+        let m = self.params.n / 2;
+        let mut re_out = vec![0.0; m];
+        let mut im_out = vec![0.0; m];
+        self.encoder.decode_reim(&pt_rnx, &mut re_out, &mut im_out).unwrap();
+        (re_out, im_out)
+    }
+
+    pub fn quantized_vector(&self, which: TestVector, log_decimal: usize) -> (Vec<f64>, Vec<f64>) {
+        let (re, im) = self.test_vector(which);
+        let scale = ((log_decimal as isize) - (self.meta().log_decimal as isize)) as i32;
+        let re_scaled: Vec<f64> = re.iter().map(|x| x * (2.0f64).powi(scale)).collect();
+        let im_scaled: Vec<f64> = im.iter().map(|x| x * (2.0f64).powi(scale)).collect();
+        self.quantized_slots(&re_scaled, &im_scaled, self.precision_at(log_decimal))
     }
 
     /// Decrypts `ct`, decodes, and asserts both channels meet `min_bits` of precision.

@@ -38,9 +38,11 @@
 use crate::{CKKSInfos, leveled::operations::sub::CKKSSubOps};
 
 use super::helpers::{
-    TestContext, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta,
+    TestContext, TestSubBackend as Backend, TestVector, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta,
 };
 use poulpy_hal::api::ScratchOwnedBorrow;
+
+const DELTA_LOG_DECIMAL: usize = 12;
 
 // ─── ct-ct out-of-place (GLWE<_, CKKS>::sub) ────────────────────────────────
 
@@ -88,6 +90,29 @@ pub fn test_sub_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) {
     ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("sub_ct a_gt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("sub_ct a_gt_b", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// ct-ct out-of-place with aligned homomorphic capacity but different log_decimal.
+pub fn test_sub_ct_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_decimal);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let ct1 = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let ct2 = ctx.encrypt_with_prec(ctx.max_k() - DELTA_LOG_DECIMAL, &b_re, &b_im, low_prec, scratch.borrow());
+    let (want_re, want_im) = ctx.want_sub_from(&a_re, &a_im, &b_re, &b_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ct_res.sub(&ctx.module, &ct1, &ct2, scratch.borrow()).unwrap();
+    assert_binary_output_meta("sub_ct delta_log_decimal", &ct_res, &ct1, &ct2);
+    ctx.assert_decrypt_precision(
+        "sub_ct delta_log_decimal",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        scratch.borrow(),
+    );
 }
 
 /// ct-ct out-of-place, output buffer has smaller max_k than inputs (offset > 0).
@@ -184,6 +209,29 @@ pub fn test_sub_pt_znx<BE: Backend>(ctx: &TestContext<BE>) {
     ctx.assert_decrypt_precision("sub_pt_znx", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
+/// ct - ZNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
+pub fn test_sub_pt_znx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_decimal);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let ct1 = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let pt_znx = ctx.encode_pt_znx_with_prec(&b_re, &b_im, low_prec);
+    let (want_re, want_im) = ctx.want_sub_from(&a_re, &a_im, &b_re, &b_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ct_res.sub_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
+    assert_unary_output_meta("sub_pt_znx delta_log_decimal", &ct_res, &ct1);
+    ctx.assert_decrypt_precision(
+        "sub_pt_znx delta_log_decimal",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        scratch.borrow(),
+    );
+}
+
 // ─── ct - float RNX plaintext (GLWE<_, CKKS>::sub_pt_rnx[_inplace]) ──────────
 
 /// ct - RNX plaintext, in-place (auto-converts RNX → ZNX using scratch).
@@ -212,6 +260,31 @@ pub fn test_sub_pt_rnx<BE: Backend>(ctx: &TestContext<BE>) {
         .unwrap();
     assert_unary_output_meta("sub_pt_rnx", &ct_res, &ct1);
     ctx.assert_decrypt_precision("sub_pt_rnx", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+/// ct - RNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
+pub fn test_sub_pt_rnx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_decimal);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let ct1 = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let pt_rnx = ctx.encode_pt_rnx(&b_re, &b_im);
+    let (want_re, want_im) = ctx.want_sub_from(&a_re, &a_im, &b_re, &b_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ct_res
+        .sub_pt_rnx(&ctx.module, &ct1, &pt_rnx, low_prec, scratch.borrow())
+        .unwrap();
+    assert_unary_output_meta("sub_pt_rnx delta_log_decimal", &ct_res, &ct1);
+    ctx.assert_decrypt_precision(
+        "sub_pt_rnx delta_log_decimal",
+        &ct_res,
+        &want_re,
+        &want_im,
+        18.0,
+        scratch.borrow(),
+    );
 }
 
 /// ct - ZNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
