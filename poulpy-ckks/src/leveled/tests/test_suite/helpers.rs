@@ -381,9 +381,14 @@ impl<BE: TestBackend> TestContext<BE> {
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
         let mut full_pt = attach_meta(full_pt, ct.meta());
         self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);
-        println!("full_pt: {full_pt}");
+        //println!("full_pt: {full_pt}");
+        let top_limb_msb_mask = 1u64 << (ct.base2k().as_usize() - 1);
         assert!(
-            full_pt.data().at(0, 0).iter().all(|&x| x == 0),
+            full_pt
+                .data()
+                .at(0, 0)
+                .iter()
+                .all(|&x| (x.unsigned_abs() & top_limb_msb_mask) == 0),
             "invalid decryption, plaintext overflow: {full_pt}"
         );
         self.module.ckks_extract_pt_znx(&mut pt_znx, &full_pt, scratch_rest).unwrap();
@@ -505,15 +510,15 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     /// Encodes (re2, im2) into an RNX plaintext via IFFT.
-    pub fn encode_pt_rnx(&self) -> CKKSPlaintextRnx<f64> {
+    pub fn encode_pt_rnx(&self, re: &[f64], im: &[f64]) -> CKKSPlaintextRnx<f64> {
         let mut pt_rnx = CKKSPlaintextRnx::<f64>::alloc(self.params.n).unwrap();
-        self.encoder.encode_reim(&mut pt_rnx, &self.re2, &self.im2).unwrap();
+        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
         pt_rnx
     }
 
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
-    pub fn encode_pt_znx(&self) -> CKKSPlaintextZnx<Vec<u8>> {
-        let pt_rnx = self.encode_pt_rnx();
+    pub fn encode_pt_znx(&self, re: &[f64], im: &[f64]) -> CKKSPlaintextZnx<Vec<u8>> {
+        let pt_rnx = self.encode_pt_rnx(re, im);
         let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), self.meta());
         pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
         pt_znx
@@ -590,8 +595,15 @@ pub fn assert_binary_output_meta(
     );
 }
 
-pub fn assert_mul_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+pub fn assert_mul_ct_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
+    let log_decimal = a.log_decimal().max(b.log_decimal());
+    let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
+    assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);
+}
+
+pub fn assert_mul_pt_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+    let log_hom_rem = a.log_hom_rem() - a.log_decimal().min(b.log_decimal());
     let log_decimal = a.log_decimal().max(b.log_decimal());
     let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
     assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);

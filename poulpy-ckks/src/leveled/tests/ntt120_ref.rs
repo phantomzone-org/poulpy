@@ -270,6 +270,16 @@ fn square_smaller_output() {
 }
 
 #[test]
+fn mul_pt_znx_aligned() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_znx_aligned(&CTX);
+}
+
+#[test]
+fn mul_pt_znx_smaller_output() {
+    crate::leveled::tests::test_suite::mul::test_mul_pt_znx_smaller_output(&CTX);
+}
+
+#[test]
 fn mul_ct_explicit_metadata_error() {
     crate::leveled::tests::test_suite::mul::test_mul_ct_explicit_metadata_error(&CTX);
 }

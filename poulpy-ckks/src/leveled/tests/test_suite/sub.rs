@@ -163,7 +163,7 @@ pub fn test_sub_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_znx = ctx.encode_pt_znx();
+    let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
@@ -176,7 +176,7 @@ pub fn test_sub_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_znx<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_znx = ctx.encode_pt_znx();
+    let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res.sub_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
@@ -190,7 +190,7 @@ pub fn test_sub_pt_znx<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_rnx = ctx.encode_pt_rnx();
+    let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
@@ -204,7 +204,7 @@ pub fn test_sub_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_rnx<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_rnx = ctx.encode_pt_rnx();
+    let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ct_res
@@ -221,7 +221,7 @@ pub fn test_sub_pt_rnx<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_znx = ctx.encode_pt_znx();
+    let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res.sub_pt_znx(&ctx.module, &ct1, &pt_znx, scratch.borrow()).unwrap();
@@ -243,7 +243,7 @@ pub fn test_sub_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 pub fn test_sub_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_rnx = ctx.encode_pt_rnx();
+    let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ct_res
