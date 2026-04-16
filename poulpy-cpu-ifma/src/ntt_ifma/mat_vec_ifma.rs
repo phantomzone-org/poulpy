@@ -252,6 +252,70 @@ pub(crate) unsafe fn reduce_bbc_ifma_simd_512(acc_lo: __m512i, acc_hi: __m512i) 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Per-prime reduction (uniform lanes, for prime-major kernels)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Reduce MADD52 accumulators where all 8 lanes belong to the SAME prime.
+///
+/// Same math as [`reduce_bbc_ifma_simd_512`] but uses broadcast (uniform)
+/// constants instead of interleaved per-lane constants. This is what the
+/// prime-major VMP kernel calls after accumulating one prime's inner products
+/// across a block-quad (4 x2-blocks × 2 coeffs = 8 lanes, all same prime).
+#[inline]
+#[target_feature(enable = "avx512ifma,avx512vl")]
+pub(crate) unsafe fn reduce_bbc_single_prime_512(
+    acc_lo: __m512i,
+    acc_hi: __m512i,
+    q: __m512i,
+    q2: __m512i,
+    pow40: __m512i,
+    pow52: __m512i,
+    pow52_quot: __m512i,
+) -> __m512i {
+    unsafe {
+        let mask40 = _mm512_set1_epi64((1i64 << 40) - 1);
+
+        // reduce_wide: two-pass POW40 fold
+        let hi1 = _mm512_srli_epi64::<40>(acc_lo);
+        let lo1 = _mm512_and_si512(acc_lo, mask40);
+        let y = _mm512_add_epi64(_mm512_mul_epu32(hi1, pow40), lo1);
+        let hi2 = _mm512_srli_epi64::<40>(y);
+        let lo2 = _mm512_and_si512(y, mask40);
+        let z = _mm512_add_epi64(_mm512_mul_epu32(hi2, pow40), lo2);
+        let lo_red = cond_sub_2q_si512(z, q);
+
+        // Harvey modmul: acc_hi * POW52_MOD_Q mod Q
+        let hi_red = harvey_modmul_si512(acc_hi, pow52, pow52_quot, q);
+
+        let sum = _mm512_add_epi64(lo_red, hi_red);
+        cond_sub_2q_si512(cond_sub_2q_si512(sum, q2), q)
+    }
+}
+
+/// Precomputed broadcast constants for one CRT prime, used by [`reduce_bbc_single_prime_512`].
+pub(crate) struct PrimeConsts512 {
+    pub q: __m512i,
+    pub q2: __m512i,
+    pub pow40: __m512i,
+    pub pow52: __m512i,
+    pub pow52_quot: __m512i,
+}
+
+impl PrimeConsts512 {
+    #[target_feature(enable = "avx512f")]
+    pub(crate) unsafe fn new(prime_idx: usize) -> Self {
+        let q_val = Q_IFMA[prime_idx];
+        Self {
+            q: _mm512_set1_epi64(q_val as i64),
+            q2: _mm512_set1_epi64((2 * q_val) as i64),
+            pow40: _mm512_set1_epi64(((1u64 << 40) - q_val) as i64),
+            pow52: _mm512_set1_epi64(((1u64 << 52) % q_val) as i64),
+            pow52_quot: _mm512_set1_epi64((((1u64 << 52) % q_val) as u128 * (1u128 << 52) / q_val as u128) as i64),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Single-column: q120b × q120c → q120b
 // ─────────────────────────────────────────────────────────────────────────────
 
