@@ -169,12 +169,8 @@ where
             .cnv_prepare_left_tmp_bytes(a_size, a_size)
             .max(self.cnv_prepare_right_tmp_bytes(b_size, b_size));
 
-        let res_dft_size = normalize_input_limb_bound_worst_case(
-            a_size + b_size,
-            res.size(),
-            res.base2k().as_usize(),
-            ab_base2k.as_usize(),
-        );
+        let res_dft_size =
+            normalize_input_limb_bound_worst_case(a_size + b_size, res.size(), res.base2k().as_usize(), ab_base2k.as_usize());
         let lvl_2_cnv_apply: usize = self.cnv_apply_dft_tmp_bytes(res_dft_size, cnv_offset, a_size, b_size);
 
         let lvl_2_res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
@@ -436,7 +432,8 @@ where
         let lvl_0: usize = self.bytes_of_cnv_pvec_left(cols, a_size) + self.bytes_of_cnv_pvec_right(cols, a_size);
         let lvl_diag_cache: usize = VecZnx::bytes_of(self.n(), cols, res_size);
         let lvl_1: usize = self.cnv_prepare_self_tmp_bytes(a_size, a_size);
-        let diag_dft_size = normalize_input_limb_bound_worst_case(2 * a_size, res_size, res.base2k().as_usize(), a.base2k().as_usize());
+        let diag_dft_size =
+            normalize_input_limb_bound_worst_case(2 * a_size, res_size, res.base2k().as_usize(), a.base2k().as_usize());
         let lvl_2_apply: usize = self.cnv_apply_dft_tmp_bytes(diag_dft_size, cnv_offset, a_size, a_size);
         let pairwise_dft_size =
             normalize_input_limb_bound_worst_case(2 * a_size, res_size, res.base2k().as_usize(), a.base2k().as_usize());
@@ -475,19 +472,11 @@ where
         let lvl_1: usize = self
             .cnv_prepare_left_tmp_bytes(a_size, a_size)
             .max(self.cnv_prepare_right_tmp_bytes(b_size, b_size));
-        let diag_dft_size = normalize_input_limb_bound_worst_case(
-            a_size + b_size,
-            res_size,
-            res.base2k().as_usize(),
-            ab_base2k.as_usize(),
-        );
+        let diag_dft_size =
+            normalize_input_limb_bound_worst_case(a_size + b_size, res_size, res.base2k().as_usize(), ab_base2k.as_usize());
         let lvl_2_apply: usize = self.cnv_apply_dft_tmp_bytes(diag_dft_size, cnv_offset, a_size, b_size);
-        let pairwise_dft_size = normalize_input_limb_bound_worst_case(
-            a_size + b_size,
-            res_size,
-            res.base2k().as_usize(),
-            ab_base2k.as_usize(),
-        );
+        let pairwise_dft_size =
+            normalize_input_limb_bound_worst_case(a_size + b_size, res_size, res.base2k().as_usize(), ab_base2k.as_usize());
         let lvl_2_pairwise: usize = self.cnv_pairwise_apply_dft_tmp_bytes(cnv_offset, pairwise_dft_size, a_size, b_size);
 
         let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size)
@@ -645,20 +634,10 @@ where
             ((cnv_offset / a_base2k).saturating_sub(1), (cnv_offset % a_base2k) as i64)
         };
 
-        let diag_dft_size = normalize_input_limb_bound_with_offset(
-            2 * a.size() - cnv_offset_hi,
-            res.size(),
-            res_base2k,
-            a_base2k,
-            cnv_offset_lo,
-        );
-        let pairwise_dft_size = normalize_input_limb_bound_with_offset(
-            2 * a.size() - cnv_offset_hi,
-            res.size(),
-            res_base2k,
-            a_base2k,
-            cnv_offset_lo,
-        );
+        let diag_dft_size =
+            normalize_input_limb_bound_with_offset(2 * a.size() - cnv_offset_hi, res.size(), res_base2k, a_base2k, cnv_offset_lo);
+        let pairwise_dft_size =
+            normalize_input_limb_bound_with_offset(2 * a.size() - cnv_offset_hi, res.size(), res_base2k, a_base2k, cnv_offset_lo);
 
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
@@ -823,7 +802,13 @@ pub fn msb_mask_bottom_limb(base2k: usize, k: usize) -> i64 {
 }
 
 #[inline]
-fn normalize_input_limb_bound(full_size: usize, res_size: usize, res_base2k: usize, in_base2k: usize, offset_bits: usize) -> usize {
+fn normalize_input_limb_bound(
+    full_size: usize,
+    res_size: usize,
+    res_base2k: usize,
+    in_base2k: usize,
+    offset_bits: usize,
+) -> usize {
     full_size.min((res_size * res_base2k + offset_bits).div_ceil(in_base2k))
 }
 
