@@ -6,7 +6,9 @@
 //! row-strided apply kernel.
 
 use bytemuck::{cast_slice, cast_slice_mut};
-use core::arch::x86_64::{__m256i, __m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512};
+use core::arch::x86_64::{
+    __m256i, __m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512, _mm512_stream_si512, _mm_sfence,
+};
 use std::mem::size_of;
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
@@ -30,13 +32,19 @@ fn q2_shifted_vec_512() -> __m512i {
     unsafe { _mm512_loadu_si512(q2_512.as_ptr() as *const __m512i) }
 }
 
+/// Non-temporal write: bypass the cache so the result lines do not evict
+/// matrix data the kernel still needs. `dst.as_mut_ptr().add(8 * blk)` is
+/// 64-byte aligned because `VecZnxDft` storage is `DEFAULTALIGN`-aligned and
+/// `8 * blk * size_of::<u64>() = 64 * blk` keeps that alignment. The
+/// `_mm_sfence` to make these stores globally ordered is issued once at the
+/// end of the apply loop, not per call.
 #[target_feature(enable = "avx512f")]
 unsafe fn save_blk_overwrite(_n: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
     let off = 8 * blk;
     let dst_ptr = unsafe { dst.as_mut_ptr().add(off) as *mut __m512i };
     let src_ptr = src.as_ptr() as *const __m512i;
     unsafe {
-        _mm512_storeu_si512(dst_ptr, _mm512_loadu_si512(src_ptr));
+        _mm512_stream_si512(dst_ptr, _mm512_loadu_si512(src_ptr));
     }
 }
 
@@ -67,7 +75,10 @@ pub(crate) fn vmp_prepare_tmp_bytes_ifma(n: usize) -> usize {
 
 pub(crate) fn vmp_apply_tmp_bytes_ifma(a_size: usize, b_rows: usize, b_cols_in: usize) -> usize {
     let row_max = a_size.min(b_rows) * b_cols_in;
-    (16 + 24 * row_max) * size_of::<u64>()
+    // 16 u64 for the 2-col kernel output + 8 * row_max u64 for the per-block
+    // packed `a`. The 24x figure was the legacy estimate that included a
+    // per-call matrix staging buffer that no longer exists.
+    (16 + 8 * row_max) * size_of::<u64>()
 }
 
 pub(crate) fn vmp_prepare_ifma<R, A>(module: &Module<crate::NTTIfma>, res: &mut R, a: &A, tmp: &mut [u64])
@@ -158,9 +169,9 @@ unsafe fn vmp_apply_core_2col_simd<const OVERWRITE: bool>(
     }
 
     // Scratch: 16 u64 for the 2-col kernel output + 8 * row_max u64 for the
-    // per-block packed `a`. No staging buffer — the 2-col kernel reads the
-    // tile directly thanks to the 2-col matrix layout.
-    let (mat2cols_output, extracted_blk_u64) = tmp.split_at_mut(16);
+    // per-block packed `a`. No staging buffer — the SIMD kernels read tiles
+    // directly thanks to the 2-col matrix layout.
+    let (kernel_output, extracted_blk_u64) = tmp.split_at_mut(16);
     let extracted_blk = &mut extracted_blk_u64[..8 * row_max];
     let block_stride = nrows * ncols * 16;
 
@@ -178,16 +189,14 @@ unsafe fn vmp_apply_core_2col_simd<const OVERWRITE: bool>(
         if !start_col.is_multiple_of(2) && col_pmat < col_max {
             let tile = (col_pmat - 1) / 2;
             let tile_base = tile_base_u32(nrows, tile);
-            // Partial left tile can't happen: only the last (rightmost) tile may
-            // be width-1, and we'd never arrive here via `start_col - 1`. Assert.
             debug_assert_eq!(tile_width_for(ncols, tile), 2);
             let y = &mat_blk_u32[tile_base..];
-            crate::NTTIfma::ntt_ifma_mul_bbc_2cols_x2(meta, row_max, mat2cols_output, extracted_u32, y);
+            crate::NTTIfma::ntt_ifma_mul_bbc_2cols_x2(meta, row_max, &mut kernel_output[..16], extracted_u32, y);
             let base = col_res * 4 * n;
             if OVERWRITE {
-                unsafe { save_blk_overwrite(n, blk_j, &mut res_u64[base..], &mat2cols_output[8..16]) };
+                unsafe { save_blk_overwrite(n, blk_j, &mut res_u64[base..], &kernel_output[8..16]) };
             } else {
-                unsafe { save_blk_add_simd(n, blk_j, &mut res_u64[base..], &mat2cols_output[8..16]) };
+                unsafe { save_blk_add_simd(n, blk_j, &mut res_u64[base..], &kernel_output[8..16]) };
             }
             col_pmat += 1;
             col_res += 1;
@@ -198,36 +207,36 @@ unsafe fn vmp_apply_core_2col_simd<const OVERWRITE: bool>(
             debug_assert_eq!(tile_width_for(ncols, tile), 2);
             let tile_base = tile_base_u32(nrows, tile);
             let y = &mat_blk_u32[tile_base..];
-            crate::NTTIfma::ntt_ifma_mul_bbc_2cols_x2(meta, row_max, mat2cols_output, extracted_u32, y);
+            crate::NTTIfma::ntt_ifma_mul_bbc_2cols_x2(meta, row_max, &mut kernel_output[..16], extracted_u32, y);
             let base0 = col_res * 4 * n;
             let base1 = (col_res + 1) * 4 * n;
             if OVERWRITE {
                 unsafe {
-                    save_blk_overwrite(n, blk_j, &mut res_u64[base0..], &mat2cols_output[0..8]);
-                    save_blk_overwrite(n, blk_j, &mut res_u64[base1..], &mat2cols_output[8..16]);
+                    save_blk_overwrite(n, blk_j, &mut res_u64[base0..], &kernel_output[0..8]);
+                    save_blk_overwrite(n, blk_j, &mut res_u64[base1..], &kernel_output[8..16]);
                 }
             } else {
                 unsafe {
-                    save_blk_add_simd(n, blk_j, &mut res_u64[base0..], &mat2cols_output[0..8]);
-                    save_blk_add_simd(n, blk_j, &mut res_u64[base1..], &mat2cols_output[8..16]);
+                    save_blk_add_simd(n, blk_j, &mut res_u64[base0..], &kernel_output[0..8]);
+                    save_blk_add_simd(n, blk_j, &mut res_u64[base1..], &kernel_output[8..16]);
                 }
             }
             col_pmat += 2;
             col_res += 2;
         }
 
-        // Last col when ncols is odd: sits alone in a width-1 tile (or in slot
-        // 0 of an incomplete pair at the right edge). Use the 1-col kernel.
+        // 1-col tail when ncols is odd: sits alone in a width-1 tile (or in
+        // slot 0 of an incomplete pair at the right edge).
         if col_pmat < col_max {
             let tile = col_pmat / 2;
             let tile_base = tile_base_u32(nrows, tile);
             let y = &mat_blk_u32[tile_base..];
-            crate::NTTIfma::ntt_ifma_mul_bbc_1col_x2(meta, row_max, &mut mat2cols_output[0..8], extracted_u32, y);
+            crate::NTTIfma::ntt_ifma_mul_bbc_1col_x2(meta, row_max, &mut kernel_output[0..8], extracted_u32, y);
             let base = col_res * 4 * n;
             if OVERWRITE {
-                unsafe { save_blk_overwrite(n, blk_j, &mut res_u64[base..], &mat2cols_output[0..8]) };
+                unsafe { save_blk_overwrite(n, blk_j, &mut res_u64[base..], &kernel_output[0..8]) };
             } else {
-                unsafe { save_blk_add_simd(n, blk_j, &mut res_u64[base..], &mat2cols_output[0..8]) };
+                unsafe { save_blk_add_simd(n, blk_j, &mut res_u64[base..], &kernel_output[0..8]) };
             }
         }
     }
@@ -237,6 +246,9 @@ unsafe fn vmp_apply_core_2col_simd<const OVERWRITE: bool>(
         for col in active_cols..res_size {
             res_u64[col * 4 * n..(col + 1) * 4 * n].fill(0);
         }
+        // Order the non-temporal stores from `save_blk_overwrite` against any
+        // subsequent loads of the result buffer.
+        _mm_sfence();
     }
 }
 

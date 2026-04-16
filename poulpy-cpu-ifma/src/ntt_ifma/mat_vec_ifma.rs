@@ -648,5 +648,4 @@ mod tests {
 
         assert_eq!(res_ifma, res_ref, "vec_mat2cols_product_x2_bbc: IFMA vs ref mismatch");
     }
-
 }
