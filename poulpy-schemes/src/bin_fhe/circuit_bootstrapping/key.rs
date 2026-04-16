@@ -282,10 +282,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> ReaderFrom for CircuitBootstrappingKey<
         for _ in 0..n {
             let gal_el = reader.read_i64::<LittleEndian>()?;
             let atk = self.atk.get_mut(&gal_el).ok_or_else(|| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("self.atk.get(gal_el={gal_el})=None"),
-                )
+                std::io::Error::new(std::io::ErrorKind::InvalidData, format!("self.atk.get(gal_el={gal_el})=None"))
             })?;
             atk.read_from(reader)?;
         }

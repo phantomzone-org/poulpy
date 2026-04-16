@@ -1,5 +1,7 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxZero},
+    layouts::{
+        Data, DataMut, DataRef, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxZero,
+    },
     source::Source,
 };
 

@@ -9,6 +9,7 @@ use crate::bin_fhe::{
     },
 };
 
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use poulpy_core::GLWESwitchingKeyEncryptSk;
 use poulpy_core::layouts::{
     GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
@@ -21,7 +22,6 @@ use poulpy_core::{
         prepared::GLWEToLWEKeyPrepared,
     },
 };
-use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use poulpy_hal::{
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, Scratch, WriterTo},
