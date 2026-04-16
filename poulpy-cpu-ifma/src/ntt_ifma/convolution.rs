@@ -13,239 +13,122 @@
 
 use bytemuck::{cast_slice, cast_slice_mut};
 
+use poulpy_cpu_ref::reference::ntt_ifma::{mat_vec::BbcIfmaMeta, primes::Primes40};
 use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
 use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut};
 
-use super::mat_vec_ifma::{PrimeConsts512, reduce_bbc_single_prime_512};
+use super::mat_vec_ifma::vec_mat1col_product_x2_bbc_ifma;
 
 use crate::NTTIfma;
-use core::arch::x86_64::{
-    __m512i, _mm_sfence, _mm512_add_epi64, _mm512_castsi512_si256, _mm512_inserti64x4, _mm512_loadu_si512, _mm512_madd52hi_epu64,
-    _mm512_madd52lo_epu64, _mm512_permutex2var_epi64, _mm512_setzero_si512, _mm512_storeu_si512, _mm512_stream_si512,
-};
+use core::arch::x86_64::{__m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Block-quad prime-major pack kernels
+// Pack kernels
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// In IFMA layout each NTT coefficient is 4 × u64 (3 active primes + 1 padding
+// lane), so one x2-block (two consecutive coefficients) is 8 u64 = one
+// `__m512i`. Packing therefore reduces to copying one `__m512i` per row, with
+// optional row reversal or pairwise summation.
 
-const IDX_PM_P0: [i64; 8] = [0, 4, 8, 12, 0, 0, 0, 0];
-const IDX_PM_P1: [i64; 8] = [1, 5, 9, 13, 0, 0, 0, 0];
-const IDX_PM_P2: [i64; 8] = [2, 6, 10, 14, 0, 0, 0, 0];
-
-/// De-interleave 4 consecutive `__m512i` (4 x2-blocks in `[p0,p1,p2,pad]`
-/// format) into 3 prime-major `__m512i` and write them to `dst` at prime
-/// offsets `0`, `plane_stride`, `2*plane_stride`.
-#[inline(always)]
-#[allow(clippy::too_many_arguments)]
-unsafe fn deinterleave_quad_pm(
-    s0: __m512i,
-    s1: __m512i,
-    s2: __m512i,
-    s3: __m512i,
-    dst: *mut u64,
-    plane_stride: usize,
-    idx_p0: __m512i,
-    idx_p1: __m512i,
-    idx_p2: __m512i,
-) {
-    unsafe {
-        let lo = _mm512_permutex2var_epi64(s0, idx_p0, s1);
-        let hi = _mm512_permutex2var_epi64(s2, idx_p0, s3);
-        _mm512_storeu_si512(dst as *mut __m512i, _mm512_inserti64x4::<1>(lo, _mm512_castsi512_si256(hi)));
-
-        let lo = _mm512_permutex2var_epi64(s0, idx_p1, s1);
-        let hi = _mm512_permutex2var_epi64(s2, idx_p1, s3);
-        _mm512_storeu_si512(
-            dst.add(plane_stride) as *mut __m512i,
-            _mm512_inserti64x4::<1>(lo, _mm512_castsi512_si256(hi)),
-        );
-
-        let lo = _mm512_permutex2var_epi64(s0, idx_p2, s1);
-        let hi = _mm512_permutex2var_epi64(s2, idx_p2, s3);
-        _mm512_storeu_si512(
-            dst.add(2 * plane_stride) as *mut __m512i,
-            _mm512_inserti64x4::<1>(lo, _mm512_castsi512_si256(hi)),
-        );
-    }
-}
-
-/// Pack left operand for a block-quad into prime-major scratch (forward order).
+/// Gather a row range of q120b x2-blocks into a contiguous buffer.
+///
+/// `a` is a column-start q120b slice with row stride `row_stride` (in `u64`
+/// units). For each row, block `blk` (8 u64 values) is copied to `dst`.
+/// `dst` must hold at least `8 * row_count` u64.
 #[target_feature(enable = "avx512f")]
-unsafe fn pack_left_quad_pm(dst: &mut [u64], a: &[u64], row_count: usize, row_stride: usize, blk_quad: usize) {
-    let plane_stride = 8 * row_count;
+unsafe fn pack_left_1blk_x2_ifma(dst: &mut [u64], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+    debug_assert!(dst.len() >= 8 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
     unsafe {
-        let idx_p0 = _mm512_loadu_si512(IDX_PM_P0.as_ptr() as *const __m512i);
-        let idx_p1 = _mm512_loadu_si512(IDX_PM_P1.as_ptr() as *const __m512i);
-        let idx_p2 = _mm512_loadu_si512(IDX_PM_P2.as_ptr() as *const __m512i);
-        let blk_base = blk_quad * 4;
-        for row in 0..row_count {
-            let src = a.as_ptr().add(row * row_stride + 8 * blk_base) as *const __m512i;
-            deinterleave_quad_pm(
-                _mm512_loadu_si512(src),
-                _mm512_loadu_si512(src.add(1)),
-                _mm512_loadu_si512(src.add(2)),
-                _mm512_loadu_si512(src.add(3)),
-                dst.as_mut_ptr().add(row * 8),
-                plane_stride,
-                idx_p0,
-                idx_p1,
-                idx_p2,
-            );
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m512i;
+        let mut a_ptr = a.as_ptr().add(8 * blk) as *const __m512i;
+        for _ in 0..row_count {
+            _mm512_storeu_si512(dst_ptr, _mm512_loadu_si512(a_ptr));
+            a_ptr = (a_ptr as *const u64).add(row_stride) as *const __m512i;
+            dst_ptr = dst_ptr.add(1);
         }
     }
 }
 
-/// Pack right operand for a block-quad into prime-major scratch (reversed row order).
+/// Gather a row range of q120b x2-blocks in reversed row order.
+///
+/// Same layout as [`pack_left_1blk_x2_ifma`] but row 0 in `dst` receives the
+/// source's last row. This lets each output limb consume a contiguous window
+/// `[b_size - j_max ..]` inside the packed buffer.
 #[target_feature(enable = "avx512f")]
-unsafe fn pack_right_quad_pm(dst: &mut [u64], a: &[u64], row_count: usize, row_stride: usize, blk_quad: usize) {
-    let plane_stride = 8 * row_count;
+unsafe fn pack_right_1blk_x2_ifma(dst: &mut [u64], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+    debug_assert!(dst.len() >= 8 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
     unsafe {
-        let idx_p0 = _mm512_loadu_si512(IDX_PM_P0.as_ptr() as *const __m512i);
-        let idx_p1 = _mm512_loadu_si512(IDX_PM_P1.as_ptr() as *const __m512i);
-        let idx_p2 = _mm512_loadu_si512(IDX_PM_P2.as_ptr() as *const __m512i);
-        let blk_base = blk_quad * 4;
-        for row in 0..row_count {
-            let src_row = row_count - 1 - row;
-            let src = a.as_ptr().add(src_row * row_stride + 8 * blk_base) as *const __m512i;
-            deinterleave_quad_pm(
-                _mm512_loadu_si512(src),
-                _mm512_loadu_si512(src.add(1)),
-                _mm512_loadu_si512(src.add(2)),
-                _mm512_loadu_si512(src.add(3)),
-                dst.as_mut_ptr().add(row * 8),
-                plane_stride,
-                idx_p0,
-                idx_p1,
-                idx_p2,
-            );
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m512i;
+        let mut a_ptr = a.as_ptr().add(row_stride * row_count.saturating_sub(1) + 8 * blk) as *const __m512i;
+        for _ in 0..row_count {
+            _mm512_storeu_si512(dst_ptr, _mm512_loadu_si512(a_ptr));
+            a_ptr = (a_ptr as *const u64).sub(row_stride) as *const __m512i;
+            dst_ptr = dst_ptr.add(1);
         }
     }
 }
 
-/// Pairwise pack left for a block-quad (lane-add two columns, forward order).
+/// Pairwise pack: gather and lane-add the x2-blocks of two columns.
+///
+/// Inputs are in `[0, 2Q)` (left side), so the sum is in `[0, 4Q) < 2^42`,
+/// which stays inside the 52-bit VPMADD52 input window.
 #[target_feature(enable = "avx512f")]
-unsafe fn pairwise_pack_left_quad_pm(
+unsafe fn pairwise_pack_left_1blk_x2_ifma(
     dst: &mut [u64],
     a: &[u64],
     b: &[u64],
     row_count: usize,
     row_stride: usize,
-    blk_quad: usize,
+    blk: usize,
 ) {
-    let plane_stride = 8 * row_count;
+    debug_assert!(dst.len() >= 8 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+    debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
     unsafe {
-        let idx_p0 = _mm512_loadu_si512(IDX_PM_P0.as_ptr() as *const __m512i);
-        let idx_p1 = _mm512_loadu_si512(IDX_PM_P1.as_ptr() as *const __m512i);
-        let idx_p2 = _mm512_loadu_si512(IDX_PM_P2.as_ptr() as *const __m512i);
-        let blk_base = blk_quad * 4;
-        for row in 0..row_count {
-            let off = row * row_stride + 8 * blk_base;
-            let sa = a.as_ptr().add(off) as *const __m512i;
-            let sb = b.as_ptr().add(off) as *const __m512i;
-            deinterleave_quad_pm(
-                _mm512_add_epi64(_mm512_loadu_si512(sa), _mm512_loadu_si512(sb)),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(1)), _mm512_loadu_si512(sb.add(1))),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(2)), _mm512_loadu_si512(sb.add(2))),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(3)), _mm512_loadu_si512(sb.add(3))),
-                dst.as_mut_ptr().add(row * 8),
-                plane_stride,
-                idx_p0,
-                idx_p1,
-                idx_p2,
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m512i;
+        let mut a_ptr = a.as_ptr().add(8 * blk) as *const __m512i;
+        let mut b_ptr = b.as_ptr().add(8 * blk) as *const __m512i;
+        for _ in 0..row_count {
+            _mm512_storeu_si512(
+                dst_ptr,
+                _mm512_add_epi64(_mm512_loadu_si512(a_ptr), _mm512_loadu_si512(b_ptr)),
             );
+            a_ptr = (a_ptr as *const u64).add(row_stride) as *const __m512i;
+            b_ptr = (b_ptr as *const u64).add(row_stride) as *const __m512i;
+            dst_ptr = dst_ptr.add(1);
         }
     }
 }
 
-/// Pairwise pack right for a block-quad (lane-add two columns, reversed).
+/// Pairwise pack in reversed row order. Right-side inputs are in `[0, Q)`,
+/// so the sum is in `[0, 2Q) < 2^41`, well within the madd52 window.
 #[target_feature(enable = "avx512f")]
-unsafe fn pairwise_pack_right_quad_pm(
+unsafe fn pairwise_pack_right_1blk_x2_ifma(
     dst: &mut [u64],
     a: &[u64],
     b: &[u64],
     row_count: usize,
     row_stride: usize,
-    blk_quad: usize,
+    blk: usize,
 ) {
-    let plane_stride = 8 * row_count;
+    debug_assert!(dst.len() >= 8 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+    debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
     unsafe {
-        let idx_p0 = _mm512_loadu_si512(IDX_PM_P0.as_ptr() as *const __m512i);
-        let idx_p1 = _mm512_loadu_si512(IDX_PM_P1.as_ptr() as *const __m512i);
-        let idx_p2 = _mm512_loadu_si512(IDX_PM_P2.as_ptr() as *const __m512i);
-        let blk_base = blk_quad * 4;
-        for row in 0..row_count {
-            let src_row = row_count - 1 - row;
-            let off = src_row * row_stride + 8 * blk_base;
-            let sa = a.as_ptr().add(off) as *const __m512i;
-            let sb = b.as_ptr().add(off) as *const __m512i;
-            deinterleave_quad_pm(
-                _mm512_add_epi64(_mm512_loadu_si512(sa), _mm512_loadu_si512(sb)),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(1)), _mm512_loadu_si512(sb.add(1))),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(2)), _mm512_loadu_si512(sb.add(2))),
-                _mm512_add_epi64(_mm512_loadu_si512(sa.add(3)), _mm512_loadu_si512(sb.add(3))),
-                dst.as_mut_ptr().add(row * 8),
-                plane_stride,
-                idx_p0,
-                idx_p1,
-                idx_p2,
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m512i;
+        let mut a_ptr = a.as_ptr().add(row_stride * row_count.saturating_sub(1) + 8 * blk) as *const __m512i;
+        let mut b_ptr = b.as_ptr().add(row_stride * row_count.saturating_sub(1) + 8 * blk) as *const __m512i;
+        for _ in 0..row_count {
+            _mm512_storeu_si512(
+                dst_ptr,
+                _mm512_add_epi64(_mm512_loadu_si512(a_ptr), _mm512_loadu_si512(b_ptr)),
             );
-        }
-    }
-}
-
-/// Prime-major inner product + interleaved write for one output limb of a block-quad.
-#[target_feature(enable = "avx512ifma,avx512vl")]
-#[allow(clippy::too_many_arguments)]
-unsafe fn pm_inner_product_and_write(
-    pc: &[PrimeConsts512; 3],
-    ell: usize,
-    a_pm: &[u64],
-    b_pm: &[u64],
-    a_start: usize,
-    b_start: usize,
-    res_u64: &mut [u64],
-    blk_quad: usize,
-) {
-    let plane_stride = a_pm.len() / 3;
-    unsafe {
-        let mut red = [_mm512_setzero_si512(); 3];
-        for p in 0..3 {
-            let mut acc_lo = _mm512_setzero_si512();
-            let mut acc_hi = _mm512_setzero_si512();
-            let x_base = a_pm.as_ptr().add(p * plane_stride + 8 * a_start) as *const __m512i;
-            let y_base = b_pm.as_ptr().add(p * plane_stride + 8 * b_start) as *const __m512i;
-            for r in 0..ell {
-                let xv = _mm512_loadu_si512(x_base.add(r));
-                let yv = _mm512_loadu_si512(y_base.add(r));
-                acc_lo = _mm512_madd52lo_epu64(acc_lo, xv, yv);
-                acc_hi = _mm512_madd52hi_epu64(acc_hi, xv, yv);
-            }
-            red[p] = reduce_bbc_single_prime_512(acc_lo, acc_hi, pc[p].q, pc[p].q2, pc[p].pow40, pc[p].pow52, pc[p].pow52_quot);
-        }
-
-        let mut p0v = [0u64; 8];
-        let mut p1v = [0u64; 8];
-        let mut p2v = [0u64; 8];
-        _mm512_storeu_si512(p0v.as_mut_ptr() as *mut __m512i, red[0]);
-        _mm512_storeu_si512(p1v.as_mut_ptr() as *mut __m512i, red[1]);
-        _mm512_storeu_si512(p2v.as_mut_ptr() as *mut __m512i, red[2]);
-
-        for i in 0..4usize {
-            let blk = blk_quad * 4 + i;
-            let buf = [
-                p0v[2 * i],
-                p1v[2 * i],
-                p2v[2 * i],
-                0,
-                p0v[2 * i + 1],
-                p1v[2 * i + 1],
-                p2v[2 * i + 1],
-                0,
-            ];
-            _mm512_stream_si512(
-                res_u64.as_mut_ptr().add(8 * blk) as *mut __m512i,
-                _mm512_loadu_si512(buf.as_ptr() as *const __m512i),
-            );
+            a_ptr = (a_ptr as *const u64).sub(row_stride) as *const __m512i;
+            b_ptr = (b_ptr as *const u64).sub(row_stride) as *const __m512i;
+            dst_ptr = dst_ptr.add(1);
         }
     }
 }
@@ -255,9 +138,10 @@ unsafe fn pm_inner_product_and_write(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Scratch bytes required by [`cnv_apply_dft_ifma`].
+///
+/// Stores packed x2-block rows for both operands: 8 u64 per row.
 pub(crate) fn cnv_apply_dft_ifma_tmp_bytes(a_size: usize, b_size: usize) -> usize {
-    // 3 prime planes × 8 u64 per row for each operand
-    3 * 8 * (a_size + b_size) * size_of::<u64>()
+    8 * (a_size + b_size) * size_of::<u64>()
 }
 
 /// Scratch bytes required by [`cnv_pairwise_apply_dft_ifma`].
@@ -318,6 +202,7 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     let offset = cnv_offset.min(bound);
     let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
+    let meta = BbcIfmaMeta::<Primes40>::new();
     let a_cols = a.cols();
     let b_cols = b.cols();
     let n_blks = n / 2;
@@ -328,20 +213,16 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     let a_raw_u64: &[u64] = cast_slice(a.raw());
     let b_raw_u64: &[u64] = cast_slice(b.raw());
 
-    let pc = unsafe { [PrimeConsts512::new(0), PrimeConsts512::new(1), PrimeConsts512::new(2)] };
-
     let (prefix, tmp_u64, suffix) = unsafe { tmp.align_to_mut::<u64>() };
     debug_assert!(prefix.is_empty());
     debug_assert!(suffix.is_empty());
-    debug_assert!(tmp_u64.len() >= 3 * 8 * (a_size + b_size));
-    let (a_tmp, b_tmp) = tmp_u64.split_at_mut(3 * 8 * a_size);
+    debug_assert!(tmp_u64.len() >= 8 * (a_size + b_size));
+    let (a_tmp, b_tmp) = tmp_u64.split_at_mut(8 * a_size);
 
-    let n_blk_quads = n_blks / 4;
-
-    for bq in 0..n_blk_quads {
+    for blk in 0..n_blks {
         unsafe {
-            pack_left_quad_pm(a_tmp, &a_raw_u64[a_col_offset..], a_size, row_stride_a, bq);
-            pack_right_quad_pm(b_tmp, &b_raw_u64[b_col_offset..], b_size, row_stride_b, bq);
+            pack_left_1blk_x2_ifma(a_tmp, &a_raw_u64[a_col_offset..], a_size, row_stride_a, blk);
+            pack_right_1blk_x2_ifma(b_tmp, &b_raw_u64[b_col_offset..], b_size, row_stride_b, blk);
         }
 
         for k in 0..min_size {
@@ -354,7 +235,13 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                pm_inner_product_and_write(&pc, ell, a_tmp, b_tmp, a_start, b_start, res_u64, bq);
+                vec_mat1col_product_x2_bbc_ifma::<true>(
+                    &meta,
+                    ell,
+                    &mut res_u64[8 * blk..8 * blk + 8],
+                    cast_slice(&a_tmp[8 * a_start..]),
+                    cast_slice(&b_tmp[8 * b_start..]),
+                );
             }
         }
     }
@@ -362,6 +249,8 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     for j in min_size..res_size {
         res.at_mut(res_col, j).fill(Q120bScalar([0; 4]));
     }
+    // Order the non-temporal stores from the kernel against any subsequent
+    // load of `res` (e.g. by the next stage of the FHE pipeline).
     _mm_sfence();
 }
 
@@ -418,6 +307,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     let offset = cnv_offset.min(bound);
     let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
+    let meta = BbcIfmaMeta::<Primes40>::new();
     let a_cols = a.cols();
     let b_cols = b.cols();
     let n_blks = n / 2;
@@ -430,33 +320,29 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     let a_raw_u64: &[u64] = cast_slice(a.raw());
     let b_raw_u64: &[u64] = cast_slice(b.raw());
 
-    let pc = unsafe { [PrimeConsts512::new(0), PrimeConsts512::new(1), PrimeConsts512::new(2)] };
-
     let (prefix, tmp_u64, suffix) = unsafe { tmp.align_to_mut::<u64>() };
     debug_assert!(prefix.is_empty());
     debug_assert!(suffix.is_empty());
-    debug_assert!(tmp_u64.len() >= 3 * 8 * (a_size + b_size));
-    let (a_tmp, b_tmp) = tmp_u64.split_at_mut(3 * 8 * a_size);
+    debug_assert!(tmp_u64.len() >= 8 * (a_size + b_size));
+    let (a_tmp, b_tmp) = tmp_u64.split_at_mut(8 * a_size);
 
-    let n_blk_quads = n_blks / 4;
-
-    for bq in 0..n_blk_quads {
+    for blk in 0..n_blks {
         unsafe {
-            pairwise_pack_left_quad_pm(
+            pairwise_pack_left_1blk_x2_ifma(
                 a_tmp,
                 &a_raw_u64[a_col_offset_0..],
                 &a_raw_u64[a_col_offset_1..],
                 a_size,
                 row_stride_a,
-                bq,
+                blk,
             );
-            pairwise_pack_right_quad_pm(
+            pairwise_pack_right_1blk_x2_ifma(
                 b_tmp,
                 &b_raw_u64[b_col_offset_0..],
                 &b_raw_u64[b_col_offset_1..],
                 b_size,
                 row_stride_b,
-                bq,
+                blk,
             );
         }
 
@@ -470,7 +356,13 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                pm_inner_product_and_write(&pc, ell, a_tmp, b_tmp, a_start, b_start, res_u64, bq);
+                vec_mat1col_product_x2_bbc_ifma::<true>(
+                    &meta,
+                    ell,
+                    &mut res_u64[8 * blk..8 * blk + 8],
+                    cast_slice(&a_tmp[8 * a_start..]),
+                    cast_slice(&b_tmp[8 * b_start..]),
+                );
             }
         }
     }
