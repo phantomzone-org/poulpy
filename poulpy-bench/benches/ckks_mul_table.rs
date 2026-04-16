@@ -21,8 +21,8 @@ use poulpy_hal::{
     source::Source,
 };
 
-const WARMUP: usize = 20;
-const ITERATIONS: usize = 200;
+const WARMUP: usize = 10;
+const ITERATIONS: usize = 100;
 
 // ── Parameters ──────────────────────────────────────────────────────────────
 
