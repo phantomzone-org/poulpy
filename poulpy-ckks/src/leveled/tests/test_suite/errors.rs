@@ -35,13 +35,13 @@ pub fn test_add_pt_znx_alignment_error<BE: Backend>(ctx: &TestContext<BE>) {
     let pt_znx = alloc_pt_znx(ctx.degree(), ctx.base2k(), ctx.meta());
     let err = ctx
         .module
-        .ckks_add_pt_znx_inplace(&mut ct, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_inplace(&mut ct, &pt_znx, scratch.borrow())
         .unwrap_err();
     assert_ckks_error(
         "add_pt_znx_alignment",
         &err,
         CKKSCompositionError::PlaintextAlignmentImpossible {
-            op: "ckks_add_pt_znx",
+            op: "ckks_add_pt_vec_znx",
             ct_log_hom_rem: 0,
             pt_log_decimal: ctx.meta().log_decimal,
             pt_max_k: pt_znx.max_k().as_usize(),

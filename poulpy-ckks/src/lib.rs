@@ -22,6 +22,32 @@
 //! | [`layouts`] | CKKS-level data structures: ciphertext, plaintext, prepared plaintext, tensor, and evaluation keys |
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | [`bootstrapping`] | (Planned) CKKS bootstrapping |
+//!
+//! ## End-to-end Example
+//!
+//! For a runnable end-to-end example, see `examples/poly2.rs`.
+//! It encrypts `x`, evaluates `a + bx + cx^2`, then decrypts and decodes the
+//! resulting slots.
+//!
+//! The evaluator portion looks like:
+//!
+//! ```rust,ignore
+//! let pt_x = encode_pt_znx::<NTT120Ref>(&encoder, &x_re, &x_im, prec)?;
+//! let ct_x = encrypt(&module, &sk, &pt_x, scratch.borrow())?;
+//!
+//! let mut ct_x2 = CKKSCiphertext::alloc(n.into(), ct_x.log_hom_rem().into(), base2k.into());
+//! module.ckks_square(&mut ct_x2, &ct_x, &tsk_prepared, scratch.borrow())?;
+//!
+//! let mut term_bx = CKKSCiphertext::alloc(n.into(), ct_x.log_hom_rem().into(), base2k.into());
+//! module.ckks_mul_pt_vec_rnx(&mut term_bx, &ct_x, &pt_b, prec, scratch.borrow())?;
+//!
+//! let mut term_cx2 = CKKSCiphertext::alloc(n.into(), ct_x2.log_hom_rem().into(), base2k.into());
+//! module.ckks_mul_pt_vec_rnx(&mut term_cx2, &ct_x2, &pt_c, prec, scratch.borrow())?;
+//!
+//! let mut poly = CKKSCiphertext::alloc(n.into(), term_cx2.effective_k().into(), base2k.into());
+//! module.ckks_add(&mut poly, &term_bx, &term_cx2, scratch.borrow())?;
+//! module.ckks_add_pt_vec_rnx_inplace(&mut poly, &pt_a, prec, scratch.borrow())?;
+//! ```
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 

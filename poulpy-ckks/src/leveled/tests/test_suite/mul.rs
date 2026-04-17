@@ -60,6 +60,7 @@
 //! | [`test_mul_pt_rnx_inplace`] | - |
 use crate::{
     CKKSCompositionError, CKKSInfos,
+    layouts::plaintext::{CKKSConstPlaintextConversion, CKKSPlaintextCstRnx},
     leveled::{
         operations::mul::CKKSMulOps,
         tests::test_suite::helpers::{
@@ -71,6 +72,8 @@ use crate::{
 
 use poulpy_hal::api::ScratchOwnedBorrow;
 
+const CONST_RE: f64 = 0.314_159_265_358_979_3;
+const CONST_IM: f64 = -0.271_828_182_845_904_5;
 const DELTA_LOG_DECIMAL: usize = 8;
 // ─── ct × ct out-of-place (GLWE<_, CKKS>::mul) ─────────────────────────────────
 
@@ -281,7 +284,9 @@ pub fn test_mul_pt_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let pt = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_mul_pt_znx(&mut ct_res, &ct, &pt, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_znx(&mut ct_res, &ct, &pt, scratch.borrow())
+        .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct_res, &ct, &pt);
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -296,7 +301,9 @@ pub fn test_mul_pt_znx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
     let pt = ctx.encode_pt_znx_with_prec(&b_re, &b_im, low_prec);
     let (want_re, want_im) = ctx.want_mul_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_mul_pt_znx(&mut ct_res, &ct, &pt, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_znx(&mut ct_res, &ct, &pt, scratch.borrow())
+        .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_delta_log_decimal", &ct_res, &ct, &pt);
     ctx.assert_decrypt_precision(
         "mul_pt_znx_delta_log_decimal",
@@ -314,7 +321,9 @@ pub fn test_mul_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let pt = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ctx.module.ckks_mul_pt_znx(&mut ct_res, &ct, &pt, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_znx(&mut ct_res, &ct, &pt, scratch.borrow())
+        .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct_res, &ct, &pt);
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -327,7 +336,9 @@ pub fn test_mul_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let pt = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_mul();
     let ct_meta = ct.meta();
-    ctx.module.ckks_mul_pt_znx_inplace(&mut ct, &pt, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_znx_inplace(&mut ct, &pt, scratch.borrow())
+        .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct, &ct_meta, &pt);
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -341,7 +352,7 @@ pub fn test_mul_pt_rnx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_mul_pt_rnx(&mut ct_res, &ct, &pt, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut ct_res, &ct, &pt, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct_res, &ct, &ctx.meta());
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
@@ -358,7 +369,7 @@ pub fn test_mul_pt_rnx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_mul_pt_rnx(&mut ct_res, &ct, &pt, low_prec, scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut ct_res, &ct, &pt, low_prec, scratch.borrow())
         .unwrap();
     assert_mul_pt_output_meta("mul_pt_rnx_delta_log_decimal", &ct_res, &ct, &low_prec);
     ctx.assert_decrypt_precision(
@@ -378,7 +389,7 @@ pub fn test_mul_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ctx.module
-        .ckks_mul_pt_rnx(&mut ct_res, &ct, &pt, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut ct_res, &ct, &pt, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct_res, &ct, &ctx.meta());
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
@@ -393,10 +404,91 @@ pub fn test_mul_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul();
     let ct_meta = ct.meta();
     ctx.module
-        .ckks_mul_pt_rnx_inplace(&mut ct, &pt, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_inplace(&mut ct, &pt, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_mul_pt_output_meta("mul_pt_znx_aligned", &ct, &ct_meta, &ctx.meta());
     ctx.assert_decrypt_precision("mul_pt_znx_aligned", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+pub fn test_mul_const_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    ctx.module
+        .ckks_mul_const(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
+        .unwrap();
+    assert_mul_pt_output_meta("mul_const_aligned", &ct_res, &ct, &ctx.meta());
+    ctx.assert_decrypt_precision("mul_const_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+pub fn test_mul_const_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
+    let ct_meta = ct.meta();
+    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    ctx.module
+        .ckks_mul_const_inplace(&mut ct, &cst, ctx.meta(), scratch.borrow())
+        .unwrap();
+    assert_mul_pt_output_meta("mul_const_inplace", &ct, &ct_meta, &ctx.meta());
+    ctx.assert_decrypt_precision("mul_const_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+pub fn test_mul_const_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_decimal);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, low_log_decimal);
+    let ct = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let (want_re, want_im) = ctx.want_mul_const_from(&a_re, &a_im, const_re, const_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    ctx.module
+        .ckks_mul_const(&mut ct_res, &ct, &cst, low_prec, scratch.borrow())
+        .unwrap();
+    assert_mul_pt_output_meta("mul_const_delta_log_decimal", &ct_res, &ct, &low_prec);
+    ctx.assert_decrypt_precision(
+        "mul_const_delta_log_decimal",
+        &ct_res,
+        &want_re,
+        &want_im,
+        16.0,
+        scratch.borrow(),
+    );
+}
+
+pub fn test_mul_const_real_only<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_decimal);
+    let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), None);
+    ctx.module
+        .ckks_mul_pt_const_rnx(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
+        .unwrap();
+    assert_mul_pt_output_meta("mul_const_real_only", &ct_res, &ct, &ctx.meta());
+    ctx.assert_decrypt_precision("mul_const_real_only", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+}
+
+pub fn test_mul_const_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    let cst_rnx = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.meta()).unwrap();
+    ctx.module
+        .ckks_mul_pt_const_znx(&mut ct_res, &ct, &cst_znx, scratch.borrow())
+        .unwrap();
+    assert_mul_pt_output_meta("mul_const_znx_aligned", &ct_res, &ct, &ctx.meta());
+    ctx.assert_decrypt_precision("mul_const_znx_aligned", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
 
 /// Multiplication with inconsistent metadata must fail explicitly instead of panicking on usize underflow.

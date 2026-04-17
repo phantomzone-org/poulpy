@@ -21,8 +21,8 @@ use crate::{
     },
 };
 use poulpy_core::{
-    EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEDecrypt, GLWEMulPlain, GLWENegate,
-    GLWENormalize, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
+    EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEDecrypt, GLWEMulConst, GLWEMulPlain,
+    GLWENegate, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
     layouts::{
         Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
         GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
@@ -157,7 +157,7 @@ where
 
 pub trait TestMulBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWETensoring<Self> + GLWEShift<Self>,
+    Module<Self>: GLWEMulConst<Self> + GLWERotate<Self> + GLWETensoring<Self> + GLWEShift<Self>,
     Scratch<Self>: ScratchAvailable,
 {
 }
@@ -165,7 +165,7 @@ where
 impl<T> TestMulBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWETensoring<T> + GLWEShift<T>,
+    Module<T>: GLWEMulConst<T> + GLWERotate<T> + GLWETensoring<T> + GLWEShift<T>,
     Scratch<T>: ScratchAvailable,
 {
 }
@@ -321,6 +321,7 @@ impl<BE: TestContextBackend> TestContext<BE> {
             .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
             .max(module.glwe_shift_tmp_bytes())
             .max(module.ckks_mul_tmp_bytes(&ct_infos, &tsk_infos))
+            .max(module.ckks_mul_const_tmp_bytes(&ct_infos, &ct_infos, &params.prec))
             .max(module.ckks_square_tmp_bytes(&ct_infos, &tsk_infos))
             .max(module.glwe_automorphism_tmp_bytes(&ct_infos, &ct_infos, &atk_infos));
 
@@ -559,6 +560,31 @@ impl<BE: TestBackend> TestContext<BE> {
             re[i] = re1 * re2 - im1 * im2;
             im[i] = re1 * im2 + re2 * im1;
         }
+        (re, im)
+    }
+
+    pub fn quantized_const(&self, re: f64, im: f64, log_decimal: usize) -> (f64, f64) {
+        let scale = (log_decimal as f64).exp2();
+        ((re * scale).round() / scale, (im * scale).round() / scale)
+    }
+
+    pub fn want_add_const_from(&self, a_re: &[f64], a_im: &[f64], c_re: f64, c_im: f64) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let re = (0..m).map(|j| a_re[j] + c_re).collect();
+        let im = (0..m).map(|j| a_im[j] + c_im).collect();
+        (re, im)
+    }
+
+    pub fn want_mul_const_from(&self, a_re: &[f64], a_im: &[f64], c_re: f64, c_im: f64) -> (Vec<f64>, Vec<f64>) {
+        let m = self.params.n / 2;
+        let mut re = vec![0.0f64; m];
+        let mut im = vec![0.0f64; m];
+
+        for i in 0..m {
+            re[i] = a_re[i] * c_re - a_im[i] * c_im;
+            im[i] = a_re[i] * c_im + a_im[i] * c_re;
+        }
+
         (re, im)
     }
 

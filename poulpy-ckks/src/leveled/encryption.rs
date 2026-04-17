@@ -2,7 +2,7 @@
 
 use crate::{
     CKKSInfos, checked_log_hom_rem_sub,
-    layouts::{CKKSCiphertext, plaintext::CKKSPlaintextZnx},
+    layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
     leveled::operations::pt_znx::CKKSPlaintextZnxOps,
 };
 use poulpy_core::{
@@ -26,7 +26,7 @@ pub trait CKKSEncrypt<BE: Backend> {
     fn ckks_encrypt_sk<S, E: EncryptionInfos>(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
-        pt: &CKKSPlaintextZnx<impl DataRef>,
+        pt: &CKKSPlaintextVecZnx<impl DataRef>,
         sk: &S,
         enc_infos: &E,
         source_xa: &mut Source,
@@ -56,7 +56,7 @@ where
     fn ckks_encrypt_sk<S, E: EncryptionInfos>(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
-        pt: &CKKSPlaintextZnx<impl DataRef>,
+        pt: &CKKSPlaintextVecZnx<impl DataRef>,
         sk: &S,
         enc_infos: &E,
         source_xa: &mut Source,
@@ -71,7 +71,7 @@ where
         let log_hom_rem = checked_log_hom_rem_sub("ckks_encrypt_sk", enc_infos.noise_infos().k, pt.log_decimal())?;
         ct.meta.log_hom_rem = log_hom_rem;
         ct.meta.log_decimal = pt.log_decimal();
-        self.ckks_add_pt_znx(ct, pt, scratch)?;
+        self.ckks_add_pt_vec_znx(ct, pt, scratch)?;
         Ok(())
     }
 }
@@ -82,7 +82,7 @@ pub trait CKKSDecrypt<BE: Backend> {
         A: GLWEInfos;
     fn ckks_decrypt<S>(
         &self,
-        pt: &mut CKKSPlaintextZnx<impl DataMut>,
+        pt: &mut CKKSPlaintextVecZnx<impl DataMut>,
         ct: &CKKSCiphertext<impl DataRef>,
         sk: &S,
         scratch: &mut Scratch<BE>,
@@ -105,7 +105,7 @@ where
 
     fn ckks_decrypt<S>(
         &self,
-        pt: &mut CKKSPlaintextZnx<impl DataMut>,
+        pt: &mut CKKSPlaintextVecZnx<impl DataMut>,
         ct: &CKKSCiphertext<impl DataRef>,
         sk: &S,
         scratch: &mut Scratch<BE>,
@@ -115,9 +115,8 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
-        let mut full_pt = CKKSPlaintextZnx::from_plaintext_with_meta(full_pt, ct.meta());
+        let mut full_pt = CKKSPlaintextVecZnx::from_plaintext_with_meta(full_pt, ct.meta());
         self.glwe_decrypt(ct, &mut full_pt, sk, scratch_rest);
-        println!("full_pt: {full_pt}");
         self.ckks_extract_pt_znx(pt, &full_pt, scratch_rest)?;
         Ok(())
     }

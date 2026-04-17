@@ -5,20 +5,23 @@ use crate::{
     error::checked_mul_pt_log_hom_rem,
     layouts::{
         CKKSCiphertext,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
+        plaintext::{
+            CKKSConstPlaintextConversion, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx,
+            CKKSPlaintextVecZnx,
+        },
     },
 };
 use anyhow::Result;
 use poulpy_core::{
-    GLWEMulPlain, GLWETensoring, ScratchTakeCore,
+    GLWEAdd, GLWEMulConst, GLWEMulPlain, GLWERotate, GLWETensoring, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWETensor, GLWETensorKeyPrepared, GLWEToMut,
-        GLWEToRef, LWEInfos, TorusPrecision,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWETensor, GLWETensorKeyPrepared,
+        GLWEToMut, GLWEToRef, LWEInfos, TorusPrecision,
     },
 };
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
 pub trait CKKSMulOps<BE: Backend> {
@@ -34,17 +37,23 @@ pub trait CKKSMulOps<BE: Backend> {
         T: GGLWEInfos,
         Self: GLWETensoring<BE>;
 
-    fn ckks_mul_pt_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulPlain<BE>;
 
-    fn ckks_mul_pt_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE>;
+
+    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Self: GLWEMulConst<BE> + GLWERotate<BE>;
 
     fn ckks_mul(
         &self,
@@ -90,51 +99,186 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_pt_znx(
+    fn ckks_mul_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_pt_znx_inplace(
+    fn ckks_mul_pt_vec_znx_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_pt_rnx<F>(
+    fn ckks_mul_pt_vec_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_pt_rnx_inplace<F>(
+    fn ckks_mul_pt_vec_rnx_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn ckks_mul_pt_const_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn ckks_mul_pt_const_znx_inplace(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+
+    fn ckks_mul_pt_const_rnx<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
+
+    fn ckks_mul_pt_const_rnx_inplace<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
+
+    fn ckks_mul_const_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_pt_const_znx(dst, a, cst_znx, scratch)
+    }
+
+    fn ckks_mul_const_znx_inplace(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_pt_const_znx_inplace(dst, cst_znx, scratch)
+    }
+
+    fn ckks_mul_const_rnx<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_pt_const_rnx(dst, a, cst_rnx, prec, scratch)
+    }
+
+    fn ckks_mul_const_rnx_inplace<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_pt_const_rnx_inplace(dst, cst_rnx, prec, scratch)
+    }
+
+    fn ckks_mul_const<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_pt_const_rnx(dst, a, cst_rnx, prec, scratch)
+    }
+
+    fn ckks_mul_const_inplace<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_pt_const_rnx_inplace(dst, cst_rnx, prec, scratch)
+    }
 }
 
 #[doc(hidden)]
@@ -332,7 +476,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_znx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_znx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -346,7 +490,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_pt_rnx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -360,11 +504,24 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(&b_infos) + self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_pt_znx_default(
+    fn ckks_mul_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Self: GLWEMulConst<BE> + GLWERotate<BE>,
+    {
+        let b_size = b.min_k(res.base2k()).as_usize().div_ceil(res.base2k().as_usize());
+        GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res)
+            + self
+                .glwe_mul_const_tmp_bytes(res, a, b_size)
+                .max(self.glwe_rotate_tmp_bytes())
+    }
+
+    fn ckks_mul_pt_vec_znx_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -389,10 +546,10 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_znx_inplace_default(
+    fn ckks_mul_pt_vec_znx_inplace_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -418,17 +575,17 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_rnx_default<F>(
+    fn ckks_mul_pt_vec_rnx_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
@@ -437,21 +594,21 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
             k: prec.min_k(dst.base2k()),
         });
 
-        let mut pt_znx = CKKSPlaintextZnx::from_plaintext_with_meta(pt_glwe, prec);
+        let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx)?;
-        self.ckks_mul_pt_znx_default(dst, a, &pt_znx, scratch_1)
+        self.ckks_mul_pt_vec_znx_default(dst, a, &pt_znx, scratch_1)
     }
 
-    fn ckks_mul_pt_rnx_inplace_default<F>(
+    fn ckks_mul_pt_vec_rnx_inplace_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
@@ -460,9 +617,115 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
             k: prec.min_k(dst.base2k()),
         });
 
-        let mut pt_znx = CKKSPlaintextZnx::from_plaintext_with_meta(pt_glwe, prec);
+        let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx::<BE>(&mut pt_znx)?;
-        self.ckks_mul_pt_znx_inplace_default(dst, &pt_znx, scratch_1)
+        self.ckks_mul_pt_vec_znx_inplace_default(dst, &pt_znx, scratch_1)
+    }
+
+    fn ckks_mul_const_znx_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_const_params(dst, a, cst_znx.meta())?;
+        match (cst_znx.re(), cst_znx.im()) {
+            (None, None) => dst.data_mut().zero(),
+            (Some(re_const), None) => {
+                self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), re_const, scratch);
+            }
+            (None, Some(im_const)) => {
+                self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), im_const, scratch);
+                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, dst, scratch);
+            }
+            (Some(re_const), Some(im_const)) => {
+                let (mut tmp, scratch_1) = scratch.take_glwe(dst);
+
+                self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), re_const, scratch_1);
+                self.glwe_mul_const(cnv_offset, &mut tmp, &a.to_ref(), im_const, scratch_1);
+                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
+                self.glwe_add_assign(dst, &tmp);
+            }
+        }
+
+        dst.meta.log_hom_rem = res_log_hom_rem;
+        dst.meta.log_decimal = res_log_decimal;
+
+        Ok(())
+    }
+
+    fn ckks_mul_const_znx_inplace_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_const_params(dst, dst, cst_znx.meta())?;
+        match (cst_znx.re(), cst_znx.im()) {
+            (None, None) => dst.data_mut().zero(),
+            (Some(re_const), None) => {
+                self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), re_const, scratch);
+            }
+            (None, Some(im_const)) => {
+                self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), im_const, scratch);
+                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, dst, scratch);
+            }
+            (Some(re_const), Some(im_const)) => {
+                let (mut tmp, scratch_1) = scratch.take_glwe(dst);
+
+                self.glwe_mul_const(cnv_offset, &mut tmp, &dst.to_ref(), im_const, scratch_1);
+                self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), re_const, scratch_1);
+                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
+                self.glwe_add_assign(dst, &tmp);
+            }
+        }
+
+        dst.meta.log_hom_rem = res_log_hom_rem;
+        dst.meta.log_decimal = res_log_decimal;
+
+        Ok(())
+    }
+
+    fn ckks_mul_const_rnx_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
+        self.ckks_mul_const_znx_default(dst, a, &cst_znx, scratch)
+    }
+
+    fn ckks_mul_const_rnx_inplace_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
+        self.ckks_mul_const_znx_inplace_default(dst, &cst_znx, scratch)
     }
 }
 
@@ -490,22 +753,31 @@ where
         self.ckks_square_tmp_bytes_default(res, tsk)
     }
 
-    fn ckks_mul_pt_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulPlain<BE>,
     {
-        self.ckks_mul_pt_znx_tmp_bytes_default(res, a, b)
+        self.ckks_mul_pt_vec_znx_tmp_bytes_default(res, a, b)
     }
 
-    fn ckks_mul_pt_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE>,
     {
-        self.ckks_mul_pt_rnx_tmp_bytes_default(res, a, b)
+        self.ckks_mul_pt_vec_rnx_tmp_bytes_default(res, a, b)
+    }
+
+    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        Self: GLWEMulConst<BE> + GLWERotate<BE>,
+    {
+        self.ckks_mul_const_tmp_bytes_default(res, a, b)
     }
 
     fn ckks_mul(
@@ -564,62 +836,120 @@ where
         self.ckks_square_inplace_default(dst, tsk, scratch)
     }
 
-    fn ckks_mul_pt_znx(
+    fn ckks_mul_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_mul_pt_znx_default(dst, a, pt_znx, scratch)
+        self.ckks_mul_pt_vec_znx_default(dst, a, pt_znx, scratch)
     }
 
-    fn ckks_mul_pt_znx_inplace(
+    fn ckks_mul_pt_vec_znx_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_mul_pt_znx_inplace_default(dst, pt_znx, scratch)
+        self.ckks_mul_pt_vec_znx_inplace_default(dst, pt_znx, scratch)
     }
 
-    fn ckks_mul_pt_rnx<F>(
+    fn ckks_mul_pt_vec_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_mul_pt_rnx_default(dst, a, pt_rnx, prec, scratch)
+        self.ckks_mul_pt_vec_rnx_default(dst, a, pt_rnx, prec, scratch)
     }
 
-    fn ckks_mul_pt_rnx_inplace<F>(
+    fn ckks_mul_pt_vec_rnx_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_rnx: &CKKSPlaintextRnx<F>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKS,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Self: ModuleN + GLWEMulPlain<BE>,
-        CKKSPlaintextRnx<F>: CKKSPlaintextConversion,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_mul_pt_rnx_inplace_default(dst, pt_rnx, prec, scratch)
+        self.ckks_mul_pt_vec_rnx_inplace_default(dst, pt_rnx, prec, scratch)
+    }
+
+    fn ckks_mul_pt_const_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_const_znx_default(dst, a, cst_znx, scratch)
+    }
+
+    fn ckks_mul_pt_const_znx_inplace(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_const_znx_inplace_default(dst, cst_znx, scratch)
+    }
+
+    fn ckks_mul_pt_const_rnx<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_const_rnx_default(dst, a, cst_rnx, prec, scratch)
+    }
+
+    fn ckks_mul_pt_const_rnx_inplace<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKS,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_mul_const_rnx_inplace_default(dst, cst_rnx, prec, scratch)
     }
 }
 
@@ -658,6 +988,29 @@ where
 
     Ok((
         checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
+        res_log_decimal,
+        cnv_offset,
+    ))
+}
+
+fn get_mul_const_params<R, A>(res: &R, a: &A, prec: CKKS) -> Result<(usize, usize, usize)>
+where
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+{
+    let res_log_hom_rem = checked_mul_pt_log_hom_rem(
+        "mul_const",
+        a.log_hom_rem(),
+        prec.log_hom_rem,
+        a.log_decimal(),
+        prec.log_decimal,
+    )?;
+    let res_log_decimal = a.log_decimal();
+    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+    let cnv_offset = prec.min_k(res.base2k()).as_usize() + res_offset;
+
+    Ok((
+        checked_log_hom_rem_sub("mul_const", res_log_hom_rem, res_offset)?,
         res_log_decimal,
         cnv_offset,
     ))

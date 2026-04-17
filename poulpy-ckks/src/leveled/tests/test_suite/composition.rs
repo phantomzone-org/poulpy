@@ -24,7 +24,7 @@ where
 {
     let ct_infos = ctx.params.glwe_layout();
     let prec = ctx.meta();
-    let mul_pt_rnx = ctx.module.ckks_mul_pt_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
+    let mul_pt_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_rnx))
 }
 
@@ -99,10 +99,10 @@ pub fn test_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_rnx(&mut term2, &x, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term2, &x, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
 
     assert_eq!(
@@ -136,10 +136,10 @@ pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
 
     assert!(
@@ -175,15 +175,15 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend>(ctx: &TestContext<B
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
     ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
     ctx.module
-        .ckks_add_pt_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
     ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, 20.0, scratch.borrow());
@@ -213,15 +213,15 @@ pub fn test_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
     ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
     ctx.module
-        .ckks_add_pt_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
     let mut res = ctx.alloc_ct(ctx.max_k());

@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
 
-use crate::layouts::plaintext::CKKSPlaintextRnx;
+use crate::layouts::plaintext::CKKSPlaintextVecRnx;
 
 pub struct Encoder<BE: Backend> {
     module: Module<BE>,
@@ -41,7 +41,7 @@ where
 
     pub fn encode_reim(
         &self,
-        pt: &mut CKKSPlaintextRnx<BE::ScalarPrep>,
+        pt: &mut CKKSPlaintextVecRnx<BE::ScalarPrep>,
         re: &[BE::ScalarPrep],
         im: &[BE::ScalarPrep],
     ) -> Result<()> {
@@ -71,7 +71,7 @@ where
 
     pub fn decode_reim(
         &self,
-        pt: &CKKSPlaintextRnx<BE::ScalarPrep>,
+        pt: &CKKSPlaintextVecRnx<BE::ScalarPrep>,
         re: &mut [BE::ScalarPrep],
         im: &mut [BE::ScalarPrep],
     ) -> Result<()> {
@@ -118,7 +118,7 @@ mod tests {
 
         let encoder = Encoder::<FFT64Ref>::new(m).unwrap();
 
-        let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
+        let mut rnx = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
         encoder.encode_reim(&mut rnx, &re_in, &im_in).unwrap();
 
         let mut re_out = vec![0.0f64; m];

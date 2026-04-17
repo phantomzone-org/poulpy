@@ -9,24 +9,24 @@ use poulpy_hal::{
 
 use crate::{
     CKKSInfos, ensure_base2k_match, ensure_plaintext_alignment,
-    layouts::{CKKSCiphertext, CKKSPlaintextZnx},
+    layouts::{CKKSCiphertext, CKKSPlaintextVecZnx},
 };
 use anyhow::Result;
 
 pub trait CKKSPlaintextZnxOps<BE: Backend> {
-    fn ckks_add_pt_znx(
+    fn ckks_add_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextZnx<impl DataRef>,
+        src: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshAddInto<BE>;
-    fn ckks_sub_pt_znx(
+    fn ckks_sub_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextZnx<impl DataRef>,
+        src: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -34,8 +34,8 @@ pub trait CKKSPlaintextZnxOps<BE: Backend> {
         Self: VecZnxRshSub<BE>;
     fn ckks_extract_pt_znx(
         &self,
-        dst: &mut CKKSPlaintextZnx<impl DataMut>,
-        src: &CKKSPlaintextZnx<impl DataRef>,
+        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
+        src: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -44,19 +44,19 @@ pub trait CKKSPlaintextZnxOps<BE: Backend> {
 }
 
 impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
-    fn ckks_add_pt_znx(
+    fn ckks_add_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextZnx<impl DataRef>,
+        src: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshAddInto<BE>,
     {
-        ensure_base2k_match("ckks_add_pt_znx", dst.base2k().as_usize(), src.base2k().as_usize())?;
+        ensure_base2k_match("ckks_add_pt_vec_znx", dst.base2k().as_usize(), src.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
-            "ckks_add_pt_znx",
+            "ckks_add_pt_vec_znx",
             dst.log_hom_rem(),
             src.log_decimal(),
             src.max_k().as_usize(),
@@ -70,8 +70,8 @@ impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
 
     fn ckks_extract_pt_znx(
         &self,
-        dst: &mut CKKSPlaintextZnx<impl DataMut>,
-        src: &CKKSPlaintextZnx<impl DataRef>,
+        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
+        src: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -91,19 +91,19 @@ impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
         Ok(())
     }
 
-    fn ckks_sub_pt_znx(
+    fn ckks_sub_pt_vec_znx(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshSub<BE>,
     {
-        ensure_base2k_match("ckks_sub_pt_znx", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
+        ensure_base2k_match("ckks_sub_pt_vec_znx", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
-            "ckks_sub_pt_znx",
+            "ckks_sub_pt_vec_znx",
             ct.log_hom_rem(),
             pt_znx.log_decimal(),
             pt_znx.max_k().as_usize(),
