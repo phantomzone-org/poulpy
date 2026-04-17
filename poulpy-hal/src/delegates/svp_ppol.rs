@@ -1,17 +1,11 @@
 use crate::{
-    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPPolFromBytes, SvpPrepare},
+    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
+        Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
     oep::{SvpApplyDftImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
 };
-
-impl<B: Backend> SvpPPolFromBytes<B> for Module<B> {
-    fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        SvpPPol::<Vec<u8>, B>::from_bytes(self.n(), cols, bytes)
-    }
-}
 
 impl<B: Backend> SvpPPolAlloc<B> for Module<B> {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {

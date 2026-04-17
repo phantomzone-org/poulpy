@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxView},
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxView},
 };
 
 /// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
@@ -18,6 +18,9 @@ use crate::{
 ///
 /// Create via [`SvpPrepare`](crate::api::SvpPrepare) from a
 /// coefficient-domain [`ScalarZnx`](crate::layouts::ScalarZnx).
+///
+/// Ring degree `n` is always a power of two, so the DFT-domain layout has a
+/// coefficient count that matches vector lane widths relative to buffer alignment.
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct SvpPPol<D: Data, B: Backend> {
@@ -82,18 +85,6 @@ impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B> {
             _phantom: PhantomData,
         }
     }
-
-    pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
-        let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::bytes_of_svp_ppol(n, cols));
-        crate::assert_alignment(data.as_ptr());
-        Self {
-            data: data.into(),
-            n,
-            cols,
-            _phantom: PhantomData,
-        }
-    }
 }
 
 /// Owned `SvpPPol` backed by a `Vec<u8>`.
@@ -139,61 +130,6 @@ impl<D: Data, B: Backend> SvpPPol<D, B> {
             cols,
             _phantom: PhantomData,
         }
-    }
-}
-
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-
-impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
-    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
-        let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
-        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
-
-        let expected_len: usize = B::bytes_of_svp_ppol(new_n, new_cols);
-        if expected_len != len {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!(
-                    "SvpPPol metadata inconsistent: bytes_of_svp_ppol(n={new_n}, cols={new_cols})={expected_len} != data len={len}"
-                ),
-            ));
-        }
-
-        let buf: &mut [u8] = self.data.as_mut();
-        if buf.len() < len {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("SvpPPol buffer too small: self.data.len()={} < read len={len}", buf.len()),
-            ));
-        }
-        reader.read_exact(&mut buf[..len])?;
-
-        // Commit metadata only after successful read
-        self.n = new_n;
-        self.cols = new_cols;
-        Ok(())
-    }
-}
-
-impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
-    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.n as u64)?;
-        writer.write_u64::<LittleEndian>(self.cols as u64)?;
-        let prep_bytes: usize = B::bytes_of_svp_ppol(self.n, self.cols);
-        let buf: &[u8] = self.data.as_ref();
-        if buf.len() < prep_bytes {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!(
-                    "SvpPPol buffer too small: self.data.len()={} < prep_bytes={prep_bytes}",
-                    buf.len()
-                ),
-            ));
-        }
-        writer.write_u64::<LittleEndian>(prep_bytes as u64)?;
-        writer.write_all(&buf[..prep_bytes])?;
-        Ok(())
     }
 }
 
