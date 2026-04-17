@@ -150,8 +150,16 @@ impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
         let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
 
-        // SvpPPol is backend-specific so we cannot compute expected_len from metadata alone,
-        // but we can at least validate the buffer is large enough before reading.
+        let expected_len: usize = B::bytes_of_svp_ppol(new_n, new_cols);
+        if expected_len != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "SvpPPol metadata inconsistent: bytes_of_svp_ppol(n={new_n}, cols={new_cols})={expected_len} != data len={len}"
+                ),
+            ));
+        }
+
         let buf: &mut [u8] = self.data.as_mut();
         if buf.len() < len {
             return Err(std::io::Error::new(
@@ -172,9 +180,19 @@ impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;
+        let prep_bytes: usize = B::bytes_of_svp_ppol(self.n, self.cols);
         let buf: &[u8] = self.data.as_ref();
-        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
-        writer.write_all(buf)?;
+        if buf.len() < prep_bytes {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "SvpPPol buffer too small: self.data.len()={} < prep_bytes={prep_bytes}",
+                    buf.len()
+                ),
+            ));
+        }
+        writer.write_u64::<LittleEndian>(prep_bytes as u64)?;
+        writer.write_all(&buf[..prep_bytes])?;
         Ok(())
     }
 }
