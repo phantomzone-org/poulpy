@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [Unreleased] - 2026-04-17
+
+### `poulpy-hal`
+- Make `WriterTo` for `MatZnx`, `ScalarZnx`, `VecZnx`, and `SvpPPol` emit the canonical logical byte length from layout metadata (or `B::bytes_of_svp_ppol`), write only that prefix, and error when backing storage is shorter than the logical span.
+- Tighten `SvpPPol` `ReaderFrom` by requiring the on-wire payload length to match `bytes_of_svp_ppol` for the decoded `n` and `cols`.
+
+### `poulpy-schemes`
+- Add `ReaderFrom` / `WriterTo` for `CircuitBootstrappingKey` and for `BDDKey<Vec<u8>>` (tagged optional `ks_glwe`), with deterministic ATK map serialization via sorted Galois keys.
+
+### `poulpy-core`
+- **Breaking:** Remove `ReaderFrom` / `WriterTo` for `LWESecret` and `GLWESecret`; secret material should be handled via seeds or application-specific transfer, not library binary I/O.
+
 ## [0.5.0] - 2026-03-31
 
 ### `poulpy-bench` (new crate)
