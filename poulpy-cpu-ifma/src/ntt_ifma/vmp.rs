@@ -7,8 +7,9 @@
 
 use bytemuck::{cast_slice, cast_slice_mut};
 use core::arch::x86_64::{
-    __m256i, __m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_madd52hi_epu64, _mm512_madd52lo_epu64,
-    _mm512_setzero_si512, _mm512_storeu_si512, _mm512_stream_si512,
+    __m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_madd52hi_epu64, _mm512_madd52lo_epu64,
+    _mm512_maskz_permutex2var_epi64, _mm512_permutex2var_epi64, _mm512_set_epi64, _mm512_setzero_si512, _mm512_storeu_si512,
+    _mm512_stream_si512,
 };
 use std::mem::size_of;
 
@@ -36,36 +37,83 @@ fn q2_shifted_vec_512() -> __m512i {
     unsafe { _mm512_loadu_si512(q2_512.as_ptr() as *const __m512i) }
 }
 
-/// Non-temporal write: bypass the cache so the result lines do not evict
-/// matrix data the kernel still needs. `dst.as_mut_ptr().add(8 * blk)` is
-/// 64-byte aligned because `VecZnxDft` storage is `DEFAULTALIGN`-aligned and
-/// `8 * blk * size_of::<u64>() = 64 * blk` keeps that alignment. The
-/// `_mm_sfence` to make these stores globally ordered is issued once at the
-/// end of the apply loop, not per call.
-#[target_feature(enable = "avx512f")]
-unsafe fn save_blk_overwrite(_n: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
-    let off = 8 * blk;
-    let dst_ptr = unsafe { dst.as_mut_ptr().add(off) as *mut __m512i };
-    let src_ptr = src.as_ptr() as *const __m512i;
+/// SoA (per-prime) → AoS q120b interleave for one block of a block-quad.
+///
+/// `red0`/`red1`/`red2` hold the per-prime reductions for the 4 x2-blocks of a
+/// block-quad, with lane order `[blk0.c0, blk0.c1, blk1.c0, blk1.c1, blk2.c0,
+/// blk2.c1, blk3.c0, blk3.c1]`. The output for block `I` (0..4) is one q120b
+/// `__m512i`: `[p0_c0, p1_c0, p2_c0, 0, p0_c1, p1_c1, p2_c1, 0]`.
+///
+/// Two `vpermi2q` passes materialise the result in a register; keeping the
+/// three prime reductions in registers avoids the stack round-trip the previous
+/// `save_blk_overwrite` path needed.
+#[target_feature(enable = "avx512f,avx512vl")]
+#[inline]
+unsafe fn aos_for_blk<const I: usize>(red0: __m512i, red1: __m512i, red2: __m512i) -> __m512i {
+    // For block i: keep red0[2i], red1[2i] at lanes 0,1 and red0[2i+1], red1[2i+1] at lanes 4,5.
+    // Lanes 2..3, 6..7 are overwritten by the second permute, so indices there are don't-cares.
+    let idx01 = match I {
+        0 => _mm512_set_epi64(0, 0, 9, 1, 0, 0, 8, 0),
+        1 => _mm512_set_epi64(0, 0, 11, 3, 0, 0, 10, 2),
+        2 => _mm512_set_epi64(0, 0, 13, 5, 0, 0, 12, 4),
+        3 => _mm512_set_epi64(0, 0, 15, 7, 0, 0, 14, 6),
+        _ => _mm512_setzero_si512(),
+    };
+    let tmp01 = _mm512_permutex2var_epi64(red0, idx01, red1);
+
+    // maskz_permutex2var: lanes 0,1,4,5 keep tmp01 (red0/red1 values); lanes 2,6 take red2[2i], red2[2i+1];
+    // lanes 3,7 are zeroed by the mask.
+    let idxf = match I {
+        0 => _mm512_set_epi64(0, 9, 5, 4, 0, 8, 1, 0),
+        1 => _mm512_set_epi64(0, 11, 5, 4, 0, 10, 1, 0),
+        2 => _mm512_set_epi64(0, 13, 5, 4, 0, 12, 1, 0),
+        3 => _mm512_set_epi64(0, 15, 5, 4, 0, 14, 1, 0),
+        _ => _mm512_setzero_si512(),
+    };
+    _mm512_maskz_permutex2var_epi64(0b0111_0111, tmp01, idxf, red2)
+}
+
+/// Non-temporal writeback of one SoA→AoS block of a block-quad.
+///
+/// `dst_base` points at `res_u64[col_res * 4 * n]` and is 64-byte aligned
+/// (`VecZnxDft` storage is `DEFAULTALIGN = 64`). Each x2-block stores 8 u64,
+/// and `blk` indexes by x2-block, so `dst_base.add(8 * blk)` stays on a
+/// 64-byte boundary — safe for `_mm512_stream_si512`. The caller must issue
+/// one `_mm_sfence` before any later load from `res`.
+#[target_feature(enable = "avx512f,avx512vl")]
+#[inline]
+unsafe fn save_blk_overwrite_nt<const I: usize>(
+    dst_base: *mut u64,
+    bq: usize,
+    red0: __m512i,
+    red1: __m512i,
+    red2: __m512i,
+) {
+    let out = unsafe { aos_for_blk::<I>(red0, red1, red2) };
+    let off = 8 * (bq * 4 + I);
     unsafe {
-        _mm512_stream_si512(dst_ptr, _mm512_loadu_si512(src_ptr));
+        _mm512_stream_si512(dst_base.add(off) as *mut __m512i, out);
     }
 }
 
+/// Cached load → conditional-subtract-2Q → add → store of one SoA→AoS block.
 #[target_feature(enable = "avx512f,avx512vl")]
-unsafe fn save_blk_add_simd(_n: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
+#[inline]
+unsafe fn save_blk_add<const I: usize>(
+    dst_base: *mut u64,
+    bq: usize,
+    q2_512: __m512i,
+    red0: __m512i,
+    red1: __m512i,
+    red2: __m512i,
+) {
+    let out = unsafe { aos_for_blk::<I>(red0, red1, red2) };
+    let off = 8 * (bq * 4 + I);
+    let dst_ptr = unsafe { dst_base.add(off) as *mut __m512i };
     unsafe {
-        let q2_512 = q2_shifted_vec_512();
-        let off = 8 * blk;
-        let dst_ptr = dst.as_mut_ptr().add(off) as *mut __m256i;
-        let src_ptr = src.as_ptr() as *const __m256i;
-
-        let dst_ptr_512 = dst_ptr as *mut __m512i;
-        let src_ptr_512 = src_ptr as *const __m512i;
-        let d = _mm512_loadu_si512(dst_ptr_512 as *const __m512i);
-        let s = _mm512_loadu_si512(src_ptr_512);
+        let d = _mm512_loadu_si512(dst_ptr as *const __m512i);
         let d_red = cond_sub_2q_si512(d, q2_512);
-        _mm512_storeu_si512(dst_ptr_512, _mm512_add_epi64(d_red, s));
+        _mm512_storeu_si512(dst_ptr, _mm512_add_epi64(d_red, out));
     }
 }
 
@@ -225,10 +273,15 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
     }
 
     let pc = unsafe { [PrimeConsts512::new(0), PrimeConsts512::new(1), PrimeConsts512::new(2)] };
+    let q2_512 = if OVERWRITE {
+        _mm512_setzero_si512()
+    } else {
+        q2_shifted_vec_512()
+    };
 
-    // Scratch: 32 u64 for kernel output (4 blocks × 8 u64)
+    // Scratch: 32 u64 reserved for layout compatibility with vmp_apply_tmp_bytes_ifma
     //        + 3 * 8 * row_max u64 for prime-major x extract
-    let (kernel_output, x_pm) = tmp.split_at_mut(32);
+    let (_kernel_output, x_pm) = tmp.split_at_mut(32);
     let x_pm = &mut x_pm[..3 * 8 * row_max];
 
     // Matrix layout constants
@@ -271,33 +324,20 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
                     );
                 }
 
-                // SoA → AoS: interleave 3 prime results into 4 q120b blocks.
-                let mut p0v = [0u64; 8];
-                let mut p1v = [0u64; 8];
-                let mut p2v = [0u64; 8];
-                _mm512_storeu_si512(p0v.as_mut_ptr() as *mut __m512i, red[0]);
-                _mm512_storeu_si512(p1v.as_mut_ptr() as *mut __m512i, red[1]);
-                _mm512_storeu_si512(p2v.as_mut_ptr() as *mut __m512i, red[2]);
-
-                for i in 0..4usize {
-                    let blk = bq * 4 + i;
-                    let buf = [
-                        p0v[2 * i],
-                        p1v[2 * i],
-                        p2v[2 * i],
-                        0,
-                        p0v[2 * i + 1],
-                        p1v[2 * i + 1],
-                        p2v[2 * i + 1],
-                        0,
-                    ];
-                    let base = col_res * 4 * n;
-                    if OVERWRITE {
-                        save_blk_overwrite(n, blk, &mut res_u64[base..], &buf);
-                    } else {
-                        kernel_output[..8].copy_from_slice(&buf);
-                        save_blk_add_simd(n, blk, &mut res_u64[base..], &kernel_output[..8]);
-                    }
+                // SoA → AoS: interleave 3 prime results into 4 q120b blocks
+                // directly in SIMD registers (no stack round-trip).
+                let base = col_res * 4 * n;
+                let dst_base = res_u64.as_mut_ptr().add(base);
+                if OVERWRITE {
+                    save_blk_overwrite_nt::<0>(dst_base, bq, red[0], red[1], red[2]);
+                    save_blk_overwrite_nt::<1>(dst_base, bq, red[0], red[1], red[2]);
+                    save_blk_overwrite_nt::<2>(dst_base, bq, red[0], red[1], red[2]);
+                    save_blk_overwrite_nt::<3>(dst_base, bq, red[0], red[1], red[2]);
+                } else {
+                    save_blk_add::<0>(dst_base, bq, q2_512, red[0], red[1], red[2]);
+                    save_blk_add::<1>(dst_base, bq, q2_512, red[0], red[1], red[2]);
+                    save_blk_add::<2>(dst_base, bq, q2_512, red[0], red[1], red[2]);
+                    save_blk_add::<3>(dst_base, bq, q2_512, red[0], red[1], red[2]);
                 }
             }
         }

@@ -469,6 +469,7 @@ pub(crate) unsafe fn ntt_ifma_avx512<P: PrimeSetIfma>(table: &NttIfmaTable<P>, d
 
 /// Inverse NTT — AVX512-IFMA accelerated, split twiddle layout.
 #[target_feature(enable = "avx512ifma,avx512vl")]
+#[inline]
 pub(crate) unsafe fn intt_ifma_avx512<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u64]) {
     let n = table.n;
     if n == 1 {
