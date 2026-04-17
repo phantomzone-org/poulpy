@@ -83,9 +83,10 @@ macro_rules! hal_impl_convolution_ntt120 {
             A: CnvPVecLToRef<Self>,
             B: CnvPVecRToRef<Self>,
         {
-            <Self as NTT120ConvolutionDefaults<Self>>::cnv_apply_dft_default(
-                module, cnv_offset, res, res_col, a, a_col, b, b_col, scratch,
-            )
+            use poulpy_hal::api::TakeSlice;
+            let bytes = crate::ntt120::convolution::cnv_apply_dft_avx_tmp_bytes(a.to_ref().size(), b.to_ref().size());
+            let (tmp, _) = scratch.take_slice::<u8>(bytes);
+            unsafe { crate::ntt120::convolution::cnv_apply_dft_avx(module, res, cnv_offset, res_col, a, a_col, b, b_col, tmp) }
         }
 
         fn cnv_pairwise_apply_dft_tmp_bytes(
@@ -116,9 +117,14 @@ macro_rules! hal_impl_convolution_ntt120 {
             A: CnvPVecLToRef<Self>,
             B: CnvPVecRToRef<Self>,
         {
-            <Self as NTT120ConvolutionDefaults<Self>>::cnv_pairwise_apply_dft_default(
-                module, cnv_offset, res, res_col, a, b, i, j, scratch,
-            )
+            use poulpy_hal::api::TakeSlice;
+            let bytes = crate::ntt120::convolution::cnv_pairwise_apply_dft_avx_tmp_bytes(
+                res.to_mut().size(),
+                a.to_ref().size(),
+                b.to_ref().size(),
+            );
+            let (tmp, _) = scratch.take_slice::<u8>(bytes);
+            unsafe { crate::ntt120::convolution::cnv_pairwise_apply_dft_avx(module, res, cnv_offset, res_col, a, b, i, j, tmp) }
         }
 
         fn cnv_prepare_self_tmp_bytes(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {

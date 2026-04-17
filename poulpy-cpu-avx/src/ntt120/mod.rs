@@ -21,6 +21,7 @@
 //! - `ScalarBig  = i128` — CRT-reconstructed large coefficients.
 
 pub(crate) mod arithmetic_avx;
+pub(crate) mod convolution;
 pub(crate) mod mat_vec_avx;
 mod module;
 pub(crate) mod ntt;
@@ -28,6 +29,7 @@ mod prim;
 mod vec_znx_big;
 mod vec_znx_big_avx;
 pub(crate) mod vec_znx_dft_consume;
+pub(crate) mod vmp;
 mod znx;
 
 /// AVX2-accelerated NTT120 CPU backend for Poulpy HAL.

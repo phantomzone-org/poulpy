@@ -52,7 +52,12 @@ macro_rules! hal_impl_vmp_fft64 {
             A: VecZnxDftToRef<Self>,
             C: VmpPMatToRef<Self>,
         {
-            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, scratch)
+            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, scratch);
+            unsafe {
+                // AVX overwrite-mode saves use non-temporal stores; fence once
+                // after the delegated apply path before any later load from `res`.
+                core::arch::x86_64::_mm_sfence();
+            }
         }
 
         fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
