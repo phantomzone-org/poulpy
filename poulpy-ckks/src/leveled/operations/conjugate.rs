@@ -6,84 +6,129 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWE, GLWEAutomorphismKeyPrepared, GLWEInfos},
+    layouts::{GGLWEInfos, GLWEAutomorphismKeyPrepared, GLWEInfos},
 };
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
+use crate::{
+    CKKSInfos, checked_log_hom_rem_sub,
+    layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
+};
 
-pub trait CKKSConjugateOps {
-    fn conjugate_tmp_bytes<C, K, BE: Backend>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
+pub trait CKKSConjugateOps<BE: Backend> {
+    fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
-        Module<BE>: GLWEAutomorphism<BE>;
+        Self: GLWEAutomorphism<BE>;
 
-    /// `self = Conjugate(ct)` using the conjugation key (Galois element -1).
-    fn conjugate<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &GLWE<impl DataRef, CKKS>,
+    fn ckks_conjugate(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    /// `self = Conjugate(self)` using the conjugation key (Galois element -1).
-    fn conjugate_inplace<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
+    fn ckks_conjugate_inplace(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: GLWEAutomorphism<BE>,
+        Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<D: DataMut> CKKSConjugateOps for GLWE<D, CKKS> {
-    fn conjugate_tmp_bytes<C, K, BE: Backend>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
+#[doc(hidden)]
+pub trait CKKSConjugateOpsDefault<BE: Backend> {
+    fn ckks_conjugate_tmp_bytes_default<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
-        Module<BE>: GLWEAutomorphism<BE>,
+        Self: GLWEAutomorphism<BE>,
     {
-        module.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
+        self.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
     }
-    fn conjugate<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &GLWE<impl DataRef, CKKS>,
+
+    fn ckks_conjugate_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let offset = self.offset_unary(other);
+        let offset = dst.offset_unary(src);
         if offset != 0 {
-            module.glwe_lsh(self, other, offset, scratch);
-            module.glwe_automorphism_inplace(self, key, scratch);
+            self.glwe_lsh(dst, src, offset, scratch);
+            self.glwe_automorphism_inplace(dst, key, scratch);
         } else {
-            module.glwe_automorphism(self, other, key, scratch);
+            self.glwe_automorphism(dst, src, key, scratch);
         }
 
-        self.meta = other.meta();
-        self.set_log_hom_rem(checked_log_hom_rem_sub("conjugate", self.log_hom_rem(), offset)?)?;
+        dst.meta = src.meta();
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("conjugate", dst.log_hom_rem(), offset)?;
         Ok(())
     }
 
-    fn conjugate_inplace<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
+    fn ckks_conjugate_inplace_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: GLWEAutomorphism<BE>,
+        Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_automorphism_inplace(self, key, scratch);
+        self.glwe_automorphism_inplace(dst, key, scratch);
+    }
+}
+
+impl<BE: Backend> CKKSConjugateOpsDefault<BE> for Module<BE> {}
+
+impl<BE: Backend> CKKSConjugateOps<BE> for Module<BE>
+where
+    Module<BE>: CKKSConjugateOpsDefault<BE>,
+{
+    fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
+    where
+        C: GLWEInfos,
+        K: GGLWEInfos,
+        Self: GLWEAutomorphism<BE>,
+    {
+        self.ckks_conjugate_tmp_bytes_default(ct_infos, key_infos)
+    }
+
+    fn ckks_conjugate(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
+        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_conjugate_default(dst, src, key, scratch)
+    }
+
+    fn ckks_conjugate_inplace(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Self: GLWEAutomorphism<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_conjugate_inplace_default(dst, key, scratch)
     }
 }

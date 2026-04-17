@@ -9,9 +9,11 @@ use std::{collections::HashMap, f64::consts::TAU};
 use super::CKKSTestParams;
 use crate::{
     CKKS, CKKSCompositionError, CKKSInfos,
+    encoding::reim::Encoder,
     layouts::{
+        CKKSCiphertext,
         ciphertext::CKKSOffset,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, Encoder, alloc_pt_znx, attach_meta},
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, alloc_pt_znx},
     },
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
@@ -22,7 +24,7 @@ use poulpy_core::{
     EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEDecrypt, GLWEMulPlain, GLWENegate,
     GLWENormalize, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
+        Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
         GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
         prepared::GLWESecretPrepared,
     },
@@ -318,8 +320,8 @@ impl<BE: TestContextBackend> TestContext<BE> {
             .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
             .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
             .max(module.glwe_shift_tmp_bytes())
-            .max(GLWE::<Vec<u8>, CKKS>::mul_tmp_bytes(&module, &ct_infos, &tsk_infos))
-            .max(GLWE::<Vec<u8>, CKKS>::square_tmp_bytes(&module, &ct_infos, &tsk_infos))
+            .max(module.ckks_mul_tmp_bytes(&ct_infos, &tsk_infos))
+            .max(module.ckks_square_tmp_bytes(&ct_infos, &tsk_infos))
             .max(module.glwe_automorphism_tmp_bytes(&ct_infos, &ct_infos, &atk_infos));
 
         Self {
@@ -365,7 +367,7 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
-    pub fn encrypt(&self, k: usize, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> GLWE<Vec<u8>, CKKS>
+    pub fn encrypt(&self, k: usize, re: &[f64], im: &[f64], scratch: &mut Scratch<BE>) -> CKKSCiphertext<Vec<u8>>
     where
         Module<BE>: CKKSEncrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -380,7 +382,7 @@ impl<BE: TestBackend> TestContext<BE> {
         im: &[f64],
         prec: CKKS,
         scratch: &mut Scratch<BE>,
-    ) -> GLWE<Vec<u8>, CKKS>
+    ) -> CKKSCiphertext<Vec<u8>>
     where
         Module<BE>: CKKSEncrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -407,18 +409,14 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     /// Decrypts and decodes a ciphertext back to complex slot values.
-    pub fn decrypt_decode(
-        &self,
-        ct: &GLWE<impl poulpy_hal::layouts::DataRef, CKKS>,
-        scratch: &mut Scratch<BE>,
-    ) -> (Vec<f64>, Vec<f64>)
+    pub fn decrypt_decode(&self, ct: &CKKSCiphertext<impl DataRef>, scratch: &mut Scratch<BE>) -> (Vec<f64>, Vec<f64>)
     where
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), self.precision_at(ct.log_decimal()));
         let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
-        let mut full_pt = attach_meta(full_pt, ct.meta());
+        let mut full_pt = CKKSPlaintextZnx::from_plaintext_with_meta(full_pt, ct.meta());
         self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);
         //println!("full_pt: {full_pt}");
         let top_limb_msb_mask = 1u64 << (ct.base2k().as_usize() - 1);
@@ -565,10 +563,10 @@ impl<BE: TestBackend> TestContext<BE> {
     }
 
     /// Allocates a ciphertext with one fewer limb than the default (k − base2k).
-    pub fn alloc_ct(&self, k: usize) -> GLWE<Vec<u8>, CKKS> {
+    pub fn alloc_ct(&self, k: usize) -> CKKSCiphertext<Vec<u8>> {
         let mut layout = self.params.glwe_layout();
         layout.layout.k = k.into();
-        CKKS::alloc_from_infos(&layout).unwrap()
+        CKKSCiphertext::alloc_from_infos(&layout).unwrap()
     }
 
     /// Encodes (re2, im2) into an RNX plaintext via IFFT.
@@ -614,7 +612,7 @@ impl<BE: TestBackend> TestContext<BE> {
     pub fn assert_decrypt_precision(
         &self,
         label: &str,
-        ct: &GLWE<impl poulpy_hal::layouts::DataRef, CKKS>,
+        ct: &CKKSCiphertext<impl DataRef>,
         want_re: &[f64],
         want_im: &[f64],
         min_bits: f64,
@@ -653,7 +651,7 @@ pub fn assert_precision(label: &str, got: &[f64], want: &[f64], min_bits: f64) {
     );
 }
 
-pub fn assert_ct_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, log_decimal: usize, log_hom_rem: usize) {
+pub fn assert_ct_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, log_decimal: usize, log_hom_rem: usize) {
     assert_eq!(ct.log_decimal(), log_decimal, "{label}: unexpected log_decimal");
     assert_eq!(ct.log_hom_rem(), log_hom_rem, "{label}: unexpected log_hom_rem");
 }
@@ -663,15 +661,15 @@ pub fn assert_ckks_error(label: &str, err: &anyhow::Error, want: CKKSComposition
     assert_eq!(got, Some(&want), "{label}: unexpected error: {err}");
 }
 
-pub fn assert_unary_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, input: &GLWE<impl DataRef, CKKS>) {
+pub fn assert_unary_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, input: &CKKSCiphertext<impl DataRef>) {
     assert_ct_meta(label, ct, input.log_decimal(), input.log_hom_rem() - ct.offset_unary(input));
 }
 
 pub fn assert_binary_output_meta(
     label: &str,
-    ct: &GLWE<impl DataRef, CKKS>,
-    a: &GLWE<impl DataRef, CKKS>,
-    b: &GLWE<impl DataRef, CKKS>,
+    ct: &CKKSCiphertext<impl DataRef>,
+    a: &CKKSCiphertext<impl DataRef>,
+    b: &CKKSCiphertext<impl DataRef>,
 ) {
     assert_ct_meta(
         label,
@@ -681,14 +679,14 @@ pub fn assert_binary_output_meta(
     );
 }
 
-pub fn assert_mul_ct_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+pub fn assert_mul_ct_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().min(b.log_decimal());
     let log_decimal = a.log_decimal().max(b.log_decimal());
     let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
     assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);
 }
 
-pub fn assert_mul_pt_output_meta(label: &str, ct: &GLWE<impl DataRef, CKKS>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+pub fn assert_mul_pt_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_hom_rem = a.log_hom_rem() - a.log_decimal().min(b.log_decimal());
     let log_decimal = a.log_decimal().max(b.log_decimal());
     let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());

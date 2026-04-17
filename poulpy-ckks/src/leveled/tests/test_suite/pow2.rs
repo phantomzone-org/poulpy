@@ -37,7 +37,9 @@ pub fn test_mul_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ct_res.mul_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
+        .unwrap();
     assert_unary_output_meta("mul_pow2", &ct_res, &ct);
     ctx.assert_decrypt_precision("mul_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -48,7 +50,9 @@ pub fn test_mul_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ct_res.mul_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
+        .unwrap();
     assert_unary_output_meta("mul_pow2 smaller_output", &ct_res, &ct);
     ctx.assert_decrypt_precision("mul_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -60,7 +64,9 @@ pub fn test_mul_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    ct.mul_pow2_inplace(&ctx.module, SHIFT_BITS, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pow2_inplace(&mut ct, SHIFT_BITS, scratch.borrow())
+        .unwrap();
     assert_ct_meta("mul_pow2_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("mul_pow2_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -73,7 +79,9 @@ pub fn test_div_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ct_res.div_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_div_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
+        .unwrap();
     assert_ct_meta("div_pow2", &ct_res, ct.log_decimal(), ct.log_hom_rem() - SHIFT_BITS);
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -84,7 +92,9 @@ pub fn test_div_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ct_res.div_pow2(&ctx.module, &ct, SHIFT_BITS, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_div_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
+        .unwrap();
     let offset = ct.effective_k().saturating_sub(ct_res.max_k().as_usize());
     assert_ct_meta(
         "div_pow2 smaller_output",
@@ -102,7 +112,7 @@ pub fn test_div_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem() - SHIFT_BITS;
-    ct.div_pow2_inplace(SHIFT_BITS).unwrap();
+    ctx.module.ckks_div_pow2_inplace(&mut ct, SHIFT_BITS).unwrap();
     assert_ct_meta("div_pow2_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("div_pow2_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -113,7 +123,7 @@ pub fn test_div_pow2_inplace_explicit_error<BE: Backend>(ctx: &TestContext<BE>) 
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let available_log_hom_rem = ct.log_hom_rem();
     let required_bits = available_log_hom_rem + 1;
-    let err = ct.div_pow2_inplace(required_bits).unwrap_err();
+    let err = ctx.module.ckks_div_pow2_inplace(&mut ct, required_bits).unwrap_err();
     assert_ckks_error(
         "div_pow2_inplace_explicit_error",
         &err,

@@ -4,95 +4,97 @@
 //! the rotation amount. The public API is expressed in terms of the slot
 //! shift `k`, and the provided key store is indexed by that same shift.
 
-use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
+use crate::{
+    CKKSInfos, checked_log_hom_rem_sub,
+    layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
+};
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToRef, GetGaloisElement},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
 };
-use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-pub trait CKKSRotateOps {
-    fn rotate_tmp_bytes<BE: Backend, C, K>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
+pub trait CKKSRotateOps<BE: Backend> {
+    fn ckks_rotate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
-        Module<BE>: GLWEAutomorphism<BE>;
+        Self: GLWEAutomorphism<BE>;
 
-    /// `self = Rotate(ct, k)` — rotates slots by `k` positions.
-    fn rotate<O, H, K, BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &O,
+    fn ckks_rotate<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         k: i64,
         keys: &H,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        O: GLWEToRef + GLWEInfos + CKKSInfos,
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    /// `self = Rotate(self, k)` — rotates slots by `k` positions in place.
-    fn rotate_inplace<H, K, BE: Backend>(&mut self, module: &Module<BE>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    fn ckks_rotate_inplace<H, K>(&self, dst: &mut CKKSCiphertext<impl DataMut>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
     where
-        Module<BE>: GLWEAutomorphism<BE>,
+        Self: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<D: DataMut> CKKSRotateOps for GLWE<D, CKKS> {
-    fn rotate_tmp_bytes<BE: Backend, C, K>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
+#[doc(hidden)]
+pub trait CKKSRotateOpsDefault<BE: Backend> {
+    fn ckks_rotate_tmp_bytes_default<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
-        Module<BE>: GLWEAutomorphism<BE>,
+        Self: GLWEAutomorphism<BE>,
     {
-        module.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
+        self.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
     }
 
-    /// `self = Rotate(ct, k)` — rotates slots by `k` positions.
-    fn rotate<O, H, K, BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &O,
+    fn ckks_rotate_default<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         k: i64,
         keys: &H,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        O: GLWEToRef + GLWEInfos + CKKSInfos,
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        // TODO: manage case where receiver has smaller k
         let key = keys
             .get_automorphism_key(k)
             .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
 
-        let offset = self.offset_unary(other);
+        let offset = dst.offset_unary(src);
 
         if offset != 0 {
-            module.glwe_lsh(self, other, offset, scratch);
-            module.glwe_automorphism_inplace(self, key, scratch);
+            self.glwe_lsh(dst, src, offset, scratch);
+            self.glwe_automorphism_inplace(dst, key, scratch);
         } else {
-            module.glwe_automorphism(self, other, key, scratch);
+            self.glwe_automorphism(dst, src, key, scratch);
         }
 
-        self.meta = other.meta();
-        self.set_log_hom_rem(checked_log_hom_rem_sub("rotate", self.log_hom_rem(), offset)?)?;
+        dst.meta = src.meta();
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("rotate", dst.log_hom_rem(), offset)?;
         Ok(())
     }
 
-    /// `self = Rotate(self, k)` — rotates slots by `k` positions in place.
-    fn rotate_inplace<H, K, BE: Backend>(&mut self, module: &Module<BE>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
-    where
-        Module<BE>: GLWEAutomorphism<BE>,
+    fn ckks_rotate_inplace_default<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        Self: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -100,6 +102,49 @@ impl<D: DataMut> CKKSRotateOps for GLWE<D, CKKS> {
         let key = keys
             .get_automorphism_key(k)
             .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
-        module.glwe_automorphism_inplace(self, key, scratch);
+        self.glwe_automorphism_inplace(dst, key, scratch);
+    }
+}
+
+impl<BE: Backend> CKKSRotateOpsDefault<BE> for Module<BE> {}
+
+impl<BE: Backend> CKKSRotateOps<BE> for Module<BE>
+where
+    Module<BE>: CKKSRotateOpsDefault<BE>,
+{
+    fn ckks_rotate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
+    where
+        C: GLWEInfos,
+        K: GGLWEInfos,
+        Self: GLWEAutomorphism<BE>,
+    {
+        self.ckks_rotate_tmp_bytes_default(ct_infos, key_infos)
+    }
+
+    fn ckks_rotate<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_rotate_default(dst, src, k, keys, scratch)
+    }
+
+    fn ckks_rotate_inplace<H, K>(&self, dst: &mut CKKSCiphertext<impl DataMut>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        Self: GLWEAutomorphism<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_rotate_inplace_default(dst, k, keys, scratch)
     }
 }

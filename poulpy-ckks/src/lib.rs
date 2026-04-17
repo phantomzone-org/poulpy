@@ -18,20 +18,20 @@
 //!
 //! | Module | Role |
 //! |--------|------|
+//! | [`encoding`] | CKKS encoders/decoders, including slot-wise real/imaginary packing |
 //! | [`layouts`] | CKKS-level data structures: ciphertext, plaintext, prepared plaintext, tensor, and evaluation keys |
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | [`bootstrapping`] | (Planned) CKKS bootstrapping |
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 
+pub mod encoding;
 mod error;
 pub mod layouts;
 pub mod leveled;
-use anyhow::Result;
 pub use error::CKKSCompositionError;
 pub(crate) use error::{
-    checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_log_decimal_fits,
-    ensure_log_hom_rem_fits, ensure_plaintext_alignment,
+    checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_plaintext_alignment,
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -53,9 +53,6 @@ pub trait CKKSInfos {
     fn meta(&self) -> CKKS;
     fn log_decimal(&self) -> usize;
     fn log_hom_rem(&self) -> usize;
-    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()>;
-    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()>;
-
     fn effective_k(&self) -> usize {
         self.log_decimal() + self.log_hom_rem()
     }
@@ -72,15 +69,5 @@ impl CKKSInfos for CKKS {
 
     fn log_hom_rem(&self) -> usize {
         self.log_hom_rem
-    }
-
-    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
-        self.log_decimal = log_decimal;
-        Ok(())
-    }
-
-    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
-        self.log_hom_rem = log_hom_rem;
-        Ok(())
     }
 }

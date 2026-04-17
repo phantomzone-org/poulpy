@@ -1,41 +1,56 @@
 use poulpy_core::{
     ScratchTakeCore,
-    layouts::{GLWEToMut, GLWEToRef, LWEInfos},
+    layouts::{GLWEPlaintextToMut, GLWEPlaintextToRef, GLWEToMut, LWEInfos},
 };
 use poulpy_hal::{
     api::{VecZnxLsh, VecZnxRshAddInto, VecZnxRshSub},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{CKKSInfos, ensure_base2k_match, ensure_plaintext_alignment};
+use crate::{
+    CKKSInfos, ensure_base2k_match, ensure_plaintext_alignment,
+    layouts::{CKKSCiphertext, CKKSPlaintextZnx},
+};
 use anyhow::Result;
 
 pub trait CKKSPlaintextZnxOps<BE: Backend> {
-    fn ckks_add_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_add_pt_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        D: GLWEToMut + LWEInfos + CKKSInfos,
-        S: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshAddInto<BE>;
-    fn ckks_sub_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_sub_pt_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        D: GLWEToMut + LWEInfos + CKKSInfos,
-        S: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshSub<BE>;
-    fn ckks_extract_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_extract_pt_znx(
+        &self,
+        dst: &mut CKKSPlaintextZnx<impl DataMut>,
+        src: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        D: GLWEToMut + LWEInfos + CKKSInfos,
-        S: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxLsh<BE>;
 }
 
 impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
-    fn ckks_add_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_add_pt_znx(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        D: GLWEToMut + LWEInfos + CKKSInfos,
-        S: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshAddInto<BE>,
     {
@@ -46,17 +61,20 @@ impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
             src.log_decimal(),
             src.max_k().as_usize(),
         )?;
-        let dst = &mut dst.to_mut();
-        let src = &src.to_ref();
+        let dst = &mut GLWEToMut::to_mut(dst);
+        let src = &GLWEPlaintextToRef::to_ref(src);
         let base2k: usize = dst.base2k().into();
         self.vec_znx_rsh_add_into(base2k, offset, dst.data_mut(), 0, src.data(), 0, scratch);
         Ok(())
     }
 
-    fn ckks_extract_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_extract_pt_znx(
+        &self,
+        dst: &mut CKKSPlaintextZnx<impl DataMut>,
+        src: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        D: GLWEToMut + LWEInfos + CKKSInfos,
-        S: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxLsh<BE>,
     {
@@ -66,17 +84,20 @@ impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
             dst.log_decimal(),
             dst.max_k().as_usize(),
         )?;
-        let dst = &mut dst.to_mut();
-        let src = &src.to_ref();
+        let dst = &mut GLWEPlaintextToMut::to_mut(dst);
+        let src = &GLWEPlaintextToRef::to_ref(src);
         let base2k: usize = dst.base2k().into();
         self.vec_znx_lsh(base2k, offset, dst.data_mut(), 0, src.data(), 0, scratch);
         Ok(())
     }
 
-    fn ckks_sub_pt_znx<C, P>(&self, ct: &mut C, pt_znx: &P, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_sub_pt_znx(
+        &self,
+        ct: &mut CKKSCiphertext<impl DataMut>,
+        pt_znx: &CKKSPlaintextZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
-        C: GLWEToMut + LWEInfos + CKKSInfos,
-        P: GLWEToRef + LWEInfos + CKKSInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshSub<BE>,
     {
@@ -87,8 +108,8 @@ impl<BE: Backend> CKKSPlaintextZnxOps<BE> for Module<BE> {
             pt_znx.log_decimal(),
             pt_znx.max_k().as_usize(),
         )?;
-        let ct = &mut ct.to_mut();
-        let pt_znx = &pt_znx.to_ref();
+        let ct = &mut GLWEToMut::to_mut(ct);
+        let pt_znx = &GLWEPlaintextToRef::to_ref(pt_znx);
         let base2k: usize = ct.base2k().into();
         self.vec_znx_rsh_sub(base2k, offset, ct.data_mut(), 0, pt_znx.data(), 0, scratch);
         Ok(())

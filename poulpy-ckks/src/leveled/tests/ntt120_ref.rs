@@ -16,16 +16,6 @@ fn encrypt_decrypt() {
 }
 
 #[test]
-fn set_log_decimal_out_of_range_error() {
-    crate::leveled::tests::test_suite::errors::test_set_log_decimal_out_of_range_error(&CTX);
-}
-
-#[test]
-fn set_log_hom_rem_out_of_range_error() {
-    crate::leveled::tests::test_suite::errors::test_set_log_hom_rem_out_of_range_error(&CTX);
-}
-
-#[test]
 fn reallocate_limbs_checked_error() {
     crate::leveled::tests::test_suite::errors::test_reallocate_limbs_checked_error(&CTX);
 }

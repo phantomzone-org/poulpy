@@ -1,32 +1,117 @@
-use std::fmt::Debug;
+use std::{
+    fmt::{self, Debug},
+    ops::{Deref, DerefMut},
+};
 
 use anyhow::Result;
-use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos};
-use poulpy_cpu_ref::fft64::FFTModuleHandle;
-use poulpy_hal::{
-    GALOISGENERATOR,
-    api::ModuleNew,
-    layouts::{Backend, Data, DataMut, DataRef, Module},
+use poulpy_core::layouts::{
+    Base2K, Degree, GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEPlaintextToRef, GLWEToMut, GLWEToRef, LWEInfos, Rank,
+    SetLWEInfos,
 };
-use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef};
+use rand_distr::num_traits::Zero;
 
-use crate::{CKKS, CKKSInfos, ensure_log_decimal_fits, ensure_log_hom_rem_fits};
+use crate::{CKKS, CKKSInfos};
 
 #[derive(Debug, Clone)]
 pub struct CKKSPlaintextRnx<F>(Vec<F>);
 
 /// CKKS plaintext in the ZNX (torus) domain.
-pub type CKKSPlaintextZnx<D> = GLWEPlaintext<D, CKKS>;
-
-pub fn alloc_pt_znx(n: Degree, base2k: Base2K, prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
-    GLWEPlaintext::alloc_with_meta(n, base2k, prec.min_k(base2k), prec)
+pub struct CKKSPlaintextZnx<D: Data> {
+    inner: GLWEPlaintext<D, CKKS>,
 }
 
-pub(crate) fn attach_meta<D: Data>(pt: GLWEPlaintext<D, ()>, meta: CKKS) -> GLWEPlaintext<D, CKKS> {
-    GLWEPlaintext {
-        data: pt.data,
-        base2k: pt.base2k,
-        meta,
+impl<D: Data> CKKSPlaintextZnx<D> {
+    pub(crate) fn from_inner(inner: GLWEPlaintext<D, CKKS>) -> Self {
+        Self { inner }
+    }
+
+    pub(crate) fn from_plaintext_with_meta(pt: GLWEPlaintext<D, ()>, meta: CKKS) -> Self {
+        Self::from_inner(GLWEPlaintext {
+            data: pt.data,
+            base2k: pt.base2k,
+            meta,
+        })
+    }
+}
+
+impl CKKSPlaintextZnx<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, prec: CKKS) -> Self {
+        Self::from_inner(GLWEPlaintext::alloc_with_meta(n, base2k, prec.min_k(base2k), prec))
+    }
+}
+
+pub fn alloc_pt_znx(n: Degree, base2k: Base2K, prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
+    CKKSPlaintextZnx::alloc(n, base2k, prec)
+}
+
+impl<D: Data> Deref for CKKSPlaintextZnx<D> {
+    type Target = GLWEPlaintext<D, CKKS>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<D: Data> DerefMut for CKKSPlaintextZnx<D> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<D: Data> LWEInfos for CKKSPlaintextZnx<D> {
+    fn base2k(&self) -> Base2K {
+        self.inner.base2k()
+    }
+
+    fn size(&self) -> usize {
+        self.inner.size()
+    }
+
+    fn n(&self) -> Degree {
+        self.inner.n()
+    }
+}
+
+impl<D: Data> GLWEInfos for CKKSPlaintextZnx<D> {
+    fn rank(&self) -> Rank {
+        self.inner.rank()
+    }
+}
+
+impl<D: DataRef> GLWEToRef for CKKSPlaintextZnx<D> {
+    fn to_ref(&self) -> GLWE<&[u8]> {
+        GLWEToRef::to_ref(&self.inner)
+    }
+}
+
+impl<D: DataRef> GLWEPlaintextToRef for CKKSPlaintextZnx<D> {
+    fn to_ref(&self) -> GLWEPlaintext<&[u8]> {
+        GLWEPlaintextToRef::to_ref(&self.inner)
+    }
+}
+
+impl<D: DataMut> GLWEToMut for CKKSPlaintextZnx<D> {
+    fn to_mut(&mut self) -> GLWE<&mut [u8]> {
+        GLWEToMut::to_mut(&mut self.inner)
+    }
+}
+
+impl<D: DataMut> GLWEPlaintextToMut for CKKSPlaintextZnx<D> {
+    fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]> {
+        GLWEPlaintextToMut::to_mut(&mut self.inner)
+    }
+}
+
+impl<D: DataMut> SetLWEInfos for CKKSPlaintextZnx<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
+        self.inner.set_base2k(base2k);
+    }
+}
+
+impl<D: DataRef> fmt::Display for CKKSPlaintextZnx<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.inner)
     }
 }
 
@@ -38,101 +123,6 @@ pub trait CKKSPlaintextConversion {
     fn decode_from_znx<BE>(&mut self, other: &CKKSPlaintextZnx<impl DataRef>) -> Result<()>
     where
         BE: Backend;
-}
-
-pub struct Encoder<BE: Backend> {
-    module: Module<BE>,
-    slot_map: Vec<usize>,
-}
-
-impl<BE> Encoder<BE>
-where
-    BE: Backend,
-    BE::ScalarPrep: Float + FloatConst + Debug,
-    Module<BE>: ModuleNew<BE> + FFTModuleHandle<BE::ScalarPrep>,
-{
-    pub fn new(m: usize) -> Result<Self> {
-        anyhow::ensure!(m.is_power_of_two(), "m must be a power of two, got {m}");
-        anyhow::ensure!(m > 0, "m must be > 0, got {m}");
-        // Returns the FFT-internal position for each user slot.
-        //
-        // User slot `k` has Galois exponent `5^k mod 2N`.  The FFT position
-        // is `bit_reverse((5^k mod 2N − 1) / 2, log₂N)`.  No conjugate
-        // folding is needed because `5 ≡ 1 mod 4` guarantees the result
-        // stays in `[0, m)`.
-        let two_n = 4 * m;
-        let log_n = (2 * m).trailing_zeros();
-        let mut slot_map = Vec::with_capacity(m);
-        let mut exp = 1usize;
-        for _ in 0..m {
-            slot_map.push(((exp - 1) / 2).reverse_bits() >> (usize::BITS - log_n));
-            exp = (exp * GALOISGENERATOR as usize) & (two_n - 1);
-        }
-        Ok(Self {
-            module: Module::<BE>::new((m << 1) as u64),
-            slot_map,
-        })
-    }
-
-    pub fn encode_reim(
-        &self,
-        pt: &mut CKKSPlaintextRnx<BE::ScalarPrep>,
-        re: &[BE::ScalarPrep],
-        im: &[BE::ScalarPrep],
-    ) -> Result<()> {
-        let n = pt.n();
-        let m = n / 2;
-
-        let table = self.module.get_ifft_table();
-
-        anyhow::ensure!(table.m() == m);
-        anyhow::ensure!(re.len() == m);
-        anyhow::ensure!(im.len() == m);
-
-        pt.0.fill(BE::ScalarPrep::zero());
-        for k in 0..m {
-            let idx = self.slot_map[k];
-            pt.0[idx] = re[k];
-            pt.0[m + idx] = im[k];
-        }
-
-        table.execute(&mut pt.0);
-
-        // Normalize by 1/m, matching vec_znx_idft_apply's divisor=m convention.
-        let inv_m = <BE::ScalarPrep as NumCast>::from(m).unwrap().recip();
-        pt.0.iter_mut().for_each(|x| *x = *x * inv_m);
-
-        Ok(())
-    }
-
-    pub fn decode_reim(
-        &self,
-        pt: &CKKSPlaintextRnx<BE::ScalarPrep>,
-        re: &mut [BE::ScalarPrep],
-        im: &mut [BE::ScalarPrep],
-    ) -> Result<()> {
-        let n = pt.n();
-        let m = n / 2;
-
-        let table = self.module.get_fft_table();
-
-        anyhow::ensure!(table.m() == m);
-        anyhow::ensure!(re.len() == m);
-        anyhow::ensure!(im.len() == m);
-
-        let mut reim_tmp = vec![BE::ScalarPrep::zero(); n];
-        reim_tmp.copy_from_slice(&pt.0);
-
-        table.execute(&mut reim_tmp);
-
-        for k in 0..m {
-            let idx = self.slot_map[k];
-            re[k] = reim_tmp[idx];
-            im[k] = reim_tmp[m + idx];
-        }
-
-        Ok(())
-    }
 }
 
 impl<F: Zero + Clone> CKKSPlaintextRnx<F> {
@@ -165,8 +155,8 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
     where
         BE: Backend,
     {
-        let log_decimal = other.meta.log_decimal;
-        let log_hom_rem = other.meta.log_hom_rem;
+        let log_decimal = other.log_decimal();
+        let log_hom_rem = other.log_hom_rem();
         let n = other.n().as_usize();
 
         anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
@@ -193,8 +183,8 @@ impl CKKSPlaintextConversion for CKKSPlaintextRnx<f64> {
     where
         BE: Backend,
     {
-        let log_decimal = other.meta.log_decimal;
-        let log_hom_rem = other.meta.log_hom_rem;
+        let log_decimal = other.log_decimal();
+        let log_hom_rem = other.log_hom_rem();
 
         anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
         anyhow::ensure!(self.0.len() == other.n().as_usize());
@@ -225,17 +215,19 @@ impl<D: Data> CKKSInfos for GLWEPlaintext<D, CKKS> {
     fn log_hom_rem(&self) -> usize {
         self.meta.log_hom_rem
     }
+}
 
-    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
-        ensure_log_decimal_fits(self.max_k().as_usize(), self.log_hom_rem(), log_decimal)?;
-        self.meta.log_decimal = log_decimal;
-        Ok(())
+impl<D: Data> CKKSInfos for CKKSPlaintextZnx<D> {
+    fn meta(&self) -> CKKS {
+        self.inner.meta()
     }
 
-    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
-        ensure_log_hom_rem_fits(self.max_k().as_usize(), self.log_decimal(), log_hom_rem)?;
-        self.meta.log_hom_rem = log_hom_rem;
-        Ok(())
+    fn log_decimal(&self) -> usize {
+        self.inner.log_decimal()
+    }
+
+    fn log_hom_rem(&self) -> usize {
+        self.inner.log_hom_rem()
     }
 }
 
@@ -243,7 +235,7 @@ impl<D: Data> CKKSInfos for GLWEPlaintext<D, CKKS> {
 mod tests {
     use super::*;
     use crate::leveled::operations::pt_znx::CKKSPlaintextZnxOps;
-    use poulpy_cpu_ref::{FFT64Ref, NTT120Ref};
+    use poulpy_cpu_ref::NTT120Ref;
     use poulpy_hal::{
         api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeTmpBytes},
         layouts::{Module, ScratchOwned},
@@ -297,8 +289,8 @@ mod tests {
         );
     }
 
-    // Encode values → CKKSPlaintextZnx → add_to a zero VecZnx →
-    // extract_from → decode, compare.
+    // Encode values into a high-capacity ZNX plaintext, then extract the
+    // bottom-aligned plaintext window and compare.
     #[test]
     fn add_extract_roundtrip() {
         let n = 16usize;
@@ -317,42 +309,20 @@ mod tests {
         // Encode to ZNX.
         let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
         rnx.0.copy_from_slice(&values);
-        let mut pt = alloc_pt_znx(n.into(), base2k.into(), prec);
-        rnx.to_znx::<NTT120Ref>(&mut pt).unwrap();
-
-        let mut dst = alloc_pt_znx(n.into(), base2k.into(), prec);
-
-        // Add the plaintext at the correct offset via module helper.
-        module.ckks_add_pt_znx(&mut dst, &pt, scratch.borrow()).unwrap();
+        let full_prec = CKKS {
+            log_hom_rem: 64,
+            log_decimal: prec.log_decimal,
+        };
+        let mut full_pt = alloc_pt_znx(n.into(), base2k.into(), full_prec);
+        rnx.to_znx::<NTT120Ref>(&mut full_pt).unwrap();
 
         // Extract the bottom-aligned plaintext and decode.
         let mut pt_out = alloc_pt_znx(n.into(), base2k.into(), prec);
-        module.ckks_extract_pt_znx(&mut pt_out, &dst, scratch.borrow()).unwrap();
+        module.ckks_extract_pt_znx(&mut pt_out, &full_pt, scratch.borrow()).unwrap();
+
+        let mut pt = alloc_pt_znx(n.into(), base2k.into(), prec);
+        rnx.to_znx::<NTT120Ref>(&mut pt).unwrap();
 
         assert_eq!(pt.data(), pt_out.data())
-    }
-
-    #[test]
-    fn encode_decode_reim_roundtrip() {
-        let n = 16usize;
-        let m = n / 2;
-
-        let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64)).collect();
-        let im_in: Vec<f64> = (0..m).map(|i| -((i as f64) / (m as f64))).collect();
-
-        let encoder = Encoder::<FFT64Ref>::new(m).unwrap();
-
-        let mut rnx = CKKSPlaintextRnx::<f64>::alloc(n).unwrap();
-        encoder.encode_reim(&mut rnx, &re_in, &im_in).unwrap();
-
-        let mut re_out = vec![0.0f64; m];
-        let mut im_out = vec![0.0f64; m];
-        encoder.decode_reim(&rnx, &mut re_out, &mut im_out).unwrap();
-
-        let err_re = max_err(&re_in, &re_out);
-        let err_im = max_err(&im_in, &im_out);
-        let bound = 1e-10;
-        assert!(err_re < bound, "re max_err={err_re:.2e} exceeds bound={bound:.2e}");
-        assert!(err_im < bound, "im max_err={err_im:.2e} exceeds bound={bound:.2e}");
     }
 }

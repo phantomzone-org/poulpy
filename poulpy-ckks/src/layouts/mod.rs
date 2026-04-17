@@ -7,9 +7,12 @@
 //!
 //! | Type | Role |
 //! |------|------|
-//! | `GLWE<D, CKKS>` | Encrypted CKKS value: GLWE ciphertext + offset / torus-scale metadata |
+//! | `CKKSCiphertext<D>` | Encrypted CKKS value: CKKS wrapper over the core GLWE ciphertext |
+//! | `CKKSPlaintextZnx<D>` | Quantized CKKS plaintext in the torus / ZNX domain |
+//! | `CKKSPlaintextRnx<F>` | Floating-point CKKS plaintext in the RNX domain |
 
 pub mod ciphertext;
 pub mod plaintext;
 
-pub use ciphertext::{CKKSMaintainOps, CKKSRescaleOps};
+pub use ciphertext::{CKKSCiphertext, CKKSMaintainOps};
+pub use plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx};

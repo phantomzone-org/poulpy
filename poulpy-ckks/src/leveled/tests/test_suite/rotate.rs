@@ -28,7 +28,9 @@ pub fn test_rotate_aligned<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
     for &r in rotations {
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct_res = ctx.alloc_ct(ctx.max_k());
-        ct_res.rotate(&ctx.module, &ct, r, ctx.atks(), scratch.borrow()).unwrap();
+        ctx.module
+            .ckks_rotate(&mut ct_res, &ct, r, ctx.atks(), scratch.borrow())
+            .unwrap();
         assert_unary_output_meta(&format!("rotate({r})"), &ct_res, &ct);
         ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
     }
@@ -41,7 +43,9 @@ pub fn test_rotate_smaller_output<BE: Backend>(ctx: &TestContext<BE>, rotations:
     for &r in rotations {
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-        ct_res.rotate(&ctx.module, &ct, r, ctx.atks(), scratch.borrow()).unwrap();
+        ctx.module
+            .ckks_rotate(&mut ct_res, &ct, r, ctx.atks(), scratch.borrow())
+            .unwrap();
         assert_unary_output_meta(&format!("rotate smaller_output({r})"), &ct_res, &ct);
         ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
     }
@@ -57,7 +61,7 @@ pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
         let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
         let expected_log_decimal = ct.log_decimal();
         let expected_log_hom_rem = ct.log_hom_rem();
-        ct.rotate_inplace(&ctx.module, r, ctx.atks(), scratch.borrow());
+        ctx.module.ckks_rotate_inplace(&mut ct, r, ctx.atks(), scratch.borrow());
         assert_ct_meta(
             &format!("rotate_inplace({r})"),
             &ct,

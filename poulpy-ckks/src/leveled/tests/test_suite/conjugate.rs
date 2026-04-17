@@ -29,7 +29,9 @@ pub fn test_conjugate_aligned<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_conjugate();
     let conj_key = ctx.atk(-1);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ct_res.conjugate(&ctx.module, &ct1, conj_key, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_conjugate(&mut ct_res, &ct1, conj_key, scratch.borrow())
+        .unwrap();
     assert_unary_output_meta("conjugate", &ct_res, &ct1);
     ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -41,7 +43,9 @@ pub fn test_conjugate_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
     let (want_re, want_im) = ctx.want_conjugate();
     let conj_key = ctx.atk(-1);
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ct_res.conjugate(&ctx.module, &ct1, conj_key, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_conjugate(&mut ct_res, &ct1, conj_key, scratch.borrow())
+        .unwrap();
     assert_unary_output_meta("conjugate smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
 }
@@ -56,7 +60,7 @@ pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let conj_key = ctx.atk(-1);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    ct.conjugate_inplace(&ctx.module, conj_key, scratch.borrow());
+    ctx.module.ckks_conjugate_inplace(&mut ct, conj_key, scratch.borrow());
     assert_ct_meta("conjugate_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
 }

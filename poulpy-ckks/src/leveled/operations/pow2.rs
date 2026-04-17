@@ -4,94 +4,146 @@
 //! metadata (`log_decimal`, `log_hom_rem`).  The decoded message becomes
 //! `message * 2^bits` (for `mul_pow2`) or `message / 2^bits` (for `div_pow2`).
 
-use crate::{CKKS, CKKSInfos, checked_log_hom_rem_sub, layouts::ciphertext::CKKSOffset};
+use crate::{
+    CKKSInfos, checked_log_hom_rem_sub,
+    layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
+};
 use anyhow::Result;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore, layouts::GLWE};
+use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-pub trait CKKSPow2Ops {
-    fn mul_pow2<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        a: &GLWE<impl DataRef, CKKS>,
+pub trait CKKSPow2Ops<BE: Backend> {
+    fn ckks_mul_pow2(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         bits: usize,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE>,
+        Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn mul_pow2_inplace<BE: Backend>(&mut self, module: &Module<BE>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_mul_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE>,
+        Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn div_pow2<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        a: &GLWE<impl DataRef, CKKS>,
+    fn ckks_div_pow2(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         bits: usize,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE> + GLWECopy,
+        Self: GLWEShift<BE> + GLWECopy,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn div_pow2_inplace(&mut self, bits: usize) -> Result<()>;
+    fn ckks_div_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()>;
 }
 
-impl<D: DataMut> CKKSPow2Ops for GLWE<D, CKKS> {
-    /// Out-of-place: `self = a * 2^bits` (left-shift the GLWE payload).
-    fn mul_pow2<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &GLWE<impl DataRef, CKKS>,
+#[doc(hidden)]
+pub trait CKKSPow2OpsDefault<BE: Backend> {
+    fn ckks_mul_pow2_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
         bits: usize,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE>,
+        Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let offset = self.offset_unary(other);
-        module.glwe_lsh(self, other, bits + offset, scratch);
-        self.meta = other.meta();
-        self.set_log_hom_rem(checked_log_hom_rem_sub("mul_pow2", self.log_hom_rem(), offset)?)?;
+        let offset = dst.offset_unary(src);
+        self.glwe_lsh(dst, src, bits + offset, scratch);
+        dst.meta = src.meta();
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("mul_pow2", dst.log_hom_rem(), offset)?;
         Ok(())
     }
 
-    /// In-place: `self *= 2^bits` (left-shift the GLWE payload).
-    fn mul_pow2_inplace<BE: Backend>(&mut self, module: &Module<BE>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
-    where
-        Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_lsh_inplace(self, bits, scratch);
-        Ok(())
-    }
-
-    /// Out-of-place: `self = a / 2^bits` (right-shift the GLWE payload).
-    fn div_pow2<BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        other: &GLWE<impl DataRef, CKKS>,
+    fn ckks_mul_pow2_inplace_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
         bits: usize,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE> + GLWECopy,
+        Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let offset = self.offset_unary(other);
-        module.glwe_lsh(self, other, offset, scratch);
-        self.meta = other.meta();
-        self.set_log_hom_rem(checked_log_hom_rem_sub("div_pow2", self.log_hom_rem(), bits + offset)?)?;
+        self.glwe_lsh_inplace(dst, bits, scratch);
         Ok(())
     }
 
-    /// In-place: `self /= 2^bits`.
-    fn div_pow2_inplace(&mut self, bits: usize) -> Result<()> {
-        self.set_log_hom_rem(checked_log_hom_rem_sub("div_pow2_inplace", self.log_hom_rem(), bits)?)?;
+    fn ckks_div_pow2_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
+        bits: usize,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEShift<BE> + GLWECopy,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let offset = dst.offset_unary(src);
+        self.glwe_lsh(dst, src, offset, scratch);
+        dst.meta = src.meta();
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("div_pow2", dst.log_hom_rem(), bits + offset)?;
         Ok(())
+    }
+
+    fn ckks_div_pow2_inplace_default(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("div_pow2_inplace", dst.log_hom_rem(), bits)?;
+        Ok(())
+    }
+}
+
+impl<BE: Backend> CKKSPow2OpsDefault<BE> for Module<BE> {}
+
+impl<BE: Backend> CKKSPow2Ops<BE> for Module<BE>
+where
+    Module<BE>: CKKSPow2OpsDefault<BE>,
+{
+    fn ckks_mul_pow2(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
+        bits: usize,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_pow2_default(dst, src, bits, scratch)
+    }
+
+    fn ckks_mul_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    where
+        Self: GLWEShift<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_mul_pow2_inplace_default(dst, bits, scratch)
+    }
+
+    fn ckks_div_pow2(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        src: &CKKSCiphertext<impl DataRef>,
+        bits: usize,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEShift<BE> + GLWECopy,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.ckks_div_pow2_default(dst, src, bits, scratch)
+    }
+
+    fn ckks_div_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
+        self.ckks_div_pow2_inplace_default(dst, bits)
     }
 }

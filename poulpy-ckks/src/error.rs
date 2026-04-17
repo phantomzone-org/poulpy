@@ -4,16 +4,6 @@ use anyhow::Result;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CKKSCompositionError {
-    LogDecimalOutOfRange {
-        max_k: usize,
-        log_hom_rem: usize,
-        requested_log_decimal: usize,
-    },
-    LogHomRemOutOfRange {
-        max_k: usize,
-        log_decimal: usize,
-        requested_log_hom_rem: usize,
-    },
     LimbReallocationShrinksBelowMetadata {
         max_k: usize,
         log_decimal: usize,
@@ -48,28 +38,6 @@ pub enum CKKSCompositionError {
 impl fmt::Display for CKKSCompositionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::LogDecimalOutOfRange {
-                max_k,
-                log_hom_rem,
-                requested_log_decimal,
-            } => {
-                let available = max_k.saturating_sub(*log_hom_rem);
-                write!(
-                    f,
-                    "cannot set log_decimal to {requested_log_decimal}: max_k - log_hom_rem = {available} (max_k={max_k}, log_hom_rem={log_hom_rem})"
-                )
-            }
-            Self::LogHomRemOutOfRange {
-                max_k,
-                log_decimal,
-                requested_log_hom_rem,
-            } => {
-                let available = max_k.saturating_sub(*log_decimal);
-                write!(
-                    f,
-                    "cannot set log_hom_rem to {requested_log_hom_rem}: max_k - log_decimal = {available} (max_k={max_k}, log_decimal={log_decimal})"
-                )
-            }
             Self::LimbReallocationShrinksBelowMetadata {
                 max_k,
                 log_decimal,
@@ -124,30 +92,6 @@ impl fmt::Display for CKKSCompositionError {
 }
 
 impl Error for CKKSCompositionError {}
-
-pub(crate) fn ensure_log_decimal_fits(max_k: usize, log_hom_rem: usize, requested_log_decimal: usize) -> Result<()> {
-    if max_k.saturating_sub(log_hom_rem) < requested_log_decimal {
-        return Err(CKKSCompositionError::LogDecimalOutOfRange {
-            max_k,
-            log_hom_rem,
-            requested_log_decimal,
-        }
-        .into());
-    }
-    Ok(())
-}
-
-pub(crate) fn ensure_log_hom_rem_fits(max_k: usize, log_decimal: usize, requested_log_hom_rem: usize) -> Result<()> {
-    if max_k.saturating_sub(log_decimal) < requested_log_hom_rem {
-        return Err(CKKSCompositionError::LogHomRemOutOfRange {
-            max_k,
-            log_decimal,
-            requested_log_hom_rem,
-        }
-        .into());
-    }
-    Ok(())
-}
 
 pub(crate) fn ensure_limb_count_fits(max_k: usize, log_decimal: usize, base2k: usize, requested_limbs: usize) -> Result<()> {
     if max_k.saturating_sub(log_decimal) < requested_limbs * base2k {
