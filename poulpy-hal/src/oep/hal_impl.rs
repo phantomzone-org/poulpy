@@ -694,6 +694,48 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         A: crate::layouts::CnvPVecLToRef<BE>,
         B: crate::layouts::CnvPVecRToRef<BE>;
 
+    /// Fused rank-1 tensor convolution: emit both diagonals and the pairwise
+    /// cross-term in one sweep over `a_prep` / `b_prep`.
+    ///
+    /// The default implementation preserves behaviour by calling the three
+    /// sequential methods above; IFMA-style backends override it with a
+    /// single-pass kernel that halves the prep-data read traffic.
+    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res_size: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize {
+        let s_diag = <Self as HalImpl<BE>>::cnv_apply_dft_tmp_bytes(module, cnv_offset, res_size, a_size, b_size);
+        let s_pair = <Self as HalImpl<BE>>::cnv_pairwise_apply_dft_tmp_bytes(module, cnv_offset, res_size, a_size, b_size);
+        s_diag.max(s_pair)
+    }
+
+    /// Default impl = three sequential sub-convolutions, same semantics as
+    /// the two current callers in `glwe_tensor_apply`.
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_tensor_r1_fused_apply_dft<R0, R1, RP, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res_diag_0: &mut R0,
+        res_diag_1: &mut R1,
+        res_pair: &mut RP,
+        a: &A,
+        b: &B,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R0: crate::layouts::VecZnxDftToMut<BE>,
+        R1: crate::layouts::VecZnxDftToMut<BE>,
+        RP: crate::layouts::VecZnxDftToMut<BE>,
+        A: crate::layouts::CnvPVecLToRef<BE>,
+        B: crate::layouts::CnvPVecRToRef<BE>,
+    {
+        <Self as HalImpl<BE>>::cnv_apply_dft(module, cnv_offset, res_diag_0, 0, a, 0, b, 0, scratch);
+        <Self as HalImpl<BE>>::cnv_apply_dft(module, cnv_offset, res_diag_1, 0, a, 1, b, 1, scratch);
+        <Self as HalImpl<BE>>::cnv_pairwise_apply_dft(module, cnv_offset, res_pair, 0, a, b, 0, 1, scratch);
+    }
+
     fn cnv_prepare_self_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 
     fn cnv_prepare_self<L, R, A>(module: &Module<BE>, left: &mut L, right: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)

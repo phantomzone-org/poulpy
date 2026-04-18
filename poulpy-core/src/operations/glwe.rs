@@ -483,7 +483,17 @@ where
             + lvl_2_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2b: usize = self.bytes_of_vec_znx_dft(1, pairwise_dft_size)
             + lvl_2_pairwise.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
-        let lvl_2: usize = lvl_2a.max(lvl_2b);
+        let mut lvl_2: usize = lvl_2a.max(lvl_2b);
+
+        // Rank-1 fused path needs three res_dft buffers alive at once plus
+        // the fused kernel's scratch and the per-limb normalize scratch.
+        if cols == 2 {
+            let lvl_2_fused_apply: usize =
+                self.cnv_tensor_r1_fused_apply_dft_tmp_bytes(cnv_offset, diag_dft_size, a_size, b_size);
+            let lvl_2_fused: usize = 3 * self.bytes_of_vec_znx_dft(1, diag_dft_size)
+                + lvl_2_fused_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
+            lvl_2 = lvl_2.max(lvl_2_fused);
+        }
 
         lvl_0 + lvl_1.max(lvl_2)
     }
@@ -749,44 +759,84 @@ where
             cnv_offset_lo,
         );
 
-        for i in 0..cols {
-            let col_i: usize = i * cols - (i * (i + 1) / 2);
+        if cols == 2 {
+            // Rank-1 fast path: emit the two diagonals and the (0,1) pairwise
+            // cross-term in a single sweep over `a_prep` / `b_prep`.  The
+            // `Convolution::cnv_tensor_r1_fused_apply_dft` hook dispatches to
+            // the backend's dedicated kernel (IFMA) or to three sequential
+            // sub-convolutions by default.  The observable semantics match
+            // the generic loop below.
+            //
+            // Scratch nesting:
+            //   scratch_2 ── rd0 ── rd1 ── rdp ── tmp (post-all)
+            //                                       └── normalize scratch
+            let (mut rd0, scratch_a) = scratch_2.take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut rd1, scratch_b) = scratch_a.take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut rdp, scratch_c) = scratch_b.take_vec_znx_dft(self, 1, pairwise_dft_size);
 
-            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_3);
-            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_4);
+            self.cnv_tensor_r1_fused_apply_dft(cnv_offset_hi, &mut rd0, &mut rd1, &mut rdp, &a_prep, &b_prep, scratch_c);
 
-            self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
+            // All iDFT+normalize work reuses `scratch_c` (the region after all
+            // three DFT buffers).  We hold the three buffers alive through
+            // this block and consume them one at a time.
+            let (mut tmp, scratch_norm) = scratch_c.take_vec_znx(self.n(), 1, res.size());
 
-            // Pre-subtracts
-            // res[i!=j] = NEG(a[i] * b[i]) + SUB(a[j] * b[j])
-            for j in 0..cols {
-                if j != i {
-                    if j < i {
-                        let col_j = j * cols - (j * (j + 1) / 2);
-                        self.vec_znx_sub_inplace(res.data_mut(), col_j + i, &tmp, 0);
-                    } else {
-                        self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+            // c00 → res[0]; pre-subtract: negate into res[1].
+            let rb0: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd0);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rb0, ab_base2k, 0, scratch_norm);
+            self.vec_znx_copy(res.data_mut(), 0, &tmp, 0);
+            self.vec_znx_negate(res.data_mut(), 1, &tmp, 0);
+
+            // c11 → res[2]; continue pre-subtract into res[1].
+            let rb1: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd1);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rb1, ab_base2k, 0, scratch_norm);
+            self.vec_znx_copy(res.data_mut(), 2, &tmp, 0);
+            self.vec_znx_sub_inplace(res.data_mut(), 1, &tmp, 0);
+
+            // Pairwise → add into res[1]: res[1] = -c00 - c11 + (a0+a1)(b0+b1).
+            let rbp: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rdp);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rbp, ab_base2k, 0, scratch_norm);
+            self.vec_znx_add_assign(res.data_mut(), 1, &tmp, 0);
+        } else {
+            for i in 0..cols {
+                let col_i: usize = i * cols - (i * (i + 1) / 2);
+
+                let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, diag_dft_size);
+                self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_3);
+                let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+                self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_4);
+
+                self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
+
+                // Pre-subtracts
+                // res[i!=j] = NEG(a[i] * b[i]) + SUB(a[j] * b[j])
+                for j in 0..cols {
+                    if j != i {
+                        if j < i {
+                            let col_j = j * cols - (j * (j + 1) / 2);
+                            self.vec_znx_sub_inplace(res.data_mut(), col_j + i, &tmp, 0);
+                        } else {
+                            self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+                        }
                     }
                 }
             }
-        }
 
-        for i in 0..cols {
-            let col_i: usize = i * cols - (i * (i + 1) / 2);
+            for i in 0..cols {
+                let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            for j in i..cols {
-                if j != i {
-                    // res_dft = (a[i] + a[j]) * (b[i] + b[j])
-                    let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, pairwise_dft_size);
-                    self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_3);
-                    let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-                    let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                    self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_3);
+                for j in i..cols {
+                    if j != i {
+                        // res_dft = (a[i] + a[j]) * (b[i] + b[j])
+                        let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, pairwise_dft_size);
+                        self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_3);
+                        let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                        let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+                        self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_3);
 
-                    self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
+                        self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
+                    }
                 }
             }
         }

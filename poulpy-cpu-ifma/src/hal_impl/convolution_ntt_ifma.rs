@@ -97,6 +97,52 @@ macro_rules! hal_impl_convolution_ntt_ifma {
             crate::ntt_ifma::convolution::cnv_pairwise_apply_dft_ifma_tmp_bytes(res_size, a_size, b_size)
         }
 
+        fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
+            _module: &Module<Self>,
+            _cnv_offset: usize,
+            _res_size: usize,
+            a_size: usize,
+            b_size: usize,
+        ) -> usize {
+            crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma_tmp_bytes(a_size, b_size)
+        }
+
+        #[allow(clippy::too_many_arguments)]
+        fn cnv_tensor_r1_fused_apply_dft<R0, R1, RP, A, B>(
+            _module: &Module<Self>,
+            cnv_offset: usize,
+            res_diag_0: &mut R0,
+            res_diag_1: &mut R1,
+            res_pair: &mut RP,
+            a: &A,
+            b: &B,
+            scratch: &mut Scratch<Self>,
+        ) where
+            R0: VecZnxDftToMut<Self>,
+            R1: VecZnxDftToMut<Self>,
+            RP: VecZnxDftToMut<Self>,
+            A: CnvPVecLToRef<Self>,
+            B: CnvPVecRToRef<Self>,
+        {
+            use poulpy_hal::api::TakeSlice;
+            let bytes = crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma_tmp_bytes(
+                a.to_ref().size(),
+                b.to_ref().size(),
+            );
+            let (tmp, _) = scratch.take_slice::<u8>(bytes);
+            unsafe {
+                crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma(
+                    res_diag_0,
+                    res_diag_1,
+                    res_pair,
+                    cnv_offset,
+                    a,
+                    b,
+                    tmp,
+                )
+            }
+        }
+
         #[allow(clippy::too_many_arguments)]
         fn cnv_pairwise_apply_dft<R, A, B>(
             _module: &Module<Self>,

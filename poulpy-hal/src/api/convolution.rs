@@ -139,6 +139,43 @@ pub trait Convolution<BE: Backend> {
         A: CnvPVecLToRef<BE>,
         B: CnvPVecRToRef<BE>;
 
+    /// Returns scratch bytes required for [`cnv_tensor_r1_fused_apply_dft`].
+    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
+        &self,
+        cnv_offset: usize,
+        res_size: usize,
+        a_size: usize,
+        b_size: usize,
+    ) -> usize;
+
+    /// Fused rank-1 tensor convolution — emits both diagonals and the pairwise
+    /// cross-term in a single sweep over `a` / `b`.  Semantics:
+    ///
+    /// ```text
+    /// res_diag_0[k] = Σ_j a[0, j] * b[0, k-j]
+    /// res_diag_1[k] = Σ_j a[1, j] * b[1, k-j]
+    /// res_pair[k]   = Σ_j (a[0, j] + a[1, j]) * (b[0, k-j] + b[1, k-j])
+    /// ```
+    ///
+    /// Backends without a dedicated kernel fall back to three separate
+    /// `cnv_apply_dft` / `cnv_pairwise_apply_dft` calls.
+    #[allow(clippy::too_many_arguments)]
+    fn cnv_tensor_r1_fused_apply_dft<R0, R1, RP, A, B>(
+        &self,
+        cnv_offset: usize,
+        res_diag_0: &mut R0,
+        res_diag_1: &mut R1,
+        res_pair: &mut RP,
+        a: &A,
+        b: &B,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R0: VecZnxDftToMut<BE>,
+        R1: VecZnxDftToMut<BE>,
+        RP: VecZnxDftToMut<BE>,
+        A: CnvPVecLToRef<BE>,
+        B: CnvPVecRToRef<BE>;
+
     /// Returns scratch bytes required for [`cnv_prepare_self`](Convolution::cnv_prepare_self).
     fn cnv_prepare_self_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
 
