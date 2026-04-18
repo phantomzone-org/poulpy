@@ -63,10 +63,10 @@ where
         BE::glwe_tensor_decrypt_tmp_bytes(self, infos)
     }
 
-    fn glwe_tensor_decrypt<R, P, PM, S0, S1>(
+    fn glwe_tensor_decrypt<R, P, S0, S1>(
         &self,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P, PM>,
+        pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,

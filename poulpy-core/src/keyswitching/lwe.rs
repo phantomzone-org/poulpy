@@ -39,8 +39,8 @@ where
             rank: Rank(1),
         };
 
-        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&glwe_a_infos);
-        let lvl_1: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&glwe_res_infos);
+        let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&glwe_a_infos);
+        let lvl_1: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&glwe_res_infos);
         let lvl_2: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
 
         lvl_0 + lvl_1 + lvl_2

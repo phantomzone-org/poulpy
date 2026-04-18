@@ -77,9 +77,9 @@ where
             rank: Rank(1),
         };
 
-        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.max_k(), 1u32.into());
+        let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of(self.n().into(), lwe_infos.base2k(), lwe_infos.max_k(), 1u32.into());
         let lvl_1: usize = self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos);
-        let lvl_2: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(glwe_infos);
+        let lvl_2: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(glwe_infos);
 
         lvl_0 + lvl_1 + lvl_2
     }

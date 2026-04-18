@@ -51,7 +51,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
         let lvl_1_glwe_noise: usize = self.glwe_noise_tmp_bytes(infos);
         let lvl_1_mul: usize = self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1: usize = lvl_1_glwe_noise.max(lvl_1_mul);

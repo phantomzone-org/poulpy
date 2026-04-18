@@ -110,7 +110,7 @@ where
         R: GLWEInfos,
         K: GGSWInfos,
     {
-        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -189,7 +189,7 @@ where
         R: GLWEInfos,
         K: GGSWInfos,
     {
-        self.cmux_tmp_bytes(res_infos, res_infos, k_infos) + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+        self.cmux_tmp_bytes(res_infos, res_infos, k_infos) + GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -37,7 +37,7 @@ where
     where
         A: GGLWEInfos,
     {
-        let lvl_0: usize = GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
         let lvl_1: usize = self.glwe_noise_tmp_bytes(infos);
 
         lvl_0 + lvl_1

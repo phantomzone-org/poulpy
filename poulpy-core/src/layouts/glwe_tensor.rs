@@ -113,7 +113,6 @@ impl<D: DataRef> GLWEToRef for GLWETensor<D> {
         GLWE {
             base2k: self.base2k,
             data: self.data.to_ref(),
-            meta: (),
         }
     }
 }
@@ -123,7 +122,6 @@ impl<D: DataMut> GLWEToMut for GLWETensor<D> {
         GLWE {
             base2k: self.base2k,
             data: self.data.to_mut(),
-            meta: (),
         }
     }
 }
