@@ -29,6 +29,7 @@ pub mod encoding;
 mod error;
 pub mod layouts;
 pub mod leveled;
+pub mod oep;
 pub use error::CKKSCompositionError;
 pub(crate) use error::{checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_plaintext_alignment};
 

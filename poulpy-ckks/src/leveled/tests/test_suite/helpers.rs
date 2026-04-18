@@ -19,6 +19,7 @@ use crate::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
         tmp_bytes::CKKSAllOpsTmpBytes,
     },
+    oep::CKKSImpl,
 };
 use poulpy_core::{
     EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWENegate,
@@ -39,9 +40,9 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub trait TestBackend: Backend + CoreImpl<Self> + HalImpl<Self> {}
+pub trait TestBackend: Backend + CoreImpl<Self> + HalImpl<Self> + CKKSImpl<Self> {}
 
-impl<T> TestBackend for T where T: Backend + CoreImpl<T> + HalImpl<T> {}
+impl<T> TestBackend for T where T: Backend + CoreImpl<T> + HalImpl<T> + CKKSImpl<T> {}
 
 pub trait TestContextBackend: TestBackend
 where

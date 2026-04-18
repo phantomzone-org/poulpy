@@ -4,6 +4,7 @@ use crate::{
     CKKSInfos, checked_log_hom_rem_sub,
     layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
     leveled::operations::pt_znx::CKKSPlaintextZnxOps,
+    oep::CKKSImpl,
 };
 use poulpy_core::{
     EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
@@ -17,7 +18,7 @@ use poulpy_hal::{
 
 use anyhow::Result;
 
-pub trait CKKSEncrypt<BE: Backend> {
+pub trait CKKSEncrypt<BE: Backend + CKKSImpl<BE>> {
     /// Returns the scratch size, in bytes, required by [`Self::ckks_encrypt_sk`].
     ///
     /// The returned size depends on the ciphertext layout and backend.
@@ -63,7 +64,7 @@ pub trait CKKSEncrypt<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<BE: Backend> CKKSEncrypt<BE> for Module<BE>
+impl<BE: Backend + CKKSImpl<BE>> CKKSEncrypt<BE> for Module<BE>
 where
     Self: GLWEEncryptSk<BE> + VecZnxRshAddInto<BE> + VecZnxRshTmpBytes,
 {
@@ -98,7 +99,7 @@ where
     }
 }
 
-pub trait CKKSDecrypt<BE: Backend> {
+pub trait CKKSDecrypt<BE: Backend + CKKSImpl<BE>> {
     /// Returns the scratch size, in bytes, required by [`Self::ckks_decrypt`].
     ///
     /// The returned size includes raw GLWE decryption plus plaintext extraction.
@@ -140,7 +141,7 @@ pub trait CKKSDecrypt<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
-impl<BE: Backend> CKKSDecrypt<BE> for Module<BE>
+impl<BE: Backend + CKKSImpl<BE>> CKKSDecrypt<BE> for Module<BE>
 where
     Self: GLWEDecrypt<BE> + VecZnxLsh<BE> + VecZnxLshTmpBytes + VecZnxRsh<BE> + VecZnxRshTmpBytes,
 {
