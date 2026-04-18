@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos, ZnxZero},
+    layouts::{Data, DataMut, DataRef, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, ZnxInfos, ZnxZero},
     source::Source,
 };
 
@@ -158,25 +158,5 @@ impl<D: DataRef> GLWESecretToRef for GLWESecret<D> {
             data: self.data.to_ref(),
             dist: self.dist,
         }
-    }
-}
-
-impl<D: DataMut> ReaderFrom for GLWESecret<D> {
-    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        match Distribution::read_from(reader) {
-            Ok(dist) => self.dist = dist,
-            Err(e) => return Err(e),
-        }
-        self.data.read_from(reader)
-    }
-}
-
-impl<D: DataRef> WriterTo for GLWESecret<D> {
-    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        match self.dist.write_to(writer) {
-            Ok(()) => {}
-            Err(e) => return Err(e),
-        }
-        self.data.write_to(writer)
     }
 }
