@@ -170,7 +170,7 @@ where
         self.blind_rotation_execute_tmp_bytes(block_size, extension_factor, res_infos, &cbt_infos.brk_infos())
             .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
             .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
-            + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+            + GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
             + GGLWE::bytes_of_from_infos(&gglwe_infos)
     }
 

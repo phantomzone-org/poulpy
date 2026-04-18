@@ -95,7 +95,7 @@ where
     K: GGLWEInfos,
     M: GLWEPackerOps<BE>,
 {
-    GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+    GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
         + module
             .glwe_shift_tmp_bytes()
             .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))

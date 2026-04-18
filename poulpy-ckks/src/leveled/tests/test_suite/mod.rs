@@ -10,7 +10,7 @@ use poulpy_core::{
     layouts::{GLWEAutomorphismKeyLayout, GLWELayout, GLWETensorKeyLayout, Rank},
 };
 
-use crate::CKKS;
+use crate::CKKSMeta;
 
 /// Shared CKKS parameter set for test instantiation.
 #[derive(Clone, Copy)]
@@ -18,7 +18,7 @@ pub struct CKKSTestParams {
     pub n: usize,
     pub base2k: usize,
     pub k: usize,
-    pub prec: CKKS,
+    pub prec: CKKSMeta,
     pub hw: usize,
     pub dsize: usize,
 }
@@ -64,11 +64,11 @@ impl CKKSTestParams {
 }
 
 /// NTT120 parameter set.
-pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
+pub const NTT120_PARAMS_F64: CKKSTestParams = CKKSTestParams {
     n: 256,
     base2k: 52,
-    k: 8 * 52 + 1,
-    prec: CKKS {
+    k: 8 * 40,
+    prec: CKKSMeta {
         log_decimal: 40,
         log_hom_rem: 30,
     },
@@ -76,14 +76,451 @@ pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
     dsize: 1,
 };
 
+/// NTT120 parameter set.
+pub const NTT120_PARAMS_F128: CKKSTestParams = CKKSTestParams {
+    n: 256,
+    base2k: 52,
+    k: 8 * 80,
+    prec: CKKSMeta {
+        log_decimal: 80,
+        log_hom_rem: 30,
+    },
+    hw: 192,
+    dsize: 1,
+};
+
+#[macro_export]
+macro_rules! ckks_backend_test_suite {
+    (
+        mod $modname:ident,
+        backend = $backend:ty,
+        scalar = $scalar:ty,
+        params = $params:expr,
+        rotations = $rotations:expr $(,)?
+    ) => {
+        mod $modname {
+            use std::sync::LazyLock;
+
+            use anyhow::Result;
+
+            use $crate::leveled::tests::test_suite::helpers::TestContext;
+
+            static CTX: LazyLock<TestContext<$backend, $scalar>> = LazyLock::new(|| TestContext::new($params, $rotations));
+
+            macro_rules! run_test {
+                ($name:ident, $path:path) => {
+                    #[test]
+                    fn $name() {
+                        $path(&CTX);
+                    }
+                };
+            }
+
+            macro_rules! run_test_with_arg {
+                ($name:ident, $path:path, $arg:expr) => {
+                    #[test]
+                    fn $name() {
+                        $path(&CTX, $arg);
+                    }
+                };
+            }
+
+            macro_rules! run_test_result {
+                ($name:ident, $path:path) => {
+                    #[test]
+                    fn $name() -> Result<()> {
+                        $path(&CTX)
+                    }
+                };
+            }
+
+            run_test!(
+                encrypt_decrypt,
+                $crate::leveled::tests::test_suite::encryption::test_encrypt_decrypt
+            );
+            run_test!(
+                decrypt_extract_same_meta,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_same_meta
+            );
+            run_test!(
+                decrypt_extract_truncates_log_hom_rem,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_truncates_log_hom_rem
+            );
+            run_test!(
+                decrypt_extract_rsh_for_smaller_log_decimal,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_rsh_for_smaller_log_decimal
+            );
+            run_test!(
+                decrypt_extract_lsh_for_larger_log_decimal,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_lsh_for_larger_log_decimal
+            );
+            run_test!(
+                decrypt_extract_output_hom_rem_too_large,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_output_hom_rem_too_large
+            );
+            run_test!(
+                decrypt_extract_base2k_mismatch_error,
+                $crate::leveled::tests::test_suite::encryption::test_decrypt_extract_base2k_mismatch_error
+            );
+            run_test!(
+                reallocate_limbs_checked_error,
+                $crate::leveled::tests::test_suite::errors::test_reallocate_limbs_checked_error
+            );
+            run_test!(
+                compact_limbs_copy,
+                $crate::leveled::tests::test_suite::errors::test_compact_limbs_copy
+            );
+            run_test!(
+                add_pt_znx_alignment_error,
+                $crate::leveled::tests::test_suite::errors::test_add_pt_znx_alignment_error
+            );
+            run_test!(
+                add_ct_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_ct_aligned
+            );
+            run_test!(
+                add_ct_delta_a_lt_b,
+                $crate::leveled::tests::test_suite::add::test_add_ct_delta_a_lt_b
+            );
+            run_test!(
+                add_ct_delta_a_gt_b,
+                $crate::leveled::tests::test_suite::add::test_add_ct_delta_a_gt_b
+            );
+            run_test!(
+                add_ct_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_ct_delta_log_decimal
+            );
+            run_test!(
+                add_ct_aligned_smaller_output,
+                $crate::leveled::tests::test_suite::add::test_add_ct_aligned_smaller_output
+            );
+            run_test!(
+                add_ct_inplace_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_aligned
+            );
+            run_test!(
+                add_ct_inplace_self_lt,
+                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_lt
+            );
+            run_test!(
+                add_ct_inplace_self_gt,
+                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_gt
+            );
+            run_test!(
+                add_pt_znx_inplace,
+                $crate::leveled::tests::test_suite::add::test_add_pt_znx_inplace
+            );
+            run_test!(
+                add_pt_znx_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_pt_znx_aligned
+            );
+            run_test!(
+                add_pt_znx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_pt_znx_delta_log_decimal
+            );
+            run_test!(
+                add_pt_rnx_inplace,
+                $crate::leveled::tests::test_suite::add::test_add_pt_rnx_inplace
+            );
+            run_test!(
+                add_pt_rnx_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_pt_rnx_aligned
+            );
+            run_test!(
+                add_pt_rnx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_pt_rnx_delta_log_decimal
+            );
+            run_test!(
+                add_const_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_const_aligned
+            );
+            run_test!(
+                add_const_inplace,
+                $crate::leveled::tests::test_suite::add::test_add_const_inplace
+            );
+            run_test!(
+                add_const_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_const_delta_log_decimal
+            );
+            run_test!(
+                add_const_real_only,
+                $crate::leveled::tests::test_suite::add::test_add_const_real_only
+            );
+            run_test!(
+                add_const_znx_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_const_znx_aligned
+            );
+            run_test!(
+                add_pt_znx_smaller_output,
+                $crate::leveled::tests::test_suite::add::test_add_pt_znx_smaller_output
+            );
+            run_test!(
+                add_pt_znx_base2k_mismatch_error,
+                $crate::leveled::tests::test_suite::add::test_add_pt_znx_base2k_mismatch_error
+            );
+            run_test!(
+                add_pt_rnx_smaller_output,
+                $crate::leveled::tests::test_suite::add::test_add_pt_rnx_smaller_output
+            );
+            run_test!(
+                sub_ct_aligned,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_aligned
+            );
+            run_test!(
+                sub_ct_delta_a_lt_b,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_delta_a_lt_b
+            );
+            run_test!(
+                sub_ct_delta_a_gt_b,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_delta_a_gt_b
+            );
+            run_test!(
+                sub_ct_delta_log_decimal,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_delta_log_decimal
+            );
+            run_test!(
+                sub_ct_smaller_output,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_smaller_output
+            );
+            run_test!(
+                sub_ct_inplace_aligned,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_aligned
+            );
+            run_test!(
+                sub_ct_inplace_self_lt,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_lt
+            );
+            run_test!(
+                sub_ct_inplace_self_gt,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_gt
+            );
+            run_test!(
+                sub_pt_znx_inplace,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_znx_inplace
+            );
+            run_test!(sub_pt_znx, $crate::leveled::tests::test_suite::sub::test_sub_pt_znx);
+            run_test!(
+                sub_pt_znx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_znx_delta_log_decimal
+            );
+            run_test!(
+                sub_pt_rnx_inplace,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_inplace
+            );
+            run_test!(sub_pt_rnx, $crate::leveled::tests::test_suite::sub::test_sub_pt_rnx);
+            run_test!(
+                sub_pt_rnx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_delta_log_decimal
+            );
+            run_test!(
+                sub_pt_znx_smaller_output,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_znx_smaller_output
+            );
+            run_test!(
+                sub_pt_rnx_smaller_output,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_rnx_smaller_output
+            );
+            run_test!(
+                sub_const_znx_aligned,
+                $crate::leveled::tests::test_suite::sub::test_sub_const_znx_aligned
+            );
+            run_test_result!(neg, $crate::leveled::tests::test_suite::neg::test_neg_aligned);
+            run_test_result!(
+                neg_smaller_output,
+                $crate::leveled::tests::test_suite::neg::test_neg_smaller_output
+            );
+            run_test!(neg_inplace, $crate::leveled::tests::test_suite::neg::test_neg_inplace);
+            run_test!(
+                conjugate_aligned,
+                $crate::leveled::tests::test_suite::conjugate::test_conjugate_aligned
+            );
+            run_test!(
+                conjugate_smaller_output,
+                $crate::leveled::tests::test_suite::conjugate::test_conjugate_smaller_output
+            );
+            run_test!(
+                conjugate_inplace,
+                $crate::leveled::tests::test_suite::conjugate::test_conjugate_inplace
+            );
+            run_test_with_arg!(
+                rotate_aligned,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_aligned,
+                $rotations
+            );
+            run_test_with_arg!(
+                rotate_smaller_output,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_smaller_output,
+                $rotations
+            );
+            run_test_with_arg!(
+                rotate_inplace,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_inplace,
+                $rotations
+            );
+            run_test!(
+                mul_ct_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_aligned
+            );
+            run_test!(
+                mul_ct_delta_a_gt_b,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_gt_b
+            );
+            run_test!(
+                mul_ct_delta_a_lt_b,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_delta_a_lt_b
+            );
+            run_test!(
+                mul_ct_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_delta_log_decimal
+            );
+            run_test!(
+                mul_ct_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_smaller_output
+            );
+            run_test!(
+                mul_ct_inplace_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_aligned
+            );
+            run_test!(
+                mul_ct_inplace_self_lt,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_lt
+            );
+            run_test!(
+                mul_ct_inplace_self_gt,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_gt
+            );
+            run_test!(
+                square_aligned,
+                $crate::leveled::tests::test_suite::mul::test_square_aligned
+            );
+            run_test!(
+                square_rescaled_input,
+                $crate::leveled::tests::test_suite::mul::test_square_rescaled_input
+            );
+            run_test!(
+                square_inplace,
+                $crate::leveled::tests::test_suite::mul::test_square_inplace
+            );
+            run_test!(
+                square_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_square_smaller_output
+            );
+            run_test!(
+                mul_pt_znx_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_znx_aligned
+            );
+            run_test!(
+                mul_pt_znx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_znx_delta_log_decimal
+            );
+            run_test!(
+                mul_pt_znx_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_znx_smaller_output
+            );
+            run_test!(
+                mul_pt_znx_inplace,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_znx_inplace
+            );
+            run_test!(
+                mul_pt_rnx_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_aligned
+            );
+            run_test!(
+                mul_pt_rnx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_delta_log_decimal
+            );
+            run_test!(
+                mul_pt_rnx_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_smaller_output
+            );
+            run_test!(
+                mul_pt_rnx_inplace,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_rnx_inplace
+            );
+            run_test!(
+                mul_const_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_const_aligned
+            );
+            run_test!(
+                mul_const_inplace,
+                $crate::leveled::tests::test_suite::mul::test_mul_const_inplace
+            );
+            run_test!(
+                mul_const_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_const_delta_log_decimal
+            );
+            run_test!(
+                mul_const_real_only,
+                $crate::leveled::tests::test_suite::mul::test_mul_const_real_only
+            );
+            run_test!(
+                mul_const_znx_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_const_znx_aligned
+            );
+            run_test!(
+                mul_ct_explicit_metadata_error,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_explicit_metadata_error
+            );
+            run_test!(
+                mul_pow2_aligned,
+                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_aligned
+            );
+            run_test!(
+                mul_pow2_smaller_output,
+                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_smaller_output
+            );
+            run_test!(
+                mul_pow2_inplace,
+                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_inplace
+            );
+            run_test!(
+                div_pow2_aligned,
+                $crate::leveled::tests::test_suite::pow2::test_div_pow2_aligned
+            );
+            run_test!(
+                div_pow2_smaller_output,
+                $crate::leveled::tests::test_suite::pow2::test_div_pow2_smaller_output
+            );
+            run_test!(
+                div_pow2_inplace,
+                $crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace
+            );
+            run_test!(
+                div_pow2_inplace_explicit_error,
+                $crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace_explicit_error
+            );
+            run_test!(
+                composition_linear_sum,
+                $crate::leveled::tests::test_suite::composition::test_linear_sum
+            );
+            run_test!(
+                composition_poly2_sum,
+                $crate::leveled::tests::test_suite::composition::test_poly2_sum
+            );
+            run_test!(
+                composition_poly2_sum_with_const,
+                $crate::leveled::tests::test_suite::composition::test_poly2_sum_with_const
+            );
+            run_test!(
+                composition_poly2_mul,
+                $crate::leveled::tests::test_suite::composition::test_poly2_mul
+            );
+            run_test!(
+                composition_repeated_square_exhausts_capacity,
+                $crate::leveled::tests::test_suite::composition::test_repeated_square_exhausts_capacity
+            );
+        }
+    };
+}
+
+pub use crate::ckks_backend_test_suite;
+
 pub mod add;
 pub mod composition;
 pub mod conjugate;
 pub mod encryption;
 pub mod errors;
 pub mod helpers;
-//pub mod level;
-//pub mod metadata;
 pub mod mul;
 pub mod neg;
 pub mod pow2;

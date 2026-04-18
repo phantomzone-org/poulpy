@@ -109,7 +109,7 @@ where
         assert_eq!(self.n() as u32, res.n());
         assert_eq!(self.n() as u32, key.n());
 
-        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res);
+        let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(res);
         let lvl_1: usize = self
             .glwe_rotate_tmp_bytes()
             .max(self.glwe_shift_tmp_bytes())

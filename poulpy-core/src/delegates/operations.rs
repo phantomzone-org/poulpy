@@ -64,13 +64,13 @@ where
         BE::glwe_mul_plain_tmp_bytes(self, res, a, b)
     }
 
-    fn glwe_mul_plain<R, A, B, BM>(
+    fn glwe_mul_plain<R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        b: &GLWEPlaintext<B, BM>,
+        b: &GLWEPlaintext<B>,
         b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -81,12 +81,12 @@ where
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     }
 
-    fn glwe_mul_plain_inplace<R, A, AM>(
+    fn glwe_mul_plain_inplace<R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
-        a: &GLWEPlaintext<A, AM>,
+        a: &GLWEPlaintext<A>,
         a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where

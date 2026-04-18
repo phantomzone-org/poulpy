@@ -170,7 +170,6 @@ impl<D: DataRef> GGLWE<D> {
         GLWE {
             base2k: self.base2k,
             data,
-            meta: (),
         }
     }
 }
@@ -179,7 +178,7 @@ impl<D: DataMut> GGLWE<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
-        GLWE { base2k, data, meta: () }
+        GLWE { base2k, data }
     }
 }
 

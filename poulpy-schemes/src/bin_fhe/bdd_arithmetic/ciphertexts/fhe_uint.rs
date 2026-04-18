@@ -155,7 +155,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
             base2k: self.base2k(),
             k: 2_usize.into(),
         };
-        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(&pt_infos) + module.glwe_encrypt_sk_tmp_bytes(self)
+        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&pt_infos) + module.glwe_encrypt_sk_tmp_bytes(self)
     }
 }
 
@@ -230,7 +230,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
             base2k: self.base2k(),
             k: 1_usize.into(),
         };
-        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(&pt_infos) + module.glwe_decrypt_tmp_bytes(self)
+        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&pt_infos) + module.glwe_decrypt_tmp_bytes(self)
     }
 }
 

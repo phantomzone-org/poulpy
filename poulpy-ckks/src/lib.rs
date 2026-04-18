@@ -18,51 +18,63 @@
 //!
 //! | Module | Role |
 //! |--------|------|
+//! | [`encoding`] | CKKS encoders/decoders, including slot-wise real/imaginary packing |
 //! | [`layouts`] | CKKS-level data structures: ciphertext, plaintext, prepared plaintext, tensor, and evaluation keys |
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | [`bootstrapping`] | (Planned) CKKS bootstrapping |
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 
+pub mod encoding;
 mod error;
 pub mod layouts;
 pub mod leveled;
-use anyhow::Result;
 pub use error::CKKSCompositionError;
-pub(crate) use error::{
-    checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_log_decimal_fits,
-    ensure_log_hom_rem_fits, ensure_plaintext_alignment,
-};
+pub(crate) use error::{checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_plaintext_alignment};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct CKKS {
+/// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
+///
+/// `log_decimal` is the scaling precision of the encoded value and
+/// `log_hom_rem` is the remaining homomorphic headroom available before the
+/// value must be rescaled or truncated.
+pub struct CKKSMeta {
     /// Base 2 logarithm of the decimal precision.
     pub log_decimal: usize,
     /// Base 2 logarithm of the Remaining homomorphic capacity.
     pub log_hom_rem: usize,
 }
 
-impl CKKS {
-    /// Returns the next multiple of [Base2K] greater than [Self::log_decimal] + [Self::log_hom_rem].
-    pub fn min_k(&self, base2k: Base2K) -> TorusPrecision {
-        ((self.log_decimal + self.log_hom_rem).next_multiple_of(base2k.as_usize())).into()
-    }
-}
-
+/// Common metadata accessors for CKKS ciphertext and plaintext containers.
+///
+/// This trait exposes the semantic precision of a value independently from the
+/// raw limb storage used by the underlying torus representation.
 pub trait CKKSInfos {
-    fn meta(&self) -> CKKS;
-    fn log_decimal(&self) -> usize;
-    fn log_hom_rem(&self) -> usize;
-    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()>;
-    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()>;
+    /// Returns the complete metadata pair.
+    fn meta(&self) -> CKKSMeta;
 
+    /// Returns the base-2 logarithm of the encoded decimal scaling factor.
+    fn log_decimal(&self) -> usize;
+
+    /// Returns the base-2 logarithm of the remaining homomorphic capacity.
+    fn log_hom_rem(&self) -> usize;
+
+    /// Returns the next multiple of [Base2K] greater than [Self::log_decimal] + [Self::log_hom_rem].
+    fn min_k(&self, base2k: Base2K) -> TorusPrecision {
+        ((self.log_decimal() + self.log_hom_rem()).next_multiple_of(base2k.as_usize())).into()
+    }
+
+    /// Returns the semantic torus width carried by the value.
+    ///
+    /// This is `log_decimal + log_hom_rem` and may differ from the rounded
+    /// storage capacity `max_k()`.
     fn effective_k(&self) -> usize {
         self.log_decimal() + self.log_hom_rem()
     }
 }
 
-impl CKKSInfos for CKKS {
-    fn meta(&self) -> CKKS {
+impl CKKSInfos for CKKSMeta {
+    fn meta(&self) -> CKKSMeta {
         *self
     }
 
@@ -72,15 +84,5 @@ impl CKKSInfos for CKKS {
 
     fn log_hom_rem(&self) -> usize {
         self.log_hom_rem
-    }
-
-    fn set_log_decimal(&mut self, log_decimal: usize) -> Result<()> {
-        self.log_decimal = log_decimal;
-        Ok(())
-    }
-
-    fn set_log_hom_rem(&mut self, log_hom_rem: usize) -> Result<()> {
-        self.log_hom_rem = log_hom_rem;
-        Ok(())
     }
 }

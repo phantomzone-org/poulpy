@@ -2,11 +2,11 @@ use std::sync::LazyLock;
 
 use poulpy_cpu_ref::NTTIfmaRef;
 
-use crate::leveled::tests::test_suite::{NTT120_PARAMS, helpers::TestContext};
+use crate::leveled::tests::test_suite::{NTT120_PARAMS_F64, helpers::TestContext};
 
 const ATK_ROTATIONS: &[i64] = &[1, 7];
 
-static CTX: LazyLock<TestContext<NTTIfmaRef>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS, ATK_ROTATIONS));
+static CTX: LazyLock<TestContext<NTTIfmaRef>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS_F64, ATK_ROTATIONS));
 
 use anyhow::Result;
 

@@ -17,33 +17,33 @@
 
 use crate::{CKKSInfos, leveled::operations::neg::CKKSNegOps};
 
-use super::helpers::{TestContext, TestNegBackend as Backend, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{TestContext, TestNegBackend as Backend, TestScalar, assert_ct_meta, assert_unary_output_meta};
 use anyhow::Result;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── negation out-of-place (GLWE<_, CKKS>::neg) ────────────────────────────
 
 /// Negation out-of-place.
-pub fn test_neg_aligned<BE: Backend>(ctx: &TestContext<BE>) -> Result<()> {
+pub fn test_neg_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Result<()> {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_neg();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ct_res.neg(&ctx.module, &ct1, scratch.borrow())?;
+    ctx.module.ckks_neg(&mut ct_res, &ct1, scratch.borrow())?;
     assert_unary_output_meta("neg", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("neg", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("neg", &ct_res, &want_re, &want_im, scratch.borrow());
     Ok(())
 }
 
 /// Negation out-of-place.
-pub fn test_neg_smaller_output<BE: Backend>(ctx: &TestContext<BE>) -> Result<()> {
+pub fn test_neg_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Result<()> {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_neg();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ct_res.neg(&ctx.module, &ct1, scratch.borrow())?;
+    ctx.module.ckks_neg(&mut ct_res, &ct1, scratch.borrow())?;
     assert_unary_output_meta("neg smaller_output", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("neg", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("neg", &ct_res, &want_re, &want_im, scratch.borrow());
 
     Ok(())
 }
@@ -51,13 +51,13 @@ pub fn test_neg_smaller_output<BE: Backend>(ctx: &TestContext<BE>) -> Result<()>
 // ─── negation in-place (GLWE<_, CKKS>::neg_inplace) ────────────────────────
 
 /// Negation in-place.
-pub fn test_neg_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_neg_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_neg();
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    ct.neg_inplace(&ctx.module);
+    ctx.module.ckks_neg_inplace(&mut ct);
     assert_ct_meta("neg_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("neg_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("neg_inplace", &ct, &want_re, &want_im, scratch.borrow());
 }

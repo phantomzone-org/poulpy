@@ -1,90 +1,96 @@
 //! Composition tests: multi-step CKKS evaluation paths that combine primitives.
 
-use super::helpers::{TestCompositionBackend, TestContext, TestVector, assert_ckks_error};
+use super::helpers::{TestCompositionBackend, TestContext, TestScalar, assert_ckks_error};
 use crate::{
-    CKKS, CKKSCompositionError, CKKSInfos,
+    CKKSCompositionError, CKKSInfos,
     leveled::operations::{add::CKKSAddOps, mul::CKKSMulOps},
 };
-use poulpy_core::layouts::GLWE;
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::ScratchOwned,
 };
 
-fn constant_rnx<BE: super::helpers::TestBackend>(
-    ctx: &TestContext<BE>,
+fn constant_rnx<BE: super::helpers::TestBackend, F: TestScalar>(
+    ctx: &TestContext<BE, F>,
     c: (f64, f64),
-) -> crate::layouts::plaintext::CKKSPlaintextRnx<f64> {
+) -> crate::layouts::plaintext::CKKSPlaintextRnx<F> {
     let m = ctx.params.n / 2;
-    ctx.encode_pt_rnx(&vec![c.0; m], &vec![c.1; m])
+    ctx.encode_pt_rnx(&vec![F::from_f64(c.0).unwrap(); m], &vec![F::from_f64(c.1).unwrap(); m])
 }
 
-fn alloc_composition_scratch<BE: TestCompositionBackend>(ctx: &TestContext<BE>) -> ScratchOwned<BE>
+fn alloc_composition_scratch<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE>
 where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     let ct_infos = ctx.params.glwe_layout();
     let prec = ctx.meta();
-    let mul_pt_rnx = GLWE::<Vec<u8>, CKKS>::mul_pt_rnx_tmp_bytes(&ctx.module, &ct_infos, &ct_infos, &prec);
+    let mul_pt_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_rnx))
 }
 
-fn poly2_expected<BE: super::helpers::TestBackend>(
-    ctx: &TestContext<BE>,
+fn poly2_expected<BE: super::helpers::TestBackend, F: TestScalar>(
+    ctx: &TestContext<BE, F>,
     c0: (f64, f64),
     c1: (f64, f64),
     c2: (f64, f64),
-) -> (Vec<f64>, Vec<f64>) {
+) -> (Vec<F>, Vec<F>) {
     let m = ctx.module.n() / 2;
-    let want_re: Vec<f64> = (0..m)
+    let two = F::from_f64(2.0).unwrap();
+    let c0_re = F::from_f64(c0.0).unwrap();
+    let c0_im = F::from_f64(c0.1).unwrap();
+    let c1_re = F::from_f64(c1.0).unwrap();
+    let c1_im = F::from_f64(c1.1).unwrap();
+    let c2_re = F::from_f64(c2.0).unwrap();
+    let c2_im = F::from_f64(c2.1).unwrap();
+    let want_re: Vec<F> = (0..m)
         .map(|j| {
             let x_re = ctx.re1[j];
             let x_im = ctx.im1[j];
             let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c0.0 + c1.0 * x_re - c1.1 * x_im + c2.0 * x2_re - c2.1 * x2_im
+            let x2_im = two * x_re * x_im;
+            c0_re + c1_re * x_re - c1_im * x_im + c2_re * x2_re - c2_im * x2_im
         })
         .collect();
-    let want_im: Vec<f64> = (0..m)
+    let want_im: Vec<F> = (0..m)
         .map(|j| {
             let x_re = ctx.re1[j];
             let x_im = ctx.im1[j];
             let x2_re = x_re * x_re - x_im * x_im;
-            let x2_im = 2.0 * x_re * x_im;
-            c0.1 + c1.0 * x_im + c1.1 * x_re + c2.0 * x2_im + c2.1 * x2_re
+            let x2_im = two * x_re * x_im;
+            c0_im + c1_re * x_im + c1_im * x_re + c2_re * x2_im + c2_im * x2_re
         })
         .collect();
     (want_re, want_im)
 }
 
-fn same_offset_expected<BE: super::helpers::TestBackend>(
-    ctx: &TestContext<BE>,
+fn same_offset_expected<BE: super::helpers::TestBackend, F: TestScalar>(
+    ctx: &TestContext<BE, F>,
     c1: (f64, f64),
     c2: (f64, f64),
-) -> (Vec<f64>, Vec<f64>) {
+) -> (Vec<F>, Vec<F>) {
     let m = ctx.module.n() / 2;
-    let coeff_re = c1.0 + c2.0;
-    let coeff_im = c1.1 + c2.1;
-    let want_re: Vec<f64> = (0..m).map(|j| coeff_re * ctx.re1[j] - coeff_im * ctx.im1[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| coeff_re * ctx.im1[j] + coeff_im * ctx.re1[j]).collect();
+    let coeff_re = F::from_f64(c1.0 + c2.0).unwrap();
+    let coeff_im = F::from_f64(c1.1 + c2.1).unwrap();
+    let want_re: Vec<F> = (0..m).map(|j| coeff_re * ctx.re1[j] - coeff_im * ctx.im1[j]).collect();
+    let want_im: Vec<F> = (0..m).map(|j| coeff_re * ctx.im1[j] + coeff_im * ctx.re1[j]).collect();
     (want_re, want_im)
 }
 
-fn mul_by_y_expected<BE: super::helpers::TestBackend>(
-    ctx: &TestContext<BE>,
+fn mul_by_y_expected<BE: super::helpers::TestBackend, F: TestScalar>(
+    ctx: &TestContext<BE, F>,
     c0: (f64, f64),
     c1: (f64, f64),
     c2: (f64, f64),
-) -> (Vec<f64>, Vec<f64>) {
+) -> (Vec<F>, Vec<F>) {
     let m = ctx.module.n() / 2;
     let (poly_re, poly_im) = poly2_expected(ctx, c0, c1, c2);
-    let want_re: Vec<f64> = (0..m).map(|j| poly_re[j] * ctx.re2[j] - poly_im[j] * ctx.im2[j]).collect();
-    let want_im: Vec<f64> = (0..m).map(|j| poly_re[j] * ctx.im2[j] + poly_im[j] * ctx.re2[j]).collect();
+    let want_re: Vec<F> = (0..m).map(|j| poly_re[j] * ctx.re2[j] - poly_im[j] * ctx.im2[j]).collect();
+    let want_im: Vec<F> = (0..m).map(|j| poly_re[j] * ctx.im2[j] + poly_im[j] * ctx.re2[j]).collect();
     (want_re, want_im)
 }
 
 /// Adding two plaintext-scaled copies of the same ciphertext stays accurate.
-pub fn test_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+pub fn test_linear_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_composition_scratch(ctx);
 
     let c1 = (0.625, -0.125);
@@ -99,21 +105,25 @@ pub fn test_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     // equal to `x.log_hom_rem()` in these tests.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x.log_hom_rem());
-    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
-    term2.mul_pt_rnx(&ctx.module, &x, &pt2, ctx.meta(), scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term2, &x, &pt2, ctx.meta(), scratch.borrow())
+        .unwrap();
 
     assert_eq!(
         term1.log_hom_rem(),
         term2.log_hom_rem(),
         "linear branches should remain aligned"
     );
-    term1.add_inplace(&ctx.module, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_inplace(&mut term1, &term2, scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, scratch.borrow());
 }
 
 /// A mixed `c1*x + c2*x^2` composition remains decryptable and accurate.
-pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+pub fn test_poly2_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_composition_scratch(ctx);
 
     let c1 = (0.625, -0.125);
@@ -126,15 +136,17 @@ pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     // Likewise, `square` consumes one `log_decimal` chunk, so the post-square
     // effective width is `x.effective_k() - log_decimal == x.log_hom_rem()`.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // These allocations still mean "result effective_k", not "headroom only".
     // The equality with `log_hom_rem()` is specific to these operation chains.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
-    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
-    term2
-        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
 
     assert!(
@@ -142,13 +154,13 @@ pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
         "x^2 branch should consume more precision"
     );
     let mut sum = ctx.alloc_ct(term2.effective_k());
-    sum.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add(&mut sum, &term1, &term2, scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, scratch.borrow());
 }
 
 /// Adding a constant plaintext to `c1*x + c2*x^2` keeps the expected value.
-pub fn test_poly2_sum_with_const<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+pub fn test_poly2_sum_with_const<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_composition_scratch(ctx);
 
     let c0 = (0.125, -0.0625);
@@ -163,26 +175,29 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend>(ctx: &TestContext<B
     // `square` output width matches `x.log_hom_rem()` here only because
     // squaring drops one `log_decimal` chunk from `x.effective_k()`.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // `mul_pt_rnx` again allocates by post-op effective width; using
     // `log_hom_rem()` is a numeric shortcut that holds for this fixture.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
-    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
-    term2
-        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
-    poly.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
-    poly.add_pt_rnx_inplace(&ctx.module, &pt0, ctx.meta(), scratch.borrow())
+    ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
-    ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, scratch.borrow());
 }
 
 /// Evaluates `y * (c0 + c1*x + c2*x^2)` with encrypted `x` and `y`.
-pub fn test_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+pub fn test_poly2_mul<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_composition_scratch(ctx);
 
     let c0 = (0.125, -0.0625);
@@ -198,31 +213,33 @@ pub fn test_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     // Here too, the allocated `k` is the post-square effective width, which
     // happens to equal `x.log_hom_rem()` for CKKS square in this setup.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    x2.square(&ctx.module, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // The same caution applies below: `log_hom_rem()` is not semantically the
     // ciphertext width, it just matches the required post-op width here.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
-    term1.mul_pt_rnx(&ctx.module, &x, &pt1, ctx.meta(), scratch.borrow()).unwrap();
-    term2
-        .mul_pt_rnx(&ctx.module, &x2, &pt2, ctx.meta(), scratch.borrow())
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .unwrap();
+    ctx.module
+        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
-    poly.add(&ctx.module, &term1, &term2, scratch.borrow()).unwrap();
-    poly.add_pt_rnx_inplace(&ctx.module, &pt0, ctx.meta(), scratch.borrow())
+    ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
     let mut res = ctx.alloc_ct(ctx.max_k());
-    res.mul(&ctx.module, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_mul(&mut res, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, scratch.borrow());
 }
 
 /// Repeated squaring on unit-circle slots should exhaust HE capacity before it blows up numerically.
-pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
+pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_composition_scratch(ctx);
-    let (mut want_re, mut want_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let mut squares = 0usize;
 
@@ -231,7 +248,7 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &
         let prev_log_decimal = ct.log_decimal();
         let next_k = ct.effective_k() - ct.log_decimal();
         let mut next = ctx.alloc_ct(next_k);
-        next.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+        ctx.module.ckks_square(&mut next, &ct, ctx.tsk(), scratch.borrow()).unwrap();
         assert_eq!(
             next.log_decimal(),
             prev_log_decimal,
@@ -242,7 +259,6 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &
             prev_log_hom_rem - prev_log_decimal,
             "square should consume exactly one log_decimal chunk of HE capacity",
         );
-        (want_re, want_im) = ctx.want_square_from(&want_re, &want_im);
         ct = next;
         squares += 1;
     }
@@ -252,17 +268,24 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &
         ct.log_hom_rem() < ct.log_decimal(),
         "expected squaring to consume all HE capacity"
     );
-    ctx.assert_decrypt_precision(
-        "repeated_square_exhausts_capacity",
-        &ct,
-        &want_re,
-        &want_im,
-        10.0,
-        scratch.borrow(),
-    );
+    let (got_re, got_im) = ctx.decrypt_decode(&ct, scratch.borrow());
+    for (idx, (re, im)) in got_re.iter().zip(got_im.iter()).enumerate() {
+        assert!(
+            re.is_finite() && im.is_finite(),
+            "repeated_square_exhausts_capacity: non-finite slot at index {idx}: ({re:?}, {im:?})"
+        );
+        let norm = *re * *re + *im * *im;
+        assert!(
+            norm <= F::from_f64(1.25).unwrap(),
+            "repeated_square_exhausts_capacity: slot {idx} escaped unit-circle bound: norm={norm:?}"
+        );
+    }
 
     let mut no_capacity = ctx.alloc_ct(ctx.max_k());
-    let err = no_capacity.square(&ctx.module, &ct, ctx.tsk(), scratch.borrow()).unwrap_err();
+    let err = ctx
+        .module
+        .ckks_square(&mut no_capacity, &ct, ctx.tsk(), scratch.borrow())
+        .unwrap_err();
     assert_ckks_error(
         "repeated_square_exhausts_capacity",
         &err,

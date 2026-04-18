@@ -2,40 +2,40 @@ use std::{error::Error, fmt};
 
 use anyhow::Result;
 
+/// CKKS composition and alignment errors returned by high-level operations.
+///
+/// These errors describe semantic failures such as insufficient precision,
+/// incompatible plaintext/ciphertext layouts, or metadata that cannot fit in
+/// the requested output storage.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CKKSCompositionError {
-    LogDecimalOutOfRange {
-        max_k: usize,
-        log_hom_rem: usize,
-        requested_log_decimal: usize,
-    },
-    LogHomRemOutOfRange {
-        max_k: usize,
-        log_decimal: usize,
-        requested_log_hom_rem: usize,
-    },
+    /// Shrinking a ciphertext buffer would drop required semantic bits.
     LimbReallocationShrinksBelowMetadata {
         max_k: usize,
         log_decimal: usize,
         base2k: usize,
         requested_limbs: usize,
     },
+    /// An operation requires more `log_hom_rem` than is still available.
     InsufficientHomomorphicCapacity {
         op: &'static str,
         available_log_hom_rem: usize,
         required_bits: usize,
     },
+    /// A plaintext and ciphertext use different limb radices.
     PlaintextBase2KMismatch {
         op: &'static str,
         ct_base2k: usize,
         pt_base2k: usize,
     },
+    /// A plaintext cannot be aligned into the requested destination precision.
     PlaintextAlignmentImpossible {
         op: &'static str,
         ct_log_hom_rem: usize,
         pt_log_decimal: usize,
         pt_max_k: usize,
     },
+    /// A multiplication would consume more semantic precision than available.
     MultiplicationPrecisionUnderflow {
         op: &'static str,
         lhs_log_hom_rem: usize,
@@ -48,28 +48,6 @@ pub enum CKKSCompositionError {
 impl fmt::Display for CKKSCompositionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::LogDecimalOutOfRange {
-                max_k,
-                log_hom_rem,
-                requested_log_decimal,
-            } => {
-                let available = max_k.saturating_sub(*log_hom_rem);
-                write!(
-                    f,
-                    "cannot set log_decimal to {requested_log_decimal}: max_k - log_hom_rem = {available} (max_k={max_k}, log_hom_rem={log_hom_rem})"
-                )
-            }
-            Self::LogHomRemOutOfRange {
-                max_k,
-                log_decimal,
-                requested_log_hom_rem,
-            } => {
-                let available = max_k.saturating_sub(*log_decimal);
-                write!(
-                    f,
-                    "cannot set log_hom_rem to {requested_log_hom_rem}: max_k - log_decimal = {available} (max_k={max_k}, log_decimal={log_decimal})"
-                )
-            }
             Self::LimbReallocationShrinksBelowMetadata {
                 max_k,
                 log_decimal,
@@ -77,9 +55,8 @@ impl fmt::Display for CKKSCompositionError {
                 requested_limbs,
             } => write!(
                 f,
-                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext needs at least {} bits to preserve metadata (max_k={max_k}, log_decimal={log_decimal}, base2k={base2k})",
+                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext metadata requires a larger buffer (max_k={max_k}, log_decimal={log_decimal}, base2k={base2k})",
                 requested_limbs * base2k,
-                max_k.saturating_sub(*log_decimal)
             ),
             Self::InsufficientHomomorphicCapacity {
                 op,
@@ -124,43 +101,6 @@ impl fmt::Display for CKKSCompositionError {
 }
 
 impl Error for CKKSCompositionError {}
-
-pub(crate) fn ensure_log_decimal_fits(max_k: usize, log_hom_rem: usize, requested_log_decimal: usize) -> Result<()> {
-    if max_k.saturating_sub(log_hom_rem) < requested_log_decimal {
-        return Err(CKKSCompositionError::LogDecimalOutOfRange {
-            max_k,
-            log_hom_rem,
-            requested_log_decimal,
-        }
-        .into());
-    }
-    Ok(())
-}
-
-pub(crate) fn ensure_log_hom_rem_fits(max_k: usize, log_decimal: usize, requested_log_hom_rem: usize) -> Result<()> {
-    if max_k.saturating_sub(log_decimal) < requested_log_hom_rem {
-        return Err(CKKSCompositionError::LogHomRemOutOfRange {
-            max_k,
-            log_decimal,
-            requested_log_hom_rem,
-        }
-        .into());
-    }
-    Ok(())
-}
-
-pub(crate) fn ensure_limb_count_fits(max_k: usize, log_decimal: usize, base2k: usize, requested_limbs: usize) -> Result<()> {
-    if max_k.saturating_sub(log_decimal) < requested_limbs * base2k {
-        return Err(CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
-            max_k,
-            log_decimal,
-            base2k,
-            requested_limbs,
-        }
-        .into());
-    }
-    Ok(())
-}
 
 pub(crate) fn checked_log_hom_rem_sub(op: &'static str, available_log_hom_rem: usize, required_bits: usize) -> Result<usize> {
     available_log_hom_rem.checked_sub(required_bits).ok_or_else(|| {
@@ -213,7 +153,7 @@ pub(crate) fn checked_mul_ct_log_hom_rem(
 ) -> Result<usize> {
     lhs_log_hom_rem
         .min(rhs_log_hom_rem)
-        .checked_sub(lhs_log_decimal.min(rhs_log_decimal))
+        .checked_sub(lhs_log_decimal.max(rhs_log_decimal))
         .ok_or_else(|| {
             CKKSCompositionError::MultiplicationPrecisionUnderflow {
                 op,
