@@ -12,7 +12,20 @@ use anyhow::Result;
 use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
+/// Multiplication and division of CKKS ciphertexts by powers of two.
+///
+/// These operations act on the torus placement of the ciphertext and update
+/// metadata consistently with the consumed output precision.
 pub trait CKKSPow2Ops<BE: Backend> {
+    /// Returns scratch bytes required by [`Self::ckks_mul_pow2`].
+    fn ckks_mul_pow2_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>;
+
+    /// Computes `dst = src * 2^bits`.
+    ///
+    /// Errors occur if the destination buffer is too small for the aligned
+    /// output metadata.
     fn ckks_mul_pow2(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -24,11 +37,24 @@ pub trait CKKSPow2Ops<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
+    /// Multiplies a ciphertext by `2^bits` in place.
+    ///
+    /// This only shifts the stored torus digits; semantic metadata stays the
+    /// same.
     fn ckks_mul_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
+    /// Returns scratch bytes required by [`Self::ckks_div_pow2`].
+    fn ckks_div_pow2_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>;
+
+    /// Computes `dst = src / 2^bits`.
+    ///
+    /// Errors include `InsufficientHomomorphicCapacity` if the division would
+    /// consume more `log_hom_rem` than available.
     fn ckks_div_pow2(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -40,11 +66,29 @@ pub trait CKKSPow2Ops<BE: Backend> {
         Self: GLWEShift<BE> + GLWECopy,
         Scratch<BE>: ScratchTakeCore<BE>;
 
+    /// Divides a ciphertext by `2^bits` in place by reducing its
+    /// `log_hom_rem`.
+    ///
+    /// Errors include `InsufficientHomomorphicCapacity`.
     fn ckks_div_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()>;
 }
 
 #[doc(hidden)]
 pub trait CKKSPow2OpsDefault<BE: Backend> {
+    fn ckks_mul_pow2_tmp_bytes_default(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.glwe_shift_tmp_bytes()
+    }
+
+    fn ckks_div_pow2_tmp_bytes_default(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.glwe_shift_tmp_bytes()
+    }
+
     fn ckks_mul_pow2_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -107,6 +151,13 @@ impl<BE: Backend> CKKSPow2Ops<BE> for Module<BE>
 where
     Module<BE>: CKKSPow2OpsDefault<BE>,
 {
+    fn ckks_mul_pow2_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.ckks_mul_pow2_tmp_bytes_default()
+    }
+
     fn ckks_mul_pow2(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -127,6 +178,13 @@ where
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.ckks_mul_pow2_inplace_default(dst, bits, scratch)
+    }
+
+    fn ckks_div_pow2_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.ckks_div_pow2_tmp_bytes_default()
     }
 
     fn ckks_div_pow2(

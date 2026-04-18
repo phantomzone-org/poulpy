@@ -11,6 +11,10 @@ use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
 
 use crate::layouts::plaintext::CKKSPlaintextVecRnx;
 
+/// Slot encoder/decoder for CKKS real and imaginary vectors.
+///
+/// The encoder maps `m` complex slots onto an RNX plaintext of size `2m`
+/// through the canonical FFT/IFFT packing used by the rest of the crate.
 pub struct Encoder<BE: Backend> {
     module: Module<BE>,
     slot_map: Vec<usize>,
@@ -22,6 +26,16 @@ where
     BE::ScalarPrep: Float + FloatConst + Debug,
     Module<BE>: ModuleNew<BE> + FFTModuleHandle<BE::ScalarPrep>,
 {
+    /// Creates an encoder for `m` complex CKKS slots.
+    ///
+    /// Inputs:
+    /// - `m`: number of complex slots
+    ///
+    /// Output:
+    /// - an encoder configured for plaintext polynomials of size `2m`
+    ///
+    /// Errors:
+    /// - returns an error if `m == 0` or if `m` is not a power of two
     pub fn new(m: usize) -> Result<Self> {
         anyhow::ensure!(m.is_power_of_two(), "m must be a power of two, got {m}");
         anyhow::ensure!(m > 0, "m must be > 0, got {m}");
@@ -39,6 +53,22 @@ where
         })
     }
 
+    /// Encodes complex slot values into an RNX plaintext buffer.
+    ///
+    /// Inputs:
+    /// - `pt`: destination plaintext polynomial of size `2m`
+    /// - `re`, `im`: real and imaginary slot vectors, each of length `m`
+    ///
+    /// Output:
+    /// - fills `pt` with the packed coefficient representation
+    ///
+    /// Behavior:
+    /// - writes slots according to the internal CKKS slot permutation
+    /// - runs the inverse FFT and normalizes by `1/m`
+    ///
+    /// Errors:
+    /// - returns an error if `pt`, `re`, and `im` do not match the encoder's
+    ///   configured slot count
     pub fn encode_reim(
         &self,
         pt: &mut CKKSPlaintextVecRnx<BE::ScalarPrep>,
@@ -69,6 +99,21 @@ where
         Ok(())
     }
 
+    /// Decodes an RNX plaintext buffer back into complex slot vectors.
+    ///
+    /// Inputs:
+    /// - `pt`: source RNX plaintext polynomial of size `2m`
+    /// - `re`, `im`: output slot buffers of length `m`
+    ///
+    /// Output:
+    /// - fills `re` and `im` with the decoded slot values
+    ///
+    /// Behavior:
+    /// - runs the forward FFT and applies the inverse of the encoder slot map
+    ///
+    /// Errors:
+    /// - returns an error if the provided buffers do not match the encoder's
+    ///   configured slot count
     pub fn decode_reim(
         &self,
         pt: &CKKSPlaintextVecRnx<BE::ScalarPrep>,

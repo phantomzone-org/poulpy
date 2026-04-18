@@ -2,58 +2,73 @@ use anyhow::Result;
 use poulpy_core::layouts::{Base2K, LWEInfos, LWEPlaintext};
 use poulpy_hal::layouts::ZnxView;
 
-use crate::{CKKS, CKKSInfos};
+use crate::{CKKSInfos, CKKSMeta};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Constant CKKS plaintext in RNX form.
+///
+/// The real and imaginary parts are optional to support real-only constants
+/// without allocating an unused complex component.
 pub struct CKKSPlaintextCstRnx<F> {
     re: Option<F>,
     im: Option<F>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Constant CKKS plaintext in ZNX digit form.
 pub struct CKKSPlaintextCstZnx {
     re: Option<Vec<i64>>,
     im: Option<Vec<i64>>,
-    meta: CKKS,
+    meta: CKKSMeta,
 }
 
 impl<F> CKKSPlaintextCstRnx<F> {
+    /// Creates a constant plaintext from optional real and imaginary parts.
     pub fn new(re: Option<F>, im: Option<F>) -> Self {
         Self { re, im }
     }
 
+    /// Returns the real part if present.
     pub fn re(&self) -> Option<&F> {
         self.re.as_ref()
     }
 
+    /// Returns the imaginary part if present.
     pub fn im(&self) -> Option<&F> {
         self.im.as_ref()
     }
 
+    /// Splits the constant into owned real and imaginary parts.
     pub fn into_parts(self) -> (Option<F>, Option<F>) {
         (self.re, self.im)
     }
 }
 
 impl CKKSPlaintextCstZnx {
-    pub fn new(re: Option<Vec<i64>>, im: Option<Vec<i64>>, meta: CKKS) -> Self {
+    /// Creates a quantized constant plaintext from encoded real and imaginary digits.
+    pub fn new(re: Option<Vec<i64>>, im: Option<Vec<i64>>, meta: CKKSMeta) -> Self {
         Self { re, im, meta }
     }
 
+    /// Returns the encoded real part if present.
     pub fn re(&self) -> Option<&[i64]> {
         self.re.as_deref()
     }
 
+    /// Returns the encoded imaginary part if present.
     pub fn im(&self) -> Option<&[i64]> {
         self.im.as_deref()
     }
 
+    /// Splits the constant into owned encoded parts.
     pub fn into_parts(self) -> (Option<Vec<i64>>, Option<Vec<i64>>) {
         (self.re, self.im)
     }
 }
 
+/// Conversion between scalar RNX constants and quantized ZNX constants.
 pub trait CKKSConstPlaintextConversion {
+    /// Maximum supported decimal precision for this conversion implementation.
     const MAX_LOG_DECIMAL_PREC: usize;
 
     /// Encodes a constant RNX plaintext into its default ZNX representation.
@@ -63,7 +78,7 @@ pub trait CKKSConstPlaintextConversion {
     /// `mul_const`, where the constant is consumed through the generic
     /// convolution path and does not need to be pre-aligned to a ciphertext's
     /// current remaining homomorphic capacity.
-    fn to_znx(&self, base2k: Base2K, prec: CKKS) -> Result<CKKSPlaintextCstZnx>;
+    fn to_znx(&self, base2k: Base2K, prec: CKKSMeta) -> Result<CKKSPlaintextCstZnx>;
 
     /// Encodes a constant RNX plaintext into a ZNX representation with an
     /// explicit effective torus precision `k`.
@@ -83,7 +98,7 @@ pub trait CKKSConstPlaintextConversion {
 impl CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<f64> {
     const MAX_LOG_DECIMAL_PREC: usize = 53;
 
-    fn to_znx(&self, base2k: Base2K, prec: CKKS) -> Result<CKKSPlaintextCstZnx> {
+    fn to_znx(&self, base2k: Base2K, prec: CKKSMeta) -> Result<CKKSPlaintextCstZnx> {
         anyhow::ensure!(prec.log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
 
         let k = prec.min_k(base2k).as_usize();
@@ -112,7 +127,7 @@ impl CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<f64> {
         Ok(CKKSPlaintextCstZnx::new(
             re,
             im,
-            CKKS {
+            CKKSMeta {
                 log_decimal,
                 log_hom_rem: k.saturating_sub(log_decimal),
             },
@@ -127,7 +142,7 @@ fn encode_const_coeff_i64(base2k: Base2K, k: usize, value: i64) -> Vec<i64> {
 }
 
 impl CKKSInfos for CKKSPlaintextCstZnx {
-    fn meta(&self) -> CKKS {
+    fn meta(&self) -> CKKSMeta {
         self.meta
     }
 

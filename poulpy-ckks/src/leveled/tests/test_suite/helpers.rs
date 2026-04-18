@@ -8,7 +8,7 @@ use std::{collections::HashMap, f64::consts::TAU};
 
 use super::CKKSTestParams;
 use crate::{
-    CKKS, CKKSCompositionError, CKKSInfos,
+    CKKSCompositionError, CKKSInfos, CKKSMeta,
     encoding::reim::Encoder,
     layouts::{
         CKKSCiphertext,
@@ -17,7 +17,7 @@ use crate::{
     },
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
-        operations::{mul::CKKSMulOps, pt_znx::CKKSPlaintextZnxOps},
+        tmp_bytes::CKKSAllOpsTmpBytes,
     },
 };
 use poulpy_core::{
@@ -33,7 +33,9 @@ use poulpy_core::{
 use poulpy_cpu_ref::FFT64Ref;
 
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRshAddInto, VecZnxRshSub},
+    api::{
+        ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxRshAddInto, VecZnxRshSub,
+    },
     layouts::{Backend, DataRef, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned, ZnxView},
     oep::HalImpl,
     source::Source,
@@ -243,7 +245,7 @@ impl<BE: TestBackend> TestContext<BE> {
         self.params.base2k.into()
     }
 
-    pub fn meta(&self) -> CKKS {
+    pub fn meta(&self) -> CKKSMeta {
         self.params.prec
     }
 
@@ -251,8 +253,8 @@ impl<BE: TestBackend> TestContext<BE> {
         self.params.k
     }
 
-    pub fn precision_at(&self, log_decimal: usize) -> CKKS {
-        CKKS {
+    pub fn precision_at(&self, log_decimal: usize) -> CKKSMeta {
+        CKKSMeta {
             log_decimal,
             log_hom_rem: 0,
         }
@@ -277,13 +279,12 @@ impl<BE: TestContextBackend> TestContext<BE> {
         let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
         module.glwe_secret_prepare(&mut sk, &sk_raw);
 
-        let mut scratch = ScratchOwned::<BE>::alloc(
-            module
-                .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
-                .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
-                .max(module.prepare_tensor_key_tmp_bytes(&tsk_infos))
-                .max(module.glwe_tensor_key_encrypt_sk_tmp_bytes(&tsk_infos)),
-        );
+        let mut scratch = ScratchOwned::<BE>::alloc(module.ckks_all_ops_with_atk_tmp_bytes(
+            &params.glwe_layout(),
+            &tsk_infos,
+            &atk_infos,
+            &params.prec,
+        ));
 
         let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
         module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
@@ -316,14 +317,7 @@ impl<BE: TestContextBackend> TestContext<BE> {
         }
 
         let ct_infos = params.glwe_layout();
-        let scratch_size = module
-            .ckks_encrypt_sk_tmp_bytes(&params.glwe_layout())
-            .max(module.ckks_decrypt_tmp_bytes(&params.glwe_layout()))
-            .max(module.glwe_shift_tmp_bytes())
-            .max(module.ckks_mul_tmp_bytes(&ct_infos, &tsk_infos))
-            .max(module.ckks_mul_const_tmp_bytes(&ct_infos, &ct_infos, &params.prec))
-            .max(module.ckks_square_tmp_bytes(&ct_infos, &tsk_infos))
-            .max(module.glwe_automorphism_tmp_bytes(&ct_infos, &ct_infos, &atk_infos));
+        let scratch_size = module.ckks_all_ops_with_atk_tmp_bytes(&ct_infos, &tsk_infos, &atk_infos, &params.prec);
 
         Self {
             module,
@@ -381,7 +375,7 @@ impl<BE: TestBackend> TestContext<BE> {
         k: usize,
         re: &[f64],
         im: &[f64],
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> CKKSCiphertext<Vec<u8>>
     where
@@ -393,7 +387,7 @@ impl<BE: TestBackend> TestContext<BE> {
         self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
 
         let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
-        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        pt_rnx.to_znx(&mut pt_znx).unwrap();
 
         let mut ct = self.alloc_ct(k);
         let mut xa = Source::new([3u8; 32]);
@@ -412,12 +406,11 @@ impl<BE: TestBackend> TestContext<BE> {
     /// Decrypts and decodes a ciphertext back to complex slot values.
     pub fn decrypt_decode(&self, ct: &CKKSCiphertext<impl DataRef>, scratch: &mut Scratch<BE>) -> (Vec<f64>, Vec<f64>)
     where
-        Module<BE>: CKKSDecrypt<BE>,
+        Module<BE>: CKKSDecrypt<BE> + VecZnxLsh<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), self.precision_at(ct.log_decimal()));
-        let (full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
-        let mut full_pt = CKKSPlaintextZnx::from_plaintext_with_meta(full_pt, ct.meta());
+        let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
         self.module.glwe_decrypt(ct, &mut full_pt, &self.sk, scratch_rest);
         //println!("full_pt: {full_pt}");
         let top_limb_msb_mask = 1u64 << (ct.base2k().as_usize() - 1);
@@ -429,10 +422,85 @@ impl<BE: TestBackend> TestContext<BE> {
                 .all(|&x| (x.unsigned_abs() & top_limb_msb_mask) == 0),
             "invalid decryption, plaintext overflow: {full_pt}"
         );
-        self.module.ckks_extract_pt_znx(&mut pt_znx, &full_pt, scratch_rest).unwrap();
+        let offset = crate::ensure_plaintext_alignment(
+            "test_helper_decrypt_decode",
+            ct.log_hom_rem(),
+            pt_znx.log_decimal(),
+            pt_znx.max_k().as_usize(),
+        )
+        .unwrap();
+        self.module.vec_znx_lsh(
+            pt_znx.base2k().as_usize(),
+            offset,
+            pt_znx.data_mut(),
+            0,
+            full_pt.data(),
+            0,
+            scratch_rest,
+        );
 
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
+        pt_rnx.decode_from_znx(&pt_znx).unwrap();
+
+        let m = self.params.n / 2;
+        let mut re = vec![0.0; m];
+        let mut im = vec![0.0; m];
+        self.encoder.decode_reim(&pt_rnx, &mut re, &mut im).unwrap();
+
+        (re, im)
+    }
+
+    /// Decrypts `ct` into a plaintext buffer allocated with the caller-provided
+    /// metadata.
+    ///
+    /// Inputs:
+    /// - `ct`: ciphertext to decrypt
+    /// - `prec`: destination plaintext metadata used for extraction
+    /// - `scratch`: temporary workspace
+    ///
+    /// Output:
+    /// - returns the extracted CKKS plaintext on success
+    ///
+    /// Behavior:
+    /// - this exercises the real `ckks_decrypt` API rather than the legacy
+    ///   test helper projection used by [`Self::decrypt_decode`]
+    ///
+    /// Errors:
+    /// - propagates any `ckks_decrypt` error, including base2k mismatch and
+    ///   plaintext alignment failures
+    pub fn decrypt_with_prec(
+        &self,
+        ct: &CKKSCiphertext<impl DataRef>,
+        prec: CKKSMeta,
+        scratch: &mut Scratch<BE>,
+    ) -> anyhow::Result<CKKSPlaintextZnx<Vec<u8>>>
+    where
+        Module<BE>: CKKSDecrypt<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), prec);
+        self.module.ckks_decrypt(&mut pt_znx, ct, &self.sk, scratch)?;
+        Ok(pt_znx)
+    }
+
+    /// Decodes a CKKS ZNX plaintext into complex slot vectors.
+    ///
+    /// Inputs:
+    /// - `pt_znx`: plaintext in torus/ZNX form
+    ///
+    /// Output:
+    /// - `(re, im)` slot vectors decoded through the current test encoder
+    ///
+    /// Behavior:
+    /// - converts ZNX to RNX, then decodes RNX into slot-domain real and
+    ///   imaginary vectors
+    ///
+    /// Errors:
+    /// - this helper unwraps internal conversion/decoder results and therefore
+    ///   panics instead of returning an error in tests
+    pub fn decode_pt_znx(&self, pt_znx: &CKKSPlaintextZnx<impl DataRef>) -> (Vec<f64>, Vec<f64>) {
+        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
+        pt_rnx.decode_from_znx(pt_znx).unwrap();
 
         let m = self.params.n / 2;
         let mut re = vec![0.0; m];
@@ -607,17 +675,17 @@ impl<BE: TestBackend> TestContext<BE> {
         self.encode_pt_znx_with_prec(re, im, self.meta())
     }
 
-    pub fn encode_pt_znx_with_prec(&self, re: &[f64], im: &[f64], prec: CKKS) -> CKKSPlaintextZnx<Vec<u8>> {
+    pub fn encode_pt_znx_with_prec(&self, re: &[f64], im: &[f64], prec: CKKSMeta) -> CKKSPlaintextZnx<Vec<u8>> {
         let pt_rnx = self.encode_pt_rnx(re, im);
         let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
-        pt_rnx.to_znx::<BE>(&mut pt_znx).unwrap();
+        pt_rnx.to_znx(&mut pt_znx).unwrap();
         pt_znx
     }
 
-    pub fn quantized_slots(&self, re: &[f64], im: &[f64], prec: CKKS) -> (Vec<f64>, Vec<f64>) {
+    pub fn quantized_slots(&self, re: &[f64], im: &[f64], prec: CKKSMeta) -> (Vec<f64>, Vec<f64>) {
         let pt_znx = self.encode_pt_znx_with_prec(re, im, prec);
         let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx::<BE>(&pt_znx).unwrap();
+        pt_rnx.decode_from_znx(&pt_znx).unwrap();
 
         let m = self.params.n / 2;
         let mut re_out = vec![0.0; m];

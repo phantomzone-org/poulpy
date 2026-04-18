@@ -16,6 +16,36 @@ fn encrypt_decrypt() {
 }
 
 #[test]
+fn decrypt_extract_same_meta() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_same_meta(&CTX);
+}
+
+#[test]
+fn decrypt_extract_truncates_log_hom_rem() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_truncates_log_hom_rem(&CTX);
+}
+
+#[test]
+fn decrypt_extract_rsh_for_smaller_log_decimal() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_rsh_for_smaller_log_decimal(&CTX);
+}
+
+#[test]
+fn decrypt_extract_lsh_for_larger_log_decimal() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_lsh_for_larger_log_decimal(&CTX);
+}
+
+#[test]
+fn decrypt_extract_output_hom_rem_too_large() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_output_hom_rem_too_large(&CTX);
+}
+
+#[test]
+fn decrypt_extract_base2k_mismatch_error() {
+    crate::leveled::tests::test_suite::encryption::test_decrypt_extract_base2k_mismatch_error(&CTX);
+}
+
+#[test]
 fn reallocate_limbs_checked_error() {
     crate::leveled::tests::test_suite::errors::test_reallocate_limbs_checked_error(&CTX);
 }

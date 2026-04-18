@@ -167,8 +167,7 @@ impl GLWE<Vec<u8>> {
     /// * `base2k` -- base-2-log of the limb width.
     /// * `k` -- torus precision.
     /// * `rank` -- number of mask polynomials.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
-    {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         GLWE {
             data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,

@@ -2,30 +2,40 @@ use std::{error::Error, fmt};
 
 use anyhow::Result;
 
+/// CKKS composition and alignment errors returned by high-level operations.
+///
+/// These errors describe semantic failures such as insufficient precision,
+/// incompatible plaintext/ciphertext layouts, or metadata that cannot fit in
+/// the requested output storage.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CKKSCompositionError {
+    /// Shrinking a ciphertext buffer would drop required semantic bits.
     LimbReallocationShrinksBelowMetadata {
         max_k: usize,
         log_decimal: usize,
         base2k: usize,
         requested_limbs: usize,
     },
+    /// An operation requires more `log_hom_rem` than is still available.
     InsufficientHomomorphicCapacity {
         op: &'static str,
         available_log_hom_rem: usize,
         required_bits: usize,
     },
+    /// A plaintext and ciphertext use different limb radices.
     PlaintextBase2KMismatch {
         op: &'static str,
         ct_base2k: usize,
         pt_base2k: usize,
     },
+    /// A plaintext cannot be aligned into the requested destination precision.
     PlaintextAlignmentImpossible {
         op: &'static str,
         ct_log_hom_rem: usize,
         pt_log_decimal: usize,
         pt_max_k: usize,
     },
+    /// A multiplication would consume more semantic precision than available.
     MultiplicationPrecisionUnderflow {
         op: &'static str,
         lhs_log_hom_rem: usize,

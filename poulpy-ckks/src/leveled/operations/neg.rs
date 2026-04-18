@@ -13,7 +13,17 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
+/// CKKS ciphertext negation APIs.
 pub trait CKKSNegOps<BE: Backend> {
+    /// Returns scratch bytes required by [`Self::ckks_neg`].
+    fn ckks_neg_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>;
+
+    /// Computes `dst = -src`.
+    ///
+    /// Errors occur if the destination must be aligned into a smaller buffer
+    /// and that truncation cannot be represented.
     fn ckks_neg(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -24,6 +34,9 @@ pub trait CKKSNegOps<BE: Backend> {
         Self: GLWENegate + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Negates a ciphertext in place.
+    ///
+    /// This preserves metadata.
     fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>)
     where
         Self: GLWENegate;
@@ -31,6 +44,13 @@ pub trait CKKSNegOps<BE: Backend> {
 
 #[doc(hidden)]
 pub trait CKKSNegOpsDefault<BE: Backend> {
+    fn ckks_neg_tmp_bytes_default(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.glwe_shift_tmp_bytes()
+    }
+
     fn ckks_neg_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -68,6 +88,13 @@ impl<BE: Backend> CKKSNegOps<BE> for Module<BE>
 where
     Module<BE>: CKKSNegOpsDefault<BE>,
 {
+    fn ckks_neg_tmp_bytes(&self) -> usize
+    where
+        Self: GLWEShift<BE>,
+    {
+        self.ckks_neg_tmp_bytes_default()
+    }
+
     fn ckks_neg(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,

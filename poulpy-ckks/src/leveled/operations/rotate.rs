@@ -15,13 +15,26 @@ use poulpy_core::{
 };
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
+/// CKKS slot-rotation APIs.
+///
+/// Rotation uses GLWE automorphisms indexed by the user-visible slot shift
+/// `k`.
 pub trait CKKSRotateOps<BE: Backend> {
+    /// Returns scratch bytes required by [`Self::ckks_rotate`].
     fn ckks_rotate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
+    /// Rotates the slots of `src` by `k` positions into `dst`.
+    ///
+    /// Inputs:
+    /// - `keys`: automorphism-key helper indexed by slot rotation amount
+    ///
+    /// Errors:
+    /// - backend automorphism/shift failures
+    /// - panics if the required rotation key is missing from `keys`
     fn ckks_rotate<H, K>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -36,6 +49,9 @@ pub trait CKKSRotateOps<BE: Backend> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
+    /// Rotates the slots of `dst` by `k` positions in place.
+    ///
+    /// Panics if the required rotation key is missing from `keys`.
     fn ckks_rotate_inplace<H, K>(&self, dst: &mut CKKSCiphertext<impl DataMut>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
     where
         Self: GLWEAutomorphism<BE>,

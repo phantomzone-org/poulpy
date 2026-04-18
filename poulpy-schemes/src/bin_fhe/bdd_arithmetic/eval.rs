@@ -166,8 +166,7 @@ where
         R: GLWEInfos,
         G: GGSWInfos,
     {
-        2 * state_size * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
-            + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
+        2 * state_size * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos) + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
     }
 
     fn execute_bdd_circuit_multi_thread<C, G, O>(

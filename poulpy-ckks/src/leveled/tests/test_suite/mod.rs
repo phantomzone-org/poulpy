@@ -10,7 +10,7 @@ use poulpy_core::{
     layouts::{GLWEAutomorphismKeyLayout, GLWELayout, GLWETensorKeyLayout, Rank},
 };
 
-use crate::CKKS;
+use crate::CKKSMeta;
 
 /// Shared CKKS parameter set for test instantiation.
 #[derive(Clone, Copy)]
@@ -18,7 +18,7 @@ pub struct CKKSTestParams {
     pub n: usize,
     pub base2k: usize,
     pub k: usize,
-    pub prec: CKKS,
+    pub prec: CKKSMeta,
     pub hw: usize,
     pub dsize: usize,
 }
@@ -68,7 +68,7 @@ pub const NTT120_PARAMS: CKKSTestParams = CKKSTestParams {
     n: 256,
     base2k: 52,
     k: 8 * 52 + 1,
-    prec: CKKS {
+    prec: CKKSMeta {
         log_decimal: 40,
         log_hom_rem: 30,
     },

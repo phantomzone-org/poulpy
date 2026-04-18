@@ -9,20 +9,27 @@ use anyhow::Result;
 use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision};
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module};
 
-use crate::{CKKS, CKKSInfos, ensure_limb_count_fits};
+use crate::{CKKSInfos, CKKSMeta, ensure_limb_count_fits};
 
+/// CKKS ciphertext storage plus semantic precision metadata.
+///
+/// `inner` contains the raw GLWE torus digits while `meta` describes the
+/// semantic decimal scaling and remaining homomorphic capacity of the value.
 pub struct CKKSCiphertext<D: Data> {
-    inner: GLWE<D, CKKS>,
+    /// Raw GLWE ciphertext storage.
+    pub inner: GLWE<D>,
+    /// Semantic CKKS metadata associated with `inner`.
+    pub meta: CKKSMeta,
 }
 
 impl<D: Data> CKKSCiphertext<D> {
-    pub(crate) fn from_inner(inner: GLWE<D, CKKS>) -> Self {
-        Self { inner }
+    pub(crate) fn from_inner(inner: GLWE<D>, meta: CKKSMeta) -> Self {
+        Self { inner, meta }
     }
 }
 
 impl<D: Data> Deref for CKKSCiphertext<D> {
-    type Target = GLWE<D, CKKS>;
+    type Target = GLWE<D>;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -56,16 +63,16 @@ impl<D: Data> GLWEInfos for CKKSCiphertext<D> {
 }
 
 impl<D: Data> CKKSInfos for CKKSCiphertext<D> {
-    fn meta(&self) -> CKKS {
-        self.inner.meta()
+    fn meta(&self) -> CKKSMeta {
+        self.meta
     }
 
     fn log_decimal(&self) -> usize {
-        self.inner.log_decimal()
+        self.meta.log_decimal()
     }
 
     fn log_hom_rem(&self) -> usize {
-        self.inner.log_hom_rem()
+        self.meta.log_hom_rem()
     }
 }
 
@@ -82,44 +89,74 @@ impl<D: DataMut> GLWEToMut for CKKSCiphertext<D> {
 }
 
 impl CKKSCiphertext<Vec<u8>> {
+    /// Allocates an owned ciphertext buffer with zeroed metadata.
+    ///
+    /// Inputs:
+    /// - `n`: polynomial degree
+    /// - `k`: torus storage precision in bits
+    /// - `base2k`: limb radix
+    ///
+    /// Output:
+    /// - a rank-1 ciphertext buffer ready to be populated by encryption or
+    ///   evaluation code
     pub fn alloc(n: Degree, k: TorusPrecision, base2k: Base2K) -> Self {
-        Self::from_inner(GLWE::alloc_with_meta(n, base2k, k, Rank(1), CKKS::default()))
+        Self::from_inner(GLWE::alloc(n, base2k, k, Rank(1)), CKKSMeta::default())
     }
 
+    /// Allocates an owned ciphertext from an existing GLWE layout descriptor.
+    ///
+    /// Inputs:
+    /// - `infos`: degree, rank, `base2k`, and `max_k` of the target buffer
+    ///
+    /// Output:
+    /// - a fresh ciphertext buffer with default metadata
+    ///
+    /// Errors:
+    /// - propagates allocation/layout errors from the underlying GLWE type
     pub fn alloc_from_infos<A>(infos: &A) -> Result<Self>
     where
         A: GLWEInfos,
     {
-        Ok(Self::from_inner(GLWE::alloc_with_meta(
-            infos.n(),
-            infos.base2k(),
-            infos.max_k(),
-            infos.rank(),
-            CKKS::default(),
-        )))
+        Ok(Self::from_inner(
+            GLWE::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank()),
+            CKKSMeta::default(),
+        ))
     }
 }
 
-impl<D: Data> CKKSInfos for GLWE<D, CKKS> {
-    fn meta(&self) -> CKKS {
-        self.meta
-    }
-
-    fn log_decimal(&self) -> usize {
-        self.meta.log_decimal
-    }
-
-    fn log_hom_rem(&self) -> usize {
-        self.meta.log_hom_rem
-    }
-}
-
+/// Maintenance operations for resizing ciphertext limb storage.
 pub trait CKKSMaintainOps {
-    /// Reallocates the owned backing buffer so capacity matches `size` limb count.
-    /// Fails if dropping limbs would reduce the gap between log_hom_rem and max_k
-    /// below log_decimal.
+    /// Reallocates the owned backing buffer to exactly `size` limbs.
+    ///
+    /// Inputs:
+    /// - `ct`: ciphertext whose owned limb buffer should be resized
+    /// - `size`: requested number of limbs
+    ///
+    /// Output:
+    /// - returns `Ok(())` after resizing `ct`
+    ///
+    /// Behavior:
+    /// - preserves ciphertext metadata
+    /// - rejects shrink operations that would make the buffer too small for the
+    ///   current semantic precision
+    ///
+    /// Errors:
+    /// - `LimbReallocationShrinksBelowMetadata` if the requested limb count
+    ///   cannot represent the current metadata
     fn ckks_reallocate_limbs_checked(&self, ct: &mut CKKSCiphertext<Vec<u8>>, size: usize) -> Result<()>;
-    /// Reallocates the owned backing buffer such that [Self::max_k()] >= [Self::log_decimal()] + [Self::log_hom_rem()].
+
+    /// Shrinks an owned ciphertext buffer to the minimum limb count that still
+    /// preserves its current metadata.
+    ///
+    /// Inputs:
+    /// - `ct`: ciphertext whose limb storage should be compacted
+    ///
+    /// Output:
+    /// - returns `Ok(())` after compacting `ct`
+    ///
+    /// Errors:
+    /// - propagates `ckks_reallocate_limbs_checked` if the computed compact
+    ///   size would violate metadata constraints
     fn ckks_compact_limbs(&self, ct: &mut CKKSCiphertext<Vec<u8>>) -> Result<()>;
 }
 

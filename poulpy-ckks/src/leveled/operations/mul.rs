@@ -1,7 +1,7 @@
 //! CKKS ciphertext multiplication.
 
 use crate::{
-    CKKS, CKKSInfos, checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem,
+    CKKSInfos, CKKSMeta, checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem,
     error::checked_mul_pt_log_hom_rem,
     layouts::{
         CKKSCiphertext,
@@ -24,37 +24,51 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
+/// CKKS multiplication APIs.
+///
+/// This trait covers ciphertext-ciphertext multiplication, squaring, plaintext
+/// multiplication, and constant multiplication in both ZNX and RNX forms.
 pub trait CKKSMulOps<BE: Backend> {
+    /// Returns scratch bytes required by [`Self::ckks_mul`].
     fn ckks_mul_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
         Self: GLWETensoring<BE>;
 
+    /// Returns scratch bytes required by [`Self::ckks_square`].
     fn ckks_square_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
         Self: GLWETensoring<BE>;
 
-    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    /// Returns scratch bytes required by [`Self::ckks_mul_pt_vec_znx`].
+    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulPlain<BE>;
 
-    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    /// Returns scratch bytes required by [`Self::ckks_mul_pt_vec_rnx`].
+    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE>;
 
-    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    /// Returns scratch bytes required by constant-multiplication APIs.
+    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE>;
 
+    /// Computes `dst = a * b`.
+    ///
+    /// This consumes multiplicative precision according to the input metadata
+    /// and may return `MultiplicationPrecisionUnderflow` if the operands do not
+    /// have enough remaining homomorphic capacity.
     fn ckks_mul(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -67,6 +81,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst *= a`.
     fn ckks_mul_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -78,6 +93,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst = a^2`.
     fn ckks_square(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -89,6 +105,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Squares a ciphertext in place.
     fn ckks_square_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -99,6 +116,10 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst = a * pt_znx` for a quantized vector plaintext.
+    ///
+    /// Errors include plaintext alignment failures and multiplication
+    /// precision underflow.
     fn ckks_mul_pt_vec_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -110,6 +131,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst *= pt_znx` for a quantized vector plaintext.
     fn ckks_mul_pt_vec_znx_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -120,12 +142,15 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst = a * pt_rnx` for an RNX plaintext vector.
+    ///
+    /// `prec` controls the RNX-to-ZNX quantization used before multiplication.
     fn ckks_mul_pt_vec_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -133,11 +158,12 @@ pub trait CKKSMulOps<BE: Backend> {
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst *= pt_rnx` for an RNX plaintext vector.
     fn ckks_mul_pt_vec_rnx_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -145,6 +171,7 @@ pub trait CKKSMulOps<BE: Backend> {
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst = a * cst_znx` for a quantized constant.
     fn ckks_mul_pt_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -156,6 +183,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst *= cst_znx` for a quantized constant.
     fn ckks_mul_pt_const_znx_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -166,12 +194,13 @@ pub trait CKKSMulOps<BE: Backend> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
+    /// Computes `dst = a * cst_rnx` for an RNX constant.
     fn ckks_mul_pt_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -179,11 +208,12 @@ pub trait CKKSMulOps<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
+    /// Computes `dst *= cst_rnx` for an RNX constant.
     fn ckks_mul_pt_const_rnx_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -191,6 +221,7 @@ pub trait CKKSMulOps<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
+    /// Alias of [`Self::ckks_mul_pt_const_znx`].
     fn ckks_mul_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -205,6 +236,7 @@ pub trait CKKSMulOps<BE: Backend> {
         self.ckks_mul_pt_const_znx(dst, a, cst_znx, scratch)
     }
 
+    /// Alias of [`Self::ckks_mul_pt_const_znx_inplace`].
     fn ckks_mul_const_znx_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -218,12 +250,13 @@ pub trait CKKSMulOps<BE: Backend> {
         self.ckks_mul_pt_const_znx_inplace(dst, cst_znx, scratch)
     }
 
+    /// Alias of [`Self::ckks_mul_pt_const_rnx`].
     fn ckks_mul_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -234,11 +267,12 @@ pub trait CKKSMulOps<BE: Backend> {
         self.ckks_mul_pt_const_rnx(dst, a, cst_rnx, prec, scratch)
     }
 
+    /// Alias of [`Self::ckks_mul_pt_const_rnx_inplace`].
     fn ckks_mul_const_rnx_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -249,12 +283,13 @@ pub trait CKKSMulOps<BE: Backend> {
         self.ckks_mul_pt_const_rnx_inplace(dst, cst_rnx, prec, scratch)
     }
 
+    /// Alias of [`Self::ckks_mul_pt_const_rnx`].
     fn ckks_mul_const<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -265,11 +300,12 @@ pub trait CKKSMulOps<BE: Backend> {
         self.ckks_mul_pt_const_rnx(dst, a, cst_rnx, prec, scratch)
     }
 
+    /// Alias of [`Self::ckks_mul_pt_const_rnx_inplace`].
     fn ckks_mul_const_inplace<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -476,7 +512,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_vec_znx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_znx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -490,7 +526,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -501,17 +537,17 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
             base2k: res.base2k(),
             k: b.min_k(res.base2k()),
         };
-        GLWEPlaintext::<Vec<u8>, ()>::bytes_of_from_infos(&b_infos) + self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
+        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&b_infos) + self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE>,
     {
         let b_size = b.min_k(res.base2k()).as_usize().div_ceil(res.base2k().as_usize());
-        GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res)
+        GLWE::<Vec<u8>>::bytes_of_from_infos(res)
             + self
                 .glwe_mul_const_tmp_bytes(res, a, b_size)
                 .max(self.glwe_rotate_tmp_bytes())
@@ -580,7 +616,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -595,7 +631,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         });
 
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
-        pt_rnx.to_znx::<BE>(&mut pt_znx)?;
+        pt_rnx.to_znx(&mut pt_znx)?;
         self.ckks_mul_pt_vec_znx_default(dst, a, &pt_znx, scratch_1)
     }
 
@@ -603,7 +639,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -618,7 +654,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         });
 
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
-        pt_rnx.to_znx::<BE>(&mut pt_znx)?;
+        pt_rnx.to_znx(&mut pt_znx)?;
         self.ckks_mul_pt_vec_znx_inplace_default(dst, &pt_znx, scratch_1)
     }
 
@@ -700,7 +736,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -716,7 +752,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -753,7 +789,7 @@ where
         self.ckks_square_tmp_bytes_default(res, tsk)
     }
 
-    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -762,7 +798,7 @@ where
         self.ckks_mul_pt_vec_znx_tmp_bytes_default(res, a, b)
     }
 
-    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -771,7 +807,7 @@ where
         self.ckks_mul_pt_vec_rnx_tmp_bytes_default(res, a, b)
     }
 
-    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKS) -> usize
+    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -868,7 +904,7 @@ where
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -883,7 +919,7 @@ where
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -926,7 +962,7 @@ where
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -941,7 +977,7 @@ where
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKS,
+        prec: CKKSMeta,
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
@@ -993,7 +1029,7 @@ where
     ))
 }
 
-fn get_mul_const_params<R, A>(res: &R, a: &A, prec: CKKS) -> Result<(usize, usize, usize)>
+fn get_mul_const_params<R, A>(res: &R, a: &A, prec: CKKSMeta) -> Result<(usize, usize, usize)>
 where
     R: LWEInfos + CKKSInfos,
     A: LWEInfos + CKKSInfos,

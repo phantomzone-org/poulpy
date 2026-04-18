@@ -15,13 +15,20 @@ use crate::{
     layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
 };
 
+/// CKKS complex-conjugation APIs.
+///
+/// Conjugation is implemented as the automorphism for Galois element `-1`.
 pub trait CKKSConjugateOps<BE: Backend> {
+    /// Returns scratch bytes required by [`Self::ckks_conjugate`].
     fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
         C: GLWEInfos,
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
+    /// Computes the complex conjugate of `src` into `dst`.
+    ///
+    /// Errors include backend automorphism/shift failures.
     fn ckks_conjugate(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
@@ -33,6 +40,7 @@ pub trait CKKSConjugateOps<BE: Backend> {
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
+    /// Applies complex conjugation to a ciphertext in place.
     fn ckks_conjugate_inplace(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
