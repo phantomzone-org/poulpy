@@ -80,9 +80,9 @@ where
         }
 
         let lvl_1: usize = if res_infos.max_k() > a_infos.max_k() {
-            GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
+            GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
         } else {
-            GLWE::<Vec<u8>, ()>::bytes_of_from_infos(a_infos)
+            GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos)
         };
 
         lvl_0 + lvl_1

@@ -326,7 +326,7 @@ where
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
     module.lwe_decrypt(&lwe_ct, &mut lwe_pt, &sk_lwe, scratch.borrow());
 
-    let mut glwe_pt_conv = GLWEPlaintext::<Vec<u8>, ()>::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.max_k());
+    let mut glwe_pt_conv = GLWEPlaintext::<Vec<u8>>::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.max_k());
 
     module.vec_znx_normalize(
         glwe_pt_conv.data_mut(),

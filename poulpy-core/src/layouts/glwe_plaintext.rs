@@ -31,19 +31,18 @@ impl GLWEInfos for GLWEPlaintextLayout {
     }
 }
 
-pub struct GLWEPlaintext<D: Data, M = ()> {
+pub struct GLWEPlaintext<D: Data> {
     pub data: VecZnx<D>,
     pub base2k: Base2K,
-    pub meta: M,
 }
 
-impl<D: DataMut, M> SetLWEInfos for GLWEPlaintext<D, M> {
+impl<D: DataMut> SetLWEInfos for GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
 }
 
-impl<D: Data, M> LWEInfos for GLWEPlaintext<D, M> {
+impl<D: Data> LWEInfos for GLWEPlaintext<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -57,13 +56,13 @@ impl<D: Data, M> LWEInfos for GLWEPlaintext<D, M> {
     }
 }
 
-impl<D: Data, M> GLWEInfos for GLWEPlaintext<D, M> {
+impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32 - 1)
     }
 }
 
-impl<D: DataRef, M> fmt::Display for GLWEPlaintext<D, M> {
+impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -75,7 +74,7 @@ impl<D: DataRef, M> fmt::Display for GLWEPlaintext<D, M> {
     }
 }
 
-impl<M: Default> GLWEPlaintext<Vec<u8>, M> {
+impl GLWEPlaintext<Vec<u8>> {
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GLWEInfos,
@@ -87,17 +86,15 @@ impl<M: Default> GLWEPlaintext<Vec<u8>, M> {
         GLWEPlaintext {
             data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
-            meta: M::default(),
         }
     }
 }
 
-impl<M> GLWEPlaintext<Vec<u8>, M> {
-    pub fn alloc_with_meta(n: Degree, base2k: Base2K, k: TorusPrecision, meta: M) -> Self {
+impl GLWEPlaintext<Vec<u8>> {
+    pub fn alloc_with_meta(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
         GLWEPlaintext {
             data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
-            meta,
         }
     }
 
@@ -113,22 +110,20 @@ impl<M> GLWEPlaintext<Vec<u8>, M> {
     }
 }
 
-impl<D: DataRef, M> GLWEToRef for GLWEPlaintext<D, M> {
+impl<D: DataRef> GLWEToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
             data: self.data.to_ref(),
-            meta: (),
         }
     }
 }
 
-impl<D: DataMut, M> GLWEToMut for GLWEPlaintext<D, M> {
+impl<D: DataMut> GLWEToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,
             data: self.data.to_mut(),
-            meta: (),
         }
     }
 }
@@ -137,12 +132,11 @@ pub trait GLWEPlaintextToRef {
     fn to_ref(&self) -> GLWEPlaintext<&[u8]>;
 }
 
-impl<D: DataRef, M> GLWEPlaintextToRef for GLWEPlaintext<D, M> {
+impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWEPlaintext<&[u8]> {
         GLWEPlaintext {
             data: self.data.to_ref(),
             base2k: self.base2k,
-            meta: (),
         }
     }
 }
@@ -151,23 +145,22 @@ pub trait GLWEPlaintextToMut {
     fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]>;
 }
 
-impl<D: DataMut, M> GLWEPlaintextToMut for GLWEPlaintext<D, M> {
+impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]> {
         GLWEPlaintext {
             base2k: self.base2k,
             data: self.data.to_mut(),
-            meta: (),
         }
     }
 }
 
-impl<D: DataMut, M> GLWEPlaintext<D, M> {
+impl<D: DataMut> GLWEPlaintext<D> {
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
 }
 
-impl<D: DataRef, M> GLWEPlaintext<D, M> {
+impl<D: DataRef> GLWEPlaintext<D> {
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }

@@ -68,7 +68,7 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         let atk_infos = key.automorphism_key_infos();
-        let glwe_slot_bytes = T::BITS as usize * GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos);
+        let glwe_slot_bytes = T::BITS as usize * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos);
         let bdd_bytes = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
         let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, &atk_infos);
         glwe_slot_bytes + bdd_bytes.max(pack_bytes)
@@ -92,7 +92,7 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         let atk_infos = key.automorphism_key_infos();
-        let glwe_slot_bytes = T::BITS as usize * GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos);
+        let glwe_slot_bytes = T::BITS as usize * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos);
         let bdd_per_thread = self.execute_bdd_circuit_tmp_bytes(res_infos, circuit.max_state_size(), ggsw_infos);
         let pack_bytes = self.glwe_pack_tmp_bytes(res_infos, &atk_infos);
         glwe_slot_bytes + (threads * bdd_per_thread).max(pack_bytes)

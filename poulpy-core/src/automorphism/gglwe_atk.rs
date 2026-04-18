@@ -32,7 +32,7 @@ where
         let lvl_0: usize = if res_infos.glwe_layout() == a_infos.glwe_layout() {
             self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
         } else {
-            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(a_infos)
+            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos)
         };
         let lvl_1: usize = self.vec_znx_automorphism_inplace_tmp_bytes();
 

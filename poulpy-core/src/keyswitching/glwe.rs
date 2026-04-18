@@ -38,7 +38,7 @@ where
                 k: a_infos.max_k(),
                 rank: a_infos.rank(),
             };
-            let lvl_2_0: usize = GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&a_conv_infos);
+            let lvl_2_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos);
             let lvl_2_1: usize =
                 self.glwe_normalize_tmp_bytes()
                     .max(self.glwe_keyswitch_internal_tmp_bytes(res_infos, &a_conv_infos, key_infos));

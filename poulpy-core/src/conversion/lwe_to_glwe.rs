@@ -24,7 +24,7 @@ where
         assert_eq!(self.n() as u32, glwe_infos.n());
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let lvl_0: usize = GLWE::<Vec<u8>, ()>::bytes_of(
+        let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of(
             self.n().into(),
             key_infos.base2k(),
             lwe_infos.max_k().max(glwe_infos.max_k()),

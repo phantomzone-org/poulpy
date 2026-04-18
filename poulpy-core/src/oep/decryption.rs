@@ -36,10 +36,10 @@ pub trait CoreDecryptionDefaults<BE: Backend>: Backend {
     where
         A: GLWEInfos;
 
-    fn glwe_tensor_decrypt_default<R, P, PM, S0, S1>(
+    fn glwe_tensor_decrypt_default<R, P, S0, S1>(
         module: &Module<BE>,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P, PM>,
+        pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,
@@ -95,10 +95,10 @@ where
         <Module<BE> as GLWETensorDecryptDefault<BE>>::glwe_tensor_decrypt_tmp_bytes_default(module, infos)
     }
 
-    fn glwe_tensor_decrypt_default<R, P, PM, S0, S1>(
+    fn glwe_tensor_decrypt_default<R, P, S0, S1>(
         module: &Module<BE>,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P, PM>,
+        pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,
@@ -165,10 +165,10 @@ macro_rules! impl_core_decryption_default_methods {
             <$be as $crate::oep::CoreDecryptionDefaults<$be>>::glwe_tensor_decrypt_tmp_bytes_default(module, infos)
         }
 
-        fn glwe_tensor_decrypt<R, P, PM, S0, S1>(
+        fn glwe_tensor_decrypt<R, P, S0, S1>(
             module: &poulpy_hal::layouts::Module<$be>,
             res: &$crate::layouts::GLWETensor<R>,
-            pt: &mut $crate::layouts::GLWEPlaintext<P, PM>,
+            pt: &mut $crate::layouts::GLWEPlaintext<P>,
             sk: &$crate::layouts::GLWESecretPrepared<S0, $be>,
             sk_tensor: &$crate::layouts::GLWESecretTensorPrepared<S1, $be>,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,

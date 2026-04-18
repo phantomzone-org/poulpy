@@ -77,7 +77,6 @@ where
             GLWE {
                 base2k: infos.base2k(),
                 data,
-                meta: (),
             },
             scratch,
         )
@@ -126,7 +125,6 @@ where
             GLWEPlaintext {
                 base2k: infos.base2k(),
                 data,
-                meta: (),
             },
             scratch,
         )

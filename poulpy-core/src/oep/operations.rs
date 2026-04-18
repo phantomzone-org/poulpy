@@ -51,13 +51,13 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
         B: GLWEInfos;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_default<R, A, B, BM>(
+    fn glwe_mul_plain_default<R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        b: &GLWEPlaintext<B, BM>,
+        b: &GLWEPlaintext<B>,
         b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -66,12 +66,12 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
         B: DataRef;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_inplace_default<R, A, AM>(
+    fn glwe_mul_plain_inplace_default<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
-        a: &GLWEPlaintext<A, AM>,
+        a: &GLWEPlaintext<A>,
         a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -345,13 +345,13 @@ where
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_tmp_bytes(module, res, a, b)
     }
 
-    fn glwe_mul_plain_default<R, A, B, BM>(
+    fn glwe_mul_plain_default<R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        b: &GLWEPlaintext<B, BM>,
+        b: &GLWEPlaintext<B>,
         b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -371,12 +371,12 @@ where
         )
     }
 
-    fn glwe_mul_plain_inplace_default<R, A, AM>(
+    fn glwe_mul_plain_inplace_default<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
-        a: &GLWEPlaintext<A, AM>,
+        a: &GLWEPlaintext<A>,
         a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -761,13 +761,13 @@ macro_rules! impl_core_operations_default_methods {
             <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_plain_tmp_bytes_default(module, res, a, b)
         }
 
-        fn glwe_mul_plain<R, A, B, BM>(
+        fn glwe_mul_plain<R, A, B>(
             module: &poulpy_hal::layouts::Module<$be>,
             cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
             a: &$crate::layouts::GLWE<A>,
             a_effective_k: usize,
-            b: &$crate::layouts::GLWEPlaintext<B, BM>,
+            b: &$crate::layouts::GLWEPlaintext<B>,
             b_effective_k: usize,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where
@@ -787,12 +787,12 @@ macro_rules! impl_core_operations_default_methods {
             )
         }
 
-        fn glwe_mul_plain_inplace<R, A, AM>(
+        fn glwe_mul_plain_inplace<R, A>(
             module: &poulpy_hal::layouts::Module<$be>,
             cnv_offset: usize,
             res: &mut $crate::layouts::GLWE<R>,
             res_effective_k: usize,
-            a: &$crate::layouts::GLWEPlaintext<A, AM>,
+            a: &$crate::layouts::GLWEPlaintext<A>,
             a_effective_k: usize,
             scratch: &mut poulpy_hal::layouts::Scratch<$be>,
         ) where

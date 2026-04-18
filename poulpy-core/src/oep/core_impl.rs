@@ -192,10 +192,10 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
     where
         A: GLWEInfos;
 
-    fn glwe_tensor_decrypt<R, P, PM, S0, S1>(
+    fn glwe_tensor_decrypt<R, P, S0, S1>(
         module: &Module<BE>,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P, PM>,
+        pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,
@@ -382,13 +382,13 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         A: GLWEInfos,
         B: GLWEInfos;
 
-    fn glwe_mul_plain<R, A, B, BM>(
+    fn glwe_mul_plain<R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        b: &GLWEPlaintext<B, BM>,
+        b: &GLWEPlaintext<B>,
         b_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where
@@ -396,12 +396,12 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         A: DataRef,
         B: DataRef;
 
-    fn glwe_mul_plain_inplace<R, A, AM>(
+    fn glwe_mul_plain_inplace<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
-        a: &GLWEPlaintext<A, AM>,
+        a: &GLWEPlaintext<A>,
         a_effective_k: usize,
         scratch: &mut Scratch<BE>,
     ) where

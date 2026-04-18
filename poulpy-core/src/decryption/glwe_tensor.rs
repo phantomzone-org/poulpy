@@ -31,10 +31,10 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_tensor_decrypt_default<R, P, PM, S0, S1>(
+    fn glwe_tensor_decrypt_default<R, P, S0, S1>(
         &self,
         res: &GLWETensor<R>,
-        pt: &mut GLWEPlaintext<P, PM>,
+        pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut Scratch<BE>,

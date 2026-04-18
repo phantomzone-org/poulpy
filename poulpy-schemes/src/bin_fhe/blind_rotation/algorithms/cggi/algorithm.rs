@@ -80,7 +80,7 @@ where
                             .vec_znx_big_normalize_tmp_bytes()
                             .max(self.vec_znx_idft_apply_tmp_bytes()))))
         } else {
-            GLWE::<Vec<u8>, ()>::bytes_of_from_infos(glwe_infos)
+            GLWE::<Vec<u8>>::bytes_of_from_infos(glwe_infos)
                 + self.glwe_external_product_tmp_bytes(glwe_infos, glwe_infos, brk_infos)
         }
     }

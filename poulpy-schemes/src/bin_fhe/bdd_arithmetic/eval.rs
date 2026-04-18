@@ -166,8 +166,7 @@ where
         R: GLWEInfos,
         G: GGSWInfos,
     {
-        2 * state_size * GLWE::<Vec<u8>, ()>::bytes_of_from_infos(res_infos)
-            + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
+        2 * state_size * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos) + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
     }
 
     fn execute_bdd_circuit_multi_thread<C, G, O>(
@@ -386,7 +385,7 @@ where
         let res_dft: usize = self.bytes_of_vec_znx_dft((s_infos.rank() + 1).into(), s_infos.size());
         let mut tot = res_dft
             + (self.glwe_external_product_internal_tmp_bytes(res_a_infos, res_b_infos, s_infos)
-                + GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&GLWELayout {
+                + GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                     n: s_infos.n(),
                     base2k: s_infos.base2k(),
                     k: res_a_infos.max_k().max(res_b_infos.max_k()),
@@ -395,14 +394,14 @@ where
             .max(self.vec_znx_big_normalize_tmp_bytes());
 
         if res_a_infos.base2k() != s_infos.base2k() {
-            tot += GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&GLWELayout {
+            tot += GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                 n: res_a_infos.n(),
                 base2k: s_infos.base2k(),
                 k: res_a_infos.max_k(),
                 rank: res_a_infos.rank(),
             });
 
-            tot += GLWE::<Vec<u8>, ()>::bytes_of_from_infos(&GLWELayout {
+            tot += GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                 n: res_b_infos.n(),
                 base2k: s_infos.base2k(),
                 k: res_b_infos.max_k(),
