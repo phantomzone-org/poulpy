@@ -55,9 +55,8 @@ impl fmt::Display for CKKSCompositionError {
                 requested_limbs,
             } => write!(
                 f,
-                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext needs at least {} bits to preserve metadata (max_k={max_k}, log_decimal={log_decimal}, base2k={base2k})",
+                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext metadata requires a larger buffer (max_k={max_k}, log_decimal={log_decimal}, base2k={base2k})",
                 requested_limbs * base2k,
-                max_k.saturating_sub(*log_decimal)
             ),
             Self::InsufficientHomomorphicCapacity {
                 op,
@@ -102,19 +101,6 @@ impl fmt::Display for CKKSCompositionError {
 }
 
 impl Error for CKKSCompositionError {}
-
-pub(crate) fn ensure_limb_count_fits(max_k: usize, log_decimal: usize, base2k: usize, requested_limbs: usize) -> Result<()> {
-    if max_k.saturating_sub(log_decimal) < requested_limbs * base2k {
-        return Err(CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
-            max_k,
-            log_decimal,
-            base2k,
-            requested_limbs,
-        }
-        .into());
-    }
-    Ok(())
-}
 
 pub(crate) fn checked_log_hom_rem_sub(op: &'static str, available_log_hom_rem: usize, required_bits: usize) -> Result<usize> {
     available_log_hom_rem.checked_sub(required_bits).ok_or_else(|| {

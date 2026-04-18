@@ -9,7 +9,7 @@ use anyhow::Result;
 use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision};
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module};
 
-use crate::{CKKSInfos, CKKSMeta, ensure_limb_count_fits};
+use crate::{CKKSInfos, CKKSMeta, error::CKKSCompositionError};
 
 /// CKKS ciphertext storage plus semantic precision metadata.
 ///
@@ -158,20 +158,58 @@ pub trait CKKSMaintainOps {
     /// - propagates `ckks_reallocate_limbs_checked` if the computed compact
     ///   size would violate metadata constraints
     fn ckks_compact_limbs(&self, ct: &mut CKKSCiphertext<Vec<u8>>) -> Result<()>;
+
+    /// Returns a newly allocated owned ciphertext holding a compacted copy of
+    /// `ct`.
+    ///
+    /// Inputs:
+    /// - `ct`: ciphertext to copy and compact
+    ///
+    /// Output:
+    /// - a fresh owned ciphertext with the same metadata and the minimum limb
+    ///   count needed to preserve it
+    ///
+    /// Errors:
+    /// - propagates allocation failures from the underlying GLWE type
+    fn ckks_compact_limbs_copy<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
+    where
+        D: DataRef;
 }
 
 #[doc(hidden)]
 pub trait CKKSMaintainOpsDefault {
     fn ckks_reallocate_limbs_checked_default(&self, ct: &mut CKKSCiphertext<Vec<u8>>, size: usize) -> Result<()> {
-        ensure_limb_count_fits(ct.max_k().as_usize(), ct.log_decimal(), ct.base2k().as_usize(), size)?;
+        let base2k = ct.base2k().as_usize();
+        let required_limbs = ct.effective_k().div_ceil(base2k);
+        anyhow::ensure!(
+            size >= required_limbs,
+            CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
+                max_k: ct.max_k().as_usize(),
+                log_decimal: ct.log_decimal(),
+                base2k,
+                requested_limbs: size,
+            }
+        );
         ct.data_mut().reallocate_limbs(size);
         Ok(())
     }
 
     fn ckks_compact_limbs_default(&self, ct: &mut CKKSCiphertext<Vec<u8>>) -> Result<()> {
-        let size = (ct.max_k().as_usize() - ct.log_decimal() + ct.log_hom_rem()).div_ceil(ct.base2k().as_usize());
+        let size = ct.effective_k().div_ceil(ct.base2k().as_usize());
         self.ckks_reallocate_limbs_checked_default(ct, size)?;
         Ok(())
+    }
+
+    fn ckks_compact_limbs_copy_default<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
+    where
+        D: DataRef,
+    {
+        let size = ct.effective_k().div_ceil(ct.base2k().as_usize());
+        let mut compact = CKKSCiphertext::alloc(ct.n(), (size * ct.base2k().as_usize()).into(), ct.base2k());
+        compact.meta = ct.meta();
+        let dst_len = compact.data().data.len();
+        compact.data_mut().data[..].copy_from_slice(&ct.data().data.as_ref()[..dst_len]);
+        Ok(compact)
     }
 }
 
@@ -187,6 +225,13 @@ where
 
     fn ckks_compact_limbs(&self, ct: &mut CKKSCiphertext<Vec<u8>>) -> Result<()> {
         self.ckks_compact_limbs_default(ct)
+    }
+
+    fn ckks_compact_limbs_copy<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
+    where
+        D: DataRef,
+    {
+        self.ckks_compact_limbs_copy_default(ct)
     }
 }
 

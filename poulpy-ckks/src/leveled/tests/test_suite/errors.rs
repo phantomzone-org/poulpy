@@ -11,7 +11,7 @@ use super::helpers::{TestAddBackend as Backend, TestContext, TestScalar, assert_
 pub fn test_reallocate_limbs_checked_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let requested_limbs = (ct.max_k().as_usize() - ct.log_decimal()) / ct.base2k().as_usize() + 1;
+    let requested_limbs = ct.effective_k().div_ceil(ct.base2k().as_usize()).saturating_sub(1);
     let err = ctx
         .module
         .ckks_reallocate_limbs_checked(&mut ct, requested_limbs)
@@ -26,6 +26,23 @@ pub fn test_reallocate_limbs_checked_error<BE: Backend, F: TestScalar>(ctx: &Tes
             requested_limbs,
         },
     );
+}
+
+pub fn test_compact_limbs_copy<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let oversized_limbs = ct.size() + 1;
+    ctx.module.ckks_reallocate_limbs_checked(&mut ct, oversized_limbs).unwrap();
+
+    let compact = ctx.module.ckks_compact_limbs_copy(&ct).unwrap();
+    let expected_limbs = ct.effective_k().div_ceil(ct.base2k().as_usize());
+
+    assert_eq!(ct.size(), oversized_limbs, "source ciphertext should remain oversized");
+    assert_eq!(compact.size(), expected_limbs, "compacted copy should drop excess limbs");
+    assert_eq!(compact.meta(), ct.meta(), "compacted copy should preserve metadata");
+    assert_eq!(compact.max_k().as_usize(), expected_limbs * ct.base2k().as_usize());
+
+    ctx.assert_decrypt_precision("compact_limbs_copy", &compact, &ctx.re1, &ctx.im1, scratch.borrow());
 }
 
 pub fn test_add_pt_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

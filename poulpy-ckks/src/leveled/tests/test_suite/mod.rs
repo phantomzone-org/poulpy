@@ -167,6 +167,10 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::errors::test_reallocate_limbs_checked_error
             );
             run_test!(
+                compact_limbs_copy,
+                $crate::leveled::tests::test_suite::errors::test_compact_limbs_copy
+            );
+            run_test!(
                 add_pt_znx_alignment_error,
                 $crate::leveled::tests::test_suite::errors::test_add_pt_znx_alignment_error
             );

@@ -1,8 +1,8 @@
-//! End-to-end CKKS example for evaluating a quadratic polynomial
+//! End-to-end CKKS example for evaluating a cubic polynomial
 //!
 //! This example evaluates
 //!
-//! `p(x) = a + b*x + c*x^2`
+//! `p(x) = (a + b*x) + (c + d*x) * x^2`
 //!
 //! over an encrypted complex slot vector. The example is intentionally split
 //! into six explicit phases:
@@ -21,7 +21,9 @@ use anyhow::Result;
 use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     encoding::Encoder,
-    layouts::{CKKSCiphertext, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx, CKKSPlaintextVecZnx},
+    layouts::{
+        CKKSCiphertext, CKKSMaintainOps, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx, CKKSPlaintextVecZnx,
+    },
     leveled::{
         encryption::{CKKSDecrypt, CKKSEncrypt},
         operations::{add::CKKSAddOps, mul::CKKSMulOps},
@@ -29,7 +31,7 @@ use poulpy_ckks::{
     },
 };
 use poulpy_core::{
-    EncryptionLayout, GLWETensorKeyEncryptSk,
+    EncryptionLayout, GLWENormalize, GLWETensorKeyEncryptSk,
     layouts::{
         GLWELayout, GLWESecret, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPreparedFactory, LWEInfos, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory, GLWETensorKeyPrepared},
@@ -42,15 +44,14 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub type BakcendImpl = NTT120Ref;
-
+type BakcendImpl = NTT120Ref;
 type SecretKeyPrepared = GLWESecretPrepared<DeviceBuf<BakcendImpl>, BakcendImpl>;
 type TensorKeyPrepared = GLWETensorKeyPrepared<DeviceBuf<BakcendImpl>, BakcendImpl>;
 
 const N: usize = 4096;
 const M: usize = N / 2;
 const BASE2K: usize = 52;
-const CT_K: usize = 75;
+const CT_K: usize = 95;
 const HW: usize = 192;
 const DSIZE: usize = 1;
 const PREC_CT: CKKSMeta = CKKSMeta {
@@ -58,7 +59,7 @@ const PREC_CT: CKKSMeta = CKKSMeta {
     log_hom_rem: 5,
 };
 const PREC_PT: CKKSMeta = CKKSMeta {
-    log_decimal: 8,
+    log_decimal: 4,
     log_hom_rem: 0,
 };
 
@@ -71,11 +72,12 @@ struct SetupArtifacts {
     scratch: ScratchOwned<BakcendImpl>,
 }
 
-/// Complex coefficients of the polynomial `a + b*x + c*x^2`.
+/// Complex coefficients of the polynomial `(a + b*x) + (c + d*x) * x^2`.
 struct PolynomialCoeffs {
     a: (f64, f64),
     b: (f64, f64),
     c: (f64, f64),
+    d: (f64, f64),
 }
 
 /// Inputs prepared by the encoding phase.
@@ -89,6 +91,7 @@ struct EncodingArtifacts {
     cst_a: CKKSPlaintextCstRnx<f64>,
     cst_b: CKKSPlaintextCstRnx<f64>,
     cst_c: CKKSPlaintextCstRnx<f64>,
+    cst_d: CKKSPlaintextCstRnx<f64>,
     pt_znx: CKKSPlaintextVecZnx<Vec<u8>>,
 }
 
@@ -145,13 +148,28 @@ fn max_err(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0_f64, f64::max)
 }
 
+/// Quantizes a complex coefficient onto the plaintext precision grid.
+fn quantize_coeff(re: f64, im: f64) -> (f64, f64) {
+    let scale = (PREC_PT.log_decimal as f64).exp2();
+    ((re * scale).round() / scale, (im * scale).round() / scale)
+}
+
+fn print_phase(name: &str) {
+    println!("\n== {name} ==");
+}
+
+fn format_complex(re: f64, im: f64, digits: usize) -> String {
+    format!("{re:.digits$}{im:+.digits$}i")
+}
+
 /// Prints the semantic and storage metadata of a CKKS ciphertext.
 fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
     println!(
-        "{label}: log_decimal={}, log_hom_rem={}, effective_k={}, max_k={}",
+        "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
         ct.log_decimal(),
         ct.log_hom_rem(),
         ct.effective_k(),
+        ct.size(),
         ct.max_k().as_usize()
     );
 }
@@ -159,10 +177,11 @@ fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
 /// Prints the semantic and storage metadata of a CKKS plaintext.
 fn print_pt_meta(label: &str, pt: &CKKSPlaintextVecZnx<Vec<u8>>) {
     println!(
-        "{label}: log_decimal={}, log_hom_rem={}, effective_k={}, max_k={}",
+        "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
         pt.log_decimal(),
         pt.log_hom_rem(),
         pt.effective_k(),
+        pt.size(),
         pt.max_k().as_usize()
     );
 }
@@ -178,9 +197,10 @@ fn print_pt_meta(label: &str, pt: &CKKSPlaintextVecZnx<Vec<u8>>) {
 ///
 /// No message-dependent data is handled here yet.
 fn setup() -> Result<SetupArtifacts> {
-    println!("== setup ==");
+    print_phase("setup");
+    println!("  polynomial: p(x) = (a + b*x) + (c + d*x) * x^2");
     println!(
-        "parameters: n={N}, slots={M}, base2k={BASE2K}, ct_k={CT_K}, prec_ct=({}, {}), prec_pt=({}, {})",
+        "  params: n={N}, slots={M}, base2k={BASE2K}, ct_k={CT_K}, prec_ct=({}, {}), prec_pt=({}, {})",
         PREC_CT.log_decimal, PREC_CT.log_hom_rem, PREC_PT.log_decimal, PREC_PT.log_hom_rem
     );
 
@@ -196,10 +216,12 @@ fn setup() -> Result<SetupArtifacts> {
 
     let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_layout());
     module.glwe_secret_prepare(&mut sk, &sk_raw);
-
-    let scratch_bytes = module.ckks_all_ops_tmp_bytes(&glwe_layout(), &tsk_layout(), &PREC_PT);
+    println!("  prepared secret key");
+    let scratch_bytes = module
+        .ckks_all_ops_tmp_bytes(&glwe_layout(), &tsk_layout(), &PREC_PT)
+        .max(module.glwe_normalize_tmp_bytes());
     let mut scratch = ScratchOwned::<BakcendImpl>::alloc(scratch_bytes);
-    println!("scratch bytes allocated: {scratch_bytes}");
+    println!("  scratch bytes: {scratch_bytes}");
 
     let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_layout());
     module.glwe_tensor_key_encrypt_sk(
@@ -213,8 +235,7 @@ fn setup() -> Result<SetupArtifacts> {
 
     let mut tsk_prepared = module.alloc_tensor_key_prepared_from_infos(&tsk_layout());
     module.prepare_tensor_key(&mut tsk_prepared, &tsk, scratch.borrow());
-    println!("secret key prepared");
-    println!("tensor key prepared");
+    println!("  prepared tensor key");
 
     Ok(SetupArtifacts {
         module,
@@ -228,13 +249,13 @@ fn setup() -> Result<SetupArtifacts> {
 /// Phase 2: encoding.
 ///
 /// This phase builds the cleartext input slots `x`, defines the polynomial
-/// coefficients `(a, b, c)`, and encodes `x` from slot form into a quantized
+/// coefficients `(a, b, c, d)`, and encodes `x` from slot form into a quantized
 /// ZNX plaintext suitable for encryption.
 ///
 /// The constant coefficients stay as RNX scalars because the evaluation APIs
 /// can quantize them on demand with the correct metadata.
 fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
-    println!("== encoding ==");
+    print_phase("encoding");
 
     let x_re: Vec<f64> = (0..M)
         .map(|i| (2.0 * std::f64::consts::PI * i as f64 / M as f64).cos())
@@ -244,18 +265,21 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
         .collect();
 
     let coeffs = PolynomialCoeffs {
-        a: (0.125, -0.625),
-        b: (0.625, -0.125),
-        c: (-0.375, 0.25),
+        a: quantize_coeff(0.125, -0.625),
+        b: quantize_coeff(0.625, -0.125),
+        c: quantize_coeff(-0.375, 0.25),
+        d: quantize_coeff(0.3125, -0.1875),
     };
-    println!(
-        "polynomial coefficients: a=({:.3}, {:.3}), b=({:.3}, {:.3}), c=({:.3}, {:.3})",
-        coeffs.a.0, coeffs.a.1, coeffs.b.0, coeffs.b.1, coeffs.c.0, coeffs.c.1
-    );
+    println!("  coefficients:");
+    println!("    a = {}", format_complex(coeffs.a.0, coeffs.a.1, 4));
+    println!("    b = {}", format_complex(coeffs.b.0, coeffs.b.1, 4));
+    println!("    c = {}", format_complex(coeffs.c.0, coeffs.c.1, 4));
+    println!("    d = {}", format_complex(coeffs.d.0, coeffs.d.1, 4));
 
     let cst_a = CKKSPlaintextCstRnx::new(Some(coeffs.a.0), Some(coeffs.a.1));
     let cst_b = CKKSPlaintextCstRnx::new(Some(coeffs.b.0), Some(coeffs.b.1));
     let cst_c = CKKSPlaintextCstRnx::new(Some(coeffs.c.0), Some(coeffs.c.1));
+    let cst_d = CKKSPlaintextCstRnx::new(Some(coeffs.d.0), Some(coeffs.d.1));
 
     let mut pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N)?;
     setup.encoder.encode_reim(&mut pt_rnx, &x_re, &x_im)?;
@@ -263,7 +287,7 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
     let mut pt_znx = CKKSPlaintextVecZnx::alloc(N.into(), BASE2K.into(), PREC_CT);
     pt_rnx.to_znx(&mut pt_znx)?;
     print_pt_meta("encoded plaintext x", &pt_znx);
-    println!("slot 0 cleartext input: x=({:.6}, {:.6})", x_re[0], x_im[0]);
+    println!("  slot[0] cleartext = {}", format_complex(x_re[0], x_im[0], 6));
 
     Ok(EncodingArtifacts {
         x_re,
@@ -272,6 +296,7 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
         cst_a,
         cst_b,
         cst_c,
+        cst_d,
         pt_znx,
     })
 }
@@ -283,7 +308,7 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
 /// - the plaintext decimal precision carried into the ciphertext
 /// - the remaining homomorphic capacity left after encryption noise is budgeted
 fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Result<EncryptionArtifacts> {
-    println!("== encryption ==");
+    print_phase("encryption");
 
     let mut ct_x = CKKSCiphertext::alloc(N.into(), CT_K.into(), BASE2K.into());
     let mut source_xa = Source::new([3u8; 32]);
@@ -308,61 +333,94 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 ///
 /// This phase evaluates the polynomial
 ///
-/// `p(x) = a + b*x + c*x^2`
+/// `p(x) = (a + b*x) + (c + d*x) * x^2`
 ///
 /// homomorphically.
 ///
 /// The metadata prints are the main thing to watch:
 /// - `x^2` consumes one `log_decimal` chunk of homomorphic capacity
-/// - multiplying by a plaintext constant consumes the constant's
-///   `log_decimal`
-/// - adding aligned ciphertexts preserves the minimum remaining capacity
-/// - adding the constant `a` does not consume extra ciphertext capacity beyond
-///   alignment
+/// - `ckks_compact_limbs` trims storage after each non-linear step
+/// - forming each linear branch with a plaintext constant preserves the branch
+///   structure explicitly
+/// - `glwe_normalize` is applied before ct-ct multiplication when a branch has
+///   gone through linear ops
+/// - multiplying `(c + d*x)` by `x^2` performs the cubic step as a ct-ct
+///   multiply
+/// - the final add preserves the minimum remaining capacity across branches
 fn evaluation(
     setup: &mut SetupArtifacts,
     encoding: &EncodingArtifacts,
     encryption: &EncryptionArtifacts,
 ) -> Result<EvaluationArtifacts> {
-    println!("== evaluation ==");
+    print_phase("evaluation");
     print_ct_meta("input x", &encryption.ct_x);
 
-    println!("computing x^2");
+    println!("  -> square x");
     let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_hom_rem().into(), BASE2K.into());
     setup
         .module
         .ckks_square(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
     print_ct_meta("x^2", &ct_x2);
+    println!("  -> compact limbs after square");
+    setup.module.ckks_compact_limbs(&mut ct_x2)?;
+    print_ct_meta("x^2 compacted", &ct_x2);
 
-    println!("computing c * x^2");
-    let mut term_cx2 = CKKSCiphertext::alloc(N.into(), ct_x2.effective_k().into(), BASE2K.into());
-    setup
-        .module
-        .ckks_mul_const(&mut term_cx2, &ct_x2, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
-    print_ct_meta("c * x^2", &term_cx2);
+    let linear_k = encryption.ct_x.effective_k() - PREC_PT.log_decimal;
 
-    println!("computing b * x");
-    let mut term_bx = CKKSCiphertext::alloc(N.into(), encryption.ct_x.effective_k().into(), BASE2K.into());
+    println!("  -> build left branch: a + b*x");
+    let mut left_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
     setup.module.ckks_mul_pt_const_rnx(
-        &mut term_bx,
+        &mut left_linear,
         &encryption.ct_x,
         &encoding.cst_b,
         PREC_PT,
         setup.scratch.borrow(),
     )?;
-    print_ct_meta("b * x", &term_bx);
-
-    println!("adding b * x and c * x^2");
-    let mut poly = CKKSCiphertext::alloc(N.into(), term_cx2.effective_k().into(), BASE2K.into());
+    print_ct_meta("b * x", &left_linear);
     setup
         .module
-        .ckks_add(&mut poly, &term_bx, &term_cx2, setup.scratch.borrow())?;
-    print_ct_meta("b * x + c * x^2", &poly);
+        .ckks_add_pt_const_rnx_inplace(&mut left_linear, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
+    print_ct_meta("a + b * x", &left_linear);
 
-    println!("adding constant a");
+    println!("  -> build right branch: c + d*x");
+    let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
+    setup.module.ckks_mul_pt_const_rnx(
+        &mut right_linear,
+        &encryption.ct_x,
+        &encoding.cst_d,
+        PREC_PT,
+        setup.scratch.borrow(),
+    )?;
+    print_ct_meta("d * x", &right_linear);
     setup
         .module
-        .ckks_add_pt_const_rnx_inplace(&mut poly, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
+        .ckks_add_pt_const_rnx_inplace(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
+    print_ct_meta("c + d * x", &right_linear);
+
+    println!("  -> normalize right branch before ct-ct multiply");
+    setup.module.glwe_normalize_inplace(&mut right_linear, setup.scratch.borrow());
+    print_ct_meta("c + d * x normalized", &right_linear);
+
+    println!("  -> multiply right branch by x^2");
+    let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
+    let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
+    setup.module.ckks_mul(
+        &mut right_branch,
+        &right_linear,
+        &ct_x2,
+        &setup.tsk_prepared,
+        setup.scratch.borrow(),
+    )?;
+    print_ct_meta("(c + d * x) * x^2", &right_branch);
+    println!("  -> compact limbs after ct-ct multiply");
+    setup.module.ckks_compact_limbs(&mut right_branch)?;
+    print_ct_meta("(c + d * x) * x^2 compacted", &right_branch);
+
+    println!("  -> add left and right branches");
+    let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
+    setup
+        .module
+        .ckks_add(&mut poly, &left_linear, &right_branch, setup.scratch.borrow())?;
     print_ct_meta("final polynomial", &poly);
 
     Ok(EvaluationArtifacts { poly })
@@ -376,7 +434,7 @@ fn evaluation(
 /// At the end of this phase we have ordinary floating-point vectors that can
 /// be compared to the direct cleartext polynomial evaluation.
 fn decryption(setup: &mut SetupArtifacts, evaluation: &EvaluationArtifacts) -> Result<DecryptionArtifacts> {
-    println!("== decryption ==");
+    print_phase("decryption");
 
     let mut pt_znx = CKKSPlaintextVecZnx::alloc_from_infos(&evaluation.poly);
     setup
@@ -390,20 +448,20 @@ fn decryption(setup: &mut SetupArtifacts, evaluation: &EvaluationArtifacts) -> R
     let mut have_re = vec![0.0; M];
     let mut have_im = vec![0.0; M];
     setup.encoder.decode_reim(&pt_rnx, &mut have_re, &mut have_im)?;
-    println!("slot 0 decrypted value: ({:.6}, {:.6})", have_re[0], have_im[0]);
+    println!("  slot[0] decrypted = {}", format_complex(have_re[0], have_im[0], 6));
 
     Ok(DecryptionArtifacts { have_re, have_im })
 }
 
 /// Phase 6: verification.
 ///
-/// This phase evaluates the same polynomial directly in cleartext and compares
+/// This phase evaluates the same cubic polynomial directly in cleartext and compares
 /// it against the decrypted result. The final prints summarize:
 /// - the remaining homomorphic capacity of the output ciphertext
 /// - the worst absolute error on the real and imaginary channels
 /// - one representative slot comparison
 fn verification(encoding: &EncodingArtifacts, evaluation: &EvaluationArtifacts, decryption: &DecryptionArtifacts) -> Result<()> {
-    println!("== verification ==");
+    print_phase("verification");
 
     let want_re: Vec<f64> = (0..M)
         .map(|j| {
@@ -411,8 +469,10 @@ fn verification(encoding: &EncodingArtifacts, evaluation: &EvaluationArtifacts, 
             let xi = encoding.x_im[j];
             let x2r = xr * xr - xi * xi;
             let x2i = 2.0 * xr * xi;
-            encoding.coeffs.a.0 + encoding.coeffs.b.0 * xr - encoding.coeffs.b.1 * xi + encoding.coeffs.c.0 * x2r
-                - encoding.coeffs.c.1 * x2i
+            let left_re = encoding.coeffs.a.0 + encoding.coeffs.b.0 * xr - encoding.coeffs.b.1 * xi;
+            let right_re = encoding.coeffs.c.0 + encoding.coeffs.d.0 * xr - encoding.coeffs.d.1 * xi;
+            let right_im = encoding.coeffs.c.1 + encoding.coeffs.d.0 * xi + encoding.coeffs.d.1 * xr;
+            left_re + right_re * x2r - right_im * x2i
         })
         .collect();
     let want_im: Vec<f64> = (0..M)
@@ -421,11 +481,10 @@ fn verification(encoding: &EncodingArtifacts, evaluation: &EvaluationArtifacts, 
             let xi = encoding.x_im[j];
             let x2r = xr * xr - xi * xi;
             let x2i = 2.0 * xr * xi;
-            encoding.coeffs.a.1
-                + encoding.coeffs.b.0 * xi
-                + encoding.coeffs.b.1 * xr
-                + encoding.coeffs.c.0 * x2i
-                + encoding.coeffs.c.1 * x2r
+            let left_im = encoding.coeffs.a.1 + encoding.coeffs.b.0 * xi + encoding.coeffs.b.1 * xr;
+            let right_re = encoding.coeffs.c.0 + encoding.coeffs.d.0 * xr - encoding.coeffs.d.1 * xi;
+            let right_im = encoding.coeffs.c.1 + encoding.coeffs.d.0 * xi + encoding.coeffs.d.1 * xr;
+            left_im + right_re * x2i + right_im * x2r
         })
         .collect();
 
@@ -433,14 +492,16 @@ fn verification(encoding: &EncodingArtifacts, evaluation: &EvaluationArtifacts, 
     let err_im = max_err(&decryption.have_im, &want_im);
 
     print_ct_meta("verified polynomial", &evaluation.poly);
-    println!("max error: re={err_re:.3e}, im={err_im:.3e}");
+    println!("  max error          re={err_re:.3e}  im={err_im:.3e}");
     println!(
-        "slot 0: have=({:.6}, {:.6}) want=({:.6}, {:.6})",
-        decryption.have_re[0], decryption.have_im[0], want_re[0], want_im[0]
+        "  slot[0] decrypted  {}",
+        format_complex(decryption.have_re[0], decryption.have_im[0], 6)
     );
+    println!("  slot[0] expected   {}", format_complex(want_re[0], want_im[0], 6));
 
     assert!(err_re < 1e-4);
     assert!(err_im < 1e-4);
+    println!("  status: PASS");
 
     Ok(())
 }

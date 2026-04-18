@@ -30,9 +30,7 @@ mod error;
 pub mod layouts;
 pub mod leveled;
 pub use error::CKKSCompositionError;
-pub(crate) use error::{
-    checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_limb_count_fits, ensure_plaintext_alignment,
-};
+pub(crate) use error::{checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_plaintext_alignment};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
