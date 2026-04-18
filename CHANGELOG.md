@@ -1,19 +1,6 @@
 # CHANGELOG
 
-## [Unreleased] - 2026-04-17
-
-### `poulpy-hal`
-- Make `WriterTo` for `MatZnx` and `VecZnx` emit the canonical logical byte length from layout metadata, write only that prefix, and error when backing storage is shorter than the coefficient span.
-- Fix `ScalarZnx::write_to` to emit the full `n * cols` coefficient byte span (aligned `i64` layout).
-- **Breaking:** Remove `ReaderFrom` / `WriterTo` for prepared DFT layouts (`SvpPPol`); remove `SvpPPolFromBytes`, `VmpPMatFromBytes`, and `from_bytes` on the corresponding prepared types. Document that `SvpPPol` / `VmpPMat` DFT alignment assumes a power-of-two ring degree.
-
-### `poulpy-schemes`
-- Add `ReaderFrom` / `WriterTo` for `CircuitBootstrappingKey` and `BDDKey<Vec<u8>>` (optional `ks_glwe` encoded with a presence tag), with stable ATK map serialization (sorted Galois keys).
-
-### `poulpy-core`
-- **Breaking:** Remove `ReaderFrom` / `WriterTo` for `LWESecret` and `GLWESecret`; secret material should use seeds or application-level transfer, not library binary I/O.
-
-## [Unreleased] - 2026-04-15
+## [Unreleased]
 
 ### `poulpy-hal`
 - Fix the convolution API by renaming the output-shift parameter to `cnv_offset`, moving it to the front of the apply calls, and updating delegates and conformance tests to match the corrected calling convention.
@@ -23,6 +10,9 @@
 - Update layouts and encoding helpers to match the new dispatch surface.
 - Refresh HAL test suites to align with the new defaults and dispatch.
 - Add family-level module/scratch defaults to cut backend boilerplate and centralize scratch sizing.
+- Make `WriterTo` for `MatZnx` and `VecZnx` emit the canonical logical byte length from layout metadata, write only that prefix, and error when backing storage is shorter than the coefficient span.
+- Fix `ScalarZnx::write_to` to emit the full `n * cols` coefficient byte span (aligned `i64` layout).
+- **Breaking:** Remove `ReaderFrom` / `WriterTo` for prepared DFT layouts (`SvpPPol`); remove `SvpPPolFromBytes`, `VmpPMatFromBytes`, and `from_bytes` on the corresponding prepared types. Document that `SvpPPol` / `VmpPMat` DFT alignment assumes a power-of-two ring degree.
 
 ### `poulpy-core`
 - Thread the corrected convolution-offset semantics through GLWE constant/plaintext multiply and tensoring paths so scratch sizing, truncation, and normalization all use the same convention.
@@ -36,6 +26,7 @@
 - Re-export top-level modules to preserve public API ergonomics while routing through the new `api` traits.
 - Standardize prepared allocations on `DeviceBuf` for backend-owned buffers to make data ownership explicit.
 - Rename Module allocation/prepare helpers to struct-first names (e.g. `gglwe_prepared_alloc`, `glwe_secret_prepare`) to match the rest of the API.
+- **Breaking:** Remove `ReaderFrom` / `WriterTo` for `LWESecret` and `GLWESecret`; secret material should use seeds or application-level transfer, not library binary I/O.
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx`
 - Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
@@ -50,10 +41,7 @@
 - Update bin-FHE BDD arithmetic, blind rotation, and test suites for the new core/HAL APIs.
 - Refresh scheme examples and library wiring; remove the redundant `poulpy-schemes/README.md`.
 - Align bin-FHE key/prepared layouts and circuit helpers with the refactored core layouts.
-
-### Fixes
-- Avoid under-allocating scratch space in bin-FHE scheme tests via new FheUint/BDD tmp-bytes helpers.
-- Make AVX backend optional (`enable-avx`) to prevent build failures on non-AVX machines.
+- Add `ReaderFrom` / `WriterTo` for `CircuitBootstrappingKey` and `BDDKey<Vec<u8>>` (optional `ks_glwe` encoded with a presence tag), with stable ATK map serialization (sorted Galois keys).
 
 ### `poulpy-bench`
 - Update core and HAL convolution benchmarks to the new convolution API.
@@ -63,6 +51,10 @@
 - Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.
 - Update `rust-toolchain.toml` (nightly toolchain) to keep build expectations aligned.
 - Add acknowledgements for PZ, EF, and ENS in the root README.
+
+### Fixes
+- Avoid under-allocating scratch space in bin-FHE scheme tests via new FheUint/BDD tmp-bytes helpers.
+- Make AVX backend optional (`enable-avx`) to prevent build failures on non-AVX machines.
 
 ### Migration (before/after)
 
