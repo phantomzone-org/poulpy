@@ -1,9 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{
-    alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxView},
-};
+use crate::layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, Located, ZnxInfos, ZnxView};
 
 /// Prepared right operand for bivariate convolution.
 ///
@@ -54,11 +51,12 @@ impl<D: DataRef, BE: Backend> ZnxView for CnvPVecR<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecR<D, B> {
+impl<B: Backend> CnvPVecR<DeviceBuf<B>, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_right(n, cols, size));
+        let data: DeviceBuf<B> =
+            Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_cnv_pvec_right(n, cols, size)));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             cols,
@@ -69,8 +67,9 @@ impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecR<D, B> {
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::bytes_of_cnv_pvec_right(n, cols, size));
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             cols,
@@ -140,11 +139,12 @@ impl<D: DataRef, BE: Backend> ZnxView for CnvPVecL<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecL<D, B> {
+impl<B: Backend> CnvPVecL<DeviceBuf<B>, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::bytes_of_cnv_pvec_left(n, cols, size));
+        let data: DeviceBuf<B> =
+            Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_cnv_pvec_left(n, cols, size)));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             cols,
@@ -155,8 +155,9 @@ impl<D: DataRef + From<Vec<u8>>, B: Backend> CnvPVecL<D, B> {
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::bytes_of_cnv_pvec_left(n, cols, size));
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             cols,

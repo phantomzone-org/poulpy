@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPlaintextLayout {
@@ -16,12 +16,12 @@ impl LWEInfos for GLWEPlaintextLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn n(&self) -> Degree {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -34,26 +34,17 @@ impl GLWEInfos for GLWEPlaintextLayout {
 pub struct GLWEPlaintext<D: Data> {
     pub data: VecZnx<D>,
     pub base2k: Base2K,
-    pub k: TorusPrecision,
 }
 
-impl<D: DataMut> SetGLWEInfos for GLWEPlaintext<D> {
+impl<D: DataMut> SetLWEInfos for GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
-    }
-
-    fn set_k(&mut self, k: TorusPrecision) {
-        self.k = k
     }
 }
 
 impl<D: Data> LWEInfos for GLWEPlaintext<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn size(&self) -> usize {
@@ -73,7 +64,13 @@ impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
 
 impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GLWEPlaintext: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
+        write!(
+            f,
+            "GLWEPlaintext: base2k={} k={}: {}",
+            self.base2k().0,
+            self.max_k().0,
+            self.data
+        )
     }
 }
 
@@ -82,14 +79,22 @@ impl GLWEPlaintext<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
         GLWEPlaintext {
             data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
+        }
+    }
+}
+
+impl GLWEPlaintext<Vec<u8>> {
+    pub fn alloc_with_meta(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
+        GLWEPlaintext {
+            data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
+            base2k,
         }
     }
 
@@ -97,7 +102,7 @@ impl GLWEPlaintext<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
@@ -108,7 +113,6 @@ impl GLWEPlaintext<Vec<u8>> {
 impl<D: DataRef> GLWEToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
         }
@@ -118,7 +122,6 @@ impl<D: DataRef> GLWEToRef for GLWEPlaintext<D> {
 impl<D: DataMut> GLWEToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
         }
@@ -134,7 +137,6 @@ impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
         GLWEPlaintext {
             data: self.data.to_ref(),
             base2k: self.base2k,
-            k: self.k,
         }
     }
 }
@@ -147,7 +149,6 @@ impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]> {
         GLWEPlaintext {
             base2k: self.base2k,
-            k: self.k,
             data: self.data.to_mut(),
         }
     }

@@ -12,6 +12,11 @@ impl<D: DataMut> GLWEPlaintext<D> {
         self.data.encode_vec_i64(base2k, 0, k.into(), data);
     }
 
+    pub fn encode_vec_i128(&mut self, data: &[i128], k: TorusPrecision) {
+        let base2k: usize = self.base2k().into();
+        self.data.encode_vec_i128(base2k, 0, k.into(), data);
+    }
+
     /// Encodes a single `i64` value into coefficient slot `idx`.
     pub fn encode_coeff_i64(&mut self, data: i64, k: TorusPrecision, idx: usize) {
         let base2k: usize = self.base2k().into();
@@ -24,6 +29,10 @@ impl<D: DataRef> GLWEPlaintext<D> {
     /// using `k` bits of torus precision.
     pub fn decode_vec_i64(&self, data: &mut [i64], k: TorusPrecision) {
         self.data.decode_vec_i64(self.base2k().into(), 0, k.into(), data);
+    }
+
+    pub fn decode_vec_i128(&self, data: &mut [i128], k: TorusPrecision) {
+        self.data.decode_vec_i128(self.base2k().into(), 0, k.into(), data);
     }
 
     /// Decodes a single coefficient at slot `idx` as an `i64`.

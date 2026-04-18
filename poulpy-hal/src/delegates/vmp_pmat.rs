@@ -7,10 +7,7 @@ use crate::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
         VmpPMatToRef,
     },
-    oep::{
-        VmpApplyDftImpl, VmpApplyDftTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPrepareImpl,
-        VmpPrepareTmpBytesImpl, VmpZeroImpl,
-    },
+    oep::HalImpl,
 };
 
 impl<B: Backend> VmpPMatAlloc<B> for Module<B> {
@@ -27,29 +24,29 @@ impl<B: Backend> VmpPMatBytesOf for Module<B> {
 
 impl<B> VmpPrepareTmpBytes for Module<B>
 where
-    B: Backend + VmpPrepareTmpBytesImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_prepare_tmp_bytes_impl(self, rows, cols_in, cols_out, size)
+        <B as HalImpl<B>>::vmp_prepare_tmp_bytes(self, rows, cols_in, cols_out, size)
     }
 }
 
 impl<B> VmpPrepare<B> for Module<B>
 where
-    B: Backend + VmpPrepareImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef,
     {
-        B::vmp_prepare_impl(self, res, a, scratch)
+        <B as HalImpl<B>>::vmp_prepare(self, res, a, scratch)
     }
 }
 
 impl<B> VmpApplyDftTmpBytes for Module<B>
 where
-    B: Backend + VmpApplyDftTmpBytesImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_apply_dft_tmp_bytes(
         &self,
@@ -60,13 +57,13 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        B::vmp_apply_dft_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
+        <B as HalImpl<B>>::vmp_apply_dft_tmp_bytes(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
     }
 }
 
 impl<B> VmpApplyDft<B> for Module<B>
 where
-    B: Backend + VmpApplyDftImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_apply_dft<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
@@ -74,13 +71,13 @@ where
         A: VecZnxToRef,
         C: VmpPMatToRef<B>,
     {
-        B::vmp_apply_dft_impl(self, res, a, b, scratch);
+        <B as HalImpl<B>>::vmp_apply_dft(self, res, a, b, scratch);
     }
 }
 
 impl<B> VmpApplyDftToDftTmpBytes for Module<B>
 where
-    B: Backend + VmpApplyDftToDftTmpBytesImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_apply_dft_to_dft_tmp_bytes(
         &self,
@@ -91,13 +88,13 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        B::vmp_apply_dft_to_dft_tmp_bytes_impl(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
+        <B as HalImpl<B>>::vmp_apply_dft_to_dft_tmp_bytes(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
     }
 }
 
 impl<B> VmpApplyDftToDft<B> for Module<B>
 where
-    B: Backend + VmpApplyDftToDftImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, b: &C, limb_offset: usize, scratch: &mut Scratch<B>)
     where
@@ -105,18 +102,18 @@ where
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>,
     {
-        B::vmp_apply_dft_to_dft_impl(self, res, a, b, limb_offset, scratch);
+        <B as HalImpl<B>>::vmp_apply_dft_to_dft(self, res, a, b, limb_offset, scratch);
     }
 }
 
 impl<B> VmpZero<B> for Module<B>
 where
-    B: Backend + VmpZeroImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn vmp_zero<R>(&self, res: &mut R)
     where
         R: VmpPMatToMut<B>,
     {
-        B::vmp_zero_impl(self, res);
+        <B as HalImpl<B>>::vmp_zero(self, res);
     }
 }

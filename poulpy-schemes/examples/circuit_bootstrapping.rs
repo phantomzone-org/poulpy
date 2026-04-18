@@ -1,11 +1,12 @@
 use poulpy_core::{
-    GLWENormalize,
+    DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, GLWENormalize, LWEEncryptSk,
     layouts::{
         GGLWEToGGSWKeyLayout, GGSW, GGSWInfos, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWEInfos, GLWELayout, GLWEPlaintext,
-        GLWESecret, LWE, LWELayout, LWEPlaintext, LWESecret,
-        prepared::{GGSWPrepared, GLWESecretPrepared},
+        GLWESecret, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
+        prepared::{GGSWPrepared, GGSWPreparedFactory, GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
+use poulpy_hal::layouts::NoiseInfos;
 use std::time::Instant;
 
 #[cfg(all(
@@ -26,13 +27,16 @@ use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace},
-    layouts::{Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{DeviceBuf, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationKeyLayout, CGGI},
-    circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared},
+    circuit_bootstrapping::{
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk,
+        CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared,
+    },
 };
 
 fn main() {
@@ -152,8 +156,9 @@ fn main() {
     // sk_glwe.fill_zero(); // for testing
 
     // GLWE secret prepared (opaque backend dependant write only struct)
-    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank.into());
-    sk_glwe_prepared.prepare(&module, &sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> =
+        module.glwe_secret_prepared_alloc(rank.into());
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     // Plaintext value to circuit bootstrap
     let data: i64 = 1 % (1 << k_lwe_pt);
@@ -171,15 +176,34 @@ fn main() {
     // LWE ciphertext
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
+    let lwe_enc_infos = NoiseInfos::new(lwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_layout).unwrap();
+
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    module.lwe_encrypt_sk(
+        &mut ct_lwe,
+        &pt_lwe,
+        &sk_lwe,
+        &lwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_layout);
 
-    cbt_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    module.circuit_bootstrapping_key_encrypt_sk(
+        &mut cbt_key,
+        &sk_lwe,
+        &sk_glwe,
+        &cbt_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
@@ -187,7 +211,7 @@ fn main() {
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BackendImpl>, CGGI, BackendImpl> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_layout);
     cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
@@ -239,25 +263,27 @@ fn main() {
     println!("{}", pt_glwe);
 
     // Encrypt
-    ct_glwe.encrypt_sk(
-        &module,
+    let glwe_enc_infos = NoiseInfos::new(glwe_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
+    module.glwe_encrypt_sk(
+        &mut ct_glwe,
         &pt_glwe,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let mut res_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &res);
-    res_prepared.prepare(&module, &res, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.ggsw_prepared_alloc_from_infos(&res);
+    module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
     // Apply GLWE x GGSW
-    ct_glwe.external_product_inplace(&module, &res_prepared, scratch.borrow());
+    module.glwe_external_product_inplace(&mut ct_glwe, &res_prepared, scratch.borrow());
 
     // Decrypt
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
-    ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
+    module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     println!("pt_res: {:?}", &pt_res.data.at(0, 0)[..64]);
 }

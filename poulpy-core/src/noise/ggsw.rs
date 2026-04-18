@@ -1,14 +1,17 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigNormalize,
+        ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssign, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
 
 use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, LWEInfos, prepared::GLWESecretPrepared};
-use crate::{GLWENoise, layouts::prepared::GLWESecretPreparedToRef};
 use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
+use crate::{
+    api::{GGSWNoise, GLWENoise},
+    layouts::prepared::GLWESecretPreparedToRef,
+};
 
 impl<D: DataRef> GGSW<D> {
     pub fn noise<M, BE: Backend, P, S>(
@@ -30,29 +33,9 @@ impl<D: DataRef> GGSW<D> {
     }
 }
 
-pub trait GGSWNoise<BE: Backend> {
-    fn ggsw_noise_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: GGSWInfos;
-
-    fn ggsw_noise<R, S, P>(
-        &self,
-        res: &R,
-        res_row: usize,
-        res_col: usize,
-        pt_want: &P,
-        sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Stats
-    where
-        R: GGSWToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        P: ScalarZnxToRef;
-}
-
 impl<BE: Backend> GGSWNoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarInplace
+    Module<BE>: VecZnxAddScalarAssign
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
         + VecZnxIdftApplyConsume<BE>
@@ -68,7 +51,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
         let lvl_1_glwe_noise: usize = self.glwe_noise_tmp_bytes(infos);
         let lvl_1_mul: usize = self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1: usize = lvl_1_glwe_noise.max(lvl_1_mul);
@@ -105,7 +88,7 @@ where
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
         pt.data_mut().zero();
-        self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, 0);
+        self.vec_znx_add_scalar_assign(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, 0);
 
         // mul with sk[col_j-1]
         if res_col > 0 {

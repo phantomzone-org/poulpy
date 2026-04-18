@@ -9,22 +9,20 @@
 //! `poulpy-hal` defines a hardware abstraction layer (HAL) via the [`Backend`](poulpy_hal::layouts::Backend)
 //! trait and a family of _open extension point_ (OEP) traits in [`poulpy_hal::oep`]. This module
 //! implements every OEP trait for the [`FFT64Ref`] backend by delegating to the reference
-//! functions provided by `poulpy_hal::reference::fft64`.
+//! functions provided by `crate::reference::fft64`.
 //!
 //! The internal modules are organised by operation domain:
 //!
 //! | Module          | Domain                                                    |
 //! |-----------------|-----------------------------------------------------------|
 //! | `module`        | Backend handle lifecycle, FFT table management            |
-//! | `scratch`       | Temporary memory allocation and arena-style sub-allocation|
+//! | `scratch`       | Temporary memory allocation and arena-style sub-allocation, now provided by shared `poulpy-hal` portable defaults |
 //! | `znx`           | Single ring element (`Z[X]/(X^n+1)`) arithmetic           |
-//! | `vec_znx`       | Vectors of ring elements (limb decomposition)             |
-//! | `vec_znx_big`   | Large-coefficient (multi-word) ring element vectors        |
-//! | `vec_znx_dft`   | Fourier-domain ring element vectors (forward/inverse DFT) |
+//! | `vec_znx`       | Vectors of ring elements (limb decomposition), now provided by shared `poulpy-hal` portable defaults |
+//! | `vec_znx_big`   | Large-coefficient (multi-word) ring element vectors, now provided by shared `poulpy-hal` FFT64 defaults |
+//! | `vec_znx_dft`   | Fourier-domain ring element vectors, now provided by shared `poulpy-hal` FFT64 defaults |
 //! | `reim`          | Real/imaginary interleaved FFT primitives                 |
-//! | `convolution`   | Polynomial convolution via FFT, by-constant, and pairwise |
-//! | `svp`           | Scalar-vector product in frequency domain                 |
-//! | `vmp`           | Vector-matrix product in frequency domain                 |
+//! | `svp`           | Scalar-vector product in frequency domain, now provided by shared `poulpy-hal` FFT64 defaults |
 //!
 //! # Scalar types
 //!
@@ -32,18 +30,11 @@
 //! - `ScalarBig  = i64`: coefficients in the large-integer (multi-word) domain.
 //!   meaning each coefficient occupies exactly one scalar word.
 
-mod convolution;
 mod module;
 mod reim;
-mod scratch;
-mod svp;
-mod vec_znx;
-mod vec_znx_big;
-mod vec_znx_dft;
-mod vmp;
 mod znx;
 
-pub use module::FFT64ModuleHandle;
+pub use crate::reference::fft64::module::FFTModuleHandle;
 
 /// Reference (portable) CPU backend using f64 FFT.
 ///
@@ -51,7 +42,7 @@ pub use module::FFT64ModuleHandle;
 /// when used as the type parameter `B` in [`poulpy_hal::layouts::Module<B>`](poulpy_hal::layouts::Module)
 /// and related HAL types. It implements all open extension point (OEP) traits from
 /// `poulpy_hal::oep` by delegating to the portable reference functions in
-/// `poulpy_hal::reference::fft64`.
+/// `crate::reference::fft64`.
 ///
 /// # Backend characteristics
 ///

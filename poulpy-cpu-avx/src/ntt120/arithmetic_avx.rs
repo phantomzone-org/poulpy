@@ -22,6 +22,7 @@
 //! | Function | Trait |
 //! |---|---|
 //! | [`b_from_znx64_avx2`] | `NttFromZnx64` |
+//! | [`b_from_znx64_masked_avx2`] | `NttFromZnx64::ntt_from_znx64_masked` |
 //! | [`c_from_b_avx2`] | `NttCFromB` |
 //! | [`vec_mat1col_product_bbb_avx2`] | `NttMulBbb` |
 //! | [`b_to_znx128_avx2`] | `NttToZnx128` |
@@ -31,13 +32,13 @@
 //! must have verified CPU support at module construction time.
 
 use core::arch::x86_64::{
-    __m256i, _mm_add_epi64, _mm_cvtsi64_si128, _mm_cvtsi128_si64, _mm_unpackhi_epi64, _mm256_add_epi64, _mm256_and_si256,
-    _mm256_andnot_si256, _mm256_castsi256_si128, _mm256_cmpgt_epi64, _mm256_extracti128_si256, _mm256_loadu_si256,
-    _mm256_mul_epu32, _mm256_or_si256, _mm256_set1_epi64x, _mm256_setzero_si256, _mm256_slli_epi64, _mm256_srl_epi64,
-    _mm256_srli_epi64, _mm256_storeu_si256, _mm256_sub_epi64,
+    __m256i, _mm_add_epi64, _mm_cvtsi64_si128, _mm_cvtsi128_si64, _mm_unpackhi_epi64, _mm256_add_epi32, _mm256_add_epi64,
+    _mm256_and_si256, _mm256_andnot_si256, _mm256_castsi256_si128, _mm256_cmpgt_epi64, _mm256_extracti128_si256,
+    _mm256_loadu_si256, _mm256_mul_epu32, _mm256_or_si256, _mm256_set1_epi64x, _mm256_setzero_si256, _mm256_slli_epi64,
+    _mm256_srl_epi64, _mm256_srli_epi64, _mm256_storeu_si256, _mm256_sub_epi64,
 };
 
-use poulpy_hal::reference::ntt120::{
+use poulpy_cpu_ref::reference::ntt120::{
     mat_vec::BbbMeta,
     primes::{PrimeSet, Primes30},
 };
@@ -328,6 +329,35 @@ pub(crate) unsafe fn b_from_znx64_avx2(nn: usize, res: &mut [u64], x: &[i64]) {
     }
 }
 
+/// AVX2 variant of `b_from_znx64_masked_ref`: mask coefficients before q120b conversion.
+///
+/// Caller must ensure AVX2 support. `res.len() >= 4 * nn`, `x.len() >= nn`.
+#[target_feature(enable = "avx2")]
+pub(crate) unsafe fn b_from_znx64_masked_avx2(nn: usize, res: &mut [u64], x: &[i64], mask: i64) {
+    assert!(
+        res.len() >= 4 * nn,
+        "b_from_znx64_masked_avx2: res.len()={} < 4*nn={}",
+        res.len(),
+        4 * nn
+    );
+    assert!(x.len() >= nn, "b_from_znx64_masked_avx2: x.len()={} < nn={}", x.len(), nn);
+    unsafe {
+        let oq_vec = _mm256_loadu_si256(OQ.as_ptr() as *const __m256i);
+        let i64_max = _mm256_set1_epi64x(i64::MAX);
+        let zero = _mm256_setzero_si256();
+        let mut r_ptr = res.as_mut_ptr() as *mut __m256i;
+
+        for &xval in &x[..nn] {
+            let xv = _mm256_set1_epi64x(xval & mask);
+            let xl = _mm256_and_si256(xv, i64_max);
+            let sign = _mm256_cmpgt_epi64(zero, xv);
+            let add = _mm256_and_si256(sign, oq_vec);
+            _mm256_storeu_si256(r_ptr, _mm256_add_epi64(xl, add));
+            r_ptr = r_ptr.add(1);
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // c_from_b_avx2
 // ─────────────────────────────────────────────────────────────────────────────
@@ -438,6 +468,148 @@ pub(crate) unsafe fn c_from_b_avx2(nn: usize, res: &mut [u32], a: &[u64]) {
 
             a_ptr = a_ptr.add(1);
             r_ptr = r_ptr.add(1);
+        }
+    }
+}
+
+/// AVX2 pack for a row range of q120b x2-blocks.
+///
+/// `a` is a column-start q120b slice with row stride `row_stride` (in `u64` units).
+/// For each row, block `blk` is reduced to canonical residues and written to `dst`
+/// in the x2 q120b/u32 layout expected by BBC kernels.
+#[target_feature(enable = "avx2")]
+pub(crate) unsafe fn pack_left_1blk_x2_avx2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+    debug_assert!(dst.len() >= 16 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+
+    unsafe {
+        let q = _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i);
+        let mu = _mm256_loadu_si256(BARRETT_MU.as_ptr() as *const __m256i);
+        let pow32 = _mm256_loadu_si256(POW32.as_ptr() as *const __m256i);
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m256i;
+        let mut a_ptr = a.as_ptr().add(8 * blk) as *const __m256i;
+
+        for _ in 0..row_count {
+            let a0 = _mm256_loadu_si256(a_ptr);
+            let r0 = reduce_b_to_canonical(a0, q, mu, pow32);
+            _mm256_storeu_si256(dst_ptr, r0);
+
+            let a1 = _mm256_loadu_si256(a_ptr.add(1));
+            let r1 = reduce_b_to_canonical(a1, q, mu, pow32);
+            _mm256_storeu_si256(dst_ptr.add(1), r1);
+
+            a_ptr = (a_ptr as *const u64).add(row_stride) as *const __m256i;
+            dst_ptr = dst_ptr.add(2);
+        }
+    }
+}
+
+/// AVX2 pack for a row range of q120c x2-blocks in reversed row order.
+///
+/// `a` is a column-start q120c slice with row stride `row_stride` (in `u32` units).
+/// For each row, block `blk` is copied to `dst` in reversed row order so convolution
+/// windows can consume contiguous slices directly.
+#[target_feature(enable = "avx2")]
+pub(crate) unsafe fn pack_right_1blk_x2_avx2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+    debug_assert!(dst.len() >= 16 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+
+    unsafe {
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m256i;
+        let mut a_ptr = a.as_ptr().add(row_stride * row_count.saturating_sub(1) + 16 * blk) as *const __m256i;
+
+        for _ in 0..row_count {
+            _mm256_storeu_si256(dst_ptr, _mm256_loadu_si256(a_ptr));
+            _mm256_storeu_si256(dst_ptr.add(1), _mm256_loadu_si256(a_ptr.add(1)));
+
+            a_ptr = (a_ptr as *const u32).sub(row_stride) as *const __m256i;
+            dst_ptr = dst_ptr.add(2);
+        }
+    }
+}
+
+/// AVX2 pairwise pack for a row range of q120b x2-blocks.
+///
+/// `a` and `b` are column-start q120b slices with row stride `row_stride` (in `u64` units).
+/// For each row, block `blk` is reduced to canonical residues, summed mod `Q`,
+/// and written to `dst` in the x2 q120b/u32 layout expected by BBC kernels.
+#[target_feature(enable = "avx2")]
+pub(crate) unsafe fn pairwise_pack_left_1blk_x2_avx2(
+    dst: &mut [u32],
+    a: &[u64],
+    b: &[u64],
+    row_count: usize,
+    row_stride: usize,
+    blk: usize,
+) {
+    debug_assert!(dst.len() >= 16 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+    debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+
+    unsafe {
+        let q = _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i);
+        let mu = _mm256_loadu_si256(BARRETT_MU.as_ptr() as *const __m256i);
+        let pow32 = _mm256_loadu_si256(POW32.as_ptr() as *const __m256i);
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m256i;
+        let mut a_ptr = a.as_ptr().add(8 * blk) as *const __m256i;
+        let mut b_ptr = b.as_ptr().add(8 * blk) as *const __m256i;
+
+        for _ in 0..row_count {
+            let a0 = _mm256_loadu_si256(a_ptr);
+            let b0 = _mm256_loadu_si256(b_ptr);
+            let r0 = reduce_b_to_canonical(a0, q, mu, pow32);
+            let s0 = reduce_b_to_canonical(b0, q, mu, pow32);
+            _mm256_storeu_si256(dst_ptr, cond_sub(_mm256_add_epi64(r0, s0), q));
+
+            let a1 = _mm256_loadu_si256(a_ptr.add(1));
+            let b1 = _mm256_loadu_si256(b_ptr.add(1));
+            let r1 = reduce_b_to_canonical(a1, q, mu, pow32);
+            let s1 = reduce_b_to_canonical(b1, q, mu, pow32);
+            _mm256_storeu_si256(dst_ptr.add(1), cond_sub(_mm256_add_epi64(r1, s1), q));
+
+            a_ptr = (a_ptr as *const u64).add(row_stride) as *const __m256i;
+            b_ptr = (b_ptr as *const u64).add(row_stride) as *const __m256i;
+            dst_ptr = dst_ptr.add(2);
+        }
+    }
+}
+
+/// AVX2 pairwise pack for a row range of q120c x2-blocks.
+///
+/// `a` and `b` are column-start q120c slices with row stride `row_stride` (in `u32` units).
+/// For each row, block `blk` is written to `dst` in reversed row order so convolution windows
+/// can consume contiguous slices directly.
+#[target_feature(enable = "avx2")]
+pub(crate) unsafe fn pairwise_pack_right_1blk_x2_avx2(
+    dst: &mut [u32],
+    a: &[u32],
+    b: &[u32],
+    row_count: usize,
+    row_stride: usize,
+    blk: usize,
+) {
+    debug_assert!(dst.len() >= 16 * row_count);
+    debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+    debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+
+    unsafe {
+        let mut dst_ptr = dst.as_mut_ptr() as *mut __m256i;
+        let mut a_ptr = a.as_ptr().add(row_stride * row_count.saturating_sub(1) + 16 * blk) as *const __m256i;
+        let mut b_ptr = b.as_ptr().add(row_stride * row_count.saturating_sub(1) + 16 * blk) as *const __m256i;
+
+        for _ in 0..row_count {
+            _mm256_storeu_si256(
+                dst_ptr,
+                _mm256_add_epi32(_mm256_loadu_si256(a_ptr), _mm256_loadu_si256(b_ptr)),
+            );
+            _mm256_storeu_si256(
+                dst_ptr.add(1),
+                _mm256_add_epi32(_mm256_loadu_si256(a_ptr.add(1)), _mm256_loadu_si256(b_ptr.add(1))),
+            );
+
+            a_ptr = (a_ptr as *const u32).sub(row_stride) as *const __m256i;
+            b_ptr = (b_ptr as *const u32).sub(row_stride) as *const __m256i;
+            dst_ptr = dst_ptr.add(2);
         }
     }
 }
@@ -614,7 +786,7 @@ pub(crate) unsafe fn b_to_znx128_avx2(nn: usize, res: &mut [i128], a: &[u64]) {
 #[cfg(all(test, target_feature = "avx2"))]
 mod tests {
     use super::*;
-    use poulpy_hal::reference::ntt120::{
+    use poulpy_cpu_ref::reference::ntt120::{
         arithmetic::{b_from_znx64_ref, b_to_znx128_ref, c_from_b_ref},
         mat_vec::{BbbMeta, vec_mat1col_product_bbb_ref},
         primes::Primes30,
@@ -681,7 +853,7 @@ mod tests {
     /// Fused `reduce_b_and_apply_crt` matches two-step `reduce_b_to_canonical` + barrett.
     #[test]
     fn reduce_b_and_apply_crt_vs_two_step() {
-        use poulpy_hal::reference::ntt120::arithmetic::b_from_znx64_ref;
+        use poulpy_cpu_ref::reference::ntt120::arithmetic::b_from_znx64_ref;
         let n = 64usize;
         let coeffs: Vec<i64> = (0..n as i64).map(|i| i * 5 - 160).collect();
         let mut b = vec![0u64; 4 * n];

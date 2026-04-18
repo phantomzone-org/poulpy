@@ -1,6 +1,6 @@
 use poulpy_core::{
-    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace,
-    LWEFromGLWE, ScratchTakeCore,
+    EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub,
+    GLWETrace, LWEFromGLWE, ScratchTakeCore,
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEPlaintext,
         GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
@@ -46,7 +46,7 @@ impl<T: UnsignedInteger> FheUint<Vec<u8>, T> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
@@ -86,8 +86,8 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
         self.bits.base2k()
     }
 
-    fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.bits.k()
+    fn size(&self) -> usize {
+        self.bits.size()
     }
 
     fn n(&self) -> poulpy_core::layouts::Degree {
@@ -102,17 +102,20 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUint<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
-    pub fn encrypt_sk<S, M, BE: Backend>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
         module: &M,
         data: T,
         sk_glwe: &S,
-        source_xa: &mut Source,
+        enc_infos: &E,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEEncryptSk<BE>,
+        E: EncryptionInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -140,7 +143,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch_1);
+        module.glwe_encrypt_sk(&mut self.bits, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
     }
 
     pub fn encrypt_sk_tmp_bytes<M, BE: Backend>(&self, module: &M) -> usize
@@ -152,7 +155,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
             base2k: self.base2k(),
             k: 2_usize.into(),
         };
-        GLWEPlaintext::bytes_of_from_infos(&pt_infos) + module.glwe_encrypt_sk_tmp_bytes(self)
+        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&pt_infos) + module.glwe_encrypt_sk_tmp_bytes(self)
     }
 }
 
@@ -177,7 +180,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
             data_bits[T::bit_index(i) << log_gap] = want.bit(i) as i64
         }
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.noise(module, &pt, sk, scratch_1)
+        module.glwe_noise(&self.bits, &pt, sk, scratch_1)
     }
 
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk_glwe: &S, scratch: &mut Scratch<BE>) -> T
@@ -201,7 +204,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
-        self.bits.decrypt(module, &mut pt, sk_glwe, scratch_1);
+        module.glwe_decrypt(&self.bits, &mut pt, sk_glwe, scratch_1);
 
         let mut data_bits: Vec<i64> = vec![0i64; module.n()];
         pt.decode_vec_i64(&mut data_bits, TorusPrecision(2));
@@ -227,7 +230,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
             base2k: self.base2k(),
             k: 1_usize.into(),
         };
-        GLWEPlaintext::bytes_of_from_infos(&pt_infos) + module.glwe_decrypt_tmp_bytes(self)
+        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&pt_infos) + module.glwe_decrypt_tmp_bytes(self)
     }
 }
 
@@ -322,7 +325,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         module.glwe_rotate_inplace(rot, &mut tmp_fhe_uint_byte, scratch_1);
 
         // Add self[0] += a[0]
-        module.glwe_add_inplace(&mut self.bits, &tmp_fhe_uint_byte);
+        module.glwe_add_assign(&mut self.bits, &tmp_fhe_uint_byte);
     }
 }
 
@@ -383,15 +386,15 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
             let (mut res_tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: self.n(),
                 base2k: ks_lwe.base2k(),
-                k: ks_lwe.k().min(self.k()),
+                k: ks_lwe.max_k().min(self.max_k()),
                 rank: ks_lwe.rank_out(),
             });
             module.glwe_keyswitch(&mut res_tmp, self, ks_glwe, scratch_1);
-            res.to_mut()
-                .from_glwe(module, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, scratch_1);
+            let mut res_lwe = res.to_mut();
+            module.lwe_from_glwe(&mut res_lwe, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, scratch_1);
         } else {
-            res.to_mut()
-                .from_glwe(module, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
+            let mut res_lwe = res.to_mut();
+            module.lwe_from_glwe(&mut res_lwe, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
         }
     }
 
@@ -509,7 +512,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         for i in 0..3 {
             let (mut tmp, _) = scratch_1.take_glwe(self);
             module.glwe_rotate(((1 << T::LOG_BYTES) << log_gap) << i, &mut tmp, &sext);
-            module.glwe_add_inplace(&mut sext, &tmp);
+            module.glwe_add_assign(&mut sext, &tmp);
         }
 
         // Splice sext

@@ -1,6 +1,6 @@
 use poulpy_core::{
     GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext},
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -10,7 +10,7 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_add<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_into<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEAdd,
 {
@@ -21,18 +21,18 @@ where
     let a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
 
-    let group_name = format!("glwe_add::{label}");
+    let group_name = format!("glwe_add_into::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_add(&mut res, &a, &b);
+            module.glwe_add_into(&mut res, &a, &b);
             black_box(());
         })
     });
     group.finish();
 }
 
-pub fn bench_glwe_add_inplace<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEAdd,
 {
@@ -42,11 +42,11 @@ where
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
 
-    let group_name = format!("glwe_add_inplace::{label}");
+    let group_name = format!("glwe_add_assign::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_add_inplace(&mut res, &b);
+            module.glwe_add_assign(&mut res, &b);
             black_box(());
         })
     });
@@ -155,13 +155,21 @@ where
     let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain(&mut ct_out, 0, &ct_in, &pt, scratch.borrow());
+            module.glwe_mul_plain(
+                0,
+                &mut ct_out,
+                &ct_in,
+                ct_in.max_k().as_usize(),
+                &pt,
+                pt.max_k().as_usize(),
+                scratch.borrow(),
+            );
             black_box(());
         })
     });
@@ -179,13 +187,20 @@ where
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
     let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
-    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, 0, infos, infos));
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain_inplace::{label}");
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_mul_plain_inplace(&mut ct, 0, &pt, scratch.borrow());
+            module.glwe_mul_plain_inplace(
+                0,
+                &mut ct,
+                infos.max_k().as_usize(),
+                &pt,
+                pt.max_k().as_usize(),
+                scratch.borrow(),
+            );
             black_box(());
         })
     });

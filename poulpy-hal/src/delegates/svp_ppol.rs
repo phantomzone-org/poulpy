@@ -3,7 +3,7 @@ use crate::{
     layouts::{
         Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
     },
-    oep::{SvpApplyDftImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPrepareImpl},
+    oep::HalImpl,
 };
 
 impl<B: Backend> SvpPPolAlloc<B> for Module<B> {
@@ -20,20 +20,20 @@ impl<B: Backend> SvpPPolBytesOf for Module<B> {
 
 impl<B> SvpPrepare<B> for Module<B>
 where
-    B: Backend + SvpPrepareImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: SvpPPolToMut<B>,
         A: ScalarZnxToRef,
     {
-        B::svp_prepare_impl(self, res, res_col, a, a_col);
+        <B as HalImpl<B>>::svp_prepare(self, res, res_col, a, a_col);
     }
 }
 
 impl<B> SvpApplyDft<B> for Module<B>
 where
-    B: Backend + SvpApplyDftImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn svp_apply_dft<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -41,13 +41,13 @@ where
         A: SvpPPolToRef<B>,
         C: VecZnxToRef,
     {
-        B::svp_apply_dft_impl(self, res, res_col, a, a_col, b, b_col);
+        <B as HalImpl<B>>::svp_apply_dft(self, res, res_col, a, a_col, b, b_col);
     }
 }
 
 impl<B> SvpApplyDftToDft<B> for Module<B>
 where
-    B: Backend + SvpApplyDftToDftImpl<B>,
+    B: Backend + HalImpl<B>,
 {
     fn svp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -55,19 +55,19 @@ where
         A: SvpPPolToRef<B>,
         C: VecZnxDftToRef<B>,
     {
-        B::svp_apply_dft_to_dft_impl(self, res, res_col, a, a_col, b, b_col);
+        <B as HalImpl<B>>::svp_apply_dft_to_dft(self, res, res_col, a, a_col, b, b_col);
     }
 }
 
 impl<B> SvpApplyDftToDftInplace<B> for Module<B>
 where
-    B: Backend + SvpApplyDftToDftInplaceImpl,
+    B: Backend + HalImpl<B>,
 {
     fn svp_apply_dft_to_dft_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: SvpPPolToRef<B>,
     {
-        B::svp_apply_dft_to_dft_inplace_impl(self, res, res_col, a, a_col);
+        <B as HalImpl<B>>::svp_apply_dft_to_dft_inplace(self, res, res_col, a, a_col);
     }
 }

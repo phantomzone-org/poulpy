@@ -1,36 +1,14 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataRef, Module, Scratch, Stats},
+    layouts::{Backend, Module, Scratch, Stats},
 };
 
 use crate::{
     GLWENormalize, GLWESub, ScratchTakeCore,
+    api::GLWENoise,
     decryption::GLWEDecrypt,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToRef, LWEInfos, prepared::GLWESecretPreparedToRef},
+    layouts::{GLWEInfos, GLWEPlaintext, GLWEToRef, LWEInfos, prepared::GLWESecretPreparedToRef},
 };
-
-impl<D: DataRef> GLWE<D> {
-    pub fn noise<M, P, S, BE: Backend>(&self, module: &M, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats
-    where
-        M: GLWENoise<BE>,
-        P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-    {
-        module.glwe_noise(self, pt_want, sk_prepared, scratch)
-    }
-}
-
-pub trait GLWENoise<BE: Backend> {
-    fn glwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
-    where
-        A: GLWEInfos;
-
-    fn glwe_noise<R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats
-    where
-        R: GLWEToRef + GLWEInfos,
-        P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos;
-}
 
 impl<BE: Backend> GLWENoise<BE> for Module<BE>
 where
@@ -41,7 +19,7 @@ where
     where
         A: GLWEInfos,
     {
-        let lvl_0: usize = GLWEPlaintext::bytes_of_from_infos(infos);
+        let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
         let lvl_1: usize = self.glwe_normalize_tmp_bytes().max(self.glwe_decrypt_tmp_bytes(infos));
 
         lvl_0 + lvl_1

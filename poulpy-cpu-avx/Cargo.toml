@@ -5,15 +5,19 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "A crate providing concrete AVX accelerated CPU implementations of poulpy-hal through its open extension points"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
+
+[lib]
+doctest = false
 
 [features]
 enable-avx = []
 
 [dependencies]
 bytemuck = {workspace = true}
+poulpy-core = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 itertools = {workspace = true}

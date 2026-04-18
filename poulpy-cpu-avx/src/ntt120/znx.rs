@@ -1,24 +1,24 @@
 //! Single ring element (`Z[X]/(X^n+1)`) arithmetic for [`NTT120Avx`](super::NTT120Avx).
 //!
-//! Implements the `Znx*` traits from `poulpy_hal::reference::znx`. All implementations
+//! Implements the `Znx*` traits from `poulpy_cpu_ref::reference::znx`. All implementations
 //! delegate to the AVX2-accelerated functions in `crate::znx_avx` (same kernels used
 //! by `FFT64Avx`). These operate on plain `&[i64]` slices and are backend-independent.
 
-use poulpy_hal::reference::znx::{
+use poulpy_cpu_ref::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
-    ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep,
-    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace,
-    ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
+    ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
+    ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxRotate,
+    ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
 };
 
 use crate::znx_avx::{
     znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
     znx_mul_power_of_two_avx, znx_mul_power_of_two_inplace_avx, znx_negate_avx, znx_negate_inplace_avx, znx_normalize_digit_avx,
-    znx_normalize_final_step_avx, znx_normalize_final_step_inplace_avx, znx_normalize_first_step_avx,
-    znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_inplace_avx, znx_normalize_middle_step_avx,
-    znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_inplace_avx, znx_sub_avx, znx_sub_inplace_avx,
-    znx_sub_negate_inplace_avx, znx_switch_ring_avx,
+    znx_normalize_final_step_avx, znx_normalize_final_step_inplace_avx, znx_normalize_final_step_sub_avx,
+    znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_inplace_avx,
+    znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_inplace_avx,
+    znx_normalize_middle_step_sub_avx, znx_sub_avx, znx_sub_inplace_avx, znx_sub_negate_inplace_avx, znx_switch_ring_avx,
 };
 
 use super::NTT120Avx;
@@ -128,10 +128,38 @@ impl ZnxSwitchRing for NTT120Avx {
     }
 }
 
+impl ZnxNormalizeFirstStep for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_first_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeMiddleStep for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
 impl ZnxNormalizeFinalStep for NTT120Avx {
     #[inline(always)]
-    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_final_step_avx(base2k, lsh, x, a, carry) }
+    fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_avx::<OVERWRITE>(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeMiddleStepSub for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_middle_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_sub_avx(base2k, lsh, x, a, carry) }
+    }
+}
+
+impl ZnxNormalizeFinalStepSub for NTT120Avx {
+    #[inline(always)]
+    fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_sub_avx(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -139,13 +167,6 @@ impl ZnxNormalizeFinalStepInplace for NTT120Avx {
     #[inline(always)]
     fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe { znx_normalize_final_step_inplace_avx(base2k, lsh, x, carry) }
-    }
-}
-
-impl ZnxNormalizeFirstStep for NTT120Avx {
-    #[inline(always)]
-    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_first_step_avx(base2k, lsh, x, a, carry) }
     }
 }
 
@@ -160,13 +181,6 @@ impl ZnxNormalizeFirstStepInplace for NTT120Avx {
     #[inline(always)]
     fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe { znx_normalize_first_step_inplace_avx(base2k, lsh, x, carry) }
-    }
-}
-
-impl ZnxNormalizeMiddleStep for NTT120Avx {
-    #[inline(always)]
-    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_middle_step_avx(base2k, lsh, x, a, carry) }
     }
 }
 

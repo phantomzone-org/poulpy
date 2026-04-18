@@ -3,14 +3,15 @@ use std::thread;
 
 use itertools::Itertools;
 use poulpy_core::{
-    GLWECopy, GLWEExternalProductInternal, GLWENormalize, GLWESub, ScratchTakeCore,
+    GLWECopy, GLWENormalize, GLWESub, ScratchTakeCore,
+    api::GLWEExternalProductInternal,
     layouts::{
         GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef,
     },
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallA, VecZnxDftBytesOf,
     },
     layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, ZnxInfos, ZnxZero},
@@ -165,7 +166,7 @@ where
         R: GLWEInfos,
         G: GGSWInfos,
     {
-        2 * state_size * GLWE::bytes_of_from_infos(res_infos) + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
+        2 * state_size * GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos) + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
     }
 
     fn execute_bdd_circuit_multi_thread<C, G, O>(
@@ -334,13 +335,13 @@ impl<BE: Backend> Cswap<BE> for Module<BE> where
     Self: Sized
         + GLWEExternalProductInternal<BE>
         + GLWESub
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + GLWENormalize<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
         + GLWENormalize<BE>
-        + VecZnxBigAddSmall<BE>
+        + VecZnxBigAddSmallInto<BE>
         + VecZnxBigSubSmallA<BE>
         + VecZnxBigBytesOf
 {
@@ -364,13 +365,13 @@ where
         + GLWEExternalProductInternal<BE>
         + GLWESub
         + GLWECopy
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + GLWENormalize<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
         + GLWENormalize<BE>
-        + VecZnxBigAddSmall<BE>
+        + VecZnxBigAddSmallInto<BE>
         + VecZnxBigSubSmallA<BE>
         + VecZnxBigBytesOf,
 {
@@ -384,26 +385,26 @@ where
         let res_dft: usize = self.bytes_of_vec_znx_dft((s_infos.rank() + 1).into(), s_infos.size());
         let mut tot = res_dft
             + (self.glwe_external_product_internal_tmp_bytes(res_a_infos, res_b_infos, s_infos)
-                + GLWE::bytes_of_from_infos(&GLWELayout {
+                + GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                     n: s_infos.n(),
                     base2k: s_infos.base2k(),
-                    k: res_a_infos.k().max(res_b_infos.k()),
+                    k: res_a_infos.max_k().max(res_b_infos.max_k()),
                     rank: s_infos.rank(),
                 }))
             .max(self.vec_znx_big_normalize_tmp_bytes());
 
         if res_a_infos.base2k() != s_infos.base2k() {
-            tot += GLWE::bytes_of_from_infos(&GLWELayout {
+            tot += GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                 n: res_a_infos.n(),
                 base2k: s_infos.base2k(),
-                k: res_a_infos.k(),
+                k: res_a_infos.max_k(),
                 rank: res_a_infos.rank(),
             });
 
-            tot += GLWE::bytes_of_from_infos(&GLWELayout {
+            tot += GLWE::<Vec<u8>>::bytes_of_from_infos(&GLWELayout {
                 n: res_b_infos.n(),
                 base2k: s_infos.base2k(),
-                k: res_b_infos.k(),
+                k: res_b_infos.max_k(),
                 rank: res_b_infos.rank(),
             });
         }
@@ -436,7 +437,7 @@ where
                 let tmp_c_infos: GLWELayout = GLWELayout {
                     n: s.n(),
                     base2k: s.base2k(),
-                    k: res_a.k().max(res_b.k()),
+                    k: res_a.max_k().max(res_b.max_k()),
                     rank: s.rank(),
                 };
                 let (mut tmp_c, scratch_2) = scratch_1.take_glwe(&tmp_c_infos);
@@ -449,7 +450,7 @@ where
 
             // res_a = (b-a) * bit + a
             for j in 0..(res_a.rank() + 1).into() {
-                self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, res_a.data(), j);
+                self.vec_znx_big_add_small_into(&mut res_big_tmp, 0, &res_big, j, res_a.data(), j);
                 self.vec_znx_big_normalize(res_a.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_2);
             }
 
@@ -462,14 +463,14 @@ where
             let (mut tmp_a, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: res_a.n(),
                 base2k: s.base2k(),
-                k: res_a.k(),
+                k: res_a.max_k(),
                 rank: res_a.rank(),
             });
 
             let (mut tmp_b, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res_b.n(),
                 base2k: s.base2k(),
-                k: res_b.k(),
+                k: res_b.max_k(),
                 rank: res_b.rank(),
             });
 
@@ -483,7 +484,7 @@ where
                 let tmp_c_infos: GLWELayout = GLWELayout {
                     n: s.n(),
                     base2k: s.base2k(),
-                    k: res_a.k().max(res_b.k()),
+                    k: res_a.max_k().max(res_b.max_k()),
                     rank: s.rank(),
                 };
                 let (mut tmp_c, scratch_4) = scratch_3.take_glwe(&tmp_c_infos);
@@ -496,7 +497,7 @@ where
 
             // res_a = (b-a) * bit + a
             for j in 0..(res_a.rank() + 1).into() {
-                self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, tmp_a.data(), j);
+                self.vec_znx_big_add_small_into(&mut res_big_tmp, 0, &res_big, j, tmp_a.data(), j);
                 self.vec_znx_big_normalize(res_a.data_mut(), res_base2k, 0, j, &res_big_tmp, s_base2k, 0, scratch_4);
             }
 
@@ -525,7 +526,7 @@ where
     Self: Sized
         + GLWEExternalProductInternal<BE>
         + GLWESub
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + GLWENormalize<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
@@ -565,7 +566,7 @@ where
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_add_small_inplace(&mut res_big, j, f.data(), j);
+            self.vec_znx_big_add_small_assign(&mut res_big, j, f.data(), j);
             self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
@@ -589,14 +590,14 @@ where
         let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: s.n(),
             base2k: res.base2k(),
-            k: res.k().max(a.k()),
+            k: res.max_k().max(a.max_k()),
             rank: res.rank(),
         });
         self.glwe_sub(&mut tmp, a, res);
         let (res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, &tmp, s, scratch_2);
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_add_small_inplace(&mut res_big, j, res.data(), j);
+            self.vec_znx_big_add_small_assign(&mut res_big, j, res.data(), j);
             self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_2);
         }
     }
@@ -618,7 +619,7 @@ where
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
         let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, res, s, scratch_1);
         for j in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_add_small_inplace(&mut res_big, j, a.data(), j);
+            self.vec_znx_big_add_small_assign(&mut res_big, j, a.data(), j);
             self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, j, &res_big, ggsw_base2k, j, scratch_1);
         }
     }
@@ -629,7 +630,7 @@ where
     Self: Sized
         + GLWEExternalProductInternal<BE>
         + GLWESub
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + GLWENormalize<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>

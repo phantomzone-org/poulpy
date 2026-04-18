@@ -60,8 +60,8 @@ pub trait VecZnxIdftApplyConsume<B: Backend> {
 }
 
 /// Element-wise addition of two [`VecZnxDft`](crate::layouts::VecZnxDft) vectors.
-pub trait VecZnxDftAdd<B: Backend> {
-    fn vec_znx_dft_add<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
+pub trait VecZnxDftAddInto<B: Backend> {
+    fn vec_znx_dft_add_into<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -69,16 +69,16 @@ pub trait VecZnxDftAdd<B: Backend> {
 }
 
 /// In-place addition in DFT domain: `res += a`.
-pub trait VecZnxDftAddInplace<B: Backend> {
-    fn vec_znx_dft_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub trait VecZnxDftAddAssign<B: Backend> {
+    fn vec_znx_dft_add_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
 }
 
 /// In-place scaled addition in DFT domain: `res += a * a_scale`.
-pub trait VecZnxDftAddScaledInplace<B: Backend> {
-    fn vec_znx_dft_add_scaled_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
+pub trait VecZnxDftAddScaledAssign<B: Backend> {
+    fn vec_znx_dft_add_scaled_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;

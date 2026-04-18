@@ -1,11 +1,12 @@
 use poulpy_core::layouts::{Base2K, Degree, TorusPrecision};
+use poulpy_cpu_ref::reference::vec_znx::vec_znx_rotate_inplace;
+use poulpy_cpu_ref::reference::znx::ZnxRef;
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, TakeSlice, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
-    reference::{vec_znx::vec_znx_rotate_inplace, znx::ZnxRef},
 };
 
 /// Specifies in which direction the LUT is rotated by the LWE constant term

@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -11,16 +11,11 @@ pub struct GLWETensor<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) base2k: Base2K,
     pub(crate) rank: Rank,
-    pub(crate) k: TorusPrecision,
 }
 
-impl<D: DataMut> SetGLWEInfos for GLWETensor<D> {
+impl<D: DataMut> SetLWEInfos for GLWETensor<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
-    }
-
-    fn set_k(&mut self, k: TorusPrecision) {
-        self.k = k
     }
 }
 
@@ -39,10 +34,6 @@ impl<D: DataMut> GLWETensor<D> {
 impl<D: Data> LWEInfos for GLWETensor<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.k
     }
 
     fn n(&self) -> Degree {
@@ -69,7 +60,13 @@ impl<D: DataRef> fmt::Debug for GLWETensor<D> {
 
 impl<D: DataRef> fmt::Display for GLWETensor<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GLWETensor: base2k={} k={}: {}", self.base2k().0, self.k().0, self.data)
+        write!(
+            f,
+            "GLWETensor: base2k={} k={}: {}",
+            self.base2k().0,
+            self.max_k().0,
+            self.data
+        )
     }
 }
 
@@ -84,7 +81,7 @@ impl GLWETensor<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
@@ -93,7 +90,6 @@ impl GLWETensor<Vec<u8>> {
         GLWETensor {
             data: VecZnx::alloc(n.into(), pairs, k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
             rank,
         }
     }
@@ -102,7 +98,7 @@ impl GLWETensor<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
@@ -115,7 +111,6 @@ impl GLWETensor<Vec<u8>> {
 impl<D: DataRef> GLWEToRef for GLWETensor<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
         }
@@ -125,7 +120,6 @@ impl<D: DataRef> GLWEToRef for GLWETensor<D> {
 impl<D: DataMut> GLWEToMut for GLWETensor<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
-            k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
         }

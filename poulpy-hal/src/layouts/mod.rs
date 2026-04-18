@@ -38,6 +38,9 @@ pub use vec_znx_dft::*;
 pub use vmp_pmat::*;
 pub use znx_base::*;
 
+use anyhow::Result;
+use std::marker::PhantomData;
+
 /// Base trait alias for all data containers.
 ///
 /// Requires equality comparison ([`PartialEq`], [`Eq`]), a known size at
@@ -59,6 +62,48 @@ pub trait DataRef = Data + AsRef<[u8]> + Sync;
 /// support in-place modification and can be moved between threads.
 pub trait DataMut = DataRef + AsMut<[u8]> + Send;
 
+/// Marker type for host-resident buffers.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Host;
+
+/// Marker type for device-resident buffers.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Device;
+
+/// Wrapper that tags a data buffer with a location.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Located<L, D>(pub D, PhantomData<L>);
+
+impl<L, D> Located<L, D> {
+    pub fn new(data: D) -> Self {
+        Self(data, PhantomData)
+    }
+
+    pub fn into_inner(self) -> D {
+        self.0
+    }
+
+    pub fn as_inner(&self) -> &D {
+        &self.0
+    }
+
+    pub fn as_inner_mut(&mut self) -> &mut D {
+        &mut self.0
+    }
+}
+
+impl<L, D: AsRef<[u8]>> AsRef<[u8]> for Located<L, D> {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl<L, D: AsMut<[u8]>> AsMut<[u8]> for Located<L, D> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
 /// Deep-clone a borrowed layout into a fully owned variant.
 ///
 /// Unlike the standard [`Clone`] trait, `ToOwnedDeep` is intended for
@@ -78,4 +123,35 @@ pub trait ToOwnedDeep {
 /// data without performing a full byte-by-byte comparison.
 pub trait DigestU64 {
     fn digest_u64(&self) -> u64;
+}
+
+/// Backend-owned byte buffer type alias.
+pub type OwnedBuf<BE> = <BE as Backend>::OwnedBuf;
+
+/// Host-owned byte buffer tagged with the host location.
+pub type HostBuf = Located<Host, Vec<u8>>;
+
+/// Backend-owned byte buffer tagged with the device location.
+pub type DeviceBuf<BE> = Located<Device, OwnedBuf<BE>>;
+
+#[derive(Clone, Copy, Debug)]
+pub struct NoiseInfos {
+    pub k: usize,
+    pub sigma: f64,
+    pub bound: f64,
+}
+
+impl NoiseInfos {
+    pub fn new(k: usize, sigma: f64, bound: f64) -> Result<Self> {
+        anyhow::ensure!(sigma.is_sign_positive(), "sigma must be positive");
+        anyhow::ensure!(sigma >= 1.0, "sigma must be greater or equal to 1");
+        anyhow::ensure!(bound >= sigma, "bound: {bound} must be greater or equal to sigma: {sigma}");
+        Ok(Self { k, sigma, bound })
+    }
+
+    pub fn target_limb_and_scale(&self, base2k: usize) -> (usize, f64) {
+        let limb: usize = self.k.div_ceil(base2k) - 1;
+        let scale: f64 = (((limb + 1) * base2k - self.k) as f64).exp2();
+        (limb, scale)
+    }
 }

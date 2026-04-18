@@ -14,7 +14,6 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToMut, GLWESecretToRef, LWEInfos, Rank,
-        TorusPrecision,
     },
 };
 
@@ -39,10 +38,6 @@ impl<D: Data> GetDistribution for GLWESecretTensor<D> {
 impl<D: Data> LWEInfos for GLWESecretTensor<D> {
     fn base2k(&self) -> Base2K {
         Base2K(0)
-    }
-
-    fn k(&self) -> TorusPrecision {
-        TorusPrecision(0)
     }
 
     fn n(&self) -> Degree {
@@ -134,16 +129,7 @@ impl GLWESecretTensor<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWESecretTensor<D> {
-    pub fn prepare<M, S, BE: Backend>(&mut self, module: &M, other: &S, scratch: &mut Scratch<BE>)
-    where
-        M: GLWESecretTensorFactory<BE>,
-        S: GLWESecretToRef + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_secret_tensor_prepare(self, other, scratch);
-    }
-}
+// module-only API: secret tensor preparation is provided by `GLWESecretTensorFactory` on `Module`.
 
 pub trait GLWESecretTensorFactory<BE: Backend> {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize;
@@ -169,7 +155,7 @@ where
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
 {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize {
-        let lvl_0: usize = self.bytes_of_glwe_secret_prepared(rank);
+        let lvl_0: usize = self.glwe_secret_prepared_bytes_of(rank);
         let lvl_1: usize = self.bytes_of_vec_znx_dft(rank.into(), 1);
         let lvl_2: usize = self.bytes_of_vec_znx_big(1, 1);
         let lvl_3: usize = self.bytes_of_vec_znx_dft(1, 1);
@@ -199,7 +185,7 @@ where
         let rank: usize = a.rank().into();
 
         let (mut a_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, rank.into());
-        a_prepared.prepare(self, a);
+        self.glwe_secret_prepare(&mut a_prepared, a);
 
         let base2k: usize = 17;
 

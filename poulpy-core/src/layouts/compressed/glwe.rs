@@ -6,7 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -20,7 +20,6 @@ use std::fmt;
 pub struct GLWECompressed<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) base2k: Base2K,
-    pub(crate) k: TorusPrecision,
     pub(crate) rank: Rank,
     pub(crate) seed: [u8; 32],
 }
@@ -54,10 +53,6 @@ impl<D: Data> LWEInfos for GLWECompressed<D> {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
-    }
-
     fn size(&self) -> usize {
         self.data.size()
     }
@@ -84,7 +79,7 @@ impl<D: DataRef> fmt::Display for GLWECompressed<D> {
             f,
             "GLWECompressed: base2k={} k={} rank={} seed={:?}: {}",
             self.base2k(),
-            self.k(),
+            self.max_k(),
             self.rank(),
             self.seed,
             self.data
@@ -104,7 +99,7 @@ impl GLWECompressed<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank())
     }
 
     /// Allocates a new compressed GLWE with the given parameters.
@@ -115,7 +110,6 @@ impl GLWECompressed<Vec<u8>> {
         GLWECompressed {
             data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
-            k,
             rank,
             seed: [0u8; 32],
         }
@@ -126,7 +120,7 @@ impl GLWECompressed<Vec<u8>> {
     where
         A: GLWEInfos,
     {
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k())
     }
 
     /// Returns the serialized byte size for a compressed GLWE with the given parameters.
@@ -138,7 +132,6 @@ impl GLWECompressed<Vec<u8>> {
 /// Deserializes the metadata (k, base2k, rank, seed) followed by the body data.
 impl<D: DataMut> ReaderFrom for GLWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.rank = Rank(reader.read_u32::<LittleEndian>()?);
         reader.read_exact(&mut self.seed)?;
@@ -149,7 +142,6 @@ impl<D: DataMut> ReaderFrom for GLWECompressed<D> {
 /// Serializes the metadata (k, base2k, rank, seed) followed by the body data.
 impl<D: DataRef> WriterTo for GLWECompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.rank.into())?;
         writer.write_all(&self.seed)?;
@@ -168,7 +160,7 @@ where
     /// Decompresses `other` into `res` by copying the body and regenerating the mask.
     fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEToMut + SetGLWEInfos,
+        R: GLWEToMut + SetLWEInfos,
         O: GLWECompressedToRef + GLWEInfos,
     {
         {
@@ -193,25 +185,12 @@ where
         }
 
         res.set_base2k(other.base2k());
-        res.set_k(other.k());
     }
 }
 
 impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
 
-impl<D: DataMut> GLWE<D> {
-    /// Decompresses a [`GLWECompressed`] into this standard GLWE ciphertext.
-    ///
-    /// The body is copied directly and the mask polynomials are
-    /// regenerated from the compressed ciphertext's PRNG seed.
-    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
-    where
-        O: GLWECompressedToRef + GLWEInfos,
-        M: GLWEDecompress,
-    {
-        module.decompress_glwe(self, other);
-    }
-}
+// module-only API: decompression is provided by `GLWEDecompress` on `Module`.
 
 /// Converts a compressed GLWE to an immutably-borrowed variant.
 pub trait GLWECompressedToRef {
@@ -224,7 +203,6 @@ impl<D: DataRef> GLWECompressedToRef for GLWECompressed<D> {
         GLWECompressed {
             seed: self.seed,
             base2k: self.base2k,
-            k: self.k,
             rank: self.rank,
             data: self.data.to_ref(),
         }
@@ -242,7 +220,6 @@ impl<D: DataMut> GLWECompressedToMut for GLWECompressed<D> {
         GLWECompressed {
             seed: self.seed,
             base2k: self.base2k,
-            k: self.k,
             rank: self.rank,
             data: self.data.to_mut(),
         }

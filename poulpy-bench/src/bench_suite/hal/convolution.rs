@@ -4,7 +4,7 @@ use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
     api::{CnvPVecAlloc, Convolution, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc},
-    layouts::{Backend, CnvPVecL, CnvPVecR, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
+    layouts::{Backend, CnvPVecL, CnvPVecR, DeviceBuf, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
     source::Source,
 };
 
@@ -30,7 +30,7 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(1, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
 
@@ -39,7 +39,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_left_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
+            module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
             black_box(());
         }
     }
@@ -77,7 +77,7 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(1, size);
+        let mut a_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
 
@@ -86,7 +86,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_right_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_right(&mut a_prep, &a, scratch.borrow());
+            module.cnv_prepare_right(&mut a_prep, &a, !0i64, scratch.borrow());
             black_box(());
         }
     }
@@ -124,8 +124,8 @@ where
 
         let module: Module<BE> = Module::<BE>::new(n as u64);
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(1, size);
-        let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(1, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(1, size);
+        let mut b_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(1, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
@@ -136,14 +136,14 @@ where
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             module
-                .cnv_apply_dft_tmp_bytes(c_size, 0, size, size)
+                .cnv_apply_dft_tmp_bytes(0, c_size, size, size)
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+        module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+        module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
         move || {
-            module.cnv_apply_dft(&mut c_dft, 0, 0, &a_prep, 0, &b_prep, 0, scratch.borrow());
+            module.cnv_apply_dft(0, &mut c_dft, 0, &a_prep, 0, &b_prep, 0, scratch.borrow());
             black_box(());
         }
     }
@@ -182,8 +182,8 @@ where
         let cols = 2;
         let c_size: usize = size + size - 1;
 
-        let mut a_prep: CnvPVecL<Vec<u8>, BE> = module.cnv_pvec_left_alloc(cols, size);
-        let mut b_prep: CnvPVecR<Vec<u8>, BE> = module.cnv_pvec_right_alloc(cols, size);
+        let mut a_prep: CnvPVecL<DeviceBuf<BE>, BE> = module.cnv_pvec_left_alloc(cols, size);
+        let mut b_prep: CnvPVecR<DeviceBuf<BE>, BE> = module.cnv_pvec_right_alloc(cols, size);
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
@@ -194,14 +194,14 @@ where
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             module
-                .cnv_pairwise_apply_dft_tmp_bytes(c_size, 0, size, size)
+                .cnv_pairwise_apply_dft_tmp_bytes(0, c_size, size, size)
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, scratch.borrow());
+        module.cnv_prepare_left(&mut a_prep, &a, !0i64, scratch.borrow());
+        module.cnv_prepare_right(&mut b_prep, &b, !0i64, scratch.borrow());
         move || {
-            module.cnv_pairwise_apply_dft(&mut c_dft, 0, 0, &a_prep, &b_prep, 0, 1, scratch.borrow());
+            module.cnv_pairwise_apply_dft(0, &mut c_dft, 0, &a_prep, &b_prep, 0, 1, scratch.borrow());
             black_box(());
         }
     }
@@ -241,7 +241,7 @@ where
         let c_size: usize = size + size - 1;
 
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut c_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, c_size);
+        let mut c_big: VecZnxBig<DeviceBuf<BE>, BE> = module.vec_znx_big_alloc(1, c_size);
 
         a.fill_uniform(base2k, &mut source);
         let mut b = vec![0i64; size];
@@ -249,9 +249,9 @@ where
             *x = source.next_i64();
         }
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(c_size, 0, size, size));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(0, c_size, size, size));
         move || {
-            module.cnv_by_const_apply(&mut c_big, 0, 0, &a, 0, &b, scratch.borrow());
+            module.cnv_by_const_apply(0, &mut c_big, 0, &a, 0, &b, scratch.borrow());
             black_box(());
         }
     }

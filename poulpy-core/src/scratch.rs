@@ -7,8 +7,8 @@ use crate::{
     dist::Distribution,
     layouts::{
         Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWEPlaintext,
-        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, LWE, LWEInfos, LWEPlaintext,
-        Rank,
+        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensor, GLWETensorKey, LWE, LWEInfos,
+        LWEPlaintext, Rank,
         prepared::{
             GGLWEPrepared, GGSWPrepared, GLWEAutomorphismKeyPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, GLWETensorKeyPrepared,
@@ -45,7 +45,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             LWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -61,7 +60,6 @@ where
         let (data, scratch) = self.take_vec_znx(1, 1, infos.size());
         (
             LWEPlaintext {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -77,7 +75,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
             GLWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -100,6 +97,24 @@ where
         (cts, scratch)
     }
 
+    /// Allocates a [`GLWETensor`] from scratch space.
+    fn take_glwe_tensor<A>(&mut self, infos: &A) -> (GLWETensor<&mut [u8]>, &mut Self)
+    where
+        A: GLWEInfos,
+    {
+        let cols: usize = infos.rank().as_usize() + 1;
+        let pairs: usize = (((cols + 1) * cols) >> 1).max(1);
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), pairs, infos.size());
+        (
+            GLWETensor {
+                base2k: infos.base2k(),
+                rank: infos.rank(),
+                data,
+            },
+            scratch,
+        )
+    }
+
     /// Allocates a [`GLWEPlaintext`] from scratch space.
     fn take_glwe_plaintext<A>(&mut self, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
     where
@@ -108,7 +123,6 @@ where
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             GLWEPlaintext {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },
@@ -130,7 +144,6 @@ where
         );
         (
             GGLWE {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -155,7 +168,6 @@ where
         );
         (
             GGLWEPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -178,7 +190,6 @@ where
         );
         (
             GGSW {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -203,7 +214,6 @@ where
         );
         (
             GGSWPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 dsize: infos.dsize(),
                 data,
@@ -289,7 +299,6 @@ where
         let (data, scratch) = self.take_vec_znx_dft(module, (infos.rank() + 1).into(), infos.size());
         (
             GLWEPrepared {
-                k: infos.k(),
                 base2k: infos.base2k(),
                 data,
             },

@@ -3,9 +3,8 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::{
-    alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxView},
+use crate::layouts::{
+    Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, Located, ZnxInfos, ZnxView,
 };
 
 /// Prepared (DFT-domain) polynomial matrix for vector-matrix products.
@@ -97,11 +96,13 @@ impl<D: Data, B: Backend> VmpPMat<D, B> {
     }
 }
 
-impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B> {
+impl<B: Backend> VmpPMat<DeviceBuf<B>, B> {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
+        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_vmp_pmat(
+            n, rows, cols_in, cols_out, size,
+        )));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             rows,
@@ -112,8 +113,8 @@ impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B> {
     }
 }
 
-/// Owned `VmpPMat` backed by a `Vec<u8>`.
-pub type VmpPMatOwned<B> = VmpPMat<Vec<u8>, B>;
+/// Owned `VmpPMat` backed by a backend-owned buffer.
+pub type VmpPMatOwned<B> = VmpPMat<DeviceBuf<B>, B>;
 /// Immutably borrowed `VmpPMat`.
 pub type VmpPMatRef<'a, B> = VmpPMat<&'a [u8], B>;
 

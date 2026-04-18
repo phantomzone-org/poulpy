@@ -1,56 +1,24 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos, ZnxZero},
 };
 
+pub use crate::api::GLWEKeyswitch;
 use crate::{
     GLWENormalize, ScratchTakeCore,
     layouts::{GGLWEInfos, GGLWEPrepared, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos},
 };
 
-impl GLWE<Vec<u8>> {
-    pub fn keyswitch_tmp_bytes<M, R, A, B, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGLWEInfos,
-        M: GLWEKeyswitch<BE>,
-    {
-        module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-    }
-}
-
-impl<D: DataMut> GLWE<D> {
-    pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        M: GLWEKeyswitch<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_keyswitch(self, a, b, scratch);
-    }
-
-    pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        M: GLWEKeyswitch<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.glwe_keyswitch_inplace(self, a, scratch);
-    }
-}
-
-impl<BE: Backend> GLWEKeyswitch<BE> for Module<BE>
+pub(crate) trait GLWEKeyswitchDefault<BE: Backend>:
+    Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE> + GLWENormalize<BE>
 where
-    Self: Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE> + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_keyswitch_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
+    fn glwe_keyswitch_tmp_bytes_default<R, A, B>(&self, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -67,10 +35,10 @@ where
             let a_conv_infos: GLWELayout = GLWELayout {
                 n: a_infos.n(),
                 base2k: key_infos.base2k(),
-                k: a_infos.k(),
+                k: a_infos.max_k(),
                 rank: a_infos.rank(),
             };
-            let lvl_2_0: usize = GLWE::bytes_of_from_infos(&a_conv_infos);
+            let lvl_2_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos);
             let lvl_2_1: usize =
                 self.glwe_normalize_tmp_bytes()
                     .max(self.glwe_keyswitch_internal_tmp_bytes(res_infos, &a_conv_infos, key_infos));
@@ -82,7 +50,7 @@ where
         lvl_0 + lvl_1.max(lvl_2)
     }
 
-    fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    fn glwe_keyswitch_default<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut + GLWEInfos,
         A: GLWEToRef + GLWEInfos,
@@ -108,10 +76,10 @@ where
         assert_eq!(key.n(), self.n() as u32);
 
         assert!(
-            scratch.available() >= self.glwe_keyswitch_tmp_bytes(res, a, key),
+            scratch.available() >= self.glwe_keyswitch_tmp_bytes_default(res, a, key),
             "scratch.available(): {} < GLWEKeyswitch::glwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_keyswitch_tmp_bytes(res, a, key)
+            self.glwe_keyswitch_tmp_bytes_default(res, a, key)
         );
 
         let a_base2k: usize = a.base2k().into();
@@ -125,7 +93,7 @@ where
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: a.n(),
                 base2k: key.base2k(),
-                k: a.k(),
+                k: a.max_k(),
                 rank: a.rank(),
             });
             self.glwe_normalize(&mut a_conv, a, scratch_2);
@@ -140,7 +108,7 @@ where
         }
     }
 
-    fn glwe_keyswitch_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    fn glwe_keyswitch_inplace_default<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
@@ -164,10 +132,10 @@ where
         assert_eq!(key.n(), self.n() as u32);
 
         assert!(
-            scratch.available() >= self.glwe_keyswitch_tmp_bytes(res, res, key),
+            scratch.available() >= self.glwe_keyswitch_tmp_bytes_default(res, res, key),
             "scratch.available(): {} < GLWEKeyswitch::glwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_keyswitch_tmp_bytes(res, res, key)
+            self.glwe_keyswitch_tmp_bytes_default(res, res, key)
         );
 
         let res_base2k: usize = res.base2k().as_usize();
@@ -180,7 +148,7 @@ where
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
                 n: res.n(),
                 base2k: key.base2k(),
-                k: res.k(),
+                k: res.max_k(),
                 rank: res.rank(),
             });
             self.glwe_normalize(&mut res_conv, res, scratch_2);
@@ -197,23 +165,11 @@ where
     }
 }
 
-pub trait GLWEKeyswitch<BE: Backend> {
-    fn glwe_keyswitch_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GGLWEInfos;
-
-    fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEInfos,
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
-
-    fn glwe_keyswitch_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
+impl<BE: Backend> GLWEKeyswitchDefault<BE> for Module<BE>
+where
+    Self: Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE> + GLWENormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
 }
 
 impl<BE: Backend> GLWEKeySwitchInternal<BE> for Module<BE> where
@@ -221,7 +177,7 @@ impl<BE: Backend> GLWEKeySwitchInternal<BE> for Module<BE> where
         + VecZnxDftApply<BE>
         + VecZnxNormalize<BE>
         + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + VecZnxNormalizeTmpBytes
 {
 }
@@ -232,7 +188,7 @@ where
         + VecZnxDftApply<BE>
         + VecZnxNormalize<BE>
         + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigAddSmallAssign<BE>
         + VecZnxNormalizeTmpBytes,
 {
     fn glwe_keyswitch_internal_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
@@ -245,7 +201,6 @@ where
         let a_size: usize = a_infos.size();
         let lvl_0: usize = self.bytes_of_vec_znx_dft(cols - 1, a_size);
         let lvl_1: usize = self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos);
-
         lvl_0 + lvl_1
     }
 
@@ -279,7 +234,7 @@ where
         }
         self.gglwe_product_dft(&mut res, &a_dft, key, scratch_1);
         let mut res_big: VecZnxBig<DR, BE> = self.vec_znx_idft_apply_consume(res);
-        self.vec_znx_big_add_small_inplace(&mut res_big, 0, a.data(), 0);
+        self.vec_znx_big_add_small_assign(&mut res_big, 0, a.data(), 0);
         res_big
     }
 }
@@ -290,7 +245,7 @@ impl<BE: Backend> GGLWEProduct<BE> for Module<BE> where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VecZnxDftAddInplace<BE>
+        + VecZnxDftAddAssign<BE>
         + VecZnxDftCopy<BE>
 {
 }
@@ -302,7 +257,7 @@ where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VecZnxDftAddInplace<BE>
+        + VecZnxDftAddAssign<BE>
         + VecZnxDftCopy<BE>,
 {
     fn gglwe_product_dft_tmp_bytes<K>(&self, res_size: usize, a_size: usize, key_infos: &K) -> usize
@@ -415,7 +370,7 @@ where
                     res_dft_tmp.set_size(res.size());
                     self.vmp_apply_dft_to_dft(&mut res_dft_tmp, &ai_dft, pmat, di, scratch_2);
                     for col in 0..cols_out {
-                        self.vec_znx_dft_add_inplace(res, col, &res_dft_tmp, col);
+                        self.vec_znx_dft_add_assign(res, col, &res_dft_tmp, col);
                     }
                 }
             }

@@ -4,17 +4,18 @@ use crate::bin_fhe::{
     bdd_arithmetic::{FheUint, UnsignedInteger},
     blind_rotation::BlindRotationAlgo,
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
+        CircuitBootstrappingEncryptionInfos, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk,
+        CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory,
     },
 };
 
+use anyhow::Result;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use poulpy_core::GLWESwitchingKeyEncryptSk;
 use poulpy_core::layouts::{
     GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
     GLWESwitchingKeyPrepared,
 };
+use poulpy_core::{DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWESwitchingKeyEncryptSk};
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
@@ -23,10 +24,38 @@ use poulpy_core::{
     },
 };
 
+use poulpy_hal::layouts::{DeviceBuf, NoiseInfos};
 use poulpy_hal::{
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, Scratch, WriterTo},
     source::Source,
 };
+
+/// Encryption noise parameters for all sub-keys of a BDD evaluation key bundle.
+///
+/// Created via [`BDDEncryptionInfos::from_default_sigma`] for the standard
+/// Gaussian error distribution, or constructed manually for custom noise parameters.
+pub struct BDDEncryptionInfos {
+    /// Noise parameters for the circuit-bootstrapping key.
+    pub cbt: CircuitBootstrappingEncryptionInfos,
+    /// Noise parameters for the optional GLWE-to-GLWE switching key.
+    pub ks_glwe: Option<NoiseInfos>,
+    /// Noise parameters for the GLWE-to-LWE switching key.
+    pub ks_lwe: NoiseInfos,
+}
+
+impl BDDEncryptionInfos {
+    /// Constructs encryption infos using the default Gaussian sigma for all sub-keys.
+    pub fn from_default_sigma(layout: &BDDKeyLayout) -> Result<Self> {
+        Ok(Self {
+            cbt: CircuitBootstrappingEncryptionInfos::from_default_sigma(&layout.cbt_layout)?,
+            ks_glwe: match layout.ks_glwe_layout {
+                Some(ref l) => Some(NoiseInfos::new(l.k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE)?),
+                None => None,
+            },
+            ks_lwe: NoiseInfos::new(layout.ks_lwe_layout.k.as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE)?,
+        })
+    }
+}
 
 /// Dimension descriptor for a complete BDD evaluation key bundle.
 ///
@@ -128,6 +157,7 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
     where
         A: BDDKeyInfos;
 
+    #[allow(clippy::too_many_arguments)]
     /// Fills `res` with key material encrypted under `sk_lwe` / `sk_glwe`.
     ///
     /// `source_xa` supplies mask randomness; `source_xe` supplies error
@@ -143,8 +173,9 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
         res: &mut BDDKey<D, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &BDDEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
@@ -165,13 +196,15 @@ where
             .max(self.glwe_to_lwe_key_encrypt_sk_tmp_bytes(&infos.ks_lwe_infos()))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn bdd_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut BDDKey<D, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &BDDEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
@@ -179,26 +212,48 @@ where
         S1: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         if let Some(key) = &mut res.ks_glwe {
+            let ks_glwe_infos = enc_infos
+                .ks_glwe
+                .as_ref()
+                .expect("ks_glwe enc_infos missing when ks_glwe key exists");
             let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(sk_glwe.n(), key.rank_out());
             sk_out.fill_ternary_prob(0.5, source_xe);
-            key.encrypt_sk(self, sk_glwe, &sk_out, source_xa, source_xe, scratch);
-            res.ks_lwe.encrypt_sk(self, sk_lwe, &sk_out, source_xa, source_xe, scratch);
+            self.glwe_switching_key_encrypt_sk(key, sk_glwe, &sk_out, ks_glwe_infos, source_xe, source_xa, scratch);
+            self.glwe_to_lwe_key_encrypt_sk(
+                &mut res.ks_lwe,
+                sk_lwe,
+                &sk_out,
+                &enc_infos.ks_lwe,
+                source_xe,
+                source_xa,
+                scratch,
+            );
         } else {
-            res.ks_lwe.encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+            self.glwe_to_lwe_key_encrypt_sk(
+                &mut res.ks_lwe,
+                sk_lwe,
+                sk_glwe,
+                &enc_infos.ks_lwe,
+                source_xe,
+                source_xa,
+                scratch,
+            );
         }
 
-        res.cbt.encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        self.circuit_bootstrapping_key_encrypt_sk(&mut res.cbt, sk_lwe, sk_glwe, &enc_infos.cbt, source_xe, source_xa, scratch);
     }
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S0, S1, M, BE: Backend>(
         &mut self,
         module: &M,
         sk_lwe: &S0,
         sk_glwe: &S1,
-        source_xa: &mut Source,
+        enc_infos: &BDDEncryptionInfos,
         source_xe: &mut Source,
+        source_xa: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
         S0: LWESecretToRef + GetDistribution + LWEInfos,
@@ -206,7 +261,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
         M: BDDKeyEncryptSk<BRA, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.bdd_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        module.bdd_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
@@ -301,7 +356,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyInfos for BDDKeyPrep
         self.ks_glwe.as_ref().map(|ks_glwe| GLWESwitchingKeyLayout {
             n: ks_glwe.n(),
             base2k: ks_glwe.base2k(),
-            k: ks_glwe.k(),
+            k: ks_glwe.max_k(),
             rank_in: ks_glwe.rank_in(),
             rank_out: ks_glwe.rank_out(),
             dnum: ks_glwe.dnum(),
@@ -312,7 +367,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyInfos for BDDKeyPrep
         GLWEToLWEKeyLayout {
             n: self.ks_lwe.n(),
             base2k: self.ks_lwe.base2k(),
-            k: self.ks_lwe.k(),
+            k: self.ks_lwe.max_k(),
             rank_in: self.ks_lwe.rank_in(),
             dnum: self.ks_lwe.dnum(),
         }
@@ -340,12 +395,12 @@ pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>
 where
     Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>,
 {
-    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<Vec<u8>, BRA, BE>
+    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>
     where
         A: BDDKeyInfos,
     {
         let ks_glwe = if let Some(ks_glwe_infos) = &infos.ks_glwe_infos() {
-            Some(GLWESwitchingKeyPrepared::alloc_from_infos(self, ks_glwe_infos))
+            Some(self.glwe_switching_key_prepared_alloc_from_infos(ks_glwe_infos))
         } else {
             None
         };
@@ -353,7 +408,7 @@ where
         BDDKeyPrepared {
             cbt: CircuitBootstrappingKeyPrepared::alloc_from_infos(self, &infos.cbt_infos()),
             ks_glwe,
-            ks_lwe: GLWEToLWEKeyPrepared::alloc_from_infos(self, &infos.ks_lwe_infos()),
+            ks_lwe: self.glwe_to_lwe_key_prepared_alloc_from_infos(&infos.ks_lwe_infos()),
         }
     }
 
@@ -362,7 +417,7 @@ where
         A: BDDKeyInfos,
     {
         self.circuit_bootstrapping_key_prepare_tmp_bytes(&infos.cbt_infos())
-            .max(self.prepare_glwe_to_lwe_key_tmp_bytes(&infos.ks_lwe_infos()))
+            .max(self.glwe_to_lwe_key_prepare_tmp_bytes(&infos.ks_lwe_infos()))
     }
 
     fn prepare_bdd_key<DM, DR>(&self, res: &mut BDDKeyPrepared<DM, BRA, BE>, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
@@ -375,13 +430,13 @@ where
 
         if let Some(key_prep) = &mut res.ks_glwe {
             if let Some(other) = &other.ks_glwe {
-                key_prep.prepare(self, other, scratch);
+                self.glwe_switching_key_prepare(key_prep, other, scratch);
             } else {
                 panic!("incompatible keys: res has Some(ks_glwe) but other has none")
             }
         }
 
-        res.ks_lwe.prepare(self, &other.ks_lwe, scratch);
+        self.glwe_to_lwe_key_prepare(&mut res.ks_lwe, &other.ks_lwe, scratch);
     }
 }
 impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Module<BE> where
@@ -389,7 +444,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Mod
 {
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<Vec<u8>, BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> {
     pub fn alloc_from_infos<M, A>(module: &M, infos: &A) -> Self
     where
         M: BDDKeyPreparedFactory<BRA, BE>,

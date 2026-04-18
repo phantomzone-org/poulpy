@@ -5,9 +5,12 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees,
-    GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+use crate::{
+    DeclaredK,
+    layouts::{
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey,
+        GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+    },
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -16,6 +19,12 @@ pub struct LWESwitchingKeyLayout {
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub dnum: Dnum,
+}
+
+impl DeclaredK for LWESwitchingKeyLayout {
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
 }
 
 impl LWEInfos for LWESwitchingKeyLayout {
@@ -27,8 +36,8 @@ impl LWEInfos for LWESwitchingKeyLayout {
         self.base2k
     }
 
-    fn k(&self) -> TorusPrecision {
-        self.k
+    fn size(&self) -> usize {
+        self.k.as_usize().div_ceil(self.base2k.as_usize())
     }
 }
 
@@ -62,10 +71,6 @@ pub struct LWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 impl<D: Data> LWEInfos for LWESwitchingKey<D> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
-    }
-
-    fn k(&self) -> TorusPrecision {
-        self.0.k()
     }
 
     fn n(&self) -> Degree {
@@ -109,7 +114,7 @@ impl LWESwitchingKey<Vec<u8>> {
         assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
-        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.dnum())
+        Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.dnum())
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
@@ -123,7 +128,7 @@ impl LWESwitchingKey<Vec<u8>> {
         assert_eq!(infos.dsize().0, 1, "dsize > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_in().0, 1, "rank_in > 1 is not supported for LWESwitchingKey");
         assert_eq!(infos.rank_out().0, 1, "rank_out > 1 is not supported for LWESwitchingKey");
-        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.dnum())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.max_k(), infos.dnum())
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {

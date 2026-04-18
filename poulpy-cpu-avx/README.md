@@ -4,9 +4,9 @@
 
 This backend implements the Poulpy HAL extension traits and can be used by:
 
-- [`poulpy-hal`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-hal)
-- [`poulpy-core`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-core)
-- [`poulpy-schemes`](https://github.com/phantomzone-org/poulpy/tree/main/poulpy-schemes)
+- [`poulpy-hal`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-hal)
+- [`poulpy-core`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-core)
+- [`poulpy-schemes` (CKKS, bin-FHE)](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-schemes)
 
 ## 🚩 Safety and Requirements
 
@@ -20,7 +20,7 @@ To avoid illegal hardware instructions (SIGILL) on unsupported CPUs, this backen
 
 If `enable-avx` is enabled but the target does not provide these capabilities, the build **fails immediately with a clear error message**, rather than generating invalid binaries.
 
-When `enable-avx` is **not** enabled, this crate is simply skipped and Poulpy automatically falls back to the portable `poulpy-cpu-ref` backend. This ensure that Poulpy's workspace remains portable (e.g. for macOS ARM).
+When `enable-avx` is **not** enabled, this crate is simply skipped and Poulpy automatically falls back to the portable `poulpy-cpu-ref` backend. This ensures that Poulpy's workspace remains portable (e.g. for macOS ARM).
 
 ## ⚙️ Building with the AVX backend enabled
 
@@ -29,7 +29,7 @@ Because the compiler must generate AVX2 + FMA instructions, both the Cargo featu
 ```bash
 RUSTFLAGS="-C target-feature=+avx2,+fma" \
 cargo build --features enable-avx
-````
+```
 
 ### Running an example
 
@@ -76,7 +76,7 @@ Your backend will automatically integrate with:
 
 * `poulpy-hal`
 * `poulpy-core`
-* `poulpy-schemes`
+* `poulpy-schemes` (CKKS, bin-FHE)
 
 No modifications to those crates are required — the HAL provides the extension points.
 

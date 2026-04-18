@@ -1,7 +1,7 @@
 //! Real/imaginary interleaved FFT primitives for [`FFT64Ref`](crate::FFT64Ref).
 //!
 //! Implements the `ReimArith`, `Reim4BlkMatVec`, `Reim4Convolution`, and `I64Ops`
-//! traits from `poulpy_hal::reference::fft64`, covering:
+//! traits from `crate::reference::fft64`, covering:
 //!
 //! - **FFT/IFFT execution**: forward and inverse transforms using precomputed twiddle tables.
 //! - **Domain conversion**: `Z[X]/(X^n+1)` integer coefficients to/from `f64` REIM layout.
@@ -14,21 +14,21 @@
 //!
 //! All implementations use the default `_ref` implementations.
 
-use poulpy_hal::reference::fft64::{
+use crate::reference::fft64::{
     convolution::I64Ops,
-    reim::{ReimArith, ReimDFTExecute, ReimFFTTable, ReimIFFTTable, fft_ref, ifft_ref},
+    reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable, fft_ref, ifft_ref},
     reim4::{Reim4BlkMatVec, Reim4Convolution},
 };
 
 use super::FFT64Ref;
 
-impl ReimDFTExecute<ReimFFTTable<f64>, f64> for FFT64Ref {
+impl ReimFFTExecute<ReimFFTTable<f64>, f64> for FFT64Ref {
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
         fft_ref(table.m(), table.omg(), data);
     }
 }
 
-impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ref {
+impl ReimFFTExecute<ReimIFFTTable<f64>, f64> for FFT64Ref {
     fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
         ifft_ref(table.m(), table.omg(), data);
     }

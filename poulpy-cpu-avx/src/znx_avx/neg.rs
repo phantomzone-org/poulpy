@@ -27,7 +27,7 @@ pub fn znx_negate_avx(res: &mut [i64], src: &[i64]) {
     }
 
     if !res.len().is_multiple_of(4) {
-        use poulpy_hal::reference::znx::znx_negate_ref;
+        use poulpy_cpu_ref::reference::znx::znx_negate_ref;
 
         znx_negate_ref(&mut res[span << 2..], &src[span << 2..])
     }
@@ -55,7 +55,7 @@ pub fn znx_negate_inplace_avx(res: &mut [i64]) {
     }
 
     if !res.len().is_multiple_of(4) {
-        use poulpy_hal::reference::znx::znx_negate_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_negate_inplace_ref;
 
         znx_negate_inplace_ref(&mut res[span << 2..])
     }

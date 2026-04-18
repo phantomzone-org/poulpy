@@ -1,22 +1,22 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout,
-        GLWEToMut, GLWEToRef, LWESecret, Rank, TorusPrecision,
+        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, GLWEToMut, GLWEToRef,
+        LWESecret, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
-        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint,
-        FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Sltu,
+        BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
+        ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Sltu,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
@@ -144,14 +144,25 @@ where
     sk_lwe.fill_binary_block(BINARY_BLOCK_SIZE as usize, &mut source_xs);
 
     // Preparing the private keys
-    let mut sk_glwe_prepared = GLWESecretPrepared::alloc_from_infos(&module, &glwe_layout);
-    sk_glwe_prepared.prepare(&module, &sk_glwe);
+    let mut sk_glwe_prepared = module.glwe_secret_prepared_alloc_from_infos(&glwe_layout);
+    module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     // Creating the public BDD Key
     // This key is required to prepare all Fhe Integers for operations,
     // and for performing the operations themselves
+    let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_layout).unwrap();
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_layout).unwrap();
+
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
-    bdd_key.encrypt_sk(&module, &sk_lwe, &sk_glwe, &mut source_xa, &mut source_xe, scratch.borrow());
+    bdd_key.encrypt_sk(
+        &module,
+        &sk_lwe,
+        &sk_glwe,
+        &bdd_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     ////////// Input Encryption
     // Encrypting the inputs
@@ -165,8 +176,9 @@ where
             &module,
             *input,
             &sk_glwe_prepared,
-            &mut source_xa,
+            &glwe_enc_infos,
             &mut source_xe,
+            &mut source_xa,
             scratch.borrow(),
         );
         inputs_enc.push(next_input);
@@ -176,7 +188,7 @@ where
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
+    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     let mut max_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
@@ -184,8 +196,9 @@ where
         &module,
         0,
         &sk_glwe_prepared,
-        &mut source_xa,
+        &glwe_enc_infos,
         &mut source_xe,
+        &mut source_xa,
         scratch.borrow(),
     );
     // Copy of max_enc for the HashMap
@@ -193,13 +206,15 @@ where
 
     // Allocating the intermediate ciphertext c_enc
     let mut compare_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
-    let mut compare_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    let mut compare_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
 
     for input_i in inputs_enc.iter_mut() {
-        let mut max_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+        let mut max_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+            FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
         max_enc_prepared.prepare(&module, &max_enc, &bdd_key_prepared, scratch.borrow());
 
-        let mut input_i_enc_prepared: FheUintPrepared<Vec<u8>, u32, BE> =
+        let mut input_i_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
             FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
         input_i_enc_prepared.prepare(&module, input_i, &bdd_key_prepared, scratch.borrow());
 

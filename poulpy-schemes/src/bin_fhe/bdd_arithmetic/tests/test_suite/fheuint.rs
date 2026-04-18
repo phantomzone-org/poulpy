@@ -1,10 +1,10 @@
 use poulpy_core::{
-    GLWEAdd, GLWEDecrypt, GLWEEncryptSk, GLWERotate, GLWESub, GLWETrace,
+    EncryptionLayout, GLWEAdd, GLWEDecrypt, GLWEEncryptSk, GLWERotate, GLWESub, GLWETrace,
     layouts::{GLWELayout, GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -26,19 +26,29 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
+
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
 
     for j in 0..3 {
         let a: u32 = 0x8483_8281;
-        a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch.borrow());
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         a_enc.sext(module, j, keys, scratch.borrow());
 
@@ -50,7 +60,15 @@ where
 
     for j in 0..3 {
         let a: u32 = 0x4443_4241;
-        a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch.borrow());
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &glwe_enc_infos,
+            &mut source_xe,
+            &mut source_xa,
+            scratch.borrow(),
+        );
 
         a_enc.sext(module, j, keys, scratch.borrow());
 
@@ -76,13 +94,15 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
+
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
     let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
@@ -91,8 +111,24 @@ where
     let a: u32 = 0xFFFFFFFF;
     let b: u32 = 0xAABBCCDD;
 
-    b_enc.encrypt_sk(module, b, sk, &mut source_xa, &mut source_xe, scratch.borrow());
-    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch.borrow());
+    b_enc.encrypt_sk(
+        module,
+        b,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     for dst in 0..4 {
         for src in 0..4 {
@@ -119,13 +155,15 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
+
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
     let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
@@ -134,8 +172,24 @@ where
     let a: u32 = 0xFFFFFFFF;
     let b: u32 = 0xAABBCCDD;
 
-    b_enc.encrypt_sk(module, b, sk, &mut source_xa, &mut source_xe, scratch.borrow());
-    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch.borrow());
+    b_enc.encrypt_sk(
+        module,
+        b,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch.borrow(),
+    );
 
     for dst in 0..2 {
         for src in 0..2 {
@@ -159,13 +213,15 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
+
+    let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
@@ -173,7 +229,15 @@ where
     let a: u32 = source_xa.next_u32();
 
     let mut scratch_enc: ScratchOwned<BE> = ScratchOwned::alloc(a_enc.encrypt_sk_tmp_bytes(module));
-    a_enc.encrypt_sk(module, a, sk, &mut source_xa, &mut source_xe, scratch_enc.borrow());
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &glwe_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        scratch_enc.borrow(),
+    );
 
     let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(c_enc.decrypt_tmp_bytes(module));
 

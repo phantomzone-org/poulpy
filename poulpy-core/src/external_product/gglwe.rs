@@ -1,70 +1,29 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
+    layouts::{Backend, Module, Scratch, ZnxZero},
 };
 
+pub use crate::api::GGLWEExternalProduct;
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
-    layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEAutomorphismKey, GLWEInfos, GLWESwitchingKey,
-        prepared::GGSWPreparedToRef,
-    },
+    layouts::{GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEInfos, prepared::GGSWPreparedToRef},
 };
 
-impl GLWEAutomorphismKey<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
-        &self,
-        module: &M,
-        res_infos: &R,
-        a_infos: &A,
-        b_infos: &B,
-    ) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        B: GGSWInfos,
-        M: GGLWEExternalProduct<BE>,
-    {
-        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product_inplace(self, a, scratch);
-    }
-}
-
-pub trait GGLWEExternalProduct<BE: Backend>
+#[doc(hidden)]
+pub trait GGLWEExternalProductDefault<BE: Backend>
 where
     Self: GLWEExternalProduct<BE>,
 {
-    fn gglwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    fn gglwe_external_product_tmp_bytes_default<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
         B: GGSWInfos,
     {
-        let lvl_0: usize = self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos);
-        lvl_0
+        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 
-    fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product_default<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut + GGLWEInfos,
         A: GGLWEToRef + GGLWEInfos,
@@ -94,10 +53,10 @@ where
         );
         assert_eq!(res.base2k(), a.base2k());
         assert!(
-            scratch.available() >= self.gglwe_external_product_tmp_bytes(res, a, b),
+            scratch.available() >= self.gglwe_external_product_tmp_bytes_default(res, a, b),
             "scratch.available(): {} < GGLWEExternalProduct::gglwe_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_external_product_tmp_bytes(res, a, b)
+            self.gglwe_external_product_tmp_bytes_default(res, a, b)
         );
 
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
@@ -117,7 +76,7 @@ where
         }
     }
 
-    fn gglwe_external_product_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product_inplace_default<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut,
         A: GGSWPreparedToRef<BE>,
@@ -134,10 +93,10 @@ where
             a.rank()
         );
         assert!(
-            scratch.available() >= self.gglwe_external_product_tmp_bytes(res, res, a),
+            scratch.available() >= self.gglwe_external_product_tmp_bytes_default(res, res, a),
             "scratch.available(): {} < GGLWEExternalProduct::gglwe_external_product_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_external_product_tmp_bytes(res, res, a)
+            self.gglwe_external_product_tmp_bytes_default(res, res, a)
         );
 
         for row in 0..res.dnum().into() {
@@ -148,37 +107,6 @@ where
     }
 }
 
-impl<BE: Backend> GGLWEExternalProduct<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
+impl<BE: Backend> GGLWEExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
 
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
-    where
-        R: GGLWEInfos,
-        A: GGLWEInfos,
-        B: GGSWInfos,
-        M: GGLWEExternalProduct<BE>,
-    {
-        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
-    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product(self, a, b, scratch);
-    }
-
-    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
-    where
-        M: GGLWEExternalProduct<BE>,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        module.gglwe_external_product_inplace(self, a, scratch);
-    }
-}
+// module-only API: external product is provided by `GGLWEExternalProduct` on `Module`.

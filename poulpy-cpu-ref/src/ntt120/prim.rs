@@ -1,21 +1,21 @@
 //! Trait implementations for [`NTT120Ref`] — primitive NTT-domain operations.
 //!
-//! Implements all `Ntt*` traits from [`poulpy_hal::reference::ntt120`] for
+//! Implements all `Ntt*` traits from [`crate::reference::ntt120`] for
 //! [`NTT120Ref`], delegating to the `*_ref` scalar functions.
 //!
 //! This mirrors `poulpy_cpu_ref::fft64::reim` for the FFT64 backend.
 
-use poulpy_hal::reference::ntt120::{
+use crate::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
-    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128,
-    NttZero,
+    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttPackLeft1BlkX2, NttPackRight1BlkX2,
+    NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128, NttZero,
     arithmetic::{add_bbb_ref, b_from_znx64_ref, b_to_znx128_ref, c_from_b_ref},
     mat_vec::{
         BbbMeta, BbcMeta, extract_1blk_from_contiguous_q120b_ref, vec_mat1col_product_bbb_ref, vec_mat1col_product_bbc_ref,
         vec_mat1col_product_x2_bbc_ref, vec_mat2cols_product_x2_bbc_ref,
     },
     ntt::{NttTable, NttTableInv, intt_ref, ntt_ref},
-    primes::Primes30,
+    primes::{PrimeSet, Primes30},
     types::Q_SHIFTED,
 };
 
@@ -215,5 +215,84 @@ impl NttExtract1BlkContiguous for NTT120Ref {
     #[inline(always)]
     fn ntt_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
         extract_1blk_from_contiguous_q120b_ref(n, row_max, blk, dst, src);
+    }
+}
+
+impl NttPackLeft1BlkX2 for NTT120Ref {
+    #[inline(always)]
+    fn ntt_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+        debug_assert!(dst.len() >= 16 * row_count);
+        debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+
+        for row in 0..row_count {
+            let row_base = row * row_stride + 8 * blk;
+            let out_base = 16 * row;
+            for coeff in 0..2 {
+                for prime in 0..4 {
+                    let idx = row_base + 4 * coeff + prime;
+                    let q = Primes30::Q[prime] as u64;
+                    let a_red = a[idx] % q;
+                    dst[out_base + 8 * coeff + 2 * prime] = a_red as u32;
+                    dst[out_base + 8 * coeff + 2 * prime + 1] = 0;
+                }
+            }
+        }
+    }
+}
+
+impl NttPackRight1BlkX2 for NTT120Ref {
+    #[inline(always)]
+    fn ntt_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+        debug_assert!(dst.len() >= 16 * row_count);
+        debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+
+        for row in 0..row_count {
+            let row_base = (row_count - 1 - row) * row_stride + 16 * blk;
+            let out_base = 16 * row;
+            dst[out_base..out_base + 16].copy_from_slice(&a[row_base..row_base + 16]);
+        }
+    }
+}
+
+impl NttPairwisePackLeft1BlkX2 for NTT120Ref {
+    #[inline(always)]
+    fn ntt_pairwise_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], b: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+        debug_assert!(dst.len() >= 16 * row_count);
+        debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+        debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
+
+        for row in 0..row_count {
+            let row_base = row * row_stride + 8 * blk;
+            let out_base = 16 * row;
+            for coeff in 0..2 {
+                for prime in 0..4 {
+                    let idx = row_base + 4 * coeff + prime;
+                    let q = Primes30::Q[prime] as u64;
+                    let mut sum = (a[idx] % q) + (b[idx] % q);
+                    if sum >= q {
+                        sum -= q;
+                    }
+                    dst[out_base + 8 * coeff + 2 * prime] = sum as u32;
+                    dst[out_base + 8 * coeff + 2 * prime + 1] = 0;
+                }
+            }
+        }
+    }
+}
+
+impl NttPairwisePackRight1BlkX2 for NTT120Ref {
+    #[inline(always)]
+    fn ntt_pairwise_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], b: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+        debug_assert!(dst.len() >= 16 * row_count);
+        debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+        debug_assert!(b.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
+
+        for row in 0..row_count {
+            let row_base = (row_count - 1 - row) * row_stride + 16 * blk;
+            let out_base = 16 * row;
+            for idx in 0..16 {
+                dst[out_base + idx] = a[row_base + idx] + b[row_base + idx];
+            }
+        }
     }
 }

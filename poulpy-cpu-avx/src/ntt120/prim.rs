@@ -17,31 +17,34 @@
 
 //! Trait implementations for [`NTT120Avx`](super::NTT120Avx) — primitive NTT-domain operations.
 //!
-//! Implements all `Ntt*` traits from [`poulpy_hal::reference::ntt120`] for
+//! Implements all `Ntt*` traits from [`poulpy_cpu_ref::reference::ntt120`] for
 //! [`NTT120Avx`](super::NTT120Avx).
 //!
 //! NTT forward/inverse execution uses the AVX2-accelerated kernels from
-//! [`super::ntt`].  BBC mat-vec products use the AVX2-accelerated kernels
-//! from [`super::mat_vec_avx`].  Add/sub/negate on q120b elements use AVX2
-//! lazy conditional subtraction (no division).  Domain conversion delegates
-//! to the scalar reference implementations.
+//! [`super::ntt`]. BBC mat-vec products use the AVX2-accelerated kernels
+//! from [`super::mat_vec_avx`]. Add/sub/negate on q120b elements use AVX2
+//! lazy conditional subtraction (no division). Domain conversion also uses
+//! AVX2 kernels.
 
 use core::arch::x86_64::{
     __m256i, _mm256_add_epi64, _mm256_andnot_si256, _mm256_cmpgt_epi64, _mm256_loadu_si256, _mm256_set1_epi64x,
     _mm256_storeu_si256, _mm256_sub_epi64, _mm256_xor_si256,
 };
 
-use poulpy_hal::reference::ntt120::{
+use poulpy_cpu_ref::reference::ntt120::{
     NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
-    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128,
-    NttZero,
+    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttPackLeft1BlkX2, NttPackRight1BlkX2,
+    NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128, NttZero,
     mat_vec::{BbbMeta, BbcMeta, extract_1blk_from_contiguous_q120b_ref},
     ntt::{NttTable, NttTableInv},
     primes::Primes30,
     types::Q_SHIFTED,
 };
 
-use super::arithmetic_avx::{b_from_znx64_avx2, b_to_znx128_avx2, c_from_b_avx2, vec_mat1col_product_bbb_avx2};
+use super::arithmetic_avx::{
+    b_from_znx64_avx2, b_from_znx64_masked_avx2, b_to_znx128_avx2, c_from_b_avx2, pack_left_1blk_x2_avx2,
+    pack_right_1blk_x2_avx2, pairwise_pack_left_1blk_x2_avx2, pairwise_pack_right_1blk_x2_avx2, vec_mat1col_product_bbb_avx2,
+};
 
 use super::mat_vec_avx::{vec_mat1col_product_bbc_avx2, vec_mat1col_product_x2_bbc_avx2, vec_mat2cols_product_x2_bbc_avx2};
 use super::ntt::{intt_avx2, ntt_avx2};
@@ -232,6 +235,12 @@ impl NttFromZnx64 for NTT120Avx {
         // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
         unsafe { b_from_znx64_avx2(a.len(), res, a) }
     }
+
+    #[inline(always)]
+    fn ntt_from_znx64_masked(res: &mut [u64], a: &[i64], mask: i64) {
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { b_from_znx64_masked_avx2(a.len(), res, a, mask) }
+    }
 }
 
 impl NttToZnx128 for NTT120Avx {
@@ -372,5 +381,37 @@ impl NttExtract1BlkContiguous for NTT120Avx {
     #[inline(always)]
     fn ntt_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
         extract_1blk_from_contiguous_q120b_ref(n, row_max, blk, dst, src);
+    }
+}
+
+impl NttPackLeft1BlkX2 for NTT120Avx {
+    #[inline(always)]
+    fn ntt_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { pack_left_1blk_x2_avx2(dst, a, row_count, row_stride, blk) }
+    }
+}
+
+impl NttPackRight1BlkX2 for NTT120Avx {
+    #[inline(always)]
+    fn ntt_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { pack_right_1blk_x2_avx2(dst, a, row_count, row_stride, blk) }
+    }
+}
+
+impl NttPairwisePackLeft1BlkX2 for NTT120Avx {
+    #[inline(always)]
+    fn ntt_pairwise_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], b: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { pairwise_pack_left_1blk_x2_avx2(dst, a, b, row_count, row_stride, blk) }
+    }
+}
+
+impl NttPairwisePackRight1BlkX2 for NTT120Avx {
+    #[inline(always)]
+    fn ntt_pairwise_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], b: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+        // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
+        unsafe { pairwise_pack_right_1blk_x2_avx2(dst, a, b, row_count, row_stride, blk) }
     }
 }
