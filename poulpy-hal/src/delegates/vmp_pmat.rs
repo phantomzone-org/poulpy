@@ -1,10 +1,10 @@
 use crate::{
     api::{
-        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf,
-        VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
+        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare,
+        VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
-        Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMat, VmpPMatOwned, VmpPMatToMut,
+        Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
         VmpPMatToRef,
     },
     oep::{
@@ -22,12 +22,6 @@ impl<B: Backend> VmpPMatAlloc<B> for Module<B> {
 impl<B: Backend> VmpPMatBytesOf for Module<B> {
     fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         B::bytes_of_vmp_pmat(self.n(), rows, cols_in, cols_out, size)
-    }
-}
-
-impl<B: Backend> VmpPMatFromBytes<B> for Module<B> {
-    fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B> {
-        VmpPMat::<Vec<u8>, B>::from_bytes(self.n(), rows, cols_in, cols_out, size, bytes)
     }
 }
 

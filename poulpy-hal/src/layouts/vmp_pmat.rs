@@ -18,6 +18,9 @@ use crate::{
 /// [`VmpApplyDftToDft`](crate::api::VmpApplyDftToDft). Create via
 /// [`VmpPrepare`](crate::api::VmpPrepare) from a coefficient-domain
 /// [`MatZnx`](crate::layouts::MatZnx).
+///
+/// Ring degree `n` is always a power of two, so each prepared polynomial's DFT
+/// coefficient count matches vector lane widths relative to buffer alignment.
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct VmpPMat<D: Data, B: Backend> {
@@ -97,21 +100,6 @@ impl<D: Data, B: Backend> VmpPMat<D, B> {
 impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B> {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned(B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
-        Self {
-            data: data.into(),
-            n,
-            size,
-            rows,
-            cols_in,
-            cols_out,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
-        let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
-        crate::assert_alignment(data.as_ptr());
         Self {
             data: data.into(),
             n,

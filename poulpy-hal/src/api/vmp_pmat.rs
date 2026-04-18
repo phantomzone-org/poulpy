@@ -12,11 +12,6 @@ pub trait VmpPMatBytesOf {
     fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
-/// Wraps a byte buffer into a [`VmpPMat`](crate::layouts::VmpPMat).
-pub trait VmpPMatFromBytes<B: Backend> {
-    fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B>;
-}
-
 /// Returns scratch bytes required for [`VmpPrepare`].
 pub trait VmpPrepareTmpBytes {
     fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;

@@ -329,9 +329,19 @@ impl<D: DataRef> WriterTo for MatZnx<D> {
         writer.write_u64::<LittleEndian>(self.rows as u64)?;
         writer.write_u64::<LittleEndian>(self.cols_in as u64)?;
         writer.write_u64::<LittleEndian>(self.cols_out as u64)?;
+        let logical_len: usize = MatZnx::<Vec<u8>>::bytes_of(self.n, self.rows, self.cols_in, self.cols_out, self.size);
         let buf: &[u8] = self.data.as_ref();
-        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
-        writer.write_all(buf)?;
+        if buf.len() < logical_len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "MatZnx buffer too small: self.data.len()={} < logical_len={logical_len}",
+                    buf.len()
+                ),
+            ));
+        }
+        writer.write_u64::<LittleEndian>(logical_len as u64)?;
+        writer.write_all(&buf[..logical_len])?;
         Ok(())
     }
 }
