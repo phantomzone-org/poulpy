@@ -1,6 +1,7 @@
 use anyhow::Result;
 use poulpy_core::layouts::{Base2K, LWEInfos, LWEPlaintext};
 use poulpy_hal::layouts::ZnxView;
+use rand_distr::num_traits::{Float, FromPrimitive, ToPrimitive};
 
 use crate::{CKKSInfos, CKKSMeta};
 
@@ -69,7 +70,7 @@ impl CKKSPlaintextCstZnx {
 /// Conversion between scalar RNX constants and quantized ZNX constants.
 pub trait CKKSConstPlaintextConversion {
     /// Maximum supported decimal precision for this conversion implementation.
-    const MAX_LOG_DECIMAL_PREC: usize;
+    fn max_log_decimal_prec() -> usize;
 
     /// Encodes a constant RNX plaintext into its default ZNX representation.
     ///
@@ -95,41 +96,53 @@ pub trait CKKSConstPlaintextConversion {
     fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_decimal: usize) -> Result<CKKSPlaintextCstZnx>;
 }
 
-impl CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<f64> {
-    const MAX_LOG_DECIMAL_PREC: usize = 53;
+fn max_log_decimal_prec_for<F>() -> usize
+where
+    F: Float + ToPrimitive,
+{
+    ((-F::epsilon().log2()).round().to_usize().unwrap()) + 1
+}
+
+impl<F> CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<F>
+where
+    F: Float + FromPrimitive + ToPrimitive,
+{
+    fn max_log_decimal_prec() -> usize {
+        max_log_decimal_prec_for::<F>()
+    }
 
     fn to_znx(&self, base2k: Base2K, prec: CKKSMeta) -> Result<CKKSPlaintextCstZnx> {
-        anyhow::ensure!(prec.log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
-
-        let k = prec.min_k(base2k).as_usize();
-        let scale = (prec.log_decimal as f64).exp2();
-        let re = self
-            .re
-            .map(|re| encode_const_coeff_i64(base2k, k, (re * scale).round() as i64));
-        let im = self
-            .im
-            .map(|im| encode_const_coeff_i64(base2k, k, (im * scale).round() as i64));
-
-        Ok(CKKSPlaintextCstZnx::new(re, im, prec))
+        self.to_znx_at_k(base2k, prec.min_k(base2k).as_usize(), prec.log_decimal())
     }
 
     fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_decimal: usize) -> Result<CKKSPlaintextCstZnx> {
-        anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
+        let log_hom_rem = k.saturating_sub(log_decimal);
 
-        let scale = (log_decimal as f64).exp2();
-        let re = self
-            .re
-            .map(|re| encode_const_coeff_i64(base2k, k, (re * scale).round() as i64));
-        let im = self
-            .im
-            .map(|im| encode_const_coeff_i64(base2k, k, (im * scale).round() as i64));
+        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
+
+        let scale = F::from_usize(log_decimal).unwrap().exp2();
+        let (re, im) = if log_decimal + log_hom_rem <= 63 {
+            (
+                self.re
+                    .map(|re| encode_const_coeff_i64(base2k, k, (re * scale).round().to_i64().unwrap())),
+                self.im
+                    .map(|im| encode_const_coeff_i64(base2k, k, (im * scale).round().to_i64().unwrap())),
+            )
+        } else {
+            (
+                self.re
+                    .map(|re| encode_const_coeff_i128(base2k, k, (re * scale).round().to_i128().unwrap())),
+                self.im
+                    .map(|im| encode_const_coeff_i128(base2k, k, (im * scale).round().to_i128().unwrap())),
+            )
+        };
 
         Ok(CKKSPlaintextCstZnx::new(
             re,
             im,
             CKKSMeta {
                 log_decimal,
-                log_hom_rem: k.saturating_sub(log_decimal),
+                log_hom_rem,
             },
         ))
     }
@@ -138,6 +151,12 @@ impl CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<f64> {
 fn encode_const_coeff_i64(base2k: Base2K, k: usize, value: i64) -> Vec<i64> {
     let mut pt = LWEPlaintext::alloc(base2k, k.into());
     pt.encode_i64(value, k.into());
+    (0..pt.size()).map(|limb| pt.data().at(0, limb)[0]).collect()
+}
+
+fn encode_const_coeff_i128(base2k: Base2K, k: usize, value: i128) -> Vec<i64> {
+    let mut pt = LWEPlaintext::alloc(base2k, k.into());
+    pt.encode_i128(value, k.into());
     (0..pt.size()).map(|limb| pt.data().at(0, limb)[0]).collect()
 }
 

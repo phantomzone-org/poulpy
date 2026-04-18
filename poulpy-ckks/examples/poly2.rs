@@ -35,7 +35,7 @@ use poulpy_core::{
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory, GLWETensorKeyPrepared},
     },
 };
-use poulpy_cpu_ref::{FFT64Ref, NTT120Ref};
+use poulpy_cpu_ref::NTT120Ref;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{DeviceBuf, Module, ScratchOwned},
@@ -65,7 +65,7 @@ const PREC_PT: CKKSMeta = CKKSMeta {
 /// Long-lived objects prepared during setup and reused by the later phases.
 struct SetupArtifacts {
     module: Module<BakcendImpl>,
-    encoder: Encoder<FFT64Ref>,
+    encoder: Encoder<f64>,
     sk: SecretKeyPrepared,
     tsk_prepared: TensorKeyPrepared,
     scratch: ScratchOwned<BakcendImpl>,
@@ -185,7 +185,7 @@ fn setup() -> Result<SetupArtifacts> {
     );
 
     let module = Module::<BakcendImpl>::new(N as u64);
-    let encoder = Encoder::<FFT64Ref>::new(M)?;
+    let encoder = Encoder::<f64>::new(M)?;
 
     let mut source_xs = Source::new([0u8; 32]);
     let mut source_xa = Source::new([1u8; 32]);

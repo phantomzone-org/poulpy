@@ -167,7 +167,7 @@ pub(crate) fn checked_mul_ct_log_hom_rem(
 ) -> Result<usize> {
     lhs_log_hom_rem
         .min(rhs_log_hom_rem)
-        .checked_sub(lhs_log_decimal.min(rhs_log_decimal))
+        .checked_sub(lhs_log_decimal.max(rhs_log_decimal))
         .ok_or_else(|| {
             CKKSCompositionError::MultiplicationPrecisionUnderflow {
                 op,

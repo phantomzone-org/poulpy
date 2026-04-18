@@ -996,7 +996,7 @@ where
     B: LWEInfos + CKKSInfos,
 {
     let res_log_hom_rem = checked_mul_ct_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
-    let res_log_decimal = a.log_decimal().max(b.log_decimal());
+    let res_log_decimal = a.log_decimal().min(b.log_decimal());
 
     let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
 

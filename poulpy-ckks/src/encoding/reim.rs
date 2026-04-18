@@ -1,13 +1,9 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
-use poulpy_cpu_ref::fft64::FFTModuleHandle;
-use poulpy_hal::{
-    GALOISGENERATOR,
-    api::ModuleNew,
-    layouts::{Backend, Module},
-};
-use rand_distr::num_traits::{Float, FloatConst, NumCast, Zero};
+use poulpy_cpu_ref::reference::fft64::reim::{ReimFFTTable, ReimIFFTTable};
+use poulpy_hal::GALOISGENERATOR;
+use rand_distr::num_traits::{Float, FloatConst, NumCast};
 
 use crate::layouts::plaintext::CKKSPlaintextVecRnx;
 
@@ -15,16 +11,15 @@ use crate::layouts::plaintext::CKKSPlaintextVecRnx;
 ///
 /// The encoder maps `m` complex slots onto an RNX plaintext of size `2m`
 /// through the canonical FFT/IFFT packing used by the rest of the crate.
-pub struct Encoder<BE: Backend> {
-    module: Module<BE>,
+pub struct Encoder<F: Float + FloatConst + Debug> {
+    fft_table: ReimFFTTable<F>,
+    ifft_table: ReimIFFTTable<F>,
     slot_map: Vec<usize>,
 }
 
-impl<BE> Encoder<BE>
+impl<F> Encoder<F>
 where
-    BE: Backend,
-    BE::ScalarPrep: Float + FloatConst + Debug,
-    Module<BE>: ModuleNew<BE> + FFTModuleHandle<BE::ScalarPrep>,
+    F: Float + FloatConst + Debug,
 {
     /// Creates an encoder for `m` complex CKKS slots.
     ///
@@ -48,7 +43,8 @@ where
             exp = (exp * GALOISGENERATOR as usize) & (two_n - 1);
         }
         Ok(Self {
-            module: Module::<BE>::new((m << 1) as u64),
+            fft_table: ReimFFTTable::new(m),
+            ifft_table: ReimIFFTTable::new(m),
             slot_map,
         })
     }
@@ -69,22 +65,17 @@ where
     /// Errors:
     /// - returns an error if `pt`, `re`, and `im` do not match the encoder's
     ///   configured slot count
-    pub fn encode_reim(
-        &self,
-        pt: &mut CKKSPlaintextVecRnx<BE::ScalarPrep>,
-        re: &[BE::ScalarPrep],
-        im: &[BE::ScalarPrep],
-    ) -> Result<()> {
+    pub fn encode_reim(&self, pt: &mut CKKSPlaintextVecRnx<F>, re: &[F], im: &[F]) -> Result<()> {
         let n = pt.n();
         let m = n / 2;
 
-        let table = self.module.get_ifft_table();
+        let table = &self.ifft_table;
 
         anyhow::ensure!(table.m() == m);
         anyhow::ensure!(re.len() == m);
         anyhow::ensure!(im.len() == m);
 
-        pt.data_mut().fill(BE::ScalarPrep::zero());
+        pt.data_mut().fill(F::zero());
         for k in 0..m {
             let idx = self.slot_map[k];
             pt.data_mut()[idx] = re[k];
@@ -93,7 +84,7 @@ where
 
         table.execute(pt.data_mut());
 
-        let inv_m = <BE::ScalarPrep as NumCast>::from(m).unwrap().recip();
+        let inv_m = <F as NumCast>::from(m).unwrap().recip();
         pt.data_mut().iter_mut().for_each(|x| *x = *x * inv_m);
 
         Ok(())
@@ -114,22 +105,17 @@ where
     /// Errors:
     /// - returns an error if the provided buffers do not match the encoder's
     ///   configured slot count
-    pub fn decode_reim(
-        &self,
-        pt: &CKKSPlaintextVecRnx<BE::ScalarPrep>,
-        re: &mut [BE::ScalarPrep],
-        im: &mut [BE::ScalarPrep],
-    ) -> Result<()> {
+    pub fn decode_reim(&self, pt: &CKKSPlaintextVecRnx<F>, re: &mut [F], im: &mut [F]) -> Result<()> {
         let n = pt.n();
         let m = n / 2;
 
-        let table = self.module.get_fft_table();
+        let table = &self.fft_table;
 
         anyhow::ensure!(table.m() == m);
         anyhow::ensure!(re.len() == m);
         anyhow::ensure!(im.len() == m);
 
-        let mut reim_tmp = vec![BE::ScalarPrep::zero(); n];
+        let mut reim_tmp = vec![F::zero(); n];
         reim_tmp.copy_from_slice(pt.data());
 
         table.execute(&mut reim_tmp);
@@ -147,7 +133,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use poulpy_cpu_ref::FFT64Ref;
 
     fn max_err(a: &[f64], b: &[f64]) -> f64 {
         a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0_f64, f64::max)
@@ -161,7 +146,7 @@ mod tests {
         let re_in: Vec<f64> = (0..m).map(|i| (i as f64) / (m as f64)).collect();
         let im_in: Vec<f64> = (0..m).map(|i| -((i as f64) / (m as f64))).collect();
 
-        let encoder = Encoder::<FFT64Ref>::new(m).unwrap();
+        let encoder = Encoder::<f64>::new(m).unwrap();
 
         let mut rnx = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
         encoder.encode_reim(&mut rnx, &re_in, &im_in).unwrap();

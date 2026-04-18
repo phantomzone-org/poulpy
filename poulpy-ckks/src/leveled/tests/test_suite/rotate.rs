@@ -16,13 +16,13 @@
 
 use crate::{CKKSInfos, leveled::operations::rotate::CKKSRotateOps};
 
-use super::helpers::{TestContext, TestRotateBackend as Backend, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{TestContext, TestRotateBackend as Backend, TestScalar, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── rotation out-of-place (GLWE<_, CKKS>::rotate) ─────────────────────────
 
 /// Rotation out-of-place: slot values are cyclically shifted.
-pub fn test_rotate_aligned<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]) {
+pub fn test_rotate_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, rotations: &[i64]) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     for &r in rotations {
@@ -37,7 +37,7 @@ pub fn test_rotate_aligned<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
 }
 
 /// Rotation out-of-place: slot values are cyclically shifted.
-pub fn test_rotate_smaller_output<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]) {
+pub fn test_rotate_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, rotations: &[i64]) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     for &r in rotations {
@@ -54,7 +54,7 @@ pub fn test_rotate_smaller_output<BE: Backend>(ctx: &TestContext<BE>, rotations:
 // ─── rotation in-place (GLWE<_, CKKS>::rotate_inplace) ─────────────────────
 
 /// Rotation in-place: slot values are cyclically shifted.
-pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]) {
+pub fn test_rotate_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, rotations: &[i64]) {
     let mut scratch = ctx.alloc_scratch();
     for &r in rotations {
         let (want_re, want_im) = ctx.want_rotate(r);

@@ -6,9 +6,9 @@ use crate::{
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
-use super::helpers::{TestAddBackend as Backend, TestContext, assert_ckks_error};
+use super::helpers::{TestAddBackend as Backend, TestContext, TestScalar, assert_ckks_error};
 
-pub fn test_reallocate_limbs_checked_error<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_reallocate_limbs_checked_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let requested_limbs = (ct.max_k().as_usize() - ct.log_decimal()) / ct.base2k().as_usize() + 1;
@@ -28,7 +28,7 @@ pub fn test_reallocate_limbs_checked_error<BE: Backend>(ctx: &TestContext<BE>) {
     );
 }
 
-pub fn test_add_pt_znx_alignment_error<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     ct.meta.log_hom_rem = 0;

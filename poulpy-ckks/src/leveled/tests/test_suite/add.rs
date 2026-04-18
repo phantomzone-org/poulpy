@@ -37,12 +37,12 @@
 
 use crate::{
     CKKSCompositionError, CKKSInfos,
-    layouts::plaintext::{CKKSConstPlaintextConversion, CKKSPlaintextCstRnx, alloc_pt_znx},
+    layouts::plaintext::{CKKSConstPlaintextConversion, alloc_pt_znx},
     leveled::operations::add::CKKSAddOps,
 };
 
 use super::helpers::{
-    TestAddBackend as Backend, TestContext, TestVector, assert_binary_output_meta, assert_ckks_error, assert_ct_meta,
+    TestAddBackend as Backend, TestContext, TestScalar, TestVector, assert_binary_output_meta, assert_ckks_error, assert_ct_meta,
     assert_unary_output_meta,
 };
 use poulpy_core::layouts::{Base2K, LWEInfos};
@@ -55,7 +55,7 @@ const DELTA_LOG_DECIMAL: usize = 12;
 // ─── ct+ct out-of-place (GLWE<_, CKKS>::add) ────────────────────────────────
 
 /// ct+ct out-of-place, aligned (same log_hom_rem(), offset == 0 → glwe_add fast path).
-pub fn test_add_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
@@ -67,7 +67,7 @@ pub fn test_add_ct_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct+ct out-of-place, a.log_hom_rem() < b.log_hom_rem() (b is shifted to align with a).
-pub fn test_add_ct_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_delta_a_lt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(
         ctx.max_k() - ctx.base2k().as_usize() + 1,
@@ -84,7 +84,7 @@ pub fn test_add_ct_delta_a_lt_b<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct+ct out-of-place, a.log_hom_rem() > b.log_hom_rem() (a is shifted to align with b).
-pub fn test_add_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_delta_a_gt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(
@@ -101,7 +101,7 @@ pub fn test_add_ct_delta_a_gt_b<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct+ct out-of-place with aligned homomorphic capacity but different log_decimal.
-pub fn test_add_ct_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -128,7 +128,7 @@ pub fn test_add_ct_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
 /// Both inputs are at the same log_hom_rem().  The output is one limb narrower,
 /// so both inputs are shifted by one limb before addition to fit.
 /// Expected result log_hom_rem() = input log_hom_rem() − base2k.
-pub fn test_add_ct_aligned_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_aligned_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
@@ -142,7 +142,7 @@ pub fn test_add_ct_aligned_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 // ─── ct+ct in-place (GLWE<_, CKKS>::add_inplace) ────────────────────────────
 
 /// ct+ct in-place, aligned (same log_hom_rem()).
-pub fn test_add_ct_inplace_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_inplace_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
@@ -155,7 +155,7 @@ pub fn test_add_ct_inplace_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct+ct in-place, self.log_hom_rem() < a.log_hom_rem() (a is shifted down to align with self).
-pub fn test_add_ct_inplace_self_lt<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_inplace_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_self = ctx.encrypt(
         ctx.max_k() - ctx.base2k().as_usize() - 1,
@@ -175,7 +175,7 @@ pub fn test_add_ct_inplace_self_lt<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct+ct in-place, self.log_hom_rem() > a.log_hom_rem() (self is shifted down to align with a).
-pub fn test_add_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_ct_inplace_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_self = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct_other = ctx.encrypt(
@@ -197,7 +197,7 @@ pub fn test_add_ct_inplace_self_gt<BE: Backend>(ctx: &TestContext<BE>) {
 // ─── ct + compact ZNX plaintext (GLWE<_, CKKS>::add_pt_znx[_inplace]) ────────
 
 /// ct + ZNX plaintext, in-place.
-pub fn test_add_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
@@ -212,7 +212,7 @@ pub fn test_add_pt_znx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + ZNX plaintext, out-of-place.
-pub fn test_add_pt_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
@@ -226,7 +226,7 @@ pub fn test_add_pt_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + ZNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
-pub fn test_add_pt_znx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -253,7 +253,7 @@ pub fn test_add_pt_znx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
 // ─── ct + float RNX plaintext (GLWE<_, CKKS>::add_pt_rnx[_inplace]) ──────────
 
 /// ct + RNX plaintext, in-place (auto-converts RNX → ZNX using scratch).
-pub fn test_add_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_rnx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
@@ -268,7 +268,7 @@ pub fn test_add_pt_rnx_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + RNX plaintext, out-of-place (auto-converts RNX → ZNX using scratch).
-pub fn test_add_pt_rnx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
@@ -282,7 +282,7 @@ pub fn test_add_pt_rnx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + RNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
-pub fn test_add_pt_rnx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -307,13 +307,13 @@ pub fn test_add_pt_rnx_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + complex constant, out-of-place.
-pub fn test_add_const_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_const_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
     let (want_re, want_im) = ctx.want_add_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
         .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -322,14 +322,14 @@ pub fn test_add_const_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + complex constant, in-place.
-pub fn test_add_const_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_const_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
     let (want_re, want_im) = ctx.want_add_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
         .ckks_add_pt_const_rnx_inplace(&mut ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -338,7 +338,7 @@ pub fn test_add_const_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + complex constant, out-of-place, constant encoded at lower decimal precision.
-pub fn test_add_const_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_const_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -347,7 +347,7 @@ pub fn test_add_const_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
     let ct = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let (want_re, want_im) = ctx.want_add_const_from(&a_re, &a_im, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
         .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, low_prec, scratch.borrow())
         .unwrap();
@@ -363,13 +363,13 @@ pub fn test_add_const_delta_log_decimal<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + real constant only, out-of-place.
-pub fn test_add_const_real_only<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_const_real_only<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_decimal);
     let (want_re, want_im) = ctx.want_add_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    let cst = CKKSPlaintextCstRnx::new(Some(CONST_RE), None);
+    let cst = ctx.const_rnx(Some(CONST_RE), None);
     ctx.module
         .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -377,13 +377,13 @@ pub fn test_add_const_real_only<BE: Backend>(ctx: &TestContext<BE>) {
     ctx.assert_decrypt_precision("add_const_real_only", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_add_const_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
     let (want_re, want_im) = ctx.want_add_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    let cst_rnx = CKKSPlaintextCstRnx::new(Some(CONST_RE), Some(CONST_IM));
+    let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     let cst_znx = cst_rnx
         .to_znx_at_k(
             ctx.base2k(),
@@ -404,7 +404,7 @@ pub fn test_add_const_znx_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 ///
 /// Exercises the lsh-then-add path in `add_pt_znx`.  The output log_hom_rem() must
 /// equal `a.log_hom_rem() − base2k`, not the original `a.log_hom_rem()`.
-pub fn test_add_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
@@ -421,7 +421,7 @@ pub fn test_add_pt_znx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 ///
 /// Same path as `test_add_pt_znx_smaller_output` but entered via `add_pt_rnx`
 /// (which converts RNX → ZNX internally before delegating to `add_pt_znx`).
-pub fn test_add_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_rnx_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
@@ -435,7 +435,7 @@ pub fn test_add_pt_rnx_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// ct + ZNX plaintext must reject mismatched base2k with an explicit error.
-pub fn test_add_pt_znx_base2k_mismatch_error<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_add_pt_znx_base2k_mismatch_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = alloc_pt_znx(ctx.degree(), Base2K((ctx.base2k().as_usize() / 2) as u32), ctx.meta());

@@ -17,13 +17,13 @@
 
 use crate::{CKKSInfos, leveled::operations::conjugate::CKKSConjugateOps};
 
-use super::helpers::{TestContext, TestRotateBackend as Backend, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{TestContext, TestRotateBackend as Backend, TestScalar, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 // ─── conjugation out-of-place (GLWE<_, CKKS>::conjugate) ───────────────────
 
 /// Conjugation out-of-place: real part preserved, imaginary part negated.
-pub fn test_conjugate_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_conjugate_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_conjugate();
@@ -37,7 +37,7 @@ pub fn test_conjugate_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// Conjugation out-of-place: real part preserved, imaginary part negated.
-pub fn test_conjugate_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_conjugate_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_conjugate();
@@ -53,7 +53,7 @@ pub fn test_conjugate_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 // ─── conjugation in-place (GLWE<_, CKKS>::conjugate_inplace) ───────────────
 
 /// Conjugation in-place: real part preserved, imaginary part negated.
-pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_conjugate_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_conjugate();

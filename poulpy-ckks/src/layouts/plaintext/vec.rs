@@ -9,7 +9,7 @@ use poulpy_core::layouts::{
     SetLWEInfos,
 };
 use poulpy_hal::layouts::{Data, DataMut, DataRef};
-use rand_distr::num_traits::Zero;
+use rand_distr::num_traits::{Float, FromPrimitive, ToPrimitive, Zero};
 
 use crate::{CKKSInfos, CKKSMeta};
 
@@ -152,7 +152,7 @@ impl<D: DataRef> fmt::Display for CKKSPlaintextVecZnx<D> {
 /// Conversion between RNX floating-point plaintexts and ZNX torus plaintexts.
 pub trait CKKSPlaintextConversion {
     /// Maximum supported `log_decimal` for the conversion implementation.
-    const MAX_LOG_DECIMAL_PREC: usize;
+    fn max_log_decimal_prec() -> usize;
 
     /// Quantizes an RNX plaintext into a ZNX plaintext buffer.
     ///
@@ -211,9 +211,20 @@ impl<F> CKKSPlaintextVecRnx<F> {
     }
 }
 
-/// NOTE: only `f64` conversion is currently supported.
-impl CKKSPlaintextConversion for CKKSPlaintextVecRnx<f64> {
-    const MAX_LOG_DECIMAL_PREC: usize = 53;
+fn max_log_decimal_prec_for<F>() -> usize
+where
+    F: Float + ToPrimitive,
+{
+    ((-F::epsilon().log2()).round().to_usize().unwrap()) + 1
+}
+
+impl<F> CKKSPlaintextConversion for CKKSPlaintextVecRnx<F>
+where
+    F: Float + FromPrimitive + ToPrimitive + Debug,
+{
+    fn max_log_decimal_prec() -> usize {
+        max_log_decimal_prec_for::<F>()
+    }
 
     /// TODO: use buffers internally instead of allocating.
     fn decode_from_znx(&mut self, other: &CKKSPlaintextVecZnx<impl DataRef>) -> Result<()> {
@@ -221,20 +232,26 @@ impl CKKSPlaintextConversion for CKKSPlaintextVecRnx<f64> {
         let log_hom_rem = other.log_hom_rem();
         let n = other.n().as_usize();
 
-        anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
+        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
         anyhow::ensure!(self.0.len() == other.n().as_usize());
         anyhow::ensure!(log_decimal + log_hom_rem <= 127);
 
-        let scale = (-(log_decimal as f64)).exp2();
+        let scale = (-F::from_usize(log_decimal).unwrap()).exp2();
         let k = other.max_k();
         if log_decimal + log_hom_rem <= 63 {
             let mut data = vec![0i64; n];
             other.decode_vec_i64(&mut data, k);
-            self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
+            self.0
+                .iter_mut()
+                .zip(data.iter())
+                .for_each(|(f, i)| *f = F::from_i64(*i).unwrap() * scale);
         } else {
             let mut data = vec![0i128; n];
             other.decode_vec_i128(&mut data, k);
-            self.0.iter_mut().zip(data.iter()).for_each(|(f, i)| *f = (*i as f64) * scale);
+            self.0
+                .iter_mut()
+                .zip(data.iter())
+                .for_each(|(f, i)| *f = F::from_i128(*i).unwrap() * scale);
         }
 
         Ok(())
@@ -245,16 +262,16 @@ impl CKKSPlaintextConversion for CKKSPlaintextVecRnx<f64> {
         let log_decimal = other.log_decimal();
         let log_hom_rem = other.log_hom_rem();
 
-        anyhow::ensure!(log_decimal <= Self::MAX_LOG_DECIMAL_PREC);
+        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
         anyhow::ensure!(self.0.len() == other.n().as_usize());
 
-        let scale = (log_decimal as f64).exp2();
+        let scale = F::from_usize(log_decimal).unwrap().exp2();
         let k = other.max_k();
         if log_decimal + log_hom_rem <= 63 {
-            let data: Vec<i64> = self.0.iter().map(|&x| (x * scale).round() as i64).collect();
+            let data: Vec<i64> = self.0.iter().map(|&x| (x * scale).round().to_i64().unwrap()).collect();
             other.encode_vec_i64(&data, k);
         } else {
-            let data: Vec<i128> = self.0.iter().map(|&x| (x * scale).round() as i128).collect();
+            let data: Vec<i128> = self.0.iter().map(|&x| (x * scale).round().to_i128().unwrap()).collect();
             other.encode_vec_i128(&data, k);
         }
 

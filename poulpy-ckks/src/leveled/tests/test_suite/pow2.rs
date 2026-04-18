@@ -23,7 +23,9 @@
 
 use crate::{CKKSCompositionError, CKKSInfos, leveled::operations::pow2::CKKSPow2Ops};
 
-use super::helpers::{TestContext, TestPow2Backend as Backend, assert_ckks_error, assert_ct_meta, assert_unary_output_meta};
+use super::helpers::{
+    TestContext, TestPow2Backend as Backend, TestScalar, assert_ckks_error, assert_ct_meta, assert_unary_output_meta,
+};
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
@@ -32,7 +34,7 @@ const SHIFT_BITS: usize = 7;
 // ─── mul_pow2 (message × 2^bits) ───────────────────────────────────────────────
 
 /// Out-of-place multiplication by 2^bits.
-pub fn test_mul_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_mul_pow2_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
@@ -41,11 +43,18 @@ pub fn test_mul_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
         .ckks_mul_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("mul_pow2", &ct_res, &ct);
-    ctx.assert_decrypt_precision("mul_pow2", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision_at_log_decimal(
+        "mul_pow2",
+        &ct_res,
+        &want_re,
+        &want_im,
+        ct.log_decimal() - SHIFT_BITS,
+        scratch.borrow(),
+    );
 }
 
 /// Out-of-place multiplication by 2^bits.
-pub fn test_mul_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_mul_pow2_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
@@ -54,11 +63,18 @@ pub fn test_mul_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
         .ckks_mul_pow2(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("mul_pow2 smaller_output", &ct_res, &ct);
-    ctx.assert_decrypt_precision("mul_pow2", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision_at_log_decimal(
+        "mul_pow2",
+        &ct_res,
+        &want_re,
+        &want_im,
+        ct.log_decimal() - SHIFT_BITS,
+        scratch.borrow(),
+    );
 }
 
 /// In-place multiplication by 2^bits.
-pub fn test_mul_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_mul_pow2_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
@@ -68,13 +84,20 @@ pub fn test_mul_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
         .ckks_mul_pow2_inplace(&mut ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
     assert_ct_meta("mul_pow2_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("mul_pow2_inplace", &ct, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision_at_log_decimal(
+        "mul_pow2_inplace",
+        &ct,
+        &want_re,
+        &want_im,
+        expected_log_decimal - SHIFT_BITS,
+        scratch.borrow(),
+    );
 }
 
 // ─── div_pow2 (message / 2^bits) ───────────────────────────────────────────────
 
 /// Out-of-place division by 2^bits.
-pub fn test_div_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_div_pow2_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
@@ -87,7 +110,7 @@ pub fn test_div_pow2_aligned<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// Out-of-place division by 2^bits.
-pub fn test_div_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_div_pow2_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
@@ -106,7 +129,7 @@ pub fn test_div_pow2_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// In-place division by 2^bits.
-pub fn test_div_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_div_pow2_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
@@ -118,7 +141,7 @@ pub fn test_div_pow2_inplace<BE: Backend>(ctx: &TestContext<BE>) {
 }
 
 /// In-place division by too large a power of two must return a clear metadata error.
-pub fn test_div_pow2_inplace_explicit_error<BE: Backend>(ctx: &TestContext<BE>) {
+pub fn test_div_pow2_inplace_explicit_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let available_log_hom_rem = ct.log_hom_rem();
