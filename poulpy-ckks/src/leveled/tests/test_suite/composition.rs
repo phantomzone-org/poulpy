@@ -112,7 +112,7 @@ pub fn test_linear_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     );
     ctx.module.ckks_add_inplace(&mut term1, &term2, scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, scratch.borrow());
 }
 
 /// A mixed `c1*x + c2*x^2` composition remains decryptable and accurate.
@@ -149,7 +149,7 @@ pub fn test_poly2_sum<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let mut sum = ctx.alloc_ct(term2.effective_k());
     ctx.module.ckks_add(&mut sum, &term1, &term2, scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, scratch.borrow());
 }
 
 /// Adding a constant plaintext to `c1*x + c2*x^2` keeps the expected value.
@@ -186,7 +186,7 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend>(ctx: &TestContext<B
         .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
-    ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, scratch.borrow());
 }
 
 /// Evaluates `y * (c0 + c1*x + c2*x^2)` with encrypted `x` and `y`.
@@ -227,7 +227,7 @@ pub fn test_poly2_mul<BE: TestCompositionBackend>(ctx: &TestContext<BE>) {
     let mut res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_mul(&mut res, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
 
-    ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, 18.0, scratch.borrow());
+    ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, scratch.borrow());
 }
 
 /// Repeated squaring on unit-circle slots should exhaust HE capacity before it blows up numerically.
@@ -263,14 +263,7 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend>(ctx: &
         ct.log_hom_rem() < ct.log_decimal(),
         "expected squaring to consume all HE capacity"
     );
-    ctx.assert_decrypt_precision(
-        "repeated_square_exhausts_capacity",
-        &ct,
-        &want_re,
-        &want_im,
-        10.0,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("repeated_square_exhausts_capacity", &ct, &want_re, &want_im, scratch.borrow());
 
     let mut no_capacity = ctx.alloc_ct(ctx.max_k());
     let err = ctx

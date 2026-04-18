@@ -12,7 +12,7 @@
 //! | [`test_decrypt_extract_output_hom_rem_too_large`] | `ct.log_hom_rem() < pt.log_hom_rem()` error |
 //! | [`test_decrypt_extract_base2k_mismatch_error`] | plaintext/ciphertext `base2k` mismatch |
 
-use super::helpers::{TestCiphertextBackend as Backend, TestContext, assert_ckks_error, assert_ct_meta, assert_precision};
+use super::helpers::{TestCiphertextBackend as Backend, TestContext, assert_ckks_error, assert_ct_meta};
 use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::plaintext::alloc_pt_znx, leveled::encryption::CKKSDecrypt};
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
@@ -21,8 +21,6 @@ const EXTRACT_SRC_PREC: CKKSMeta = CKKSMeta {
     log_decimal: 40,
     log_hom_rem: 12,
 };
-const EXTRACT_MIN_BITS: f64 = 18.0;
-
 fn extract_fixture<BE: Backend>(
     ctx: &TestContext<BE>,
     scratch: &mut poulpy_hal::layouts::Scratch<BE>,
@@ -49,8 +47,8 @@ where
 
     let (re_out, im_out) = ctx.decode_pt_znx(&pt);
     let (want_re, want_im) = ctx.quantized_slots(&ctx.re1, &ctx.im1, dst_prec);
-    assert_precision(&format!("{label} re"), &re_out, &want_re, EXTRACT_MIN_BITS);
-    assert_precision(&format!("{label} im"), &im_out, &want_im, EXTRACT_MIN_BITS);
+    ctx.assert_precision_for_log_decimal(&format!("{label} re"), &re_out, &want_re, dst_prec.log_decimal);
+    ctx.assert_precision_for_log_decimal(&format!("{label} im"), &im_out, &want_im, dst_prec.log_decimal);
 }
 
 /// Verifies that encrypt → decrypt → decode recovers the original message.
@@ -64,8 +62,8 @@ pub fn test_encrypt_decrypt<BE: Backend>(ctx: &TestContext<BE>) {
         ctx.max_k() - ctx.meta().log_decimal,
     );
     let (re_out, im_out) = ctx.decrypt_decode(&ct, scratch.borrow());
-    assert_precision("encrypt_decrypt re", &re_out, &ctx.re1, 20.0);
-    assert_precision("encrypt_decrypt im", &im_out, &ctx.im1, 20.0);
+    ctx.assert_precision_for_log_decimal("encrypt_decrypt re", &re_out, &ctx.re1, ct.log_decimal());
+    ctx.assert_precision_for_log_decimal("encrypt_decrypt im", &im_out, &ctx.im1, ct.log_decimal());
 }
 
 pub fn test_decrypt_extract_same_meta<BE: Backend>(ctx: &TestContext<BE>) {

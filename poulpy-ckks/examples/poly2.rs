@@ -328,11 +328,18 @@ fn evaluation(
     print_ct_meta("input x", &encryption.ct_x);
 
     println!("computing x^2");
-    let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.effective_k().into(), BASE2K.into());
+    let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_hom_rem().into(), BASE2K.into());
     setup
         .module
         .ckks_square(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
     print_ct_meta("x^2", &ct_x2);
+
+    println!("computing c * x^2");
+    let mut term_cx2 = CKKSCiphertext::alloc(N.into(), ct_x2.effective_k().into(), BASE2K.into());
+    setup
+        .module
+        .ckks_mul_const(&mut term_cx2, &ct_x2, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
+    print_ct_meta("c * x^2", &term_cx2);
 
     println!("computing b * x");
     let mut term_bx = CKKSCiphertext::alloc(N.into(), encryption.ct_x.effective_k().into(), BASE2K.into());
@@ -344,13 +351,6 @@ fn evaluation(
         setup.scratch.borrow(),
     )?;
     print_ct_meta("b * x", &term_bx);
-
-    println!("computing c * x^2");
-    let mut term_cx2 = CKKSCiphertext::alloc(N.into(), ct_x2.effective_k().into(), BASE2K.into());
-    setup
-        .module
-        .ckks_mul_pt_const_rnx(&mut term_cx2, &ct_x2, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
-    print_ct_meta("c * x^2", &term_cx2);
 
     println!("adding b * x and c * x^2");
     let mut poly = CKKSCiphertext::alloc(N.into(), term_cx2.effective_k().into(), BASE2K.into());

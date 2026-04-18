@@ -33,7 +33,7 @@ pub fn test_conjugate_aligned<BE: Backend>(ctx: &TestContext<BE>) {
         .ckks_conjugate(&mut ct_res, &ct1, conj_key, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("conjugate", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// Conjugation out-of-place: real part preserved, imaginary part negated.
@@ -47,7 +47,7 @@ pub fn test_conjugate_smaller_output<BE: Backend>(ctx: &TestContext<BE>) {
         .ckks_conjugate(&mut ct_res, &ct1, conj_key, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("conjugate smaller_output", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("conjugate", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 // ─── conjugation in-place (GLWE<_, CKKS>::conjugate_inplace) ───────────────
@@ -62,5 +62,5 @@ pub fn test_conjugate_inplace<BE: Backend>(ctx: &TestContext<BE>) {
     let expected_log_hom_rem = ct.log_hom_rem();
     ctx.module.ckks_conjugate_inplace(&mut ct, conj_key, scratch.borrow());
     assert_ct_meta("conjugate_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, 20.0, scratch.borrow());
+    ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, scratch.borrow());
 }

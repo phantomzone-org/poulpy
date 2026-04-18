@@ -32,7 +32,7 @@ pub fn test_rotate_aligned<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
             .ckks_rotate(&mut ct_res, &ct, r, ctx.atks(), scratch.borrow())
             .unwrap();
         assert_unary_output_meta(&format!("rotate({r})"), &ct_res, &ct);
-        ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+        ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, scratch.borrow());
     }
 }
 
@@ -47,7 +47,7 @@ pub fn test_rotate_smaller_output<BE: Backend>(ctx: &TestContext<BE>, rotations:
             .ckks_rotate(&mut ct_res, &ct, r, ctx.atks(), scratch.borrow())
             .unwrap();
         assert_unary_output_meta(&format!("rotate smaller_output({r})"), &ct_res, &ct);
-        ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, 20.0, scratch.borrow());
+        ctx.assert_decrypt_precision(&format!("rotate({r})"), &ct_res, &want_re, &want_im, scratch.borrow());
     }
 }
 
@@ -68,13 +68,6 @@ pub fn test_rotate_inplace<BE: Backend>(ctx: &TestContext<BE>, rotations: &[i64]
             expected_log_decimal,
             expected_log_hom_rem,
         );
-        ctx.assert_decrypt_precision(
-            &format!("rotate_inplace({r})"),
-            &ct,
-            &want_re,
-            &want_im,
-            20.0,
-            scratch.borrow(),
-        );
+        ctx.assert_decrypt_precision(&format!("rotate_inplace({r})"), &ct, &want_re, &want_im, scratch.borrow());
     }
 }
