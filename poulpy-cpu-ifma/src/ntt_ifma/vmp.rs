@@ -300,29 +300,66 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
             unsafe {
                 let mut red = [_mm512_setzero_si512(); 3];
 
-                for p in 0..3 {
-                    let mut acc_lo = _mm512_setzero_si512();
-                    let mut acc_hi = _mm512_setzero_si512();
-                    let x_base = x_pm.as_ptr().add(p * x_plane_sz) as *const __m512i;
-                    let y_base = pmat_u64.as_ptr().add(p * plane_stride + y_off) as *const __m512i;
+                // Interleave all 3 primes so Zen 5's two FMA ports always
+                // have 6 independent MADD52 chains in flight (2 per prime
+                // across acc_lo/acc_hi). This hides the 5-cycle VPMADD52
+                // latency without blowing up register pressure.
+                let x_base0 = x_pm.as_ptr() as *const __m512i;
+                let x_base1 = x_pm.as_ptr().add(x_plane_sz) as *const __m512i;
+                let x_base2 = x_pm.as_ptr().add(2 * x_plane_sz) as *const __m512i;
+                let y_base0 = pmat_u64.as_ptr().add(y_off) as *const __m512i;
+                let y_base1 = pmat_u64.as_ptr().add(plane_stride + y_off) as *const __m512i;
+                let y_base2 = pmat_u64.as_ptr().add(2 * plane_stride + y_off) as *const __m512i;
 
-                    for r in 0..row_max {
-                        let xv = _mm512_loadu_si512(x_base.add(r));
-                        let yv = _mm512_loadu_si512(y_base.add(r));
-                        acc_lo = _mm512_madd52lo_epu64(acc_lo, xv, yv);
-                        acc_hi = _mm512_madd52hi_epu64(acc_hi, xv, yv);
-                    }
+                let mut acc_lo0 = _mm512_setzero_si512();
+                let mut acc_hi0 = _mm512_setzero_si512();
+                let mut acc_lo1 = _mm512_setzero_si512();
+                let mut acc_hi1 = _mm512_setzero_si512();
+                let mut acc_lo2 = _mm512_setzero_si512();
+                let mut acc_hi2 = _mm512_setzero_si512();
 
-                    red[p] = reduce_bbc_single_prime_512(
-                        acc_lo,
-                        acc_hi,
-                        pc[p].q,
-                        pc[p].q2,
-                        pc[p].pow40,
-                        pc[p].pow52,
-                        pc[p].pow52_quot,
-                    );
+                for r in 0..row_max {
+                    let x0 = _mm512_loadu_si512(x_base0.add(r));
+                    let y0 = _mm512_loadu_si512(y_base0.add(r));
+                    let x1 = _mm512_loadu_si512(x_base1.add(r));
+                    let y1 = _mm512_loadu_si512(y_base1.add(r));
+                    let x2 = _mm512_loadu_si512(x_base2.add(r));
+                    let y2 = _mm512_loadu_si512(y_base2.add(r));
+                    acc_lo0 = _mm512_madd52lo_epu64(acc_lo0, x0, y0);
+                    acc_hi0 = _mm512_madd52hi_epu64(acc_hi0, x0, y0);
+                    acc_lo1 = _mm512_madd52lo_epu64(acc_lo1, x1, y1);
+                    acc_hi1 = _mm512_madd52hi_epu64(acc_hi1, x1, y1);
+                    acc_lo2 = _mm512_madd52lo_epu64(acc_lo2, x2, y2);
+                    acc_hi2 = _mm512_madd52hi_epu64(acc_hi2, x2, y2);
                 }
+
+                red[0] = reduce_bbc_single_prime_512(
+                    acc_lo0,
+                    acc_hi0,
+                    pc[0].q,
+                    pc[0].q2,
+                    pc[0].pow40,
+                    pc[0].pow52,
+                    pc[0].pow52_quot,
+                );
+                red[1] = reduce_bbc_single_prime_512(
+                    acc_lo1,
+                    acc_hi1,
+                    pc[1].q,
+                    pc[1].q2,
+                    pc[1].pow40,
+                    pc[1].pow52,
+                    pc[1].pow52_quot,
+                );
+                red[2] = reduce_bbc_single_prime_512(
+                    acc_lo2,
+                    acc_hi2,
+                    pc[2].q,
+                    pc[2].q2,
+                    pc[2].pow40,
+                    pc[2].pow52,
+                    pc[2].pow52_quot,
+                );
 
                 // SoA → AoS: interleave 3 prime results into 4 q120b blocks
                 // directly in SIMD registers (no stack round-trip).
