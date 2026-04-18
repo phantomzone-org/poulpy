@@ -2,14 +2,12 @@
 //!
 //! # IFMA-native arithmetic model
 //!
-//! Unlike the NTT120 backend which uses lazy accumulation with periodic
-//! Barrett reduction, this backend keeps all values in `[0, 2q)` at every
-//! butterfly level.  The Harvey modular multiply produces output in `[0, 2q)`
-//! from inputs in `[0, 2q)`, and a single conditional subtract of `2q`
-//! handles the add/sub path.
-//!
-//! This eliminates the need for `NttReducMeta`, bit-size tracking, and the
-//! `reduce` flag on each level — the arithmetic is self-contained per butterfly.
+//! Lazy Harvey reduction: butterfly values are kept in `[0, 4q)` internally,
+//! and normalised to `[0, 2q)` at NTT boundaries.  On the difference path of
+//! each butterfly the Harvey multiplier absorbs the wider range directly —
+//! inputs up to `2^52` yield outputs in `[0, 2q)` because `q < 2^40` — so a
+//! pre-reduction `cond_sub` before the multiply is unnecessary.  Only the sum
+//! path keeps one `cond_sub` (of `4q`) per butterfly pair.
 //!
 //! # Twiddle factor layout
 //!
@@ -43,9 +41,13 @@ use super::primes::{PrimeSetIfma, modq_pow64};
 pub struct NttIfmaTable<P: PrimeSetIfma> {
     /// NTT size (power of two, ≤ 2^16).
     pub n: usize,
-    /// `2q[k]` for each prime (lane 3 = 0).  Used for conditional subtract
-    /// and ensuring positivity in the butterfly.
+    /// `2q[k]` for each prime (lane 3 = 0).  Used for the final `[0, 4q)` → `[0, 2q)`
+    /// normalisation pass and by external consumers that expect `[0, 2q)` input.
     pub q2: [u64; 4],
+    /// `4q[k]` for each prime (lane 3 = 0).  Used inside butterflies under the
+    /// lazy `[0, 4q)` invariant: sum path subtracts `4q`, diff path adds `4q`
+    /// before subtracting `b`.
+    pub q4: [u64; 4],
     /// Packed twiddle factors: each entry is 8 u64.
     /// Layout: level-0 (n entries), then butterfly levels (halfnn-1 entries each).
     pub powomega: Vec<u64>,
@@ -56,6 +58,7 @@ pub struct NttIfmaTable<P: PrimeSetIfma> {
 pub struct NttIfmaTableInv<P: PrimeSetIfma> {
     pub n: usize,
     pub q2: [u64; 4],
+    pub q4: [u64; 4],
     /// Packed twiddle factors: butterfly levels (halfnn-1 entries each),
     /// then last-pass (n entries with ω^{-i}/n baked in).
     pub powomega: Vec<u64>,
@@ -80,21 +83,18 @@ pub fn harvey_quotient(omega: u64, q: u64) -> u64 {
 
 /// Harvey modular multiply (scalar): `a * omega mod q`.
 ///
-/// Input: `a ∈ [0, 2q)`, `omega ∈ [0, q)`.
-/// Output: `r ∈ [0, 2q)` with `r ≡ a*omega (mod q)`.
+/// Input: `a ∈ [0, 2^52)` (in practice up to `4q` or `8q` under lazy),
+/// `omega ∈ [0, q)`.  Output: `r ∈ [0, 2q)` with `r ≡ a*omega (mod q)`.
 ///
-/// The quotient estimate `qhat` may be off by at most 1, so the raw
-/// remainder `r` is in `(-q, 2q)`.  A conditional add of `q` (for negative)
-/// yields `[0, 2q)`.
+/// Because `omega_quot = floor(omega * 2^52 / q)` rounds down, the computed
+/// `qhat` is always `≤ floor(a*omega/q)` (never an overestimate), so the raw
+/// remainder `r = a*omega - qhat*q` is non-negative.  It lies in `[0, 2q)`
+/// whenever `a < 2^52`, which covers all lazy-reduction ranges we use.
 #[inline(always)]
 pub fn harvey_modmul(a: u64, omega: u64, omega_quot: u64, q: u64) -> u64 {
     let qhat = ((a as u128 * omega_quot as u128) >> 52) as u64;
     let product_lo = (a as u128 * omega as u128) as u64; // low 64 bits (we only need mod 2^64)
-    let r = product_lo.wrapping_sub(qhat.wrapping_mul(q));
-    // r might have wrapped negative; if so, add q
-    // Since true result is in [0, q), and error is ±q, r ∈ (-q, 2q) as u64.
-    // If r > 2q (wrapped negative), add q.  Actually easier: compare with a threshold.
-    if r >= 2 * q { r.wrapping_add(q) } else { r }
+    product_lo.wrapping_sub(qhat.wrapping_mul(q))
 }
 
 /// Conditional subtract: if `x >= 2q`, return `x - 2q`, else `x`.
@@ -138,6 +138,7 @@ impl<P: PrimeSetIfma> NttIfmaTable<P> {
         );
 
         let q2: [u64; 4] = [2 * P::Q[0], 2 * P::Q[1], 2 * P::Q[2], 0];
+        let q4: [u64; 4] = [4 * P::Q[0], 4 * P::Q[1], 4 * P::Q[2], 0];
 
         let omega_vec = fill_omegas_ifma::<P>(n);
 
@@ -164,6 +165,7 @@ impl<P: PrimeSetIfma> NttIfmaTable<P> {
             return Self {
                 n,
                 q2,
+                q4,
                 powomega,
                 _phantom: PhantomData,
             };
@@ -208,6 +210,7 @@ impl<P: PrimeSetIfma> NttIfmaTable<P> {
         Self {
             n,
             q2,
+            q4,
             powomega,
             _phantom: PhantomData,
         }
@@ -226,6 +229,7 @@ impl<P: PrimeSetIfma> NttIfmaTableInv<P> {
         );
 
         let q2: [u64; 4] = [2 * P::Q[0], 2 * P::Q[1], 2 * P::Q[2], 0];
+        let q4: [u64; 4] = [4 * P::Q[0], 4 * P::Q[1], 4 * P::Q[2], 0];
         let omega_vec = fill_omegas_ifma::<P>(n);
 
         // butterfly levels + last pass (n entries)
@@ -249,6 +253,7 @@ impl<P: PrimeSetIfma> NttIfmaTableInv<P> {
             return Self {
                 n,
                 q2,
+                q4,
                 powomega,
                 _phantom: PhantomData,
             };
@@ -294,6 +299,7 @@ impl<P: PrimeSetIfma> NttIfmaTableInv<P> {
         Self {
             n,
             q2,
+            q4,
             powomega,
             _phantom: PhantomData,
         }
@@ -304,10 +310,12 @@ impl<P: PrimeSetIfma> NttIfmaTableInv<P> {
 // Reference scalar NTT execution (IFMA-native arithmetic)
 // ──────────────────────────────────────────────────────────────────────────────
 
-/// Forward NTT — scalar reference with IFMA-native arithmetic.
+/// Forward NTT — scalar reference with IFMA-native lazy arithmetic.
 ///
-/// All values are kept in `[0, 2q)` at every level.  No separate reduction
-/// passes are needed.
+/// Butterfly values live in `[0, 4q)`.  Diff path feeds directly into Harvey
+/// without a pre-reduction; sum path keeps one `cond_sub(·, 4q)`.  A final
+/// `cond_sub(·, 2q)` pass renormalises the output to `[0, 2q)` so downstream
+/// consumers see the usual range.
 pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) {
     let n = table.n;
     if n <= 1 {
@@ -315,6 +323,7 @@ pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) 
     }
 
     let q2 = &table.q2;
+    let q4 = &table.q4;
     let mut seg_base = 0usize; // base offset (in u64) for current segment
 
     // ── Level 0: a[i] *= ω^i (Harvey multiply) ──────────────────────
@@ -344,7 +353,7 @@ pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) 
 
             let mut block_start = 0usize;
             while block_start < n {
-                // i = 0: no twiddle multiply
+                // i = 0: no twiddle multiply (both sides need cond_sub_4q)
                 {
                     let p1 = 4 * block_start;
                     let p2 = 4 * (block_start + halfnn);
@@ -352,27 +361,26 @@ pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) 
                         let a = data[p1 + k];
                         let b = data[p2 + k];
                         let sum = a + b;
-                        let diff = a + q2[k] - b;
-                        data[p1 + k] = cond_sub_2q(sum, q2[k]);
-                        data[p2 + k] = cond_sub_2q(diff, q2[k]);
+                        let diff = a + q4[k] - b;
+                        data[p1 + k] = cond_sub_2q(sum, q4[k]);
+                        data[p2 + k] = cond_sub_2q(diff, q4[k]);
                     }
                 }
 
-                // i = 1..halfnn-1: Harvey multiply on the difference
+                // i = 1..halfnn-1: Harvey multiply absorbs the diff-path reduction
                 for i in 1..halfnn {
                     let p1 = 4 * (block_start + i);
                     let p2 = 4 * (block_start + halfnn + i);
-                    let tw_idx = i - 1; // twiddle index within segment
+                    let tw_idx = i - 1;
                     for k in 0..3 {
                         let a = data[p1 + k];
                         let b = data[p2 + k];
                         let sum = a + b;
-                        let diff = a + q2[k] - b;
-                        data[p1 + k] = cond_sub_2q(sum, q2[k]);
+                        let diff = a + q4[k] - b;
+                        data[p1 + k] = cond_sub_2q(sum, q4[k]);
                         let omega = table.powomega[omega_base + 4 * tw_idx + k];
                         let omega_quot = table.powomega[quot_base + 4 * tw_idx + k];
-                        let diff_red = cond_sub_2q(diff, q2[k]);
-                        data[p2 + k] = harvey_modmul(diff_red, omega, omega_quot, P::Q[k]);
+                        data[p2 + k] = harvey_modmul(diff, omega, omega_quot, P::Q[k]);
                     }
                 }
 
@@ -389,8 +397,8 @@ pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) 
                 for k in 0..3 {
                     let a = data[p1 + k];
                     let b = data[p2 + k];
-                    data[p1 + k] = cond_sub_2q(a + b, q2[k]);
-                    data[p2 + k] = cond_sub_2q(a + q2[k] - b, q2[k]);
+                    data[p1 + k] = cond_sub_2q(a + b, q4[k]);
+                    data[p2 + k] = cond_sub_2q(a + q4[k] - b, q4[k]);
                 }
                 block_start += 2;
             }
@@ -398,16 +406,27 @@ pub fn ntt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTable<P>, data: &mut [u64]) 
 
         nn /= 2;
     }
+
+    // ── Final normalisation: [0, 4q) → [0, 2q) ──────────────────────
+    for i in 0..n {
+        for k in 0..3 {
+            data[4 * i + k] = cond_sub_2q(data[4 * i + k], q2[k]);
+        }
+    }
 }
 
-/// Inverse NTT — scalar reference with IFMA-native arithmetic.
+/// Inverse NTT — scalar reference with IFMA-native lazy arithmetic.
+///
+/// Butterfly values live in `[0, 4q)`.  The final pointwise Harvey pass
+/// reduces to `[0, 2q)` automatically, so no explicit renormalisation is
+/// needed.
 pub fn intt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u64]) {
     let n = table.n;
     if n <= 1 {
         return;
     }
 
-    let q2 = &table.q2;
+    let q4 = &table.q4;
     let mut seg_base = 0usize;
 
     // ── Butterfly levels: nn = 2, 4, …, n (Gentleman-Sande DIF) ─────
@@ -430,13 +449,14 @@ pub fn intt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u6
                         let a = data[p1 + k];
                         let b = data[p2 + k];
                         let sum = a + b;
-                        let diff = a + q2[k] - b;
-                        data[p1 + k] = cond_sub_2q(sum, q2[k]);
-                        data[p2 + k] = cond_sub_2q(diff, q2[k]);
+                        let diff = a + q4[k] - b;
+                        data[p1 + k] = cond_sub_2q(sum, q4[k]);
+                        data[p2 + k] = cond_sub_2q(diff, q4[k]);
                     }
                 }
 
-                // i = 1..halfnn-1: twiddle on b BEFORE butterfly
+                // i = 1..halfnn-1: twiddle on b BEFORE butterfly (b_raw ∈ [0, 4q)
+                // fed directly into Harvey → bo ∈ [0, 2q); sum/diff use cond_sub_4q).
                 for i in 1..halfnn {
                     let p1 = 4 * (block_start + i);
                     let p2 = 4 * (block_start + halfnn + i);
@@ -448,9 +468,9 @@ pub fn intt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u6
                         let omega_quot = table.powomega[quot_base + 4 * tw_idx + k];
                         let bo = harvey_modmul(b_raw, omega, omega_quot, P::Q[k]);
                         let sum = a + bo;
-                        let diff = a + q2[k] - bo;
-                        data[p1 + k] = cond_sub_2q(sum, q2[k]);
-                        data[p2 + k] = cond_sub_2q(diff, q2[k]);
+                        let diff = a + q4[k] - bo;
+                        data[p1 + k] = cond_sub_2q(sum, q4[k]);
+                        data[p2 + k] = cond_sub_2q(diff, q4[k]);
                     }
                 }
 
@@ -467,8 +487,8 @@ pub fn intt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u6
                 for k in 0..3 {
                     let a = data[p1 + k];
                     let b = data[p2 + k];
-                    data[p1 + k] = cond_sub_2q(a + b, q2[k]);
-                    data[p2 + k] = cond_sub_2q(a + q2[k] - b, q2[k]);
+                    data[p1 + k] = cond_sub_2q(a + b, q4[k]);
+                    data[p2 + k] = cond_sub_2q(a + q4[k] - b, q4[k]);
                 }
                 block_start += 2;
             }
@@ -477,7 +497,7 @@ pub fn intt_ifma_ref<P: PrimeSetIfma>(table: &NttIfmaTableInv<P>, data: &mut [u6
         nn *= 2;
     }
 
-    // ── Last pass: a[i] *= ω^{-i} / n (n entries) ──────────────────
+    // ── Last pass: a[i] *= ω^{-i} / n (n entries, input ∈ [0, 4q), output ∈ [0, 2q)) ──
     {
         let omega_base = seg_base;
         let quot_base = seg_base + 4 * n;

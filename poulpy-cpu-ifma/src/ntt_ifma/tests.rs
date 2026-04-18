@@ -41,6 +41,7 @@ mod ntt_ifma_tests {
             test_vec_znx_normalize_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize_inplace,
             test_vec_znx_merge_rings => poulpy_hal::test_suite::vec_znx::test_vec_znx_merge_rings,
             test_vec_znx_split_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_split_ring,
+            test_vec_znx_switch_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_switch_ring,
             test_vec_znx_copy => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy,
         }
     }
@@ -68,6 +69,7 @@ mod ntt_ifma_tests {
         backend_test = crate::NTTIfma,
         params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
+            test_svp_apply_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft,
             test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
             test_svp_apply_dft_to_dft_inplace => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft_inplace,
         }
@@ -79,6 +81,7 @@ mod ntt_ifma_tests {
         backend_test = crate::NTTIfma,
         params = TestParams { size: 1<<8, base2k: 12 },
         tests = {
+            test_vmp_apply_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft,
             test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
         }
     }
@@ -119,13 +122,16 @@ mod ntt_ifma_tests {
         }
     }
 
-    // NTT CHANGE_MODE_N boundary tests.
-    // CHANGE_MODE_N = 1024: for n <= 1024 the IFMA NTT runs fully by-block;
-    // for n > 1024 it first completes upper levels by-level then switches to
-    // by-block for the remaining levels. These suites ensure both modes are
-    // exercised and agree with the reference backend.
+    // NTT size-range coverage.
+    //
+    // The IFMA NTT runs outer levels breadth-first while `nn > NTT_BLOCK`,
+    // then switches to block-local depth-first for the inner levels.  For
+    // `n <= NTT_BLOCK` no breadth-first pass runs at all.  These suites
+    // exercise both regimes (block-local only for small `n`; mixed for
+    // larger `n`) and the transition sizes, confirming bit-exact agreement
+    // with the reference backend.
 
-    // n = 1024: last size that uses by-block only.
+    // n = 1024: only block-local inner levels run.
     cross_backend_test_suite! {
         mod ntt_n1024,
         backend_ref =  poulpy_cpu_ref::NTTIfmaRef,
@@ -138,7 +144,7 @@ mod ntt_ifma_tests {
         }
     }
 
-    // n = 8192: large size exercising many by-level stages.
+    // n = 8192: exercises multiple breadth-first outer levels.
     cross_backend_test_suite! {
         mod ntt_n8192,
         backend_ref =  poulpy_cpu_ref::NTTIfmaRef,
@@ -147,6 +153,33 @@ mod ntt_ifma_tests {
         tests = {
             test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
             test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
+        }
+    }
+
+    // n = 16384: large size where the working set exceeds L1.
+    cross_backend_test_suite! {
+        mod ntt_n16384,
+        backend_ref =  poulpy_cpu_ref::NTTIfmaRef,
+        backend_test = crate::NTTIfma,
+        params = TestParams { size: 1<<14, base2k: 12 },
+        tests = {
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
+        }
+    }
+
+    // n = 32768: large size where the working set exceeds L2 on typical cores.
+    cross_backend_test_suite! {
+        mod ntt_n32768,
+        backend_ref =  poulpy_cpu_ref::NTTIfmaRef,
+        backend_test = crate::NTTIfma,
+        params = TestParams { size: 1<<15, base2k: 12 },
+        tests = {
+            test_vec_znx_idft_apply => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply,
+            test_vec_znx_idft_apply_consume => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_idft_apply_consume,
+            test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
         }
     }
 }
