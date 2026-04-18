@@ -1,16 +1,10 @@
 use crate::{
-    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPPolFromBytes, SvpPrepare},
+    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
         Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
     },
     oep::HalImpl,
 };
-
-impl<B: Backend> SvpPPolFromBytes<B> for Module<B> {
-    fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        SvpPPolOwned::<B>::from_bytes(self.n(), cols, bytes)
-    }
-}
 
 impl<B: Backend> SvpPPolAlloc<B> for Module<B> {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {

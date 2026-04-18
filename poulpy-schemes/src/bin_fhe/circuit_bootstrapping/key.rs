@@ -1,3 +1,4 @@
+use anyhow::Result;
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution,
     ScratchTakeCore,
@@ -9,9 +10,10 @@ use poulpy_core::{
 };
 use std::collections::HashMap;
 
-use anyhow::Result;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, ReaderFrom, Scratch, WriterTo},
     source::Source,
 };
 
@@ -301,5 +303,41 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
             dsize: self.tsk.dsize(),
             rank: self.tsk.rank(),
         }
+    }
+}
+
+impl<D: DataMut, BRA: BlindRotationAlgo> ReaderFrom for CircuitBootstrappingKey<D, BRA> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.brk.read_from(reader)?;
+        let n = reader.read_u64::<LittleEndian>()? as usize;
+        if n != self.atk.len() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("self.atk.len()={} != read len={}", self.atk.len(), n),
+            ));
+        }
+        for _ in 0..n {
+            let gal_el = reader.read_i64::<LittleEndian>()?;
+            let atk = self.atk.get_mut(&gal_el).ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidData, format!("self.atk.get(gal_el={gal_el})=None"))
+            })?;
+            atk.read_from(reader)?;
+        }
+        self.tsk.read_from(reader)
+    }
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo> WriterTo for CircuitBootstrappingKey<D, BRA> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.brk.write_to(writer)?;
+        writer.write_u64::<LittleEndian>(self.atk.len() as u64)?;
+        // HashMap iteration order is undefined; sort for stable, canonical blobs.
+        let mut keys: Vec<i64> = self.atk.keys().copied().collect();
+        keys.sort_unstable();
+        for k in keys {
+            writer.write_i64::<LittleEndian>(k)?;
+            self.atk[&k].write_to(writer)?;
+        }
+        self.tsk.write_to(writer)
     }
 }

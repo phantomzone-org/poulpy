@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [Unreleased] - 2026-04-17
+
+### `poulpy-hal`
+- Make `WriterTo` for `MatZnx` and `VecZnx` emit the canonical logical byte length from layout metadata, write only that prefix, and error when backing storage is shorter than the coefficient span.
+- Fix `ScalarZnx::write_to` to emit the full `n * cols` coefficient byte span (aligned `i64` layout).
+- **Breaking:** Remove `ReaderFrom` / `WriterTo` for prepared DFT layouts (`SvpPPol`); remove `SvpPPolFromBytes`, `VmpPMatFromBytes`, and `from_bytes` on the corresponding prepared types. Document that `SvpPPol` / `VmpPMat` DFT alignment assumes a power-of-two ring degree.
+
+### `poulpy-schemes`
+- Add `ReaderFrom` / `WriterTo` for `CircuitBootstrappingKey` and `BDDKey<Vec<u8>>` (optional `ks_glwe` encoded with a presence tag), with stable ATK map serialization (sorted Galois keys).
+
+### `poulpy-core`
+- **Breaking:** Remove `ReaderFrom` / `WriterTo` for `LWESecret` and `GLWESecret`; secret material should use seeds or application-level transfer, not library binary I/O.
+
 ## [Unreleased] - 2026-04-15
 
 ### `poulpy-hal`

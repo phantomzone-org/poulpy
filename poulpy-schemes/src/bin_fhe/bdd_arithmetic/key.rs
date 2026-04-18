@@ -10,6 +10,7 @@ use crate::bin_fhe::{
 };
 
 use anyhow::Result;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use poulpy_core::layouts::{
     GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
     GLWESwitchingKeyPrepared,
@@ -22,8 +23,10 @@ use poulpy_core::{
         prepared::GLWEToLWEKeyPrepared,
     },
 };
+
+use poulpy_hal::layouts::{DeviceBuf, NoiseInfos};
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, Scratch, WriterTo},
     source::Source,
 };
 
@@ -259,6 +262,59 @@ impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.bdd_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
+    }
+}
+
+impl<BRA: BlindRotationAlgo> ReaderFrom for BDDKey<Vec<u8>, BRA> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.cbt.read_from(reader)?;
+        match reader.read_u8()? {
+            0 => {
+                if self.ks_glwe.is_some() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "self.ks_glwe.is_some()={} != expected false (ks_glwe tag=0)",
+                            self.ks_glwe.is_some()
+                        ),
+                    ));
+                }
+            }
+            1 => {
+                let Some(ref mut ks_glwe) = self.ks_glwe else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "self.ks_glwe.is_none()={} != expected false (ks_glwe tag=1)",
+                            self.ks_glwe.is_none()
+                        ),
+                    ));
+                };
+                ks_glwe.read_from(reader)?;
+            }
+            tag => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("invalid ks_glwe tag={tag} (expected 0 or 1)"),
+                ));
+            }
+        }
+        self.ks_lwe.read_from(reader)?;
+        Ok(())
+    }
+}
+
+impl<BRA: BlindRotationAlgo> WriterTo for BDDKey<Vec<u8>, BRA> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.cbt.write_to(writer)?;
+        match &self.ks_glwe {
+            None => writer.write_u8(0)?,
+            Some(k) => {
+                writer.write_u8(1)?;
+                k.write_to(writer)?;
+            }
+        }
+        self.ks_lwe.write_to(writer)
     }
 }
 

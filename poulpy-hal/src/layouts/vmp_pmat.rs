@@ -17,6 +17,9 @@ use crate::layouts::{
 /// [`VmpApplyDftToDft`](crate::api::VmpApplyDftToDft). Create via
 /// [`VmpPrepare`](crate::api::VmpPrepare) from a coefficient-domain
 /// [`MatZnx`](crate::layouts::MatZnx).
+///
+/// Ring degree `n` is always a power of two, so each prepared polynomial's DFT
+/// coefficient count matches vector lane widths relative to buffer alignment.
 #[repr(C)]
 #[derive(PartialEq, Eq, Hash)]
 pub struct VmpPMat<D: Data, B: Backend> {
@@ -98,21 +101,6 @@ impl<B: Backend> VmpPMat<DeviceBuf<B>, B> {
         let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_vmp_pmat(
             n, rows, cols_in, cols_out, size,
         )));
-        Self {
-            data,
-            n,
-            size,
-            rows,
-            cols_in,
-            cols_out,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
-        let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
-        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
         Self {
             data,
             n,
