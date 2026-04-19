@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
         ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VmpApplyDftToDft, VmpApplyDftToDftAccumulate, VmpApplyDftToDftAccumulateTmpBytes, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos, ZnxZero},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos},
 };
 
 pub use crate::api::GLWEKeyswitch;
@@ -86,8 +86,10 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
-        res_dft.zero(); // TODO: remove once the above has the correct size
+        // No explicit zero here: the gglwe_product_dft dsize>1 loop starts with
+        // an OVERWRITE vmp at res.size = pmat.size() (full), and the dsize=1
+        // path is a single OVERWRITE vmp covering the same range.
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -141,8 +143,9 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let key_base2k: usize = key.base2k().as_usize();
 
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise
-        res_dft.zero(); // TODO: remove once the above has the correct size
+        // See glwe_keyswitch_default: gglwe_product_dft's first vmp is OVERWRITE
+        // at pmat.size(), so the caller no longer needs to pre-zero.
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -245,7 +248,8 @@ impl<BE: Backend> GGLWEProduct<BE> for Module<BE> where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VecZnxDftAddAssign<BE>
+        + VmpApplyDftToDftAccumulateTmpBytes
+        + VmpApplyDftToDftAccumulate<BE>
         + VecZnxDftCopy<BE>
 {
 }
@@ -257,7 +261,8 @@ where
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BE>
-        + VecZnxDftAddAssign<BE>
+        + VmpApplyDftToDftAccumulateTmpBytes
+        + VmpApplyDftToDftAccumulate<BE>
         + VecZnxDftCopy<BE>,
 {
     fn gglwe_product_dft_tmp_bytes<K>(&self, res_size: usize, a_size: usize, key_infos: &K) -> usize
@@ -279,19 +284,29 @@ where
         } else {
             let dnum: usize = key_infos.dnum().into();
             let a_size: usize = a_size.div_ceil(dsize).min(dnum);
-            let cols_out: usize = (key_infos.rank_out() + 1).into();
             let lvl_0: usize = self.bytes_of_vec_znx_dft(key_infos.rank_in().into(), a_size);
-            let lvl_1: usize = self.bytes_of_vec_znx_dft(cols_out, key_infos.size());
-            let lvl_2: usize = self.vmp_apply_dft_to_dft_tmp_bytes(
-                res_size,
-                a_size,
-                dnum,
-                (key_infos.rank_in()).into(),
-                (key_infos.rank_out() + 1).into(),
-                key_infos.size(),
-            );
+            // The accumulate path may run with res.size up to key_infos.size() (the
+            // dsize>1 loop temporarily grows `res` up to pmat.size()), so the
+            // accumulate scratch estimate must be sized against key_infos.size().
+            let lvl_1: usize = self
+                .vmp_apply_dft_to_dft_tmp_bytes(
+                    res_size,
+                    a_size,
+                    dnum,
+                    (key_infos.rank_in()).into(),
+                    (key_infos.rank_out() + 1).into(),
+                    key_infos.size(),
+                )
+                .max(self.vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+                    key_infos.size(),
+                    a_size,
+                    dnum,
+                    (key_infos.rank_in()).into(),
+                    (key_infos.rank_out() + 1).into(),
+                    key_infos.size(),
+                ));
 
-            lvl_0 + lvl_1 + lvl_2
+            lvl_0 + lvl_1
         }
     }
 
@@ -332,46 +347,40 @@ where
         } else {
             let dsize: usize = key.dsize().into();
             let dnum: usize = key.dnum().into();
-            let cols_out: usize = res.cols();
 
-            // We bound ai_dft size by the number of rows of the matrix
             let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize).min(dnum));
-            ai_dft.zero();
 
-            // Tmp buffer: vmp result for di > 0 before folding into res.
-            // Writing to a fresh sequential buffer avoids scattered-write cache thrashing.
-            let (mut res_dft_tmp, scratch_2) = scratch_1.take_vec_znx_dft(self, cols_out, pmat.size());
-            res_dft_tmp.zero();
-
-            for di in 0..dsize {
-                // Sets ai_dft size according to the current digit (if dsize does not divides a_size),
+            // Iterate from di=dsize-1 down to di=0.  The first iteration uses the
+            // largest res.size (= pmat.size()) and calls the OVERWRITE vmp, so the
+            // entire res buffer is written — no caller-side pre-zero needed.
+            // Subsequent accumulate calls operate on a subset of that range.
+            // Small optimization for dsize > 2: the last (dsize-2) limbs of the
+            // sum are dominated by the largest-di term so we can skip writing
+            // them for di < dsize-1.  See original comment below for the noise
+            // trade-off.
+            for di_rev in 0..dsize {
+                let di = dsize - 1 - di_rev;
+                // Sets ai_dft size according to the current digit (if dsize does not divide a_size),
                 // bounded by the number of rows (digits) in the prepared matrix.
                 ai_dft.set_size(((a_size + di) / dsize).min(dnum));
 
-                // Small optimization for dsize > 2
-                // VMP produce some error e, and since we aggregate vmp * 2^{di * Base2k}, then
-                // we also aggregate ei * 2^{di * Base2k}, with the largest error being ei * 2^{(dsize-1) * Base2k}.
-                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last dsize-1 limbs, but this introduce
-                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
-                // noise is kept with respect to the ideal functionality.
+                // Limb range that this di contributes to.  di=dsize-1 and di=dsize-2
+                // both use pmat.size() (no truncation); smaller di truncate the
+                // high limbs because the aggregated vmp error ei * 2^{di*Base2k}
+                // there is negligible compared to the e_{dsize-1} contribution.
+                // Further truncating to `dsize-1` limbs would add ~0.5–1 bit of
+                // noise; we keep the conservative `dsize-2` cut to match the
+                // ideal functionality.
                 res.set_size(pmat.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
                     self.vec_znx_dft_copy(dsize, dsize - di - 1, &mut ai_dft, j, a, j);
                 }
 
-                if di == 0 {
-                    // res = pmat * ai_dft
-                    self.vmp_apply_dft_to_dft(res, &ai_dft, pmat, 0, scratch_2);
+                if di_rev == 0 {
+                    self.vmp_apply_dft_to_dft(res, &ai_dft, pmat, di, scratch_1);
                 } else {
-                    // Overwrite tmp with shifted product, then fold into res.
-                    // This avoids scattered read-add-write on the res DFT buffer.
-                    res_dft_tmp.set_size(res.size());
-                    self.vmp_apply_dft_to_dft(&mut res_dft_tmp, &ai_dft, pmat, di, scratch_2);
-                    for col in 0..cols_out {
-                        self.vec_znx_dft_add_assign(res, col, &res_dft_tmp, col);
-                    }
+                    self.vmp_apply_dft_to_dft_accumulate(res, &ai_dft, pmat, di, scratch_1);
                 }
             }
 

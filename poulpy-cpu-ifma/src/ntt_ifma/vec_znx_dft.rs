@@ -1,9 +1,6 @@
 //! NTT-domain SIMD helpers for [`NTTIfma`](crate::NTTIfma).
 //!
-//! This module contains:
-//!
-//! - AVX512-IFMA/VL SIMD Garner CRT reconstruction helpers used by the consume path.
-//! - The `vec_znx_idft_apply_consume` entry point called by the `hal_impl` macro.
+//! SIMD Garner reconstruction for the consume path.
 
 use bytemuck::cast_slice_mut;
 use poulpy_cpu_ref::reference::ntt_ifma::{
@@ -20,9 +17,7 @@ use core::arch::x86_64::{
     _mm256_storeu_si256, _mm256_sub_epi64, _mm256_unpackhi_epi64, _mm256_unpacklo_epi64,
 };
 
-// ──────────────────────────────────────────────────────────────────────────────
-// In-place 3-prime CRT -> i128 compaction helper (Garner's algorithm)
-// ──────────────────────────────────────────────────────────────────────────────
+// 3-prime CRT -> i128 reconstruction helpers.
 
 const Q: [u64; 3] = Primes40::Q;
 const INV01: u64 = Primes40::CRT_CST[0];
@@ -34,11 +29,10 @@ const Q01: u128 = Q0 as u128 * Q1 as u128;
 const BIG_Q: u128 = Q01 * Q2 as u128;
 const HALF_BIG_Q: u128 = BIG_Q / 2;
 
-// Harvey quotient for Garner step 2: floor(INV01 * 2^52 / Q1)
+// Harvey quotients for the Garner steps.
 const INV01_QUOT: u64 = ((INV01 as u128 * (1u128 << 52)) / Q1 as u128) as u64;
-// Harvey quotient for Garner step 3: floor(INV012 * 2^52 / Q2)
 const INV012_QUOT: u64 = ((INV012 as u128 * (1u128 << 52)) / Q2 as u128) as u64;
-// Q0 mod Q2 and its Harvey quotient (for computing v1*Q0 mod Q2)
+// `Q0 mod Q2` and its Harvey quotient.
 const Q0_MOD_Q2: u64 = Q0 % Q2;
 const Q0_MOD_Q2_QUOT: u64 = ((Q0_MOD_Q2 as u128 * (1u128 << 52)) / Q2 as u128) as u64;
 
@@ -66,9 +60,7 @@ fn cond_sub_scalar(x: u64, q: u64) -> u64 {
 
 /// SIMD-assisted single-coefficient Garner CRT reconstruction.
 ///
-/// Loads one `__m256i` from `src` (3 residues in `[0, 2q)` + padding), reduces
-/// to `[0, q)` in SIMD, then performs scalar Harvey Garner reconstruction.
-/// Returns the reconstructed `i128` in symmetric representation `(-Q/2, Q/2]`.
+/// Reduces one packed residue vector to `[0, q)` and reconstructs one `i128`.
 ///
 /// # Safety
 ///
@@ -77,11 +69,9 @@ fn cond_sub_scalar(x: u64, q: u64) -> u64 {
 #[target_feature(enable = "avx512vl")]
 pub(crate) unsafe fn garner_crt_single(src: *const u64, q_vec: __m256i) -> i128 {
     unsafe {
-        // Load and reduce [0, 2q) -> [0, q) in SIMD
         let xv = _mm256_loadu_si256(src as *const __m256i);
         let reduced = cond_sub_2q_si256(xv, q_vec);
 
-        // Extract reduced residues to scalar registers
         let mut lanes = [0u64; 4];
         _mm256_storeu_si256(lanes.as_mut_ptr() as *mut __m256i, reduced);
         let (r0, r1, r2) = (lanes[0], lanes[1], lanes[2]);
@@ -96,25 +86,20 @@ pub(crate) unsafe fn garner_crt_single(src: *const u64, q_vec: __m256i) -> i128 
 /// Output: reconstructed `i128` in symmetric representation `(-Q/2, Q/2]`.
 #[inline(always)]
 fn garner_from_residues(r0: u64, r1: u64, r2: u64) -> i128 {
-    // Garner step 1: v0 = r0
     let v0 = r0;
 
-    // Garner step 2: v1 = ((r1 - v0 mod Q1) * INV01) mod Q1
     let v0_mod_q1 = cond_sub_scalar(v0, Q1);
     let diff1 = cond_sub_scalar(r1 + Q1 - v0_mod_q1, Q1);
     let v1 = harvey_modmul_scalar(diff1, INV01, INV01_QUOT, Q1);
 
-    // Garner step 3: v2 = ((r2 - (v0 + v1*Q0) mod Q2) * INV012) mod Q2
     let v0_mod_q2 = cond_sub_scalar(v0, Q2);
     let v1q0_mod_q2 = harvey_modmul_scalar(v1, Q0_MOD_Q2, Q0_MOD_Q2_QUOT, Q2);
     let partial = cond_sub_scalar(v0_mod_q2 + v1q0_mod_q2, Q2);
     let diff2 = cond_sub_scalar(r2 + Q2 - partial, Q2);
     let v2 = harvey_modmul_scalar(diff2, INV012, INV012_QUOT, Q2);
 
-    // Reconstruct: result = v0 + v1*Q0 + v2*Q0*Q1
     let result_u128 = v0 as u128 + v1 as u128 * Q0 as u128 + v2 as u128 * Q01;
 
-    // Symmetric lift to (-Q/2, Q/2].
     if result_u128 > HALF_BIG_Q {
         result_u128 as i128 - BIG_Q as i128
     } else {
@@ -124,9 +109,7 @@ fn garner_from_residues(r0: u64, r1: u64, r2: u64) -> i128 {
 
 /// Vectorized Garner CRT reconstruction for 4 coefficients in parallel.
 ///
-/// Takes 4 AoS `__m256i` values (each `[r0, r1, r2, 0]` in `[0, q)`),
-/// transposes to SoA layout, performs all Garner steps in SIMD, and
-/// writes 4 `i128` results.
+/// Reconstructs 4 coefficients from AoS-packed residues.
 ///
 /// # Safety
 ///
@@ -152,9 +135,7 @@ pub(crate) unsafe fn garner_4coeffs_simd(
     q0modq2_quot_bcast: __m256i,
 ) {
     unsafe {
-        // ── Transpose AoS → SoA ──────────────────────────────────────────
-        // Input:  a0=[a.r0, a.r1, a.r2, 0], a1=[b.r0, b.r1, b.r2, 0], ...
-        // Output: vec_r0=[a.r0, b.r0, c.r0, d.r0], vec_r1=[...], vec_r2=[...]
+        // Transpose AoS residues into per-prime vectors.
         let ab_lo = _mm256_unpacklo_epi64(a0, a1); // [a.r0, b.r0, a.r2, b.r2]
         let ab_hi = _mm256_unpackhi_epi64(a0, a1); // [a.r1, b.r1, 0, 0]
         let cd_lo = _mm256_unpacklo_epi64(a2, a3); // [c.r0, d.r0, c.r2, d.r2]
@@ -164,38 +145,26 @@ pub(crate) unsafe fn garner_4coeffs_simd(
         let vec_r1 = _mm256_permute2x128_si256::<0x20>(ab_hi, cd_hi); // [a.r1, b.r1, c.r1, d.r1]
         let vec_r2 = _mm256_permute2x128_si256::<0x31>(ab_lo, cd_lo); // [a.r2, b.r2, c.r2, d.r2]
 
-        // ── Garner step 1: V0 = R0 ──────────────────────────────────────
         let vec_v0 = vec_r0;
 
-        // ── Garner step 2: V1 = ((R1 - V0 mod Q1) * INV01) mod Q1 ──────
-        // v0 mod Q1: V0 < Q0, Q0 > Q1, one cond_sub suffices
+        // Step 2: recover `v1`.
         let v0_mod_q1 = cond_sub_2q_si256(vec_v0, q1_bcast);
-        // diff1 = (R1 + Q1 - v0_mod_q1) cond_sub Q1
         let diff1_raw = _mm256_sub_epi64(_mm256_add_epi64(vec_r1, q1_bcast), v0_mod_q1);
         let diff1 = cond_sub_2q_si256(diff1_raw, q1_bcast);
-        // v1 = diff1 * INV01 mod Q1 via Harvey; result in [0, 2q)
         let vec_v1_lazy = harvey_modmul_si256(diff1, inv01_bcast, inv01_quot_bcast, q1_bcast);
-        // Reduce to [0, Q1)
         let vec_v1 = cond_sub_2q_si256(vec_v1_lazy, q1_bcast);
 
-        // ── Garner step 3: V2 = ((R2 - (V0 + V1*Q0) mod Q2) * INV012) mod Q2 ──
-        // v0 mod Q2: V0 < Q0, Q0 > Q2, one cond_sub suffices
+        // Step 3: recover `v2`.
         let v0_mod_q2 = cond_sub_2q_si256(vec_v0, q2_bcast);
-        // v1*Q0 mod Q2: V1 < Q1 < 2*Q2, so V1 is a valid [0, 2q) input for Harvey with modulus Q2
         let v1q0_lazy = harvey_modmul_si256(vec_v1, q0modq2_bcast, q0modq2_quot_bcast, q2_bcast);
-        // v1q0_lazy in [0, 2*Q2)
-        // partial = (v0_mod_q2 + v1q0_lazy): v0_mod_q2 < Q2, v1q0_lazy < 2*Q2, sum < 3*Q2
         let partial_raw = _mm256_add_epi64(v0_mod_q2, v1q0_lazy);
-        // Two conditional subtracts: [0, 3*Q2) -> [0, Q2)
         let partial = cond_sub_2q_si256(cond_sub_2q_si256(partial_raw, q2x2_bcast), q2_bcast);
-        // diff2 = (R2 + Q2 - partial) cond_sub Q2
         let diff2_raw = _mm256_sub_epi64(_mm256_add_epi64(vec_r2, q2_bcast), partial);
         let diff2 = cond_sub_2q_si256(diff2_raw, q2_bcast);
-        // v2 = diff2 * INV012 mod Q2 via Harvey; result in [0, 2q)
         let vec_v2_lazy = harvey_modmul_si256(diff2, inv012_bcast, inv012_quot_bcast, q2_bcast);
         let vec_v2 = cond_sub_2q_si256(vec_v2_lazy, q2_bcast);
 
-        // ── Extract scalars and compose u128 results ─────────────────────
+        // Recombine the Garner digits into signed `i128`.
         let mut v0s = [0u64; 4];
         let mut v1s = [0u64; 4];
         let mut v2s = [0u64; 4];
@@ -230,9 +199,8 @@ pub(crate) unsafe fn garner_4coeffs_simd(
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn simd_b_ifma_to_znx128(nn: usize, res: &mut [i128], a: &[u64]) {
     unsafe {
-        // Per-prime Q vector for AoS cond_sub
+        // Per-prime constants for the scalar and SIMD paths.
         let q_vec = _mm256_set_epi64x(0, Q2 as i64, Q1 as i64, Q0 as i64);
-        // Broadcast constants for SoA Garner
         let q1_bcast = _mm256_set1_epi64x(Q1 as i64);
         let q2_bcast = _mm256_set1_epi64x(Q2 as i64);
         let q2x2_bcast = _mm256_set1_epi64x((2 * Q2) as i64);

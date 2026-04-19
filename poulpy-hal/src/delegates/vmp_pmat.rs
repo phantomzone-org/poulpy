@@ -1,7 +1,7 @@
 use crate::{
     api::{
-        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare,
-        VmpPrepareTmpBytes, VmpZero,
+        VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAccumulate, VmpApplyDftToDftAccumulateTmpBytes,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
@@ -103,6 +103,43 @@ where
         C: VmpPMatToRef<B>,
     {
         <B as HalImpl<B>>::vmp_apply_dft_to_dft(self, res, a, b, limb_offset, scratch);
+    }
+}
+
+impl<B> VmpApplyDftToDftAccumulateTmpBytes for Module<B>
+where
+    B: Backend + HalImpl<B>,
+{
+    fn vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+        &self,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize {
+        <B as HalImpl<B>>::vmp_apply_dft_to_dft_accumulate_tmp_bytes(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
+    }
+}
+
+impl<B> VmpApplyDftToDftAccumulate<B> for Module<B>
+where
+    B: Backend + HalImpl<B>,
+{
+    fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
+        &self,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>,
+        C: VmpPMatToRef<B>,
+    {
+        <B as HalImpl<B>>::vmp_apply_dft_to_dft_accumulate(self, res, a, b, limb_offset, scratch);
     }
 }
 

@@ -640,6 +640,7 @@ dependencies = [
  "criterion",
  "dashu-float",
  "itertools 0.14.0",
+ "libc",
  "once_cell",
  "paste",
  "rand",

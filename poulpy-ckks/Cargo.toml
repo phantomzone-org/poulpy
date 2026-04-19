@@ -10,8 +10,8 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [features]
-enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx"]
-enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-core/enable-ifma"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx", "poulpy-cpu-avx/enable-avx"]
+enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-core/enable-ifma", "poulpy-cpu-ifma/enable-ifma"]
 
 [dependencies]
 poulpy-cpu-avx = {workspace = true, optional = true}

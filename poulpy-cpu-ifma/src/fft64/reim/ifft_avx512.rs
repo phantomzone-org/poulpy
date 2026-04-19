@@ -268,7 +268,7 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         let perm_high: __m512i = _mm512_set_epi64(15, 14, 7, 6, 11, 10, 3, 2);
         let perm_low: __m512i = _mm512_set_epi64(13, 12, 5, 4, 9, 8, 1, 0);
 
-        // stage 0: load inputs
+        // Load two IFFT16 blocks.
         let mut ra0: __m512d = load_pair(re_ptr, 0);
         let mut ra1: __m512d = load_pair(re_ptr, 4);
         let mut ra2: __m512d = load_pair(re_ptr, 8);
@@ -278,8 +278,7 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         let mut ia2: __m512d = load_pair(im_ptr, 8);
         let mut ia3: __m512d = load_pair(im_ptr, 12);
 
-        // ───────────────── stage 1 ─────────────────
-        // stage-4-style load: omr at off 0/16, omi at off 4/20
+        // Stage 1.
         let s1_omr: __m512d = {
             let a: __m256d = _mm256_loadu_pd(omg_ptr.add(0));
             let b: __m256d = _mm256_loadu_pd(omg_ptr.add(16));
@@ -291,18 +290,10 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
             _mm512_insertf64x4::<1>(_mm512_castpd256_pd512(a), b)
         };
 
-        // vperm2f128 $0x31, ymm2, ymm0, ymm8 => t8 = high|high (ra0, ra2)
-        // vperm2f128 $0x31, ymm3, ymm1, ymm9 => t9 = high|high (ra1, ra3)
-        // vperm2f128 $0x31, ymm6, ymm4, ymm10 => t10 = high|high (ia0, ia2)
-        // vperm2f128 $0x31, ymm7, ymm5, ymm11 => t11 = high|high (ia1, ia3)
         let mut t8: __m512d = _mm512_permutex2var_pd(ra0, perm_high, ra2);
         let mut t9: __m512d = _mm512_permutex2var_pd(ra1, perm_high, ra3);
         let mut t10: __m512d = _mm512_permutex2var_pd(ia0, perm_high, ia2);
         let mut t11: __m512d = _mm512_permutex2var_pd(ia1, perm_high, ia3);
-        // vperm2f128 $0x20, ymm2, ymm0, ymm0 => ra0 = low|low (ra0, ra2)
-        // vperm2f128 $0x20, ymm3, ymm1, ymm1 => ra1 = low|low (ra1, ra3)
-        // vperm2f128 $0x20, ymm6, ymm4, ymm2 => ra2 = low|low (ia0, ia2)
-        // vperm2f128 $0x20, ymm7, ymm5, ymm3 => ra3 = low|low (ia1, ia3)
         let new_ra0: __m512d = _mm512_permutex2var_pd(ra0, perm_low, ra2);
         let new_ra1: __m512d = _mm512_permutex2var_pd(ra1, perm_low, ra3);
         let new_ra2: __m512d = _mm512_permutex2var_pd(ia0, perm_low, ia2);
@@ -312,18 +303,10 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         ra2 = new_ra2;
         ra3 = new_ra3;
 
-        // vunpckhpd %ymm1,%ymm0,%ymm4 => ia0 = unpackhi(ra0, ra1)
-        // vunpckhpd %ymm3,%ymm2,%ymm6 => ia2 = unpackhi(ra2, ra3)
-        // vunpckhpd %ymm9,%ymm8,%ymm5 => ia1 = unpackhi(t8, t9)
-        // vunpckhpd %ymm11,%ymm10,%ymm7 => ia3 = unpackhi(t10, t11)
         let new_ia0: __m512d = _mm512_unpackhi_pd(ra0, ra1);
         let new_ia2: __m512d = _mm512_unpackhi_pd(ra2, ra3);
         let new_ia1: __m512d = _mm512_unpackhi_pd(t8, t9);
         let new_ia3: __m512d = _mm512_unpackhi_pd(t10, t11);
-        // vunpcklpd %ymm1,%ymm0,%ymm0 => ra0 = unpacklo(ra0, ra1)
-        // vunpcklpd %ymm3,%ymm2,%ymm2 => ra2 = unpacklo(ra2, ra3)
-        // vunpcklpd %ymm9,%ymm8,%ymm1 => ra1 = unpacklo(t8, t9)
-        // vunpcklpd %ymm11,%ymm10,%ymm3 => ra3 = unpacklo(t10, t11)
         let new_ra0: __m512d = _mm512_unpacklo_pd(ra0, ra1);
         let new_ra2: __m512d = _mm512_unpacklo_pd(ra2, ra3);
         let new_ra1: __m512d = _mm512_unpacklo_pd(t8, t9);
@@ -337,51 +320,27 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         ra1 = new_ra1;
         ra3 = new_ra3;
 
-        // vsubpd %ymm4,%ymm0,%ymm8  => t8  = ra0 - ia0
-        // vsubpd %ymm5,%ymm1,%ymm9  => t9  = ra1 - ia1
-        // vsubpd %ymm6,%ymm2,%ymm10 => t10 = ra2 - ia2
-        // vsubpd %ymm7,%ymm3,%ymm11 => t11 = ra3 - ia3
         t8 = _mm512_sub_pd(ra0, ia0);
         t9 = _mm512_sub_pd(ra1, ia1);
         t10 = _mm512_sub_pd(ra2, ia2);
         t11 = _mm512_sub_pd(ra3, ia3);
-        // vaddpd %ymm4,%ymm0,%ymm0  => ra0 += ia0
-        // vaddpd %ymm5,%ymm1,%ymm1  => ra1 += ia1
-        // vaddpd %ymm6,%ymm2,%ymm2  => ra2 += ia2
-        // vaddpd %ymm7,%ymm3,%ymm3  => ra3 += ia3
         ra0 = _mm512_add_pd(ra0, ia0);
         ra1 = _mm512_add_pd(ra1, ia1);
         ra2 = _mm512_add_pd(ra2, ia2);
         ra3 = _mm512_add_pd(ra3, ia3);
-        // vmulpd %ymm10,%ymm13,%ymm4 => ia0 = t10 * omi
-        // vmulpd %ymm11,%ymm12,%ymm5 => ia1 = t11 * omr
-        // vmulpd %ymm8,%ymm13,%ymm6  => ia2 = t8 * omi
-        // vmulpd %ymm9,%ymm12,%ymm7  => ia3 = t9 * omr
         ia0 = _mm512_mul_pd(t10, s1_omi);
         ia1 = _mm512_mul_pd(t11, s1_omr);
         ia2 = _mm512_mul_pd(t8, s1_omi);
         ia3 = _mm512_mul_pd(t9, s1_omr);
-        // vfmsub231pd %ymm8,%ymm12,%ymm4  => ia0 = t8  * omr - ia0
-        // vfmadd231pd %ymm9,%ymm13,%ymm5  => ia1 = t9  * omi + ia1
-        // vfmadd231pd %ymm10,%ymm12,%ymm6 => ia2 = t10 * omr + ia2
-        // vfmsub231pd %ymm11,%ymm13,%ymm7 => ia3 = t11 * omi - ia3
         ia0 = _mm512_fmsub_pd(t8, s1_omr, ia0);
         ia1 = _mm512_fmadd_pd(t9, s1_omi, ia1);
         ia2 = _mm512_fmadd_pd(t10, s1_omr, ia2);
         ia3 = _mm512_fmsub_pd(t11, s1_omi, ia3);
 
-        // vunpckhpd %ymm7,%ymm3,%ymm11 => t11 = unpackhi(ra3, ia3)
-        // vunpckhpd %ymm5,%ymm1,%ymm9  => t9  = unpackhi(ra1, ia1)
-        // vunpcklpd %ymm7,%ymm3,%ymm10 => t10 = unpacklo(ra3, ia3)
-        // vunpcklpd %ymm5,%ymm1,%ymm8  => t8  = unpacklo(ra1, ia1)
         t11 = _mm512_unpackhi_pd(ra3, ia3);
         t9 = _mm512_unpackhi_pd(ra1, ia1);
         t10 = _mm512_unpacklo_pd(ra3, ia3);
         t8 = _mm512_unpacklo_pd(ra1, ia1);
-        // vunpckhpd %ymm6,%ymm2,%ymm3 => ra3 = unpackhi(ra2, ia2)
-        // vunpckhpd %ymm4,%ymm0,%ymm1 => ra1 = unpackhi(ra0, ia0)
-        // vunpcklpd %ymm6,%ymm2,%ymm2 => ra2 = unpacklo(ra2, ia2)
-        // vunpcklpd %ymm4,%ymm0,%ymm0 => ra0 = unpacklo(ra0, ia0)
         let new_ra3: __m512d = _mm512_unpackhi_pd(ra2, ia2);
         let new_ra1: __m512d = _mm512_unpackhi_pd(ra0, ia0);
         let new_ra2: __m512d = _mm512_unpacklo_pd(ra2, ia2);
@@ -391,57 +350,30 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         ra2 = new_ra2;
         ra0 = new_ra0;
 
-        // ───────────────── stage 2 ─────────────────
-        // At this point:
-        //   regs ra0..ra3 hold "0,1,2,3" and t8,t9,t10,t11 hold "8,9,10,11"
-        //   (matching ymm0..ymm3, ymm8..ymm11 in the assembly)
+        // Stage 2.
         let (s2_omr, s2_omi) = load_wide_twiddle(omg_ptr, 8, 24);
 
-        // vsubpd %ymm8,%ymm0,%ymm4  => ia0 = ra0 - t8
-        // vsubpd %ymm9,%ymm1,%ymm5  => ia1 = ra1 - t9
-        // vsubpd %ymm10,%ymm2,%ymm6 => ia2 = ra2 - t10
-        // vsubpd %ymm11,%ymm3,%ymm7 => ia3 = ra3 - t11
         ia0 = _mm512_sub_pd(ra0, t8);
         ia1 = _mm512_sub_pd(ra1, t9);
         ia2 = _mm512_sub_pd(ra2, t10);
         ia3 = _mm512_sub_pd(ra3, t11);
-        // vaddpd %ymm8,%ymm0,%ymm0  => ra0 += t8
-        // vaddpd %ymm9,%ymm1,%ymm1  => ra1 += t9
-        // vaddpd %ymm10,%ymm2,%ymm2 => ra2 += t10
-        // vaddpd %ymm11,%ymm3,%ymm3 => ra3 += t11
         ra0 = _mm512_add_pd(ra0, t8);
         ra1 = _mm512_add_pd(ra1, t9);
         ra2 = _mm512_add_pd(ra2, t10);
         ra3 = _mm512_add_pd(ra3, t11);
-        // vmulpd %ymm6,%ymm13,%ymm8  => t8  = ia2 * omi
-        // vmulpd %ymm7,%ymm12,%ymm9  => t9  = ia3 * omr
-        // vmulpd %ymm4,%ymm13,%ymm10 => t10 = ia0 * omi
-        // vmulpd %ymm5,%ymm12,%ymm11 => t11 = ia1 * omr
         t8 = _mm512_mul_pd(ia2, s2_omi);
         t9 = _mm512_mul_pd(ia3, s2_omr);
         t10 = _mm512_mul_pd(ia0, s2_omi);
         t11 = _mm512_mul_pd(ia1, s2_omr);
-        // vfmsub231pd %ymm4,%ymm12,%ymm8  => t8  = ia0 * omr - t8
-        // vfmadd231pd %ymm5,%ymm13,%ymm9  => t9  = ia1 * omi + t9
-        // vfmadd231pd %ymm6,%ymm12,%ymm10 => t10 = ia2 * omr + t10
-        // vfmsub231pd %ymm7,%ymm13,%ymm11 => t11 = ia3 * omi - t11
         t8 = _mm512_fmsub_pd(ia0, s2_omr, t8);
         t9 = _mm512_fmadd_pd(ia1, s2_omi, t9);
         t10 = _mm512_fmadd_pd(ia2, s2_omr, t10);
         t11 = _mm512_fmsub_pd(ia3, s2_omi, t11);
 
-        // vperm2f128 $0x31, ymm10, ymm2, ymm6 => ia2 = high|high (ra2, t10)
-        // vperm2f128 $0x31, ymm11, ymm3, ymm7 => ia3 = high|high (ra3, t11)
-        // vperm2f128 $0x20, ymm10, ymm2, ymm4 => ia0 = low|low  (ra2, t10)
-        // vperm2f128 $0x20, ymm11, ymm3, ymm5 => ia1 = low|low  (ra3, t11)
         let new_ia2: __m512d = _mm512_permutex2var_pd(ra2, perm_high, t10);
         let new_ia3: __m512d = _mm512_permutex2var_pd(ra3, perm_high, t11);
         let new_ia0: __m512d = _mm512_permutex2var_pd(ra2, perm_low, t10);
         let new_ia1: __m512d = _mm512_permutex2var_pd(ra3, perm_low, t11);
-        // vperm2f128 $0x31, ymm8, ymm0, ymm2 => ra2 = high|high (ra0, t8)
-        // vperm2f128 $0x31, ymm9, ymm1, ymm3 => ra3 = high|high (ra1, t9)
-        // vperm2f128 $0x20, ymm8, ymm0, ymm0 => ra0 = low|low  (ra0, t8)
-        // vperm2f128 $0x20, ymm9, ymm1, ymm1 => ra1 = low|low  (ra1, t9)
         let new_ra2: __m512d = _mm512_permutex2var_pd(ra0, perm_high, t8);
         let new_ra3: __m512d = _mm512_permutex2var_pd(ra1, perm_high, t9);
         let new_ra0: __m512d = _mm512_permutex2var_pd(ra0, perm_low, t8);
@@ -455,80 +387,47 @@ unsafe fn ifft16x2_avx512(re: &mut [f64], im: &mut [f64], omg: &[f64]) {
         ra0 = new_ra0;
         ra1 = new_ra1;
 
-        // ───────────────── stage 3 ─────────────────
+        // Stage 3.
         let (s3_omr, s3_omi) = load_narrow_twiddle(omg_ptr, 12, 28);
 
-        // At this point regs are: ra0..ra3, ia0..ia3 matching ymm0..ymm3, ymm4..ymm7.
-        // vsubpd %ymm1,%ymm0,%ymm8  => t8  = ra0 - ra1
-        // vsubpd %ymm3,%ymm2,%ymm9  => t9  = ra2 - ra3
-        // vsubpd %ymm5,%ymm4,%ymm10 => t10 = ia0 - ia1
-        // vsubpd %ymm7,%ymm6,%ymm11 => t11 = ia2 - ia3
         t8 = _mm512_sub_pd(ra0, ra1);
         t9 = _mm512_sub_pd(ra2, ra3);
         t10 = _mm512_sub_pd(ia0, ia1);
         t11 = _mm512_sub_pd(ia2, ia3);
-        // vaddpd %ymm1,%ymm0,%ymm0 => ra0 += ra1
-        // vaddpd %ymm3,%ymm2,%ymm2 => ra2 += ra3
-        // vaddpd %ymm5,%ymm4,%ymm4 => ia0 += ia1
-        // vaddpd %ymm7,%ymm6,%ymm6 => ia2 += ia3
         ra0 = _mm512_add_pd(ra0, ra1);
         ra2 = _mm512_add_pd(ra2, ra3);
         ia0 = _mm512_add_pd(ia0, ia1);
         ia2 = _mm512_add_pd(ia2, ia3);
-        // vmulpd %ymm10,%ymm13,%ymm1 => ra1 = t10 * omi
-        // vmulpd %ymm11,%ymm12,%ymm3 => ra3 = t11 * omr
-        // vmulpd %ymm8,%ymm13,%ymm5  => ia1 = t8 * omi
-        // vmulpd %ymm9,%ymm12,%ymm7  => ia3 = t9 * omr
         ra1 = _mm512_mul_pd(t10, s3_omi);
         ra3 = _mm512_mul_pd(t11, s3_omr);
         ia1 = _mm512_mul_pd(t8, s3_omi);
         ia3 = _mm512_mul_pd(t9, s3_omr);
-        // vfmsub231pd %ymm8,%ymm12,%ymm1  => ra1 = t8  * omr - ra1
-        // vfmadd231pd %ymm9,%ymm13,%ymm3  => ra3 = t9  * omi + ra3
-        // vfmadd231pd %ymm10,%ymm12,%ymm5 => ia1 = t10 * omr + ia1
-        // vfmsub231pd %ymm11,%ymm13,%ymm7 => ia3 = t11 * omi - ia3
         ra1 = _mm512_fmsub_pd(t8, s3_omr, ra1);
         ra3 = _mm512_fmadd_pd(t9, s3_omi, ra3);
         ia1 = _mm512_fmadd_pd(t10, s3_omr, ia1);
         ia3 = _mm512_fmsub_pd(t11, s3_omi, ia3);
 
-        // ───────────────── stage 4 ─────────────────
+        // Stage 4.
         let (s4_omr, s4_omi) = load_narrow_twiddle(omg_ptr, 14, 30);
 
-        // vsubpd %ymm2,%ymm0,%ymm8  => t8  = ra0 - ra2
-        // vsubpd %ymm3,%ymm1,%ymm9  => t9  = ra1 - ra3
-        // vsubpd %ymm6,%ymm4,%ymm10 => t10 = ia0 - ia2
-        // vsubpd %ymm7,%ymm5,%ymm11 => t11 = ia1 - ia3
         t8 = _mm512_sub_pd(ra0, ra2);
         t9 = _mm512_sub_pd(ra1, ra3);
         t10 = _mm512_sub_pd(ia0, ia2);
         t11 = _mm512_sub_pd(ia1, ia3);
-        // vaddpd %ymm2,%ymm0,%ymm0 => ra0 += ra2
-        // vaddpd %ymm3,%ymm1,%ymm1 => ra1 += ra3
-        // vaddpd %ymm6,%ymm4,%ymm4 => ia0 += ia2
-        // vaddpd %ymm7,%ymm5,%ymm5 => ia1 += ia3
         ra0 = _mm512_add_pd(ra0, ra2);
         ra1 = _mm512_add_pd(ra1, ra3);
         ia0 = _mm512_add_pd(ia0, ia2);
         ia1 = _mm512_add_pd(ia1, ia3);
-        // vmulpd %ymm10,%ymm13,%ymm2 => ra2 = t10 * omi
-        // vmulpd %ymm11,%ymm13,%ymm3 => ra3 = t11 * omi
-        // vmulpd %ymm8,%ymm13,%ymm6  => ia2 = t8  * omi
-        // vmulpd %ymm9,%ymm13,%ymm7  => ia3 = t9  * omi
         ra2 = _mm512_mul_pd(t10, s4_omi);
         ra3 = _mm512_mul_pd(t11, s4_omi);
         ia2 = _mm512_mul_pd(t8, s4_omi);
         ia3 = _mm512_mul_pd(t9, s4_omi);
-        // vfmsub231pd %ymm8,%ymm12,%ymm2  => ra2 = t8  * omr - ra2
-        // vfmsub231pd %ymm9,%ymm12,%ymm3  => ra3 = t9  * omr - ra3
-        // vfmadd231pd %ymm10,%ymm12,%ymm6 => ia2 = t10 * omr + ia2
-        // vfmadd231pd %ymm11,%ymm12,%ymm7 => ia3 = t11 * omr + ia3
         ra2 = _mm512_fmsub_pd(t8, s4_omr, ra2);
         ra3 = _mm512_fmsub_pd(t9, s4_omr, ra3);
         ia2 = _mm512_fmadd_pd(t10, s4_omr, ia2);
         ia3 = _mm512_fmadd_pd(t11, s4_omr, ia3);
 
-        // stores
+        // Store the two blocks back.
         store_pair(re_ptr, 0, ra0);
         store_pair(re_ptr, 4, ra1);
         store_pair(re_ptr, 8, ra2);
