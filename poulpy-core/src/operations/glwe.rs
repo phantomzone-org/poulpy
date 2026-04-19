@@ -443,7 +443,18 @@ where
             + lvl_2_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2b: usize = self.bytes_of_vec_znx_dft(1, pairwise_dft_size)
             + lvl_2_pairwise.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
-        let lvl_2: usize = lvl_2a.max(lvl_2b);
+        let mut lvl_2: usize = lvl_2a.max(lvl_2b);
+
+        // Rank-1 squaring can reuse the same fused convolution hook as the
+        // generic rank-1 tensor path because `cnv_prepare_self` already emits
+        // the left/right prepared operands for the same source polynomial.
+        if cols == 2 {
+            let lvl_2_fused_apply: usize =
+                self.cnv_tensor_r1_fused_apply_dft_tmp_bytes(cnv_offset, diag_dft_size, a_size, a_size);
+            let lvl_2_fused: usize = 3 * self.bytes_of_vec_znx_dft(1, diag_dft_size)
+                + lvl_2_fused_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
+            lvl_2 = lvl_2.max(lvl_2_fused);
+        }
 
         lvl_0 + lvl_diag_cache + lvl_1.max(lvl_2)
     }
@@ -649,34 +660,60 @@ where
         let pairwise_dft_size =
             normalize_input_limb_bound_with_offset(2 * a.size() - cnv_offset_hi, res.size(), res_base2k, a_base2k, cnv_offset_lo);
 
-        for i in 0..cols {
-            let col_i: usize = i * cols - (i * (i + 1) / 2);
+        if cols == 2 {
+            let (mut rd0, scratch_a) = scratch_3.take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut rd1, scratch_b) = scratch_a.take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut rdp, scratch_c) = scratch_b.take_vec_znx_dft(self, 1, pairwise_dft_size);
 
-            let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_4);
-            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
-            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
+            self.cnv_tensor_r1_fused_apply_dft(cnv_offset_hi, &mut rd0, &mut rd1, &mut rdp, &a_prep, &b_prep, scratch_c);
 
-            // TODO: Do we need 2 copies?
-            self.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
-            self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
-        }
+            let (mut tmp, scratch_norm) = scratch_c.take_vec_znx(self.n(), 1, res.size());
 
-        for i in 0..cols {
-            let col_i: usize = i * cols - (i * (i + 1) / 2);
+            let rb0: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd0);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rb0, a_base2k, 0, scratch_norm);
+            self.vec_znx_copy(&mut diag_terms, 0, &tmp, 0);
+            self.vec_znx_copy(res.data_mut(), 0, &tmp, 0);
 
-            for j in i + 1..cols {
-                let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, pairwise_dft_size);
-                self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_4);
+            let rb1: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd1);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rb1, a_base2k, 0, scratch_norm);
+            self.vec_znx_copy(&mut diag_terms, 1, &tmp, 0);
+            self.vec_znx_copy(res.data_mut(), 2, &tmp, 0);
+
+            let rbp: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rdp);
+            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &rbp, a_base2k, 0, scratch_norm);
+            self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 0);
+            self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 1);
+            self.vec_znx_copy(res.data_mut(), 1, &tmp, 0);
+        } else {
+            for i in 0..cols {
+                let col_i: usize = i * cols - (i * (i + 1) / 2);
+
+                let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, diag_dft_size);
+                self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_4);
                 let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
                 let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
                 self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
 
-                // TODO: Do we need copy?
-                self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
+                // TODO: Do we need 2 copies?
+                self.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
+                self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
+            }
+
+            for i in 0..cols {
+                let col_i: usize = i * cols - (i * (i + 1) / 2);
+
+                for j in i + 1..cols {
+                    let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, pairwise_dft_size);
+                    self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_4);
+                    let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                    let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
+                    self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
+                    self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
+                    self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
+
+                    // TODO: Do we need copy?
+                    self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
+                }
             }
         }
     }
