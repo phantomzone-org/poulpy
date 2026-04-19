@@ -82,13 +82,7 @@ unsafe fn aos_for_blk<const I: usize>(red0: __m512i, red1: __m512i, red2: __m512
 /// one `_mm_sfence` before any later load from `res`.
 #[target_feature(enable = "avx512f,avx512vl")]
 #[inline]
-unsafe fn save_blk_overwrite_nt<const I: usize>(
-    dst_base: *mut u64,
-    bq: usize,
-    red0: __m512i,
-    red1: __m512i,
-    red2: __m512i,
-) {
+unsafe fn save_blk_overwrite_nt<const I: usize>(dst_base: *mut u64, bq: usize, red0: __m512i, red1: __m512i, red2: __m512i) {
     let out = unsafe { aos_for_blk::<I>(red0, red1, red2) };
     let off = 8 * (bq * 4 + I);
     unsafe {

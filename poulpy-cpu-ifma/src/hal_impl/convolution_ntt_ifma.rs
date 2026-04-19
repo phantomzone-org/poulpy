@@ -125,20 +125,12 @@ macro_rules! hal_impl_convolution_ntt_ifma {
             B: CnvPVecRToRef<Self>,
         {
             use poulpy_hal::api::TakeSlice;
-            let bytes = crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma_tmp_bytes(
-                a.to_ref().size(),
-                b.to_ref().size(),
-            );
+            let bytes =
+                crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma_tmp_bytes(a.to_ref().size(), b.to_ref().size());
             let (tmp, _) = scratch.take_slice::<u8>(bytes);
             unsafe {
                 crate::ntt_ifma::convolution::cnv_apply_dft_rank1_fused_ifma(
-                    res_diag_0,
-                    res_diag_1,
-                    res_pair,
-                    cnv_offset,
-                    a,
-                    b,
-                    tmp,
+                    res_diag_0, res_diag_1, res_pair, cnv_offset, a, b, tmp,
                 )
             }
         }

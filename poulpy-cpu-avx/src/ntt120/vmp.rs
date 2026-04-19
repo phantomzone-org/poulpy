@@ -10,13 +10,7 @@ use bytemuck::{cast_slice, cast_slice_mut};
 use core::arch::x86_64::{__m256i, _mm_sfence, _mm256_loadu_si256, _mm256_set_epi64x, _mm256_storeu_si256, _mm256_stream_si256};
 
 use poulpy_cpu_ref::reference::ntt120::{
-    mat_vec::BbcMeta,
-    primes::Primes30,
-    NttCFromB,
-    NttDFTExecute,
-    NttFromZnx64,
-    types::Q_SHIFTED,
-    vec_znx_dft::NttModuleHandle,
+    NttCFromB, NttDFTExecute, NttFromZnx64, mat_vec::BbcMeta, primes::Primes30, types::Q_SHIFTED, vec_znx_dft::NttModuleHandle,
 };
 use poulpy_hal::layouts::{
     DataViewMut, MatZnx, MatZnxToRef, Module, VecZnxDftToMut, VecZnxDftToRef, VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView,
@@ -220,7 +214,9 @@ unsafe fn vmp_apply_core_avx_pm<const OVERWRITE: bool>(
             let col_res = col_pmat - limb_offset;
             let y_off = bp * bp_stride + col_pmat * col_stride;
 
-            unsafe { vec_mat1col_product_blkpair_bbc_pm_avx2(meta, row_max, blkpair_output, x_pm, &pmat_u64[y_off..], plane_stride) };
+            unsafe {
+                vec_mat1col_product_blkpair_bbc_pm_avx2(meta, row_max, blkpair_output, x_pm, &pmat_u64[y_off..], plane_stride)
+            };
 
             let blk0 = 2 * bp;
             let blk1 = blk0 + 1;

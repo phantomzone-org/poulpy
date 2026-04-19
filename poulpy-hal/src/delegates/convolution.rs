@@ -117,13 +117,7 @@ where
         <BE as HalImpl<BE>>::cnv_pairwise_apply_dft(self, cnv_offset, res, res_col, a, b, i, j, scratch);
     }
 
-    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
-        &self,
-        cnv_offset: usize,
-        res_size: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize {
+    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize {
         <BE as HalImpl<BE>>::cnv_tensor_r1_fused_apply_dft_tmp_bytes(self, cnv_offset, res_size, a_size, b_size)
     }
 

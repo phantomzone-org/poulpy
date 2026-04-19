@@ -140,13 +140,7 @@ pub trait Convolution<BE: Backend> {
         B: CnvPVecRToRef<BE>;
 
     /// Returns scratch bytes required for [`cnv_tensor_r1_fused_apply_dft`].
-    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
-        &self,
-        cnv_offset: usize,
-        res_size: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize;
+    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize;
 
     /// Fused rank-1 tensor convolution — emits both diagonals and the pairwise
     /// cross-term in a single sweep over `a` / `b`.  Semantics:

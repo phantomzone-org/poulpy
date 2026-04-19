@@ -158,7 +158,6 @@ unsafe fn ntt_iter_first_ifma(
 ///
 /// All inputs and outputs in `[0, 4q)`.  Sum path subtracts `4q`; diff path
 /// is fed directly into the Harvey multiply (which absorbs the reduction).
-///
 #[target_feature(enable = "avx512ifma")]
 unsafe fn ntt_iter_ifma(
     nn: usize,
@@ -314,7 +313,7 @@ unsafe fn ntt_iter_ifma(
 /// The i=0 group is handled separately because its level-1 `AC` and
 /// level-2 twiddles are identity; `ω_M^(M/4)` (4th root of unity) is read
 /// from `po_l1[M/4 − 1]`.
-#[allow(dead_code)]
+#[allow(clippy::too_many_arguments, dead_code)]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 unsafe fn ntt_iter_radix4_ifma(
     nn_top: usize,
@@ -419,13 +418,10 @@ unsafe fn ntt_iter_radix4_ifma(
                 let diff_l2_2 = _mm512_sub_epi64(_mm512_add_epi64(diff_ac, q4_512), diff_bd);
                 let out_d = harvey_modmul_si512(diff_l2_2, omega_l2, omega_l2_q, q_512);
 
-                _mm512_storeu_si512(data_512.wrapping_byte_add(i * 32) as *mut __m512i, out_a);
-                _mm512_storeu_si512(data_512.wrapping_byte_add((i + quarter_top) * 32) as *mut __m512i, out_b);
-                _mm512_storeu_si512(data_512.wrapping_byte_add((i + half_top) * 32) as *mut __m512i, out_c);
-                _mm512_storeu_si512(
-                    data_512.wrapping_byte_add((i + half_top + quarter_top) * 32) as *mut __m512i,
-                    out_d,
-                );
+                _mm512_storeu_si512(data_512.wrapping_byte_add(i * 32), out_a);
+                _mm512_storeu_si512(data_512.wrapping_byte_add((i + quarter_top) * 32), out_b);
+                _mm512_storeu_si512(data_512.wrapping_byte_add((i + half_top) * 32), out_c);
+                _mm512_storeu_si512(data_512.wrapping_byte_add((i + half_top + quarter_top) * 32), out_d);
             }
 
             // Odd tail (at most one lingering i = quarter_top-1).
@@ -474,7 +470,6 @@ unsafe fn ntt_iter_radix4_ifma(
 ///
 /// All inputs and outputs in `[0, 4q)`.  `b_raw ∈ [0, 4q)` is fed directly into
 /// Harvey (output `∈ [0, 2q)`); sum/diff use `cond_sub_4q`.
-///
 #[target_feature(enable = "avx512ifma")]
 unsafe fn intt_iter_ifma(
     nn: usize,
