@@ -337,9 +337,6 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
                 .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
                 .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
 
-        // The fused rank-1 path runs without the caller-visible GLWETensor,
-        // but keeps rd0/rd1/rdp + res_dft live together; account for its
-        // peak so scratch sizing is conservative.
         let fused = if res.rank().as_usize() == 1 {
             self.glwe_mul_ct_rank1_fused_tmp_bytes(res, res, res, tsk)
         } else {
@@ -366,10 +363,6 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         let a_ref = a.to_ref();
         let b_ref = b.to_ref();
 
-        // Rank-1 same-base fused path.  Aligned (cnv_offset multiple of
-        // base2k) skips the iDFT+NTT round-trip on the aa' diagonal.
-        // Non-aligned still does iDFT+normalize+NTT on rd1 but skips the
-        // GLWETensor buffer and runs the Karatsuba correction in DFT.
         let fused_eligible = dst.rank().as_usize() == 1
             && a.rank().as_usize() == 1
             && b.rank().as_usize() == 1
@@ -430,10 +423,7 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        // Note: the rank-1 fused path needs distinct `&a` / `&b` borrows.  For
-        // inplace we'd need to snapshot `dst` first, which adds a full-GLWE
-        // copy — defeating the fusion's savings on this shape.  Stick with
-        // the sequential tensor+relin pipeline here.
+        // Inplace stays on sequential: the fused path needs distinct &a/&b.
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, dst, a)?;
 
         let tensor_layout = GLWELayout {

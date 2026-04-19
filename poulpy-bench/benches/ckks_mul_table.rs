@@ -316,8 +316,6 @@ where
     };
 
     // ── full mul (fused rank-1 path) ──
-    // Bypasses the intermediate GLWETensor: pipes the aa' diagonal
-    // straight from the tensor kernel into the relinearisation VMP.
     let full_fused_ms = {
         for _ in 0..WARMUP {
             let sr = scratch.borrow();

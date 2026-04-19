@@ -86,9 +86,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        // No explicit zero here: the gglwe_product_dft dsize>1 loop starts with
-        // an OVERWRITE vmp at res.size = pmat.size() (full), and the dsize=1
-        // path is a single OVERWRITE vmp covering the same range.
+        // gglwe_product_dft's first vmp overwrites the full buffer; no pre-zero needed.
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         let res_big: VecZnxBig<&mut [u8], BE> = if a_base2k != key_base2k {
@@ -143,8 +141,7 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let key_base2k: usize = key.base2k().as_usize();
 
-        // See glwe_keyswitch_default: gglwe_product_dft's first vmp is OVERWRITE
-        // at pmat.size(), so the caller no longer needs to pre-zero.
+        // First vmp overwrites the full buffer; no pre-zero needed.
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         let res_big: VecZnxBig<&mut [u8], BE> = if res_base2k != key_base2k {
@@ -285,9 +282,7 @@ where
             let dnum: usize = key_infos.dnum().into();
             let a_size: usize = a_size.div_ceil(dsize).min(dnum);
             let lvl_0: usize = self.bytes_of_vec_znx_dft(key_infos.rank_in().into(), a_size);
-            // The accumulate path may run with res.size up to key_infos.size() (the
-            // dsize>1 loop temporarily grows `res` up to pmat.size()), so the
-            // accumulate scratch estimate must be sized against key_infos.size().
+            // Accumulate path may grow res up to key_infos.size() — size scratch to match.
             let lvl_1: usize = self
                 .vmp_apply_dft_to_dft_tmp_bytes(
                     res_size,
@@ -330,47 +325,25 @@ where
             self.gglwe_product_dft_tmp_bytes(res.size(), a_size, key)
         );
 
-        // If dsize == 1, then the digit decomposition is equal to Base2K and we can simply
-        // can the vmp API.
         if key.dsize() == 1 {
+            // dsize=1: digit decomposition ≡ Base2K → direct VMP.
             self.vmp_apply_dft_to_dft(res, a, pmat, 0, scratch);
-        // If dsize != 1, then the digit decomposition is k * Base2K with k > 1.
-        // As such we need to perform a bivariate polynomial convolution in (X, Y) / (X^{N}+1) with Y = 2^-K
-        // (instead of yn univariate one in X).
-        //
-        // Since the basis in Y is small (in practice degree 6-7 max), we perform it naiveley.
-        // To do so, we group the different limbs of ai_dft by their respective degree in Y
-        // which are multiples of the current digit.
-        // For example if dsize = 3, with ai_dft = [a0, a1, a2, a3, a4, a5, a6],
-        // we group them as [[a0, a3, a5], [a1, a4, a6], [a2, a5, 0]]
-        // and evaluate sum(a_di * pmat * 2^{di*Base2k})
         } else {
+            // dsize>1: bivariate (X, Y) convolution — group ai_dft limbs by degree
+            // in Y and evaluate Σ a_di * pmat * 2^{di*Base2k}.
             let dsize: usize = key.dsize().into();
             let dnum: usize = key.dnum().into();
 
             let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols, a_size.div_ceil(dsize).min(dnum));
 
-            // Iterate from di=dsize-1 down to di=0.  The first iteration uses the
-            // largest res.size (= pmat.size()) and calls the OVERWRITE vmp, so the
-            // entire res buffer is written — no caller-side pre-zero needed.
-            // Subsequent accumulate calls operate on a subset of that range.
-            // Small optimization for dsize > 2: the last (dsize-2) limbs of the
-            // sum are dominated by the largest-di term so we can skip writing
-            // them for di < dsize-1.  See original comment below for the noise
-            // trade-off.
+            // Iterate di from dsize-1 down to 0. First iter (largest res.size)
+            // uses OVERWRITE vmp, covering the full buffer; subsequent iters
+            // accumulate on a subset. Smaller di truncates the last (dsize-2)
+            // limbs where its aggregated error is negligible vs e_{dsize-1}
+            // (the more aggressive dsize-1 cut adds ~0.5–1 bit of noise).
             for di_rev in 0..dsize {
                 let di = dsize - 1 - di_rev;
-                // Sets ai_dft size according to the current digit (if dsize does not divide a_size),
-                // bounded by the number of rows (digits) in the prepared matrix.
                 ai_dft.set_size(((a_size + di) / dsize).min(dnum));
-
-                // Limb range that this di contributes to.  di=dsize-1 and di=dsize-2
-                // both use pmat.size() (no truncation); smaller di truncate the
-                // high limbs because the aggregated vmp error ei * 2^{di*Base2k}
-                // there is negligible compared to the e_{dsize-1} contribution.
-                // Further truncating to `dsize-1` limbs would add ~0.5–1 bit of
-                // noise; we keep the conservative `dsize-2` cut to match the
-                // ideal functionality.
                 res.set_size(pmat.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {

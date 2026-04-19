@@ -283,188 +283,6 @@ unsafe fn ntt_iter_ifma(
     }
 }
 
-/// (UNUSED) Forward radix-4 butterfly: two consecutive CT levels
-/// (`nn_top` and `nn_top/2`) fused into a single pass over memory.
-///
-/// Tested and correct but produced only a 2% wall-clock gain for ~150 lines
-/// of additional complexity — kept here as reference.  Memory-miss rate
-/// dropped 13% under perf, but OoO was already hiding most of that latency.
-/// Retained in source for potential future combination with algorithmic
-/// reuse (e.g. radix-4 + pack fusion).
-///
-/// For each 4-element group `(A, B, C, D)` at positions
-/// `(i, i+M/4, i+M/2, i+3M/4)` within a sub-NTT of size `M = nn_top`:
-///
-/// ```text
-///   // Level M (CT):
-///   sum_AC = A + C           ; diff_AC = (A - C) * ω_M^i
-///   sum_BD = B + D           ; diff_BD = (B - D) * ω_M^(i+M/4)
-///   // Level M/2 (CT):
-///   out_A = sum_AC + sum_BD  ; out_B = (sum_AC - sum_BD) * ω_{M/2}^i
-///   out_C = diff_AC + diff_BD; out_D = (diff_AC - diff_BD) * ω_{M/2}^i
-/// ```
-///
-/// All intermediates live in registers — each cache line is read and
-/// written exactly once, vs twice for two radix-2 passes.  Bound tracking:
-/// inputs `[0, 4q)`, outputs `[0, 4q)` (same invariant as `ntt_iter_ifma`).
-///
-/// `po_l1 / quot_l1` hold the level-M twiddles (`ω_M^1 … ω_M^(M/2−1)`);
-/// `po_l2 / quot_l2` hold the level-M/2 twiddles (`ω_{M/2}^1 … ω_{M/2}^(M/4−1)`).
-/// The i=0 group is handled separately because its level-1 `AC` and
-/// level-2 twiddles are identity; `ω_M^(M/4)` (4th root of unity) is read
-/// from `po_l1[M/4 − 1]`.
-#[allow(clippy::too_many_arguments, dead_code)]
-#[target_feature(enable = "avx512ifma,avx512vl")]
-unsafe fn ntt_iter_radix4_ifma(
-    nn_top: usize,
-    begin: *mut __m256i,
-    end: *const __m256i,
-    q: __m256i,
-    q4: __m256i,
-    po_l1: *const __m256i,
-    quot_l1: *const __m256i,
-    po_l2: *const __m256i,
-    quot_l2: *const __m256i,
-) {
-    unsafe {
-        let half_top = nn_top / 2;
-        let quarter_top = nn_top / 4;
-        let mut data = begin;
-        while (data as usize) < (end as usize) {
-            // i = 0: ω_M^0 = 1, ω_{M/2}^0 = 1, BD twiddle is ω_M^(M/4).
-            {
-                let a = _mm256_loadu_si256(data);
-                let b = _mm256_loadu_si256(data.add(quarter_top));
-                let c = _mm256_loadu_si256(data.add(half_top));
-                let d = _mm256_loadu_si256(data.add(half_top + quarter_top));
-
-                // Level 1 AC (twiddle 1)
-                let sum_ac = cond_sub_2q_si256(_mm256_add_epi64(a, c), q4);
-                let diff_ac = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(a, q4), c), q4);
-
-                // Level 1 BD (twiddle ω_M^(M/4))
-                let omega_bd = _mm256_loadu_si256(po_l1.add(quarter_top - 1));
-                let omega_bd_q = _mm256_loadu_si256(quot_l1.add(quarter_top - 1));
-                let sum_bd = cond_sub_2q_si256(_mm256_add_epi64(b, d), q4);
-                let diff_bd_raw = _mm256_sub_epi64(_mm256_add_epi64(b, q4), d);
-                let diff_bd = harvey_modmul_si256(diff_bd_raw, omega_bd, omega_bd_q, q);
-
-                // Level 2 (both pairs with twiddle 1)
-                let out_a = cond_sub_2q_si256(_mm256_add_epi64(sum_ac, sum_bd), q4);
-                let out_b = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(sum_ac, q4), sum_bd), q4);
-                let out_c = cond_sub_2q_si256(_mm256_add_epi64(diff_ac, diff_bd), q4);
-                let out_d = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(diff_ac, q4), diff_bd), q4);
-
-                _mm256_storeu_si256(data, out_a);
-                _mm256_storeu_si256(data.add(quarter_top), out_b);
-                _mm256_storeu_si256(data.add(half_top), out_c);
-                _mm256_storeu_si256(data.add(half_top + quarter_top), out_d);
-            }
-
-            // i = 1 .. M/4 - 1 : all twiddles active.
-            //
-            // The group stride is `quarter_top` coefficients, so positions
-            // `i` and `i+1` live in adjacent __m256i slots and can be
-            // loaded with a single 512-bit load (2 coefs per vector).  We
-            // only switch to 256-bit for an odd-length tail.
-            let q_512 = pack_512(q, q);
-            let q4_512 = pack_512(q4, q4);
-            let data_512 = data as *mut __m512i;
-            let po_l1_512 = po_l1 as *const __m512i;
-            let quot_l1_512 = quot_l1 as *const __m512i;
-            let po_l2_512 = po_l2 as *const __m512i;
-            let quot_l2_512 = quot_l2 as *const __m512i;
-
-            // Process pairs (i, i+1) for i=1,3,5,... — 512-bit wide.
-            // Start at i=2 (first full pair after the special i=0 group).
-            // For i=1 the twiddle offsets are (0, 1) so we can use a 512-bit
-            // load for the pair (i=1, i=2). Emit pairs until quarter_top-1.
-            let pairs_start = 1usize;
-            // Number of 2-coef pairs fully available.
-            let paired = (quarter_top - pairs_start) / 2;
-            for p in 0..paired {
-                let i = pairs_start + 2 * p; // i, i+1
-
-                // Data at i and i+1 (adjacent) loaded as single __m512i.
-                let a = _mm512_loadu_si512(data_512.wrapping_byte_add(i * 32));
-                let b = _mm512_loadu_si512(data_512.wrapping_byte_add((i + quarter_top) * 32));
-                let c = _mm512_loadu_si512(data_512.wrapping_byte_add((i + half_top) * 32));
-                let d = _mm512_loadu_si512(data_512.wrapping_byte_add((i + half_top + quarter_top) * 32));
-
-                // L1 AC twiddle at (i, i+1) = po_l1[i-1, i].
-                let omega_ac = _mm512_loadu_si512(po_l1_512.wrapping_byte_add((i - 1) * 32));
-                let omega_ac_q = _mm512_loadu_si512(quot_l1_512.wrapping_byte_add((i - 1) * 32));
-                // L1 BD twiddle at (i+M/4, i+M/4+1) = po_l1[i+M/4-1, i+M/4].
-                let omega_bd = _mm512_loadu_si512(po_l1_512.wrapping_byte_add((i + quarter_top - 1) * 32));
-                let omega_bd_q = _mm512_loadu_si512(quot_l1_512.wrapping_byte_add((i + quarter_top - 1) * 32));
-                // L2 twiddle at (i, i+1) = po_l2[i-1, i].
-                let omega_l2 = _mm512_loadu_si512(po_l2_512.wrapping_byte_add((i - 1) * 32));
-                let omega_l2_q = _mm512_loadu_si512(quot_l2_512.wrapping_byte_add((i - 1) * 32));
-
-                // Level 1 AC
-                let sum_ac = cond_sub_2q_si512(_mm512_add_epi64(a, c), q4_512);
-                let diff_ac_raw = _mm512_sub_epi64(_mm512_add_epi64(a, q4_512), c);
-                let diff_ac = harvey_modmul_si512(diff_ac_raw, omega_ac, omega_ac_q, q_512);
-                // Level 1 BD
-                let sum_bd = cond_sub_2q_si512(_mm512_add_epi64(b, d), q4_512);
-                let diff_bd_raw = _mm512_sub_epi64(_mm512_add_epi64(b, q4_512), d);
-                let diff_bd = harvey_modmul_si512(diff_bd_raw, omega_bd, omega_bd_q, q_512);
-
-                // Level 2
-                let out_a = cond_sub_2q_si512(_mm512_add_epi64(sum_ac, sum_bd), q4_512);
-                let diff_l2_1 = _mm512_sub_epi64(_mm512_add_epi64(sum_ac, q4_512), sum_bd);
-                let out_b = harvey_modmul_si512(diff_l2_1, omega_l2, omega_l2_q, q_512);
-                let out_c = cond_sub_2q_si512(_mm512_add_epi64(diff_ac, diff_bd), q4_512);
-                let diff_l2_2 = _mm512_sub_epi64(_mm512_add_epi64(diff_ac, q4_512), diff_bd);
-                let out_d = harvey_modmul_si512(diff_l2_2, omega_l2, omega_l2_q, q_512);
-
-                _mm512_storeu_si512(data_512.wrapping_byte_add(i * 32), out_a);
-                _mm512_storeu_si512(data_512.wrapping_byte_add((i + quarter_top) * 32), out_b);
-                _mm512_storeu_si512(data_512.wrapping_byte_add((i + half_top) * 32), out_c);
-                _mm512_storeu_si512(data_512.wrapping_byte_add((i + half_top + quarter_top) * 32), out_d);
-            }
-
-            // Odd tail (at most one lingering i = quarter_top-1).
-            let tail_start = pairs_start + 2 * paired;
-            let mut i = tail_start;
-            while i < quarter_top {
-                let a = _mm256_loadu_si256(data.add(i));
-                let b = _mm256_loadu_si256(data.add(i + quarter_top));
-                let c = _mm256_loadu_si256(data.add(i + half_top));
-                let d = _mm256_loadu_si256(data.add(i + half_top + quarter_top));
-
-                let omega_ac = _mm256_loadu_si256(po_l1.add(i - 1));
-                let omega_ac_q = _mm256_loadu_si256(quot_l1.add(i - 1));
-                let omega_bd = _mm256_loadu_si256(po_l1.add(i + quarter_top - 1));
-                let omega_bd_q = _mm256_loadu_si256(quot_l1.add(i + quarter_top - 1));
-                let omega_l2 = _mm256_loadu_si256(po_l2.add(i - 1));
-                let omega_l2_q = _mm256_loadu_si256(quot_l2.add(i - 1));
-
-                let sum_ac = cond_sub_2q_si256(_mm256_add_epi64(a, c), q4);
-                let diff_ac_raw = _mm256_sub_epi64(_mm256_add_epi64(a, q4), c);
-                let diff_ac = harvey_modmul_si256(diff_ac_raw, omega_ac, omega_ac_q, q);
-                let sum_bd = cond_sub_2q_si256(_mm256_add_epi64(b, d), q4);
-                let diff_bd_raw = _mm256_sub_epi64(_mm256_add_epi64(b, q4), d);
-                let diff_bd = harvey_modmul_si256(diff_bd_raw, omega_bd, omega_bd_q, q);
-
-                let out_a = cond_sub_2q_si256(_mm256_add_epi64(sum_ac, sum_bd), q4);
-                let diff_l2_1 = _mm256_sub_epi64(_mm256_add_epi64(sum_ac, q4), sum_bd);
-                let out_b = harvey_modmul_si256(diff_l2_1, omega_l2, omega_l2_q, q);
-                let out_c = cond_sub_2q_si256(_mm256_add_epi64(diff_ac, diff_bd), q4);
-                let diff_l2_2 = _mm256_sub_epi64(_mm256_add_epi64(diff_ac, q4), diff_bd);
-                let out_d = harvey_modmul_si256(diff_l2_2, omega_l2, omega_l2_q, q);
-
-                _mm256_storeu_si256(data.add(i), out_a);
-                _mm256_storeu_si256(data.add(i + quarter_top), out_b);
-                _mm256_storeu_si256(data.add(i + half_top), out_c);
-                _mm256_storeu_si256(data.add(i + half_top + quarter_top), out_d);
-                i += 1;
-            }
-            data = data.add(nn_top);
-        }
-    }
-}
-
 /// Inverse Gentleman-Sande butterfly with IFMA-native lazy arithmetic.
 /// Uses 512-bit inner loop with split twiddle layout.
 ///
@@ -591,6 +409,83 @@ unsafe fn intt_iter_ifma(
                 _mm256_storeu_si256(ptr2, diff);
             }
             data = data.add(nn);
+        }
+    }
+}
+
+/// Fused iNTT pass covering `nn = 2, 4, 8` in registers.
+///
+/// Twiddle layout in `po_base` (level-2 has no twiddles):
+///   [0]=ω₄ [1]=ω₄ quot | [2..5)=ω₈^{1,2,3} [5..8)=ω₈ quots.
+#[target_feature(enable = "avx512ifma,avx512vl")]
+unsafe fn intt_radix8_first3_ifma(begin: *mut __m256i, end: *const __m256i, q: __m256i, q4: __m256i, po_base: *const __m256i) {
+    unsafe {
+        let w4 = _mm256_loadu_si256(po_base);
+        let w4q = _mm256_loadu_si256(po_base.add(1));
+        let w8_1 = _mm256_loadu_si256(po_base.add(2));
+        let w8_2 = _mm256_loadu_si256(po_base.add(3));
+        let w8_3 = _mm256_loadu_si256(po_base.add(4));
+        let w8_1q = _mm256_loadu_si256(po_base.add(5));
+        let w8_2q = _mm256_loadu_si256(po_base.add(6));
+        let w8_3q = _mm256_loadu_si256(po_base.add(7));
+
+        let mut ptr = begin;
+        while (ptr as usize) < (end as usize) {
+            let a0 = _mm256_loadu_si256(ptr);
+            let a1 = _mm256_loadu_si256(ptr.add(1));
+            let a2 = _mm256_loadu_si256(ptr.add(2));
+            let a3 = _mm256_loadu_si256(ptr.add(3));
+            let a4 = _mm256_loadu_si256(ptr.add(4));
+            let a5 = _mm256_loadu_si256(ptr.add(5));
+            let a6 = _mm256_loadu_si256(ptr.add(6));
+            let a7 = _mm256_loadu_si256(ptr.add(7));
+
+            // nn=2: 4 identity butterflies.
+            let t0 = cond_sub_2q_si256(_mm256_add_epi64(a0, a1), q4);
+            let t1 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(a0, q4), a1), q4);
+            let t2 = cond_sub_2q_si256(_mm256_add_epi64(a2, a3), q4);
+            let t3 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(a2, q4), a3), q4);
+            let t4 = cond_sub_2q_si256(_mm256_add_epi64(a4, a5), q4);
+            let t5 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(a4, q4), a5), q4);
+            let t6 = cond_sub_2q_si256(_mm256_add_epi64(a6, a7), q4);
+            let t7 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(a6, q4), a7), q4);
+
+            // nn=4: identity at i=0, twiddle w4 at i=1, for each half-block.
+            let u0 = cond_sub_2q_si256(_mm256_add_epi64(t0, t2), q4);
+            let u2 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(t0, q4), t2), q4);
+            let bo13 = harvey_modmul_si256(t3, w4, w4q, q);
+            let u1 = cond_sub_2q_si256(_mm256_add_epi64(t1, bo13), q4);
+            let u3 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(t1, q4), bo13), q4);
+
+            let u4 = cond_sub_2q_si256(_mm256_add_epi64(t4, t6), q4);
+            let u6 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(t4, q4), t6), q4);
+            let bo57 = harvey_modmul_si256(t7, w4, w4q, q);
+            let u5 = cond_sub_2q_si256(_mm256_add_epi64(t5, bo57), q4);
+            let u7 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(t5, q4), bo57), q4);
+
+            // nn=8: identity at i=0, twiddles w8_{1,2,3} at i=1..3.
+            let v0 = cond_sub_2q_si256(_mm256_add_epi64(u0, u4), q4);
+            let v4 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(u0, q4), u4), q4);
+            let bo15 = harvey_modmul_si256(u5, w8_1, w8_1q, q);
+            let v1 = cond_sub_2q_si256(_mm256_add_epi64(u1, bo15), q4);
+            let v5 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(u1, q4), bo15), q4);
+            let bo26 = harvey_modmul_si256(u6, w8_2, w8_2q, q);
+            let v2 = cond_sub_2q_si256(_mm256_add_epi64(u2, bo26), q4);
+            let v6 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(u2, q4), bo26), q4);
+            let bo37 = harvey_modmul_si256(u7, w8_3, w8_3q, q);
+            let v3 = cond_sub_2q_si256(_mm256_add_epi64(u3, bo37), q4);
+            let v7 = cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(u3, q4), bo37), q4);
+
+            _mm256_storeu_si256(ptr, v0);
+            _mm256_storeu_si256(ptr.add(1), v1);
+            _mm256_storeu_si256(ptr.add(2), v2);
+            _mm256_storeu_si256(ptr.add(3), v3);
+            _mm256_storeu_si256(ptr.add(4), v4);
+            _mm256_storeu_si256(ptr.add(5), v5);
+            _mm256_storeu_si256(ptr.add(6), v6);
+            _mm256_storeu_si256(ptr.add(7), v7);
+
+            ptr = ptr.add(8);
         }
     }
 }
@@ -771,13 +666,20 @@ pub(crate) unsafe fn intt_ifma_avx512<P: PrimeSetIfma>(table: &NttIfmaTableInv<P
             }
         }
 
-        // Inner levels (block-local): run nn = 2, 4, …, block fully inside each block
-        // before moving on.  Data stays hot in cache across all these levels.
+        // Fuse nn=2,4,8 into a single radix-8 pass when available.
+        let radix8_start = num_inner >= 3;
+        let inner_start = if radix8_start { 3 } else { 0 };
+
         let mut blk_start = 0usize;
         while blk_start < n {
             let blk_begin = begin.add(blk_start);
             let blk_end = begin.add(blk_start + block) as *const __m256i;
-            for i in 0..num_inner {
+
+            if radix8_start {
+                intt_radix8_first3_ifma(blk_begin, blk_end, q, q4, po_base);
+            }
+
+            for i in inner_start..num_inner {
                 let m = inner_nn[i];
                 let halfm = m / 2;
                 let seg = inner_segs[i];
