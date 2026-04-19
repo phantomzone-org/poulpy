@@ -280,33 +280,6 @@ pub(crate) fn vmp_apply_dft_to_dft_avx<R, A, M>(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::extract_1blk_from_contiguous_q120b_avx2;
-    use poulpy_cpu_ref::reference::ntt120::mat_vec::extract_1blk_from_contiguous_q120b_ref;
-
-    #[test]
-    fn extract_1blk_from_contiguous_q120b_avx2_vs_ref() {
-        for &n in &[256usize, 4096, 16384] {
-            for &row_max in &[1usize, 3, 7] {
-                let src: Vec<u64> = (0..row_max * 4 * n)
-                    .map(|i| (0x9e37_79b9_7f4a_7c15u64.wrapping_mul(i as u64 + 1)) ^ ((i as u64) << 17))
-                    .collect();
-
-                for &blk in &[0usize, n / 4, n / 2 - 1] {
-                    let mut dst_ref = vec![0u64; 8 * row_max];
-                    let mut dst_avx = vec![0u64; 8 * row_max];
-
-                    extract_1blk_from_contiguous_q120b_ref(n, row_max, blk, &mut dst_ref, &src);
-                    unsafe { extract_1blk_from_contiguous_q120b_avx2(n, row_max, blk, &mut dst_avx, &src) };
-
-                    assert_eq!(dst_avx, dst_ref, "n={n}, row_max={row_max}, blk={blk}");
-                }
-            }
-        }
-    }
-}
-
 pub(crate) fn vmp_apply_dft_to_dft_accumulate_avx<R, A, M>(
     module: &Module<NTT120Avx>,
     res: &mut R,
@@ -344,5 +317,32 @@ pub(crate) fn vmp_apply_dft_to_dft_accumulate_avx<R, A, M>(
             meta,
             tmp,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_1blk_from_contiguous_q120b_avx2;
+    use poulpy_cpu_ref::reference::ntt120::mat_vec::extract_1blk_from_contiguous_q120b_ref;
+
+    #[test]
+    fn extract_1blk_from_contiguous_q120b_avx2_vs_ref() {
+        for &n in &[256usize, 4096, 16384] {
+            for &row_max in &[1usize, 3, 7] {
+                let src: Vec<u64> = (0..row_max * 4 * n)
+                    .map(|i| (0x9e37_79b9_7f4a_7c15u64.wrapping_mul(i as u64 + 1)) ^ ((i as u64) << 17))
+                    .collect();
+
+                for &blk in &[0usize, n / 4, n / 2 - 1] {
+                    let mut dst_ref = vec![0u64; 8 * row_max];
+                    let mut dst_avx = vec![0u64; 8 * row_max];
+
+                    extract_1blk_from_contiguous_q120b_ref(n, row_max, blk, &mut dst_ref, &src);
+                    unsafe { extract_1blk_from_contiguous_q120b_avx2(n, row_max, blk, &mut dst_avx, &src) };
+
+                    assert_eq!(dst_avx, dst_ref, "n={n}, row_max={row_max}, blk={blk}");
+                }
+            }
+        }
     }
 }

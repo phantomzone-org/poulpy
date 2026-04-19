@@ -201,6 +201,40 @@ pub trait GLWETensoring<BE: Backend> {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos;
+
+    /// Scratch bytes for [`glwe_mul_ct_rank1_fused`].
+    fn glwe_mul_ct_rank1_fused_tmp_bytes<R, A, B, T>(&self, res: &R, a: &A, b: &B, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+        T: GGLWEInfos;
+
+    /// Rank-1 fused ciphertext multiplication: `tensor + relinearize` without
+    /// materialising the tensor's `aa'` component in coefficient domain.
+    ///
+    /// Semantics match the sequential composition
+    /// `glwe_tensor_apply(tmp, a, b); glwe_tensor_relinearize(res, tmp, tsk)`
+    /// for rank=1 ciphertexts where `a.base2k() == b.base2k() == tsk.base2k()`.
+    /// Saves one iDFT and one forward NTT over the sequential flow by passing
+    /// the `aa'` diagonal straight from the convolution kernel into the VMP.
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_mul_ct_rank1_fused<R, A, B, T>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+        T: DataRef;
 }
 
 pub trait GLWEAdd

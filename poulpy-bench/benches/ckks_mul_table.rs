@@ -196,11 +196,13 @@ struct Row {
     relin_ms: f64,
     rescale_ms: f64,
     full_ms: f64,
+    full_fused_ms: f64,
     relin_key_gb: f64,
 }
 
-fn bench_row<BE: Backend>(p: &Params) -> Row
+fn bench_row<BE>(p: &Params) -> Row
 where
+    BE: Backend,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>
@@ -228,6 +230,7 @@ where
     let op_bytes = module
         .glwe_tensor_apply_tmp_bytes(&tensor_layout, &glwe, &glwe)
         .max(module.glwe_tensor_relinearize_tmp_bytes(&glwe, &tensor_layout, &tsk_layout))
+        .max(module.glwe_mul_ct_rank1_fused_tmp_bytes(&glwe, &glwe, &glwe, &tsk_layout))
         .max(module.glwe_shift_tmp_bytes());
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(tensor_bytes + op_bytes);
     let tsk_size = tsk_prepared.size();
@@ -312,6 +315,46 @@ where
         start.elapsed().as_secs_f64() * 1000.0 / ITERATIONS as f64
     };
 
+    // ── full mul (fused rank-1 path) ──
+    // Bypasses the intermediate GLWETensor: pipes the aa' diagonal
+    // straight from the tensor kernel into the relinearisation VMP.
+    let full_fused_ms = {
+        for _ in 0..WARMUP {
+            let sr = scratch.borrow();
+            module.glwe_mul_ct_rank1_fused(
+                0,
+                &mut res,
+                &a,
+                a.max_k().as_usize(),
+                &b,
+                b.max_k().as_usize(),
+                &tsk_prepared,
+                tsk_size,
+                sr,
+            );
+            module.glwe_lsh_inplace(&mut res, base2k, sr);
+            black_box(());
+        }
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            let sr = scratch.borrow();
+            module.glwe_mul_ct_rank1_fused(
+                0,
+                &mut res,
+                &a,
+                a.max_k().as_usize(),
+                &b,
+                b.max_k().as_usize(),
+                &tsk_prepared,
+                tsk_size,
+                sr,
+            );
+            module.glwe_lsh_inplace(&mut res, base2k, sr);
+            black_box(());
+        }
+        start.elapsed().as_secs_f64() * 1000.0 / ITERATIONS as f64
+    };
+
     eprintln!(" done");
 
     Row {
@@ -326,6 +369,7 @@ where
         relin_ms,
         rescale_ms,
         full_ms,
+        full_fused_ms,
         relin_key_gb: key_bytes as f64 / (1024.0 * 1024.0 * 1024.0),
     }
 }
@@ -336,7 +380,7 @@ fn print_table(title: &str, rows: &[Row]) {
     println!("Warmup: {WARMUP} | Iterations: {ITERATIONS}");
     println!();
     println!(
-        "{:>7} {:>5} {:>5} {:>5} {:>4} {:>4} {:>5} {:>11} {:>11} {:>11} {:>11} {:>11}",
+        "{:>7} {:>5} {:>5} {:>5} {:>4} {:>4} {:>5} {:>11} {:>11} {:>11} {:>11} {:>11} {:>11}",
         "N",
         "limbs",
         "dsize",
@@ -348,12 +392,13 @@ fn print_table(title: &str, rows: &[Row]) {
         "relin(ms)",
         "rescale(ms)",
         "full(ms)",
+        "full_fuse(ms)",
         "relinK(GB)"
     );
-    println!("{}", "-".repeat(105));
+    println!("{}", "-".repeat(117));
     for r in rows {
         println!(
-            "{:>7} {:>5} {:>5} {:>5} {:>4} {:>4} {:>5} {:>11.3} {:>11.3} {:>11.3} {:>11.3} {:>11.4}",
+            "{:>7} {:>5} {:>5} {:>5} {:>4} {:>4} {:>5} {:>11.3} {:>11.3} {:>11.3} {:>11.3} {:>11.3} {:>11.4}",
             r.n,
             r.limbs,
             r.dsize,
@@ -365,13 +410,15 @@ fn print_table(title: &str, rows: &[Row]) {
             r.relin_ms,
             r.rescale_ms,
             r.full_ms,
+            r.full_fused_ms,
             r.relin_key_gb
         );
     }
 }
 
-fn run_table<BE: Backend>(label: &str)
+fn run_table<BE>(label: &str)
 where
+    BE: Backend,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>

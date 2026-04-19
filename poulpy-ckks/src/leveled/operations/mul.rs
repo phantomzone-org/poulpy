@@ -332,12 +332,21 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
             rank: res.rank(),
         };
 
-        let lvl_0 = GLWETensor::bytes_of_from_infos(&glwe_layout);
-        let lvl_1 = self
-            .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
-            .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
+        let sequential = GLWETensor::bytes_of_from_infos(&glwe_layout)
+            + self
+                .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
+                .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
 
-        lvl_0 + lvl_1
+        // The fused rank-1 path runs without the caller-visible GLWETensor,
+        // but keeps rd0/rd1/rdp + res_dft live together; account for its
+        // peak so scratch sizing is conservative.
+        let fused = if res.rank().as_usize() == 1 {
+            self.glwe_mul_ct_rank1_fused_tmp_bytes(res, res, res, tsk)
+        } else {
+            0
+        };
+
+        sequential.max(fused)
     }
 
     fn ckks_mul_default(
@@ -354,29 +363,55 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
     {
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, a, b)?;
 
-        let tensor_layout = GLWELayout {
-            n: dst.n(),
-            base2k: dst.base2k(),
-            k: a.max_k().max(b.max_k()),
-            rank: dst.rank(),
-        };
-
-        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
-
         let a_ref = a.to_ref();
         let b_ref = b.to_ref();
-        self.glwe_tensor_apply(
-            cnv_offset,
-            &mut tmp,
-            &a_ref,
-            a.effective_k(),
-            &b_ref,
-            b.effective_k(),
-            scratch_1,
-        );
 
-        let mut dst_view = dst.to_mut();
-        self.glwe_tensor_relinearize(&mut dst_view, &tmp, tsk, tsk.size(), scratch_1);
+        // Rank-1 same-base fused path.  Aligned (cnv_offset multiple of
+        // base2k) skips the iDFT+NTT round-trip on the aa' diagonal.
+        // Non-aligned still does iDFT+normalize+NTT on rd1 but skips the
+        // GLWETensor buffer and runs the Karatsuba correction in DFT.
+        let fused_eligible = dst.rank().as_usize() == 1
+            && a.rank().as_usize() == 1
+            && b.rank().as_usize() == 1
+            && a.base2k() == b.base2k()
+            && a.base2k() == tsk.base2k()
+            && a.base2k() == dst.base2k();
+        if fused_eligible {
+            let mut dst_view = dst.to_mut();
+            self.glwe_mul_ct_rank1_fused(
+                cnv_offset,
+                &mut dst_view,
+                &a_ref,
+                a.effective_k(),
+                &b_ref,
+                b.effective_k(),
+                tsk,
+                tsk.size(),
+                scratch,
+            );
+        } else {
+            let tensor_layout = GLWELayout {
+                n: dst.n(),
+                base2k: dst.base2k(),
+                k: a.max_k().max(b.max_k()),
+                rank: dst.rank(),
+            };
+
+            let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+
+            self.glwe_tensor_apply(
+                cnv_offset,
+                &mut tmp,
+                &a_ref,
+                a.effective_k(),
+                &b_ref,
+                b.effective_k(),
+                scratch_1,
+            );
+
+            let mut dst_view = dst.to_mut();
+            self.glwe_tensor_relinearize(&mut dst_view, &tmp, tsk, tsk.size(), scratch_1);
+        }
 
         dst.meta.log_hom_rem = res_log_hom_rem;
         dst.meta.log_decimal = res_log_decimal;
@@ -395,6 +430,10 @@ pub trait CKKSMulOpsDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
+        // Note: the rank-1 fused path needs distinct `&a` / `&b` borrows.  For
+        // inplace we'd need to snapshot `dst` first, which adds a full-GLWE
+        // copy — defeating the fusion's savings on this shape.  Stick with
+        // the sequential tensor+relin pipeline here.
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, dst, a)?;
 
         let tensor_layout = GLWELayout {

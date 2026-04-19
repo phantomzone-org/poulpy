@@ -119,7 +119,9 @@ where
         b_cols_out: usize,
         b_size: usize,
     ) -> usize {
-        <B as HalImpl<B>>::vmp_apply_dft_to_dft_accumulate_tmp_bytes(self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size)
+        <B as HalImpl<B>>::vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
+        )
     }
 }
 
@@ -127,14 +129,8 @@ impl<B> VmpApplyDftToDftAccumulate<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
-    fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
-        &self,
-        res: &mut R,
-        a: &A,
-        b: &C,
-        limb_offset: usize,
-        scratch: &mut Scratch<B>,
-    ) where
+    fn vmp_apply_dft_to_dft_accumulate<R, A, C>(&self, res: &mut R, a: &A, b: &C, limb_offset: usize, scratch: &mut Scratch<B>)
+    where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>,
