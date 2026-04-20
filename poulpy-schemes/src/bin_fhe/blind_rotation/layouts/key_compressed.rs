@@ -101,10 +101,7 @@ impl<D: DataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKeyCompres
 
 impl<D: DataMut, BRT: BlindRotationAlgo> ReaderFrom for BlindRotationKeyCompressed<D, BRT> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        match Distribution::read_from(reader) {
-            Ok(dist) => self.dist = dist,
-            Err(e) => return Err(e),
-        }
+        self.dist = Distribution::read_from(reader)?;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
             return Err(std::io::Error::new(
