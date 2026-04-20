@@ -20,7 +20,8 @@ where
     }
 
     fn automorphism_key_infos(&self) -> GGLWELayout {
-        self.get(self.keys().next().unwrap()).unwrap().gglwe_layout()
+        let first_key = self.keys().min().copied().expect("automorphism key map is empty");
+        self.get(&first_key).unwrap().gglwe_layout()
     }
 }
 
