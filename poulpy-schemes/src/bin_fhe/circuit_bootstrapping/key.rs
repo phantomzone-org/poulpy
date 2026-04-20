@@ -275,7 +275,8 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
     }
 
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
-        let (_, atk) = self.atk.iter().next().expect("atk is empty");
+        let first_key = self.atk.keys().min().copied().expect("atk is empty");
+        let atk = self.atk.get(&first_key).unwrap();
         GLWEAutomorphismKeyLayout {
             n: atk.n(),
             base2k: atk.base2k(),
