@@ -928,12 +928,12 @@ where
         let vmp_scratch: usize = self.gglwe_product_dft_tmp_bytes(tsk_size, diag_dft_size, tsk);
         let norm_scratch: usize = VecZnx::bytes_of(self.n(), 1, res.size()) + self.vec_znx_big_normalize_tmp_bytes();
 
-        // Non-aligned path renormalizes rd1 via iDFT+NTT: one extra VecZnxDft + one VecZnx.
-        let nonaligned: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size) + VecZnx::bytes_of(self.n(), 1, diag_dft_size);
+        // rd1 renormalization via iDFT+NTT: one extra VecZnxDft + one VecZnx.
+        let rd1_renorm: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size) + VecZnx::bytes_of(self.n(), 1, diag_dft_size);
         let three_dft: usize = 3 * self.bytes_of_vec_znx_dft(1, diag_dft_size);
         let inner: usize = cnv_scratch.max(vmp_scratch).max(norm_scratch).max(prep_scratch);
 
-        prep + three_dft + nonaligned + res_dft + inner
+        prep + three_dft + rd1_renorm + res_dft + inner
     }
 
     fn glwe_mul_ct_rank1_fused<R, A, B, T>(
@@ -945,7 +945,7 @@ where
         b: &GLWE<B>,
         b_effective_k: usize,
         tsk: &GLWETensorKeyPrepared<T, BE>,
-        _tsk_size: usize,
+        tsk_size: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: DataMut,
@@ -1002,62 +1002,41 @@ where
         self.vec_znx_dft_sub_inplace(&mut rdp, 0, &rd0, 0);
         self.vec_znx_dft_sub_inplace(&mut rdp, 0, &rd1, 0);
 
-        // Aligned case (lsh == 0): feed rd1 straight to VMP, skipping one
-        // iDFT+NTT.  Non-aligned: renormalize rd1 first — VMP's gadget
-        // decomposition needs bounded limbs, a raw DFT-domain scalar won't do.
-        if cnv_offset_lo == 0 {
-            let (mut res_dft, scratch_v) = scratch_c.take_vec_znx_dft(self, cols, _tsk_size);
-            self.gglwe_product_dft(&mut res_dft, &rd1, &tsk.0, scratch_v);
+        // rd1 must be normalized before the VMP: the gadget product assumes
+        // |limb| ≤ base2k, and raw convolution limbs (~2·base2k + log N bits)
+        // blow up relin noise by ~2^base2k.
+        let (mut rd1_new, scratch_after_rd1) = scratch_c.take_vec_znx_dft(self, 1, diag_dft_size);
+        let rb1: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd1);
+        let (mut tmp_rd1, scratch_after_tmp_rd1) = scratch_after_rd1.take_vec_znx(self.n(), 1, diag_dft_size);
+        self.vec_znx_big_normalize(
+            &mut tmp_rd1,
+            key_base2k,
+            cnv_offset_lo,
+            0,
+            &rb1,
+            ab_base2k,
+            0,
+            scratch_after_tmp_rd1,
+        );
+        self.vec_znx_dft_apply(1, 0, &mut rd1_new, 0, &tmp_rd1, 0);
 
-            let mut res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_norm) = scratch_v.take_vec_znx(self.n(), 1, res.size());
+        let (mut res_dft, scratch_v) = scratch_after_tmp_rd1.take_vec_znx_dft(self, cols, tsk_size);
+        self.gglwe_product_dft(&mut res_dft, &rd1_new, &tsk.0, scratch_v);
 
-            let rb0: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd0);
-            self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rb0, ab_base2k, 0, scratch_norm);
-            self.vec_znx_big_add_small_assign(&mut res_big, 0, &tmp, 0);
+        let mut res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+        let (mut tmp, scratch_norm) = scratch_v.take_vec_znx(self.n(), 1, res.size());
 
-            let rbp: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rdp);
-            self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rbp, ab_base2k, 0, scratch_norm);
-            self.vec_znx_big_add_small_assign(&mut res_big, 1, &tmp, 0);
+        let rb0: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd0);
+        self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rb0, ab_base2k, 0, scratch_norm);
+        self.vec_znx_big_add_small_assign(&mut res_big, 0, &tmp, 0);
 
-            let res_view: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-            for i in 0..cols {
-                self.vec_znx_big_normalize(res_view.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_norm);
-            }
-        } else {
-            let (mut rd1_new, scratch_after_rd1) = scratch_c.take_vec_znx_dft(self, 1, diag_dft_size);
-            let rb1: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd1);
-            let (mut tmp_rd1, scratch_after_tmp_rd1) = scratch_after_rd1.take_vec_znx(self.n(), 1, diag_dft_size);
-            self.vec_znx_big_normalize(
-                &mut tmp_rd1,
-                key_base2k,
-                cnv_offset_lo,
-                0,
-                &rb1,
-                ab_base2k,
-                0,
-                scratch_after_tmp_rd1,
-            );
-            self.vec_znx_dft_apply(1, 0, &mut rd1_new, 0, &tmp_rd1, 0);
+        let rbp: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rdp);
+        self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rbp, ab_base2k, 0, scratch_norm);
+        self.vec_znx_big_add_small_assign(&mut res_big, 1, &tmp, 0);
 
-            let (mut res_dft, scratch_v) = scratch_after_tmp_rd1.take_vec_znx_dft(self, cols, _tsk_size);
-            self.gglwe_product_dft(&mut res_dft, &rd1_new, &tsk.0, scratch_v);
-
-            let mut res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_norm) = scratch_v.take_vec_znx(self.n(), 1, res.size());
-
-            let rb0: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rd0);
-            self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rb0, ab_base2k, 0, scratch_norm);
-            self.vec_znx_big_add_small_assign(&mut res_big, 0, &tmp, 0);
-
-            let rbp: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(rdp);
-            self.vec_znx_big_normalize(&mut tmp, key_base2k, cnv_offset_lo, 0, &rbp, ab_base2k, 0, scratch_norm);
-            self.vec_znx_big_add_small_assign(&mut res_big, 1, &tmp, 0);
-
-            let res_view: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-            for i in 0..cols {
-                self.vec_znx_big_normalize(res_view.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_norm);
-            }
+        let res_view: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        for i in 0..cols {
+            self.vec_znx_big_normalize(res_view.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_norm);
         }
     }
 }

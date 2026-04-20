@@ -209,8 +209,8 @@ pub trait GLWETensoring<BE: Backend> {
         B: GLWEInfos,
         T: GGLWEInfos;
 
-    /// Rank-1 fused `tensor + relinearize`; pipes the aa' diagonal straight
-    /// into the VMP for aligned `cnv_offset`, saving one iDFT+NTT round-trip.
+    /// Rank-1 fused `tensor + relinearize`: convolution and Karatsuba cross
+    /// term run in DFT, skipping the caller-visible GLWETensor.
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_ct_rank1_fused<R, A, B, T>(
         &self,
