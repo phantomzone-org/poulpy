@@ -101,10 +101,7 @@ impl GLWEPublicKey<Vec<u8>> {
 
 impl<D: DataMut> ReaderFrom for GLWEPublicKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        match Distribution::read_from(reader) {
-            Ok(dist) => self.dist = dist,
-            Err(e) => return Err(e),
-        }
+        self.dist = Distribution::read_from(reader)?;
         self.key.read_from(reader)
     }
 }

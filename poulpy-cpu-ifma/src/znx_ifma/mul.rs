@@ -3,6 +3,8 @@ use core::arch::x86_64::{
     _mm512_sra_epi64, _mm512_srli_epi64, _mm512_storeu_si512, _mm512_sub_epi64,
 };
 
+use super::znx_add_inplace_ifma;
+
 /// Multiply/divide by a power of two with rounding matching [poulpy_cpu_ref::reference::znx::znx_mul_power_of_two_ref].
 ///
 /// # Safety
@@ -192,5 +194,3 @@ pub unsafe fn znx_mul_add_power_of_two_ifma(k: i64, res: &mut [i64], a: &[i64]) 
         res[i] = res[i].wrapping_add((x + bias) >> kp);
     }
 }
-
-use super::znx_add_inplace_ifma;

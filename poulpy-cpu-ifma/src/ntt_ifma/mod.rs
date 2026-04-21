@@ -24,7 +24,6 @@ pub(crate) mod convolution;
 pub(crate) mod mat_vec_ifma;
 mod module;
 mod prim;
-mod svp;
 mod vec_znx_big_avx512;
 pub(crate) mod vec_znx_dft;
 pub(crate) mod vmp;

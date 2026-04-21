@@ -7,8 +7,7 @@ use crate::leveled::tests::test_suite::{NTT120_PARAMS_ALIGNED, NTT120_PARAMS_F64
 const ATK_ROTATIONS: &[i64] = &[1, 7];
 
 static CTX: LazyLock<TestContext<NTTIfmaRef>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS_F64, ATK_ROTATIONS));
-static CTX_ALIGNED: LazyLock<TestContext<NTTIfmaRef>> =
-    LazyLock::new(|| TestContext::new(NTT120_PARAMS_ALIGNED, ATK_ROTATIONS));
+static CTX_ALIGNED: LazyLock<TestContext<NTTIfmaRef>> = LazyLock::new(|| TestContext::new(NTT120_PARAMS_ALIGNED, ATK_ROTATIONS));
 
 use anyhow::Result;
 

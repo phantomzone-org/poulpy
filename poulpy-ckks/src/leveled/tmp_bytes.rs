@@ -14,6 +14,7 @@ use crate::{
         },
         rescale::CKKSRescaleOps,
     },
+    oep::CKKSImpl,
 };
 use poulpy_core::{
     GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEMulConst, GLWEMulPlain, GLWERotate, GLWEShift, GLWETensorKeyEncryptSk,
@@ -75,7 +76,7 @@ pub trait CKKSAllOpsTmpBytes<BE: Backend> {
         A: GGLWEInfos;
 }
 
-impl<BE: Backend> CKKSAllOpsTmpBytes<BE> for Module<BE>
+impl<BE: Backend + CKKSImpl<BE>> CKKSAllOpsTmpBytes<BE> for Module<BE>
 where
     Self: CKKSEncrypt<BE>
         + CKKSDecrypt<BE>

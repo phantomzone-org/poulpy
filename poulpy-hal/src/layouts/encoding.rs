@@ -1,4 +1,4 @@
-use dashu_float::{Context, FBig, ops::DivRemEuclid, round::mode::HalfEven};
+use dashu_float::{Context, FBig, round::mode::HalfEven};
 use itertools::izip;
 
 use crate::layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
@@ -310,7 +310,8 @@ impl<D: DataRef> VecZnx<D> {
 #[inline]
 pub fn div_round_i64(a: i64, b: i64) -> i64 {
     assert!(b != 0, "division by zero");
-    let (div, rem) = a.div_rem_euclid(b);
+    let div = a / b;
+    let rem = a % b;
     if (2 * rem.abs()) >= b.abs() {
         div + a.signum() * b.signum()
     } else {
@@ -321,7 +322,8 @@ pub fn div_round_i64(a: i64, b: i64) -> i64 {
 #[inline]
 pub fn div_round_i128(a: i128, b: i128) -> i128 {
     assert!(b != 0, "division by zero");
-    let (div, rem) = a.div_rem_euclid(b);
+    let div = a / b;
+    let rem = a % b;
     if (2 * rem.abs()) >= b.abs() {
         div + a.signum() * b.signum()
     } else {

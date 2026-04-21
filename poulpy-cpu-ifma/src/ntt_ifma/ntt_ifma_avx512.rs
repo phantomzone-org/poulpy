@@ -775,26 +775,6 @@ mod tests {
     }
 
     #[test]
-    fn ntt_avx512_vs_ref_small_passes() {
-        // Test small sizes to isolate the bug
-        for log_n in 1..=7usize {
-            let n = 1 << log_n;
-            let fwd = NttIfmaTable::<Primes40>::new(n);
-            let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
-            let mut data_avx = vec![0u64; 4 * n];
-            let mut data_ref = vec![0u64; 4 * n];
-            b_ifma_from_znx64_ref(n, &mut data_avx, &coeffs);
-            b_ifma_from_znx64_ref(n, &mut data_ref, &coeffs);
-            unsafe { ntt_ifma_avx512::<Primes40>(&fwd, &mut data_avx) };
-            ntt_ifma_ref::<Primes40>(&fwd, &mut data_ref);
-            for i in 0..4 * n {
-                assert_eq!(data_avx[i], data_ref[i], "n={n} idx={i}");
-            }
-            eprintln!("  forward n={n} OK");
-        }
-    }
-
-    #[test]
     fn ntt_avx512_vs_ref() {
         for log_n in 1..=10usize {
             let n = 1 << log_n;
