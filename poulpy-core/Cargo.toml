@@ -14,7 +14,6 @@ enable-avx = []
 
 [dependencies]
 dashu-float = {workspace = true}
-criterion = {workspace = true}
 poulpy-hal = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
