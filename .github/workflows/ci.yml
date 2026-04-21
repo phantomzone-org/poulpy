@@ -16,9 +16,10 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install Rust nightly
-      uses: dtolnay/rust-toolchain@nightly
+    - name: Install pinned Rust nightly
+      uses: dtolnay/rust-toolchain@master
       with:
+        toolchain: nightly-2026-03-21
         components: clippy, rustfmt
 
     - name: Cache cargo deps

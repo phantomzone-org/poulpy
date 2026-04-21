@@ -1,4 +1,5 @@
 use anyhow::Result;
+use itertools::Itertools;
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution,
     ScratchTakeCore,
@@ -245,8 +246,10 @@ where
 
         assert!(sk_glwe.dist() != &Distribution::NONE);
 
-        for (p, atk) in res.atk.iter_mut() {
-            self.glwe_automorphism_key_encrypt_sk(atk, *p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
+        let gal_els: Vec<i64> = res.atk.keys().sorted().copied().collect();
+        for p in gal_els {
+            let key = res.atk.get_mut(&p).unwrap();
+            self.glwe_automorphism_key_encrypt_sk(key, p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
         }
 
         let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
@@ -272,7 +275,8 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
     }
 
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
-        let (_, atk) = self.atk.iter().next().expect("atk is empty");
+        let first_key = self.atk.keys().min().copied().expect("atk is empty");
+        let atk = self.atk.get(&first_key).unwrap();
         GLWEAutomorphismKeyLayout {
             n: atk.n(),
             base2k: atk.base2k(),

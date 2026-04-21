@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use poulpy_core::{
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos,
@@ -109,10 +110,11 @@ where
         res.brk.prepare(self, &other.brk, scratch);
         self.gglwe_to_ggsw_key_prepare(&mut res.tsk, &other.tsk, scratch);
 
-        for (k, a) in res.atk.iter_mut() {
+        let gal_els: Vec<i64> = res.atk.keys().sorted().copied().collect();
+        for k in gal_els {
             self.glwe_automorphism_key_prepare(
-                a,
-                other.atk.get(k).unwrap_or_else(|| {
+                res.atk.get_mut(&k).unwrap(),
+                other.atk.get(&k).unwrap_or_else(|| {
                     panic!("Galois element {k} is present in the prepared key but missing from the source key")
                 }),
                 scratch,
@@ -165,7 +167,8 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
     }
 
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
-        let (_, atk) = self.atk.iter().next().expect("atk is empty");
+        let first_key = self.atk.keys().min().copied().expect("atk is empty");
+        let atk = self.atk.get(&first_key).unwrap();
         GLWEAutomorphismKeyLayout {
             n: atk.n(),
             base2k: atk.base2k(),
