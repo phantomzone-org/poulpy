@@ -7,6 +7,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+use crate::{layouts::FillUniform, source::Source};
+
 pub fn vec_znx_normalize_tmp_bytes(n: usize) -> usize {
     3 * n * size_of::<i64>()
 }
