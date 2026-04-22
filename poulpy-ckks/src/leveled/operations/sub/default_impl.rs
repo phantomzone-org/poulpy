@@ -1,6 +1,6 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWEShift, GLWESub, ScratchTakeCore,
+    GLWENormalize, GLWEShift, GLWESub, ScratchTakeCore,
     layouts::{GLWEInfos, GLWEPlaintext, GLWEPlaintextLayout, LWEInfos},
 };
 use poulpy_hal::{
@@ -24,14 +24,16 @@ use crate::{
 pub(crate) trait CKKSSubDefault<BE: Backend> {
     fn ckks_sub_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
-        self.glwe_shift_tmp_bytes().max(self.vec_znx_rsh_tmp_bytes())
+        self.glwe_shift_tmp_bytes()
+            .max(self.vec_znx_rsh_tmp_bytes())
+            .max(self.glwe_normalize_tmp_bytes())
     }
 
     fn ckks_sub_pt_vec_znx_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
         self.ckks_sub_tmp_bytes_default()
     }
@@ -40,7 +42,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: ModuleN + GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: ModuleN + GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
         let b_infos = GLWEPlaintextLayout {
             n: self.n().into(),
@@ -52,9 +54,9 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
 
     fn ckks_sub_const_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE>,
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
     {
-        self.glwe_shift_tmp_bytes()
+        self.glwe_shift_tmp_bytes().max(self.glwe_normalize_tmp_bytes())
     }
 
     fn ckks_sub_default(
@@ -65,7 +67,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE>,
+        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let offset = dst.offset_binary(a, b);
@@ -80,6 +82,8 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
             self.glwe_lsh_sub(dst, b, offset, scratch);
         }
 
+        self.glwe_normalize_inplace(dst, scratch);
+
         let log_hom_rem = checked_log_hom_rem_sub("sub", a.log_hom_rem().min(b.log_hom_rem()), offset)?;
         dst.meta.log_decimal = a.log_decimal().max(b.log_decimal());
         dst.meta.log_hom_rem = log_hom_rem;
@@ -93,7 +97,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE>,
+        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let dst_log_hom_rem = dst.log_hom_rem();
@@ -107,6 +111,8 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
             self.glwe_sub_inplace(dst, a);
         }
 
+        self.glwe_normalize_inplace(dst, scratch);
+
         dst.meta.log_hom_rem = dst_log_hom_rem.min(a.log_hom_rem());
         Ok(())
     }
@@ -119,7 +125,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
+        Self: VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let offset = dst.offset_unary(a);
@@ -137,10 +143,11 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + CKKSPlaintextZnxDefault<BE>,
+        Self: VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         CKKSPlaintextZnxDefault::ckks_sub_pt_vec_znx_default(self, dst, pt_znx, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
@@ -153,7 +160,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
+        Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
@@ -176,7 +183,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + VecZnxRshSub<BE> + CKKSPlaintextZnxDefault<BE>,
+        Self: ModuleN + VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
@@ -199,7 +206,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE>,
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let offset = dst.offset_unary(a);
@@ -213,9 +220,10 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
-        _scratch: &mut Scratch<BE>,
+        scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         if cst_znx.re().is_none() && cst_znx.im().is_none() {
@@ -239,6 +247,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
                 dst.data_mut().at_mut(0, limb)[n / 2] -= *digit;
             }
         }
+        self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
@@ -251,7 +260,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE>,
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
@@ -275,6 +284,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
