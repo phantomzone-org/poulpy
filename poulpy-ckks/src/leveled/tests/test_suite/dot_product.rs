@@ -31,7 +31,7 @@ const N: usize = 3;
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
     let ct_infos = ctx.params.glwe_layout();
     let tsk_infos = ctx.params.tsk_layout();
-    let ct_bytes = ctx.module.ckks_dot_product_ct_tmp_bytes(&ct_infos, &tsk_infos);
+    let ct_bytes = ctx.module.ckks_dot_product_ct_tmp_bytes(N, &ct_infos, &tsk_infos);
     let pt_znx_bytes = ctx
         .module
         .ckks_dot_product_pt_vec_znx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());

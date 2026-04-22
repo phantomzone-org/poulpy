@@ -22,15 +22,18 @@ use crate::{
             CKKSPlaintextVecZnx,
         },
     },
-    leveled::operations::{
-        add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
-        mul::CKKSMulOps,
+    leveled::{
+        operations::{
+            add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
+            mul::CKKSMulOps,
+        },
+        rescale::CKKSRescaleOps,
     },
     oep::CKKSImpl,
 };
 
 pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
-    fn ckks_dot_product_ct_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
+    fn ckks_dot_product_ct_tmp_bytes<R, T>(&self, n: usize, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
@@ -169,16 +172,54 @@ fn assert_accumulation_fits<D: poulpy_hal::layouts::Data>(op: &'static str, dst:
     );
 }
 
+/// Shared accumulation loop: `dst += Σ_{i≥1} mul_term(i)`, finished with a
+/// single trailing normalize. `dst` must already hold the first product.
+fn accumulate_unnormalized<BE, D, F>(
+    module: &Module<BE>,
+    dst: &mut CKKSCiphertext<D>,
+    n: usize,
+    scratch: &mut Scratch<BE>,
+    mut mul_term_into_tmp: F,
+) -> Result<()>
+where
+    BE: Backend + CKKSImpl<BE>,
+    D: DataMut,
+    Module<BE>: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsWithoutNormalization<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    F: FnMut(&mut CKKSCiphertext<&mut [u8]>, usize, &mut Scratch<BE>) -> Result<()>,
+{
+    if n <= 1 {
+        return Ok(());
+    }
+    let layout = dst.glwe_layout();
+    let (tmp_glwe, scratch_r) = scratch.take_glwe(&layout);
+    let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
+    for i in 1..n {
+        mul_term_into_tmp(&mut tmp, i, scratch_r)?;
+        unsafe {
+            module.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
+        }
+    }
+    module.glwe_normalize_inplace(dst, scratch_r);
+    Ok(())
+}
+
 impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
-    fn ckks_dot_product_ct_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
+    fn ckks_dot_product_ct_tmp_bytes<R, T>(&self, n: usize, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
         Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
     {
-        // Deferred-relinearization path: two GLWETensor slots (accumulator +
-        // per-pair scratch) plus the heavier of a tensor apply and a
-        // relinearize.
+        let mul_scratch: usize = self.ckks_mul_tmp_bytes(res, tsk);
+        if n <= 1 {
+            return mul_scratch;
+        }
+        let ct_bytes: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(res);
+        // Non-uniform `log_decimal` fallback: one tmp ciphertext + per-pair mul or add.
+        let fallback: usize = ct_bytes + mul_scratch.max(self.ckks_add_tmp_bytes());
+        // Fast path (worst case: both sides unaligned): `n` rescale buffers per
+        // side + two tensor buffers + inner.
         let tensor_layout = GLWELayout {
             n: res.n(),
             base2k: res.base2k(),
@@ -187,9 +228,11 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         };
         let tensor_bytes: usize = GLWETensor::bytes_of_from_infos(&tensor_layout);
         let inner: usize = self
-            .glwe_tensor_apply_tmp_bytes(&tensor_layout, res, res)
+            .ckks_rescale_tmp_bytes()
+            .max(self.glwe_tensor_apply_tmp_bytes(&tensor_layout, res, res))
             .max(self.glwe_tensor_relinearize_tmp_bytes(res, &tensor_layout, tsk));
-        2 * tensor_bytes + inner
+        let fast: usize = 2 * n * ct_bytes + 2 * tensor_bytes + inner;
+        fallback.max(fast)
     }
 
     fn ckks_dot_product_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
@@ -242,56 +285,91 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         let n: usize = a.len();
         assert_accumulation_fits("ckks_dot_product_ct", dst, n);
 
-        // Single-term fast path: one mul is cheaper than tensor + relinearize.
         if n == 1 {
             return self.ckks_mul(dst, a[0], b[0], tsk, scratch);
         }
 
-        // Deferred relinearization requires every pair to produce a tensor
-        // at the same semantic scale. The shift logic in `ckks_add_inplace`
-        // compensates for mismatched `log_hom_rem` in the per-pair loop; we
-        // don't have that in the tensor domain, so if inputs are not all
-        // aligned we fall back to the correct-but-slower path.
-        let aligned = a.iter().zip(b.iter()).all(|(ai, bi)| {
-            ai.log_hom_rem() == a[0].log_hom_rem()
-                && bi.log_hom_rem() == b[0].log_hom_rem()
-                && ai.log_decimal() == a[0].log_decimal()
-                && bi.log_decimal() == b[0].log_decimal()
-        });
+        // The deferred-relinearize path sums per-pair tensors termwise in ℤ,
+        // so every pair must produce a tensor at the same semantic scale.
+        // Heterogeneous `log_hom_rem` is handled by rescaling each side to
+        // its per-side minimum up front (precision-neutral vs. the per-pair
+        // `ckks_mul + ckks_add_inplace` baseline); mismatched `log_decimal`
+        // within a side has no such equalization and falls back.
+        let a_min_lhr: usize = a.iter().map(|c| c.log_hom_rem()).min().unwrap();
+        let b_min_lhr: usize = b.iter().map(|c| c.log_hom_rem()).min().unwrap();
+        let a_aligned: bool = a
+            .iter()
+            .all(|c| c.log_hom_rem() == a_min_lhr && c.log_decimal() == a[0].log_decimal());
+        let b_aligned: bool = b
+            .iter()
+            .all(|c| c.log_hom_rem() == b_min_lhr && c.log_decimal() == b[0].log_decimal());
+        let uniform_ld =
+            a.iter().all(|c| c.log_decimal() == a[0].log_decimal()) && b.iter().all(|c| c.log_decimal() == b[0].log_decimal());
 
-        if !aligned {
+        if !uniform_ld {
             self.ckks_mul(dst, a[0], b[0], tsk, scratch)?;
-            let (tmp_glwe, scratch_r) = scratch.take_glwe(&dst.glwe_layout());
-            let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
-            for i in 1..n {
-                self.ckks_mul(&mut tmp, a[i], b[i], tsk, scratch_r)?;
-                // SAFETY: the trailing glwe_normalize_inplace restores
-                // K-normalization.
-                unsafe {
-                    self.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
-                }
-            }
-            self.glwe_normalize_inplace(dst, scratch_r);
-            return Ok(());
+            return accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| self.ckks_mul(tmp, a[i], b[i], tsk, s));
         }
 
-        // Aligned path: compute each term's tensor product, accumulate the
-        // tensors in ℤ, then relinearize the accumulator once. Saves `n − 1`
-        // relinearizations compared to the per-pair `ckks_mul` loop.
-        let dst_max_k: usize = dst.max_k().as_usize();
-        let lhr = checked_mul_ct_log_hom_rem(
-            "dot_product_ct",
-            a[0].log_hom_rem(),
-            b[0].log_hom_rem(),
-            a[0].log_decimal(),
-            b[0].log_decimal(),
-        )?;
-        let res_log_decimal: usize = a[0].log_decimal().min(b[0].log_decimal());
-        let res_offset: usize = (lhr + res_log_decimal).saturating_sub(dst_max_k);
-        let res_log_hom_rem: usize = checked_log_hom_rem_sub("dot_product_ct", lhr, res_offset)?;
-        let cnv_offset: usize = a[0].effective_k().max(b[0].effective_k()) + res_offset;
+        let a_ld: usize = a[0].log_decimal();
+        let b_ld: usize = b[0].log_decimal();
+        let a_target_eff_k: usize = a_min_lhr + a_ld;
+        let b_target_eff_k: usize = b_min_lhr + b_ld;
 
-        let tensor_max_k: usize = a[0].max_k().as_usize().max(b[0].max_k().as_usize());
+        let a_layout = GLWELayout {
+            n: dst.n(),
+            base2k: dst.base2k(),
+            k: TorusPrecision(a_target_eff_k as u32),
+            rank: dst.rank(),
+        };
+        let b_layout = GLWELayout {
+            n: dst.n(),
+            base2k: dst.base2k(),
+            k: TorusPrecision(b_target_eff_k as u32),
+            rank: dst.rank(),
+        };
+
+        let (a_buf_raw, scratch_aa) = if a_aligned {
+            (Vec::new(), &mut *scratch)
+        } else {
+            scratch.take_glwe_slice(n, &a_layout)
+        };
+        let (b_buf_raw, scratch_ab) = if b_aligned {
+            (Vec::new(), scratch_aa)
+        } else {
+            scratch_aa.take_glwe_slice(n, &b_layout)
+        };
+
+        let mut a_buf: Vec<CKKSCiphertext<&mut [u8]>> = a_buf_raw
+            .into_iter()
+            .map(|g| CKKSCiphertext::from_inner(g, CKKSMeta::default()))
+            .collect();
+        let mut b_buf: Vec<CKKSCiphertext<&mut [u8]>> = b_buf_raw
+            .into_iter()
+            .map(|g| CKKSCiphertext::from_inner(g, CKKSMeta::default()))
+            .collect();
+
+        if !a_aligned {
+            for (i, ai) in a.iter().enumerate() {
+                let shift = ai.log_hom_rem() - a_min_lhr;
+                self.ckks_rescale(&mut a_buf[i], shift, *ai, scratch_ab)?;
+            }
+        }
+        if !b_aligned {
+            for (i, bi) in b.iter().enumerate() {
+                let shift = bi.log_hom_rem() - b_min_lhr;
+                self.ckks_rescale(&mut b_buf[i], shift, *bi, scratch_ab)?;
+            }
+        }
+
+        let dst_max_k: usize = dst.max_k().as_usize();
+        let res_log_decimal: usize = a_ld.min(b_ld);
+        let lhr0: usize = checked_mul_ct_log_hom_rem("dot_product_ct", a_min_lhr, b_min_lhr, a_ld, b_ld)?;
+        let res_offset: usize = (lhr0 + res_log_decimal).saturating_sub(dst_max_k);
+        let res_log_hom_rem: usize = checked_log_hom_rem_sub("dot_product_ct", lhr0, res_offset)?;
+        let cnv_offset: usize = a_target_eff_k.max(b_target_eff_k) + res_offset;
+
+        let tensor_max_k: usize = a_target_eff_k.max(b_target_eff_k);
         let tensor_layout = GLWELayout {
             n: dst.n(),
             base2k: dst.base2k(),
@@ -299,30 +377,32 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             rank: dst.rank(),
         };
 
-        let (mut acc_tensor, scratch_a) = scratch.take_glwe_tensor(&tensor_layout);
-        let (mut tmp_tensor, scratch_b) = scratch_a.take_glwe_tensor(&tensor_layout);
+        let (mut acc_tensor, scratch_t1) = scratch_ab.take_glwe_tensor(&tensor_layout);
+        let (mut tmp_tensor, scratch_t2) = scratch_t1.take_glwe_tensor(&tensor_layout);
 
         let pairs: usize = ((acc_tensor.rank().as_usize() + 1) * (acc_tensor.rank().as_usize() + 2)) / 2;
         for i in 0..pairs {
             self.vec_znx_zero(acc_tensor.data_mut(), i);
         }
 
-        for (ai, bi) in a.iter().zip(b.iter()) {
+        for i in 0..n {
+            let ai_ref: GLWE<&[u8]> = if a_aligned { a[i].to_ref() } else { a_buf[i].to_ref() };
+            let bi_ref: GLWE<&[u8]> = if b_aligned { b[i].to_ref() } else { b_buf[i].to_ref() };
             self.glwe_tensor_apply(
                 cnv_offset,
                 &mut tmp_tensor,
-                &ai.to_ref(),
-                ai.effective_k(),
-                &bi.to_ref(),
-                bi.effective_k(),
-                scratch_b,
+                &ai_ref,
+                a_target_eff_k,
+                &bi_ref,
+                b_target_eff_k,
+                scratch_t2,
             );
             for col in 0..pairs {
                 self.vec_znx_add_assign(acc_tensor.data_mut(), col, tmp_tensor.data(), col);
             }
         }
 
-        self.glwe_tensor_relinearize(&mut dst.to_mut(), &acc_tensor, tsk, tsk.size(), scratch_b);
+        self.glwe_tensor_relinearize(&mut dst.to_mut(), &acc_tensor, tsk, tsk.size(), scratch_t2);
         dst.meta.log_hom_rem = res_log_hom_rem;
         dst.meta.log_decimal = res_log_decimal;
         Ok(())
@@ -349,19 +429,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         let n: usize = a.len();
         assert_accumulation_fits("ckks_dot_product_pt_vec_znx", dst, n);
         self.ckks_mul_pt_vec_znx(dst, a[0], b[0], scratch)?;
-        if n == 1 {
-            return Ok(());
-        }
-        let (tmp_glwe, scratch_r) = scratch.take_glwe(&dst.glwe_layout());
-        let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
-        for i in 1..n {
-            self.ckks_mul_pt_vec_znx(&mut tmp, a[i], b[i], scratch_r)?;
-            unsafe {
-                self.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
-            }
-        }
-        self.glwe_normalize_inplace(dst, scratch_r);
-        Ok(())
+        accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
+            self.ckks_mul_pt_vec_znx(tmp, a[i], b[i], s)
+        })
     }
 
     fn ckks_dot_product_pt_vec_rnx<D: DataRef, F>(
@@ -388,19 +458,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         let n: usize = a.len();
         assert_accumulation_fits("ckks_dot_product_pt_vec_rnx", dst, n);
         self.ckks_mul_pt_vec_rnx(dst, a[0], b[0], prec, scratch)?;
-        if n == 1 {
-            return Ok(());
-        }
-        let (tmp_glwe, scratch_r) = scratch.take_glwe(&dst.glwe_layout());
-        let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
-        for i in 1..n {
-            self.ckks_mul_pt_vec_rnx(&mut tmp, a[i], b[i], prec, scratch_r)?;
-            unsafe {
-                self.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
-            }
-        }
-        self.glwe_normalize_inplace(dst, scratch_r);
-        Ok(())
+        accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
+            self.ckks_mul_pt_vec_rnx(tmp, a[i], b[i], prec, s)
+        })
     }
 
     fn ckks_dot_product_const_znx<D: DataRef>(
@@ -424,19 +484,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         let n: usize = a.len();
         assert_accumulation_fits("ckks_dot_product_const_znx", dst, n);
         self.ckks_mul_pt_const_znx(dst, a[0], b[0], scratch)?;
-        if n == 1 {
-            return Ok(());
-        }
-        let (tmp_glwe, scratch_r) = scratch.take_glwe(&dst.glwe_layout());
-        let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
-        for i in 1..n {
-            self.ckks_mul_pt_const_znx(&mut tmp, a[i], b[i], scratch_r)?;
-            unsafe {
-                self.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
-            }
-        }
-        self.glwe_normalize_inplace(dst, scratch_r);
-        Ok(())
+        accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
+            self.ckks_mul_pt_const_znx(tmp, a[i], b[i], s)
+        })
     }
 
     fn ckks_dot_product_const_rnx<D: DataRef, F>(
@@ -462,18 +512,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         let n: usize = a.len();
         assert_accumulation_fits("ckks_dot_product_const_rnx", dst, n);
         self.ckks_mul_pt_const_rnx(dst, a[0], b[0], prec, scratch)?;
-        if n == 1 {
-            return Ok(());
-        }
-        let (tmp_glwe, scratch_r) = scratch.take_glwe(&dst.glwe_layout());
-        let mut tmp: CKKSCiphertext<&mut [u8]> = CKKSCiphertext::from_inner(tmp_glwe, CKKSMeta::default());
-        for i in 1..n {
-            self.ckks_mul_pt_const_rnx(&mut tmp, a[i], b[i], prec, scratch_r)?;
-            unsafe {
-                self.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
-            }
-        }
-        self.glwe_normalize_inplace(dst, scratch_r);
-        Ok(())
+        accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
+            self.ckks_mul_pt_const_rnx(tmp, a[i], b[i], prec, s)
+        })
     }
 }
