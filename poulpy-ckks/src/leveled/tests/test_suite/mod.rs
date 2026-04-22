@@ -263,6 +263,26 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::add::test_add_pt_rnx_smaller_output
             );
             run_test!(
+                add_ct_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_ct_aligned_without_normalization
+            );
+            run_test!(
+                add_ct_inplace_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_ct_inplace_aligned_without_normalization
+            );
+            run_test!(
+                add_pt_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_pt_znx_aligned_without_normalization
+            );
+            run_test!(
+                add_pt_rnx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_pt_rnx_aligned_without_normalization
+            );
+            run_test!(
+                add_const_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_const_znx_aligned_without_normalization
+            );
+            run_test!(
                 sub_ct_aligned,
                 $crate::leveled::tests::test_suite::sub::test_sub_ct_aligned
             );
@@ -323,6 +343,26 @@ macro_rules! ckks_backend_test_suite {
             run_test!(
                 sub_const_znx_aligned,
                 $crate::leveled::tests::test_suite::sub::test_sub_const_znx_aligned
+            );
+            run_test!(
+                sub_ct_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_ct_aligned_without_normalization
+            );
+            run_test!(
+                sub_ct_inplace_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_ct_inplace_aligned_without_normalization
+            );
+            run_test!(
+                sub_pt_znx_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_pt_znx_without_normalization
+            );
+            run_test!(
+                sub_pt_rnx_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_pt_rnx_without_normalization
+            );
+            run_test!(
+                sub_const_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_const_znx_aligned_without_normalization
             );
             run_test_result!(neg, $crate::leveled::tests::test_suite::neg::test_neg_aligned);
             run_test_result!(
@@ -516,6 +556,7 @@ macro_rules! ckks_backend_test_suite {
 pub use crate::ckks_backend_test_suite;
 
 pub mod add;
+pub mod add_without_normalization;
 pub mod composition;
 pub mod conjugate;
 pub mod encryption;
@@ -526,3 +567,4 @@ pub mod neg;
 pub mod pow2;
 pub mod rotate;
 pub mod sub;
+pub mod sub_without_normalization;
