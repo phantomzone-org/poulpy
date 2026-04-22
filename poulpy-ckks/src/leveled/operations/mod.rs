@@ -16,6 +16,7 @@
 //! | [`conjugate`] | Complex conjugation via automorphism (Galois element `-1`) |
 
 pub mod add;
+pub mod composite;
 pub mod conjugate;
 pub mod mul;
 pub mod neg;
