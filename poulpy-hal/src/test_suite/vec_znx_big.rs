@@ -869,6 +869,144 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
     }
 }
 
+pub fn test_vec_znx_big_normalize_fused<BR: Backend, BT: Backend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
+    Module<BT>: VecZnxBigAlloc<BT> + VecZnxBigFromSmall<BT> + VecZnxBigNormalize<BT> + VecZnxBigNormalizeTmpBytes,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+{
+    let base2k = params.base2k;
+    assert_eq!(module_ref.n(), module_test.n());
+    let n: usize = module_ref.n();
+
+    let mut source: Source = Source::new([1u8; 32]);
+    let cols: usize = 2;
+
+    let mut scratch_ref: ScratchOwned<BR> = ScratchOwned::alloc(module_ref.vec_znx_big_normalize_tmp_bytes());
+    let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
+
+    for a_size in [1, 2, 3, 4] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
+        a.fill_uniform(63, &mut source);
+
+        let mut a_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_big_alloc(cols, a_size);
+        let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
+        for j in 0..cols {
+            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+        }
+
+        for res_size in [1, 2, 3, 4] {
+            for res_offset in -(base2k as i64)..=(base2k as i64) {
+                let mut base_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                let mut base_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                base_ref.fill_uniform(base2k, &mut source);
+                base_test.data_mut().copy_from_slice(&base_ref.data);
+
+                let mut normalized_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                let mut normalized_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+                module_ref.vec_znx_big_normalize_into(
+                    &mut normalized_ref,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_ref,
+                    base2k,
+                    0,
+                    scratch_ref.borrow(),
+                );
+                module_test.vec_znx_big_normalize_into(
+                    &mut normalized_test,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_test,
+                    base2k,
+                    0,
+                    scratch_test.borrow(),
+                );
+                assert_eq!(normalized_ref, normalized_test);
+
+                let mut add_ref = base_ref.clone();
+                let mut add_test = base_test.clone();
+                module_ref.vec_znx_big_normalize_add_assign(
+                    &mut add_ref,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_ref,
+                    base2k,
+                    0,
+                    scratch_ref.borrow(),
+                );
+                module_test.vec_znx_big_normalize_add_assign(
+                    &mut add_test,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_test,
+                    base2k,
+                    0,
+                    scratch_test.borrow(),
+                );
+                assert_eq!(add_ref, add_test);
+
+                let mut sub_ref = base_ref.clone();
+                let mut sub_test = base_test.clone();
+                module_ref.vec_znx_big_normalize_sub_assign(
+                    &mut sub_ref,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_ref,
+                    base2k,
+                    0,
+                    scratch_ref.borrow(),
+                );
+                module_test.vec_znx_big_normalize_sub_assign(
+                    &mut sub_test,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_test,
+                    base2k,
+                    0,
+                    scratch_test.borrow(),
+                );
+                assert_eq!(sub_ref, sub_test);
+
+                let mut neg_ref = base_ref;
+                let mut neg_test = base_test;
+                module_ref.vec_znx_big_normalize_negate(
+                    &mut neg_ref,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_ref,
+                    base2k,
+                    0,
+                    scratch_ref.borrow(),
+                );
+                module_test.vec_znx_big_normalize_negate(
+                    &mut neg_test,
+                    base2k,
+                    res_offset,
+                    0,
+                    &a_test,
+                    base2k,
+                    0,
+                    scratch_test.borrow(),
+                );
+                assert_eq!(neg_ref, neg_test);
+            }
+        }
+    }
+}
+
 pub fn test_vec_znx_big_sub<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>:

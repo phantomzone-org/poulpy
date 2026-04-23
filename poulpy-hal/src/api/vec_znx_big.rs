@@ -1,5 +1,8 @@
 use crate::{
-    layouts::{Backend, NoiseInfos, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
+    layouts::{
+        Backend, NoiseInfos, Scratch, VecZnx, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxView,
+        ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -167,6 +170,24 @@ pub trait VecZnxBigNormalizeTmpBytes {
 /// Normalizes a [`VecZnxBig`](crate::layouts::VecZnxBig) into a coefficient-domain
 /// [`VecZnx`](crate::layouts::VecZnx) with the target base and offset.
 pub trait VecZnxBigNormalize<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_into<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        self.vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch);
+    }
+
     fn vec_znx_big_normalize<R, A>(
         &self,
         res: &mut R,
@@ -180,6 +201,94 @@ pub trait VecZnxBigNormalize<B: Backend> {
     ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_add_assign<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        // TODO: Override in backends to normalize directly into `res` without a temporary.
+        let (n, size) = {
+            let res_ref = res.to_mut();
+            (res_ref.n, res_ref.size)
+        };
+
+        let mut tmp = VecZnx::alloc(n, 1, size);
+        self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset, 0, a, a_base2k, a_col, scratch);
+
+        let mut res_ref = res.to_mut();
+        for j in 0..size {
+            for (ri, ti) in res_ref.at_mut(res_col, j).iter_mut().zip(tmp.at(0, j).iter()) {
+                *ri = ri.wrapping_add(*ti);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_sub_assign<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        // TODO: Override in backends to normalize directly into `res` without a temporary.
+        let (n, size) = {
+            let res_ref = res.to_mut();
+            (res_ref.n, res_ref.size)
+        };
+
+        let mut tmp = VecZnx::alloc(n, 1, size);
+        self.vec_znx_big_normalize(&mut tmp, res_base2k, res_offset, 0, a, a_base2k, a_col, scratch);
+
+        let mut res_ref = res.to_mut();
+        for j in 0..size {
+            for (ri, ti) in res_ref.at_mut(res_col, j).iter_mut().zip(tmp.at(0, j).iter()) {
+                *ri = ri.wrapping_sub(*ti);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_negate<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        self.vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch);
+        let mut res_ref = res.to_mut();
+        for j in 0..res_ref.size {
+            for ri in res_ref.at_mut(res_col, j) {
+                *ri = ri.wrapping_neg();
+            }
+        }
+    }
 }
 
 /// Returns scratch bytes required for in-place automorphism on [`VecZnxBig`](crate::layouts::VecZnxBig).
