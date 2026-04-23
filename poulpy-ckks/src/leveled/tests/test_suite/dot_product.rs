@@ -8,6 +8,8 @@
 //! |----------|----------------|
 //! | [`test_dot_product_ct_aligned`] | ct · ct, aligned |
 //! | [`test_dot_product_ct_unaligned`] | ct · ct, one a-side input rescaled |
+//! | [`test_dot_product_ct_unaligned_b`] | ct · ct, one b-side input rescaled |
+//! | [`test_dot_product_ct_delta_log_decimal`] | ct · ct fallback with non-uniform `log_decimal` |
 //! | [`test_dot_product_ct_smaller_output`] | ct · ct, output narrower than inputs |
 //! | [`test_dot_product_pt_vec_znx_aligned`] | ct · ZNX plaintext |
 //! | [`test_dot_product_pt_vec_rnx_aligned`] | ct · RNX plaintext |
@@ -24,9 +26,10 @@ use crate::{
     leveled::operations::composite::CKKSDotProductOps,
 };
 
-use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar};
+use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};
 
 const N: usize = 3;
+const DELTA_LOG_DECIMAL: usize = 8;
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
     let ct_infos = ctx.params.glwe_layout();
@@ -152,6 +155,113 @@ pub fn test_dot_product_ct_unaligned<BE: Backend, F: TestScalar>(ctx: &TestConte
         .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("dot_product_ct_unaligned", &ct_res, &want_re, &want_im, scratch.borrow());
+}
+
+pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = alloc_scratch(ctx);
+    let a_vecs = three_vectors(ctx);
+    let b_vecs = three_vectors(ctx);
+
+    let m = ctx.re1.len();
+    let mut want_re = vec![F::zero(); m];
+    let mut want_im = vec![F::zero(); m];
+    for i in 0..N {
+        cmul_acc(
+            &mut want_re,
+            &mut want_im,
+            &a_vecs[i].0,
+            &a_vecs[i].1,
+            &b_vecs[i].0,
+            &b_vecs[i].1,
+        );
+    }
+
+    let smaller_k = ctx.max_k() - ctx.base2k().as_usize() + 1;
+    let a_cts: Vec<_> = a_vecs
+        .iter()
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .collect();
+    let b_cts: Vec<_> = b_vecs
+        .iter()
+        .enumerate()
+        .map(|(i, (re, im))| {
+            let k = if i == 1 { smaller_k } else { ctx.max_k() };
+            ctx.encrypt(k, re, im, scratch.borrow())
+        })
+        .collect();
+    let a_refs: Vec<&_> = a_cts.iter().collect();
+    let b_refs: Vec<&_> = b_cts.iter().collect();
+
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ctx.module
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .unwrap();
+    ctx.assert_decrypt_precision("dot_product_ct_unaligned_b", &ct_res, &want_re, &want_im, scratch.borrow());
+}
+
+pub fn test_dot_product_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = alloc_scratch(ctx);
+    let half = F::from_f64(0.5).unwrap();
+    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_decimal);
+    let (a_hi_re, a_hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
+    let (b_hi_re, b_hi_im) = ctx.quantized_vector(TestVector::Second, ctx.meta().log_decimal);
+    let (b_lo_re, b_lo_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let a_vecs = [
+        (scaled(&a_hi_re, half), scaled(&a_hi_im, half)),
+        (scaled(&a_hi_re, half), scaled(&a_hi_im, half)),
+        (scaled(&a_hi_re, half), scaled(&a_hi_im, half)),
+    ];
+    let b_vecs = [
+        (scaled(&b_lo_re, half), scaled(&b_lo_im, half)),
+        (scaled(&b_hi_re, half), scaled(&b_hi_im, half)),
+        (scaled(&b_hi_re, half), scaled(&b_hi_im, half)),
+    ];
+
+    let m = ctx.re1.len();
+    let mut want_re = vec![F::zero(); m];
+    let mut want_im = vec![F::zero(); m];
+    for i in 0..N {
+        cmul_acc(
+            &mut want_re,
+            &mut want_im,
+            &a_vecs[i].0,
+            &a_vecs[i].1,
+            &b_vecs[i].0,
+            &b_vecs[i].1,
+        );
+    }
+
+    let a_cts: Vec<_> = a_vecs
+        .iter()
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .collect();
+    let mut b_cts: Vec<_> = Vec::with_capacity(N);
+    b_cts.push(ctx.encrypt_with_prec(
+        ctx.max_k() - DELTA_LOG_DECIMAL,
+        &b_vecs[0].0,
+        &b_vecs[0].1,
+        low_prec,
+        scratch.borrow(),
+    ));
+    for (re, im) in &b_vecs[1..] {
+        b_cts.push(ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()));
+    }
+    let a_refs: Vec<&_> = a_cts.iter().collect();
+    let b_refs: Vec<&_> = b_cts.iter().collect();
+
+    let mut ct_res = ctx.alloc_ct(ctx.max_k());
+    ctx.module
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .unwrap();
+    ctx.assert_decrypt_precision_at_log_decimal(
+        "dot_product_ct_delta_log_decimal",
+        &ct_res,
+        &want_re,
+        &want_im,
+        low_log_decimal,
+        scratch.borrow(),
+    );
 }
 
 pub fn test_dot_product_ct_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

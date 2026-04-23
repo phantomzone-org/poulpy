@@ -1,23 +1,23 @@
-//! Tests for `CKKSMulAddOps` — fused `dst += a · b` variants.
+//! Tests for `CKKSMulSubOps` — fused `dst -= a · b` variants.
 //!
 //! # Test inventory
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_add_ct_aligned`] | ct+ct, all operands aligned |
-//! | [`test_mul_add_ct_unaligned_dst`] | ct+ct with `dst` at a lower `log_hom_rem` |
-//! | [`test_mul_add_pt_vec_znx_aligned`] | ZNX plaintext, aligned |
-//! | [`test_mul_add_pt_vec_znx_delta_log_decimal`] | ZNX plaintext at lower `log_decimal` |
-//! | [`test_mul_add_pt_vec_rnx_aligned`] | RNX plaintext, aligned |
-//! | [`test_mul_add_const_znx_aligned`] | ZNX constant, aligned |
-//! | [`test_mul_add_const_rnx_aligned`] | RNX constant, aligned |
+//! | [`test_mul_sub_ct_aligned`] | ct-ct, all operands aligned |
+//! | [`test_mul_sub_ct_unaligned_dst`] | ct-ct with `dst` at a lower `log_hom_rem` |
+//! | [`test_mul_sub_pt_vec_znx_aligned`] | ZNX plaintext, aligned |
+//! | [`test_mul_sub_pt_vec_znx_delta_log_decimal`] | ZNX plaintext at lower `log_decimal` |
+//! | [`test_mul_sub_pt_vec_rnx_aligned`] | RNX plaintext, aligned |
+//! | [`test_mul_sub_const_znx_aligned`] | ZNX constant, aligned |
+//! | [`test_mul_sub_const_rnx_aligned`] | RNX constant, aligned |
 
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::ScratchOwned,
 };
 
-use crate::{layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::composite::CKKSMulAddOps};
+use crate::{layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::composite::CKKSMulSubOps};
 
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};
 
@@ -28,14 +28,14 @@ const DELTA_LOG_DECIMAL: usize = 8;
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
     let ct_infos = ctx.params.glwe_layout();
     let tsk_infos = ctx.params.tsk_layout();
-    let ct_bytes = ctx.module.ckks_mul_add_ct_tmp_bytes(&ct_infos, &tsk_infos);
+    let ct_bytes = ctx.module.ckks_mul_sub_ct_tmp_bytes(&ct_infos, &tsk_infos);
     let pt_znx_bytes = ctx
         .module
-        .ckks_mul_add_pt_vec_znx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+        .ckks_mul_sub_pt_vec_znx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let pt_rnx_bytes = ctx
         .module
-        .ckks_mul_add_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let const_bytes = ctx.module.ckks_mul_add_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+        .ckks_mul_sub_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+    let const_bytes = ctx.module.ckks_mul_sub_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let bytes = ct_bytes.max(pt_znx_bytes).max(pt_rnx_bytes).max(const_bytes);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
 }
@@ -66,7 +66,7 @@ fn cmul_scalar<F: TestScalar>(a_re: &[F], a_im: &[F], c_re: F, c_im: F) -> (Vec<
     (re, im)
 }
 
-pub fn test_mul_add_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -77,21 +77,21 @@ pub fn test_mul_add_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
     let b_im = scaled(&ctx.im2, half);
 
     let (prod_re, prod_im) = cmul(&a_re, &a_im, &b_re, &b_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let b = ctx.encrypt(ctx.max_k(), &b_re, &b_im, scratch.borrow());
     ctx.module
-        .ckks_mul_add_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
+        .ckks_mul_sub_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_ct_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_ct_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
 /// `dst` starts at a lower `log_hom_rem` than the product `a·b`, forcing
-/// alignment inside the fused add.
-pub fn test_mul_add_ct_unaligned_dst<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+/// alignment inside the fused sub.
+pub fn test_mul_sub_ct_unaligned_dst<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -102,20 +102,20 @@ pub fn test_mul_add_ct_unaligned_dst<BE: Backend, F: TestScalar>(ctx: &TestConte
     let b_im = scaled(&ctx.im2, half);
 
     let (prod_re, prod_im) = cmul(&a_re, &a_im, &b_re, &b_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let smaller_k = ctx.max_k() - ctx.base2k().as_usize() + 1;
     let mut dst = ctx.encrypt(smaller_k, &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let b = ctx.encrypt(ctx.max_k(), &b_re, &b_im, scratch.borrow());
     ctx.module
-        .ckks_mul_add_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
+        .ckks_mul_sub_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_ct_unaligned_dst", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_ct_unaligned_dst", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_add_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -126,19 +126,19 @@ pub fn test_mul_add_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCon
     let b_im = scaled(&ctx.im2, half);
 
     let (prod_re, prod_im) = cmul(&a_re, &a_im, &b_re, &b_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_znx(&b_re, &b_im);
     ctx.module
-        .ckks_mul_add_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
+        .ckks_mul_sub_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_pt_vec_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_pt_vec_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
@@ -153,17 +153,17 @@ pub fn test_mul_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx
     let b_im = scaled(&b_im, half);
 
     let (prod_re, prod_im) = cmul(&a_re, &a_im, &b_re, &b_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_znx_with_prec(&b_re, &b_im, low_prec);
     ctx.module
-        .ckks_mul_add_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
+        .ckks_mul_sub_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_add_pt_vec_znx_delta_log_decimal",
+        "mul_sub_pt_vec_znx_delta_log_decimal",
         &dst,
         &want_re,
         &want_im,
@@ -172,7 +172,7 @@ pub fn test_mul_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx
     );
 }
 
-pub fn test_mul_add_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -183,19 +183,19 @@ pub fn test_mul_add_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCon
     let b_im = scaled(&ctx.im2, half);
 
     let (prod_re, prod_im) = cmul(&a_re, &a_im, &b_re, &b_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_rnx(&b_re, &b_im);
     ctx.module
-        .ckks_mul_add_pt_vec_rnx(&mut dst, &a, &pt, ctx.meta(), scratch.borrow())
+        .ckks_mul_sub_pt_vec_rnx(&mut dst, &a, &pt, ctx.meta(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_pt_vec_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_pt_vec_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -205,20 +205,20 @@ pub fn test_mul_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
 
     let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
     let (prod_re, prod_im) = cmul_scalar(&a_re, &a_im, c_re, c_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.meta()).unwrap();
     ctx.module
-        .ckks_mul_add_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .ckks_mul_sub_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_const_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_const_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_add_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
     let dst_re = scaled(&ctx.re1, half);
@@ -228,14 +228,14 @@ pub fn test_mul_add_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
 
     let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
     let (prod_re, prod_im) = cmul_scalar(&a_re, &a_im, c_re, c_im);
-    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] + prod_re[i]).collect();
-    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] + prod_im[i]).collect();
+    let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
+    let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
 
     let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_mul_add_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
+        .ckks_mul_sub_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_add_const_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("mul_sub_const_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }

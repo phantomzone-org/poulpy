@@ -1,4 +1,4 @@
-use dashu_float::{Context, FBig, ops::DivRemEuclid, round::mode::HalfEven};
+use dashu_float::{Context, FBig, round::mode::HalfEven};
 use itertools::izip;
 
 use crate::layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};

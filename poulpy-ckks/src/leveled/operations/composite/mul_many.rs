@@ -2,7 +2,7 @@
 
 use anyhow::{Result, bail};
 use poulpy_core::{
-    GLWECopy, GLWETensoring, ScratchTakeCore,
+    GLWEShift, GLWETensoring, ScratchTakeCore,
     layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWETensorKeyPrepared, LWEInfos, TorusPrecision},
 };
 use poulpy_hal::{
@@ -10,7 +10,10 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{CKKSInfos, CKKSMeta, layouts::CKKSCiphertext, leveled::operations::mul::CKKSMulOps, oep::CKKSImpl};
+use crate::{
+    CKKSInfos, CKKSMeta, checked_log_hom_rem_sub, layouts::CKKSCiphertext, layouts::ciphertext::CKKSOffset,
+    leveled::operations::mul::CKKSMulOps, oep::CKKSImpl,
+};
 
 pub trait CKKSMulManyOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_mul_many_tmp_bytes<R, T>(&self, n: usize, res: &R, tsk: &T) -> usize
@@ -27,7 +30,7 @@ pub trait CKKSMulManyOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWECopy + GLWETensoring<BE> + CKKSMulOps<BE>,
+        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
@@ -46,13 +49,15 @@ fn mul_many_rec<BE, D, M>(
 where
     BE: Backend + CKKSImpl<BE>,
     D: DataRef,
-    M: GLWECopy + GLWETensoring<BE> + CKKSMulOps<BE>,
+    M: GLWEShift<BE> + GLWETensoring<BE> + CKKSMulOps<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     match inputs.len() {
         1 => {
-            module.glwe_copy(dst, inputs[0]);
+            let offset = dst.offset_unary(inputs[0]);
+            module.glwe_lsh(dst, inputs[0], offset, scratch);
             dst.meta = inputs[0].meta();
+            dst.meta.log_hom_rem = checked_log_hom_rem_sub("ckks_mul_many", inputs[0].log_hom_rem(), offset)?;
             Ok(())
         }
         2 => module.ckks_mul(dst, inputs[0], inputs[1], tsk, scratch),
@@ -115,7 +120,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulManyOps<BE> for Module<BE> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWECopy + GLWETensoring<BE> + CKKSMulOps<BE>,
+        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         if inputs.is_empty() {

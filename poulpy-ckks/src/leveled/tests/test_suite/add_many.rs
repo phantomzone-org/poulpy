@@ -5,6 +5,7 @@
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_add_many_aligned`] | all inputs at the same `log_hom_rem` / `log_decimal` |
+//! | [`test_add_many_single_smaller_output`] | one input into a narrower output |
 //! | [`test_add_many_unaligned_log_hom_rem`] | one input rescaled by one limb |
 //! | [`test_add_many_delta_log_decimal`] | inputs at different `log_decimal` |
 //! | [`test_add_many_smaller_output`] | output narrower than inputs (`offset > 0`) |
@@ -58,6 +59,21 @@ pub fn test_add_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     let expected_log_hom_rem: usize = cts.iter().map(|c| c.log_hom_rem()).min().unwrap();
     assert_ct_meta("add_many_aligned", &ct_res, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("add_many_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+}
+
+pub fn test_add_many_single_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = ctx.alloc_scratch();
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct_refs = vec![&ct];
+    let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
+    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
+    ctx.assert_decrypt_precision(
+        "add_many_single_smaller_output",
+        &ct_res,
+        &ctx.re1,
+        &ctx.im1,
+        scratch.borrow(),
+    );
 }
 
 /// One input encrypted at a lower `log_hom_rem`, forcing the others to be

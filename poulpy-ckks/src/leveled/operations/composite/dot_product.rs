@@ -1,6 +1,6 @@
 //! CKKS inner product `dst = Σ aᵢ · bᵢ`.
 
-use anyhow::{Result, bail};
+use anyhow::{Result, bail, ensure};
 use poulpy_core::{
     GLWEAdd, GLWEMulConst, GLWEMulPlain, GLWENormalize, GLWERotate, GLWEShift, GLWETensoring, ScratchTakeCore,
     layouts::{
@@ -164,12 +164,14 @@ fn check_lengths(op: &'static str, a_len: usize, b_len: usize) -> Result<()> {
 /// K-normalized summands each contributes ≤ 2^(base2k-1) per limb; i64
 /// overflow requires `n · 2^(base2k-1) ≤ 2^63`. See §3.3 of
 /// [eprint 2023/771](https://eprint.iacr.org/2023/771).
-fn assert_accumulation_fits<D: poulpy_hal::layouts::Data>(op: &'static str, dst: &CKKSCiphertext<D>, n: usize) {
+fn ensure_accumulation_fits<D: poulpy_hal::layouts::Data>(op: &'static str, dst: &CKKSCiphertext<D>, n: usize) -> Result<()> {
     let base2k: usize = dst.base2k().as_usize();
-    debug_assert!(
-        base2k < 64 && n <= (1usize << (63 - base2k)),
+    ensure!(base2k < 64, "{op}: unsupported base2k={base2k}");
+    ensure!(
+        n <= (1usize << (63 - base2k)),
         "{op}: {n} terms risks i64 overflow at base2k={base2k}",
     );
+    Ok(())
 }
 
 /// Shared accumulation loop: `dst += Σ_{i≥1} mul_term(i)`, finished with a
@@ -283,7 +285,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
     {
         check_lengths("ckks_dot_product_ct", a.len(), b.len())?;
         let n: usize = a.len();
-        assert_accumulation_fits("ckks_dot_product_ct", dst, n);
+        ensure_accumulation_fits("ckks_dot_product_ct", dst, n)?;
 
         if n == 1 {
             return self.ckks_mul(dst, a[0], b[0], tsk, scratch);
@@ -427,7 +429,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
     {
         check_lengths("ckks_dot_product_pt_vec_znx", a.len(), b.len())?;
         let n: usize = a.len();
-        assert_accumulation_fits("ckks_dot_product_pt_vec_znx", dst, n);
+        ensure_accumulation_fits("ckks_dot_product_pt_vec_znx", dst, n)?;
         self.ckks_mul_pt_vec_znx(dst, a[0], b[0], scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_vec_znx(tmp, a[i], b[i], s)
@@ -456,7 +458,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
     {
         check_lengths("ckks_dot_product_pt_vec_rnx", a.len(), b.len())?;
         let n: usize = a.len();
-        assert_accumulation_fits("ckks_dot_product_pt_vec_rnx", dst, n);
+        ensure_accumulation_fits("ckks_dot_product_pt_vec_rnx", dst, n)?;
         self.ckks_mul_pt_vec_rnx(dst, a[0], b[0], prec, scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_vec_rnx(tmp, a[i], b[i], prec, s)
@@ -482,7 +484,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
     {
         check_lengths("ckks_dot_product_const_znx", a.len(), b.len())?;
         let n: usize = a.len();
-        assert_accumulation_fits("ckks_dot_product_const_znx", dst, n);
+        ensure_accumulation_fits("ckks_dot_product_const_znx", dst, n)?;
         self.ckks_mul_pt_const_znx(dst, a[0], b[0], scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_const_znx(tmp, a[i], b[i], s)
@@ -510,7 +512,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
     {
         check_lengths("ckks_dot_product_const_rnx", a.len(), b.len())?;
         let n: usize = a.len();
-        assert_accumulation_fits("ckks_dot_product_const_rnx", dst, n);
+        ensure_accumulation_fits("ckks_dot_product_const_rnx", dst, n)?;
         self.ckks_mul_pt_const_rnx(dst, a[0], b[0], prec, scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_const_rnx(tmp, a[i], b[i], prec, s)

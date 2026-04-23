@@ -5,6 +5,7 @@
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_mul_many_aligned`] | balanced tree on `n=4` aligned inputs |
+//! | [`test_mul_many_single_smaller_output`] | one input into a narrower output |
 //! | [`test_mul_many_odd_tree`] | odd `n=5` exercising the carry-up branch |
 //! | [`test_mul_many_unaligned_log_hom_rem`] | one input rescaled by one limb |
 //! | [`test_mul_many_smaller_output`] | output narrower than would be needed |
@@ -83,6 +84,23 @@ fn run<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, n: usize, output_k:
 
 pub fn test_mul_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     run(ctx, 4, ctx.max_k(), "mul_many_aligned");
+}
+
+pub fn test_mul_many_single_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = alloc_scratch(ctx, 1);
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct_refs = vec![&ct];
+    let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
+    ctx.module
+        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
+        .unwrap();
+    ctx.assert_decrypt_precision(
+        "mul_many_single_smaller_output",
+        &ct_res,
+        &ctx.re1,
+        &ctx.im1,
+        scratch.borrow(),
+    );
 }
 
 pub fn test_mul_many_odd_tree<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
