@@ -420,6 +420,14 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            let (res_log_hom_rem, res_log_decimal, _) = get_mul_const_params(dst, a, prec)?;
+            dst.data_mut().zero();
+            dst.meta.log_hom_rem = res_log_hom_rem;
+            dst.meta.log_decimal = res_log_decimal;
+            return Ok(());
+        }
+
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
         self.ckks_mul_const_znx_default(dst, a, &cst_znx, scratch)
     }
@@ -436,6 +444,14 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            let (res_log_hom_rem, res_log_decimal, _) = get_mul_const_params(dst, dst, prec)?;
+            dst.data_mut().zero();
+            dst.meta.log_hom_rem = res_log_hom_rem;
+            dst.meta.log_decimal = res_log_decimal;
+            return Ok(());
+        }
+
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
         self.ckks_mul_const_znx_inplace_default(dst, &cst_znx, scratch)
     }

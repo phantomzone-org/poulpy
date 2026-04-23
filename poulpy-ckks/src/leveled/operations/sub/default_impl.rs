@@ -404,6 +404,13 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
         let offset = dst.offset_unary(a);
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            self.glwe_lsh(dst, a, offset, scratch);
+            dst.meta = a.meta();
+            dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_const_rnx", a.log_hom_rem(), offset)?;
+            return Ok(());
+        }
+
         let res_log_hom_rem = checked_log_hom_rem_sub("sub_const_rnx", a.log_hom_rem(), offset)?;
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
@@ -443,6 +450,10 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            return Ok(());
+        }
+
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
             dst.log_hom_rem()

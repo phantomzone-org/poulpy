@@ -11,15 +11,17 @@
 //! | [`test_mul_sub_pt_vec_rnx_aligned`] | RNX plaintext, aligned |
 //! | [`test_mul_sub_const_znx_aligned`] | ZNX constant, aligned |
 //! | [`test_mul_sub_const_rnx_aligned`] | RNX constant, aligned |
+//! | [`test_mul_sub_const_znx_zero_preserves_dst_meta`] | ZNX zero constant no-op |
+//! | [`test_mul_sub_const_rnx_zero_preserves_dst_meta`] | RNX zero constant no-op |
 
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::ScratchOwned,
 };
 
-use crate::{layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::composite::CKKSMulSubOps};
+use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::composite::CKKSMulSubOps};
 
-use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};
+use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector, assert_ct_meta};
 
 const CONST_RE: f64 = 0.2718281828459045;
 const CONST_IM: f64 = -0.1414213562373095;
@@ -238,4 +240,45 @@ pub fn test_mul_sub_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
         .ckks_mul_sub_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_sub_const_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
+}
+
+pub fn test_mul_sub_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = alloc_scratch(ctx);
+    let half = F::from_f64(0.5).unwrap();
+    let dst_re = scaled(&ctx.re1, half);
+    let dst_im = scaled(&ctx.im1, half);
+    let a_re = scaled(&ctx.re2, half);
+    let a_im = scaled(&ctx.im2, half);
+
+    let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
+    let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let dst_meta = dst.meta();
+    let cst_rnx = ctx.const_rnx(None, None);
+    let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL)).unwrap();
+    ctx.module
+        .ckks_mul_sub_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .unwrap();
+
+    assert_ct_meta("mul_sub_const_znx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);
+    ctx.assert_decrypt_precision("mul_sub_const_znx_zero", &dst, &dst_re, &dst_im, scratch.borrow());
+}
+
+pub fn test_mul_sub_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = alloc_scratch(ctx);
+    let half = F::from_f64(0.5).unwrap();
+    let dst_re = scaled(&ctx.re1, half);
+    let dst_im = scaled(&ctx.im1, half);
+    let a_re = scaled(&ctx.re2, half);
+    let a_im = scaled(&ctx.im2, half);
+
+    let mut dst = ctx.encrypt(ctx.max_k(), &dst_re, &dst_im, scratch.borrow());
+    let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
+    let dst_meta = dst.meta();
+    let cst = ctx.const_rnx(None, None);
+    ctx.module
+        .ckks_mul_sub_const_rnx(&mut dst, &a, &cst, ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL), scratch.borrow())
+        .unwrap();
+
+    assert_ct_meta("mul_sub_const_rnx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);
+    ctx.assert_decrypt_precision("mul_sub_const_rnx_zero", &dst, &dst_re, &dst_im, scratch.borrow());
 }

@@ -220,6 +220,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         Self: GLWEAdd + GLWESub + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
+        if cst_znx.re().is_none() && cst_znx.im().is_none() {
+            return Ok(());
+        }
+
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
         self.ckks_mul_pt_const_znx(&mut tmp, a, cst_znx, scratch_r)?;
         self.ckks_sub_inplace(dst, &tmp, scratch_r)
@@ -238,6 +242,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            return Ok(());
+        }
+
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
         self.ckks_mul_pt_const_rnx(&mut tmp, a, cst_rnx, prec, scratch_r)?;
         self.ckks_sub_inplace(dst, &tmp, scratch_r)

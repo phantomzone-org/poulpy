@@ -622,6 +622,14 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_aligned
             );
             run_test!(
+                mul_add_const_znx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_znx_zero_preserves_dst_meta
+            );
+            run_test!(
+                mul_add_const_rnx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_zero_preserves_dst_meta
+            );
+            run_test!(
                 mul_sub_ct_aligned,
                 $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_ct_aligned
             );
@@ -648,6 +656,14 @@ macro_rules! ckks_backend_test_suite {
             run_test!(
                 mul_sub_const_rnx_aligned,
                 $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_rnx_aligned
+            );
+            run_test!(
+                mul_sub_const_znx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_znx_zero_preserves_dst_meta
+            );
+            run_test!(
+                mul_sub_const_rnx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_rnx_zero_preserves_dst_meta
             );
             run_test!(
                 dot_product_ct_aligned,
