@@ -254,7 +254,9 @@ pub fn test_mul_sub_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let dst_meta = dst.meta();
     let cst_rnx = ctx.const_rnx(None, None);
-    let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL)).unwrap();
+    let cst_znx = cst_rnx
+        .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL))
+        .unwrap();
     ctx.module
         .ckks_mul_sub_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
@@ -276,7 +278,13 @@ pub fn test_mul_sub_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
     let dst_meta = dst.meta();
     let cst = ctx.const_rnx(None, None);
     ctx.module
-        .ckks_mul_sub_const_rnx(&mut dst, &a, &cst, ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL), scratch.borrow())
+        .ckks_mul_sub_const_rnx(
+            &mut dst,
+            &a,
+            &cst,
+            ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL),
+            scratch.borrow(),
+        )
         .unwrap();
 
     assert_ct_meta("mul_sub_const_rnx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);

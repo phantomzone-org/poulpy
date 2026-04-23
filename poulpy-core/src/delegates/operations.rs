@@ -136,6 +136,23 @@ where
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     }
 
+    fn glwe_tensor_apply_add_assign<R, A, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        BE::glwe_tensor_apply_add_assign(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
+    }
+
     fn glwe_tensor_square_apply<R, A>(
         &self,
         cnv_offset: usize,

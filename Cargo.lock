@@ -532,6 +532,7 @@ name = "poulpy-bench"
 version = "0.5.0"
 dependencies = [
  "criterion",
+ "poulpy-ckks",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",

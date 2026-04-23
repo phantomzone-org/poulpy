@@ -9,7 +9,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxRshAddInto, VecZnxZero},
+    api::{ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxRshAddInto},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -71,7 +71,6 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWENormalize<BE>
             + GLWETensoring<BE>
             + VecZnxAddAssign
-            + VecZnxZero
             + CKKSAddOpsWithoutNormalization<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
@@ -221,7 +220,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         // Non-uniform `log_decimal` fallback: one tmp ciphertext + per-pair mul or add.
         let fallback: usize = ct_bytes + mul_scratch.max(self.ckks_add_tmp_bytes());
         // Fast path (worst case: both sides unaligned): `n` rescale buffers per
-        // side + two tensor buffers + inner.
+        // side + one tensor accumulator + inner.
         let tensor_layout = GLWELayout {
             n: res.n(),
             base2k: res.base2k(),
@@ -233,7 +232,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             .ckks_rescale_tmp_bytes()
             .max(self.glwe_tensor_apply_tmp_bytes(&tensor_layout, res, res))
             .max(self.glwe_tensor_relinearize_tmp_bytes(res, &tensor_layout, tsk));
-        let fast: usize = 2 * n * ct_bytes + 2 * tensor_bytes + inner;
+        let fast: usize = 2 * n * ct_bytes + tensor_bytes + inner;
         fallback.max(fast)
     }
 
@@ -278,7 +277,6 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWENormalize<BE>
             + GLWETensoring<BE>
             + VecZnxAddAssign
-            + VecZnxZero
             + CKKSAddOpsWithoutNormalization<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -379,29 +377,32 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             rank: dst.rank(),
         };
 
-        let (mut acc_tensor, scratch_t1) = scratch_ab.take_glwe_tensor(&tensor_layout);
-        let (mut tmp_tensor, scratch_t2) = scratch_t1.take_glwe_tensor(&tensor_layout);
+        let (mut acc_tensor, scratch_t2) = scratch_ab.take_glwe_tensor(&tensor_layout);
 
-        let pairs: usize = ((acc_tensor.rank().as_usize() + 1) * (acc_tensor.rank().as_usize() + 2)) / 2;
-        for i in 0..pairs {
-            self.vec_znx_zero(acc_tensor.data_mut(), i);
-        }
+        let a0_ref: GLWE<&[u8]> = if a_aligned { a[0].to_ref() } else { a_buf[0].to_ref() };
+        let b0_ref: GLWE<&[u8]> = if b_aligned { b[0].to_ref() } else { b_buf[0].to_ref() };
+        self.glwe_tensor_apply(
+            cnv_offset,
+            &mut acc_tensor,
+            &a0_ref,
+            a_target_eff_k,
+            &b0_ref,
+            b_target_eff_k,
+            scratch_t2,
+        );
 
-        for i in 0..n {
+        for i in 1..n {
             let ai_ref: GLWE<&[u8]> = if a_aligned { a[i].to_ref() } else { a_buf[i].to_ref() };
             let bi_ref: GLWE<&[u8]> = if b_aligned { b[i].to_ref() } else { b_buf[i].to_ref() };
-            self.glwe_tensor_apply(
+            self.glwe_tensor_apply_add_assign(
                 cnv_offset,
-                &mut tmp_tensor,
+                &mut acc_tensor,
                 &ai_ref,
                 a_target_eff_k,
                 &bi_ref,
                 b_target_eff_k,
                 scratch_t2,
             );
-            for col in 0..pairs {
-                self.vec_znx_add_assign(acc_tensor.data_mut(), col, tmp_tensor.data(), col);
-            }
         }
 
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &acc_tensor, tsk, tsk.size(), scratch_t2);

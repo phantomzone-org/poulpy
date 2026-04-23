@@ -173,6 +173,21 @@ pub trait GLWETensoring<BE: Backend> {
         B: DataRef;
 
     #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_apply_add_assign<R, A, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply<R, A>(
         &self,
         cnv_offset: usize,

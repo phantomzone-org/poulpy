@@ -20,6 +20,7 @@ serde = {workspace = true, features = ["derive"]}
 serde_json = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
+poulpy-ckks = {workspace = true}
 poulpy-schemes = {workspace = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
@@ -78,6 +79,14 @@ name = "glwe_tensor"
 harness = false
 
 [[bench]]
+name = "ckks_operations"
+harness = false
+
+[[bench]]
+name = "ckks_composite"
+harness = false
+
+[[bench]]
 name = "automorphism"
 harness = false
 
@@ -104,5 +113,4 @@ harness = false
 [[bench]]
 name = "standard"
 harness = false
-
 

@@ -66,6 +66,21 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
         B: DataRef;
 
     #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_apply_add_assign_default<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
@@ -426,6 +441,32 @@ where
         B: DataRef,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            b,
+            b_effective_k,
+            scratch,
+        )
+    }
+
+    fn glwe_tensor_apply_add_assign_default<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply_add_assign(
             module,
             cnv_offset,
             res,
@@ -842,6 +883,32 @@ macro_rules! impl_core_operations_default_methods {
             B: poulpy_hal::layouts::DataRef,
         {
             <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                b,
+                b_effective_k,
+                scratch,
+            )
+        }
+
+        fn glwe_tensor_apply_add_assign<R, A, B>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
+            res: &mut $crate::layouts::GLWETensor<R>,
+            a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
+            b: &$crate::layouts::GLWE<B>,
+            b_effective_k: usize,
+            scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+        ) where
+            R: poulpy_hal::layouts::DataMut,
+            A: poulpy_hal::layouts::DataRef,
+            B: poulpy_hal::layouts::DataRef,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_add_assign_default(
                 module,
                 cnv_offset,
                 res,

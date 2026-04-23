@@ -396,6 +396,20 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         A: DataRef,
         B: DataRef;
 
+    fn glwe_tensor_apply_add_assign<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
     fn glwe_mul_plain_inplace<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
