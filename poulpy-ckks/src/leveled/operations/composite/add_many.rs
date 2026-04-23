@@ -1,7 +1,7 @@
 //! Sum of many CKKS ciphertexts.
 
-use anyhow::{Result, bail, ensure};
-use poulpy_core::{GLWEAdd, GLWENormalize, GLWEShift, ScratchTakeCore, layouts::LWEInfos};
+use anyhow::{Result, bail};
+use poulpy_core::{GLWEAdd, GLWENormalize, GLWEShift, ScratchTakeCore};
 use poulpy_hal::{
     api::ScratchAvailable,
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
@@ -11,18 +11,12 @@ use crate::{
     CKKSInfos, checked_log_hom_rem_sub,
     layouts::CKKSCiphertext,
     layouts::ciphertext::CKKSOffset,
-    leveled::operations::add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
+    leveled::operations::{
+        add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
+        composite::ensure_accumulation_fits,
+    },
     oep::CKKSImpl,
 };
-
-fn ensure_accumulation_fits(op: &'static str, base2k: usize, n: usize) -> Result<()> {
-    ensure!(base2k < 64, "{op}: unsupported base2k={base2k}");
-    ensure!(
-        n <= (1usize << (63 - base2k)),
-        "{op}: {n} terms risks i64 overflow at base2k={base2k}",
-    );
-    Ok(())
-}
 
 pub trait CKKSAddManyOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_add_many_tmp_bytes(&self) -> usize
@@ -67,7 +61,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddManyOps<BE> for Module<BE> {
                 dst.meta.log_hom_rem = checked_log_hom_rem_sub("ckks_add_many", inputs[0].log_hom_rem(), offset)?;
             }
             _ => {
-                ensure_accumulation_fits("ckks_add_many", dst.base2k().as_usize(), inputs.len())?;
+                ensure_accumulation_fits("ckks_add_many", dst, inputs.len())?;
                 unsafe {
                     self.ckks_add_without_normalization(dst, inputs[0], inputs[1], scratch)?;
                     for ct in &inputs[2..] {

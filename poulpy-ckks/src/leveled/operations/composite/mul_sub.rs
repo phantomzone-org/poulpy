@@ -6,7 +6,7 @@ use poulpy_core::{
     layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWETensorKeyPrepared},
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxRshTmpBytes},
+    api::{ModuleN, ScratchAvailable},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -19,7 +19,7 @@ use crate::{
             CKKSPlaintextVecZnx,
         },
     },
-    leveled::operations::{mul::CKKSMulOps, sub::CKKSSubOps},
+    leveled::operations::{composite::take_mul_tmp, mul::CKKSMulOps, sub::CKKSSubOps},
     oep::CKKSImpl,
 };
 
@@ -28,25 +28,25 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
     where
         R: GLWEInfos,
         T: GGLWEInfos,
-        Self: GLWEShift<BE> + GLWETensoring<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
 
     fn ckks_mul_sub_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        Self: GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
 
     fn ckks_mul_sub_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
 
     fn ckks_mul_sub_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
 
     fn ckks_mul_sub_ct(
         &self,
@@ -109,24 +109,12 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 }
 
-fn take_mul_tmp<'a, BE: Backend, D: DataMut>(
-    dst: &CKKSCiphertext<D>,
-    scratch: &'a mut Scratch<BE>,
-) -> (CKKSCiphertext<&'a mut [u8]>, &'a mut Scratch<BE>)
-where
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let layout = dst.glwe_layout();
-    let (tmp, scratch_r) = scratch.take_glwe(&layout);
-    (CKKSCiphertext::from_inner(tmp, CKKSMeta::default()), scratch_r)
-}
-
 impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
     fn ckks_mul_sub_ct_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
     where
         R: GLWEInfos,
         T: GGLWEInfos,
-        Self: GLWEShift<BE> + GLWETensoring<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>,
+        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
     {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_tmp_bytes(res, tsk).max(self.ckks_sub_tmp_bytes())
     }
@@ -135,7 +123,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>,
+        Self: GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
     {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_vec_znx_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }
@@ -144,7 +132,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>,
+        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
     {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_vec_rnx_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }
@@ -153,7 +141,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + VecZnxRshTmpBytes + CKKSSubOps<BE> + CKKSMulOps<BE>,
+        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
     {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_const_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }

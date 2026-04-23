@@ -6,7 +6,7 @@ use poulpy_core::{
     layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWETensorKeyPrepared},
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxRshAddInto},
+    api::{ModuleN, ScratchAvailable},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -19,7 +19,7 @@ use crate::{
             CKKSPlaintextVecZnx,
         },
     },
-    leveled::operations::{add::CKKSAddOps, mul::CKKSMulOps},
+    leveled::operations::{add::CKKSAddOps, composite::take_mul_tmp, mul::CKKSMulOps},
     oep::CKKSImpl,
 };
 
@@ -68,7 +68,7 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
+        Self: GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
     fn ckks_mul_add_pt_vec_rnx<F>(
@@ -80,7 +80,7 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
+        Self: ModuleN + GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
@@ -107,18 +107,6 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
-}
-
-fn take_mul_tmp<'a, BE: Backend, D: DataMut>(
-    dst: &CKKSCiphertext<D>,
-    scratch: &'a mut Scratch<BE>,
-) -> (CKKSCiphertext<&'a mut [u8]>, &'a mut Scratch<BE>)
-where
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
-    let layout = dst.glwe_layout();
-    let (tmp, scratch_r) = scratch.take_glwe(&layout);
-    (CKKSCiphertext::from_inner(tmp, CKKSMeta::default()), scratch_r)
 }
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
@@ -183,7 +171,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
+        Self: GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
@@ -200,7 +188,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
+        Self: ModuleN + GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {

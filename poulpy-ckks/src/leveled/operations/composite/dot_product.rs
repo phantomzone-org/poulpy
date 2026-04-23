@@ -1,6 +1,6 @@
 //! CKKS inner product `dst = Σ aᵢ · bᵢ`.
 
-use anyhow::{Result, bail, ensure};
+use anyhow::{Result, bail};
 use poulpy_core::{
     GLWEAdd, GLWEMulConst, GLWEMulPlain, GLWENormalize, GLWERotate, GLWEShift, GLWETensoring, ScratchTakeCore,
     layouts::{
@@ -25,6 +25,7 @@ use crate::{
     leveled::{
         operations::{
             add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
+            composite::ensure_accumulation_fits,
             mul::CKKSMulOps,
         },
         rescale::CKKSRescaleOps,
@@ -156,20 +157,6 @@ fn check_lengths(op: &'static str, a_len: usize, b_len: usize) -> Result<()> {
     if a_len != b_len {
         bail!("{op}: length mismatch between ct vector ({a_len}) and weight vector ({b_len})");
     }
-    Ok(())
-}
-
-/// Overflow guard for the unnormalized accumulation. Starting from
-/// K-normalized summands each contributes ≤ 2^(base2k-1) per limb; i64
-/// overflow requires `n · 2^(base2k-1) ≤ 2^63`. See §3.3 of
-/// [eprint 2023/771](https://eprint.iacr.org/2023/771).
-fn ensure_accumulation_fits<D: poulpy_hal::layouts::Data>(op: &'static str, dst: &CKKSCiphertext<D>, n: usize) -> Result<()> {
-    let base2k: usize = dst.base2k().as_usize();
-    ensure!(base2k < 64, "{op}: unsupported base2k={base2k}");
-    ensure!(
-        n <= (1usize << (63 - base2k)),
-        "{op}: {n} terms risks i64 overflow at base2k={base2k}",
-    );
     Ok(())
 }
 

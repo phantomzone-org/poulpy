@@ -10,7 +10,7 @@ publish = false
 readme = "README.md"
 
 [features]
-enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-schemes/enable-avx"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-ckks/enable-avx", "poulpy-schemes/enable-avx"]
 # enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
 
 [dependencies]
@@ -79,11 +79,27 @@ name = "glwe_tensor"
 harness = false
 
 [[bench]]
-name = "ckks_operations"
+name = "ckks_composite"
 harness = false
 
 [[bench]]
-name = "ckks_composite"
+name = "ckks_add"
+harness = false
+
+[[bench]]
+name = "ckks_sub"
+harness = false
+
+[[bench]]
+name = "ckks_unary"
+harness = false
+
+[[bench]]
+name = "ckks_mul"
+harness = false
+
+[[bench]]
+name = "ckks_automorphism"
 harness = false
 
 [[bench]]
@@ -113,4 +129,3 @@ harness = false
 [[bench]]
 name = "standard"
 harness = false
-
