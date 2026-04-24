@@ -2,7 +2,7 @@
 
 use poulpy_core::{
     EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub,
-    GLWETrace, LWEFromGLWE, ScratchArenaTakeCore, ScratchTakeCore,
+    GLWETrace, LWEFromGLWE, ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEPlaintext,
         GLWEPlaintextLayout, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
@@ -11,7 +11,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::ModuleLogN,
-    layouts::{Backend, Data, DataMut, DataRef, HostDataMut, Scratch, ScratchArena, Stats},
+    layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, ScratchArena, Stats},
     source::Source,
 };
 use std::{collections::HashMap, marker::PhantomData};
@@ -83,7 +83,7 @@ impl<'a, T: UnsignedInteger> FheUint<&'a [u8], T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.bits.base2k()
     }
@@ -97,13 +97,13 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUint<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> GLWEInfos for FheUint<D, T> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.bits.rank()
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
+impl<D: HostDataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<S, M, E, BE: Backend>(
         &mut self,
@@ -162,12 +162,13 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
     pub fn noise<S, M, BE: Backend>(&self, module: &M, want: u32, sk: &S, scratch: &mut ScratchArena<'_, BE>) -> Stats
     where
         Self: GLWEToBackendRef<BE>,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEDecrypt<BE> + GLWENoise<BE>,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -191,7 +192,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk_glwe: &S, scratch: &mut ScratchArena<'_, BE>) -> T
     where
         Self: GLWEToBackendRef<BE>,
-        BE: Backend<OwnedBuf = Vec<u8>>,
+        BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEDecrypt<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -245,7 +246,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
+impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
     /// Packs `Vec<GLWE(bit[i])>` into [`FheUint`].
     pub fn pack<'s, G, M, K, H, BE: Backend>(
         &mut self,
@@ -366,7 +367,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger> GLWEToMut for FheUint<D, T> {
+impl<D: HostDataMut, T: UnsignedInteger> GLWEToMut for FheUint<D, T> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         self.bits.to_mut()
     }
@@ -389,34 +390,6 @@ where
         self.bits.to_backend_mut()
     }
 }
-
-/// Extension of `ScratchArenaTakeCore` that adds allocation of temporary
-/// [`FheUint`] values from the scratch arena.
-///
-/// Implemented for `ScratchArena<'a, BE>` whenever
-/// `ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>`.
-/// Callers use this to obtain short-lived `FheUint` temporaries on the hot
-/// path without heap allocation.
-pub trait ScratchTakeBDD<T: UnsignedInteger, BE: Backend>
-where
-    Self: ScratchTakeCore<BE>,
-{
-    fn take_fhe_uint<A>(&mut self, infos: &A) -> (FheUint<&mut [u8], T>, &mut Self)
-    where
-        A: GLWEInfos,
-    {
-        let (glwe, scratch) = self.take_glwe(infos);
-        (
-            FheUint {
-                bits: glwe,
-                _phantom: PhantomData,
-            },
-            scratch,
-        )
-    }
-}
-
-impl<T: UnsignedInteger, BE: Backend> ScratchTakeBDD<T, BE> for Scratch<BE> where Self: ScratchTakeCore<BE> {}
 
 #[doc(hidden)]
 pub trait ScratchArenaTakeBDD<'a, T: UnsignedInteger, BE: Backend>
@@ -447,7 +420,7 @@ impl<'a, T: UnsignedInteger, BE: Backend> ScratchArenaTakeBDD<'a, T, BE> for Scr
 {
 }
 
-impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
     pub fn get_bit_lwe<'s, R, KGLWE, KLWE, M, BE: Backend>(
         &self,
         module: &M,
@@ -546,13 +519,13 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> GLWEToRef for FheUint<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> GLWEToRef for FheUint<D, T> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         self.bits.to_ref()
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
+impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
     pub fn from_fhe_uint_prepared<M, H, K, BE: Backend>(
         &mut self,
         module: &M,

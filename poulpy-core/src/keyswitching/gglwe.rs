@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
 
 pub use crate::api::GGLWEKeyswitch;
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
     },
 };
 
-impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {}
+impl<DataSelf: HostDataMut> GLWESwitchingKey<DataSelf> {}
 
 #[doc(hidden)]
 pub trait GGLWEKeyswitchDefault<BE: Backend>

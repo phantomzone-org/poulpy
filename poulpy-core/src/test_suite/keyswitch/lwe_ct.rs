@@ -1,12 +1,12 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
-    layouts::{Module, Scratch, ScratchOwned, ZnxView},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
+    layouts::{Module, ScratchOwned, ZnxView},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref},
 };
 
 use crate::{
-    EncryptionLayout, LWEDecrypt, LWEEncryptSk, LWEKeySwitch, LWESwitchingKeyEncrypt, ScratchTakeCore,
+    EncryptionLayout, LWEDecrypt, LWEEncryptSk, LWEKeySwitch, LWESwitchingKeyEncrypt, ScratchArenaTakeCore,
     layouts::{
         LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, LWESwitchingKeyPreparedFactory,
         prepared::LWESwitchingKeyPrepared,
@@ -15,8 +15,8 @@ use crate::{
 
 pub fn test_lwe_keyswitch<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: LWEKeySwitch<BE>
         + LWESwitchingKeyEncrypt<BE>
         + LWEEncryptSk<BE>
@@ -24,7 +24,7 @@ where
         + LWEDecrypt<BE>
         + VecZnxNormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let n: usize = module.n();
     let base2k: usize = params.base2k;
@@ -101,7 +101,7 @@ where
         &key_apply_infos,
         &mut source_xe,
         &mut source_xa,
-        crate::test_suite::scratch_host_mut(&mut scratch),
+        &mut crate::test_suite::scratch_host_arena(&mut scratch),
     );
 
     let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);

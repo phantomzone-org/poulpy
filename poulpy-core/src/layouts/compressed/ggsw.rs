@@ -1,6 +1,7 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo,
+        ZnxInfos,
     },
     source::Source,
 };
@@ -33,7 +34,7 @@ pub trait GGSWCompressedSeedMut {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]>;
 }
 
-impl<D: DataMut> GGSWCompressedSeedMut for GGSWCompressed<D> {
+impl<D: HostDataMut> GGSWCompressedSeedMut for GGSWCompressed<D> {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
         &mut self.seed
     }
@@ -45,7 +46,7 @@ pub trait GGSWCompressedSeed {
     fn seed(&self) -> &Vec<[u8; 32]>;
 }
 
-impl<D: DataRef> GGSWCompressedSeed for GGSWCompressed<D> {
+impl<D: HostDataRef> GGSWCompressedSeed for GGSWCompressed<D> {
     fn seed(&self) -> &Vec<[u8; 32]> {
         &self.seed
     }
@@ -80,13 +81,13 @@ impl<D: Data> GGSWInfos for GGSWCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGSWCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GGSWCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
     }
 }
 
-impl<D: DataRef> fmt::Display for GGSWCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GGSWCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -96,7 +97,7 @@ impl<D: DataRef> fmt::Display for GGSWCompressed<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GGSWCompressed<D> {
+impl<D: HostDataMut> FillUniform for GGSWCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
@@ -179,7 +180,7 @@ impl GGSWCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GGSWCompressed<D> {
+impl<D: HostDataRef> GGSWCompressed<D> {
     /// Returns an immutably-borrowed compressed GLWE at the given row and column.
     pub fn at(&self, row: usize, col: usize) -> GLWECompressed<&[u8]> {
         let rank: usize = self.rank().into();
@@ -192,7 +193,7 @@ impl<D: DataRef> GGSWCompressed<D> {
     }
 }
 
-impl<D: DataMut> GGSWCompressed<D> {
+impl<D: HostDataMut> GGSWCompressed<D> {
     /// Returns a mutably-borrowed compressed GLWE at the given row and column.
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
         let rank: usize = self.rank().into();
@@ -205,7 +206,7 @@ impl<D: DataMut> GGSWCompressed<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGSWCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GGSWCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -220,7 +221,7 @@ impl<D: DataMut> ReaderFrom for GGSWCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGSWCompressed<D> {
+impl<D: HostDataRef> WriterTo for GGSWCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -273,7 +274,7 @@ pub trait GGSWCompressedToMut {
     fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> GGSWCompressedToMut for GGSWCompressed<D> {
+impl<D: HostDataMut> GGSWCompressedToMut for GGSWCompressed<D> {
     fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]> {
         GGSWCompressed {
             k: self.max_k(),
@@ -292,7 +293,7 @@ pub trait GGSWCompressedToRef {
     fn to_ref(&self) -> GGSWCompressed<&[u8]>;
 }
 
-impl<D: DataRef> GGSWCompressedToRef for GGSWCompressed<D> {
+impl<D: HostDataRef> GGSWCompressedToRef for GGSWCompressed<D> {
     fn to_ref(&self) -> GGSWCompressed<&[u8]> {
         GGSWCompressed {
             k: self.max_k(),

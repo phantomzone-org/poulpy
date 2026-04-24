@@ -62,7 +62,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         + ?Sized,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
-    ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
@@ -87,29 +87,24 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
             k: res.max_k(),
             rank: res.rank(),
         };
-        let res_conv_size = res_conv_layout.size();
-        let mut res_conv: GLWE<BE::OwnedBuf> = GLWE {
-            base2k: res_conv_layout.base2k,
-            data: poulpy_hal::layouts::VecZnx {
-                data: BE::alloc_bytes(GLWE::<Vec<u8>>::bytes_of_from_infos(&res_conv_layout)),
-                n: res_conv_layout.n.into(),
-                cols: (res_conv_layout.rank + 1).into(),
-                size: res_conv_size,
-                max_size: res_conv_size,
-            },
-        };
+        let scratch_local = scratch.borrow();
+        let (mut res_conv, scratch_1) = scratch_local.take_glwe(&res_conv_layout);
+        let mut scratch_1 = scratch_1;
+
+        scratch_1 = scratch_1.apply_mut(|scratch| {
+            module.glwe_normalize(&mut res_conv, &glwe_backend_ref_from_mut::<BE>(&*res), scratch);
+        });
+
         {
-            let mut res_conv_backend: GLWEBackendMut<'_, BE> =
-                <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_conv);
-            module.glwe_normalize(&mut res_conv_backend, &glwe_backend_ref_from_mut::<BE>(&*res), scratch);
+            let mut res_conv_backend = glwe_backend_mut_from_mut::<BE>(&mut res_conv);
+            scratch_1 = scratch_1.apply_mut(|scratch| {
+                trace_inplace_internal::<M, K, H, BE>(module, &mut res_conv_backend, skip, keys, scratch);
+            });
         }
-        {
-            let mut res_conv_backend: GLWEBackendMut<'_, BE> =
-                <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_conv);
-            trace_inplace_internal::<M, K, H, BE>(module, &mut res_conv_backend, skip, keys, scratch);
-        }
-        let res_conv_ref = <GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&res_conv);
-        module.glwe_normalize(res, &res_conv_ref, scratch);
+
+        scratch_1.apply_mut(|scratch| {
+            module.glwe_normalize(res, &glwe_backend_ref_from_mut::<BE>(&mut res_conv), scratch);
+        });
         return;
     }
 

@@ -21,7 +21,7 @@ type CnvPVecROwned<BE> = CnvPVecR<<BE as Backend>::OwnedBuf, BE>;
 
 pub fn test_convolution_by_const<M, BE: crate::test_suite::TestBackend>(module: &M, base2k: usize)
 where
-    BE::OwnedBuf: crate::layouts::DataMut,
+    BE::OwnedBuf: crate::layouts::HostDataMut,
     M: ModuleN
         + Convolution<BE>
         + VecZnxBigNormalize<BE>
@@ -94,7 +94,7 @@ where
 
 pub fn test_convolution<M, BE: crate::test_suite::TestBackend>(module: &M, base2k: usize)
 where
-    BE::OwnedBuf: crate::layouts::DataMut,
+    BE::OwnedBuf: crate::layouts::HostDataMut,
     M: ModuleN
         + Convolution<BE>
         + CnvPVecAlloc<BE>
@@ -187,7 +187,7 @@ where
 
 pub fn test_convolution_pairwise<M, BE: crate::test_suite::TestBackend>(module: &M, base2k: usize)
 where
-    BE::OwnedBuf: crate::layouts::DataMut,
+    BE::OwnedBuf: crate::layouts::HostDataMut,
     M: ModuleN
         + Convolution<BE>
         + CnvPVecAlloc<BE>
@@ -302,7 +302,7 @@ pub fn bivariate_convolution_naive<'s, R, A, B, M, BE: crate::test_suite::TestBa
     b_col: usize,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    BE::OwnedBuf: crate::layouts::DataMut,
+    BE::OwnedBuf: crate::layouts::HostDataMut,
     R: VecZnxToMut,
     A: VecZnxToRef,
     B: VecZnxToRef,
@@ -350,7 +350,7 @@ fn bivariate_tensoring_naive<'s, R, A, B, M, BE: crate::test_suite::TestBackend>
     b: &B,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    BE::OwnedBuf: crate::layouts::DataMut,
+    BE::OwnedBuf: crate::layouts::HostDataMut,
     R: VecZnxToMut,
     A: VecZnxToRef,
     B: VecZnxToRef,

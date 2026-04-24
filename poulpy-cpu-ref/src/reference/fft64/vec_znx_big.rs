@@ -306,7 +306,7 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
 
 pub fn test_vec_znx_big_add_normal<B: 'static>(module: &Module<B>)
 where
-    B::OwnedBuf: poulpy_hal::layouts::DataMut,
+    B::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     Module<B>: VecZnxBigAddNormal<B>,
     B: Backend<ScalarBig = i64>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,

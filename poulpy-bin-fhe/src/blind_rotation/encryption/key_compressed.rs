@@ -4,7 +4,7 @@ use poulpy_core::{
     layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecretToRef},
 };
 use poulpy_hal::{
-    layouts::{Backend, DataMut, ScratchArena},
+    layouts::{Backend, HostDataMut, ScratchArena},
     source::Source,
 };
 
@@ -43,7 +43,7 @@ pub trait BlindRotationKeyCompressedEncryptSk<B: Backend, BRA: BlindRotationAlgo
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<B> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,

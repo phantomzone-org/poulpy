@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -30,6 +30,7 @@ pub fn test_glwe_to_glwe_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Owne
         + GLWEBlindRotation<BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
+    BE: HostBackend,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,

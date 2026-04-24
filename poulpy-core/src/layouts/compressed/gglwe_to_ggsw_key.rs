@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -59,13 +59,13 @@ impl<D: Data> GGLWEInfos for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GGLWEToGGSWKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
@@ -73,7 +73,7 @@ impl<D: DataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GGLWEToGGSWKeyCompressed)",)?;
         for (i, key) in self.keys.iter().enumerate() {
@@ -139,7 +139,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> GGLWEToGGSWKeyCompressed<D> {
     // Returns a mutable reference to GGLWE_{s}([s[i]*s[0], s[i]*s[1], ..., s[i]*s[rank]])
     pub fn at_mut(&mut self, i: usize) -> &mut GGLWECompressed<D> {
         assert!((i as u32) < self.rank());
@@ -147,7 +147,7 @@ impl<D: DataMut> GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> GGLWEToGGSWKeyCompressed<D> {
     // Returns a reference to GGLWE_{s}(s[i] * s[j])
     pub fn at(&self, i: usize) -> &GGLWECompressed<D> {
         assert!((i as u32) < self.rank());
@@ -155,7 +155,7 @@ impl<D: DataRef> GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
@@ -171,7 +171,7 @@ impl<D: DataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for GGLWEToGGSWKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
         for key in &self.keys {
@@ -211,7 +211,7 @@ pub trait GGLWEToGGSWKeyCompressedToRef {
     fn to_ref(&self) -> GGLWEToGGSWKeyCompressed<&[u8]>;
 }
 
-impl<D: DataRef> GGLWEToGGSWKeyCompressedToRef for GGLWEToGGSWKeyCompressed<D>
+impl<D: HostDataRef> GGLWEToGGSWKeyCompressedToRef for GGLWEToGGSWKeyCompressed<D>
 where
     GGLWECompressed<D>: GGLWECompressedToRef,
 {
@@ -228,7 +228,7 @@ pub trait GGLWEToGGSWKeyCompressedToMut {
     fn to_mut(&mut self) -> GGLWEToGGSWKeyCompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWEToGGSWKeyCompressedToMut for GGLWEToGGSWKeyCompressed<D>
+impl<D: HostDataMut> GGLWEToGGSWKeyCompressedToMut for GGLWEToGGSWKeyCompressed<D>
 where
     GGLWECompressed<D>: GGLWECompressedToMut,
 {

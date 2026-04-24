@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Module, ScalarZnx, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
-    EncryptionLayout, GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
+    EncryptionLayout, GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGSW, GGSWDecompress, GGSWInfos, GGSWLayout, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
@@ -16,10 +16,10 @@ use crate::{
 
 pub fn test_ggsw_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE>,
 {
     let base2k: usize = params.base2k;
@@ -86,10 +86,10 @@ where
 
 pub fn test_ggsw_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     Module<BE>: GGSWCompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE> + GGSWDecompress,
 {
     let base2k: usize = params.base2k;

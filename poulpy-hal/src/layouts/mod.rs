@@ -62,12 +62,6 @@ pub trait HostDataRef = Data + AsRef<[u8]> + Sync;
 /// support in-place modification and can be moved between threads.
 pub trait HostDataMut = HostDataRef + AsMut<[u8]> + Send;
 
-/// Backwards-compatible alias for host-readable layout data.
-pub trait DataRef = HostDataRef;
-
-/// Backwards-compatible alias for host-mutable layout data.
-pub trait DataMut = HostDataMut;
-
 mod private {
     pub trait Sealed {}
 }
@@ -96,6 +90,22 @@ impl Location for Device {}
 /// Convenience marker for host-resident backends.
 pub trait HostBackend: Backend<Location = Host> {}
 impl<BE: Backend<Location = Host>> HostBackend for BE {}
+
+/// Convenience marker for host-resident backends whose borrowed views are directly readable and writable as host bytes.
+pub trait HostVisibleBackend: HostBackend
+where
+    for<'a> Self::BufRef<'a>: AsRef<[u8]>,
+    for<'a> Self::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]>,
+{
+}
+
+impl<BE> HostVisibleBackend for BE
+where
+    BE: HostBackend,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]>,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]>,
+{
+}
 
 /// Convenience marker for device-resident backends.
 pub trait DeviceBackend: Backend<Location = Device> {}

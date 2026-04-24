@@ -16,7 +16,7 @@ use poulpy_hal::{
         VecZnxIdftApply, VecZnxNormalizeTmpBytes, VmpApplyDftToDftBackendRef, VmpApplyDftToDftTmpBytes,
     },
     layouts::{
-        Backend, DataMut, HostDataMut, Module, ScratchArena, VecZnxBig, ZnxZero, vec_znx_backend_ref_from_mut,
+        Backend, HostDataMut, Module, ScratchArena, VecZnxBig, ZnxZero, vec_znx_backend_ref_from_mut,
         vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
 };
@@ -128,7 +128,7 @@ pub trait ExecuteBDDCircuit<BE: Backend<OwnedBuf = Vec<u8>>> {
     where
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
-        O: DataMut,
+        O: HostDataMut,
     {
         self.execute_bdd_circuit_multi_thread(1, out, inputs, circuit, scratch);
     }
@@ -153,7 +153,7 @@ pub trait ExecuteBDDCircuit<BE: Backend<OwnedBuf = Vec<u8>>> {
     ) where
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
-        O: DataMut;
+        O: HostDataMut;
 }
 
 pub trait BitSize {
@@ -184,7 +184,7 @@ where
     ) where
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
-        O: DataMut,
+        O: HostDataMut,
     {
         #[cfg(debug_assertions)]
         {

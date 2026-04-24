@@ -4,8 +4,8 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{
-        Backend, DataMut, DataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero, vec_znx_backend_ref_from_mut,
-        vec_znx_big_backend_ref_from_mut,
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero,
+        vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut,
     },
 };
 
@@ -19,7 +19,7 @@ use crate::{
 };
 use crate::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
 
-impl<D: DataRef> GGSW<D> {
+impl<D: HostDataRef> GGSW<D> {
     pub fn noise<'s, M, BE: Backend, P, S>(
         &self,
         module: &M,
@@ -34,14 +34,15 @@ impl<D: DataRef> GGSW<D> {
         S: GLWESecretPreparedToBackendRef<BE>,
         P: ScalarZnxToRef,
         M: GGSWNoise<BE>,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         module.ggsw_noise(self, row, col, pt_want, sk_prepared, scratch)
     }
 }
 
-impl<BE: Backend> GGSWNoise<BE> for Module<BE>
+impl<BE: Backend + HostBackend> GGSWNoise<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarAssign
         + VecZnxDftApply<BE>
@@ -84,7 +85,8 @@ where
         R: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         P: ScalarZnxToRef,
-        for<'a> BE::BufMut<'a>: DataMut,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res_ref = res.to_ref();
         let res_backend = res.to_backend_ref();

@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxNormalize, VecZnxNormalizeTmpBytes,
     },
     layouts::{
-        Backend, DataMut, Module, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxDftBackendRef, vec_znx_backend_ref_from_mut,
+        Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxDftBackendRef, vec_znx_backend_ref_from_mut,
         vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
 };
@@ -23,7 +23,7 @@ use crate::{
 pub(crate) trait GGSWFromGGLWEDefault<BE: Backend>: GGSWExpandRowsDefault<BE> + GLWECopy
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn ggsw_from_gglwe_tmp_bytes_default<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -40,7 +40,7 @@ where
         A: GGLWEToRef + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert_eq!(res.rank(), a.rank_out());
         assert_eq!(res.dnum(), a.dnum());
@@ -72,7 +72,7 @@ impl<BE: Backend> GGSWFromGGLWEDefault<BE> for Module<BE>
 where
     Self: GGSWExpandRowsDefault<BE> + GLWECopy,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
 }
 

@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, DataMut, DataRef, HostDataMut, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -28,8 +28,9 @@ use poulpy_core::layouts::{
     prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
-pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>>, M, BRA: BlindRotationAlgo>(module: &M)
-where
+pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, M, BRA: BlindRotationAlgo>(
+    module: &M,
+) where
     M: ModuleN
         + GLWESecretPreparedFactory<BE>
         + GLWEExternalProduct<BE>
@@ -43,7 +44,7 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxRotateAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     let n_glwe: usize = module.n();
@@ -231,8 +232,9 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>>, M, BRA: BlindRotationAlgo>(module: &M)
-where
+pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, M, BRA: BlindRotationAlgo>(
+    module: &M,
+) where
     M: ModuleN
         + GLWESecretPreparedFactory<BE>
         + GLWEExternalProduct<BE>
@@ -246,7 +248,7 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxRotateAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     let n_glwe: usize = module.n();

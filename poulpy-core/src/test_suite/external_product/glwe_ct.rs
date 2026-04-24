@@ -1,12 +1,12 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace},
-    layouts::{Module, ScalarZnx, Scratch, ScratchOwned, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace},
+    layouts::{Module, ScalarZnx, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
 };
 
 use crate::{
-    EncryptionLayout, GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct, GLWENoise, GLWENormalize, ScratchTakeCore,
+    EncryptionLayout, GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct, GLWENoise, GLWENormalize, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGSW, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory,
@@ -19,8 +19,8 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_glwe_external_product<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
         + VecZnxFillUniform
@@ -31,7 +31,7 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWENormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let in_base2k: usize = base2k - 1;
@@ -184,8 +184,8 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_glwe_external_product_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
         + VecZnxFillUniform
@@ -195,7 +195,7 @@ where
         + VecZnxRotateAssign<BE>
         + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let out_base2k: usize = base2k - 1;

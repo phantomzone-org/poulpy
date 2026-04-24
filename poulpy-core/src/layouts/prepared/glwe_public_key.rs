@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, Module},
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module},
 };
 
 use crate::{
@@ -23,13 +23,13 @@ pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-impl<D: DataRef, BE: Backend> GetDistribution for GLWEPublicKeyPrepared<D, BE> {
+impl<D: HostDataRef, BE: Backend> GetDistribution for GLWEPublicKeyPrepared<D, BE> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
 }
 
-impl<D: DataMut, BE: Backend> GetDistributionMut for GLWEPublicKeyPrepared<D, BE> {
+impl<D: HostDataMut, BE: Backend> GetDistributionMut for GLWEPublicKeyPrepared<D, BE> {
     fn dist_mut(&mut self) -> &mut Distribution {
         &mut self.dist
     }
@@ -105,7 +105,7 @@ impl<B: Backend> GLWEPublicKeyPreparedFactory<B> for Module<B> where Self: VecZn
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEPublicKeyPreparedFactory` on `Module`.
 
-impl<D: DataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPublicKeyPrepared<D, B>
+impl<D: HostDataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPublicKeyPrepared<D, B>
 where
     GLWEPrepared<D, B>: GLWEPreparedToMut<B>,
 {
@@ -114,7 +114,7 @@ where
     }
 }
 
-impl<D: DataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPublicKeyPrepared<D, B>
+impl<D: HostDataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPublicKeyPrepared<D, B>
 where
     GLWEPrepared<D, B>: GLWEPreparedToRef<B>,
 {

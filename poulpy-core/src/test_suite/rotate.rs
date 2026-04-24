@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Module, ScratchOwned, ZnxView, ZnxViewMut},
     test_suite::TestParams,
 };
 
 use crate::{
-    GLWERotate, ScratchTakeCore,
+    GLWERotate, ScratchArenaTakeCore,
     layouts::{GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, GLWEToBackendRef},
 };
 
@@ -29,11 +29,11 @@ fn negacyclic_rotate(src: &[i64], k: i64) -> Vec<i64> {
 
 pub fn test_glwe_rotate<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWERotate<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let layout = GLWELayout {
         n: module.n().into(),

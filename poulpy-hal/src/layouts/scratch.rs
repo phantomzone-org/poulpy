@@ -6,7 +6,7 @@ use crate::layouts::Backend;
 ///
 /// Operations such as normalization, DFT, and vector-matrix products require
 /// temporary scratch memory. `ScratchOwned` holds a backend-owned buffer that
-/// can be borrowed as a [`Scratch`] reference.
+/// can be borrowed as a [`ScratchArena`].
 ///
 /// The required size for each operation is obtained via the corresponding
 /// `*_tmp_bytes` method on the API trait (e.g.
@@ -17,55 +17,10 @@ pub struct ScratchOwned<B: Backend> {
     pub _phantom: PhantomData<B>,
 }
 
-/// Borrowed scratch buffer (unsized).
-///
-/// `Scratch` is a dynamically sized type (DST) wrapping `[u8]`. It is
-/// always used behind a mutable reference (`&mut Scratch<B>`) and
-/// supports arena-style sub-allocation via [`split_at_mut`](Scratch::split_at_mut)
-/// and the [`ScratchTakeBasic`](crate::api::ScratchTakeBasic) methods.
-#[repr(C)]
-pub struct Scratch<B: Backend> {
-    pub _phantom: PhantomData<B>,
-    pub data: [u8],
-}
-
-impl<B: Backend> Scratch<B> {
-    /// Reinterprets this `Scratch<B>` as a `Scratch<Other>`.
-    ///
-    /// Both types share the same layout (`PhantomData<_>, [u8]` under
-    /// `#[repr(C)]`), so this is a zero-cost rename used by delegation
-    /// paths that forward to a compatible source backend.
-    #[inline]
-    pub fn reinterpret<Other>(&self) -> &Scratch<Other>
-    where
-        Other: Backend<Handle = B::Handle>,
-    {
-        // Safety: Scratch is #[repr(C)] and consists of a ZST PhantomData<_>
-        // followed by a [u8] DST. The slice length is encoded in the fat pointer
-        // and is preserved by the cast.
-        let len = self.data.len();
-        let ptr = self as *const Self as *const u8;
-        unsafe { &*(std::ptr::slice_from_raw_parts(ptr, len) as *const Scratch<Other>) }
-    }
-
-    /// Mutable version of [`Scratch::reinterpret`].
-    #[inline]
-    pub fn reinterpret_mut<Other>(&mut self) -> &mut Scratch<Other>
-    where
-        Other: Backend<Handle = B::Handle>,
-    {
-        // Safety: see Scratch::reinterpret.
-        let len = self.data.len();
-        let ptr = self as *mut Self as *mut u8;
-        unsafe { &mut *(std::ptr::slice_from_raw_parts_mut(ptr, len) as *mut Scratch<Other>) }
-    }
-}
-
 /// Backend-native scratch arena borrowed from a [`ScratchOwned`].
 ///
-/// Unlike the legacy [`Scratch`] DST, this arena keeps backend ownership
-/// explicit and carves typed temporaries using the backend's native
-/// borrowed buffer view (`B::BufMut<'a>`).
+/// This arena keeps backend ownership explicit and carves typed temporaries
+/// using the backend's native borrowed buffer view (`B::BufMut<'a>`).
 pub struct ScratchArena<'a, B: Backend> {
     data: NonNull<B::OwnedBuf>,
     start: usize,

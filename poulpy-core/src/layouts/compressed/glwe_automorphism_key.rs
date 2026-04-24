@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -21,7 +21,7 @@ pub struct GLWEAutomorphismKeyCompressed<D: Data> {
     pub(crate) p: i64,
 }
 
-impl<D: DataRef> GetGaloisElement for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataRef> GetGaloisElement for GLWEAutomorphismKeyCompressed<D> {
     fn p(&self) -> i64 {
         self.p
     }
@@ -65,19 +65,19 @@ impl<D: Data> GGLWEInfos for GLWEAutomorphismKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GLWEAutomorphismKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for GLWEAutomorphismKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GLWEAutomorphismKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(AutomorphismKeyCompressed: p={}) {}", self.p, self.key)
     }
@@ -124,14 +124,14 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GLWEAutomorphismKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.p = reader.read_u64::<LittleEndian>()? as i64;
         self.key.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for GLWEAutomorphismKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.p as u64)?;
         self.key.write_to(writer)
@@ -156,25 +156,25 @@ impl<B: Backend> GLWEAutomorphismKeyDecompress for Module<B> where Self: GLWEDec
 
 // module-only API: decompression is provided by `GLWEAutomorphismKeyDecompress` on `Module`.
 
-impl<D: DataRef> GGLWECompressedToRef for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataRef> GGLWECompressedToRef for GLWEAutomorphismKeyCompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {
         self.key.to_ref()
     }
 }
 
-impl<D: DataMut> GGLWECompressedToMut for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataMut> GGLWECompressedToMut for GLWEAutomorphismKeyCompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
-impl<D: DataMut> GGLWECompressedSeedMut for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataMut> GGLWECompressedSeedMut for GLWEAutomorphismKeyCompressed<D> {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
         &mut self.key.seed
     }
 }
 
-impl<D: DataMut> SetGaloisElement for GLWEAutomorphismKeyCompressed<D> {
+impl<D: HostDataMut> SetGaloisElement for GLWEAutomorphismKeyCompressed<D> {
     fn set_p(&mut self, p: i64) {
         self.p = p
     }

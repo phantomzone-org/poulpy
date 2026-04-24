@@ -1,12 +1,12 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
-    EncryptionLayout, GGLWEKeyswitch, GGLWENoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGLWEKeyswitch, GGLWENoise, GLWESwitchingKeyEncryptSk, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout,
@@ -19,15 +19,15 @@ use crate::{
 
 pub fn test_gglwe_switching_key_keyswitch<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESwitchingKeyPreparedFactory<BE>
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let in_base2k: usize = base2k - 1;
@@ -181,15 +181,15 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_switching_key_keyswitch_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>
         + GLWESwitchingKeyPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let out_base2k: usize = base2k - 1;

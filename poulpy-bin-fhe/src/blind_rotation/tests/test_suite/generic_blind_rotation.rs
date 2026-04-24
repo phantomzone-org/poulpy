@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, DataRef, HostDataMut, HostDataRef, ScratchOwned, ZnxView},
+    layouts::{Backend, HostDataMut, HostDataRef, ScratchOwned, ZnxView},
     source::Source,
 };
 
@@ -32,7 +32,7 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend<OwnedBuf = Vec
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     for<'a> BE::OwnedBuf: HostDataRef,
 {

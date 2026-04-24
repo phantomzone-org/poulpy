@@ -9,7 +9,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::ModuleLogN,
-    layouts::{Backend, DataMut, HostDataMut, Module, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScratchArena},
 };
 
 use crate::bdd_arithmetic::{
@@ -43,7 +43,7 @@ where
     ) where
         T: UnsignedInteger,
         C: GetBitCircuitInfo,
-        R: DataMut,
+        R: HostDataMut,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: Backend<OwnedBuf = Vec<u8>>,
@@ -115,7 +115,7 @@ where
     ) where
         T: UnsignedInteger,
         C: GetBitCircuitInfo,
-        R: DataMut,
+        R: HostDataMut,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: Backend<OwnedBuf = Vec<u8>>,
@@ -240,7 +240,7 @@ macro_rules! define_bdd_2w_to_1w_trait {
 macro_rules! impl_bdd_2w_to_1w_trait {
     ($trait_name:ident, $method_name:ident, $ty:ty, $circuit_ty:ty, $output_circuits:path) => {
         paste::paste! {
-            impl<D: DataMut, BE: Backend<OwnedBuf = Vec<u8>>> $trait_name<$ty, BE> for FheUint<D, $ty> {
+            impl<D: HostDataMut, BE: Backend<OwnedBuf = Vec<u8>>> $trait_name<$ty, BE> for FheUint<D, $ty> {
 
                 fn $method_name<M, K, H>(
                     &mut self,

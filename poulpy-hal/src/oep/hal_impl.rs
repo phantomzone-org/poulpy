@@ -2,28 +2,10 @@
 
 use crate::{
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, ScratchArena, ScratchOwned, VecZnxBackendMut, VecZnxBackendRef,
-        VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef,
     },
     source::Source,
 };
-
-/// Scratch allocation and borrowing extension point.
-///
-/// # Safety
-/// Implementations must uphold the backend safety contract for scratch
-/// allocation, alignment, aliasing, and lifetime handling.
-pub unsafe trait HalScratchImpl<BE: Backend>: Backend {
-    fn scratch_owned_alloc(size: usize) -> ScratchOwned<BE>;
-
-    fn scratch_owned_borrow(scratch: &mut ScratchOwned<BE>) -> &mut Scratch<BE>;
-
-    fn scratch_from_bytes(data: &mut [u8]) -> &mut Scratch<BE>;
-
-    fn scratch_available(scratch: &Scratch<BE>) -> usize;
-
-    fn take_slice<T>(scratch: &mut Scratch<BE>, len: usize) -> (&mut [T], &mut Scratch<BE>);
-}
 
 /// Module construction extension point.
 ///

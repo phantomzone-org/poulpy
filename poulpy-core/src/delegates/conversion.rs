@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
 
 use crate::{
     api::{GGSWExpandRows, GGSWFromGGLWE, GLWEFromLWE, LWEFromGLWE},
@@ -47,7 +47,7 @@ impl_conversion_delegate!(
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         BE::glwe_from_lwe(self, res, lwe, ksk, scratch)
     }
@@ -79,7 +79,7 @@ impl_conversion_delegate!(
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         BE::lwe_from_glwe(self, res, a, a_idx, key, scratch)
     }
@@ -109,7 +109,7 @@ impl_conversion_delegate!(
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         BE::ggsw_from_gglwe(self, res, a, tsk, scratch)
     }

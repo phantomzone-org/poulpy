@@ -7,13 +7,10 @@ use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
         Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos,
-        ScalarZnxToRef, Scratch, ScratchArena, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
+        ScalarZnxToRef, ScratchArena, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+        VecZnxToMut, VecZnxToRef, ZnxInfos,
     },
-    oep::{
-        HalConvolutionImpl, HalModuleImpl, HalScratchImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl,
-        HalVmpImpl,
-    },
+    oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
     source::Source,
 };
 
@@ -21,7 +18,7 @@ use crate::{
     FFT64Ref,
     hal_defaults::{
         FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
-        FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults,
+        FFT64VmpDefaults, HalVecZnxDefaults,
     },
     reference::{
         fft64::{
@@ -146,10 +143,6 @@ impl ReimArith for DelegatingFFT64Ref {}
 impl Reim4BlkMatVec for DelegatingFFT64Ref {}
 impl Reim4Convolution for DelegatingFFT64Ref {}
 impl I64Ops for DelegatingFFT64Ref {}
-
-unsafe impl HalScratchImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
-    crate::hal_impl_scratch!();
-}
 
 unsafe impl HalVecZnxImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
     crate::hal_impl_vec_znx!();

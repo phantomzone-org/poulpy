@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef, VmpPMatToMut,
-        VmpPMatToRef, ZnxInfos,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        VmpPMatToMut, VmpPMatToRef, ZnxInfos,
     },
 };
 
@@ -225,7 +225,7 @@ pub trait GGLWEPreparedToMut<B: Backend> {
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GGLWEPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GGLWEPrepared<D, B> {
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
         GGLWEPrepared {
             base2k: self.base2k,
@@ -241,7 +241,7 @@ pub trait GGLWEPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GGLWEPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GGLWEPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GGLWEPrepared<D, B> {
     fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
         GGLWEPrepared {
             base2k: self.base2k,

@@ -9,7 +9,7 @@ use poulpy_bin_fhe::{
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 use poulpy_core::{
-    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
@@ -18,7 +18,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::RngExt;
@@ -44,7 +44,7 @@ use poulpy_cpu_ref::FFT64Ref;
 // There also is an example use of the GLWE Blind Selection operation,
 // which can choose between any number of encrypted fheuint inputs
 
-fn example_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>()
+fn example_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -58,8 +58,8 @@ where
         + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEBlindSelection<u32, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     ////////// Parameter Selection

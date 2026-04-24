@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAutomorphism},
-    layouts::{Backend, GaloisElement, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ScratchOwnedAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAutomorphism},
+    layouts::{Backend, GaloisElement, HostDataMut, Module, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement,
     },
@@ -25,7 +25,7 @@ pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -35,7 +35,6 @@ pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> GLWEAutomorphismKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: GGLWEEncryptSk<BE> + VecZnxAutomorphism + GaloisElement + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -69,7 +68,7 @@ where
         source_xe: &mut Source,
         source_xa: &mut Source,
 
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -91,7 +90,7 @@ where
         let mut sk_out_prepared = self.glwe_secret_prepared_alloc(sk.rank());
 
         {
-            let (mut sk_out, _) = scratch.take_glwe_secret(sk.n(), sk.rank());
+            let mut sk_out = GLWESecret::alloc(sk.n(), sk.rank());
             sk_out.dist = sk.dist;
 
             for i in 0..sk.rank().into() {
@@ -135,7 +134,6 @@ pub trait GLWEAutomorphismKeyEncryptPkDefault<BE: Backend> {
 impl<BE: Backend> GLWEAutomorphismKeyEncryptPkDefault<BE> for Module<BE>
 where
     Self:,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_automorphism_key_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
     where

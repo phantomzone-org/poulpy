@@ -40,17 +40,36 @@ use crate::reference::{
     znx::ZnxZero,
 };
 use poulpy_hal::{
-    api::ScratchArenaTakeHost,
+    api::HostBufMut,
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut,
         VecZnxDft, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
     },
 };
 
+#[inline]
+fn take_host_typed<'a, BE, T>(arena: ScratchArena<'a, BE>, len: usize) -> (&'a mut [T], ScratchArena<'a, BE>)
+where
+    BE: Backend + 'a,
+    BE::BufMut<'a>: HostBufMut<'a>,
+    T: Copy,
+{
+    debug_assert!(
+        BE::SCRATCH_ALIGN.is_multiple_of(std::mem::align_of::<T>()),
+        "B::SCRATCH_ALIGN ({}) must be a multiple of align_of::<T>() ({})",
+        BE::SCRATCH_ALIGN,
+        std::mem::align_of::<T>()
+    );
+    let (buf, arena) = arena.take_region(len * std::mem::size_of::<T>());
+    let bytes: &'a mut [u8] = buf.into_bytes();
+    let slice = unsafe { std::slice::from_raw_parts_mut(bytes.as_mut_ptr() as *mut T, len) };
+    (slice, arena)
+}
+
 #[doc(hidden)]
 pub trait FFT64VecZnxDftDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn vec_znx_dft_apply_default(
         module: &Module<BE>,
@@ -237,12 +256,12 @@ where
     }
 }
 
-impl<BE: Backend> FFT64VecZnxDftDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> FFT64VecZnxDftDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}
 
 #[doc(hidden)]
 pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn vec_znx_dft_apply_default(
         module: &Module<BE>,
@@ -279,11 +298,12 @@ where
         BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttDFTExecute<NttTableInv<Primes30>> + NttToZnx128 + NttCopy,
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
         for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_u64(ntt120_default_vec_znx_idft_apply_tmp_bytes(module.n()) / size_of::<u64>());
+        let (tmp, _) = take_host_typed::<BE, u64>(
+            scratch.borrow(),
+            ntt120_default_vec_znx_idft_apply_tmp_bytes(module.n()) / size_of::<u64>(),
+        );
         ntt120_default_vec_znx_idft_apply(module, res, res_col, a, a_col, tmp);
     }
 
@@ -424,4 +444,4 @@ where
     }
 }
 
-impl<BE: Backend> NTT120VecZnxDftDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> NTT120VecZnxDftDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}

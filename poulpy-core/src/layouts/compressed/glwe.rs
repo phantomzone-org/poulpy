@@ -1,7 +1,8 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo,
+        ZnxInfos,
     },
     source::Source,
 };
@@ -30,7 +31,7 @@ pub trait GLWECompressedSeedMut {
     fn seed_mut(&mut self) -> &mut [u8; 32];
 }
 
-impl<D: DataMut> GLWECompressedSeedMut for GLWECompressed<D> {
+impl<D: HostDataMut> GLWECompressedSeedMut for GLWECompressed<D> {
     fn seed_mut(&mut self) -> &mut [u8; 32] {
         &mut self.seed
     }
@@ -42,7 +43,7 @@ pub trait GLWECompressedSeed {
     fn seed(&self) -> &[u8; 32];
 }
 
-impl<D: DataRef> GLWECompressedSeed for GLWECompressed<D> {
+impl<D: HostDataRef> GLWECompressedSeed for GLWECompressed<D> {
     fn seed(&self) -> &[u8; 32] {
         &self.seed
     }
@@ -67,13 +68,13 @@ impl<D: Data> GLWEInfos for GLWECompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWECompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWECompressed<D> {
+impl<D: HostDataRef> fmt::Display for GLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -87,7 +88,7 @@ impl<D: DataRef> fmt::Display for GLWECompressed<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GLWECompressed<D> {
+impl<D: HostDataMut> FillUniform for GLWECompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
@@ -130,7 +131,7 @@ impl GLWECompressed<Vec<u8>> {
 }
 
 /// Deserializes the metadata (k, base2k, rank, seed) followed by the body data.
-impl<D: DataMut> ReaderFrom for GLWECompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GLWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.rank = Rank(reader.read_u32::<LittleEndian>()?);
@@ -140,7 +141,7 @@ impl<D: DataMut> ReaderFrom for GLWECompressed<D> {
 }
 
 /// Serializes the metadata (k, base2k, rank, seed) followed by the body data.
-impl<D: DataRef> WriterTo for GLWECompressed<D> {
+impl<D: HostDataRef> WriterTo for GLWECompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.rank.into())?;
@@ -198,7 +199,7 @@ pub trait GLWECompressedToRef {
     fn to_ref(&self) -> GLWECompressed<&[u8]>;
 }
 
-impl<D: DataRef> GLWECompressedToRef for GLWECompressed<D> {
+impl<D: HostDataRef> GLWECompressedToRef for GLWECompressed<D> {
     fn to_ref(&self) -> GLWECompressed<&[u8]> {
         GLWECompressed {
             seed: self.seed,
@@ -215,7 +216,7 @@ pub trait GLWECompressedToMut {
     fn to_mut(&mut self) -> GLWECompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> GLWECompressedToMut for GLWECompressed<D> {
+impl<D: HostDataMut> GLWECompressedToMut for GLWECompressed<D> {
     fn to_mut(&mut self) -> GLWECompressed<&mut [u8]> {
         GLWECompressed {
             seed: self.seed,

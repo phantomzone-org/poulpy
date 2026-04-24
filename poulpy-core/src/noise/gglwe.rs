@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::VecZnxAddScalarAssign,
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero},
 };
 
 use crate::noise::glwe::glwe_noise_backend_inner;
@@ -15,7 +15,7 @@ use crate::{
 };
 use crate::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
 
-impl<D: DataRef> GGLWE<D> {
+impl<D: HostDataRef> GGLWE<D> {
     pub fn noise<'s, M, S, P, BE: Backend>(
         &self,
         module: &M,
@@ -30,14 +30,15 @@ impl<D: DataRef> GGLWE<D> {
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
         M: GGLWENoise<BE>,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         module.gglwe_noise(self, row, col, pt_want, sk_prepared, scratch)
     }
 }
 
-impl<BE: Backend> GGLWENoise<BE> for Module<BE>
+impl<BE: Backend + HostBackend> GGLWENoise<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -65,7 +66,8 @@ where
         R: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
-        for<'a> BE::BufMut<'a>: DataMut,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(
             scratch.available() >= self.gglwe_noise_tmp_bytes(res),

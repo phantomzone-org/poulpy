@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
-    layouts::{Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
+    layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
     test_suite::vec_znx_backend_mut,
@@ -8,7 +8,7 @@ use poulpy_hal::{
 
 use crate::{
     EncryptionLayout, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWENoise, GLWENormalize,
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
@@ -20,7 +20,7 @@ use crate::{
 
 pub fn test_glwe_automorphism<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -33,7 +33,7 @@ where
         + VecZnxAutomorphismAssign<BE>
         + GLWENormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let in_base2k: usize = base2k - 1;
@@ -107,7 +107,7 @@ where
                 &autokey_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             module.glwe_encrypt_sk(
@@ -167,7 +167,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_glwe_automorphism_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -179,7 +179,7 @@ where
         + GLWENoise<BE>
         + VecZnxAutomorphismAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let out_base2k: usize = base2k - 1;
@@ -243,7 +243,7 @@ where
                 &autokey_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             module.glwe_encrypt_sk(

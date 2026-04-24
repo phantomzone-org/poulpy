@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero},
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef, VmpPMatToMut,
-        VmpPMatToRef, ZnxInfos,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        VmpPMatToMut, VmpPMatToRef, ZnxInfos,
     },
 };
 
@@ -179,7 +179,7 @@ impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
 
 // module-only API: allocation/size helpers are provided by `GGSWPreparedFactory` on `Module`.
 
-impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GGSWPrepared<D, B> {
     pub fn data(&self) -> &VmpPMat<D, B> {
         &self.data
     }
@@ -193,7 +193,7 @@ pub trait GGSWPreparedToMut<B: Backend> {
     fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> GGSWPreparedToMut<B> for GGSWPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GGSWPreparedToMut<B> for GGSWPrepared<D, B> {
     fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B> {
         GGSWPrepared {
             base2k: self.base2k,
@@ -207,7 +207,7 @@ pub trait GGSWPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GGSWPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GGSWPreparedToRef<B> for GGSWPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GGSWPreparedToRef<B> for GGSWPrepared<D, B> {
     fn to_ref(&self) -> GGSWPrepared<&[u8], B> {
         GGSWPrepared {
             base2k: self.base2k,

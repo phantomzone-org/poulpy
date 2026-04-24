@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -62,7 +62,7 @@ where
     }
 }
 
-impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKeyCompressed<D, BRT> {
+impl<D: HostDataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKeyCompressed<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
@@ -84,7 +84,7 @@ impl<D: Data, BRT: BlindRotationAlgo> PartialEq for BlindRotationKeyCompressed<D
 
 impl<D: Data, BRT: BlindRotationAlgo> Eq for BlindRotationKeyCompressed<D, BRT> {}
 
-impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKeyCompressed<D, BRT> {
+impl<D: HostDataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKeyCompressed<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, key) in self.keys.iter().enumerate() {
             write!(f, "key[{i}]: {key}")?;
@@ -93,13 +93,13 @@ impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKeyCompre
     }
 }
 
-impl<D: DataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKeyCompressed<D, BRT> {
+impl<D: HostDataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKeyCompressed<D, BRT> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys.iter_mut().for_each(|key| key.fill_uniform(log_bound, source));
     }
 }
 
-impl<D: DataMut, BRT: BlindRotationAlgo> ReaderFrom for BlindRotationKeyCompressed<D, BRT> {
+impl<D: HostDataMut, BRT: BlindRotationAlgo> ReaderFrom for BlindRotationKeyCompressed<D, BRT> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.dist = Distribution::read_from(reader)?;
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
@@ -116,7 +116,7 @@ impl<D: DataMut, BRT: BlindRotationAlgo> ReaderFrom for BlindRotationKeyCompress
     }
 }
 
-impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKeyCompressed<D, BRT> {
+impl<D: HostDataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKeyCompressed<D, BRT> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         match self.dist.write_to(writer) {
             Ok(()) => {}
@@ -130,7 +130,7 @@ impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKeyCompressed
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKeyCompressed<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKeyCompressed<D, BRA> {
     fn n_glwe(&self) -> Degree {
         self.n()
     }
@@ -140,7 +140,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotation
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed<D, BRA> {
     fn n(&self) -> Degree {
         self.keys[0].n()
     }
@@ -154,13 +154,13 @@ impl<D: DataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> GLWEInfos for BlindRotationKeyCompressed<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> GLWEInfos for BlindRotationKeyCompressed<D, BRA> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.keys[0].rank()
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> GGSWInfos for BlindRotationKeyCompressed<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> GGSWInfos for BlindRotationKeyCompressed<D, BRA> {
     fn dnum(&self) -> poulpy_core::layouts::Dnum {
         self.keys[0].dnum()
     }
@@ -170,7 +170,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> GGSWInfos for BlindRotationKeyCompresse
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyCompressed<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> BlindRotationKeyCompressed<D, BRA> {
     #[allow(dead_code)]
     pub(crate) fn block_size(&self) -> usize {
         match self.dist {

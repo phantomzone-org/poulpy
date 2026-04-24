@@ -1,7 +1,7 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
-        ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
+        VecZnxToRef, ZnxInfos,
     },
     source::Source,
 };
@@ -22,19 +22,19 @@ pub struct GLWETensor<D: Data> {
 pub type GLWETensorBackendRef<'a, BE> = GLWETensor<<BE as Backend>::BufRef<'a>>;
 pub type GLWETensorBackendMut<'a, BE> = GLWETensor<<BE as Backend>::BufMut<'a>>;
 
-impl<D: DataMut> SetLWEInfos for GLWETensor<D> {
+impl<D: HostDataMut> SetLWEInfos for GLWETensor<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
 }
 
-impl<D: DataRef> GLWETensor<D> {
+impl<D: HostDataRef> GLWETensor<D> {
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> GLWETensor<D> {
+impl<D: HostDataMut> GLWETensor<D> {
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
@@ -61,13 +61,13 @@ impl<D: Data> GLWEInfos for GLWETensor<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWETensor<D> {
+impl<D: HostDataRef> fmt::Debug for GLWETensor<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWETensor<D> {
+impl<D: HostDataRef> fmt::Display for GLWETensor<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -79,7 +79,7 @@ impl<D: DataRef> fmt::Display for GLWETensor<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GLWETensor<D> {
+impl<D: HostDataMut> FillUniform for GLWETensor<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
@@ -117,7 +117,7 @@ impl GLWETensor<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GLWEToRef for GLWETensor<D> {
+impl<D: HostDataRef> GLWEToRef for GLWETensor<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
@@ -126,7 +126,7 @@ impl<D: DataRef> GLWEToRef for GLWETensor<D> {
     }
 }
 
-impl<D: DataMut> GLWEToMut for GLWETensor<D> {
+impl<D: HostDataMut> GLWEToMut for GLWETensor<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,

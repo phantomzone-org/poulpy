@@ -1,12 +1,12 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy},
-    layouts::{Module, ScalarZnx, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy},
+    layouts::{Module, ScalarZnx, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
-    EncryptionLayout, GGLWENoise, GGLWEToGGSWKeyCompressedEncryptSk, GGLWEToGGSWKeyEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGLWENoise, GGLWEToGGSWKeyCompressedEncryptSk, GGLWEToGGSWKeyEncryptSk, ScratchArenaTakeCore,
     decryption::GLWEDecrypt,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
@@ -18,8 +18,8 @@ use crate::{
 
 pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretTensorFactory<BE>
         + GLWESecretPreparedFactory<BE>
@@ -27,7 +27,7 @@ where
         + GGLWENoise<BE>
         + VecZnxCopy,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let k: usize = 4 * base2k + 1;
@@ -68,11 +68,11 @@ where
             &key_infos,
             &mut source_xe,
             &mut source_xa,
-            crate::test_suite::scratch_host_mut(&mut scratch),
+            &mut crate::test_suite::scratch_host_arena(&mut scratch),
         );
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, crate::test_suite::scratch_host_mut(&mut scratch));
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, &mut crate::test_suite::scratch_host_arena(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
@@ -99,8 +99,8 @@ where
 
 pub fn test_gglwe_to_ggsw_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGLWEToGGSWKeyCompressedEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
@@ -109,7 +109,7 @@ where
         + GGLWEDecompress
         + GGLWEToGGSWKeyDecompress,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let k: usize = 4 * base2k + 1;
@@ -151,14 +151,14 @@ where
             seed_xa,
             &key_infos,
             &mut source_xe,
-            crate::test_suite::scratch_host_mut(&mut scratch),
+            &mut crate::test_suite::scratch_host_arena(&mut scratch),
         );
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
         module.decompress_gglwe_to_ggsw_key(&mut key, &key_compressed);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, crate::test_suite::scratch_host_mut(&mut scratch));
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, &mut crate::test_suite::scratch_host_arena(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 

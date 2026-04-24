@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ModuleN,
-    layouts::{Backend, DataMut, Module, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScratchArena},
 };
 
 pub use crate::api::{LWEFromGLWE, LWESampleExtract};
@@ -48,7 +48,7 @@ where
         A: GLWEToRef + GLWEToBackendRef<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let a_ref: &GLWE<&[u8]> = &a.to_ref();
@@ -88,6 +88,6 @@ impl<BE: Backend> LWEFromGLWEDefault<BE> for Module<BE>
 where
     Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
 }

@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, TransferFrom, VecZnx, VecZnxToBackendMut,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, TransferFrom, VecZnx, VecZnxToBackendMut,
         VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
     },
     source::Source,
@@ -109,21 +109,21 @@ impl<D: Data> SetLWEInfos for LWE<D> {
     }
 }
 
-impl<D: DataRef> LWE<D> {
+impl<D: HostDataRef> LWE<D> {
     /// Returns a shared reference to the underlying [`VecZnx`].
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> LWE<D> {
+impl<D: HostDataMut> LWE<D> {
     /// Returns a mutable reference to the underlying [`VecZnx`].
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
 }
 
-impl<D: DataRef> LWE<D> {
+impl<D: HostDataRef> LWE<D> {
     /// Copies this ciphertext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> LWE<To::OwnedBuf>
@@ -155,19 +155,19 @@ impl<D: Data> LWE<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for LWE<D> {
+impl<D: HostDataRef> fmt::Debug for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for LWE<D> {
+impl<D: HostDataRef> fmt::Display for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "LWE: base2k={} k={}: {}", self.base2k().0, self.max_k().0, self.data)
     }
 }
 
-impl<D: DataMut> FillUniform for LWE<D>
+impl<D: HostDataMut> FillUniform for LWE<D>
 where
     VecZnx<D>: FillUniform,
 {
@@ -234,7 +234,7 @@ impl<BE: Backend> LWEToBackendRef<BE> for LWE<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> LWEToRef for LWE<D> {
+impl<D: HostDataRef> LWEToRef for LWE<D> {
     fn to_ref(&self) -> LWE<&[u8]> {
         LWE {
             base2k: self.base2k,
@@ -263,7 +263,7 @@ impl<BE: Backend> LWEToBackendMut<BE> for LWE<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> LWEToMut for LWE<D> {
+impl<D: HostDataMut> LWEToMut for LWE<D> {
     fn to_mut(&mut self) -> LWE<&mut [u8]> {
         LWE {
             base2k: self.base2k,
@@ -272,7 +272,7 @@ impl<D: DataMut> LWEToMut for LWE<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for LWE<D> {
+impl<D: HostDataMut> ReaderFrom for LWE<D> {
     /// Deserialises an [`LWE`] in little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -280,7 +280,7 @@ impl<D: DataMut> ReaderFrom for LWE<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for LWE<D> {
+impl<D: HostDataRef> WriterTo for LWE<D> {
     /// Serialises the [`LWE`] in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.into())?;

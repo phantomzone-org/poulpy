@@ -9,7 +9,7 @@ use poulpy_bin_fhe::{
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 use poulpy_core::{
-    EncryptionLayout, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, GLWEToMut, GLWEToRef,
@@ -18,7 +18,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::RngExt;
@@ -31,7 +31,7 @@ use poulpy_cpu_ref::FFT64Ref;
 // This example demonstrates and end-to-end example usage of the BDD arithmetic API
 // to compute the maximum of an array of integers.
 
-fn example_max_array<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>()
+fn example_max_array<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -48,8 +48,8 @@ where
         + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEBlindSelection<u32, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     ////////// Parameter Selection

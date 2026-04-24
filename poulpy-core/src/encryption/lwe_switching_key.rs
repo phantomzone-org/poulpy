@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, VecZnxAutomorphism},
-    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphism},
+    layouts::{Backend, Module, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, ScratchTakeCore,
+    EncryptionInfos, ScratchArenaTakeCore,
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
     layouts::{GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef, Rank},
 };
@@ -24,7 +24,7 @@ pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -35,8 +35,8 @@ pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
 impl<BE: Backend> LWESwitchingKeyEncryptDefault<BE> for Module<BE>
 where
     Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -64,7 +64,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -85,9 +85,9 @@ where
             <Module<BE> as LWESwitchingKeyEncryptDefault<BE>>::lwe_switching_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_glwe_in, _scratch_3) = scratch_2.take_glwe_secret(self.n().into(), Rank(1));
+        let mut sk_glwe_src = GLWESecret::alloc(self.n().into(), Rank(1));
+        let mut sk_glwe_out = GLWESecret::alloc(self.n().into(), Rank(1));
+        let mut sk_glwe_in = GLWESecret::alloc(self.n().into(), Rank(1));
 
         sk_glwe_out.dist = sk_lwe_out.dist;
         sk_glwe_src.dist = sk_lwe_out.dist;
@@ -108,8 +108,8 @@ where
             self.vec_znx_automorphism(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, &sk_glwe_src_data, 0);
         }
 
-        // TODO(device): LWESwitchingKey is still on the legacy Scratch path; migrate this
-        // wrapper to ScratchArena once the surrounding offline keygen seam is updated.
+        // TODO(device): LWESwitchingKey still stages its offline keygen through a
+        // dedicated local arena borrow; fold that seam into the surrounding path.
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_switching_key_encrypt_sk_tmp_bytes(res));
         self.glwe_switching_key_encrypt_sk(
             res,

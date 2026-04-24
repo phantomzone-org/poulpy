@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{ModuleLogN, ModuleN},
-    layouts::{Backend, DataRef, HostDataMut, Module, ScratchArena},
+    layouts::{Backend, HostDataMut, HostDataRef, Module, ScratchArena},
 };
 
 use poulpy_core::{
@@ -148,7 +148,7 @@ where
         + GGSWExpandRows<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
-    BE::OwnedBuf: DataRef,
+    BE::OwnedBuf: HostDataRef,
 {
     fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
         &self,
@@ -253,7 +253,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
         + GGSWExpandRows<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
-    BE::OwnedBuf: DataRef,
+    BE::OwnedBuf: HostDataRef,
 {
     // TODO(device): this core routine still drops to host GLWE/LWE views for
     // trace/packing orchestration. It is intentionally kept behind a

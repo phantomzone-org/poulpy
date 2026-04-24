@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, DataMut, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -31,7 +31,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,

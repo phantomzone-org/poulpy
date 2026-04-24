@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, Data, DataRef, ScratchArena, SvpPPolOwned};
+use poulpy_hal::layouts::{Backend, Data, HostDataRef, ScratchArena, SvpPPolOwned};
 
 use std::marker::PhantomData;
 
@@ -38,7 +38,7 @@ pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
         other: &BlindRotationKey<DR, BRA>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        DR: DataRef;
+        DR: HostDataRef;
 }
 
 impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE> {
@@ -64,8 +64,12 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<BE::OwnedBuf,
     ///
     /// Convenience wrapper around
     /// [`BlindRotationKeyPreparedFactory::prepare_blind_rotation_key`].
-    pub fn prepare<DR: DataRef, M>(&mut self, module: &M, other: &BlindRotationKey<DR, BRA>, scratch: &mut ScratchArena<'_, BE>)
-    where
+    pub fn prepare<DR: HostDataRef, M>(
+        &mut self,
+        module: &M,
+        other: &BlindRotationKey<DR, BRA>,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) where
         M: BlindRotationKeyPreparedFactory<BRA, BE>,
     {
         module.prepare_blind_rotation_key(self, other, scratch);

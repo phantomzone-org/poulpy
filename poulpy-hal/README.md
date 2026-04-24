@@ -46,9 +46,9 @@ An `svp_ppol` (scalar vector prepared polynomial) is a backend-specific type tha
 
 A `vmp_pmat` (vector matrix product prepared matrix) is a backend-specific type that stores a prepared `mat_znx`. It is used to perform a vector matrix product which multiplies a `vec_znx` by a `mat_znx`, a typical step of the GLWE gadget product.
 
-#### Scratch
+#### ScratchArena
 
-A `scratch` is a backend-agnostic scratch space manager that lets you borrow bytes or structs for intermediate computations.
+A `scratch_arena` is a backend-native scratch space manager that carves typed temporary views from a `ScratchOwned` buffer for intermediate computations.
 
 ---------
 

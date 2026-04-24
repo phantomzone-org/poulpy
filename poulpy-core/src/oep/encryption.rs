@@ -1,12 +1,12 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, Scratch, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, ScratchArena},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GetDistribution, GetDistributionMut, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GetDistribution, GetDistributionMut, ScratchArenaTakeCore,
     encryption::{
         GGLWECompressedEncryptSkDefault, GGLWEEncryptSkDefault, GGLWEToGGSWKeyCompressedEncryptSkDefault,
         GGLWEToGGSWKeyEncryptSkDefault, GGSWCompressedEncryptSkDefault, GGSWEncryptSkDefault,
@@ -189,7 +189,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
         E: EncryptionInfos,
@@ -229,7 +229,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -266,7 +266,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -285,7 +285,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -304,7 +304,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -389,7 +389,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -407,7 +407,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -425,7 +425,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -443,7 +443,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,
@@ -474,7 +474,8 @@ where
         + GLWEAutomorphismKeyCompressedEncryptSkDefault<BE>
         + GLWESwitchingKeyCompressedEncryptSkDefault<BE>
         + GLWETensorKeyCompressedEncryptSkDefault<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn lwe_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -680,7 +681,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
         E: EncryptionInfos,
@@ -739,7 +740,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -792,7 +793,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -819,7 +820,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -846,7 +847,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -886,8 +887,8 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk(
             module, res, pt, sk, seed_xa, enc_infos, source_xe, scratch,
@@ -966,7 +967,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -994,7 +995,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -1022,7 +1023,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -1050,7 +1051,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,

@@ -3,7 +3,7 @@ use poulpy_hal::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmall,
         VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, Module, ScratchArena, vec_znx_big_backend_ref_from_mut},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, vec_znx_big_backend_ref_from_mut},
 };
 
 pub use crate::api::GLWEDecrypt;
@@ -49,9 +49,9 @@ where
         R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        BE: 's,
+        BE: HostBackend + 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res_ref: &GLWE<&[u8]> = &res.to_ref();
         let res_backend = res.to_backend_ref();
@@ -78,7 +78,7 @@ where
 {
 }
 
-pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + 's>(
+pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
     module: &M,
     res_ref: &GLWE<&[u8]>,
     res: &GLWEBackendRef<'_, BE>,
@@ -98,7 +98,7 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + 's>(
         + VecZnxBigAddAssign<BE>
         + VecZnxBigNormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    for<'a> BE::BufMut<'a>: DataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     #[cfg(debug_assertions)]
     {

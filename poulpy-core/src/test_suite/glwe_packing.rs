@@ -2,15 +2,15 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
     EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWENoise, GLWEPacking, GLWERotate, GLWESub,
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
         GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut,
@@ -20,8 +20,8 @@ use crate::{
 
 pub fn test_glwe_packing<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
@@ -32,7 +32,7 @@ where
         + GLWERotate<BE>
         + GLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -101,7 +101,7 @@ where
             &key_infos,
             &mut source_xe,
             &mut source_xa,
-            crate::test_suite::scratch_host_mut(&mut scratch),
+            &mut crate::test_suite::scratch_host_arena(&mut scratch),
         );
         let mut atk_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
             module.glwe_automorphism_key_prepared_alloc_from_infos(&tmp);

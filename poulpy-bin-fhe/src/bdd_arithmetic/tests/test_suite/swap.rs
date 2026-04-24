@@ -5,7 +5,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, ZnxViewMut},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, ZnxViewMut},
     source::Source,
 };
 use rand::Rng;
@@ -21,6 +21,7 @@ use crate::{
 pub fn test_cmux_direct<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cmux<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    BE: HostBackend,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
@@ -99,6 +100,7 @@ where
 pub fn test_cswap_direct<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cswap<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    BE: HostBackend,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
@@ -179,6 +181,7 @@ where
 pub fn test_fhe_uint_swap<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cswap<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    BE: HostBackend,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
@@ -249,7 +252,7 @@ where
     }
 }
 
-pub fn test_glwe_blind_retrieval_statefull<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(
+pub fn test_glwe_blind_retrieval_statefull<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
     test_context: &TestContext<BRA, BE>,
 ) where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEBlindRetrieval<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
@@ -313,8 +316,9 @@ pub fn test_glwe_blind_retrieval_statefull<BRA: BlindRotationAlgo, BE: Backend<O
     }
 }
 
-pub fn test_glwe_blind_retriever<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
-where
+pub fn test_glwe_blind_retriever<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    test_context: &TestContext<BRA, BE>,
+) where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEBlindRetrieval<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,

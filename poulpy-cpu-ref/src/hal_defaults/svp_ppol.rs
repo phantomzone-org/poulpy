@@ -29,7 +29,7 @@ use poulpy_hal::{
 #[doc(hidden)]
 pub trait FFT64SvpDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -79,12 +79,12 @@ where
     }
 }
 
-impl<BE: Backend> FFT64SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> FFT64SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}
 
 #[doc(hidden)]
 pub trait NTT120SvpDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -145,4 +145,4 @@ where
     }
 }
 
-impl<BE: Backend> NTT120SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> NTT120SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}

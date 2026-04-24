@@ -22,8 +22,8 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: ModuleNew<BR>
         + VmpApplyDftTmpBytes
         + VmpApplyDft<BR>
@@ -138,8 +138,8 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: ModuleNew<BR>
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<BR>

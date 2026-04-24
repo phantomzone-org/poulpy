@@ -1,6 +1,6 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
         ScalarZnxToRef, TransferFrom, ZnxInfos, ZnxView, ZnxZero,
     },
     source::Source,
@@ -30,7 +30,7 @@ impl LWESecret<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> LWESecret<D> {
+impl<D: HostDataRef> LWESecret<D> {
     /// Copies this secret's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> LWESecret<To::OwnedBuf>
@@ -56,13 +56,13 @@ impl<D: Data> LWESecret<D> {
     }
 }
 
-impl<D: DataRef> GetDistribution for LWESecret<D> {
+impl<D: HostDataRef> GetDistribution for LWESecret<D> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
 }
 
-impl<D: DataRef> LWESecret<D> {
+impl<D: HostDataRef> LWESecret<D> {
     pub fn raw(&self) -> &[i64] {
         self.data.at(0, 0)
     }
@@ -90,7 +90,7 @@ impl<D: Data> LWEInfos for LWESecret<D> {
     }
 }
 
-impl<D: DataMut> LWESecret<D> {
+impl<D: HostDataMut> LWESecret<D> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         self.data.fill_ternary_prob(0, prob, source);
         self.dist = Distribution::TernaryProb(prob);
@@ -139,7 +139,7 @@ impl<BE: Backend> LWESecretToBackendRef<BE> for LWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> LWESecretToRef for LWESecret<D> {
+impl<D: HostDataRef> LWESecretToRef for LWESecret<D> {
     fn to_ref(&self) -> LWESecret<&[u8]> {
         LWESecret {
             dist: self.dist,
@@ -165,7 +165,7 @@ impl<BE: Backend> LWESecretToBackendMut<BE> for LWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> LWESecretToMut for LWESecret<D> {
+impl<D: HostDataMut> LWESecretToMut for LWESecret<D> {
     fn to_mut(&mut self) -> LWESecret<&mut [u8]> {
         LWESecret {
             dist: self.dist,

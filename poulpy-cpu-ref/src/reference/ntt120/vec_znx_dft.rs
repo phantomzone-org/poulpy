@@ -146,7 +146,7 @@ where
 /// `at(col, limb)` returns `&[Q120bScalar]` of length `n`; we cast to
 /// `&[u64]` of length `4*n`.
 #[inline(always)]
-fn limb_u64<D: crate::layouts::DataRef, BE: Backend<ScalarPrep = Q120bScalar>>(
+fn limb_u64<D: crate::layouts::HostDataRef, BE: Backend<ScalarPrep = Q120bScalar>>(
     v: &VecZnxDft<D, BE>,
     col: usize,
     limb: usize,
@@ -155,7 +155,7 @@ fn limb_u64<D: crate::layouts::DataRef, BE: Backend<ScalarPrep = Q120bScalar>>(
 }
 
 #[inline(always)]
-fn limb_u64_mut<D: crate::layouts::DataMut, BE: Backend<ScalarPrep = Q120bScalar>>(
+fn limb_u64_mut<D: crate::layouts::HostDataMut, BE: Backend<ScalarPrep = Q120bScalar>>(
     v: &mut VecZnxDft<D, BE>,
     col: usize,
     limb: usize,

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -22,13 +22,13 @@ pub struct GLWESwitchingKeyCompressed<D: Data> {
     pub(crate) output_degree: Degree, // Degree of sk_out
 }
 
-impl<D: DataMut> GGLWECompressedSeedMut for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> GGLWECompressedSeedMut for GLWESwitchingKeyCompressed<D> {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
         &mut self.key.seed
     }
 }
 
-impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> GLWESwitchingKeyDegrees for GLWESwitchingKeyCompressed<D> {
     fn output_degree(&self) -> &Degree {
         &self.output_degree
     }
@@ -38,7 +38,7 @@ impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKeyCompressed<D> {
     fn output_degree(&mut self) -> &mut Degree {
         &mut self.output_degree
     }
@@ -85,19 +85,19 @@ impl<D: Data> GGLWEInfos for GLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for GLWESwitchingKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -148,7 +148,7 @@ where {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GLWESwitchingKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.input_degree = Degree(reader.read_u32::<LittleEndian>()?);
         self.output_degree = Degree(reader.read_u32::<LittleEndian>()?);
@@ -156,7 +156,7 @@ impl<D: DataMut> ReaderFrom for GLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for GLWESwitchingKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.input_degree.into())?;
         writer.write_u32::<LittleEndian>(self.output_degree.into())?;
@@ -186,13 +186,13 @@ impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecom
 
 // module-only API: decompression is provided by `GLWESwitchingKeyDecompress` on `Module`.
 
-impl<D: DataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
-impl<D: DataRef> GGLWECompressedToRef for GLWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> GGLWECompressedToRef for GLWESwitchingKeyCompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {
         self.key.to_ref()
     }

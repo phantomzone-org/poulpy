@@ -21,8 +21,8 @@ pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDft<BR>
         + SvpPPolAlloc<BR>
@@ -134,8 +134,8 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDft<BR>
         + SvpPPolAlloc<BR>
@@ -264,8 +264,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT:
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDftAssign<BR>
         + SvpPPolAlloc<BR>

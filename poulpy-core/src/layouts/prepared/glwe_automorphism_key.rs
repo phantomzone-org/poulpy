@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
@@ -170,13 +170,13 @@ impl<B: Backend> GLWEAutomorphismKeyPreparedFactory<B> for Module<B> where Modul
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEAutomorphismKeyPreparedFactory` on `Module`.
 
-impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEAutomorphismKeyPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEAutomorphismKeyPrepared<D, B> {
     fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
         self.key.to_mut()
     }
 }
 
-impl<D: DataRef, BE: Backend> GGLWEPreparedToRef<BE> for GLWEAutomorphismKeyPrepared<D, BE> {
+impl<D: HostDataRef, BE: Backend> GGLWEPreparedToRef<BE> for GLWEAutomorphismKeyPrepared<D, BE> {
     fn to_ref(&self) -> GGLWEPrepared<&[u8], BE> {
         self.key.to_ref()
     }

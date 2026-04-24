@@ -2,26 +2,21 @@ use crate::{
     FFT64Ref, NTT120Ref,
     hal_defaults::{
         FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
-        FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120ModuleDefaults,
-        NTT120SvpDefaults, NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults, NTT120VmpDefaults,
+        FFT64VmpDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120ModuleDefaults, NTT120SvpDefaults,
+        NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults, NTT120VmpDefaults,
     },
 };
 use poulpy_hal::{
     api::{VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
         Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos,
-        ScalarZnxToRef, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
-        VecZnxToMut, VecZnxToRef, ZnxInfos,
+        ScalarZnxToRef, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef,
+        ZnxInfos,
     },
-    oep::{
-        HalConvolutionImpl, HalModuleImpl, HalScratchImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl,
-        HalVmpImpl,
-    },
+    oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
     source::Source,
 };
 
-#[macro_use]
-mod scratch;
 #[macro_use]
 mod vec_znx;
 #[macro_use]
@@ -38,10 +33,6 @@ mod svp;
 mod vec_znx_dft;
 #[cfg(test)]
 pub(crate) mod delegating_backend;
-
-unsafe impl HalScratchImpl<FFT64Ref> for FFT64Ref {
-    hal_impl_scratch!();
-}
 
 unsafe impl HalVecZnxImpl<FFT64Ref> for FFT64Ref {
     hal_impl_vec_znx!();
@@ -69,10 +60,6 @@ unsafe impl HalSvpImpl<FFT64Ref> for FFT64Ref {
 
 unsafe impl HalVecZnxDftImpl<FFT64Ref> for FFT64Ref {
     hal_impl_vec_znx_dft!(FFT64VecZnxDftDefaults);
-}
-
-unsafe impl HalScratchImpl<NTT120Ref> for NTT120Ref {
-    hal_impl_scratch!();
 }
 
 unsafe impl HalVecZnxImpl<NTT120Ref> for NTT120Ref {

@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
-    layouts::{Backend, Module, ScratchOwned},
+    layouts::{Backend, HostBackend, Module, ScratchOwned},
     source::Source,
 };
 
@@ -23,8 +23,10 @@ use poulpy_bin_fhe::{
     },
 };
 
-pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
-where
+pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>(
+    c: &mut Criterion,
+    label: &str,
+) where
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>

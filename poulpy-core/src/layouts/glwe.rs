@@ -1,7 +1,7 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, ToOwnedDeep, TransferFrom, VecZnx, VecZnxToBackendMut,
-        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, ToOwnedDeep, TransferFrom, VecZnx,
+        VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
     },
     source::Source,
 };
@@ -81,13 +81,13 @@ pub struct GLWE<D: Data> {
 pub type GLWEBackendRef<'a, BE> = GLWE<<BE as Backend>::BufRef<'a>>;
 pub type GLWEBackendMut<'a, BE> = GLWE<<BE as Backend>::BufMut<'a>>;
 
-impl<D: DataMut> SetLWEInfos for GLWE<D> {
+impl<D: HostDataMut> SetLWEInfos for GLWE<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
 }
 
-impl<D: DataRef> GLWE<D> {
+impl<D: HostDataRef> GLWE<D> {
     /// Returns a shared reference to the underlying [`VecZnx`].
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
@@ -102,7 +102,7 @@ impl<D: Data> GLWE<D> {
     }
 }
 
-impl<D: DataMut> GLWE<D> {
+impl<D: HostDataMut> GLWE<D> {
     /// Returns a mutable reference to the underlying [`VecZnx`].
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
@@ -129,7 +129,7 @@ impl<D: Data> GLWEInfos for GLWE<D> {
     }
 }
 
-impl<D: DataRef> ToOwnedDeep for GLWE<D> {
+impl<D: HostDataRef> ToOwnedDeep for GLWE<D> {
     type Owned = GLWE<Vec<u8>>;
     fn to_owned_deep(&self) -> Self::Owned {
         GLWE {
@@ -139,7 +139,7 @@ impl<D: DataRef> ToOwnedDeep for GLWE<D> {
     }
 }
 
-impl<D: DataRef> GLWE<D> {
+impl<D: HostDataRef> GLWE<D> {
     /// Copies this ciphertext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     ///
@@ -173,19 +173,19 @@ impl<D: Data> GLWE<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWE<D> {
+impl<D: HostDataRef> fmt::Debug for GLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWE<D> {
+impl<D: HostDataRef> fmt::Display for GLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "GLWE: base2k={} k={}: {}", self.base2k().0, self.max_k().0, self.data)
     }
 }
 
-impl<D: DataMut> FillUniform for GLWE<D> {
+impl<D: HostDataMut> FillUniform for GLWE<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
@@ -237,7 +237,7 @@ impl GLWE<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWE<D> {
+impl<D: HostDataMut> ReaderFrom for GLWE<D> {
     /// Deserialises a [`GLWE`] in little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -246,7 +246,7 @@ impl<D: DataMut> ReaderFrom for GLWE<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GLWE<D> {
+impl<D: HostDataRef> WriterTo for GLWE<D> {
     /// Serialises the [`GLWE`] in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
@@ -287,7 +287,7 @@ pub fn glwe_backend_ref_from_mut<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufMut<
     }
 }
 
-impl<D: DataRef> GLWEToRef for GLWE<D> {
+impl<D: HostDataRef> GLWEToRef for GLWE<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
@@ -322,7 +322,7 @@ pub fn glwe_backend_mut_from_mut<'a, 'b, BE: Backend>(glwe: &'a mut GLWE<BE::Buf
     }
 }
 
-impl<D: DataMut> GLWEToMut for GLWE<D> {
+impl<D: HostDataMut> GLWEToMut for GLWE<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,

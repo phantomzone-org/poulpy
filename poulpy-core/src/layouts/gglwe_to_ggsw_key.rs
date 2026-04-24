@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -110,13 +110,13 @@ impl GGLWEInfos for GGLWEToGGSWKeyLayout {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWEToGGSWKey<D> {
+impl<D: HostDataRef> fmt::Debug for GGLWEToGGSWKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWEToGGSWKey<D> {
+impl<D: HostDataMut> FillUniform for GGLWEToGGSWKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
@@ -124,7 +124,7 @@ impl<D: DataMut> FillUniform for GGLWEToGGSWKey<D> {
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWEToGGSWKey<D> {
+impl<D: HostDataRef> fmt::Display for GGLWEToGGSWKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GGLWEToGGSWKey)",)?;
         for (i, key) in self.keys.iter().enumerate() {
@@ -186,7 +186,7 @@ impl GGLWEToGGSWKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GGLWEToGGSWKey<D> {
+impl<D: HostDataMut> GGLWEToGGSWKey<D> {
     // Returns a mutable reference to GGLWE_{s}([s[i]*s[0], s[i]*s[1], ..., s[i]*s[rank]])
     pub fn at_mut(&mut self, i: usize) -> &mut GGLWE<D> {
         assert!((i as u32) < self.rank());
@@ -194,7 +194,7 @@ impl<D: DataMut> GGLWEToGGSWKey<D> {
     }
 }
 
-impl<D: DataRef> GGLWEToGGSWKey<D> {
+impl<D: HostDataRef> GGLWEToGGSWKey<D> {
     // Returns a reference to GGLWE_{s}(s[i] * s[j])
     pub fn at(&self, i: usize) -> &GGLWE<D> {
         assert!((i as u32) < self.rank());
@@ -202,7 +202,7 @@ impl<D: DataRef> GGLWEToGGSWKey<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWEToGGSWKey<D> {
+impl<D: HostDataMut> ReaderFrom for GGLWEToGGSWKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
@@ -218,7 +218,7 @@ impl<D: DataMut> ReaderFrom for GGLWEToGGSWKey<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWEToGGSWKey<D> {
+impl<D: HostDataRef> WriterTo for GGLWEToGGSWKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
         for key in &self.keys {
@@ -232,7 +232,7 @@ pub trait GGLWEToGGSWKeyToRef {
     fn to_ref(&self) -> GGLWEToGGSWKey<&[u8]>;
 }
 
-impl<D: DataRef> GGLWEToGGSWKeyToRef for GGLWEToGGSWKey<D>
+impl<D: HostDataRef> GGLWEToGGSWKeyToRef for GGLWEToGGSWKey<D>
 where
     GGLWE<D>: GGLWEToRef,
 {
@@ -247,7 +247,7 @@ pub trait GGLWEToGGSWKeyToMut {
     fn to_mut(&mut self) -> GGLWEToGGSWKey<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWEToGGSWKeyToMut for GGLWEToGGSWKey<D>
+impl<D: HostDataMut> GGLWEToGGSWKeyToMut for GGLWEToGGSWKey<D>
 where
     GGLWE<D>: GGLWEToMut,
 {

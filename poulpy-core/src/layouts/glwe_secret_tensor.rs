@@ -1,17 +1,17 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDft, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
+        ModuleN, SvpApplyDftToDft, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxAsVecZnxBackendRef, ScalarZnxToMut, ScalarZnxToRef, Scratch,
-        ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef,
-        VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxAsVecZnxBackendRef, ScalarZnxToMut, ScalarZnxToRef,
+        ScratchArena, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
+        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
 };
 
 use crate::{
-    GetDistribution, ScratchTakeCore,
+    GetDistribution, ScratchArenaTakeCore,
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToMut, GLWESecretToRef, LWEInfos, Rank,
@@ -50,7 +50,7 @@ impl<D: Data> LWEInfos for GLWESecretTensor<D> {
     }
 }
 
-impl<D: DataRef> GLWESecretTensor<D> {
+impl<D: HostDataRef> GLWESecretTensor<D> {
     pub fn at(&self, mut i: usize, mut j: usize) -> ScalarZnx<&[u8]> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
@@ -64,7 +64,7 @@ impl<D: DataRef> GLWESecretTensor<D> {
     }
 }
 
-impl<D: DataMut> GLWESecretTensor<D> {
+impl<D: HostDataMut> GLWESecretTensor<D> {
     pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> ScalarZnx<&mut [u8]> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
@@ -84,7 +84,7 @@ impl<D: Data> GLWEInfos for GLWESecretTensor<D> {
     }
 }
 
-impl<D: DataRef> GLWESecretToRef for GLWESecretTensor<D> {
+impl<D: HostDataRef> GLWESecretToRef for GLWESecretTensor<D> {
     fn to_ref(&self) -> GLWESecret<&[u8]> {
         GLWESecret {
             data: self.data.to_ref(),
@@ -93,7 +93,7 @@ impl<D: DataRef> GLWESecretToRef for GLWESecretTensor<D> {
     }
 }
 
-impl<D: DataMut> GLWESecretToMut for GLWESecretTensor<D> {
+impl<D: HostDataMut> GLWESecretToMut for GLWESecretTensor<D> {
     fn to_mut(&mut self) -> GLWESecret<&mut [u8]> {
         GLWESecret {
             dist: self.dist,
@@ -135,10 +135,11 @@ impl GLWESecretTensor<Vec<u8>> {
 pub trait GLWESecretTensorFactory<BE: Backend> {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize;
 
-    fn glwe_secret_tensor_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
+    fn glwe_secret_tensor_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWESecretToMut + GLWEInfos,
-        O: GLWESecretToRef + GLWEInfos;
+        O: GLWESecretToRef + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GLWESecretTensorFactory<BE> for Module<BE>
@@ -153,7 +154,7 @@ where
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf
         + VecZnxBigNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize {
         let lvl_0: usize = self.glwe_secret_prepared_bytes_of(rank);
@@ -165,10 +166,11 @@ where
         lvl_0 + lvl_1 + lvl_2 + lvl_3 + lvl_4
     }
 
-    fn glwe_secret_tensor_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn glwe_secret_tensor_prepare<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWESecretToMut + GLWEInfos,
         A: GLWESecretToRef + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let res: &mut GLWESecret<&mut [u8]> = &mut res.to_mut();
         let a: &GLWESecret<&[u8]> = &a.to_ref();
@@ -196,7 +198,8 @@ where
 
         let base2k: usize = 17;
 
-        let (mut a_dft, scratch_2) = scratch.take_vec_znx_dft(self, rank, 1);
+        let mut a_dft =
+            VecZnxDft::<Vec<u8>, BE>::from_data(vec![0; BE::bytes_of_vec_znx_dft(self.n(), rank, 1)], self.n(), rank, 1);
         let a_backend = GLWESecret {
             data: ScalarZnx::from_data(BE::from_host_bytes(a.data.data), a.data.n, a.data.cols),
             dist: *a.dist(),
@@ -211,7 +214,7 @@ where
             BE::copy_to_host(&a_i_dft_backend.data, bytemuck::cast_slice_mut(a_dft.at_mut(i, 0)));
         }
 
-        let (mut a_ij_dft, _) = scratch_2.take_vec_znx_dft(self, 1, 1);
+        let mut a_ij_dft = VecZnxDft::<Vec<u8>, BE>::from_data(vec![0; BE::bytes_of_vec_znx_dft(self.n(), 1, 1)], self.n(), 1, 1);
         let a_prepared_ref = a_prepared.data.to_backend_ref();
         let mut a_ij_dft_backend = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         let mut a_ij_big_backend = VecZnxBig::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
@@ -228,7 +231,7 @@ where
             for j in i..rank {
                 let idx: usize = i * rank + j - (i * (i + 1) / 2);
                 self.svp_apply_dft_to_dft(&mut a_ij_dft, 0, &a_prepared_ref, j, &a_dft, i);
-                BE::copy_from_host(&mut a_ij_dft_backend.data, a_ij_dft.data);
+                BE::copy_from_host(&mut a_ij_dft_backend.data, &a_ij_dft.data);
                 {
                     let mut a_ij_big = a_ij_big_backend.to_backend_mut();
                     let mut a_ij_dft = a_ij_dft_backend.to_backend_mut();
@@ -238,16 +241,7 @@ where
                     let a_ij_big = a_ij_big_backend.to_backend_ref();
                     let mut a_ij_small =
                         <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut a_ij_small_backend);
-                    self.vec_znx_big_normalize(
-                        &mut a_ij_small,
-                        base2k,
-                        0,
-                        0,
-                        &a_ij_big,
-                        base2k,
-                        0,
-                        &mut norm_scratch.arena(),
-                    );
+                    self.vec_znx_big_normalize(&mut a_ij_small, base2k, 0, 0, &a_ij_big, base2k, 0, &mut norm_scratch.arena());
                 }
                 BE::copy_to_host(&a_ij_small_backend.data, bytemuck::cast_slice_mut(res.data.at_mut(idx, 0)));
             }

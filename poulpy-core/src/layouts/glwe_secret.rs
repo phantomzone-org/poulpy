@@ -1,6 +1,6 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
         ScalarZnxToRef, TransferFrom, ZnxInfos, ZnxZero,
     },
     source::Source,
@@ -73,7 +73,7 @@ impl<D: Data> GLWEInfos for GLWESecret<D> {
     }
 }
 
-impl<D: DataRef> GLWESecret<D> {
+impl<D: HostDataRef> GLWESecret<D> {
     /// Copies this secret's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GLWESecret<To::OwnedBuf>
@@ -126,7 +126,7 @@ impl GLWESecret<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWESecret<D> {
+impl<D: HostDataMut> GLWESecret<D> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         (0..self.rank().into()).for_each(|i| {
             self.data.fill_ternary_prob(i, prob, source);
@@ -185,7 +185,7 @@ impl<BE: Backend> GLWESecretToBackendMut<BE> for GLWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> GLWESecretToMut for GLWESecret<D> {
+impl<D: HostDataMut> GLWESecretToMut for GLWESecret<D> {
     fn to_mut(&mut self) -> GLWESecret<&mut [u8]> {
         GLWESecret {
             dist: self.dist,
@@ -211,7 +211,7 @@ impl<BE: Backend> GLWESecretToBackendRef<BE> for GLWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> GLWESecretToRef for GLWESecret<D> {
+impl<D: HostDataRef> GLWESecretToRef for GLWESecret<D> {
     fn to_ref(&self) -> GLWESecret<&[u8]> {
         GLWESecret {
             data: self.data.to_ref(),

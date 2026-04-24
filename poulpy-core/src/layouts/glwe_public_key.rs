@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo};
+use poulpy_hal::layouts::{Data, HostDataMut, HostDataRef, ReaderFrom, VecZnx, WriterTo};
 
 use crate::{
     GetDistribution, GetDistributionMut,
@@ -12,13 +12,13 @@ pub struct GLWEPublicKey<D: Data> {
     pub(crate) dist: Distribution,
 }
 
-impl<D: DataMut> GetDistributionMut for GLWEPublicKey<D> {
+impl<D: HostDataMut> GetDistributionMut for GLWEPublicKey<D> {
     fn dist_mut(&mut self) -> &mut Distribution {
         &mut self.dist
     }
 }
 
-impl<D: DataRef> GetDistribution for GLWEPublicKey<D> {
+impl<D: HostDataRef> GetDistribution for GLWEPublicKey<D> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
@@ -99,14 +99,14 @@ impl GLWEPublicKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWEPublicKey<D> {
+impl<D: HostDataMut> ReaderFrom for GLWEPublicKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.dist = Distribution::read_from(reader)?;
         self.key.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GLWEPublicKey<D> {
+impl<D: HostDataRef> WriterTo for GLWEPublicKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         match self.dist.write_to(writer) {
             Ok(()) => {}
@@ -116,13 +116,13 @@ impl<D: DataRef> WriterTo for GLWEPublicKey<D> {
     }
 }
 
-impl<D: DataRef> GLWEToRef for GLWEPublicKey<D> {
+impl<D: HostDataRef> GLWEToRef for GLWEPublicKey<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         self.key.to_ref()
     }
 }
 
-impl<D: DataMut> GLWEToMut for GLWEPublicKey<D> {
+impl<D: HostDataMut> GLWEToMut for GLWEPublicKey<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         self.key.to_mut()
     }

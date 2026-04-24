@@ -6,8 +6,8 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleNew, ScratchFromBytes, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScalarZnx, Scratch, ScratchOwned},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnx, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -100,7 +100,7 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_automorphism_key_encrypt_sk<BE: Backend<OwnedBuf = Vec<u8>> + poulpy_hal::oep::HalScratchImpl<BE>>(
+pub fn bench_glwe_automorphism_key_encrypt_sk<BE: Backend<OwnedBuf = Vec<u8>>>(
     atk_infos: &impl GGLWEInfos,
     p: i64,
     c: &mut Criterion,
@@ -128,8 +128,15 @@ pub fn bench_glwe_automorphism_key_encrypt_sk<BE: Backend<OwnedBuf = Vec<u8>> + 
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            let scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(scratch.data.as_mut_slice());
-            module.glwe_automorphism_key_encrypt_sk(&mut atk, p, &sk, &enc_infos, &mut source_xe, &mut source_xa, scratch_ref);
+            module.glwe_automorphism_key_encrypt_sk(
+                &mut atk,
+                p,
+                &sk,
+                &enc_infos,
+                &mut source_xe,
+                &mut source_xa,
+                &mut scratch.borrow(),
+            );
             black_box(());
         })
     });

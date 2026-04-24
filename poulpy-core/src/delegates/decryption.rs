@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena};
 
 use crate::{
     api::{GLWEDecrypt, GLWETensorDecrypt, LWEDecrypt},
@@ -14,7 +14,7 @@ macro_rules! impl_decryption_delegate {
     ($trait:ty, $($body:item),+ $(,)?) => {
         impl<BE> $trait for Module<BE>
         where
-            BE: Backend + DecryptionImpl<BE>,
+            BE: Backend + HostBackend + DecryptionImpl<BE>,
         {
             $($body)+
         }
@@ -36,7 +36,7 @@ impl_decryption_delegate!(
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     {
         BE::glwe_decrypt(self, res, pt, sk, scratch)
     }
@@ -50,7 +50,7 @@ impl_decryption_delegate!(
         P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     {
         BE::lwe_decrypt(self, res, pt, sk, scratch)
     },
@@ -78,13 +78,13 @@ impl_decryption_delegate!(
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataRef,
+        R: HostDataRef,
         GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+        S0: HostDataRef,
+        S1: HostDataRef,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     {
         BE::glwe_tensor_decrypt(self, res, pt, sk, sk_tensor, scratch)
     }

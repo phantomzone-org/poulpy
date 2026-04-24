@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
-    layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, ScratchArena},
+    layouts::{Backend, CyclotomicOrder, GaloisElement, HostDataMut, Module, ScratchArena},
 };
 
 use crate::{
@@ -22,7 +22,7 @@ pub trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
     + CyclotomicOrder
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_automorphism_key_automorphism_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -173,7 +173,7 @@ where
         + VecZnxAutomorphismAssignTmpBytes
         + CyclotomicOrder,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
 }
 

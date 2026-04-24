@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::layouts::{
-    Backend, Data, DataMut, DataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
+    Backend, Data, HostDataMut, HostDataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
     VecZnxToRef, ZnxInfos,
 };
 
@@ -36,7 +36,7 @@ pub struct LWEPlaintext<D: Data> {
 pub type LWEPlaintextBackendRef<'a, BE> = LWEPlaintext<<BE as Backend>::BufRef<'a>>;
 pub type LWEPlaintextBackendMut<'a, BE> = LWEPlaintext<<BE as Backend>::BufMut<'a>>;
 
-impl<D: DataMut> SetLWEInfos for LWEPlaintext<D> {
+impl<D: HostDataMut> SetLWEInfos for LWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
@@ -56,7 +56,7 @@ impl<D: Data> LWEInfos for LWEPlaintext<D> {
     }
 }
 
-impl<D: DataRef> LWEPlaintext<D> {
+impl<D: HostDataRef> LWEPlaintext<D> {
     /// Copies this plaintext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> LWEPlaintext<To::OwnedBuf>
@@ -115,7 +115,7 @@ impl LWEPlaintext<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
+impl<D: HostDataRef> fmt::Display for LWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -145,7 +145,7 @@ impl<BE: Backend> LWEPlaintextToBackendRef<BE> for LWEPlaintext<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> LWEPlaintextToRef for LWEPlaintext<D> {
+impl<D: HostDataRef> LWEPlaintextToRef for LWEPlaintext<D> {
     fn to_ref(&self) -> LWEPlaintext<&[u8]> {
         LWEPlaintext {
             data: self.data.to_ref(),
@@ -172,7 +172,7 @@ impl<BE: Backend> LWEPlaintextToBackendMut<BE> for LWEPlaintext<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
+impl<D: HostDataMut> LWEPlaintextToMut for LWEPlaintext<D> {
     fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]> {
         LWEPlaintext {
             data: self.data.to_mut(),
@@ -181,13 +181,13 @@ impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
     }
 }
 
-impl<D: DataRef> LWEPlaintext<D> {
+impl<D: HostDataRef> LWEPlaintext<D> {
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> LWEPlaintext<D> {
+impl<D: HostDataMut> LWEPlaintext<D> {
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }

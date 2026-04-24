@@ -8,7 +8,7 @@ use poulpy_hal::{
         VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Data, DataMut, DataRef, HostDataMut, Module, ScratchArena, VecZnx, vec_znx_backend_ref_from_mut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, vec_znx_backend_ref_from_mut,
         vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
 };
@@ -41,13 +41,13 @@ pub trait GLWEMulConstDefault<BE: Backend> {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: DataMut,
+        R: HostDataMut,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -84,8 +84,8 @@ where
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -136,7 +136,7 @@ where
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: DataMut,
+        R: HostDataMut,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -243,9 +243,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -315,8 +315,8 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -395,9 +395,9 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_assign<R, A>(
@@ -409,8 +409,8 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -441,8 +441,8 @@ pub trait GLWETensoringDefault<BE: Backend> {
         tsk_size: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>,
@@ -457,8 +457,8 @@ pub trait GLWETensoringDefault<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -472,9 +472,9 @@ pub trait GLWETensoringDefault<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -618,8 +618,8 @@ where
         tsk_size: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>,
@@ -703,8 +703,8 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -804,9 +804,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();

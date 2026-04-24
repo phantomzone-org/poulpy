@@ -1,7 +1,8 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo,
+        ZnxInfos,
     },
     source::Source,
 };
@@ -34,7 +35,7 @@ pub trait GGLWECompressedSeedMut {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]>;
 }
 
-impl<D: DataMut> GGLWECompressedSeedMut for GGLWECompressed<D> {
+impl<D: HostDataMut> GGLWECompressedSeedMut for GGLWECompressed<D> {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
         &mut self.seed
     }
@@ -46,7 +47,7 @@ pub trait GGLWECompressedSeed {
     fn seed(&self) -> &Vec<[u8; 32]>;
 }
 
-impl<D: DataRef> GGLWECompressedSeed for GGLWECompressed<D> {
+impl<D: HostDataRef> GGLWECompressedSeed for GGLWECompressed<D> {
     fn seed(&self) -> &Vec<[u8; 32]> {
         &self.seed
     }
@@ -88,19 +89,19 @@ impl<D: Data> GGLWEInfos for GGLWECompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWECompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GGLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWECompressed<D> {
+impl<D: HostDataMut> FillUniform for GGLWECompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWECompressed<D> {
+impl<D: HostDataRef> fmt::Display for GGLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -188,7 +189,7 @@ impl GGLWECompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GGLWECompressed<D> {
+impl<D: HostDataRef> GGLWECompressed<D> {
     pub(crate) fn at(&self, row: usize, col: usize) -> GLWECompressed<&[u8]> {
         let rank_in: usize = self.rank_in().into();
         GLWECompressed {
@@ -200,7 +201,7 @@ impl<D: DataRef> GGLWECompressed<D> {
     }
 }
 
-impl<D: DataMut> GGLWECompressed<D> {
+impl<D: HostDataMut> GGLWECompressed<D> {
     pub(crate) fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
         let rank_in: usize = self.rank_in().into();
         GLWECompressed {
@@ -212,7 +213,7 @@ impl<D: DataMut> GGLWECompressed<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWECompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GGLWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -227,7 +228,7 @@ impl<D: DataMut> ReaderFrom for GGLWECompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWECompressed<D> {
+impl<D: HostDataRef> WriterTo for GGLWECompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -281,7 +282,7 @@ pub trait GGLWECompressedToMut {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWECompressedToMut for GGLWECompressed<D> {
+impl<D: HostDataMut> GGLWECompressedToMut for GGLWECompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         GGLWECompressed {
             k: self.max_k(),
@@ -300,7 +301,7 @@ pub trait GGLWECompressedToRef {
     fn to_ref(&self) -> GGLWECompressed<&[u8]>;
 }
 
-impl<D: DataRef> GGLWECompressedToRef for GGLWECompressed<D> {
+impl<D: HostDataRef> GGLWECompressedToRef for GGLWECompressed<D> {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {
         GGLWECompressed {
             k: self.max_k(),

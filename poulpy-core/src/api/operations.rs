@@ -8,7 +8,7 @@ use poulpy_hal::{
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
     },
-    layouts::{Backend, Data, DataMut, DataRef, GaloisElement, HostDataMut, ScratchArena},
+    layouts::{Backend, Data, GaloisElement, HostDataMut, HostDataRef, ScratchArena},
 };
 
 use crate::{
@@ -105,7 +105,7 @@ where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }
@@ -125,13 +125,13 @@ pub trait GLWEMulConst<BE: Backend> {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: DataMut,
+        R: HostDataMut,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -153,9 +153,9 @@ pub trait GLWEMulPlain<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -168,8 +168,8 @@ pub trait GLWEMulPlain<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -199,9 +199,9 @@ pub trait GLWETensoring<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -213,8 +213,8 @@ pub trait GLWETensoring<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
@@ -225,8 +225,8 @@ pub trait GLWETensoring<BE: Backend> {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,

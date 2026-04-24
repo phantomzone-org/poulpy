@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -30,7 +30,7 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn lwe_from_glwe_tmp_bytes<R, A, K>(module: &Module<BE>, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
     where
@@ -51,7 +51,7 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn ggsw_from_gglwe_tmp_bytes<R, A>(module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -65,7 +65,7 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn ggsw_expand_rows_tmp_bytes<R, A>(module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -97,7 +97,7 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn lwe_from_glwe_tmp_bytes<R, A, K>(module: &Module<BE>, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
     where
@@ -118,7 +118,7 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn ggsw_from_gglwe_tmp_bytes<R, A>(module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -132,7 +132,7 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn ggsw_expand_rows_tmp_bytes<R, A>(module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -153,7 +153,7 @@ impl<BE: Backend> ConversionDefaults<BE> for BE
 where
     Module<BE>: GLWEFromLWEDefault<BE> + LWEFromGLWEDefault<BE> + GGSWFromGGLWEDefault<BE> + GGSWExpandRowsDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: DataMut,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_from_lwe_tmp_bytes<R, A, K>(module: &Module<BE>, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
@@ -171,7 +171,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWEFromLWEDefault<BE>>::glwe_from_lwe_default(module, res, lwe, ksk, scratch)
     }
@@ -198,7 +198,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as LWEFromGLWEDefault<BE>>::lwe_from_glwe_default(module, res, a, a_idx, key, scratch)
     }
@@ -218,7 +218,7 @@ where
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GGSWFromGGLWEDefault<BE>>::ggsw_from_gglwe_default(module, res, a, tsk, scratch)
     }

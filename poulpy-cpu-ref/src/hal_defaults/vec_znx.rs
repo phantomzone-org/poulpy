@@ -21,17 +21,36 @@ use crate::reference::znx::{
     ZnxSwitchRing, ZnxZero,
 };
 use poulpy_hal::{
-    api::ScratchArenaTakeHost,
+    api::HostBufMut,
     layouts::{
         Backend, HostDataMut, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
         VecZnxToRef,
     },
     source::Source,
 };
+
+#[inline]
+fn take_host_typed<'a, BE, T>(arena: ScratchArena<'a, BE>, len: usize) -> (&'a mut [T], ScratchArena<'a, BE>)
+where
+    BE: Backend + 'a,
+    BE::BufMut<'a>: HostBufMut<'a>,
+    T: Copy,
+{
+    debug_assert!(
+        BE::SCRATCH_ALIGN.is_multiple_of(std::mem::align_of::<T>()),
+        "B::SCRATCH_ALIGN ({}) must be a multiple of align_of::<T>() ({})",
+        BE::SCRATCH_ALIGN,
+        std::mem::align_of::<T>()
+    );
+    let (buf, arena) = arena.take_region(len * std::mem::size_of::<T>());
+    let bytes: &'a mut [u8] = buf.into_bytes();
+    let slice = unsafe { std::slice::from_raw_parts_mut(bytes.as_mut_ptr() as *mut T, len) };
+    (slice, arena)
+}
 #[doc(hidden)]
 pub trait HalVecZnxDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn vec_znx_zero_default<R>(_module: &Module<BE>, res: &mut R, res_col: usize)
     where
@@ -81,7 +100,7 @@ where
             + ZnxNormalizeDigit,
         BE::BufMut<'r>: HostDataMut,
         BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
         assert!(
@@ -90,7 +109,7 @@ where
             byte_count,
             size_of::<i64>()
         );
-        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), byte_count / size_of::<i64>());
         vec_znx_normalize::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
             res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry,
         );
@@ -106,7 +125,7 @@ where
         BE: 's,
         BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
         R: VecZnxToMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
         assert!(
@@ -115,7 +134,7 @@ where
             byte_count,
             size_of::<i64>()
         );
-        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), byte_count / size_of::<i64>());
         vec_znx_normalize_inplace::<R, BE>(base2k, res, res_col, carry);
     }
 
@@ -129,7 +148,7 @@ where
         BE: 's,
         BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
         BE::BufMut<'r>: HostDataMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
         assert!(
@@ -138,7 +157,7 @@ where
             byte_count,
             size_of::<i64>()
         );
-        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), byte_count / size_of::<i64>());
         vec_znx_normalize_inplace::<VecZnxBackendMut<'r, BE>, BE>(base2k, res, res_col, carry);
     }
 
@@ -308,11 +327,9 @@ where
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh::<R, A, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -339,11 +356,9 @@ where
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh::<R, A, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -372,11 +387,9 @@ where
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh::<R, A, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -401,11 +414,9 @@ where
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh::<R, A, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -428,11 +439,9 @@ where
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh_sub::<R, A, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -458,11 +467,9 @@ where
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh_sub::<R, A, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -484,11 +491,9 @@ where
             + ZnxNormalizeFirstStepAssign
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
     }
 
@@ -503,11 +508,9 @@ where
         BE: 's,
         BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
         R: VecZnxToMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
     }
 
@@ -540,11 +543,12 @@ where
         BE: 's,
         BE: ZnxRotate + ZnxCopy,
         BE::BufMut<'r>: HostDataMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_rotate_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(
+            scratch.borrow(),
+            vec_znx_rotate_inplace_tmp_bytes(module.n()) / size_of::<i64>(),
+        );
         vec_znx_rotate_inplace::<VecZnxBackendMut<'r, BE>, BE>(p, res, res_col, tmp);
     }
 
@@ -571,11 +575,12 @@ where
         BE: 's,
         BE: ZnxAutomorphism + ZnxCopy,
         BE::BufMut<'r>: HostDataMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(
+            scratch.borrow(),
+            vec_znx_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>(),
+        );
         vec_znx_automorphism_inplace::<VecZnxBackendMut<'r, BE>, BE>(p, res, res_col, tmp);
     }
 
@@ -602,11 +607,12 @@ where
         BE: 's,
         BE: ZnxRotate + ZnxNegate + ZnxSubNegateInplace,
         R: VecZnxToMut,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_mul_xp_minus_one_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(
+            scratch.borrow(),
+            vec_znx_mul_xp_minus_one_inplace_tmp_bytes(module.n()) / size_of::<i64>(),
+        );
         vec_znx_mul_xp_minus_one_inplace::<R, BE>(p, res, res_col, tmp);
     }
 
@@ -626,11 +632,9 @@ where
         BE: ZnxSwitchRing + ZnxRotate + ZnxZero,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_split_ring_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_split_ring_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_split_ring::<R, A, BE>(res, res_col, a, a_col, tmp);
     }
 
@@ -650,11 +654,9 @@ where
         BE: ZnxCopy + ZnxSwitchRing + ZnxRotate + ZnxZero,
         R: VecZnxToMut,
         A: VecZnxToRef,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(vec_znx_merge_rings_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_merge_rings_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_merge_rings::<R, A, BE>(res, res_col, a, a_col, tmp);
     }
 
@@ -710,4 +712,4 @@ where
     }
 }
 
-impl<BE: Backend> HalVecZnxDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> HalVecZnxDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}

@@ -73,17 +73,17 @@ Current usage:
 The current backend uses one shared context on device ordinal `0` and the
 default stream. That keeps the prototype simple and deterministic.
 
-### 4. Module / Scratch
+### 4. Module / ScratchArena
 
-This crate does not try to differentiate module construction or scratch yet.
+This crate does not try to differentiate module construction yet.
 
 It reuses:
 
 - `HalModuleImpl` through `FFT64ModuleDefaults`
-- `HalScratchImpl` through `HalScratchDefaults`
 
+Scratch management follows the backend-native `ScratchArena` path directly.
 That is deliberate. The backend-specific value in this crate is device-owned
-`VecZnx` execution, not reimplementing unrelated support layers.
+`VecZnx` execution, not reintroducing deleted legacy scratch plumbing.
 
 ### 5. Backend-Native HAL Families
 

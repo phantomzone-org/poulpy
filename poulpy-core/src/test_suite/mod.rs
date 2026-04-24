@@ -23,12 +23,12 @@ use crate::oep::{
     LWEKeyswitchImpl,
 };
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchFromBytes},
-    layouts::{Backend, DataMut, Scratch, ScratchArena, ScratchOwned},
+    api::ScratchOwnedBorrow,
+    layouts::{Backend, HostBackend, HostDataMut, ScratchArena, ScratchOwned},
     test_suite::TestBackend as HalTestBackend,
 };
 
-use crate::{ScratchArenaTakeCore, ScratchTakeCore};
+use crate::ScratchArenaTakeCore;
 
 pub trait TestBackend:
     HalTestBackend
@@ -53,10 +53,10 @@ pub trait TestBackend:
     + ConversionImpl<Self>
     + AutomorphismImpl<Self>
 where
-    Self::OwnedBuf: DataMut,
-    for<'a> Self::BufMut<'a>: DataMut,
+    Self: HostBackend,
+    Self::OwnedBuf: HostDataMut,
+    for<'a> Self::BufMut<'a>: HostDataMut,
     for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-    Scratch<Self>: ScratchAvailable + ScratchTakeCore<Self>,
 {
 }
 
@@ -83,18 +83,18 @@ where
         + DecryptionImpl<BE>
         + ConversionImpl<BE>
         + AutomorphismImpl<BE>,
-    BE::OwnedBuf: DataMut,
-    for<'a> BE::BufMut<'a>: DataMut,
+    BE: HostBackend,
+    BE::OwnedBuf: HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
 }
 
-pub fn scratch_host_mut<BE: Backend<OwnedBuf = Vec<u8>>>(scratch: &mut ScratchOwned<BE>) -> &mut Scratch<BE>
+pub fn scratch_host_arena<BE: Backend<OwnedBuf = Vec<u8>>>(scratch: &mut ScratchOwned<BE>) -> ScratchArena<'_, BE>
 where
-    Scratch<BE>: ScratchFromBytes<BE>,
+    ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
 {
-    <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(scratch.data.as_mut())
+    scratch.borrow()
 }
 
 #[macro_export]

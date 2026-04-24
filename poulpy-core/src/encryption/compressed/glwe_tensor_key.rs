@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchTakeBasic, SvpPrepare},
-    layouts::{Backend, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ScratchOwnedAlloc, SvpPrepare},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GGLWELayout, GLWEInfos, GLWESecretPreparedFactory,
         GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef,
@@ -25,7 +25,7 @@ pub trait GLWETensorKeyCompressedEncryptSkDefault<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,
@@ -35,7 +35,6 @@ pub trait GLWETensorKeyCompressedEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> GLWETensorKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GLWESecretTensorFactory<BE>,
-    Scratch<BE>: ScratchTakeBasic + ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -75,7 +74,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEInfos + GGLWECompressedToMut + GGLWECompressedSeedMut,
         E: EncryptionInfos,

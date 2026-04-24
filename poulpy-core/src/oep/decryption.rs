@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -26,9 +26,9 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
         R: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        BE: 's,
+        BE: HostBackend + 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn lwe_decrypt_tmp_bytes<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -39,8 +39,9 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
         R: LWEToRef,
         P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn glwe_tensor_decrypt<R, P, S0, S1>(
         module: &Module<BE>,
@@ -50,13 +51,14 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataRef,
+        R: HostDataRef,
         GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: DataMut;
+        S0: HostDataRef,
+        S1: HostDataRef,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn glwe_tensor_decrypt_tmp_bytes<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -74,9 +76,9 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
         R: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        BE: 's,
+        BE: HostBackend + 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn lwe_decrypt_tmp_bytes<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -87,8 +89,9 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
         R: LWEToRef,
         P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn glwe_tensor_decrypt<R, P, S0, S1>(
         module: &Module<BE>,
@@ -98,13 +101,14 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataRef,
+        R: HostDataRef,
         GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: DataMut;
+        S0: HostDataRef,
+        S1: HostDataRef,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
     fn glwe_tensor_decrypt_tmp_bytes<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -128,9 +132,9 @@ where
         R: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        BE: 's,
+        BE: HostBackend + 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWEDecryptDefault<BE>>::glwe_decrypt_default(module, res, pt, sk, scratch)
     }
@@ -147,8 +151,9 @@ where
         R: LWEToRef,
         P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as LWEDecryptDefault<BE>>::lwe_decrypt_default(module, res, pt, sk, scratch)
     }
@@ -161,13 +166,14 @@ where
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataRef,
+        R: HostDataRef,
         GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: DataMut,
+        S0: HostDataRef,
+        S1: HostDataRef,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWETensorDecryptDefault<BE>>::glwe_tensor_decrypt_default(module, res, pt, sk, sk_tensor, scratch)
     }

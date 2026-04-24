@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -303,7 +303,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 
     fn glwe_automorphism_key_automorphism_default<'s, R, A, K>(
@@ -317,7 +317,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 
     fn glwe_automorphism_key_automorphism_inplace_default<'s, R, K>(
@@ -329,7 +329,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 }
 
@@ -585,7 +585,7 @@ where
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>,
     {
         <Module<BE> as GLWEAutomorphismKeyAutomorphismDefault<BE>>::glwe_automorphism_key_automorphism_tmp_bytes_default(
@@ -604,7 +604,7 @@ where
         A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>,
     {
         <Module<BE> as GLWEAutomorphismKeyAutomorphismDefault<BE>>::glwe_automorphism_key_automorphism_default(
@@ -621,7 +621,7 @@ where
         R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>,
     {
         <Module<BE> as GLWEAutomorphismKeyAutomorphismDefault<BE>>::glwe_automorphism_key_automorphism_assign_default(

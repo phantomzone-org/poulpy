@@ -1,6 +1,6 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
         MatZnxToBackendRef, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, TransferFrom, WriterTo, ZnxInfos,
     },
     source::Source,
@@ -130,13 +130,13 @@ impl<D: Data> GGSWInfos for GGSW<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGSW<D> {
+impl<D: HostDataRef> fmt::Debug for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
     }
 }
 
-impl<D: DataRef> fmt::Display for GGSW<D> {
+impl<D: HostDataRef> fmt::Display for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -149,13 +149,13 @@ impl<D: DataRef> fmt::Display for GGSW<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GGSW<D> {
+impl<D: HostDataMut> FillUniform for GGSW<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> GGSW<D> {
+impl<D: HostDataRef> GGSW<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         let data = self.data.at(row, col);
         GLWE {
@@ -203,7 +203,7 @@ pub fn ggsw_at_backend_ref_from_mut<'a, 'b, BE: Backend>(
     }
 }
 
-impl<D: DataMut> GGSW<D> {
+impl<D: HostDataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
@@ -233,7 +233,7 @@ pub fn ggsw_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
     GLWE { base2k, data }
 }
 
-impl<D: DataRef> GGSW<D> {
+impl<D: HostDataRef> GGSW<D> {
     /// Copies this ciphertext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GGSW<To::OwnedBuf>
@@ -351,7 +351,7 @@ impl GGSW<Vec<u8>> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for GGSW<D> {
+impl<D: HostDataMut> ReaderFrom for GGSW<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
@@ -359,7 +359,7 @@ impl<D: DataMut> ReaderFrom for GGSW<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGSW<D> {
+impl<D: HostDataRef> WriterTo for GGSW<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.dsize.into())?;
@@ -393,7 +393,7 @@ pub fn ggsw_backend_mut_from_mut<'a, 'b, BE: Backend>(ggsw: &'a mut GGSW<BE::Buf
     }
 }
 
-impl<D: DataMut> GGSWToMut for GGSW<D> {
+impl<D: HostDataMut> GGSWToMut for GGSW<D> {
     fn to_mut(&mut self) -> GGSW<&mut [u8]> {
         GGSW {
             dsize: self.dsize,
@@ -437,7 +437,7 @@ pub fn ggsw_backend_ref_from_mut<'a, 'b, BE: Backend>(ggsw: &'a GGSW<BE::BufMut<
     }
 }
 
-impl<D: DataRef> GGSWToRef for GGSW<D> {
+impl<D: HostDataRef> GGSWToRef for GGSW<D> {
     fn to_ref(&self) -> GGSW<&[u8]> {
         GGSW {
             dsize: self.dsize,

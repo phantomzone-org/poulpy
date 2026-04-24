@@ -8,7 +8,7 @@ use poulpy_hal::layouts::{Backend, Module};
 #[doc(hidden)]
 pub trait FFT64ModuleDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn module_new_default(n: u64) -> Module<BE>
     where
@@ -21,12 +21,12 @@ where
     }
 }
 
-impl<BE: Backend> FFT64ModuleDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> FFT64ModuleDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}
 
 #[doc(hidden)]
 pub trait NTT120ModuleDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn module_new_default(n: u64) -> Module<BE>
     where
@@ -39,4 +39,4 @@ where
     }
 }
 
-impl<BE: Backend> NTT120ModuleDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> NTT120ModuleDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}

@@ -6,7 +6,7 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
         VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
     },
-    layouts::{Backend, Data, DataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, ZnxInfos, ZnxViewMut},
+    layouts::{Backend, Data, HostDataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, ZnxInfos, ZnxViewMut},
 };
 
 /// Specifies in which direction the LUT is rotated by the LWE constant term
@@ -238,7 +238,7 @@ impl LookupTable<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> LookupTable<D> {
+impl<D: HostDataRef> LookupTable<D> {
     pub fn to_backend<From, To>(&self, dst: &Module<To>) -> LookupTable<To::OwnedBuf>
     where
         From: Backend<OwnedBuf = D>,

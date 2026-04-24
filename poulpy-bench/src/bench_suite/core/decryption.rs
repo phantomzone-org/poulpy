@@ -4,14 +4,14 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScratchOwned},
+    layouts::{Backend, HostBackend, Module, NoiseInfos, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_decrypt<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_decrypt<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEDecrypt<BE> + GLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

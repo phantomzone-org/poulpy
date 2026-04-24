@@ -18,7 +18,7 @@ use poulpy_core::{
         GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchDefaults, LWEKeyswitchImpl, OperationsDefaults,
     },
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena};
 
 macro_rules! decryption_helper {
     ($(fn $name:ident [$($gen:tt)*] ($($args:tt)*) -> $ret:ty where [$($bounds:tt)*] => $method:ident($($call:tt)*);)+) => {
@@ -45,13 +45,13 @@ decryption_helper! {
         scratch: &mut ScratchArena<'s, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE>,
+        BE: DecryptionDefaults<BE> + HostBackend,
         R: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     ] => glwe_decrypt(module, res, pt, sk, scratch);
 
     fn decryption_lwe_decrypt_tmp_bytes [BE: Backend, A] (module: &Module<BE>, infos: &A) -> usize
@@ -65,12 +65,12 @@ decryption_helper! {
         scratch: &mut ScratchArena<'_, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE>,
+        BE: DecryptionDefaults<BE> + HostBackend,
         R: LWEToRef,
         P: LWEPlaintextToMut + poulpy_core::layouts::LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     ] => lwe_decrypt(module, res, pt, sk, scratch);
 
     fn decryption_glwe_tensor_decrypt_tmp_bytes [BE: Backend, A] (module: &Module<BE>, infos: &A) -> usize
@@ -85,14 +85,14 @@ decryption_helper! {
         scratch: &mut ScratchArena<'_, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE>,
-        R: DataRef,
+        BE: DecryptionDefaults<BE> + HostBackend,
+        R: HostDataRef,
         GLWETensor<R>: poulpy_core::layouts::GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: DataMut,
+        S0: HostDataRef,
+        S1: HostDataRef,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     ] => glwe_tensor_decrypt(module, res, pt, sk, sk_tensor, scratch);
 }
 
@@ -141,7 +141,7 @@ conversion_helper! {
         A: LWEToRef,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
         BE: 's,
     ]
     => glwe_from_lwe(module, res, lwe, ksk, scratch);
@@ -169,7 +169,7 @@ conversion_helper! {
         A: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
         BE: 's,
     ] => lwe_from_glwe(module, res, a, a_idx, key, scratch);
 
@@ -190,7 +190,7 @@ conversion_helper! {
         A: GGLWEToRef + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
         BE: 's,
     ] => ggsw_from_gglwe(module, res, a, tsk, scratch);
 
@@ -528,9 +528,9 @@ macro_rules! impl_decryption_via_helpers {
                 R: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
                 P: GLWEPlaintextToMut + poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
                 S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<Self> + GLWEInfos,
-                Self: 's,
+                Self: HostBackend + 's,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
             {
                 $($helpers)*::decryption_glwe_decrypt(module, res, pt, sk, scratch)
             }
@@ -547,8 +547,9 @@ macro_rules! impl_decryption_via_helpers {
                 R: LWEToRef,
                 P: LWEPlaintextToMut + poulpy_core::layouts::LWEPlaintextToBackendMut<Self> + SetLWEInfos + LWEInfos,
                 S: LWESecretToRef,
+                Self: HostBackend,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
             {
                 $($helpers)*::decryption_lwe_decrypt(module, res, pt, sk, scratch)
             }
@@ -561,13 +562,14 @@ macro_rules! impl_decryption_via_helpers {
                 sk_tensor: &GLWESecretTensorPrepared<S1, Self>,
                 scratch: &mut ScratchArena<'_, Self>,
             ) where
-                R: DataRef,
+                R: HostDataRef,
                 GLWETensor<R>: poulpy_core::layouts::GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
-                P: DataMut,
+                P: HostDataMut,
                 GLWEPlaintext<P>: poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
-                S0: DataRef,
-                S1: DataRef,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                S0: HostDataRef,
+                S1: HostDataRef,
+                Self: HostBackend,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
             {
                 $($helpers)*::decryption_glwe_tensor_decrypt(module, res, pt, sk, sk_tensor, scratch)
             }
@@ -607,7 +609,7 @@ macro_rules! impl_conversion_via_helpers {
                 A: LWEToRef,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
                 Self: 's,
             {
                 $($helpers)*::conversion_glwe_from_lwe(module, res, lwe, ksk, scratch)
@@ -635,7 +637,7 @@ macro_rules! impl_conversion_via_helpers {
                 A: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<Self>,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
                 Self: 's,
             {
                 $($helpers)*::conversion_lwe_from_glwe(module, res, a, a_idx, key, scratch)
@@ -661,7 +663,7 @@ macro_rules! impl_conversion_via_helpers {
                 A: GGLWEToRef + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
-                for<'a> <Self as Backend>::BufMut<'a>: DataMut,
+                for<'a> <Self as Backend>::BufMut<'a>: HostDataMut,
                 Self: 's,
             {
                 $($helpers)*::conversion_ggsw_from_gglwe(module, res, a, tsk, scratch)
@@ -1231,8 +1233,8 @@ macro_rules! impl_operations_via_defaults {
                 b: &[i64],
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, scratch)
@@ -1245,7 +1247,7 @@ macro_rules! impl_operations_via_defaults {
                 b: &[i64],
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
+                R: HostDataMut,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_inplace_default(module, cnv_offset, res, b, scratch)
@@ -1272,9 +1274,9 @@ macro_rules! impl_operations_via_defaults {
                 b_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
-                B: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
+                B: HostDataRef,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_default(
@@ -1298,8 +1300,8 @@ macro_rules! impl_operations_via_defaults {
                 a_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_inplace_default(
@@ -1342,9 +1344,9 @@ macro_rules! impl_operations_via_defaults {
                 b_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
-                B: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
+                B: HostDataRef,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_apply_default(
@@ -1367,8 +1369,8 @@ macro_rules! impl_operations_via_defaults {
                 a_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_square_apply_default(
@@ -1389,8 +1391,8 @@ macro_rules! impl_operations_via_defaults {
                 tsk_size: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: DataMut,
-                A: DataRef,
+                R: HostDataMut,
+                A: HostDataRef,
                 B: poulpy_hal::layouts::Data,
                 poulpy_core::layouts::GLWETensorKeyPrepared<B, Self>:
                     poulpy_core::layouts::GLWETensorKeyPreparedToBackendRef<Self>,

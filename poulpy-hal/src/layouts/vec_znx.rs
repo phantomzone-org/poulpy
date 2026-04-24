@@ -418,9 +418,7 @@ impl<B: Backend> VecZnxToBackendMut<B> for VecZnx<B::OwnedBuf> {
     }
 }
 
-pub fn vec_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
-    vec: &'a mut VecZnx<B::BufMut<'b>>,
-) -> VecZnxBackendMut<'a, B> {
+pub fn vec_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(vec: &'a mut VecZnx<B::BufMut<'b>>) -> VecZnxBackendMut<'a, B> {
     VecZnx {
         data: B::view_mut_ref(&mut vec.data),
         n: vec.n,

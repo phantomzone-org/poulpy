@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchTakeBasic, SvpPrepare, VecZnxCopy},
-    layouts::{Backend, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxCopy},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToMut, GLWEInfos, GLWESecret, GLWESecretTensor,
         GLWESecretTensorFactory, GLWESecretToRef, prepared::GLWESecretPreparedFactory,
@@ -25,7 +25,7 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSkDefault<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -35,7 +35,6 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> GGLWEToGGSWKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopy,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -66,7 +65,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -99,7 +98,7 @@ where
         }
         self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch);
 
-        let (mut sk_ij, _) = scratch.take_scalar_znx(self.n(), rank);
+        let mut sk_ij = ScalarZnx::alloc(self.n(), rank);
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_compressed_encrypt_sk_tmp_bytes(res));
 
         let mut source_xa = Source::new(seed_xa);

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, Scratch, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, ScratchArena},
     source::Source,
 };
 
@@ -262,7 +262,7 @@ impl_encryption_delegate!(
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
         E: EncryptionInfos,
@@ -331,7 +331,7 @@ impl_encryption_delegate!(
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -390,7 +390,7 @@ impl_encryption_delegate!(
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -420,7 +420,7 @@ impl_encryption_delegate!(
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -450,7 +450,7 @@ impl_encryption_delegate!(
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -586,7 +586,7 @@ impl_encryption_delegate!(
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -617,7 +617,7 @@ impl_encryption_delegate!(
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -648,7 +648,7 @@ impl_encryption_delegate!(
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -677,7 +677,7 @@ impl_encryption_delegate!(
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,

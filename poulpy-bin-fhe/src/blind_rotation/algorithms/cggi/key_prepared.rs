@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPrepare},
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScratchArena, SvpPPolOwned},
+    layouts::{Backend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, SvpPPolOwned},
 };
 
 use std::marker::PhantomData;
@@ -18,7 +18,7 @@ use crate::blind_rotation::{
 impl<BE: Backend> BlindRotationKeyPreparedFactory<CGGI, BE> for Module<BE>
 where
     Self: GGSWPreparedFactory<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE>,
-    BE::OwnedBuf: DataMut + DataRef,
+    BE::OwnedBuf: HostDataMut + HostDataRef,
 {
     fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>
     where
@@ -47,7 +47,7 @@ where
         other: &BlindRotationKey<DR, CGGI>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        DR: DataRef,
+        DR: HostDataRef,
     {
         #[cfg(debug_assertions)]
         {

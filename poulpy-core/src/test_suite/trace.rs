@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxSubInplace},
-    layouts::{Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxSubInplace},
+    layouts::{Module, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
-    EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     glwe_trace::GLWETrace,
     layouts::{
@@ -21,8 +21,8 @@ use crate::{
 
 pub fn test_glwe_trace_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWETrace<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -33,7 +33,7 @@ where
         + VecZnxSubAssign
         + VecZnxNormalizeAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let out_base2k: usize = base2k;
@@ -113,7 +113,7 @@ where
                 &key_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
             let mut atk_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&tmp);

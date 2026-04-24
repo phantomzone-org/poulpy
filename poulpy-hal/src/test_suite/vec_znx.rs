@@ -47,8 +47,8 @@ pub fn test_vec_znx_add_scalar_into<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAddScalarInto,
     Module<BT>: VecZnxAddScalarInto,
 {
@@ -95,8 +95,8 @@ pub fn test_vec_znx_add_scalar_assign<BR: crate::test_suite::TestBackend, BT: cr
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAddScalarAssign,
     Module<BT>: VecZnxAddScalarAssign,
 {
@@ -133,8 +133,8 @@ pub fn test_vec_znx_add_into<BR: crate::test_suite::TestBackend, BT: crate::test
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAddInto,
     Module<BT>: VecZnxAddInto,
 {
@@ -185,8 +185,8 @@ pub fn test_vec_znx_add_assign<BR: crate::test_suite::TestBackend, BT: crate::te
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAddAssign,
     Module<BT>: VecZnxAddAssign,
 {
@@ -225,8 +225,8 @@ pub fn test_vec_znx_automorphism<BR: crate::test_suite::TestBackend, BT: crate::
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAutomorphism,
     Module<BT>: VecZnxAutomorphism,
 {
@@ -276,8 +276,8 @@ pub fn test_vec_znx_automorphism_inplace<BR: crate::test_suite::TestBackend, BT:
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxAutomorphismInplace<BR> + VecZnxAutomorphismInplaceTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxAutomorphismInplace<BT> + VecZnxAutomorphismInplaceTmpBytes,
@@ -338,8 +338,8 @@ pub fn test_vec_znx_copy<BR: crate::test_suite::TestBackend, BT: crate::test_sui
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxCopy,
     Module<BT>: VecZnxCopy,
 {
@@ -380,8 +380,8 @@ pub fn test_vec_znx_merge_rings<BR: crate::test_suite::TestBackend, BT: crate::t
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxMergeRings<BR> + ModuleNew<BR> + VecZnxMergeRingsTmpBytes,
     Module<BT>: VecZnxMergeRings<BT> + ModuleNew<BT> + VecZnxMergeRingsTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -428,8 +428,8 @@ pub fn test_vec_znx_mul_xp_minus_one<BR: crate::test_suite::TestBackend, BT: cra
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxMulXpMinusOne,
     Module<BT>: VecZnxMulXpMinusOne,
 {
@@ -480,8 +480,8 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<BR: crate::test_suite::TestBackend,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxMulXpMinusOneInplace<BR> + VecZnxMulXpMinusOneInplaceTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxMulXpMinusOneInplace<BT> + VecZnxMulXpMinusOneInplaceTmpBytes,
@@ -530,8 +530,8 @@ pub fn test_vec_znx_negate<BR: crate::test_suite::TestBackend, BT: crate::test_s
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxNegate,
     Module<BT>: VecZnxNegate,
 {
@@ -570,8 +570,8 @@ pub fn test_vec_znx_negate_inplace<BR: crate::test_suite::TestBackend, BT: crate
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxNegateInplace,
     Module<BT>: VecZnxNegateInplace,
 {
@@ -603,8 +603,8 @@ pub fn test_vec_znx_normalize<BR: crate::test_suite::TestBackend, BT: crate::tes
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxNormalize<BR> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxNormalize<BT> + VecZnxNormalizeTmpBytes,
@@ -670,8 +670,8 @@ pub fn test_vec_znx_normalize_inplace<BR: crate::test_suite::TestBackend, BT: cr
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxNormalizeInplace<BR> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxNormalizeInplace<BT> + VecZnxNormalizeTmpBytes,
@@ -709,8 +709,8 @@ pub fn test_vec_znx_rotate<BR: crate::test_suite::TestBackend, BT: crate::test_s
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxRotate<BR>,
     Module<BT>: VecZnxRotate<BT>,
 {
@@ -784,8 +784,8 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend, BT: crate
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxRotateInplace<BR> + VecZnxRotateInplaceTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxRotateInplace<BT> + VecZnxRotateInplaceTmpBytes,
@@ -833,7 +833,7 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend, BT: crate
 
 pub fn test_vec_znx_fill_uniform<B: crate::test_suite::TestBackend>(_params: &TestParams, module: &Module<B>)
 where
-    B::OwnedBuf: crate::layouts::DataMut,
+    B::OwnedBuf: crate::layouts::HostDataMut,
     Module<B>: VecZnxFillUniform,
 {
     let n: usize = module.n();
@@ -861,7 +861,7 @@ where
 
 pub fn test_vec_znx_fill_normal<B: crate::test_suite::TestBackend>(_params: &TestParams, module: &Module<B>)
 where
-    B::OwnedBuf: crate::layouts::DataMut,
+    B::OwnedBuf: crate::layouts::HostDataMut,
     Module<B>: VecZnxFillNormal,
 {
     let n: usize = module.n();
@@ -890,7 +890,7 @@ where
 
 pub fn test_vec_znx_add_normal<B: crate::test_suite::TestBackend>(_params: &TestParams, module: &Module<B>)
 where
-    B::OwnedBuf: crate::layouts::DataMut,
+    B::OwnedBuf: crate::layouts::HostDataMut,
     Module<B>: VecZnxFillNormal + VecZnxAddNormal,
 {
     let n: usize = module.n();
@@ -928,8 +928,8 @@ pub fn test_vec_znx_lsh<BR: crate::test_suite::TestBackend, BT: crate::test_suit
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxLsh<BR> + VecZnxLshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxLsh<BT> + VecZnxLshTmpBytes,
@@ -977,8 +977,8 @@ pub fn test_vec_znx_lsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxLshInplace<BR> + VecZnxLshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxLshInplace<BT> + VecZnxLshTmpBytes,
@@ -1017,8 +1017,8 @@ pub fn test_vec_znx_rsh<BR: crate::test_suite::TestBackend, BT: crate::test_suit
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxRsh<BR> + VecZnxRshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxRsh<BT> + VecZnxRshTmpBytes,
@@ -1065,8 +1065,8 @@ pub fn test_vec_znx_rsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxRshInplace<BR> + VecZnxRshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxRshInplace<BT> + VecZnxRshTmpBytes,
@@ -1104,8 +1104,8 @@ pub fn test_vec_znx_split_ring<BR: crate::test_suite::TestBackend, BT: crate::te
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSplitRing<BR> + ModuleNew<BR> + VecZnxSplitRingTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: VecZnxSplitRing<BT> + ModuleNew<BT> + VecZnxSplitRingTmpBytes,
@@ -1159,8 +1159,8 @@ pub fn test_vec_znx_sub_scalar<BR: crate::test_suite::TestBackend, BT: crate::te
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSubScalar,
     Module<BT>: VecZnxSubScalar,
 {
@@ -1206,8 +1206,8 @@ pub fn test_vec_znx_sub_scalar_inplace<BR: crate::test_suite::TestBackend, BT: c
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSubScalarInplace,
     Module<BT>: VecZnxSubScalarInplace,
 {
@@ -1244,8 +1244,8 @@ pub fn test_vec_znx_sub<BR: crate::test_suite::TestBackend, BT: crate::test_suit
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSub,
     Module<BT>: VecZnxSub,
 {
@@ -1294,8 +1294,8 @@ pub fn test_vec_znx_sub_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSubInplace,
     Module<BT>: VecZnxSubInplace,
 {
@@ -1334,8 +1334,8 @@ pub fn test_vec_znx_sub_negate_inplace<BR: crate::test_suite::TestBackend, BT: c
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSubNegateInplace,
     Module<BT>: VecZnxSubNegateInplace,
 {
@@ -1374,8 +1374,8 @@ pub fn test_vec_znx_switch_ring<BR: crate::test_suite::TestBackend, BT: crate::t
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxSwitchRing,
     Module<BT>: VecZnxSwitchRing,
 {

@@ -8,7 +8,8 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, VecZnx, VecZnxToBackendMut, ZnxView, ZnxViewMut,
+        Backend, HostBackend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, VecZnx, VecZnxToBackendMut, ZnxView,
+        ZnxViewMut,
     },
     source::Source,
 };
@@ -33,7 +34,8 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
         + GGSWNoise<BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateAssign<BE>,
+        + VecZnxRotateInplace<BE>,
+    BE: HostBackend,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,

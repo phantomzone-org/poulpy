@@ -26,7 +26,7 @@ use poulpy_core::{
 
 use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScratchArena, WriterTo},
+    layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, ReaderFrom, ScratchArena, WriterTo},
     source::Source,
 };
 
@@ -178,7 +178,7 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GetDistribution + GLWEInfos,
         BE: 's;
@@ -208,7 +208,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GetDistribution + GLWEInfos,
         BE: 's,
@@ -246,9 +246,9 @@ where
     }
 }
 
-impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
+impl<D: HostDataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<'s, S0, S1, M, BE: Backend<OwnedBuf = Vec<u8>> + 's>(
+    pub fn encrypt_sk<'s, S0, S1, M, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 's>(
         &mut self,
         module: &M,
         sk_lwe: &S0,
@@ -428,7 +428,7 @@ where
         other: &BDDKey<DR, BRA>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        DR: DataRef,
+        DR: HostDataRef,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
     {
@@ -496,7 +496,7 @@ pub trait BDDKeyHelper<D: Data, BRA: BlindRotationAlgo, BE: Backend> {
 /// Unlike `FheUintPrepare`, this variant stores the per-bit GGSW ciphertexts
 /// in standard (non-DFT) form, enabling noise inspection via
 /// [`FheUintPreparedDebug::noise`] without a forward DFT transform.
-pub trait FheUintPrepareDebug<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> {
+pub trait FheUintPrepareDebug<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> {
     /// Populates `res` by bootstrapping each bit of `bits` through `key`'s
     /// circuit-bootstrapping pipeline, storing the output GGSW in standard form.
     fn fhe_uint_debug_prepare(

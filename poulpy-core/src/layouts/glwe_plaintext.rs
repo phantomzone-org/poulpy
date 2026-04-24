@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::layouts::{
-    Backend, Data, DataMut, DataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
+    Backend, Data, HostDataMut, HostDataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
     VecZnxToRef, ZnxInfos,
 };
 
@@ -46,7 +46,7 @@ pub struct GLWEPlaintext<D: Data> {
 pub type GLWEPlaintextBackendRef<'a, BE> = GLWEPlaintext<<BE as Backend>::BufRef<'a>>;
 pub type GLWEPlaintextBackendMut<'a, BE> = GLWEPlaintext<<BE as Backend>::BufMut<'a>>;
 
-impl<D: DataMut> SetLWEInfos for GLWEPlaintext<D> {
+impl<D: HostDataMut> SetLWEInfos for GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
@@ -72,7 +72,7 @@ impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
     }
 }
 
-impl<D: DataRef> GLWEPlaintext<D> {
+impl<D: HostDataRef> GLWEPlaintext<D> {
     /// Copies this plaintext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GLWEPlaintext<To::OwnedBuf>
@@ -104,7 +104,7 @@ impl<D: Data> GLWEPlaintext<D> {
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
+impl<D: HostDataRef> fmt::Display for GLWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -152,7 +152,7 @@ impl GLWEPlaintext<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GLWEToRef for GLWEPlaintext<D> {
+impl<D: HostDataRef> GLWEToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
             base2k: self.base2k,
@@ -170,7 +170,7 @@ impl<BE: Backend> GLWEToBackendRef<BE> for GLWEPlaintext<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> GLWEToMut for GLWEPlaintext<D> {
+impl<D: HostDataMut> GLWEToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             base2k: self.base2k,
@@ -205,7 +205,7 @@ impl<BE: Backend> GLWEPlaintextToBackendRef<BE> for GLWEPlaintext<BE::OwnedBuf> 
     }
 }
 
-impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
+impl<D: HostDataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWEPlaintext<&[u8]> {
         GLWEPlaintext {
             data: self.data.to_ref(),
@@ -231,7 +231,7 @@ impl<BE: Backend> GLWEPlaintextToBackendMut<BE> for GLWEPlaintext<BE::OwnedBuf> 
     }
 }
 
-impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
+impl<D: HostDataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]> {
         GLWEPlaintext {
             base2k: self.base2k,
@@ -240,13 +240,13 @@ impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
     }
 }
 
-impl<D: DataMut> GLWEPlaintext<D> {
+impl<D: HostDataMut> GLWEPlaintext<D> {
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
 }
 
-impl<D: DataRef> GLWEPlaintext<D> {
+impl<D: HostDataRef> GLWEPlaintext<D> {
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }

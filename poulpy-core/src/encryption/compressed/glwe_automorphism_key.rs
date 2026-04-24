@@ -1,13 +1,13 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphism},
-    layouts::{Backend, GaloisElement, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphism},
+    layouts::{Backend, GaloisElement, HostDataMut, Module, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         GLWESecretToRef, LWEInfos, SetGaloisElement,
@@ -28,7 +28,7 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSkDefault<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -38,7 +38,6 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -65,7 +64,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -84,7 +83,7 @@ where
 
         let mut sk_out_prepared = self.glwe_secret_prepared_alloc(sk.rank());
         {
-            let (mut sk_out, _) = scratch.take_glwe_secret(self.n().into(), sk.rank());
+            let mut sk_out = GLWESecret::alloc(self.n().into(), sk.rank());
             sk_out.dist = sk.dist;
             for i in 0..sk.rank().into() {
                 self.vec_znx_automorphism(

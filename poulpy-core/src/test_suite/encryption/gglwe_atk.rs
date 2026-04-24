@@ -1,13 +1,13 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxFillUniform},
-    layouts::{GaloisElement, Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxFillUniform},
+    layouts::{GaloisElement, Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
     EncryptionLayout, GGLWEKeyswitch, GLWEAutomorphismKeyCompressedEncryptSk, GLWEAutomorphismKeyEncryptSk,
-    GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptSk, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
@@ -19,8 +19,8 @@ use crate::{
 
 pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedFactory<BE>
@@ -31,7 +31,7 @@ where
         + VecZnxFillUniform
         + VecZnxAutomorphism,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let k_ksk: usize = 4 * base2k + 1;
@@ -72,7 +72,7 @@ where
                 &atk_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
@@ -111,8 +111,8 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
     params: &TestParams,
     module: &Module<BE>,
 ) where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedFactory<BE>
@@ -123,7 +123,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
         + VecZnxFillUniform
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let k_ksk: usize = 4 * base2k + 1;
@@ -166,7 +166,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
                 seed_xa,
                 &atk_infos,
                 &mut source_xe,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();

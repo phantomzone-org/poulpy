@@ -5,7 +5,7 @@ use poulpy_core::{
     layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 use poulpy_hal::{
-    layouts::{Backend, DataMut, DataRef, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -14,7 +14,7 @@ use crate::blind_rotation::{
     CGGI,
 };
 
-impl<D: DataRef> BlindRotationKeyCompressedFactory<CGGI> for BlindRotationKeyCompressed<D, CGGI> {
+impl<D: HostDataRef> BlindRotationKeyCompressedFactory<CGGI> for BlindRotationKeyCompressed<D, CGGI> {
     fn blind_rotation_key_compressed_alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, CGGI>
     where
         A: BlindRotationKeyInfos,
@@ -53,7 +53,7 @@ where
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,

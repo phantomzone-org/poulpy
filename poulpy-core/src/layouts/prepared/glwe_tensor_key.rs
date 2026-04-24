@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
@@ -126,7 +126,7 @@ impl<B: Backend> GLWETensorKeyPreparedFactory<B> for Module<B> where Module<B>: 
 
 // module-only API: preparation is provided by `GLWETensorKeyPreparedFactory` on `Module`.
 
-impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GLWETensorKeyPrepared<D, B>
+impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWETensorKeyPrepared<D, B>
 where
     GGLWEPrepared<D, B>: GGLWEPreparedToMut<B>,
 {
@@ -135,7 +135,7 @@ where
     }
 }
 
-impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GLWETensorKeyPrepared<D, B>
+impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GLWETensorKeyPrepared<D, B>
 where
     GGLWEPrepared<D, B>: GGLWEPreparedToRef<B>,
 {

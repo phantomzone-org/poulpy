@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, Module, ScratchArena, ZnxView, ZnxViewMut, vec_znx_backend_ref_from_mut},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, vec_znx_backend_ref_from_mut},
 };
 
 pub use crate::api::LWEDecrypt;
@@ -28,8 +28,9 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
         R: LWEToRef,
         P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
+        BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &LWE<&[u8]> = &res.to_ref();
         let sk: LWESecret<&[u8]> = sk.to_ref();

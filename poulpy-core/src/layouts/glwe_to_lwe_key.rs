@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -107,31 +107,31 @@ impl<D: Data> GGLWEInfos for GLWEToLWEKey<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWEToLWEKey<D> {
+impl<D: HostDataRef> fmt::Debug for GLWEToLWEKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWEToLWEKey<D> {
+impl<D: HostDataMut> FillUniform for GLWEToLWEKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.0.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWEToLWEKey<D> {
+impl<D: HostDataRef> fmt::Display for GLWEToLWEKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(GLWEToLWEKey) {}", self.0)
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWEToLWEKey<D> {
+impl<D: HostDataMut> ReaderFrom for GLWEToLWEKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.0.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GLWEToLWEKey<D> {
+impl<D: HostDataRef> WriterTo for GLWEToLWEKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.write_to(writer)
     }
@@ -165,19 +165,19 @@ impl GLWEToLWEKey<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GGLWEToRef for GLWEToLWEKey<D> {
+impl<D: HostDataRef> GGLWEToRef for GLWEToLWEKey<D> {
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.0.to_ref()
     }
 }
 
-impl<D: DataMut> GGLWEToMut for GLWEToLWEKey<D> {
+impl<D: HostDataMut> GGLWEToMut for GLWEToLWEKey<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.0.to_mut()
     }
 }
 
-impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWEToLWEKey<D> {
+impl<D: HostDataMut> GLWESwitchingKeyDegreesMut for GLWEToLWEKey<D> {
     fn input_degree(&mut self) -> &mut Degree {
         &mut self.0.input_degree
     }
@@ -187,7 +187,7 @@ impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWEToLWEKey<D> {
     }
 }
 
-impl<D: DataRef> GLWESwitchingKeyDegrees for GLWEToLWEKey<D> {
+impl<D: HostDataRef> GLWESwitchingKeyDegrees for GLWEToLWEKey<D> {
     fn input_degree(&self) -> &Degree {
         &self.0.input_degree
     }

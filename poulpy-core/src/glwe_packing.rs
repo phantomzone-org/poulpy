@@ -37,8 +37,7 @@ fn glwe_automorphism_add_inplace_on<'s, M, A, K, BE: Backend + 's>(
     a: &mut A,
     key: &K,
     scratch: &mut ScratchArena<'s, BE>,
-)
-where
+) where
     M: GLWEAutomorphism<BE> + ?Sized,
     A: GLWEToBackendMut<BE>,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,

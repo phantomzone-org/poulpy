@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
@@ -188,7 +188,7 @@ where
 // module-only API: allocation, sizing, and preparation are provided by
 // `GGLWEToGGSWKeyPreparedFactory` on `Module`.
 
-impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
+impl<D: HostDataMut, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
     /// Returns a mutable reference to the `i`-th prepared GGLWE key element.
     ///
     /// The `i`-th element corresponds to `GGLWEPrepared_s([s[i]*s[0], s[i]*s[1], ..., s[i]*s[rank]])`.
@@ -214,7 +214,7 @@ pub trait GGLWEToGGSWKeyPreparedToRef<BE: Backend> {
     fn to_ref(&self) -> GGLWEToGGSWKeyPrepared<&[u8], BE>;
 }
 
-impl<D: DataRef, BE: Backend> GGLWEToGGSWKeyPreparedToRef<BE> for GGLWEToGGSWKeyPrepared<D, BE>
+impl<D: HostDataRef, BE: Backend> GGLWEToGGSWKeyPreparedToRef<BE> for GGLWEToGGSWKeyPrepared<D, BE>
 where
     GGLWEPrepared<D, BE>: GGLWEPreparedToRef<BE>,
 {
@@ -231,7 +231,7 @@ pub trait GGLWEToGGSWKeyPreparedToMut<BE: Backend> {
     fn to_mut(&mut self) -> GGLWEToGGSWKeyPrepared<&mut [u8], BE>;
 }
 
-impl<D: DataMut, BE: Backend> GGLWEToGGSWKeyPreparedToMut<BE> for GGLWEToGGSWKeyPrepared<D, BE>
+impl<D: HostDataMut, BE: Backend> GGLWEToGGSWKeyPreparedToMut<BE> for GGLWEToGGSWKeyPrepared<D, BE>
 where
     GGLWEPrepared<D, BE>: GGLWEPreparedToMut<BE>,
 {

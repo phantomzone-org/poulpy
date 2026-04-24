@@ -5,7 +5,7 @@
 //! [`cross_backend_test_suite!`](crate::cross_backend_test_suite) macros.
 //! Tests validate correctness against the [`crate::reference`] implementation.
 
-use crate::layouts::{Backend, DataMut, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut, VecZnxToBackendRef};
+use crate::layouts::{Backend, HostDataMut, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut, VecZnxToBackendRef};
 
 pub mod convolution;
 pub mod serialization;
@@ -40,14 +40,14 @@ pub struct TestParams {
 /// owned storage to remain host-readable and byte-backed.
 pub trait TestBackend: Backend<OwnedBuf = Vec<u8>>
 where
-    Self::OwnedBuf: DataMut,
+    Self::OwnedBuf: HostDataMut,
 {
 }
 
 impl<BE> TestBackend for BE
 where
     BE: Backend<OwnedBuf = Vec<u8>>,
-    BE::OwnedBuf: DataMut,
+    BE::OwnedBuf: HostDataMut,
 {
 }
 

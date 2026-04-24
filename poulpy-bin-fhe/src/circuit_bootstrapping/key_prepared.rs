@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataRef, Module, ScratchArena},
 };
 
 use crate::{
@@ -35,7 +35,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappi
 impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> {
     pub fn prepare<'s, DR, M>(&mut self, module: &M, other: &CircuitBootstrappingKey<DR, BRA>, scratch: &mut ScratchArena<'s, BE>)
     where
-        DR: DataRef,
+        DR: HostDataRef,
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable,
         BE: 's,
@@ -107,7 +107,7 @@ where
         other: &CircuitBootstrappingKey<DR, BRA>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        DR: DataRef,
+        DR: HostDataRef,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable,
         BE: 's,
     {

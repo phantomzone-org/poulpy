@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf},
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef,
-        ZnxInfos,
+        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut,
+        SvpPPolToRef, ZnxInfos,
     },
 };
 
@@ -26,13 +26,13 @@ pub struct GLWESecretTensorPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-impl<D: DataRef, BE: Backend> GetDistribution for GLWESecretTensorPrepared<D, BE> {
+impl<D: HostDataRef, BE: Backend> GetDistribution for GLWESecretTensorPrepared<D, BE> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
 }
 
-impl<D: DataMut, BE: Backend> GetDistributionMut for GLWESecretTensorPrepared<D, BE> {
+impl<D: HostDataMut, BE: Backend> GetDistributionMut for GLWESecretTensorPrepared<D, BE> {
     fn dist_mut(&mut self) -> &mut Distribution {
         &mut self.dist
     }
@@ -127,7 +127,7 @@ impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
 
 // module-only API: preparation is provided by `GLWESecretTensorPreparedFactory` on `Module`.
 
-impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrepared<D, B> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {
         GLWESecretPrepared {
             data: self.data.to_ref(),
@@ -136,7 +136,7 @@ impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrep
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretTensorPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretTensorPrepared<D, B> {
     fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
         GLWESecretPrepared {
             dist: self.dist,

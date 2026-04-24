@@ -12,7 +12,7 @@ use poulpy_core::{
 
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -29,7 +29,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub fn benc_bdd_prepare<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn benc_bdd_prepare<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -42,7 +42,7 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
@@ -58,7 +58,7 @@ where
         bdd_layout: BDDKeyLayout,
     }
 
-    fn runner<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
+    fn runner<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE>
             + ModuleN
@@ -71,7 +71,7 @@ where
             + BDDKeyPreparedFactory<BRA, BE>
             + FheUintPrepare<BRA, BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-        BE::OwnedBuf: DataRef + DataMut,
+        BE::OwnedBuf: HostDataRef + HostDataMut,
         for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
         for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
     {

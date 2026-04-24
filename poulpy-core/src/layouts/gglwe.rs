@@ -1,6 +1,6 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
         MatZnxToBackendRef, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, TransferFrom, WriterTo, ZnxInfos,
     },
     source::Source,
@@ -134,7 +134,7 @@ impl<D: Data> GGLWEInfos for GGLWE<D> {
     }
 }
 
-impl<D: DataRef> GGLWE<D> {
+impl<D: HostDataRef> GGLWE<D> {
     pub fn data(&self) -> &MatZnx<D> {
         &self.data
     }
@@ -178,7 +178,7 @@ pub fn gglwe_at_backend_ref_from_mut<'a, 'b, BE: Backend>(
     }
 }
 
-impl<D: DataMut> GGLWE<D> {
+impl<D: HostDataMut> GGLWE<D> {
     pub fn data_mut(&mut self) -> &mut MatZnx<D> {
         &mut self.data
     }
@@ -206,19 +206,19 @@ pub fn gglwe_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
     GLWE { base2k, data }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWE<D> {
+impl<D: HostDataRef> fmt::Debug for GGLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWE<D> {
+impl<D: HostDataMut> FillUniform for GGLWE<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWE<D> {
+impl<D: HostDataRef> fmt::Display for GGLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -231,7 +231,7 @@ impl<D: DataRef> fmt::Display for GGLWE<D> {
     }
 }
 
-impl<D: DataRef> GGLWE<D> {
+impl<D: HostDataRef> GGLWE<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         let data = self.data.at(row, col);
         GLWE {
@@ -241,7 +241,7 @@ impl<D: DataRef> GGLWE<D> {
     }
 }
 
-impl<D: DataMut> GGLWE<D> {
+impl<D: HostDataMut> GGLWE<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
@@ -249,7 +249,7 @@ impl<D: DataMut> GGLWE<D> {
     }
 }
 
-impl<D: DataRef> GGLWE<D> {
+impl<D: HostDataRef> GGLWE<D> {
     /// Copies this ciphertext's backing bytes into an owned buffer of
     /// backend `To`, routing via host bytes.
     pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GGLWE<To::OwnedBuf>
@@ -393,7 +393,7 @@ impl<BE: Backend> GGLWEToBackendMut<BE> for GGLWE<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataMut> GGLWEToMut for GGLWE<D> {
+impl<D: HostDataMut> GGLWEToMut for GGLWE<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         GGLWE {
             base2k: self.base2k(),
@@ -421,7 +421,7 @@ impl<BE: Backend> GGLWEToBackendRef<BE> for GGLWE<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> GGLWEToRef for GGLWE<D> {
+impl<D: HostDataRef> GGLWEToRef for GGLWE<D> {
     fn to_ref(&self) -> GGLWE<&[u8]> {
         GGLWE {
             base2k: self.base2k(),
@@ -431,7 +431,7 @@ impl<D: DataRef> GGLWEToRef for GGLWE<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWE<D> {
+impl<D: HostDataMut> ReaderFrom for GGLWE<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
         self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
@@ -439,7 +439,7 @@ impl<D: DataMut> ReaderFrom for GGLWE<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWE<D> {
+impl<D: HostDataRef> WriterTo for GGLWE<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
         writer.write_u32::<LittleEndian>(self.dsize.0)?;

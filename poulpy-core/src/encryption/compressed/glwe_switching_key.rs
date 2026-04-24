@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchTakeBasic, SvpPrepare, VecZnxSwitchRing},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxSwitchRing},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
         GLWESwitchingKeyDegreesMut, LWEInfos, prepared::GLWESecretPreparedFactory,
@@ -26,7 +26,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -37,7 +37,6 @@ pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -64,7 +63,7 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -83,14 +82,14 @@ where
             <Module<BE> as GLWESwitchingKeyCompressedEncryptSkDefault<BE>>::glwe_switching_key_compressed_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self.n(), sk_in.rank().into());
+        let mut sk_in_tmp = ScalarZnx::alloc(self.n(), sk_in.rank().into());
         for i in 0..sk_in.rank().into() {
             self.vec_znx_switch_ring(&mut sk_in_tmp.as_vec_znx_mut(), i, &sk_in.data.as_vec_znx(), i);
         }
 
         let mut sk_out_tmp = self.glwe_secret_prepared_alloc(sk_out.rank());
         {
-            let (mut tmp, _) = scratch_1.take_scalar_znx(self.n(), 1);
+            let mut tmp = ScalarZnx::alloc(self.n(), 1);
             let mut sk_out_tmp_data = sk_out_tmp.data.to_backend_mut();
             for i in 0..sk_out.rank().into() {
                 self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);

@@ -437,9 +437,7 @@ impl<B: Backend> MatZnxToBackendMut<B> for MatZnx<B::OwnedBuf> {
     }
 }
 
-pub fn mat_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
-    mat: &'a mut MatZnx<B::BufMut<'b>>,
-) -> MatZnxBackendMut<'a, B> {
+pub fn mat_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(mat: &'a mut MatZnx<B::BufMut<'b>>) -> MatZnxBackendMut<'a, B> {
     MatZnx {
         data: B::view_mut_ref(&mut mat.data),
         n: mat.n,

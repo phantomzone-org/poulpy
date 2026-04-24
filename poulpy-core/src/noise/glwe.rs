@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, Module, ScratchArena, Stats};
+use poulpy_hal::layouts::{Backend, HostBackend, Module, ScratchArena, Stats};
 
 use crate::{
     GLWENormalize, GLWESub, ScratchArenaTakeCore,
@@ -21,8 +21,9 @@ pub(crate) fn glwe_noise_backend_inner<'s, M, P, BE: Backend>(
 where
     M: GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
     P: GLWEToRef,
+    BE: HostBackend,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
 {
     assert!(
         scratch.available() >= module.glwe_noise_tmp_bytes(res_ref),
@@ -43,7 +44,7 @@ where
     pt_have_backend.data.stats(pt_base2k.into(), 0)
 }
 
-impl<BE: Backend> GLWENoise<BE> for Module<BE>
+impl<BE: Backend + HostBackend> GLWENoise<BE> for Module<BE>
 where
     Module<BE>: GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -63,7 +64,8 @@ where
         R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEToRef,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     {
         let res_ref = res.to_ref();
         let res_backend = res.to_backend_ref();

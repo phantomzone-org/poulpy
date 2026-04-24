@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VecZnxDftToMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VecZnxDftToMut,
         VecZnxDftToRef, ZnxInfos,
     },
 };
@@ -103,7 +103,7 @@ pub trait GLWEPreparedToMut<B: Backend> {
     fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPrepared<D, B> {
     fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B> {
         GLWEPrepared {
             base2k: self.base2k,
@@ -116,7 +116,7 @@ pub trait GLWEPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GLWEPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPrepared<D, B> {
     fn to_ref(&self) -> GLWEPrepared<&[u8], B> {
         GLWEPrepared {
             data: self.data.to_ref(),

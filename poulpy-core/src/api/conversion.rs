@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ModuleN,
-    layouts::{Backend, DataMut, ScratchArena, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, HostDataMut, ScratchArena, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
@@ -58,7 +58,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait LWEFromGLWE<BE: Backend>
@@ -95,7 +95,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let a_ref: &GLWE<&[u8]> = &a.to_ref();
@@ -147,7 +147,7 @@ pub trait GGSWFromGGLWE<BE: Backend> {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: DataMut;
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GGSWExpandRows<BE: Backend> {

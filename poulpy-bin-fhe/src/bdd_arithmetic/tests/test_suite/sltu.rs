@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -18,7 +18,7 @@ use crate::{
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_bdd_sltu<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
+pub fn test_bdd_sltu<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>

@@ -1,13 +1,13 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxSubScalarInplace},
-    layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxSubScalarInplace},
+    layouts::{Backend, GaloisElement, Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
 
 use crate::{
     DEFAULT_SIGMA_XE, EncryptionLayout, GGLWENoise, GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk,
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret,
         GLWESecretPreparedFactory,
@@ -20,10 +20,9 @@ use crate::{
 pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
     params: &TestParams,
     module: &Module<BE>,
-)
-where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+) where
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
@@ -33,7 +32,7 @@ where
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let in_base2k: usize = base2k - 1;
@@ -115,7 +114,7 @@ where
                 &auto_key_in_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             // gglwe_{s2}(s1) -> s1 -> s2
@@ -126,7 +125,7 @@ where
                 &auto_key_apply_infos,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
@@ -190,14 +189,12 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_gglwe_automorphism_key_automorphism_inplace<
-    BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>,
->(
+pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
     params: &TestParams,
     module: &Module<BE>,
 ) where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
-    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
@@ -207,7 +204,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     let base2k: usize = params.base2k;
     let out_base2k: usize = base2k - 1;
@@ -271,7 +268,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<
                 &auto_key_layout,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             // gglwe_{s2}(s1) -> s1 -> s2
@@ -282,7 +279,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<
                 &auto_key_apply_layout,
                 &mut source_xe,
                 &mut source_xa,
-                crate::test_suite::scratch_host_mut(&mut scratch),
+                &mut crate::test_suite::scratch_host_arena(&mut scratch),
             );
 
             let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =

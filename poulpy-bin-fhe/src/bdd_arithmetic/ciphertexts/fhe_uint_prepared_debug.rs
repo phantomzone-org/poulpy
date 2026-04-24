@@ -14,7 +14,9 @@ use poulpy_core::{
 };
 
 use poulpy_hal::api::ModuleN;
-use poulpy_hal::layouts::{Backend, Data, DataRef, HostDataMut, Module, ScalarZnx, ScratchArena, Stats, ZnxZero};
+use poulpy_hal::layouts::{
+    Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, Stats, ZnxZero,
+};
 
 /// A debug variant of `FheUintPrepared` that stores per-bit GGSW ciphertexts
 /// in standard (non-DFT) form.
@@ -62,7 +64,7 @@ impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintPreparedDebug<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> LWEInfos for FheUintPreparedDebug<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.bits[0].base2k()
     }
@@ -76,13 +78,13 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintPreparedDebug<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintPreparedDebug<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> GLWEInfos for FheUintPreparedDebug<D, T> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.bits[0].rank()
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintPreparedDebug<D, T> {
+impl<D: HostDataRef, T: UnsignedInteger> GGSWInfos for FheUintPreparedDebug<D, T> {
     fn dsize(&self) -> poulpy_core::layouts::Dsize {
         self.bits[0].dsize()
     }
@@ -105,6 +107,7 @@ impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
     where
         S: GLWESecretPreparedToBackendRef<BE>,
         M: GGSWNoise<BE>,
+        BE: HostBackend,
         for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
     {
         let mut stats = Vec::new();
@@ -120,12 +123,12 @@ impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepareDebug<BRA, T, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend + HostBackend, T: UnsignedInteger> FheUintPrepareDebug<BRA, T, BE> for Module<BE>
 where
     Self: ModuleN + LWEFromGLWE<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     BE: Backend<OwnedBuf = Vec<u8>>,
-    BE::OwnedBuf: DataRef,
+    BE::OwnedBuf: HostDataRef,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn fhe_uint_debug_prepare(
@@ -154,7 +157,7 @@ impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         BRA: BlindRotationAlgo,
-        BE: Backend<OwnedBuf = Vec<u8>>,
+        BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
         M: FheUintPrepareDebug<BRA, T, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {

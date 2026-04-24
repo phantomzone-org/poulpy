@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef,
-        ZnxInfos, svp_ppol_backend_ref_from_mut,
+        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut,
+        SvpPPolToRef, ZnxInfos, svp_ppol_backend_ref_from_mut,
     },
 };
 
@@ -34,13 +34,13 @@ pub fn glwe_secret_prepared_backend_ref_from_mut<'a, 'b, B: Backend>(
     }
 }
 
-impl<D: DataRef, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
+impl<D: HostDataRef, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
 }
 
-impl<D: DataMut, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
+impl<D: HostDataMut, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
     fn dist_mut(&mut self) -> &mut Distribution {
         &mut self.dist
     }
@@ -134,7 +134,7 @@ pub trait GLWESecretPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D, B> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {
         GLWESecretPrepared {
             data: self.data.to_ref(),
@@ -150,7 +150,7 @@ where
     fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D, B> {
     fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
         GLWESecretPrepared {
             dist: self.dist,

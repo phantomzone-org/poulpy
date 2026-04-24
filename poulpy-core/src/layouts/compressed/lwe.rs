@@ -3,8 +3,8 @@ use std::fmt;
 use poulpy_hal::{
     api::VecZnxFillUniform,
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
-        ZnxView, ZnxViewMut,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo,
+        ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -38,13 +38,13 @@ impl<D: Data> LWEInfos for LWECompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for LWECompressed<D> {
+impl<D: HostDataRef> fmt::Debug for LWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for LWECompressed<D> {
+impl<D: HostDataRef> fmt::Display for LWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -57,7 +57,7 @@ impl<D: DataRef> fmt::Display for LWECompressed<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for LWECompressed<D> {
+impl<D: HostDataMut> FillUniform for LWECompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
@@ -99,7 +99,7 @@ impl LWECompressed<Vec<u8>> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for LWECompressed<D> {
+impl<D: HostDataMut> ReaderFrom for LWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -108,7 +108,7 @@ impl<D: DataMut> ReaderFrom for LWECompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for LWECompressed<D> {
+impl<D: HostDataRef> WriterTo for LWECompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -147,7 +147,7 @@ pub trait LWECompressedToRef {
     fn to_ref(&self) -> LWECompressed<&[u8]>;
 }
 
-impl<D: DataRef> LWECompressedToRef for LWECompressed<D> {
+impl<D: HostDataRef> LWECompressedToRef for LWECompressed<D> {
     fn to_ref(&self) -> LWECompressed<&[u8]> {
         LWECompressed {
             k: self.k,
@@ -162,7 +162,7 @@ pub trait LWECompressedToMut {
     fn to_mut(&mut self) -> LWECompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> LWECompressedToMut for LWECompressed<D> {
+impl<D: HostDataMut> LWECompressedToMut for LWECompressed<D> {
     fn to_mut(&mut self) -> LWECompressed<&mut [u8]> {
         LWECompressed {
             k: self.k,

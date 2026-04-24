@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -97,7 +97,7 @@ pub trait GLWESwitchingKeyDegrees {
     fn output_degree(&self) -> &Degree;
 }
 
-impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKey<D> {
+impl<D: HostDataRef> GLWESwitchingKeyDegrees for GLWESwitchingKey<D> {
     fn output_degree(&self) -> &Degree {
         &self.output_degree
     }
@@ -116,7 +116,7 @@ pub trait GLWESwitchingKeyDegreesMut {
     fn output_degree(&mut self) -> &mut Degree;
 }
 
-impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKey<D> {
+impl<D: HostDataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKey<D> {
     fn output_degree(&mut self) -> &mut Degree {
         &mut self.output_degree
     }
@@ -164,13 +164,13 @@ impl<D: Data> GGLWEInfos for GLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWESwitchingKey<D> {
+impl<D: HostDataRef> fmt::Debug for GLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWESwitchingKey<D> {
+impl<D: HostDataRef> fmt::Display for GLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -182,7 +182,7 @@ impl<D: DataRef> fmt::Display for GLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
+impl<D: HostDataMut> FillUniform for GLWESwitchingKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
@@ -244,14 +244,14 @@ impl GLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GGLWEToMut for GLWESwitchingKey<D> {
+impl<D: HostDataMut> GGLWEToMut for GLWESwitchingKey<D> {
     /// Borrows the data as `&mut [u8]`.
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
-impl<D: DataRef> GGLWEToRef for GLWESwitchingKey<D> {
+impl<D: HostDataRef> GGLWEToRef for GLWESwitchingKey<D> {
     /// Borrows the data as `&[u8]`.
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
@@ -270,21 +270,21 @@ impl<BE: Backend> GGLWEToBackendRef<BE> for GLWESwitchingKey<BE::OwnedBuf> {
     }
 }
 
-impl<D: DataRef> GLWESwitchingKey<D> {
+impl<D: HostDataRef> GLWESwitchingKey<D> {
     /// Returns an immutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: DataMut> GLWESwitchingKey<D> {
+impl<D: HostDataMut> GLWESwitchingKey<D> {
     /// Returns a mutable reference to the GLWE ciphertext at position (`row`, `col`).
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
+impl<D: HostDataMut> ReaderFrom for GLWESwitchingKey<D> {
     /// Deserialises from little-endian binary format.
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.input_degree = Degree(reader.read_u32::<LittleEndian>()?);
@@ -293,7 +293,7 @@ impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
+impl<D: HostDataRef> WriterTo for GLWESwitchingKey<D> {
     /// Serialises in little-endian binary format.
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.input_degree.into())?;

@@ -7,8 +7,8 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleNew, ScratchFromBytes, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, Scratch, ScratchOwned},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, NoiseInfos, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -20,7 +20,7 @@ use criterion::Criterion;
 /// `glwe_infos` describes the input/output GLWE layout.
 /// `atk_infos` describes the automorphism key layout.
 /// `p` is the Galois element (e.g. 3 for X -> X^3).
-pub fn bench_glwe_automorphism<BE: Backend<OwnedBuf = Vec<u8>> + poulpy_hal::oep::HalScratchImpl<BE>>(
+pub fn bench_glwe_automorphism<BE: Backend<OwnedBuf = Vec<u8>>>(
     glwe_infos: &impl GLWEInfos,
     atk_infos: &impl GGLWEInfos,
     p: i64,
@@ -58,8 +58,15 @@ pub fn bench_glwe_automorphism<BE: Backend<OwnedBuf = Vec<u8>> + poulpy_hal::oep
     );
 
     let atk_enc_infos = NoiseInfos::new(atk_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
-    let scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(scratch.data.as_mut_slice());
-    module.glwe_automorphism_key_encrypt_sk(&mut atk, p, &sk, &atk_enc_infos, &mut source_xe, &mut source_xa, scratch_ref);
+    module.glwe_automorphism_key_encrypt_sk(
+        &mut atk,
+        p,
+        &sk,
+        &atk_enc_infos,
+        &mut source_xe,
+        &mut source_xa,
+        &mut scratch.borrow(),
+    );
 
     let mut atk_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
         module.glwe_automorphism_key_prepared_alloc_from_infos(&atk);

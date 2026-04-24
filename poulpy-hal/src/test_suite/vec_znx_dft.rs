@@ -22,8 +22,8 @@ pub fn test_vec_znx_dft_add_into<BR: crate::test_suite::TestBackend, BT: crate::
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftAddInto<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -164,8 +164,8 @@ pub fn test_vec_znx_dft_add_assign<BR: crate::test_suite::TestBackend, BT: crate
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftAddAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -291,8 +291,8 @@ pub fn test_vec_znx_copy<BR: crate::test_suite::TestBackend, BT: crate::test_sui
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftCopy<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -419,8 +419,8 @@ pub fn test_vec_znx_idft_apply<BR: crate::test_suite::TestBackend, BT: crate::te
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxBigAlloc<BR>
@@ -548,8 +548,8 @@ pub fn test_vec_znx_idft_apply_tmpa<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxBigAlloc<BR>
@@ -670,8 +670,8 @@ pub fn test_vec_znx_idft_apply_consume<BR: crate::test_suite::TestBackend, BT: c
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftApply<BR>
         + VecZnxIdftApplyTmpBytes
         + VecZnxDftAlloc<BR>
@@ -779,8 +779,8 @@ pub fn test_vec_znx_dft_sub<BR: crate::test_suite::TestBackend, BT: crate::test_
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftSub<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -921,8 +921,8 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftSubInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
@@ -1048,8 +1048,8 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: crate::test_suite::TestBackend, B
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxDftSubNegateInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>

@@ -14,7 +14,7 @@ use poulpy_core::{
         GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl, OperationsDefaults,
     },
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostDataMut, HostDataRef, Module, ScratchArena};
 
 poulpy_cpu_ref::impl_decryption_via_helpers!(FFT64Avx, poulpy_cpu_ref::core_impl);
 poulpy_cpu_ref::impl_conversion_via_helpers!(FFT64Avx, poulpy_cpu_ref::core_impl);

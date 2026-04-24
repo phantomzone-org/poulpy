@@ -23,8 +23,8 @@ pub fn test_vec_znx_big_add_into<BR: crate::test_suite::TestBackend, BT: crate::
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>:
         VecZnxBigAddInto<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
@@ -154,8 +154,8 @@ pub fn test_vec_znx_big_add_assign<BR: crate::test_suite::TestBackend, BT: crate
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAddAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -256,8 +256,8 @@ pub fn test_vec_znx_big_add_small_into<BR: crate::test_suite::TestBackend, BT: c
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAddSmallInto<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -376,8 +376,8 @@ pub fn test_vec_znx_big_add_small_assign<BR: crate::test_suite::TestBackend, BT:
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAddSmallAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -473,8 +473,8 @@ pub fn test_vec_znx_big_automorphism<BR: crate::test_suite::TestBackend, BT: cra
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAutomorphism<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -574,8 +574,8 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: crate::test_suite::TestBackend,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAutomorphismInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -665,8 +665,8 @@ pub fn test_vec_znx_big_negate<BR: crate::test_suite::TestBackend, BT: crate::te
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>:
         VecZnxBigNegate<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
@@ -758,8 +758,8 @@ pub fn test_vec_znx_big_negate_inplace<BR: crate::test_suite::TestBackend, BT: c
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -843,8 +843,8 @@ pub fn test_vec_znx_big_normalize<BR: crate::test_suite::TestBackend, BT: crate:
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigAutomorphismAssignTmpBytes
@@ -934,8 +934,8 @@ pub fn test_vec_znx_big_sub<BR: crate::test_suite::TestBackend, BT: crate::test_
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>:
         VecZnxBigSub<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
@@ -1059,8 +1059,8 @@ pub fn test_vec_znx_big_sub_inplace<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1161,8 +1161,8 @@ pub fn test_vec_znx_big_sub_negate_inplace<BR: crate::test_suite::TestBackend, B
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1263,8 +1263,8 @@ pub fn test_vec_znx_big_sub_small_a<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubSmallA<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1376,8 +1376,8 @@ pub fn test_vec_znx_big_sub_small_b<BR: crate::test_suite::TestBackend, BT: crat
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubSmallB<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1489,8 +1489,8 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: crate::test_suite::TestBackend, 
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubSmallInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1586,8 +1586,8 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: crate::test_suite::TestBackend, 
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    BR::OwnedBuf: crate::layouts::DataMut,
-    BT::OwnedBuf: crate::layouts::DataMut,
+    BR::OwnedBuf: crate::layouts::HostDataMut,
+    BT::OwnedBuf: crate::layouts::HostDataMut,
     Module<BR>: VecZnxBigSubSmallNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>

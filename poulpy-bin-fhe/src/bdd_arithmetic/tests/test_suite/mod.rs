@@ -24,7 +24,7 @@ pub use glwe_blind_selection::*;
 pub use or::*;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchOwned},
     source::Source,
 };
 pub use prepare::*;
@@ -52,14 +52,14 @@ use crate::{
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 
-pub struct TestContext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
+pub struct TestContext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> {
     pub module: Module<BE>,
     pub sk_glwe: GLWESecretPrepared<BE::OwnedBuf, BE>,
     pub sk_lwe: LWESecret<Vec<u8>>,
     pub bdd_key: BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> Default for TestContext<BRA, BE>
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> Default for TestContext<BRA, BE>
 where
     Module<BE>: ModuleNew<BE>
         + BDDKeyEncryptSk<BRA, BE>
@@ -67,7 +67,7 @@ where
         + BlindRotationKeyPreparedFactory<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: poulpy_hal::layouts::DataRef + poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataRef + poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -76,7 +76,7 @@ where
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> TestContext<BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> TestContext<BRA, BE> {
     pub fn glwe_infos(&self) -> GLWELayout {
         TEST_GLWE_INFOS
     }
@@ -93,7 +93,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> TestContext<BRA, B
             + BlindRotationKeyPreparedFactory<BRA, BE>
             + BDDKeyPreparedFactory<BRA, BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-        BE::OwnedBuf: poulpy_hal::layouts::DataRef + poulpy_hal::layouts::DataMut,
+        BE::OwnedBuf: poulpy_hal::layouts::HostDataRef + poulpy_hal::layouts::HostDataMut,
         for<'a> BE::BufMut<'a>: HostDataMut,
         for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {

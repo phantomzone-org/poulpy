@@ -27,8 +27,8 @@
 //! ## Scratch-space allocation
 //!
 //! Operations never allocate on the heap internally. Instead, callers
-//! supply a [`poulpy_hal::layouts::Scratch`] buffer from which temporaries are
-//! arena-allocated via [`ScratchTakeCore`]. Every operation that needs
+//! supply a [`poulpy_hal::layouts::ScratchArena`] borrow from which temporaries are
+//! arena-allocated via [`ScratchArenaTakeCore`]. Every operation that needs
 //! scratch space has a companion `*_tmp_bytes` method returning the
 //! required byte count.
 //!

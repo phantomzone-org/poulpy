@@ -10,13 +10,9 @@ use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGL
 
 use poulpy_core::{GGSWEncryptSk, ScratchArenaTakeCore, layouts::GLWESecretPreparedToBackendRef};
 use poulpy_hal::api::{ModuleLogN, ScratchArenaTakeBasic};
-use poulpy_hal::layouts::{Backend, Data, DataRef, HostDataMut, Module};
+use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, Module};
 
-use poulpy_hal::{
-    api::ModuleN,
-    layouts::{DataMut, ScratchArena},
-    source::Source,
-};
+use poulpy_hal::{api::ModuleN, layouts::ScratchArena, source::Source};
 
 use crate::bin_fhe::bdd_arithmetic::{
     BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, BitSize, FheUint, ToBits,
@@ -102,7 +98,7 @@ pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
     fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>>;
 }
 
-impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
+impl<D: HostDataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
         assert!(
             bit < self.bits.len(),
@@ -173,7 +169,7 @@ impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<BE::OwnedBuf, T, BE> {
     }
 }
 
-impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>>> FheUintPreparedEncryptSk<T, BE> for Module<BE> where
+impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> FheUintPreparedEncryptSk<T, BE> for Module<BE> where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>
 {
 }
@@ -184,7 +180,7 @@ impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>>> FheUintPrepar
 /// Useful in testing and debugging scenarios where the packed-GLWE intermediate
 /// form is not needed.  Each bit is encrypted independently as a constant GGSW
 /// and then immediately DFT-prepared in place.
-pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>>>
+pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
@@ -236,6 +232,7 @@ impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>>> FheUintPrepar
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
+        BE: HostBackend,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         M: FheUintPreparedEncryptSk<T, BE>,
         E: EncryptionInfos,
@@ -246,9 +243,9 @@ impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>>> FheUintPrepar
     }
 }
 
-impl<T: UnsignedInteger + FromBits, BE: Backend<OwnedBuf = Vec<u8>>> FheUintPrepared<BE::OwnedBuf, T, BE>
+impl<T: UnsignedInteger + FromBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> FheUintPrepared<BE::OwnedBuf, T, BE>
 where
-    BE::OwnedBuf: DataRef,
+    BE::OwnedBuf: HostDataRef,
 {
     pub fn decrypt<M, S, H, K>(&self, module: &M, sk: &S, keys: &H, scratch: &mut ScratchArena<'_, BE>) -> T
     where
@@ -257,7 +254,7 @@ where
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        BE::OwnedBuf: DataRef,
+        BE::OwnedBuf: HostDataRef,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let mut tmp: FheUint<Vec<u8>, T> = FheUint::alloc_from_infos(self);
@@ -267,7 +264,7 @@ where
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D, T, B> {
+impl<D: HostDataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D, T, B> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.bits[0].base2k()
     }
@@ -281,13 +278,13 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D,
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> GLWEInfos for FheUintPrepared<D, T, B> {
+impl<D: HostDataRef, T: UnsignedInteger, B: Backend> GLWEInfos for FheUintPrepared<D, T, B> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.bits[0].rank()
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintPrepared<D, T, B> {
+impl<D: HostDataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintPrepared<D, T, B> {
     fn dsize(&self) -> poulpy_core::layouts::Dsize {
         self.bits[0].dsize()
     }
@@ -300,7 +297,7 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintPrepared<D
 impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> BDDKeyPrepared<BE::OwnedBuf, BRA, BE> {
     pub fn prepare<'s, DR, M>(&mut self, module: &M, other: &BDDKey<DR, BRA>, scratch: &mut ScratchArena<'s, BE>)
     where
-        DR: DataRef,
+        DR: HostDataRef,
         M: BDDKeyPreparedFactory<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
@@ -377,7 +374,7 @@ where
     Self: LWEFromGLWE<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     BE: Backend<OwnedBuf = Vec<u8>>,
-    BE::OwnedBuf: DataRef,
+    BE::OwnedBuf: HostDataRef,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn fhe_uint_prepare_tmp_bytes<R, A, B>(

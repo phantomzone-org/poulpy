@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, HostDataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -37,8 +37,8 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(
@@ -48,7 +48,7 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
+        R: HostDataMut,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -75,9 +75,9 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_inplace<'s, R, A>(
@@ -89,8 +89,8 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -122,9 +122,9 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_square_apply<'s, R, A>(
@@ -135,8 +135,8 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
@@ -147,8 +147,8 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
@@ -393,8 +393,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef;
+        R: HostDataMut,
+        A: HostDataRef;
 
     fn glwe_mul_const_inplace_default<'s, R>(
         module: &Module<BE>,
@@ -403,7 +403,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut;
+        R: HostDataMut;
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -422,9 +422,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef;
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<'s, R, A>(
@@ -436,8 +436,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef;
+        R: HostDataMut,
+        A: HostDataRef;
 
     fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -461,9 +461,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef;
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply_default<'s, R, A>(
@@ -474,8 +474,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef;
+        R: HostDataMut,
+        A: HostDataRef;
 
     fn glwe_tensor_relinearize_default<'s, R, A, B>(
         module: &Module<BE>,
@@ -485,8 +485,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
@@ -693,8 +693,8 @@ where
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
     }
@@ -706,7 +706,7 @@ where
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
+        R: HostDataMut,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, scratch)
     }
@@ -730,9 +730,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain(
             module,
@@ -755,8 +755,8 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_assign(
             module,
@@ -796,9 +796,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(
             module,
@@ -820,8 +820,8 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply(module, cnv_offset, res, a, a_effective_k, scratch)
     }
@@ -834,8 +834,8 @@ where
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
@@ -1156,14 +1156,13 @@ macro_rules! impl_glwe_rotate_impl_from {
                     .expect("failed to write delegated GLWE rotate result back");
             }
 
-            fn glwe_rotate_inplace<R>(
+            fn glwe_rotate_inplace<'s, R>(
                 module: &poulpy_hal::layouts::Module<$be>,
                 k: i64,
                 res: &mut R,
-                _scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+                _scratch: &mut poulpy_hal::layouts::ScratchArena<'s, $be>,
             ) where
                 R: $crate::layouts::GLWEToMut,
-                poulpy_hal::layouts::Scratch<$be>: $crate::ScratchTakeCore<$be>,
             {
                 let delegate: poulpy_hal::layouts::Module<$from> =
                     <poulpy_hal::layouts::Module<$from> as poulpy_hal::api::ModuleNew<$from>>::new(module.n() as u64);

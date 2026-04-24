@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::SvpPPolBytesOf,
-    layouts::{Backend, DataMut, DataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
 };
 
 pub use crate::api::GLWETensorDecrypt;
@@ -41,13 +41,14 @@ where
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: DataRef,
+        R: HostDataRef,
         GLWETensor<R>: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: DataMut,
+        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + crate::layouts::SetLWEInfos,
-        S0: DataRef,
-        S1: DataRef,
-        for<'a> BE::BufMut<'a>: DataMut,
+        S0: HostDataRef,
+        S1: HostDataRef,
+        BE: HostBackend,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(
             scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes_default(res),

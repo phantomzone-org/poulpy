@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, VecZnxAutomorphism},
-    layouts::{Backend, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphism},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret,
         LWESecretToRef, Rank,
@@ -26,7 +26,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSkDefault<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -37,7 +37,6 @@ pub trait LWEToGLWESwitchingKeyEncryptSkDefault<BE: Backend> {
 impl<BE: Backend> LWEToGLWESwitchingKeyEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxAutomorphism,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -68,7 +67,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -86,12 +85,12 @@ where
             <Module<BE> as LWEToGLWESwitchingKeyEncryptSkDefault<BE>>::lwe_to_glwe_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_lwe_as_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        let mut sk_lwe_as_glwe_src = GLWESecret::alloc(self.n().into(), Rank(1));
         sk_lwe_as_glwe_src.dist = sk_lwe.dist;
         sk_lwe_as_glwe_src.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
         sk_lwe_as_glwe_src.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
 
-        let (mut sk_lwe_as_glwe, _) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
+        let mut sk_lwe_as_glwe = GLWESecret::alloc(self.n().into(), Rank(1));
         sk_lwe_as_glwe.dist = sk_lwe.dist;
         {
             let sk_lwe_as_glwe_src_data = sk_lwe_as_glwe_src.data.as_vec_znx();

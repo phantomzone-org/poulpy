@@ -41,7 +41,7 @@ use crate::reference::{
     },
 };
 use poulpy_hal::{
-    api::ScratchArenaTakeHost,
+    api::HostBufMut,
     layouts::{
         Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
         ZnxInfos, ZnxView, ZnxViewMut,
@@ -49,10 +49,29 @@ use poulpy_hal::{
     source::Source,
 };
 
+#[inline]
+fn take_host_typed<'a, BE, T>(arena: ScratchArena<'a, BE>, len: usize) -> (&'a mut [T], ScratchArena<'a, BE>)
+where
+    BE: Backend + 'a,
+    BE::BufMut<'a>: HostBufMut<'a>,
+    T: Copy,
+{
+    debug_assert!(
+        BE::SCRATCH_ALIGN.is_multiple_of(std::mem::align_of::<T>()),
+        "B::SCRATCH_ALIGN ({}) must be a multiple of align_of::<T>() ({})",
+        BE::SCRATCH_ALIGN,
+        std::mem::align_of::<T>()
+    );
+    let (buf, arena) = arena.take_region(len * std::mem::size_of::<T>());
+    let bytes: &'a mut [u8] = buf.into_bytes();
+    let slice = unsafe { std::slice::from_raw_parts_mut(bytes.as_mut_ptr() as *mut T, len) };
+    (slice, arena)
+}
+
 #[doc(hidden)]
 pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -278,13 +297,14 @@ where
             + ZnxNormalizeDigit
             + ZnxNormalizeMiddleStepInplace
             + ZnxNormalizeFinalStepInplace,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
         R: VecZnxToMut,
         A: VecZnxBigToRef<BE>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i64(fft64_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = take_host_typed::<BE, i64>(
+            scratch.borrow(),
+            fft64_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i64>(),
+        );
         fft64_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
@@ -312,22 +332,23 @@ where
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxAutomorphism + ZnxCopy,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
         R: VecZnxBigToMut<BE>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i64(fft64_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        let (tmp, _) = take_host_typed::<BE, i64>(
+            scratch.borrow(),
+            fft64_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>(),
+        );
         fft64_vec_znx_big_automorphism_inplace(k, res, res_col, tmp);
     }
 }
 
-impl<BE: Backend> FFT64VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> FFT64VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}
 
 #[doc(hidden)]
 pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend
 where
-    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
     fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -527,13 +548,14 @@ where
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128NormalizeOps,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
         R: VecZnxToMut,
         A: VecZnxBigToRef<BE>,
     {
-        let (carry, _) = scratch
-            .borrow()
-            .take_i128(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        let (carry, _) = take_host_typed::<BE, i128>(
+            scratch.borrow(),
+            ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>(),
+        );
         ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
@@ -601,14 +623,15 @@ where
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
-        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
         R: VecZnxBigToMut<BE>,
     {
-        let (tmp, _) = scratch
-            .borrow()
-            .take_i128(ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i128>());
+        let (tmp, _) = take_host_typed::<BE, i128>(
+            scratch.borrow(),
+            ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i128>(),
+        );
         ntt120_vec_znx_big_automorphism_inplace(k, res, res_col, tmp);
     }
 }
 
-impl<BE: Backend> NTT120VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
+impl<BE: Backend> NTT120VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::HostDataMut {}

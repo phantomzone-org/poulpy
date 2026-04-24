@@ -1,14 +1,14 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddAssign, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddAssign,
+        VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, VecZnx, VecZnxBigToBackendRef, VecZnxDft,
-        VecZnxDftToBackendMut, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, ZnxInfos, ZnxZero,
-        svp_ppol_backend_ref_from_mut, vec_znx_backend_mut_from_mut, vec_znx_big_backend_ref_from_mut,
+        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, VecZnx, VecZnxToMut, ZnxInfos, ZnxZero,
+        svp_ppol_backend_ref_from_mut, vec_znx_backend_mut_from_mut, vec_znx_backend_ref_from_mut,
+        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_mut_from_mut,
     },
     source::Source,
 };
@@ -92,12 +92,13 @@ where
         let size: usize = infos.size();
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = VecZnx::bytes_of(self.n(), 1, size).max(self.vec_znx_normalize_tmp_bytes());
+        let lvl_0: usize = VecZnx::bytes_of(self.n(), 1, size);
         let lvl_1: usize = VecZnx::bytes_of(self.n(), 1, size);
-        let lvl_2: usize = self.bytes_of_vec_znx_dft(1, size);
-        let lvl_3: usize = self.vec_znx_normalize_tmp_bytes().max(self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2: usize = self
+            .vec_znx_normalize_tmp_bytes()
+            .max(self.bytes_of_vec_znx_dft(1, size) + self.vec_znx_big_normalize_tmp_bytes());
 
-        lvl_0 + lvl_1 + lvl_2 + lvl_3
+        lvl_0 + lvl_1 + lvl_2
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -475,8 +476,7 @@ where
         + VecZnxSub
         + VecZnxCopy
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
-    BE::OwnedBuf: HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn glwe_encrypt_sk_internal<'s, R, P, S, E>(
         &self,
@@ -489,7 +489,7 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        _scratch: &mut ScratchArena<'s, BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: VecZnxToMut,
         P: GLWEPlaintextToRef,
@@ -512,12 +512,10 @@ where
 
         let size: usize = ct.size();
 
-        let c0_data: BE::OwnedBuf = BE::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(self.n(), 1, size));
-        let ci_data: BE::OwnedBuf = BE::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(self.n(), 1, size));
-        let mut c0: VecZnx<BE::OwnedBuf> = VecZnx::from_data_with_max_size(c0_data, self.n(), 1, size, size);
-        let mut ci: VecZnx<BE::OwnedBuf> = VecZnx::from_data_with_max_size(ci_data, self.n(), 1, size, size);
-        let mut normalize_scratch_owned: ScratchOwned<BE> = ScratchOwned::alloc(self.vec_znx_normalize_tmp_bytes());
-        let mut big_normalize_scratch_owned: ScratchOwned<BE> = ScratchOwned::alloc(self.vec_znx_big_normalize_tmp_bytes());
+        let scratch_local = scratch.borrow();
+        let (mut c0, scratch_1) = scratch_local.take_vec_znx(self.n(), 1, size);
+        let (mut ci, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, size);
+        let mut scratch_2 = scratch_2;
         c0.zero();
 
         for i in 1..cols {
@@ -529,8 +527,8 @@ where
             {
                 self.vec_znx_sub(&mut ci, 0, ct, col_ct, &pt.to_ref().data, 0);
                 {
-                    let mut scratch_norm = normalize_scratch_owned.arena();
-                    let mut ci_mut = <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut ci);
+                    let mut scratch_norm = scratch_2.borrow();
+                    let mut ci_mut = vec_znx_backend_mut_from_mut::<BE>(&mut ci);
                     <Module<BE> as VecZnxNormalizeInplaceBackend<BE>>::vec_znx_normalize_inplace_backend(
                         self,
                         base2k,
@@ -544,20 +542,20 @@ where
             }
 
             {
-                let ci_dft_data: BE::OwnedBuf = BE::alloc_bytes(self.bytes_of_vec_znx_dft(1, size));
-                let mut ci_dft: VecZnxDft<BE::OwnedBuf, BE> = VecZnxDft::from_data(ci_dft_data, self.n(), 1, size);
+                let scratch_dft = scratch_2.borrow();
+                let (mut ci_dft, mut scratch_3) = scratch_dft.take_vec_znx_dft(self, 1, size);
                 {
-                    let ci_ref = <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&ci);
-                    let mut ci_dft_mut = ci_dft.to_backend_mut();
+                    let ci_ref = vec_znx_backend_ref_from_mut::<BE>(&ci);
+                    let mut ci_dft_mut = vec_znx_dft_backend_mut_from_mut::<BE>(&mut ci_dft);
                     <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(self, 1, 0, &mut ci_dft_mut, 0, &ci_ref, 0);
                 }
 
                 self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
                 {
-                    let ci_big_ref = ci_big.to_backend_ref();
-                    let mut ci_mut = <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut ci);
-                    let mut scratch_norm = big_normalize_scratch_owned.arena();
+                    let mut scratch_norm = scratch_3.borrow();
+                    let ci_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&ci_big);
+                    let mut ci_mut = vec_znx_backend_mut_from_mut::<BE>(&mut ci);
                     <Module<BE> as VecZnxBigNormalize<BE>>::vec_znx_big_normalize(
                         self,
                         &mut ci_mut,
@@ -586,8 +584,8 @@ where
         }
 
         {
-            let mut scratch_norm = normalize_scratch_owned.arena();
-            let mut c0_mut = <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut c0);
+            let mut scratch_norm = scratch_2.borrow();
+            let mut c0_mut = vec_znx_backend_mut_from_mut::<BE>(&mut c0);
             <Module<BE> as VecZnxNormalizeInplaceBackend<BE>>::vec_znx_normalize_inplace_backend(
                 self,
                 base2k,

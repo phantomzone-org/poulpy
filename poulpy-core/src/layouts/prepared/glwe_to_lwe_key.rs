@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, DataMut, DataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
 };
 
 use crate::layouts::{
@@ -135,7 +135,7 @@ impl<B: Backend> GLWEToLWEKeyPreparedFactory<B> for Module<B> where Self: GLWESw
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEToLWEKeyPreparedFactory` on `Module`.
 
-impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GLWEToLWEKeyPrepared<D, B>
+impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GLWEToLWEKeyPrepared<D, B>
 where
     GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToRef<B>,
 {
@@ -150,7 +150,7 @@ impl<B: Backend> GGLWEPreparedToBackendMut<B> for GLWEToLWEKeyPrepared<B::OwnedB
     }
 }
 
-impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEToLWEKeyPrepared<D, B>
+impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEToLWEKeyPrepared<D, B>
 where
     GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToRef<B>,
 {
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrepared<D, B> {
+impl<D: HostDataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrepared<D, B> {
     fn input_degree(&mut self) -> &mut Degree {
         &mut self.0.input_degree
     }
@@ -169,7 +169,7 @@ impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrepared
     }
 }
 
-impl<D: DataRef, B: Backend> GLWESwitchingKeyDegrees for GLWEToLWEKeyPrepared<D, B> {
+impl<D: HostDataRef, B: Backend> GLWESwitchingKeyDegrees for GLWEToLWEKeyPrepared<D, B> {
     fn input_degree(&self) -> &Degree {
         &self.0.input_degree
     }

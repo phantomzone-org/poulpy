@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -17,8 +17,9 @@ use crate::{
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_fhe_uint_sext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
-where
+pub fn test_fhe_uint_sext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    test_context: &TestContext<BRA, BE>,
+) where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
@@ -86,8 +87,9 @@ pub(crate) fn sext(x: u32, bits: u32) -> u32 {
     hi | lo
 }
 
-pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
-where
+pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    test_context: &TestContext<BRA, BE>,
+) where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
@@ -148,8 +150,9 @@ where
     }
 }
 
-pub fn test_fhe_uint_splice_u16<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
-where
+pub fn test_fhe_uint_splice_u16<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    test_context: &TestContext<BRA, BE>,
+) where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
@@ -207,8 +210,9 @@ where
     }
 }
 
-pub fn test_fhe_uint_get_bit_glwe<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
-where
+pub fn test_fhe_uint_get_bit_glwe<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    test_context: &TestContext<BRA, BE>,
+) where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,

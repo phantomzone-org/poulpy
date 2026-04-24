@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -16,7 +16,7 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWETensorKeyCompressed<D: Data>(pub(crate) GGLWECompressed<D>);
 
-impl<D: DataMut> GGLWECompressedSeedMut for GLWETensorKeyCompressed<D> {
+impl<D: HostDataMut> GGLWECompressedSeedMut for GLWETensorKeyCompressed<D> {
     fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
         &mut self.0.seed
     }
@@ -59,19 +59,19 @@ impl<D: Data> GGLWEInfos for GLWETensorKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWETensorKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GLWETensorKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWETensorKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for GLWETensorKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.0.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWETensorKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GLWETensorKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GLWETensorKeyCompressed)",)?;
         write!(f, "{}", self.0)?;
@@ -119,14 +119,14 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWETensorKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GLWETensorKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.0.read_from(reader)?;
         Ok(())
     }
 }
 
-impl<D: DataRef> WriterTo for GLWETensorKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for GLWETensorKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.write_to(writer)?;
         Ok(())
@@ -150,7 +150,7 @@ impl<B: Backend> GLWETensorKeyDecompress for Module<B> where Self: GGLWEDecompre
 
 // module-only API: decompression is provided by `GLWETensorKeyDecompress` on `Module`.
 
-impl<D: DataMut> GGLWECompressedToMut for GLWETensorKeyCompressed<D>
+impl<D: HostDataMut> GGLWECompressedToMut for GLWETensorKeyCompressed<D>
 where
     GGLWECompressed<D>: GGLWECompressedToMut,
 {
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<D: DataRef> GGLWECompressedToRef for GLWETensorKeyCompressed<D>
+impl<D: HostDataRef> GGLWECompressedToRef for GLWETensorKeyCompressed<D>
 where
     GGLWECompressed<D>: GGLWECompressedToRef,
 {

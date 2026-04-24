@@ -12,7 +12,7 @@ use poulpy_core::{
 
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, DataRef, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::bin_fhe::{
@@ -33,7 +33,7 @@ use poulpy_hal::{
 };
 
 // Common setup data structure
-struct BenchmarkSetup<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo> {
+struct BenchmarkSetup<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo> {
     module: Module<BE>,
     scratch: ScratchOwned<BE>,
     a_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE>,
@@ -50,7 +50,9 @@ struct Params {
     bdd_layout: BDDKeyLayout,
 }
 
-fn setup_benchmark<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(params: &Params) -> BenchmarkSetup<BE, BRA>
+fn setup_benchmark<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>(
+    params: &Params,
+) -> BenchmarkSetup<BE, BRA>
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -64,7 +66,7 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
@@ -175,7 +177,7 @@ where
     }
 }
 
-fn create_runner<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
+fn create_runner<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo, F>(
     setup: BenchmarkSetup<BE, BRA>,
     operation: F,
 ) -> impl FnMut()
@@ -215,7 +217,7 @@ where
     }
 }
 
-fn bench_operation<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
+fn bench_operation<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo, F>(
     group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
     params: &Params,
     operation_name: &str,
@@ -234,7 +236,7 @@ fn bench_operation<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
     F: Fn(
@@ -252,7 +254,7 @@ fn bench_operation<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
     group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
 }
 
-pub fn benc_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn benc_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -267,7 +269,7 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    BE::OwnedBuf: DataRef + DataMut,
+    BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {

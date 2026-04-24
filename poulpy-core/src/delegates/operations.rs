@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, HostDataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena};
 
 use crate::{
     api::{
@@ -56,15 +56,15 @@ impl_operations_delegate!(
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
     },
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: DataMut,
+        R: HostDataMut,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const_assign(self, cnv_offset, res, b, scratch)
@@ -93,9 +93,9 @@ impl_operations_delegate!(
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -109,8 +109,8 @@ impl_operations_delegate!(
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain_assign(self, cnv_offset, res, res_effective_k, a, a_effective_k, scratch)
@@ -146,9 +146,9 @@ impl_operations_delegate!(
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
+        B: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -161,8 +161,8 @@ impl_operations_delegate!(
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_square_apply(self, cnv_offset, res, a, a_effective_k, scratch)
@@ -175,8 +175,8 @@ impl_operations_delegate!(
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: DataMut,
-        A: DataRef,
+        R: HostDataMut,
+        A: HostDataRef,
         B: Data,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
@@ -447,7 +447,7 @@ impl_operations_delegate!(
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         BE::packer_add(self, packer, a, i, auto_keys, scratch)
     }

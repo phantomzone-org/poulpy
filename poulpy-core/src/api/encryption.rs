@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToRef, Scratch, ScratchArena},
+    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToRef, ScratchArena},
     source::Source,
 };
 
@@ -196,7 +196,7 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyToMut,
         E: EncryptionInfos,
@@ -242,7 +242,7 @@ pub trait GLWETensorKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -283,7 +283,7 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -304,7 +304,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToBackendRef<BE>,
@@ -325,7 +325,7 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -421,7 +421,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -442,7 +442,7 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
@@ -461,7 +461,7 @@ pub trait GLWETensorKeyCompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,
@@ -480,7 +480,7 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
         E: EncryptionInfos,

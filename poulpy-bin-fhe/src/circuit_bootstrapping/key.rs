@@ -16,9 +16,11 @@ use std::collections::HashMap;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use poulpy_hal::{
-    api::{ScratchFromBytes, ScratchOwnedAlloc},
-    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, ReaderFrom, Scratch, ScratchArena, ScratchOwned, WriterTo},
-    oep::HalScratchImpl,
+    api::ScratchOwnedAlloc,
+    layouts::{
+        Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, NoiseInfos, ReaderFrom, ScratchArena, ScratchOwned,
+        WriterTo,
+    },
     source::Source,
 };
 
@@ -132,7 +134,7 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<O
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         BE: 's;
@@ -189,9 +191,9 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
     pub(crate) atk: HashMap<i64, GLWEAutomorphismKey<Vec<u8>>>,
 }
 
-impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
+impl<D: HostDataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<'s, M, S0, S1, BE: Backend<OwnedBuf = Vec<u8>>>(
+    pub fn encrypt_sk<'s, M, S0, S1, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
         &mut self,
         module: &M,
         sk_lwe: &S0,
@@ -217,9 +219,8 @@ where
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    BE::OwnedBuf: DataMut + DataRef,
+    BE::OwnedBuf: HostDataMut + HostDataRef,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
-    BE: HalScratchImpl<BE>,
 {
     fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -240,7 +241,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: DataMut,
+        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         BE: 's,
@@ -265,8 +266,15 @@ where
         for p in gal_els {
             let atk = res.atk.get_mut(&p).unwrap();
             let mut atk_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_automorphism_key_encrypt_sk_tmp_bytes(atk));
-            let atk_scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(atk_scratch.data.as_mut_slice());
-            self.glwe_automorphism_key_encrypt_sk(atk, p, sk_glwe, &enc_infos.atk, source_xe, source_xa, atk_scratch_ref);
+            self.glwe_automorphism_key_encrypt_sk(
+                atk,
+                p,
+                sk_glwe,
+                &enc_infos.atk,
+                source_xe,
+                source_xa,
+                &mut atk_scratch.arena(),
+            );
         }
 
         let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
@@ -283,12 +291,18 @@ where
         );
 
         let mut tsk_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&res.tsk));
-        let tsk_scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(tsk_scratch.data.as_mut_slice());
-        self.gglwe_to_ggsw_key_encrypt_sk(&mut res.tsk, sk_glwe, &enc_infos.tsk, source_xe, source_xa, tsk_scratch_ref);
+        self.gglwe_to_ggsw_key_encrypt_sk(
+            &mut res.tsk,
+            sk_glwe,
+            &enc_infos.tsk,
+            source_xe,
+            source_xa,
+            &mut tsk_scratch.arena(),
+        );
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for CircuitBootstrappingKey<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for CircuitBootstrappingKey<D, BRA> {
     fn block_size(&self) -> usize {
         self.brk.block_size()
     }
@@ -329,7 +343,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
     }
 }
 
-impl<D: DataMut, BRA: BlindRotationAlgo> ReaderFrom for CircuitBootstrappingKey<D, BRA> {
+impl<D: HostDataMut, BRA: BlindRotationAlgo> ReaderFrom for CircuitBootstrappingKey<D, BRA> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.brk.read_from(reader)?;
         let n = reader.read_u64::<LittleEndian>()? as usize;
@@ -350,7 +364,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> ReaderFrom for CircuitBootstrappingKey<
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> WriterTo for CircuitBootstrappingKey<D, BRA> {
+impl<D: HostDataRef, BRA: BlindRotationAlgo> WriterTo for CircuitBootstrappingKey<D, BRA> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.brk.write_to(writer)?;
         writer.write_u64::<LittleEndian>(self.atk.len() as u64)?;
