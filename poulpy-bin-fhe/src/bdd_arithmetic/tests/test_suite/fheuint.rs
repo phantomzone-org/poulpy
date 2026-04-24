@@ -4,30 +4,31 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
 
 use crate::{
     bdd_arithmetic::{
-        BDDKeyPrepared, FheUint, ScratchTakeBDD, ToBits,
+        BDDKeyPrepared, FheUint, ToBits,
         tests::test_suite::{TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_fhe_uint_sext<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_fhe_uint_sext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+    for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<BE::OwnedBuf, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -47,14 +48,14 @@ where
             &glwe_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
-        a_enc.sext(module, j, keys, scratch.borrow());
+        a_enc.sext(module, j, keys, &mut scratch.borrow());
 
         assert_eq!(
             sext(a, ((1 + j as u32) << 3) - 1),
-            a_enc.decrypt(module, sk, scratch.borrow())
+            a_enc.decrypt(module, sk, &mut scratch.borrow())
         );
     }
 
@@ -67,14 +68,14 @@ where
             &glwe_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
-        a_enc.sext(module, j, keys, scratch.borrow());
+        a_enc.sext(module, j, keys, &mut scratch.borrow());
 
         assert_eq!(
             sext(a, ((1 + j as u32) << 3) - 1),
-            a_enc.decrypt(module, sk, scratch.borrow())
+            a_enc.decrypt(module, sk, &mut scratch.borrow())
         );
     }
 }
@@ -85,17 +86,18 @@ pub(crate) fn sext(x: u32, bits: u32) -> u32 {
     hi | lo
 }
 
-pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+    for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<BE::OwnedBuf, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -118,7 +120,7 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     a_enc.encrypt_sk(
         module,
@@ -127,12 +129,12 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     for dst in 0..4 {
         for src in 0..4 {
-            c_enc.splice_u8(module, dst, src, &a_enc, &b_enc, keys, scratch.borrow());
+            c_enc.splice_u8(module, dst, src, &a_enc, &b_enc, keys, &mut scratch.borrow());
 
             let rj: u32 = (dst << 3) as u32;
             let ri: u32 = (src << 3) as u32;
@@ -141,22 +143,23 @@ where
 
             let c_want: u32 = ((a_r & 0xFFFF_FF00) | (b_r & 0x0000_00FF)).rotate_left(rj);
 
-            assert_eq!(c_want, c_enc.decrypt(module, sk, scratch.borrow()));
+            assert_eq!(c_want, c_enc.decrypt(module, sk, &mut scratch.borrow()));
         }
     }
 }
 
-pub fn test_fhe_uint_splice_u16<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_fhe_uint_splice_u16<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+    for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<BE::OwnedBuf, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -179,7 +182,7 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     a_enc.encrypt_sk(
         module,
@@ -188,33 +191,34 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     for dst in 0..2 {
         for src in 0..2 {
-            c_enc.splice_u16(module, dst, src, &a_enc, &b_enc, keys, scratch.borrow());
+            c_enc.splice_u16(module, dst, src, &a_enc, &b_enc, keys, &mut scratch.borrow());
             let rj: u32 = (dst << 4) as u32;
             let ri: u32 = (src << 4) as u32;
             let a_r: u32 = a.rotate_right(rj);
             let b_r: u32 = b.rotate_right(ri);
             let c_want: u32 = ((a_r & 0xFFFF_0000) | (b_r & 0x0000_FFFF)).rotate_left(rj);
-            assert_eq!(c_want, c_enc.decrypt(module, sk, scratch.borrow()));
+            assert_eq!(c_want, c_enc.decrypt(module, sk, &mut scratch.borrow()));
         }
     }
 }
 
-pub fn test_fhe_uint_get_bit_glwe<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_fhe_uint_get_bit_glwe<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+    for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
 
     let module: &Module<BE> = &test_context.module;
-    let sk: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
-    let keys: &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = &test_context.bdd_key;
+    let sk: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<BE::OwnedBuf, BRA, BE> = &test_context.bdd_key;
 
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
@@ -236,13 +240,13 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch_enc.borrow(),
+        &mut scratch_enc.borrow(),
     );
 
     let mut scratch_dec: ScratchOwned<BE> = ScratchOwned::alloc(c_enc.decrypt_tmp_bytes(module));
 
     for i in 0..32 {
-        a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());
-        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch_dec.borrow()));
+        a_enc.get_bit_glwe(module, i, &mut c_enc, keys, &mut scratch.borrow());
+        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, &mut scratch_dec.borrow()));
     }
 }

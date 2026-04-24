@@ -30,6 +30,7 @@ use super::{
 /// - `u64_ptr` must cover `4 * n * n_blocks` `u64` values.
 /// - AVX2 support must be available at runtime.
 /// - no aliased references to the same buffer may be live during the call.
+#[allow(dead_code)]
 #[target_feature(enable = "avx2")]
 unsafe fn compact_all_blocks_avx2(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
     use core::arch::x86_64::_mm256_loadu_si256;
@@ -71,6 +72,7 @@ unsafe fn compact_all_blocks_avx2(n: usize, n_blocks: usize, u64_ptr: *mut u64, 
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn vec_znx_idft_apply_consume<D: Data>(
     module: &Module<NTT120Avx>,
     mut a: VecZnxDft<D, NTT120Avx>,

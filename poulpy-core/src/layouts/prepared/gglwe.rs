@@ -1,6 +1,9 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef, VmpPMatToMut,
+        VmpPMatToRef, ZnxInfos,
+    },
 };
 
 use crate::layouts::{
@@ -21,6 +24,9 @@ pub struct GGLWEPrepared<D: Data, B: Backend> {
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
+
+pub type GGLWEPreparedBackendRef<'a, B> = GGLWEPrepared<<B as Backend>::BufRef<'a>, B>;
+pub type GGLWEPreparedBackendMut<'a, B> = GGLWEPrepared<<B as Backend>::BufMut<'a>, B>;
 
 /// Provides LWE-level parameter accessors (degree, base2k, precision, size).
 impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
@@ -82,7 +88,7 @@ where
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> GGLWEPrepared<DeviceBuf<BE>, BE> {
+    ) -> GGLWEPrepared<BE::OwnedBuf, BE> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -105,7 +111,7 @@ where
     }
 
     /// Allocates a new [`GGLWEPrepared`] matching the parameters of `infos`.
-    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<DeviceBuf<BE>, BE>
+    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<BE::OwnedBuf, BE>
     where
         A: GGLWEInfos,
     {
@@ -180,13 +186,13 @@ where
     /// Transforms a standard [`GGLWE`] into the DFT domain, writing the result into `res`.
     ///
     /// Both `res` and `other` must share the same ring degree, base2k, precision, and dsize.
-    fn gglwe_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<BE>)
+    fn gglwe_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEPreparedToMut<BE>,
+        R: GGLWEPreparedToBackendMut<BE>,
         O: GGLWEToRef,
-        Scratch<BE>: ScratchAvailable,
+        ScratchArena<'s, BE>: ScratchAvailable,
     {
-        let mut res: GGLWEPrepared<&mut [u8], BE> = res.to_mut();
+        let mut res = res.to_backend_mut();
         let other: GGLWE<&[u8]> = other.to_ref();
 
         assert_eq!(res.n(), self.ring_degree());
@@ -241,6 +247,34 @@ impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for GGLWEPrepared<D, B> {
             base2k: self.base2k,
             dsize: self.dsize,
             data: self.data.to_ref(),
+        }
+    }
+}
+
+pub trait GGLWEPreparedToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B>;
+}
+
+impl<B: Backend> GGLWEPreparedToBackendRef<B> for GGLWEPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
+        GGLWEPrepared {
+            base2k: self.base2k,
+            dsize: self.dsize,
+            data: self.data.to_backend_ref(),
+        }
+    }
+}
+
+pub trait GGLWEPreparedToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B>;
+}
+
+impl<B: Backend> GGLWEPreparedToBackendMut<B> for GGLWEPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B> {
+        GGLWEPrepared {
+            base2k: self.base2k,
+            dsize: self.dsize,
+            data: self.data.to_backend_mut(),
         }
     }
 }

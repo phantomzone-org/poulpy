@@ -77,6 +77,34 @@ pub use prepared::*;
 
 use poulpy_hal::layouts::{Backend, Module};
 
+/// Backend-indexed ownership aliases for the non-prepared layouts.
+///
+/// These resolve to `<Layout><<BE as Backend>::OwnedBuf>` so that user
+/// code can declare types in terms of the owning backend instead of the
+/// raw storage type. On CPU backends this is just `Vec<u8>`; on future
+/// device backends it is the backend's device buffer type.
+pub type BackendGLWE<BE> = GLWE<<BE as Backend>::OwnedBuf>;
+pub type BackendGGLWE<BE> = GGLWE<<BE as Backend>::OwnedBuf>;
+pub type BackendGGSW<BE> = GGSW<<BE as Backend>::OwnedBuf>;
+pub type BackendLWE<BE> = LWE<<BE as Backend>::OwnedBuf>;
+pub type BackendGLWESecret<BE> = GLWESecret<<BE as Backend>::OwnedBuf>;
+pub type BackendLWESecret<BE> = LWESecret<<BE as Backend>::OwnedBuf>;
+pub type BackendGLWEPlaintext<BE> = GLWEPlaintext<<BE as Backend>::OwnedBuf>;
+pub type BackendLWEPlaintext<BE> = LWEPlaintext<<BE as Backend>::OwnedBuf>;
+pub type BackendGLWEPrepared<BE> = GLWEPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGGLWEPrepared<BE> = GGLWEPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGGSWPrepared<BE> = GGSWPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWESecretPrepared<BE> = GLWESecretPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWEPublicKeyPrepared<BE> = GLWEPublicKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWESecretTensorPrepared<BE> = GLWESecretTensorPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWESwitchingKeyPrepared<BE> = GLWESwitchingKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWEAutomorphismKeyPrepared<BE> = GLWEAutomorphismKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWETensorKeyPrepared<BE> = GLWETensorKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGLWEToLWEKeyPrepared<BE> = GLWEToLWEKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendLWESwitchingKeyPrepared<BE> = LWESwitchingKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendLWEToGLWEKeyPrepared<BE> = LWEToGLWEKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+pub type BackendGGLWEToGGSWKeyPrepared<BE> = GGLWEToGGSWKeyPrepared<<BE as Backend>::OwnedBuf, BE>;
+
 /// Provides access to the ring polynomial degree *N*.
 pub trait GetDegree {
     /// Returns the ring degree *N* as a [`Degree`].

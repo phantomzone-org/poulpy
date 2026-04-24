@@ -1,11 +1,11 @@
 use std::marker::PhantomData;
 
 use poulpy_core::{
-    Distribution, EncryptionInfos, GGSWCompressedEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
+    Distribution, EncryptionInfos, GGSWCompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
+    layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 use poulpy_hal::{
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, DataMut, DataRef, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -32,7 +32,9 @@ impl<D: DataRef> BlindRotationKeyCompressedFactory<CGGI> for BlindRotationKeyCom
 impl<BE: Backend> BlindRotationKeyCompressedEncryptSk<BE, CGGI> for Module<BE>
 where
     Self: GGSWCompressedEncryptSk<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    // TODO(device): this implementation is still host-backed because the
+    // compressed key path also stages plaintext limbs through host views.
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn blind_rotation_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -41,7 +43,7 @@ where
         self.ggsw_compressed_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn blind_rotation_key_compressed_encrypt_sk<D, S0, S1, E>(
+    fn blind_rotation_key_compressed_encrypt_sk<'s, D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKeyCompressed<D, CGGI>,
         sk_glwe: &S0,
@@ -49,12 +51,14 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         D: DataMut,
-        S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         assert_eq!(res.keys.len() as u32, sk_lwe.n());
         assert!(sk_glwe.n() <= self.n() as u32);
@@ -79,7 +83,16 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                self.ggsw_compressed_encrypt_sk(ggsw, &pt, sk_glwe, source_xa.new_seed(), enc_infos, source_xe, scratch);
+                let mut scratch_iter = scratch.borrow();
+                self.ggsw_compressed_encrypt_sk(
+                    ggsw,
+                    &pt,
+                    sk_glwe,
+                    source_xa.new_seed(),
+                    enc_infos,
+                    source_xe,
+                    &mut scratch_iter,
+                );
             }
         }
     }

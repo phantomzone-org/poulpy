@@ -1,14 +1,18 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef,
+        ZnxInfos,
+    },
 };
 
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
     layouts::{
-        Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToMut,
-        GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef, GetDegree, LWEInfos, Rank,
+        Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut,
+        GLWESecretPreparedToBackendRef, GLWESecretPreparedToMut, GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef,
+        GetDegree, LWEInfos, Rank,
     },
 };
 
@@ -54,8 +58,8 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretTensorPrepared<D, B> {
 }
 
 pub trait GLWESecretTensorPreparedFactory<B: Backend> {
-    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>;
-    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<B::OwnedBuf, B>;
+    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<B::OwnedBuf, B>
     where
         A: GLWEInfos;
 
@@ -66,7 +70,7 @@ pub trait GLWESecretTensorPreparedFactory<B: Backend> {
 
     fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWESecretPreparedToMut<B> + GetDistributionMut,
+        R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution;
 }
 
@@ -74,14 +78,14 @@ impl<B: Backend> GLWESecretTensorPreparedFactory<B> for Module<B>
 where
     Self: GLWESecretPreparedFactory<B>,
 {
-    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<DeviceBuf<B>, B> {
+    fn glwe_secret_tensor_prepared_alloc(&self, rank: Rank) -> GLWESecretTensorPrepared<B::OwnedBuf, B> {
         GLWESecretTensorPrepared {
             data: self.svp_ppol_alloc(GLWESecretTensor::pairs(rank.into())),
             rank,
             dist: Distribution::NONE,
         }
     }
-    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_tensor_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretTensorPrepared<B::OwnedBuf, B>
     where
         A: GLWEInfos,
     {
@@ -102,7 +106,7 @@ where
 
     fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWESecretPreparedToMut<B> + GetDistributionMut,
+        R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution,
     {
         self.glwe_secret_prepare(res, other);
@@ -137,6 +141,55 @@ impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretTensorPrep
         GLWESecretPrepared {
             dist: self.dist,
             data: self.data.to_mut(),
+        }
+    }
+}
+
+pub type GLWESecretTensorPreparedBackendRef<'a, B> = GLWESecretTensorPrepared<<B as Backend>::BufRef<'a>, B>;
+pub type GLWESecretTensorPreparedBackendMut<'a, B> = GLWESecretTensorPrepared<<B as Backend>::BufMut<'a>, B>;
+
+pub trait GLWESecretTensorPreparedToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> GLWESecretTensorPreparedBackendRef<'_, B>;
+}
+
+impl<B: Backend> GLWESecretTensorPreparedToBackendRef<B> for GLWESecretTensorPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> GLWESecretTensorPreparedBackendRef<'_, B> {
+        GLWESecretTensorPrepared {
+            data: self.data.to_backend_ref(),
+            rank: self.rank,
+            dist: self.dist,
+        }
+    }
+}
+
+pub trait GLWESecretTensorPreparedToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> GLWESecretTensorPreparedBackendMut<'_, B>;
+}
+
+impl<B: Backend> GLWESecretTensorPreparedToBackendMut<B> for GLWESecretTensorPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> GLWESecretTensorPreparedBackendMut<'_, B> {
+        GLWESecretTensorPrepared {
+            data: self.data.to_backend_mut(),
+            rank: self.rank,
+            dist: self.dist,
+        }
+    }
+}
+
+impl<B: Backend> GLWESecretPreparedToBackendRef<B> for GLWESecretTensorPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> crate::layouts::GLWESecretPreparedBackendRef<'_, B> {
+        GLWESecretPrepared {
+            data: self.data.to_backend_ref(),
+            dist: self.dist,
+        }
+    }
+}
+
+impl<B: Backend> GLWESecretPreparedToBackendMut<B> for GLWESecretTensorPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> crate::layouts::GLWESecretPreparedBackendMut<'_, B> {
+        GLWESecretPrepared {
+            data: self.data.to_backend_mut(),
+            dist: self.dist,
         }
     }
 }

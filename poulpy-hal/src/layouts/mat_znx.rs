@@ -1,8 +1,8 @@
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo,
-        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, Data, DataView, DataViewMut, DigestU64, FillUniform, HostDataMut, HostDataRef, ReaderFrom, ToOwnedDeep, VecZnx,
+        WriterTo, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -34,7 +34,7 @@ pub struct MatZnx<D: Data> {
     cols_out: usize,
 }
 
-impl<D: DataRef> DigestU64 for MatZnx<D> {
+impl<D: HostDataRef> DigestU64 for MatZnx<D> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
@@ -47,7 +47,7 @@ impl<D: DataRef> DigestU64 for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
+impl<D: HostDataRef> ToOwnedDeep for MatZnx<D> {
     type Owned = MatZnx<Vec<u8>>;
     fn to_owned_deep(&self) -> Self::Owned {
         MatZnx {
@@ -61,7 +61,7 @@ impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for MatZnx<D> {
+impl<D: HostDataRef> fmt::Debug for MatZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
@@ -102,7 +102,7 @@ impl<D: Data> DataViewMut for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> ZnxView for MatZnx<D> {
+impl<D: HostDataRef> ZnxView for MatZnx<D> {
     type Scalar = i64;
 }
 
@@ -115,6 +115,11 @@ impl<D: Data> MatZnx<D> {
     /// Returns the number of output columns (the column count of each inner [`VecZnx`]).
     pub fn cols_out(&self) -> usize {
         self.cols_out
+    }
+
+    /// Consumes the `MatZnx` and returns its backing data.
+    pub fn into_data(self) -> D {
+        self.data
     }
 }
 
@@ -152,7 +157,7 @@ impl MatZnx<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> MatZnx<D> {
+impl<D: HostDataRef> MatZnx<D> {
     /// Returns a shared [`VecZnx`] view of the entry at `(row, col)`.
     ///
     /// # Panics (debug)
@@ -180,7 +185,7 @@ impl<D: DataRef> MatZnx<D> {
     }
 }
 
-impl<D: DataMut> MatZnx<D> {
+impl<D: HostDataMut> MatZnx<D> {
     /// Returns a mutable [`VecZnx`] view of the entry at `(row, col)`.
     ///
     /// # Panics (debug)
@@ -213,7 +218,141 @@ impl<D: DataMut> MatZnx<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for MatZnx<D> {
+/// Returns a shared backend-native entry view of a backend-owned `MatZnx`.
+pub trait MatZnxAtBackendRef<B: Backend> {
+    fn at_backend(&self, row: usize, col: usize) -> VecZnx<B::BufRef<'_>>;
+}
+
+impl<B: Backend> MatZnxAtBackendRef<B> for MatZnx<B::OwnedBuf> {
+    fn at_backend(&self, row: usize, col: usize) -> VecZnx<B::BufRef<'_>> {
+        #[cfg(debug_assertions)]
+        {
+            assert!(row < self.rows(), "rows: {} >= {}", row, self.rows());
+            assert!(col < self.cols_in(), "cols: {} >= {}", col, self.cols_in());
+        }
+
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(self.n, self.cols_out, self.size);
+        let start: usize = nb_bytes * self.cols() * row + col * nb_bytes;
+        let end: usize = start + nb_bytes;
+
+        VecZnx {
+            data: B::region(&self.data, start, end - start),
+            n: self.n,
+            cols: self.cols_out,
+            size: self.size,
+            max_size: self.size,
+        }
+    }
+}
+
+pub fn mat_znx_at_backend_ref_from_ref<'a, 'b, B: Backend + 'b>(
+    mat: &'a MatZnx<B::BufRef<'b>>,
+    row: usize,
+    col: usize,
+) -> VecZnx<B::BufRef<'a>> {
+    #[cfg(debug_assertions)]
+    {
+        assert!(row < mat.rows(), "rows: {} >= {}", row, mat.rows());
+        assert!(col < mat.cols_in(), "cols: {} >= {}", col, mat.cols_in());
+    }
+
+    let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(mat.n, mat.cols_out, mat.size);
+    let start: usize = nb_bytes * mat.cols() * row + col * nb_bytes;
+    let end: usize = start + nb_bytes;
+
+    VecZnx {
+        data: B::region_ref(&mat.data, start, end - start),
+        n: mat.n,
+        cols: mat.cols_out,
+        size: mat.size,
+        max_size: mat.size,
+    }
+}
+
+pub fn mat_znx_at_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(
+    mat: &'a MatZnx<B::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> VecZnx<B::BufRef<'a>> {
+    #[cfg(debug_assertions)]
+    {
+        assert!(row < mat.rows(), "rows: {} >= {}", row, mat.rows());
+        assert!(col < mat.cols_in(), "cols: {} >= {}", col, mat.cols_in());
+    }
+
+    let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(mat.n, mat.cols_out, mat.size);
+    let start: usize = nb_bytes * mat.cols() * row + col * nb_bytes;
+    let end: usize = start + nb_bytes;
+
+    VecZnx {
+        data: B::region_ref_mut(&mat.data, start, end - start),
+        n: mat.n,
+        cols: mat.cols_out,
+        size: mat.size,
+        max_size: mat.size,
+    }
+}
+
+/// Returns a mutable backend-native entry view of a backend-owned `MatZnx`.
+pub trait MatZnxAtBackendMut<B: Backend> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> VecZnx<B::BufMut<'_>>;
+}
+
+impl<B: Backend> MatZnxAtBackendMut<B> for MatZnx<B::OwnedBuf> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> VecZnx<B::BufMut<'_>> {
+        #[cfg(debug_assertions)]
+        {
+            assert!(row < self.rows(), "rows: {} >= {}", row, self.rows());
+            assert!(col < self.cols_in(), "cols: {} >= {}", col, self.cols_in());
+        }
+
+        let n: usize = self.n();
+        let cols_out: usize = self.cols_out();
+        let cols_in: usize = self.cols_in();
+        let size: usize = self.size();
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(n, cols_out, size);
+        let start: usize = nb_bytes * cols_in * row + col * nb_bytes;
+        let end: usize = start + nb_bytes;
+
+        VecZnx {
+            data: B::region_mut(&mut self.data, start, end - start),
+            n,
+            cols: cols_out,
+            size,
+            max_size: size,
+        }
+    }
+}
+
+pub fn mat_znx_at_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    mat: &'a mut MatZnx<B::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> VecZnx<B::BufMut<'a>> {
+    #[cfg(debug_assertions)]
+    {
+        assert!(row < mat.rows(), "rows: {} >= {}", row, mat.rows());
+        assert!(col < mat.cols_in(), "cols: {} >= {}", col, mat.cols_in());
+    }
+
+    let n: usize = mat.n();
+    let cols_out: usize = mat.cols_out();
+    let cols_in: usize = mat.cols_in();
+    let size: usize = mat.size();
+    let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(n, cols_out, size);
+    let start: usize = nb_bytes * cols_in * row + col * nb_bytes;
+    let end: usize = start + nb_bytes;
+
+    VecZnx {
+        data: B::region_mut_ref(&mut mat.data, start, end - start),
+        n,
+        cols: cols_out,
+        size,
+        max_size: size,
+    }
+}
+
+impl<D: HostDataMut> FillUniform for MatZnx<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         match log_bound {
             64 => source.fill_bytes(self.data.as_mut()),
@@ -235,13 +374,88 @@ pub type MatZnxOwned = MatZnx<Vec<u8>>;
 pub type MatZnxMut<'a> = MatZnx<&'a mut [u8]>;
 /// Immutably borrowed `MatZnx`.
 pub type MatZnxRef<'a> = MatZnx<&'a [u8]>;
+/// Shared backend-native borrow of a `MatZnx`.
+pub type MatZnxBackendRef<'a, B> = MatZnx<<B as Backend>::BufRef<'a>>;
+/// Mutable backend-native borrow of a `MatZnx`.
+pub type MatZnxBackendMut<'a, B> = MatZnx<<B as Backend>::BufMut<'a>>;
+
+/// Borrow a backend-owned `MatZnx` using the backend's native view type.
+pub trait MatZnxToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> MatZnxBackendRef<'_, B>;
+}
+
+impl<B: Backend> MatZnxToBackendRef<B> for MatZnx<B::OwnedBuf> {
+    fn to_backend_ref(&self) -> MatZnxBackendRef<'_, B> {
+        MatZnx {
+            data: B::view(&self.data),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+        }
+    }
+}
+
+pub fn mat_znx_backend_ref_from_ref<'a, 'b, B: Backend + 'b>(mat: &'a MatZnx<B::BufRef<'b>>) -> MatZnxBackendRef<'a, B> {
+    MatZnx {
+        data: B::view_ref(&mat.data),
+        n: mat.n,
+        rows: mat.rows,
+        cols_in: mat.cols_in,
+        cols_out: mat.cols_out,
+        size: mat.size,
+    }
+}
+
+pub fn mat_znx_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(mat: &'a MatZnx<B::BufMut<'b>>) -> MatZnxBackendRef<'a, B> {
+    MatZnx {
+        data: B::view_ref_mut(&mat.data),
+        n: mat.n,
+        rows: mat.rows,
+        cols_in: mat.cols_in,
+        cols_out: mat.cols_out,
+        size: mat.size,
+    }
+}
+
+/// Mutably borrow a backend-owned `MatZnx` using the backend's native view type.
+pub trait MatZnxToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> MatZnxBackendMut<'_, B>;
+}
+
+impl<B: Backend> MatZnxToBackendMut<B> for MatZnx<B::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> MatZnxBackendMut<'_, B> {
+        MatZnx {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+        }
+    }
+}
+
+pub fn mat_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    mat: &'a mut MatZnx<B::BufMut<'b>>,
+) -> MatZnxBackendMut<'a, B> {
+    MatZnx {
+        data: B::view_mut_ref(&mut mat.data),
+        n: mat.n,
+        rows: mat.rows,
+        cols_in: mat.cols_in,
+        cols_out: mat.cols_out,
+        size: mat.size,
+    }
+}
 
 /// Borrow a `MatZnx` as a shared reference view.
 pub trait MatZnxToRef {
     fn to_ref(&self) -> MatZnx<&[u8]>;
 }
 
-impl<D: DataRef> MatZnxToRef for MatZnx<D> {
+impl<D: HostDataRef> MatZnxToRef for MatZnx<D> {
     fn to_ref(&self) -> MatZnx<&[u8]> {
         MatZnx {
             data: self.data.as_ref(),
@@ -259,7 +473,7 @@ pub trait MatZnxToMut {
     fn to_mut(&mut self) -> MatZnx<&mut [u8]>;
 }
 
-impl<D: DataMut> MatZnxToMut for MatZnx<D> {
+impl<D: HostDataMut> MatZnxToMut for MatZnx<D> {
     fn to_mut(&mut self) -> MatZnx<&mut [u8]> {
         MatZnx {
             data: self.data.as_mut(),
@@ -285,7 +499,7 @@ impl<D: Data> MatZnx<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for MatZnx<D> {
+impl<D: HostDataMut> ReaderFrom for MatZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
         let new_size: usize = reader.read_u64::<LittleEndian>()? as usize;
@@ -322,7 +536,7 @@ impl<D: DataMut> ReaderFrom for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for MatZnx<D> {
+impl<D: HostDataRef> WriterTo for MatZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.size as u64)?;
@@ -346,7 +560,7 @@ impl<D: DataRef> WriterTo for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> fmt::Display for MatZnx<D> {
+impl<D: HostDataRef> fmt::Display for MatZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
@@ -365,7 +579,7 @@ impl<D: DataRef> fmt::Display for MatZnx<D> {
     }
 }
 
-impl<D: DataMut> ZnxZero for MatZnx<D> {
+impl<D: HostDataMut> ZnxZero for MatZnx<D> {
     fn zero(&mut self) {
         self.raw_mut().fill(0)
     }

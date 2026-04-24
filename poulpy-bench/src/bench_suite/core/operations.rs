@@ -1,10 +1,10 @@
 use poulpy_core::{
-    GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub, ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos},
+    GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub,
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, Module, ScratchOwned},
 };
 use std::hint::black_box;
 
@@ -96,11 +96,12 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_normalize<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_normalize<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWENormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -113,18 +114,20 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_normalize(&mut res, &a, scratch.borrow());
+            let mut res_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res);
+            let a_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&a);
+            module.glwe_normalize(&mut res_backend, &a_backend, &mut scratch.borrow());
             black_box(());
         })
     });
     group.finish();
 }
 
-pub fn bench_glwe_normalize_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_normalize_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWENormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -136,18 +139,19 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_normalize_assign(&mut res, scratch.borrow());
+            let mut res_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res);
+            module.glwe_normalize_inplace(&mut res_backend, &mut scratch.borrow());
             black_box(());
         })
     });
     group.finish();
 }
 
-pub fn bench_glwe_mul_plain<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_mul_plain<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEMulPlain<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'x> BE::BufMut<'x>: poulpy_hal::layouts::HostDataMut + AsRef<[u8]> + AsMut<[u8]> + Sync,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -168,7 +172,7 @@ where
                 ct_in.max_k().as_usize(),
                 &pt,
                 pt.max_k().as_usize(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             black_box(());
         })
@@ -176,11 +180,11 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_mul_plain_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_mul_plain_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEMulPlain<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'x> BE::BufMut<'x>: poulpy_hal::layouts::HostDataMut + AsRef<[u8]> + AsMut<[u8]> + Sync,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -199,7 +203,7 @@ where
                 infos.max_k().as_usize(),
                 &pt,
                 pt.max_k().as_usize(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             black_box(());
         })

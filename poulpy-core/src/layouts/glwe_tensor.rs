@@ -1,9 +1,15 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
+        ZnxInfos,
+    },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
+use crate::layouts::{
+    Base2K, Degree, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
+    LWEInfos, Rank, SetLWEInfos, TorusPrecision,
+};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
@@ -12,6 +18,9 @@ pub struct GLWETensor<D: Data> {
     pub(crate) base2k: Base2K,
     pub(crate) rank: Rank,
 }
+
+pub type GLWETensorBackendRef<'a, BE> = GLWETensor<<BE as Backend>::BufRef<'a>>;
+pub type GLWETensorBackendMut<'a, BE> = GLWETensor<<BE as Backend>::BufMut<'a>>;
 
 impl<D: DataMut> SetLWEInfos for GLWETensor<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
@@ -122,6 +131,24 @@ impl<D: DataMut> GLWEToMut for GLWETensor<D> {
         GLWE {
             base2k: self.base2k,
             data: self.data.to_mut(),
+        }
+    }
+}
+
+impl<BE: Backend> GLWEToBackendRef<BE> for GLWETensor<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+impl<BE: Backend> GLWEToBackendMut<BE> for GLWETensor<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
         }
     }
 }

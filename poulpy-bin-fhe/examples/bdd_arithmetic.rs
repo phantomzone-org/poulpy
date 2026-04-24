@@ -18,7 +18,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use rand::RngExt;
@@ -44,7 +44,7 @@ use poulpy_cpu_ref::FFT64Ref;
 // There also is an example use of the GLWE Blind Selection operation,
 // which can choose between any number of encrypted fheuint inputs
 
-fn example_bdd_arithmetic<BE: Backend, BRA: BlindRotationAlgo>()
+fn example_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -59,6 +59,8 @@ where
         + GLWEBlindSelection<u32, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     ////////// Parameter Selection
     const N_GLWE: u32 = 1024;
@@ -170,7 +172,7 @@ where
         &bdd_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     ////////// Input Encryption
@@ -188,7 +190,7 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
@@ -199,43 +201,55 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     //////// Homomorphic computation starts here ////////
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
-    bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
+    let mut bdd_key_prepared: BDDKeyPrepared<BE::OwnedBuf, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_layout);
+    bdd_key_prepared.prepare(&module, &bdd_key, &mut scratch.borrow());
 
     // Input Preparation
     // Before each operation, the inputs to that operation must be prepared
     // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
-    let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-    a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
+    let mut a_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, &mut scratch.borrow());
 
-    let mut b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-    b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
+    let mut b_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     // Allocating the intermediate ciphertext c_enc
     let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
 
     // Performing the operation
-    c_enc.add(&module, &a_enc_prepared, &b_enc_prepared, &bdd_key_prepared, scratch.borrow());
+    c_enc.add(
+        &module,
+        &a_enc_prepared,
+        &b_enc_prepared,
+        &bdd_key_prepared,
+        &mut scratch.borrow(),
+    );
 
     // Preparing the intermediate result ciphertext, c_enc, for the next operation
-    let mut c_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-    c_enc_prepared.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
+    let mut c_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> = FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
+    c_enc_prepared.prepare(&module, &c_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     // Creating the output ciphertext d_enc
     let mut selected_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
-    selected_enc.xor(&module, &c_enc_prepared, &a_enc_prepared, &bdd_key_prepared, scratch.borrow());
+    selected_enc.xor(
+        &module,
+        &c_enc_prepared,
+        &a_enc_prepared,
+        &bdd_key_prepared,
+        &mut scratch.borrow(),
+    );
 
     //////// Homomorphic computation ends here ////////
 
     // Decrypting the result
-    let d_dec = selected_enc.decrypt(&module, &sk_glwe_prepared, scratch.borrow());
+    let d_dec = selected_enc.decrypt(&module, &sk_glwe_prepared, &mut scratch.borrow());
 
     // d = (a + b) ^ a
     let d_correct = (input_a.wrapping_add(input_b)) ^ input_a;
@@ -275,7 +289,7 @@ where
             &glwe_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
         inputs_a_enc_vec.push(next_input);
     }
@@ -293,11 +307,11 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
-    let mut input_selector_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+    let mut input_selector_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &ggsw_layout);
-    input_selector_enc_prepared.prepare(&module, &input_selector_enc, &bdd_key_prepared, scratch.borrow());
+    input_selector_enc_prepared.prepare(&module, &input_selector_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     module.glwe_blind_selection(
         &mut selected_enc,
@@ -305,10 +319,10 @@ where
         &input_selector_enc_prepared,
         0,
         log_2_number_of_inputs,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    let selected_dec = selected_enc.decrypt(&module, &sk_glwe_prepared, scratch.borrow());
+    let selected_dec = selected_enc.decrypt(&module, &sk_glwe_prepared, &mut scratch.borrow());
     let selected_correct = inputs_a_vec[input_selector as usize];
     println!("Result: {} == {}", selected_dec, selected_correct);
 }

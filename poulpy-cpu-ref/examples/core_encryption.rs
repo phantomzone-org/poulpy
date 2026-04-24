@@ -8,7 +8,7 @@ use poulpy_core::{
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
-    layouts::{DeviceBuf, Module, ScratchOwned},
+    layouts::{Backend, Module, ScratchOwned},
     source::Source,
 };
 
@@ -46,7 +46,8 @@ fn main() {
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_ct_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BackendImpl>, BackendImpl> = module.glwe_secret_prepared_alloc(rank);
+    let mut sk_prepared: GLWESecretPrepared<<BackendImpl as Backend>::OwnedBuf, BackendImpl> =
+        module.glwe_secret_prepared_alloc(rank);
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
     module.vec_znx_fill_uniform(base2k.into(), &mut pt_want.data, 0, &mut source_xa);
@@ -58,10 +59,10 @@ fn main() {
         &glwe_ct_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    module.glwe_decrypt(&ct, &mut pt_have, &sk_prepared, scratch.borrow());
+    module.glwe_decrypt(&ct, &mut pt_have, &sk_prepared, &mut scratch.borrow());
 
     module.glwe_sub_assign(&mut pt_want, &pt_have);
 

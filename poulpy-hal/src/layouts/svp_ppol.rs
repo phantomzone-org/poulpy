@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, ZnxInfos, ZnxView};
+use crate::layouts::{Backend, Data, DataView, DataViewMut, DigestU64, HostDataMut, HostDataRef, ZnxInfos, ZnxView};
 
 /// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
 ///
@@ -27,7 +27,7 @@ pub struct SvpPPol<D: Data, B: Backend> {
     pub _phantom: PhantomData<B>,
 }
 
-impl<D: DataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
+impl<D: HostDataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
@@ -37,7 +37,7 @@ impl<D: DataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> ZnxView for SvpPPol<D, B> {
+impl<D: HostDataRef, B: Backend> ZnxView for SvpPPol<D, B> {
     type Scalar = B::ScalarPrep;
 }
 
@@ -72,10 +72,9 @@ impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
     }
 }
 
-impl<B: Backend> SvpPPol<DeviceBuf<B>, B> {
+impl<B: Backend> SvpPPol<<B as Backend>::OwnedBuf, B> {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: DeviceBuf<B> =
-            super::Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_svp_ppol(n, cols)));
+        let data: <B as Backend>::OwnedBuf = B::alloc_bytes(B::bytes_of_svp_ppol(n, cols));
         Self {
             data,
             n,
@@ -86,14 +85,60 @@ impl<B: Backend> SvpPPol<DeviceBuf<B>, B> {
 }
 
 /// Owned `SvpPPol` backed by a backend-owned buffer.
-pub type SvpPPolOwned<B> = SvpPPol<DeviceBuf<B>, B>;
+pub type SvpPPolOwned<B> = SvpPPol<<B as Backend>::OwnedBuf, B>;
+/// Shared backend-native borrow of an `SvpPPol`.
+pub type SvpPPolBackendRef<'a, B> = SvpPPol<<B as Backend>::BufRef<'a>, B>;
+/// Mutable backend-native borrow of an `SvpPPol`.
+pub type SvpPPolBackendMut<'a, B> = SvpPPol<<B as Backend>::BufMut<'a>, B>;
+
+/// Reborrow a mutable backend-native `SvpPPol` view as a shared backend-native view.
+pub fn svp_ppol_backend_ref_from_mut<'a, 'b, B: Backend>(ppol: &'a SvpPPolBackendMut<'b, B>) -> SvpPPolBackendRef<'a, B> {
+    SvpPPol {
+        data: B::view_ref_mut(&ppol.data),
+        n: ppol.n,
+        cols: ppol.cols,
+        _phantom: PhantomData,
+    }
+}
+
+/// Borrow a backend-owned `SvpPPol` using the backend's native view type.
+pub trait SvpPPolToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> SvpPPolBackendRef<'_, B>;
+}
+
+impl<B: Backend> SvpPPolToBackendRef<B> for SvpPPol<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> SvpPPolBackendRef<'_, B> {
+        SvpPPol {
+            data: B::view(&self.data),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// Mutably borrow a backend-owned `SvpPPol` using the backend's native view type.
+pub trait SvpPPolToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B>;
+}
+
+impl<B: Backend> SvpPPolToBackendMut<B> for SvpPPol<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
+        SvpPPol {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 /// Borrow an `SvpPPol` as a shared reference view.
 pub trait SvpPPolToRef<B: Backend> {
     fn to_ref(&self) -> SvpPPol<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
+impl<D: HostDataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
     fn to_ref(&self) -> SvpPPol<&[u8], B> {
         SvpPPol {
             data: self.data.as_ref(),
@@ -109,7 +154,7 @@ pub trait SvpPPolToMut<B: Backend> {
     fn to_mut(&mut self) -> SvpPPol<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
+impl<D: HostDataMut, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
     fn to_mut(&mut self) -> SvpPPol<&mut [u8], B> {
         SvpPPol {
             data: self.data.as_mut(),
@@ -131,7 +176,7 @@ impl<D: Data, B: Backend> SvpPPol<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
+impl<D: HostDataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "SvpPPol(n={}, cols={})", self.n, self.cols)?;
 

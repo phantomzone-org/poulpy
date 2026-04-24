@@ -4,15 +4,17 @@ use std::marker::PhantomData;
 
 use poulpy_hal::{
     DEFAULTALIGN,
-    layouts::{Backend, DeviceBuf, Scratch, ScratchOwned},
+    layouts::{Backend, Scratch, ScratchOwned},
 };
 
 #[doc(hidden)]
-pub trait HalScratchDefaults<BE: Backend>: Backend {
+pub trait HalScratchDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn scratch_owned_alloc_default(size: usize) -> ScratchOwned<BE> {
-        let data = DeviceBuf::<BE>::new(BE::alloc_bytes(size));
         ScratchOwned {
-            data,
+            data: BE::alloc_bytes(size),
             _phantom: PhantomData,
         }
     }
@@ -54,7 +56,7 @@ pub trait HalScratchDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> HalScratchDefaults<BE> for BE {}
+impl<BE: Backend> HalScratchDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
 
 fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]) {
     let ptr: *mut u8 = data.as_mut_ptr();

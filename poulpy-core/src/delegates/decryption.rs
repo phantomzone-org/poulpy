@@ -1,81 +1,91 @@
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, ScratchArena};
 
 use crate::{
     api::{GLWEDecrypt, GLWETensorDecrypt, LWEDecrypt},
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretPreparedToRef, GLWESecretTensorPrepared,
-        GLWETensor, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
+        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretTensorPrepared,
+        GLWETensor, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef,
+        SetLWEInfos, prepared::GLWESecretPreparedToBackendRef,
     },
-    oep::CoreImpl,
+    oep::DecryptionImpl,
 };
 
-impl<BE> GLWEDecrypt<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-{
+macro_rules! impl_decryption_delegate {
+    ($trait:ty, $($body:item),+ $(,)?) => {
+        impl<BE> $trait for Module<BE>
+        where
+            BE: Backend + DecryptionImpl<BE>,
+        {
+            $($body)+
+        }
+    };
+}
+
+impl_decryption_delegate!(
+    GLWEDecrypt<BE>,
     fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         BE::glwe_decrypt_tmp_bytes(self, infos)
-    }
-
-    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    },
+    fn glwe_decrypt<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: crate::layouts::GLWEToRef + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEInfos + SetLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        R: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        BE: 's,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     {
         BE::glwe_decrypt(self, res, pt, sk, scratch)
     }
-}
+);
 
-impl<BE> LWEDecrypt<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-{
-    fn lwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+impl_decryption_delegate!(
+    LWEDecrypt<BE>,
+    fn lwe_decrypt<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
         R: LWEToRef,
-        P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
+        P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
-        Scratch<BE>: crate::ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     {
         BE::lwe_decrypt(self, res, pt, sk, scratch)
-    }
-
+    },
     fn lwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: LWEInfos,
     {
         BE::lwe_decrypt_tmp_bytes(self, infos)
     }
-}
+);
 
-impl<BE> GLWETensorDecrypt<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-{
+impl_decryption_delegate!(
+    GLWETensorDecrypt<BE>,
     fn glwe_tensor_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         BE::glwe_tensor_decrypt_tmp_bytes(self, infos)
-    }
-
+    },
     fn glwe_tensor_decrypt<R, P, S0, S1>(
         &self,
         res: &GLWETensor<R>,
         pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataRef,
+        GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: DataMut,
+        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: DataRef,
         S1: DataRef,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     {
         BE::glwe_tensor_decrypt(self, res, pt, sk, sk_tensor, scratch)
     }
-}
+);

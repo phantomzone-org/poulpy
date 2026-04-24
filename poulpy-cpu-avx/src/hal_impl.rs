@@ -5,67 +5,79 @@ use poulpy_cpu_ref::hal_defaults::{
     NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults, NTT120VmpDefaults,
 };
 use poulpy_hal::{
-    api::{ScratchTakeBasic, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
+    api::{VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
         Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos,
-        ScalarZnxToRef, Scratch, ScratchOwned, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef,
-        VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos,
+        ScalarZnxToRef, Scratch, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+        VecZnxToMut, VecZnxToRef, ZnxInfos,
     },
-    oep::HalImpl,
+    oep::{
+        HalConvolutionImpl, HalModuleImpl, HalScratchImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl,
+        HalVmpImpl,
+    },
     source::Source,
 };
 
-#[macro_use]
-mod scratch;
-#[macro_use]
-mod vec_znx;
-#[macro_use]
-mod family_common;
-#[macro_use]
-mod module_fft64;
-#[macro_use]
-mod module_ntt120;
-#[macro_use]
-mod vmp_fft64;
-#[macro_use]
-mod vmp_ntt120;
-#[macro_use]
-mod convolution_fft64;
-#[macro_use]
-mod convolution_ntt120;
-#[macro_use]
-mod vec_znx_big_fft64;
-#[macro_use]
-mod vec_znx_big_ntt120;
-#[macro_use]
-mod svp_fft64;
-#[macro_use]
-mod svp_ntt120;
-#[macro_use]
-mod vec_znx_dft_fft64;
-#[macro_use]
-mod vec_znx_dft_ntt120;
-
-unsafe impl HalImpl<FFT64Avx> for FFT64Avx {
-    hal_impl_scratch!();
-    hal_impl_vec_znx!();
-    hal_impl_family_common!();
-    hal_impl_module_fft64!();
-    hal_impl_vmp_fft64!();
-    hal_impl_convolution_fft64!();
-    hal_impl_vec_znx_big_fft64!();
-    hal_impl_svp_fft64!();
-    hal_impl_vec_znx_dft_fft64!();
+unsafe impl HalScratchImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_scratch!();
 }
 
-unsafe impl HalImpl<NTT120Avx> for NTT120Avx {
-    hal_impl_scratch!();
-    hal_impl_vec_znx!();
-    hal_impl_family_common!();
-    hal_impl_module_ntt120!();
-    hal_impl_vmp_ntt120!();
-    hal_impl_convolution_ntt120!();
-    hal_impl_vec_znx_big_ntt120!();
-    hal_impl_svp_ntt120!();
-    hal_impl_vec_znx_dft_ntt120!();
+unsafe impl HalVecZnxImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx!();
+}
+
+unsafe impl HalModuleImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_module!(FFT64ModuleDefaults);
+}
+
+unsafe impl HalVmpImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_vmp!(FFT64VmpDefaults);
+}
+
+unsafe impl HalConvolutionImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_convolution!(FFT64ConvolutionDefaults);
+}
+
+unsafe impl HalVecZnxBigImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx_big!(FFT64VecZnxBigDefaults);
+}
+
+unsafe impl HalSvpImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_svp!(FFT64SvpDefaults);
+}
+
+unsafe impl HalVecZnxDftImpl<FFT64Avx> for FFT64Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx_dft!(FFT64VecZnxDftDefaults);
+}
+
+unsafe impl HalScratchImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_scratch!();
+}
+
+unsafe impl HalVecZnxImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx!();
+}
+
+unsafe impl HalModuleImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_module!(NTT120ModuleDefaults);
+}
+
+unsafe impl HalVmpImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_vmp!(NTT120VmpDefaults);
+}
+
+unsafe impl HalConvolutionImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_convolution!(NTT120ConvolutionDefaults);
+}
+
+unsafe impl HalVecZnxBigImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx_big!(NTT120VecZnxBigDefaults);
+}
+
+unsafe impl HalSvpImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_svp!(NTT120SvpDefaults);
+}
+
+unsafe impl HalVecZnxDftImpl<NTT120Avx> for NTT120Avx {
+    poulpy_cpu_ref::hal_impl_vec_znx_dft!(NTT120VecZnxDftDefaults);
 }

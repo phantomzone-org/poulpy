@@ -7,19 +7,95 @@ pub mod keyswitch;
 mod conversion;
 mod glwe_packer;
 mod glwe_packing;
+mod rotate;
 mod trace;
 
 pub use conversion::*;
 pub use glwe_packer::*;
 pub use glwe_packing::*;
+pub use rotate::*;
 pub use trace::*;
 
-use crate::oep::CoreImpl;
-use poulpy_hal::layouts::Backend;
+use crate::oep::{
+    AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl, GGSWExternalProductImpl,
+    GGSWKeyswitchImpl, GGSWRotateImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl, GLWEMulConstImpl, GLWEMulPlainImpl,
+    GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWETensoringImpl, GLWETraceImpl,
+    LWEKeyswitchImpl,
+};
+use poulpy_hal::{
+    api::{ScratchAvailable, ScratchFromBytes},
+    layouts::{Backend, DataMut, Scratch, ScratchArena, ScratchOwned},
+    test_suite::TestBackend as HalTestBackend,
+};
 
-pub trait TestBackend: Backend + CoreImpl<Self> {}
+use crate::{ScratchArenaTakeCore, ScratchTakeCore};
 
-impl<BE> TestBackend for BE where BE: Backend + CoreImpl<BE> {}
+pub trait TestBackend:
+    HalTestBackend
+    + GLWEKeyswitchImpl<Self>
+    + GGLWEKeyswitchImpl<Self>
+    + GGSWKeyswitchImpl<Self>
+    + LWEKeyswitchImpl<Self>
+    + GLWEExternalProductImpl<Self>
+    + GGLWEExternalProductImpl<Self>
+    + GGSWExternalProductImpl<Self>
+    + GLWETensoringImpl<Self>
+    + GLWEMulConstImpl<Self>
+    + GLWEMulPlainImpl<Self>
+    + GLWERotateImpl<Self>
+    + GLWEMulXpMinusOneImpl<Self>
+    + GLWEShiftImpl<Self>
+    + GLWENormalizeImpl<Self>
+    + GLWETraceImpl<Self>
+    + GLWEPackImpl<Self>
+    + GGSWRotateImpl<Self>
+    + DecryptionImpl<Self>
+    + ConversionImpl<Self>
+    + AutomorphismImpl<Self>
+where
+    Self::OwnedBuf: DataMut,
+    for<'a> Self::BufMut<'a>: DataMut,
+    for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
+    Scratch<Self>: ScratchAvailable + ScratchTakeCore<Self>,
+{
+}
+
+impl<BE> TestBackend for BE
+where
+    BE: HalTestBackend
+        + GLWEKeyswitchImpl<BE>
+        + GGLWEKeyswitchImpl<BE>
+        + GGSWKeyswitchImpl<BE>
+        + LWEKeyswitchImpl<BE>
+        + GLWEExternalProductImpl<BE>
+        + GGLWEExternalProductImpl<BE>
+        + GGSWExternalProductImpl<BE>
+        + GLWETensoringImpl<BE>
+        + GLWEMulConstImpl<BE>
+        + GLWEMulPlainImpl<BE>
+        + GLWERotateImpl<BE>
+        + GLWEMulXpMinusOneImpl<BE>
+        + GLWEShiftImpl<BE>
+        + GLWENormalizeImpl<BE>
+        + GLWETraceImpl<BE>
+        + GLWEPackImpl<BE>
+        + GGSWRotateImpl<BE>
+        + DecryptionImpl<BE>
+        + ConversionImpl<BE>
+        + AutomorphismImpl<BE>,
+    BE::OwnedBuf: DataMut,
+    for<'a> BE::BufMut<'a>: DataMut,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+{
+}
+
+pub fn scratch_host_mut<BE: Backend<OwnedBuf = Vec<u8>>>(scratch: &mut ScratchOwned<BE>) -> &mut Scratch<BE>
+where
+    Scratch<BE>: ScratchFromBytes<BE>,
+{
+    <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(scratch.data.as_mut())
+}
 
 #[macro_export]
 macro_rules! core_backend_test_suite {
@@ -48,8 +124,9 @@ macro_rules! core_backend_test_suite {
                 glwe_automorphism => $crate::test_suite::automorphism::test_glwe_automorphism,
                 glwe_automorphism_assign => $crate::test_suite::automorphism::test_glwe_automorphism_assign,
                 glwe_external_product => $crate::test_suite::external_product::test_glwe_external_product,
-                glwe_external_product_assign => $crate::test_suite::external_product::test_glwe_external_product_assign,
-                glwe_trace_assign => $crate::test_suite::test_glwe_trace_assign,
+                glwe_external_product_inplace => $crate::test_suite::external_product::test_glwe_external_product_inplace,
+                glwe_rotate => $crate::test_suite::test_glwe_rotate,
+                glwe_trace_inplace => $crate::test_suite::test_glwe_trace_inplace,
                 glwe_packing => $crate::test_suite::test_glwe_packing,
                 glwe_packer => $crate::test_suite::test_glwe_packer,
                 gglwe_switching_key_encrypt_sk => $crate::test_suite::encryption::test_gglwe_switching_key_encrypt_sk,

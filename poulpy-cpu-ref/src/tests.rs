@@ -6,6 +6,8 @@ use poulpy_hal::{
 
 use crate::{FFT64Ref, NTT120Ref};
 
+mod delegating_backend;
+
 #[test]
 fn test_convolution_by_const_fft64_ref() {
     let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(8);

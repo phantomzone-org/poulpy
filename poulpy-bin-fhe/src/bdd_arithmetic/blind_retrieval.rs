@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWECopy, ScratchTakeCore,
-    layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut, GLWEToRef},
+    GLWECopy, ScratchArenaTakeCore,
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef},
 };
-use poulpy_hal::layouts::{Backend, Module, Scratch, ZnxZero};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxZero};
 
 use crate::bdd_arithmetic::{Cmux, Cswap, GetGGSWBit};
 
@@ -25,7 +25,7 @@ use crate::bdd_arithmetic::{Cmux, Cswap, GetGGSWBit};
 ///
 /// ## Scratch-Space
 ///
-/// All methods that require scratch space accept a mutable `Scratch<BE>` arena.
+/// All methods that require scratch space accept a mutable `ScratchArena<BE>` arena.
 /// The required size is returned by
 /// [`retrieve_tmp_bytes`][GLWEBlindRetriever::retrieve_tmp_bytes].
 pub struct GLWEBlindRetriever {
@@ -45,7 +45,7 @@ impl GLWEBlindRetriever {
         }
     }
 
-    pub fn retrieve_tmp_bytes<M, R, S, BE: Backend>(module: &M, res: &R, selector: &S) -> usize
+    pub fn retrieve_tmp_bytes<M, R, S, BE: Backend<OwnedBuf = Vec<u8>>>(module: &M, res: &R, selector: &S) -> usize
     where
         M: Cmux<BE>,
         R: GLWEInfos,
@@ -54,20 +54,21 @@ impl GLWEBlindRetriever {
         module.cmux_tmp_bytes(res, res, selector)
     }
 
-    pub fn retrieve<M, R, A, S, BE: Backend>(
+    pub fn retrieve<M, R, A, S, BE: Backend<OwnedBuf = Vec<u8>>>(
         &mut self,
         module: &M,
         res: &mut R,
         data: &[A],
         selector: &S,
         offset: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: GLWECopy + Cmux<BE>,
         R: GLWEToMut,
         A: GLWEToRef,
         S: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         self.reset();
         for ct in data {
@@ -76,12 +77,19 @@ impl GLWEBlindRetriever {
         self.flush(module, res, selector, offset, scratch);
     }
 
-    pub fn add<A, S, M, BE: Backend>(&mut self, module: &M, a: &A, selector: &S, offset: usize, scratch: &mut Scratch<BE>)
-    where
+    pub fn add<A, S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+        &mut self,
+        module: &M,
+        a: &A,
+        selector: &S,
+        offset: usize,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) where
         A: GLWEToRef,
         S: GetGGSWBit<BE>,
         M: GLWECopy + Cmux<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(
             (self.counter as u32) < 1 << self.accumulators.len(),
@@ -93,12 +101,19 @@ impl GLWEBlindRetriever {
         self.counter += 1;
     }
 
-    pub fn flush<R, M, S, BE: Backend>(&mut self, module: &M, res: &mut R, selector: &S, offset: usize, scratch: &mut Scratch<BE>)
-    where
+    pub fn flush<R, M, S, BE: Backend<OwnedBuf = Vec<u8>>>(
+        &mut self,
+        module: &M,
+        res: &mut R,
+        selector: &S,
+        offset: usize,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) where
         R: GLWEToMut,
         S: GetGGSWBit<BE>,
         M: GLWECopy + Cmux<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         if self.counter == 0 {
             res.to_mut().data_mut().zero();
@@ -141,19 +156,20 @@ impl Accumulator {
     }
 }
 
-fn add_core<A, S, M, BE: Backend>(
+fn add_core<A, S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     module: &M,
     a: &A,
     accumulators: &mut [Accumulator],
     i: usize,
     selector: &S,
     offset: usize,
-    scratch: &mut Scratch<BE>,
+    scratch: &mut ScratchArena<'_, BE>,
 ) where
     A: GLWEToRef,
     S: GetGGSWBit<BE>,
     M: GLWECopy + Cmux<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     // Isolate the first accumulator
     let (acc_prev, acc_next) = accumulators.split_at_mut(1);
@@ -164,7 +180,8 @@ fn add_core<A, S, M, BE: Backend>(
             acc_prev[0].num = 1;
         }
         1 => {
-            module.cmux_assign_neg(&mut acc_prev[0].data, a, &selector.get_bit(i + offset), scratch);
+            let selector_bit = selector.get_bit(i + offset);
+            module.cmux_inplace_neg(&mut acc_prev[0].data, a, selector_bit, scratch);
 
             if !acc_next.is_empty() {
                 add_core(module, &acc_prev[0].data, acc_next, i + 1, selector, offset, scratch);
@@ -178,7 +195,7 @@ fn add_core<A, S, M, BE: Backend>(
     }
 }
 
-impl<BE: Backend> GLWEBlindRetrieval<BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + Cswap<BE> {}
+impl<BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindRetrieval<BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + Cswap<BE> {}
 
 /// Oblivious in-place sorting / retrieval of a GLWE vector by an encrypted index.
 ///
@@ -192,7 +209,7 @@ impl<BE: Backend> GLWEBlindRetrieval<BE> for Module<BE> where Self: GLWECopy + C
 /// The rearrangement uses conditional-swap ([`Cswap`]) operations, one per bit
 /// of the selector sub-field.  The `_rev` variant applies the operations in
 /// reverse, useful for undoing the permutation.
-pub trait GLWEBlindRetrieval<BE: Backend>
+pub trait GLWEBlindRetrieval<BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: GLWECopy + Cmux<BE> + Cswap<BE>,
 {
@@ -217,19 +234,20 @@ where
         bits: &K,
         bit_rsh: usize,
         bit_mask: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         for i in 0..bit_mask {
             let t: usize = 1 << (bit_mask - i - 1);
-            let bit: &GGSWPrepared<&[u8], BE> = &bits.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
+            let bit = bits.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
             for j in 0..t {
                 if j + t < res.len() {
                     let (lo, hi) = res.split_at_mut(j + t);
-                    self.cswap(&mut lo[j], &mut hi[0], bit, scratch);
+                    self.cswap(&mut lo[j], &mut hi[0], bit, &mut scratch.borrow());
                 }
             }
         }
@@ -246,19 +264,20 @@ where
         bits: &K,
         bit_rsh: usize,
         bit_mask: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         for i in (0..bit_mask).rev() {
             let t: usize = 1 << (bit_mask - i - 1);
-            let bit: &GGSWPrepared<&[u8], BE> = &bits.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
+            let bit = bits.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
             for j in 0..t {
                 if j < res.len() && j + t < res.len() {
                     let (lo, hi) = res.split_at_mut(j + t);
-                    self.cswap(&mut lo[j], &mut hi[0], bit, scratch);
+                    self.cswap(&mut lo[j], &mut hi[0], bit, &mut scratch.borrow());
                 }
             }
         }

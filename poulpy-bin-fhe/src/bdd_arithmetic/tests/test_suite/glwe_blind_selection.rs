@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
         GLWESecretPreparedFactory, Rank, TorusPrecision,
@@ -9,7 +9,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 use rand::Rng;
@@ -22,7 +22,7 @@ use crate::{
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_glwe_blind_selection<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_glwe_blind_selection<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
@@ -32,10 +32,11 @@ where
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let module: &Module<BE> = &test_context.module;
-    let sk_glwe_prep: &GLWESecretPrepared<DeviceBuf<BE>, BE> = &test_context.sk_glwe;
+    let sk_glwe_prep: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
 
     let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
@@ -71,8 +72,8 @@ where
     let ggsw_enc_infos = EncryptionLayout::new_from_default_sigma(ggsw_infos).unwrap();
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
-    let mut k_enc_prep: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
-        FheUintPrepared::<DeviceBuf<BE>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
+    let mut k_enc_prep: FheUintPrepared<BE::OwnedBuf, u32, BE> =
+        FheUintPrepared::<BE::OwnedBuf, u32, BE>::alloc_from_infos(module, &ggsw_infos);
     k_enc_prep.encrypt_sk(
         module,
         k,
@@ -80,7 +81,7 @@ where
         &ggsw_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let digit = 5;
@@ -108,7 +109,7 @@ where
                 &glwe_enc_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             cts.push(ct);
         }
@@ -122,9 +123,9 @@ where
         // How many bits to take
         let bit_size: usize = (32 - bit_start).min(digit);
 
-        module.glwe_blind_selection(&mut res, cts_map, &k_enc_prep, bit_start, bit_size, scratch.borrow());
+        module.glwe_blind_selection(&mut res, cts_map, &k_enc_prep, bit_start, bit_size, &mut scratch.borrow());
 
-        module.glwe_decrypt(&res, &mut pt, sk_glwe_prep, scratch.borrow());
+        module.glwe_decrypt(&res, &mut pt, sk_glwe_prep, &mut scratch.borrow());
 
         let idx = ((k >> bit_start) & mask) as usize;
         if !idx.is_multiple_of(3) {

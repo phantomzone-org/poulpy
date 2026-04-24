@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssign},
-    layouts::{DeviceBuf, Module, ScalarZnx, ScalarZnxToMut, Scratch, ScratchOwned, ZnxViewMut},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxToMut, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
 };
@@ -18,6 +18,8 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_ggsw_external_product<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
@@ -99,7 +101,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.ggsw_encrypt_sk(
@@ -109,7 +111,7 @@ where
                 &ggsw_apply_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             module.ggsw_encrypt_sk(
@@ -119,15 +121,20 @@ where
                 &ggsw_in_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
-            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
-            module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, scratch.borrow());
+            let mut ct_rhs_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
+            module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, &mut scratch.borrow());
 
-            module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
+            module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_assign(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_rotate_inplace(
+                k as i64,
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
+                0,
+                &mut scratch.borrow(),
+            );
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
@@ -155,7 +162,7 @@ where
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     let noise = ggsw_out
-                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_in, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     let max_noise = max_noise(col);
@@ -169,6 +176,8 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_ggsw_external_product_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
@@ -238,7 +247,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.ggsw_encrypt_sk(
@@ -248,7 +257,7 @@ where
                 &ggsw_apply_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             module.ggsw_encrypt_sk(
@@ -258,15 +267,20 @@ where
                 &ggsw_out_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
-            let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
-            module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, scratch.borrow());
+            let mut ct_rhs_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
+            module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, &mut scratch.borrow());
 
-            module.ggsw_external_product_assign(&mut ggsw_out, &ct_rhs_prepared, scratch.borrow());
+            module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_assign(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_rotate_inplace(
+                k as i64,
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
+                0,
+                &mut scratch.borrow(),
+            );
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
@@ -294,7 +308,7 @@ where
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     let noise = ggsw_out
-                        .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_in, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     let max_noise = max_noise(col);

@@ -1,9 +1,13 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
+        MatZnxToBackendRef, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, TransferFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 use std::fmt;
 
+use crate::api::ModuleTransfer;
 use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 /// Trait providing the parameter accessors for a GGSW (Gadget GSW) ciphertext.
@@ -93,6 +97,9 @@ pub struct GGSW<D: Data> {
     pub(crate) dsize: Dsize,
 }
 
+pub type GGSWBackendRef<'a, BE> = GGSW<<BE as Backend>::BufRef<'a>>;
+pub type GGSWBackendMut<'a, BE> = GGSW<<BE as Backend>::BufMut<'a>>;
+
 impl<D: Data> LWEInfos for GGSW<D> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
@@ -158,11 +165,105 @@ impl<D: DataRef> GGSW<D> {
     }
 }
 
+pub trait GGSWAtBackendRef<BE: Backend> {
+    fn at_backend(&self, row: usize, col: usize) -> GLWE<BE::BufRef<'_>>;
+}
+
+impl<BE: Backend> GGSWAtBackendRef<BE> for GGSW<BE::OwnedBuf> {
+    fn at_backend(&self, row: usize, col: usize) -> GLWE<BE::BufRef<'_>> {
+        let data = <MatZnx<BE::OwnedBuf> as MatZnxAtBackendRef<BE>>::at_backend(&self.data, row, col);
+        GLWE {
+            base2k: self.base2k,
+            data,
+        }
+    }
+}
+
+pub fn ggsw_at_backend_ref_from_ref<'a, 'b, BE: Backend>(
+    ggsw: &'a GGSW<BE::BufRef<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufRef<'a>> {
+    let data = poulpy_hal::layouts::mat_znx_at_backend_ref_from_ref::<BE>(&ggsw.data, row, col);
+    GLWE {
+        base2k: ggsw.base2k,
+        data,
+    }
+}
+
+pub fn ggsw_at_backend_ref_from_mut<'a, 'b, BE: Backend>(
+    ggsw: &'a GGSW<BE::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufRef<'a>> {
+    let data = poulpy_hal::layouts::mat_znx_at_backend_ref_from_mut::<BE>(&ggsw.data, row, col);
+    GLWE {
+        base2k: ggsw.base2k,
+        data,
+    }
+}
+
 impl<D: DataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
         GLWE { base2k, data }
+    }
+}
+
+pub trait GGSWAtBackendMut<BE: Backend> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWE<BE::BufMut<'_>>;
+}
+
+impl<BE: Backend> GGSWAtBackendMut<BE> for GGSW<BE::OwnedBuf> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWE<BE::BufMut<'_>> {
+        let base2k = self.base2k;
+        let data = <MatZnx<BE::OwnedBuf> as MatZnxAtBackendMut<BE>>::at_backend_mut(&mut self.data, row, col);
+        GLWE { base2k, data }
+    }
+}
+
+pub fn ggsw_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
+    ggsw: &'a mut GGSW<BE::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufMut<'a>> {
+    let base2k = ggsw.base2k;
+    let data = poulpy_hal::layouts::mat_znx_at_backend_mut_from_mut::<BE>(&mut ggsw.data, row, col);
+    GLWE { base2k, data }
+}
+
+impl<D: DataRef> GGSW<D> {
+    /// Copies this ciphertext's backing bytes into an owned buffer of
+    /// backend `To`, routing via host bytes.
+    pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GGSW<To::OwnedBuf>
+    where
+        BE: Backend<OwnedBuf = D>,
+        To: Backend,
+        To: TransferFrom<BE>,
+    {
+        dst.upload_ggsw(self)
+    }
+}
+
+impl<D: Data> GGSW<D> {
+    /// Zero-cost rename when both backends share the same `OwnedBuf`.
+    pub fn reinterpret<To>(self) -> GGSW<To::OwnedBuf>
+    where
+        To: Backend<OwnedBuf = D>,
+    {
+        let (n, rows, cols_in, cols_out, size) = (
+            self.data.n(),
+            self.data.rows(),
+            self.data.cols_in(),
+            self.data.cols_out(),
+            self.data.size(),
+        );
+        GGSW {
+            data: MatZnx::from_data(self.data.into_data(), n, rows, cols_in, cols_out, size),
+            base2k: self.base2k,
+            dsize: self.dsize,
+        }
     }
 }
 
@@ -270,6 +371,28 @@ pub trait GGSWToMut {
     fn to_mut(&mut self) -> GGSW<&mut [u8]>;
 }
 
+pub trait GGSWToBackendMut<BE: Backend>: GGSWToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GGSWBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGSWToBackendMut<BE> for GGSW<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGSWBackendMut<'_, BE> {
+        GGSW {
+            dsize: self.dsize,
+            base2k: self.base2k,
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+pub fn ggsw_backend_mut_from_mut<'a, 'b, BE: Backend>(ggsw: &'a mut GGSW<BE::BufMut<'b>>) -> GGSWBackendMut<'a, BE> {
+    GGSW {
+        dsize: ggsw.dsize,
+        base2k: ggsw.base2k,
+        data: poulpy_hal::layouts::mat_znx_backend_mut_from_mut::<BE>(&mut ggsw.data),
+    }
+}
+
 impl<D: DataMut> GGSWToMut for GGSW<D> {
     fn to_mut(&mut self) -> GGSW<&mut [u8]> {
         GGSW {
@@ -282,6 +405,36 @@ impl<D: DataMut> GGSWToMut for GGSW<D> {
 
 pub trait GGSWToRef {
     fn to_ref(&self) -> GGSW<&[u8]>;
+}
+
+pub trait GGSWToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GGSWBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GGSWToBackendRef<BE> for GGSW<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGSWBackendRef<'_, BE> {
+        GGSW {
+            dsize: self.dsize,
+            base2k: self.base2k,
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+pub fn ggsw_backend_ref_from_ref<'a, 'b, BE: Backend>(ggsw: &'a GGSW<BE::BufRef<'b>>) -> GGSWBackendRef<'a, BE> {
+    GGSW {
+        dsize: ggsw.dsize,
+        base2k: ggsw.base2k,
+        data: poulpy_hal::layouts::mat_znx_backend_ref_from_ref::<BE>(&ggsw.data),
+    }
+}
+
+pub fn ggsw_backend_ref_from_mut<'a, 'b, BE: Backend>(ggsw: &'a GGSW<BE::BufMut<'b>>) -> GGSWBackendRef<'a, BE> {
+    GGSW {
+        dsize: ggsw.dsize,
+        base2k: ggsw.base2k,
+        data: poulpy_hal::layouts::mat_znx_backend_ref_from_mut::<BE>(&ggsw.data),
+    }
 }
 
 impl<D: DataRef> GGSWToRef for GGSW<D> {

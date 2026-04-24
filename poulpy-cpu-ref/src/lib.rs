@@ -13,6 +13,8 @@
 //! Compiles and runs on any target supported by the Rust standard library.
 //! No platform-specific intrinsics or assembly are used.
 
+#[doc(hidden)]
+pub mod core_impl;
 pub mod fft64;
 pub mod hal_defaults;
 mod hal_impl;
@@ -38,12 +40,3 @@ pub mod source {
 
 pub use fft64::FFT64Ref;
 pub use ntt120::{NTT120Ref, NTT120RefHandle};
-
-use poulpy_core::oep::CoreImpl;
-unsafe impl CoreImpl<FFT64Ref> for FFT64Ref {
-    poulpy_core::impl_core_default_methods!(FFT64Ref);
-}
-
-unsafe impl CoreImpl<NTT120Ref> for NTT120Ref {
-    poulpy_core::impl_core_default_methods!(NTT120Ref);
-}

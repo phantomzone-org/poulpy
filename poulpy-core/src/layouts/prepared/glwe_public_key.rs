@@ -1,14 +1,15 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module},
+    layouts::{Backend, Data, DataMut, DataRef, Module},
 };
 
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
     layouts::{
-        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedFactory, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToRef, GetDegree,
-        LWEInfos, Rank, TorusPrecision,
+        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedBackendMut, GLWEPreparedFactory, GLWEPreparedToBackendMut,
+        GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree, LWEInfos, Rank,
+        TorusPrecision,
     },
 };
 
@@ -63,14 +64,14 @@ where
         base2k: Base2K,
         k: TorusPrecision,
         rank: Rank,
-    ) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B> {
+    ) -> GLWEPublicKeyPrepared<B::OwnedBuf, B> {
         GLWEPublicKeyPrepared {
             key: self.glwe_prepared_alloc(base2k, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    fn glwe_public_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<DeviceBuf<B>, B>
+    fn glwe_public_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<B::OwnedBuf, B>
     where
         A: GLWEInfos,
     {
@@ -90,8 +91,8 @@ where
 
     fn glwe_public_key_prepare<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEPreparedToMut<B> + GetDistributionMut,
-        O: GLWEToRef + GetDistribution,
+        R: GLWEPreparedToBackendMut<B> + GetDistributionMut,
+        O: GLWEToBackendRef<B> + GetDistribution + GLWEInfos,
     {
         self.glwe_prepare(res, other);
         *res.dist_mut() = *other.dist();
@@ -119,5 +120,40 @@ where
 {
     fn to_ref(&self) -> GLWEPrepared<&[u8], B> {
         self.key.to_ref()
+    }
+}
+
+pub type GLWEPublicKeyPreparedBackendRef<'a, B> = GLWEPublicKeyPrepared<<B as Backend>::BufRef<'a>, B>;
+pub type GLWEPublicKeyPreparedBackendMut<'a, B> = GLWEPublicKeyPrepared<<B as Backend>::BufMut<'a>, B>;
+
+pub trait GLWEPublicKeyPreparedToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> GLWEPublicKeyPreparedBackendRef<'_, B>;
+}
+
+impl<B: Backend> GLWEPublicKeyPreparedToBackendRef<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> GLWEPublicKeyPreparedBackendRef<'_, B> {
+        GLWEPublicKeyPrepared {
+            key: self.key.to_backend_ref(),
+            dist: self.dist,
+        }
+    }
+}
+
+pub trait GLWEPublicKeyPreparedToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> GLWEPublicKeyPreparedBackendMut<'_, B>;
+}
+
+impl<B: Backend> GLWEPublicKeyPreparedToBackendMut<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> GLWEPublicKeyPreparedBackendMut<'_, B> {
+        GLWEPublicKeyPrepared {
+            key: self.key.to_backend_mut(),
+            dist: self.dist,
+        }
+    }
+}
+
+impl<B: Backend> GLWEPreparedToBackendMut<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B> {
+        self.key.to_backend_mut()
     }
 }

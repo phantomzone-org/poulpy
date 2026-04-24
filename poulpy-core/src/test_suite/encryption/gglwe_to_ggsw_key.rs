@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy},
-    layouts::{DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -18,6 +18,8 @@ use crate::{
 
 pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretTensorFactory<BE>
         + GLWESecretPreparedFactory<BE>
@@ -56,7 +58,7 @@ where
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk(
@@ -66,11 +68,11 @@ where
             &key_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            crate::test_suite::scratch_host_mut(&mut scratch),
         );
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, crate::test_suite::scratch_host_mut(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
@@ -85,7 +87,7 @@ where
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
                     let noise_have = ksk
-                        .noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_want, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
@@ -97,6 +99,8 @@ where
 
 pub fn test_gglwe_to_ggsw_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGLWEToGGSWKeyCompressedEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
@@ -135,7 +139,7 @@ where
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+        let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
         let seed_xa: [u8; 32] = [1u8; 32];
@@ -147,14 +151,14 @@ where
             seed_xa,
             &key_infos,
             &mut source_xe,
-            scratch.borrow(),
+            crate::test_suite::scratch_host_mut(&mut scratch),
         );
 
         let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
         module.decompress_gglwe_to_ggsw_key(&mut key, &key_compressed);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
-        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, crate::test_suite::scratch_host_mut(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
@@ -169,7 +173,7 @@ where
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
                     let noise_have = ksk
-                        .noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_want, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")

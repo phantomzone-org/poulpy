@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxSubScalarAssign},
-    layouts::{DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxSubScalarInplace},
+    layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -17,8 +17,13 @@ use crate::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
+pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
+    params: &TestParams,
+    module: &Module<BE>,
+)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
@@ -110,7 +115,7 @@ where
                 &auto_key_in_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
 
             // gglwe_{s2}(s1) -> s1 -> s2
@@ -121,20 +126,20 @@ where
                 &auto_key_apply_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
 
-            let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&auto_key_apply_infos);
 
-            module.glwe_automorphism_key_prepare(&mut auto_key_apply_prepared, &auto_key_apply, scratch.borrow());
+            module.glwe_automorphism_key_prepare(&mut auto_key_apply_prepared, &auto_key_apply, &mut scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
             module.glwe_automorphism_key_automorphism(
                 &mut auto_key_out,
                 &auto_key_in,
                 &auto_key_apply_prepared,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_out_infos);
@@ -149,7 +154,7 @@ where
                 );
             }
 
-            let mut sk_auto_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_auto);
+            let mut sk_auto_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_auto);
             module.glwe_secret_prepare(&mut sk_auto_dft, &sk_auto);
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
@@ -173,7 +178,7 @@ where
                 for col in 0..auto_key_out.rank().as_usize() {
                     let noise_have = auto_key_out
                         .key
-                        .noise(module, row, col, &sk.data, &sk_auto_dft, scratch.borrow())
+                        .noise(module, row, col, &sk.data, &sk_auto_dft, &mut scratch.borrow())
                         .std()
                         .log2();
 
@@ -185,10 +190,14 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::TestBackend>(
+pub fn test_gglwe_automorphism_key_automorphism_inplace<
+    BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>,
+>(
     params: &TestParams,
     module: &Module<BE>,
 ) where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
@@ -262,7 +271,7 @@ pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::Te
                 &auto_key_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
 
             // gglwe_{s2}(s1) -> s1 -> s2
@@ -273,16 +282,16 @@ pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::Te
                 &auto_key_apply_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
 
-            let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut auto_key_apply_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&auto_key_apply_layout);
 
-            module.glwe_automorphism_key_prepare(&mut auto_key_apply_prepared, &auto_key_apply, scratch.borrow());
+            module.glwe_automorphism_key_prepare(&mut auto_key_apply_prepared, &auto_key_apply, &mut scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-            module.glwe_automorphism_key_automorphism_assign(&mut auto_key, &auto_key_apply_prepared, scratch.borrow());
+            module.glwe_automorphism_key_automorphism_inplace(&mut auto_key, &auto_key_apply_prepared, &mut scratch.borrow());
 
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
@@ -297,7 +306,7 @@ pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::Te
                 );
             }
 
-            let mut sk_auto_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_auto);
+            let mut sk_auto_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_auto);
             module.glwe_secret_prepare(&mut sk_auto_dft, &sk_auto);
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
@@ -321,7 +330,7 @@ pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::Te
                 for col in 0..auto_key.rank().as_usize() {
                     let noise_have = auto_key
                         .key
-                        .noise(module, row, col, &sk.data, &sk_auto_dft, scratch.borrow())
+                        .noise(module, row, col, &sk.data, &sk_auto_dft, &mut scratch.borrow())
                         .std()
                         .log2();
 

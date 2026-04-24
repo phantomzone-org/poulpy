@@ -1,22 +1,28 @@
-use super::TestParams;
+use super::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref};
 use rand::Rng;
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
+        ScratchOwnedAlloc, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
     },
     layouts::{
-        Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, SvpPPolOwned, VecZnx, VecZnxDft,
+        Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, SvpPPolOwned, SvpPPolToBackendMut,
+        SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
     },
     source::Source,
 };
 
-type VecZnxDftOwned<BE> = VecZnxDft<DeviceBuf<BE>, BE>;
-type VecZnxBigOwned<BE> = crate::layouts::VecZnxBig<DeviceBuf<BE>, BE>;
+type VecZnxDftOwned<BE> = VecZnxDft<<BE as Backend>::OwnedBuf, BE>;
+type VecZnxBigOwned<BE> = crate::layouts::VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
 
-pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDft<BR>
         + SvpPPolAlloc<BR>
@@ -31,8 +37,8 @@ where
         + VecZnxBigNormalize<BT>
         + VecZnxIdftApplyConsume<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -54,8 +60,8 @@ where
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test, j, &scalar, j);
+        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
+        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);
@@ -80,8 +86,8 @@ where
             source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
-                module_ref.svp_apply_dft(&mut res_dft_ref, j, &svp_ref, j, &a, j);
-                module_test.svp_apply_dft(&mut res_dft_test, j, &svp_test, j, &a, j);
+                module_ref.svp_apply_dft(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j, &a, j);
+                module_test.svp_apply_dft(&mut res_dft_test, j, &svp_test.to_backend_ref(), j, &a, j);
             }
 
             // Assert no change to inputs
@@ -96,8 +102,26 @@ where
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
-                module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
+                module_ref.vec_znx_big_normalize(
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    base2k,
+                    0,
+                    j,
+                    &res_big_ref.to_backend_ref(),
+                    base2k,
+                    j,
+                    &mut scratch_ref.arena(),
+                );
+                module_test.vec_znx_big_normalize(
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    base2k,
+                    0,
+                    j,
+                    &res_big_test.to_backend_ref(),
+                    base2k,
+                    j,
+                    &mut scratch_test.arena(),
+                );
             }
 
             assert_eq!(res_ref, res_test);
@@ -105,8 +129,13 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDft<BR>
         + SvpPPolAlloc<BR>
@@ -123,8 +152,8 @@ where
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -146,8 +175,8 @@ where
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test, j, &scalar, j);
+        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
+        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);
@@ -166,8 +195,8 @@ where
         let mut a_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_dft_apply(1, 0, &mut a_dft_ref, j, &a, j);
-            module_test.vec_znx_dft_apply(1, 0, &mut a_dft_test, j, &a, j);
+            module_ref.vec_znx_dft_apply(1, 0, &mut a_dft_ref.to_backend_mut(), j, &vec_znx_backend_ref::<BR>(&a), j);
+            module_test.vec_znx_dft_apply(1, 0, &mut a_dft_test.to_backend_mut(), j, &vec_znx_backend_ref::<BT>(&a), j);
         }
 
         assert_eq!(a.digest_u64(), a_digest);
@@ -185,8 +214,8 @@ where
             source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
-                module_ref.svp_apply_dft_to_dft(&mut res_dft_ref, j, &svp_ref, j, &a_dft_ref, j);
-                module_test.svp_apply_dft_to_dft(&mut res_dft_test, j, &svp_test, j, &a_dft_test, j);
+                module_ref.svp_apply_dft_to_dft(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j, &a_dft_ref, j);
+                module_test.svp_apply_dft_to_dft(&mut res_dft_test, j, &svp_test.to_backend_ref(), j, &a_dft_test, j);
             }
 
             // Assert no change to inputs
@@ -203,8 +232,26 @@ where
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
-                module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
+                module_ref.vec_znx_big_normalize(
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    base2k,
+                    0,
+                    j,
+                    &res_big_ref.to_backend_ref(),
+                    base2k,
+                    j,
+                    &mut scratch_ref.arena(),
+                );
+                module_test.vec_znx_big_normalize(
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    base2k,
+                    0,
+                    j,
+                    &res_big_test.to_backend_ref(),
+                    base2k,
+                    j,
+                    &mut scratch_test.arena(),
+                );
             }
 
             assert_eq!(res_ref, res_test);
@@ -212,11 +259,13 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
+pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDftAssign<BR>
         + SvpPPolAlloc<BR>
@@ -233,8 +282,8 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -256,8 +305,8 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref, j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test, j, &scalar, j);
+        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
+        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);
@@ -274,15 +323,29 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
         let mut res_dft_test: VecZnxDftOwned<BT> = module_test.vec_znx_dft_alloc(cols, res_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_dft_apply(1, 0, &mut res_dft_ref, j, &res, j);
-            module_test.vec_znx_dft_apply(1, 0, &mut res_dft_test, j, &res, j);
+            module_ref.vec_znx_dft_apply(
+                1,
+                0,
+                &mut res_dft_ref.to_backend_mut(),
+                j,
+                &vec_znx_backend_ref::<BR>(&res),
+                j,
+            );
+            module_test.vec_znx_dft_apply(
+                1,
+                0,
+                &mut res_dft_test.to_backend_mut(),
+                j,
+                &vec_znx_backend_ref::<BT>(&res),
+                j,
+            );
         }
 
         assert_eq!(res.digest_u64(), res_digest);
 
         for j in 0..cols {
-            module_ref.svp_apply_dft_to_dft_assign(&mut res_dft_ref, j, &svp_ref, j);
-            module_test.svp_apply_dft_to_dft_assign(&mut res_dft_test, j, &svp_test, j);
+            module_ref.svp_apply_dft_to_dft_inplace(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j);
+            module_test.svp_apply_dft_to_dft_inplace(&mut res_dft_test, j, &svp_test.to_backend_ref(), j);
         }
 
         // Assert no change to inputs
@@ -296,8 +359,26 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
         let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_normalize(&mut res_ref, base2k, 0, j, &res_big_ref, base2k, j, scratch_ref.borrow());
-            module_test.vec_znx_big_normalize(&mut res_test, base2k, 0, j, &res_big_test, base2k, j, scratch_test.borrow());
+            module_ref.vec_znx_big_normalize(
+                &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                base2k,
+                0,
+                j,
+                &res_big_ref.to_backend_ref(),
+                base2k,
+                j,
+                &mut scratch_ref.arena(),
+            );
+            module_test.vec_znx_big_normalize(
+                &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                base2k,
+                0,
+                j,
+                &res_big_test.to_backend_ref(),
+                base2k,
+                j,
+                &mut scratch_test.arena(),
+            );
         }
 
         assert_eq!(res_ref, res_test);

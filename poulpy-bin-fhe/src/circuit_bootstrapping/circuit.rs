@@ -1,15 +1,19 @@
+#![allow(clippy::multiple_bound_locations)]
+
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ModuleLogN, ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
+    api::{ModuleLogN, ModuleN},
+    layouts::{Backend, DataRef, HostDataMut, Module, ScratchArena},
 };
 
 use poulpy_core::{
-    GGSWExpandRows, GGSWFromGGLWE, GLWECopy, GLWEDecrypt, GLWENormalize, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
+    GGSWExpandRows, GGSWFromGGLWE, GLWECopy, GLWEDecrypt, GLWENormalize, GLWEPacking, GLWERotate, GLWETrace,
+    ScratchArenaTakeCore,
     layouts::{
-        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
-        GLWELayout, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
+        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut,
+        GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
+        GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
     },
 };
 
@@ -28,7 +32,7 @@ use crate::{
 /// required polynomial-arithmetic trait bounds.  Callers should use the
 /// convenience methods on [`CircuitBootstrappingKeyPrepared`] rather than
 /// invoking this trait directly.
-pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
+pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
     /// Returns the minimum scratch-space size (bytes) required by the circuit
     /// bootstrapping evaluation methods.
     ///
@@ -51,18 +55,17 @@ pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
     ///
     /// `log_domain` controls the number of discrete values representable (the
     /// LUT has `2^log_domain` entries).
-    fn circuit_bootstrapping_execute_to_constant<R, L, D>(
+    fn circuit_bootstrapping_execute_to_constant<R, L>(
         &self,
         res: &mut R,
         lwe: &L,
-        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWInfos,
-        L: LWEToRef + LWEInfos,
-        D: DataRef;
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToRef + LWEInfos;
 
     /// Bootstraps `lwe` into `res`, encoding the plaintext in the exponent of
     /// the polynomial variable.
@@ -70,22 +73,21 @@ pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
     /// `log_gap_out` controls the spacing of output coefficients (used in
     /// post-processing to adjust the gap for downstream operations).
     #[allow(clippy::too_many_arguments)]
-    fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
+    fn circuit_bootstrapping_execute_to_exponent<R, L>(
         &self,
         log_gap_out: usize,
         res: &mut R,
         lwe: &L,
-        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWInfos,
-        L: LWEToRef + LWEInfos,
-        D: DataRef;
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToRef + LWEInfos;
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<D, BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> {
     /// Convenience method: bootstraps `lwe` into the GGSW ciphertext `res`
     /// using the constant-term encoding.
     ///
@@ -97,10 +99,10 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         lwe: &L,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: CircuitBootstrappingExecute<BRA, BE>,
-        R: GGSWToMut + GGSWInfos,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
         L: LWEToRef + LWEInfos,
     {
         module.circuit_bootstrapping_execute_to_constant(res, lwe, self, log_domain, extension_factor, scratch);
@@ -119,23 +121,24 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         lwe: &L,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: CircuitBootstrappingExecute<BRA, BE>,
-        R: GGSWToMut + GGSWInfos,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
         L: LWEToRef + LWEInfos,
     {
         module.circuit_bootstrapping_execute_to_exponent(log_gap_out, res, lwe, self, log_domain, extension_factor, scratch);
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingExecute<BRA, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingExecute<BRA, BE> for Module<BE>
 where
     Self: ModuleN
         + LookupTableFactory
         + BlindRotationExecute<BRA, BE>
         + GLWETrace<BE>
         + GLWEPacking<BE>
+        + GGSWExpandRows<BE>
         + GGSWFromGGLWE<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
@@ -143,8 +146,9 @@ where
         + GLWENormalize<BE>
         + GLWECopy
         + GGSWExpandRows<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    BE::OwnedBuf: DataRef,
 {
     fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
         &self,
@@ -174,50 +178,54 @@ where
             + GGLWE::bytes_of_from_infos(&gglwe_infos)
     }
 
-    fn circuit_bootstrapping_execute_to_constant<R, L, D>(
+    fn circuit_bootstrapping_execute_to_constant<R, L>(
         &self,
         res: &mut R,
         lwe: &L,
-        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWInfos,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
         L: LWEToRef + LWEInfos,
-        D: DataRef,
     {
         assert!(
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
         );
 
+        // TODO(device): the current CBT implementation composes host-backed
+        // blind rotation, trace/packing, and row expansion. Keep this API
+        // backend-generic while the implementation remains host-specialized.
         circuit_bootstrap_core(false, self, 0, res, lwe, log_domain, extension_factor, key, scratch);
     }
 
-    fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
+    fn circuit_bootstrapping_execute_to_exponent<R, L>(
         &self,
         log_gap_out: usize,
         res: &mut R,
         lwe: &L,
-        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWInfos,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
         L: LWEToRef + LWEInfos,
-        D: DataRef,
     {
         assert!(
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
         );
 
+        // TODO(device): the current CBT implementation composes host-backed
+        // blind rotation, trace/packing, and row expansion. Keep this API
+        // backend-generic while the implementation remains host-specialized.
         circuit_bootstrap_core(true, self, log_gap_out, res, lwe, log_domain, extension_factor, key, scratch);
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
+pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(
     to_exponent: bool,
     module: &M,
     log_gap_out: usize,
@@ -225,12 +233,11 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     lwe: &L,
     log_domain: usize,
     extension_factor: usize,
-    key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
-    scratch: &mut Scratch<BE>,
+    key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
+    scratch: &mut ScratchArena<'_, BE>,
 ) where
-    R: GGSWToMut,
+    R: GGSWToMut + GGSWToBackendMut<BE>,
     L: LWEToRef,
-    D: DataRef,
     M: ModuleN
         + LookupTableFactory
         + BlindRotationExecute<BRA, BE>
@@ -244,16 +251,20 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         + GLWENormalize<BE>
         + GLWECopy
         + GGSWExpandRows<BE>,
-    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    BE::OwnedBuf: DataRef,
 {
-    let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+    // TODO(device): this core routine still drops to host GLWE/LWE views for
+    // trace/packing orchestration. It is intentionally kept behind a
+    // backend-generic public API so we can swap in device-native helpers later.
+    let res_host: &mut GGSW<&mut [u8]> = &mut res.to_mut();
     let lwe: &LWE<&[u8]> = &lwe.to_ref();
 
-    assert_eq!(res.n(), key.brk.n());
+    assert_eq!(res_host.n(), key.brk.n());
 
-    let res_base2k: usize = res.base2k().as_usize();
-    let dnum_res: usize = res.dnum().into();
+    let res_base2k: usize = res_host.base2k().as_usize();
+    let dnum_res: usize = res_host.dnum().into();
 
     let alpha: usize = dnum_res.next_power_of_two();
 
@@ -316,17 +327,21 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         rank: glwe_brk_layout.rank(),
     };
 
-    let (mut res_glwe_atk_layout, scratch_1) = scratch.take_glwe(glwe_atk_layout);
+    let mut scratch_1 = scratch.borrow();
+    let mut res_glwe_atk_layout: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_atk_layout);
 
     // Execute blind rotation over BRK layout and returns result over ATK layout
     {
-        let (mut res_glwe_brk_layout, scratch_2) = scratch_1.take_glwe(glwe_brk_layout);
-        key.brk.execute(module, &mut res_glwe_brk_layout, lwe, &lut, scratch_2);
+        let mut res_glwe_brk_layout: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_brk_layout);
+        key.brk
+            .execute(module, &mut res_glwe_brk_layout, lwe, &lut, &mut scratch_1.borrow());
 
         if res_glwe_brk_layout.base2k() == res_glwe_atk_layout.base2k() {
             module.glwe_copy(&mut res_glwe_atk_layout, &res_glwe_brk_layout);
         } else {
-            module.glwe_normalize(&mut res_glwe_atk_layout, &res_glwe_brk_layout, scratch_2);
+            let mut atk_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_glwe_atk_layout);
+            let brk_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&res_glwe_brk_layout);
+            module.glwe_normalize(&mut atk_backend, &brk_backend, &mut scratch_1.borrow());
         }
     }
 
@@ -342,7 +357,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
     for i in 0..dnum_res {
-        let mut res_row: GLWE<&mut [u8]> = res.at_mut(i, 0);
+        let mut res_row: GLWE<&mut [u8]> = res_host.at_mut(i, 0);
 
         if to_exponent {
             // Isolates i-th LUT and moves coefficients according to requested gap.
@@ -354,23 +369,25 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
                 log_gap_out,
                 log_domain,
                 &key.atk,
-                scratch_1,
+                &mut scratch_1,
             );
         } else {
-            module.glwe_trace(&mut res_row, 0, &res_glwe_atk_layout, &key.atk, scratch_1);
+            module.glwe_trace(&mut res_row, 0, &res_glwe_atk_layout, &key.atk, &mut scratch_1.borrow());
         }
 
         if i + 1 < dnum_res {
-            module.glwe_rotate_assign(-(gap as i64), &mut res_glwe_atk_layout, scratch_1);
+            let mut atk_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_glwe_atk_layout);
+            module.glwe_rotate_inplace(-(gap as i64), &mut atk_backend, &mut scratch_1.borrow());
         }
     }
 
     // Expands GGLWE to GGSW using GGLWE(s^2)
-    module.ggsw_expand_row(res, &key.tsk, scratch);
+    let mut res_backend: GGSWBackendMut<'_, BE> = <R as GGSWToBackendMut<BE>>::to_backend_mut(res);
+    module.ggsw_expand_row(&mut res_backend, &key.tsk, &mut scratch_1.borrow());
 }
 
 #[allow(clippy::too_many_arguments)]
-fn post_process<R, A, M, H, K, BE: Backend>(
+fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
     module: &M,
     res: &mut R,
     a: &A,
@@ -378,43 +395,54 @@ fn post_process<R, A, M, H, K, BE: Backend>(
     log_gap_out: usize,
     log_domain: usize,
     auto_keys: &H,
-    scratch: &mut Scratch<BE>,
+    scratch: &mut ScratchArena<'s, BE>,
 ) where
     R: GLWEToMut + GLWEInfos,
-    A: GLWEToRef + GLWEInfos,
+    A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
-    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    BE: 's,
 {
+    // TODO(device): post-processing still uses host GLWE slices and scratch
+    // layouts directly. Once trace/packing are available end-to-end on
+    // backend-native views, this helper should move with them.
     // TODO: optimize with packing and final partial trace
     // If gap_out < gap_in, then we need to repack, i.e. reduce the cap between coefficients.
     if log_gap_in != log_gap_out {
-        let (mut a_trace, scratch_1) = scratch.take_glwe(a);
+        let mut a_trace: GLWE<Vec<u8>> = GLWE::alloc_from_infos(a);
 
         // First partial trace, vanishes all coefficients which are not multiples of gap_in
         // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
-        module.glwe_trace(&mut a_trace, module.log_n() - log_gap_in + 1, a, auto_keys, scratch_1);
+        module.glwe_trace(
+            &mut a_trace,
+            module.log_n() - log_gap_in + 1,
+            a,
+            auto_keys,
+            &mut scratch.borrow(),
+        );
 
         let steps: usize = 1 << log_domain;
 
-        // TODO: from Scratch
-        let (mut cts_vec, scratch_2) = scratch_1.take_glwe_slice(steps, a);
+        let mut cts_vec: Vec<GLWE<Vec<u8>>> = (0..steps).map(|_| GLWE::alloc_from_infos(a)).collect();
 
         for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             if i != 0 {
-                module.glwe_rotate_assign(-(1 << log_gap_in), &mut a_trace, scratch_2);
+                let mut a_trace_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut a_trace);
+                module.glwe_rotate_inplace(-(1 << log_gap_in), &mut a_trace_backend, &mut scratch.borrow());
             }
 
             module.glwe_copy(ct, &a_trace);
         }
 
-        let mut cts: HashMap<usize, &mut GLWE<&mut [u8]>> = HashMap::new();
+        let mut cts = HashMap::new();
         for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             cts.insert(i * (1 << log_gap_out), ct);
         }
 
-        module.glwe_pack(res, cts, log_gap_out, auto_keys, scratch_2);
+        module.glwe_pack(res, cts, log_gap_out, auto_keys, &mut scratch.borrow());
     } else {
         module.glwe_trace(res, module.log_n() - log_gap_in + 1, a, auto_keys, scratch);
     }

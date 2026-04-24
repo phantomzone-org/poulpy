@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
@@ -10,7 +10,12 @@ use poulpy_core::{
     },
 };
 
-use poulpy_bin_fhe::{
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
+    source::Source,
+};
+use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
         BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint,
         FheUintPrepare, FheUintPrepared,
@@ -24,7 +29,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub fn benc_bdd_prepare<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn benc_bdd_prepare<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -37,7 +42,9 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + FheUintPrepare<BRA, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
     let group_name: String = format!("bdd_arithmetic::{label}");
 
@@ -51,7 +58,7 @@ where
         bdd_layout: BDDKeyLayout,
     }
 
-    fn runner<BE: Backend, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
+    fn runner<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE>
             + ModuleN
@@ -64,7 +71,9 @@ where
             + BDDKeyPreparedFactory<BRA, BE>
             + FheUintPrepare<BRA, BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE::OwnedBuf: DataRef + DataMut,
+        for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
     {
         // Scratch space (4MB)
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 25);
@@ -98,7 +107,7 @@ where
             &bdd_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         let input_a = 255_u32;
@@ -111,18 +120,18 @@ where
             &glwe_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
-        let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+        let mut bdd_key_prepared: BDDKeyPrepared<BE::OwnedBuf, BRA, BE> =
             BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
-        bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
+        bdd_key_prepared.prepare(&module, &bdd_key, &mut scratch.borrow());
 
-        let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+        let mut a_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> =
             FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
 
         move || {
-            a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
+            a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, &mut scratch.borrow());
             black_box(());
         }
     }

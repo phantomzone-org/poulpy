@@ -1,16 +1,14 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    api::{ModuleN, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 pub use crate::api::GGLWEEncryptSk;
 use crate::{
-    EncryptionInfos, GLWEEncryptSk, ScratchTakeCore,
-    layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
-    },
+    EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
+    encryption::glwe::normalize_scratch_vec_znx,
+    layouts::{GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos, prepared::GLWESecretPreparedToBackendRef},
 };
 
 #[doc(hidden)]
@@ -19,7 +17,7 @@ pub trait GGLWEEncryptSkDefault<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_encrypt_sk<R, P, S, E>(
+    fn gglwe_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -27,24 +25,25 @@ pub trait GGLWEEncryptSkDefault<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 impl<BE: Backend> GGLWEEncryptSkDefault<BE> for Module<BE>
 where
     Self: ModuleN
+        + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
         + VecZnxAddScalarAssign
-        + VecZnxNormalizeAssign<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+        + VecZnxNormalizeInplaceBackend<BE>,
 {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -59,7 +58,7 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn gglwe_encrypt_sk<R, P, S, E>(
+    fn gglwe_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -67,17 +66,18 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
-        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+        let sk_ref = sk.to_backend_ref();
 
         assert_eq!(
             res.rank_in(),
@@ -88,18 +88,18 @@ where
         );
         assert_eq!(
             res.rank_out(),
-            sk.rank(),
+            sk_ref.rank(),
             "res.rank_out(): {} != sk.rank(): {}",
             res.rank_out(),
-            sk.rank()
+            sk_ref.rank()
         );
-        assert_eq!(res.n(), sk.n());
-        assert_eq!(pt.n() as u32, sk.n());
+        assert_eq!(res.n(), sk_ref.n());
+        assert_eq!(pt.n() as u32, sk_ref.n());
         assert!(
-            scratch.available() >= self.gglwe_encrypt_sk_tmp_bytes(res),
+            scratch.available() >= <Module<BE> as GGLWEEncryptSkDefault<BE>>::gglwe_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < GGLWEEncryptSk::gglwe_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_encrypt_sk_tmp_bytes(res)
+            <Module<BE> as GGLWEEncryptSkDefault<BE>>::gglwe_encrypt_sk_tmp_bytes(self, res)
         );
         assert!(
             res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.max_k().0,
@@ -115,8 +115,10 @@ where
         let dsize: usize = res.dsize().into();
         let base2k: usize = res.base2k().into();
         let rank_in: usize = res.rank_in().into();
+        let cols: usize = (res.rank_out() + 1).into();
+        let scratch = scratch.borrow();
+        let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
         // For each input column (i.e. rank) produces a GGLWE of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
@@ -133,16 +135,25 @@ where
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
                 self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
-                self.vec_znx_normalize_assign(base2k, &mut tmp_pt.data, 0, scratch_1);
-                self.glwe_encrypt_sk(
-                    &mut res.at_mut(row_i, col_i),
-                    &tmp_pt,
-                    sk,
-                    enc_infos,
-                    source_xe,
-                    source_xa,
-                    scratch_1,
-                );
+                scratch_1.scope(|mut scratch| {
+                    normalize_scratch_vec_znx(self, base2k, &mut tmp_pt.data, &mut scratch);
+                });
+                {
+                    let mut scratch = scratch_1.borrow();
+                    <Module<BE> as GLWEEncryptSkInternal<BE>>::glwe_encrypt_sk_internal(
+                        self,
+                        base2k,
+                        &mut res.at_mut(row_i, col_i).data,
+                        cols,
+                        false,
+                        Some((&tmp_pt, 0)),
+                        sk,
+                        enc_infos,
+                        source_xe,
+                        source_xa,
+                        &mut scratch,
+                    );
+                }
             }
         }
     }

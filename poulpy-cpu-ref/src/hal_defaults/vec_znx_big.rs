@@ -41,16 +41,19 @@ use crate::reference::{
     },
 };
 use poulpy_hal::{
-    api::TakeSlice,
+    api::ScratchArenaTakeHost,
     layouts::{
-        Backend, Module, NoiseInfos, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
         ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
 
 #[doc(hidden)]
-pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
+pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         BE: Backend<ScalarBig = i64>,
@@ -250,7 +253,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
         fft64_vec_znx_big_normalize_tmp_bytes(module.n())
     }
 
-    fn vec_znx_big_normalize_default<R, A>(
+    fn vec_znx_big_normalize_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut R,
         res_base2k: usize,
@@ -259,7 +262,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
         a: &A,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i64>
             + ZnxZero
@@ -273,13 +276,15 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFirstStep
             + ZnxExtractDigitAddMul
             + ZnxNormalizeDigit
-            + ZnxNormalizeMiddleStepAssign
-            + ZnxNormalizeFinalStepAssign,
-        Scratch<BE>: TakeSlice,
+            + ZnxNormalizeMiddleStepInplace
+            + ZnxNormalizeFinalStepInplace,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
         R: VecZnxToMut,
         A: VecZnxBigToRef<BE>,
     {
-        let (carry, _) = scratch.take_slice(fft64_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i64>());
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(fft64_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i64>());
         fft64_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
@@ -299,26 +304,31 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
         fft64_vec_znx_big_automorphism_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_big_automorphism_assign_default<R>(
+    fn vec_znx_big_automorphism_inplace_default<'s, R>(
         module: &Module<BE>,
         k: i64,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxAutomorphism + ZnxCopy,
-        Scratch<BE>: TakeSlice,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
         R: VecZnxBigToMut<BE>,
     {
-        let (tmp, _) = scratch.take_slice(fft64_vec_znx_big_automorphism_assign_tmp_bytes(module.n()) / size_of::<i64>());
-        fft64_vec_znx_big_automorphism_assign(k, res, res_col, tmp);
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(fft64_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        fft64_vec_znx_big_automorphism_inplace(k, res, res_col, tmp);
     }
 }
 
-impl<BE: Backend> FFT64VecZnxBigDefaults<BE> for BE {}
+impl<BE: Backend> FFT64VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
 
 #[doc(hidden)]
-pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
+pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
@@ -505,7 +515,7 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
         ntt120_vec_znx_big_normalize_tmp_bytes(module.n())
     }
 
-    fn vec_znx_big_normalize_default<R, A>(
+    fn vec_znx_big_normalize_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut R,
         res_base2k: usize,
@@ -514,14 +524,16 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
         a: &A,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128NormalizeOps,
-        Scratch<BE>: TakeSlice,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
         R: VecZnxToMut,
         A: VecZnxBigToRef<BE>,
     {
-        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        let (carry, _) = scratch
+            .borrow()
+            .take_i128(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
         ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
@@ -581,20 +593,22 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
         ntt120_vec_znx_big_automorphism_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_big_automorphism_assign_default<R>(
+    fn vec_znx_big_automorphism_inplace_default<'s, R>(
         module: &Module<BE>,
         k: i64,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
-        Scratch<BE>: TakeSlice,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
         R: VecZnxBigToMut<BE>,
     {
-        let (tmp, _) = scratch.take_slice(ntt120_vec_znx_big_automorphism_assign_tmp_bytes(module.n()) / size_of::<i128>());
-        ntt120_vec_znx_big_automorphism_assign(k, res, res_col, tmp);
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i128(ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i128>());
+        ntt120_vec_znx_big_automorphism_inplace(k, res, res_col, tmp);
     }
 }
 
-impl<BE: Backend> NTT120VecZnxBigDefaults<BE> for BE {}
+impl<BE: Backend> NTT120VecZnxBigDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}

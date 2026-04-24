@@ -2,8 +2,8 @@ use bytemuck::cast_slice_mut;
 
 use crate::{
     layouts::{
-        Backend, Data, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut,
+        Backend, Data, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBackendMut, VecZnxDftToMut,
+        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::{
         fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},
@@ -161,18 +161,14 @@ pub fn vec_znx_dft_apply<R, A, BE>(
     table: &ReimFFTTable<f64>,
     step: usize,
     offset: usize,
-    res: &mut R,
+    res: &mut VecZnxDftBackendMut<'_, BE>,
     res_col: usize,
-    a: &A,
+    a: &VecZnxBackendRef<'_, BE>,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert!(step > 0);

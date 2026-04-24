@@ -7,8 +7,7 @@ use std::{
 use rand_distr::num_traits::Zero;
 
 use crate::layouts::{
-    Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, Located, VecZnxBig, ZnxInfos, ZnxView,
-    ZnxViewMut, ZnxZero,
+    Backend, Data, DataView, DataViewMut, DigestU64, HostDataMut, HostDataRef, VecZnxBig, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
 };
 
 /// Polynomial vector in DFT (evaluation) domain.
@@ -33,7 +32,7 @@ pub struct VecZnxDft<D: Data, B: Backend> {
     pub _phantom: PhantomData<B>,
 }
 
-impl<D: DataRef, B: Backend> DigestU64 for VecZnxDft<D, B> {
+impl<D: HostDataRef, B: Backend> DigestU64 for VecZnxDft<D, B> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
@@ -45,7 +44,7 @@ impl<D: DataRef, B: Backend> DigestU64 for VecZnxDft<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> ZnxView for VecZnxDft<D, B> {
+impl<D: HostDataRef, B: Backend> ZnxView for VecZnxDft<D, B> {
     type Scalar = B::ScalarPrep;
 }
 
@@ -90,14 +89,14 @@ impl<D: Data, B: Backend> DataViewMut for VecZnxDft<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> VecZnxDft<D, B> {
+impl<D: HostDataRef, B: Backend> VecZnxDft<D, B> {
     /// Returns the allocated capacity (maximum number of limbs).
     pub fn max_size(&self) -> usize {
         self.max_size
     }
 }
 
-impl<D: DataMut, B: Backend> VecZnxDft<D, B> {
+impl<D: HostDataMut, B: Backend> VecZnxDft<D, B> {
     /// Sets the active limb count.
     ///
     /// # Panics
@@ -109,7 +108,7 @@ impl<D: DataMut, B: Backend> VecZnxDft<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> ZnxZero for VecZnxDft<D, B>
+impl<D: HostDataMut, B: Backend> ZnxZero for VecZnxDft<D, B>
 where
     Self: ZnxViewMut,
     <Self as ZnxView>::Scalar: Zero + Copy,
@@ -122,10 +121,9 @@ where
     }
 }
 
-impl<B: Backend> VecZnxDft<DeviceBuf<B>, B> {
+impl<B: Backend> VecZnxDft<<B as Backend>::OwnedBuf, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: DeviceBuf<B> =
-            Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_vec_znx_dft(n, cols, size)));
+        let data: <B as Backend>::OwnedBuf = B::alloc_bytes(B::bytes_of_vec_znx_dft(n, cols, size));
         Self {
             data,
             n,
@@ -139,7 +137,7 @@ impl<B: Backend> VecZnxDft<DeviceBuf<B>, B> {
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == B::bytes_of_vec_znx_dft(n, cols, size));
-        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::from_bytes(data));
+        let data: <B as Backend>::OwnedBuf = B::from_host_bytes(&data);
         Self {
             data,
             n,
@@ -152,7 +150,38 @@ impl<B: Backend> VecZnxDft<DeviceBuf<B>, B> {
 }
 
 /// Owned `VecZnxDft` backed by a backend-owned buffer.
-pub type VecZnxDftOwned<B> = VecZnxDft<DeviceBuf<B>, B>;
+pub type VecZnxDftOwned<B> = VecZnxDft<<B as Backend>::OwnedBuf, B>;
+/// Shared backend-native borrow of a `VecZnxDft`.
+pub type VecZnxDftBackendRef<'a, B> = VecZnxDft<<B as Backend>::BufRef<'a>, B>;
+/// Mutable backend-native borrow of a `VecZnxDft`.
+pub type VecZnxDftBackendMut<'a, B> = VecZnxDft<<B as Backend>::BufMut<'a>, B>;
+
+/// Reborrow a mutable backend-native `VecZnxDft` view as a shared backend-native view.
+pub fn vec_znx_dft_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(
+    vec: &'a VecZnxDftBackendMut<'b, B>,
+) -> VecZnxDftBackendRef<'a, B> {
+    VecZnxDft {
+        data: B::view_ref_mut(&vec.data),
+        n: vec.n,
+        cols: vec.cols,
+        size: vec.size,
+        max_size: vec.max_size,
+        _phantom: PhantomData,
+    }
+}
+
+pub fn vec_znx_dft_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    vec: &'a mut VecZnxDftBackendMut<'b, B>,
+) -> VecZnxDftBackendMut<'a, B> {
+    VecZnxDft {
+        data: B::view_mut_ref(&mut vec.data),
+        n: vec.n,
+        cols: vec.cols,
+        size: vec.size,
+        max_size: vec.max_size,
+        _phantom: PhantomData,
+    }
+}
 
 impl<D: Data, B: Backend> VecZnxDft<D, B> {
     /// Constructs a `VecZnxDft` from raw parts without validation.
@@ -168,12 +197,48 @@ impl<D: Data, B: Backend> VecZnxDft<D, B> {
     }
 }
 
+/// Borrow a backend-owned `VecZnxDft` using the backend's native view type.
+pub trait VecZnxDftToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> VecZnxDftBackendRef<'_, B>;
+}
+
+impl<B: Backend> VecZnxDftToBackendRef<B> for VecZnxDft<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> VecZnxDftBackendRef<'_, B> {
+        VecZnxDft {
+            data: B::view(&self.data),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            max_size: self.max_size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+/// Mutably borrow a backend-owned `VecZnxDft` using the backend's native view type.
+pub trait VecZnxDftToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> VecZnxDftBackendMut<'_, B>;
+}
+
+impl<B: Backend> VecZnxDftToBackendMut<B> for VecZnxDft<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> VecZnxDftBackendMut<'_, B> {
+        VecZnxDft {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            max_size: self.max_size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 /// Borrow a `VecZnxDft` as a shared reference view.
 pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B> {
+impl<D: HostDataRef, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B> {
         VecZnxDft {
             data: self.data.as_ref(),
@@ -191,7 +256,7 @@ pub trait VecZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
+impl<D: HostDataMut, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
             data: self.data.as_mut(),
@@ -204,7 +269,7 @@ impl<D: DataMut, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> fmt::Display for VecZnxDft<D, B> {
+impl<D: HostDataRef, B: Backend> fmt::Display for VecZnxDft<D, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "VecZnxDft(n={}, cols={}, size={})", self.n, self.cols, self.size)?;
 

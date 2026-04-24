@@ -1,15 +1,12 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 
 use crate::{
-    Distribution, EncryptionInfos, GLWEEncryptSk, GetDistribution, GetDistributionMut, ScratchTakeCore,
-    layouts::{
-        GLWEInfos, GLWEToMut,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
-    },
+    Distribution, EncryptionInfos, GLWEEncryptSk, GetDistribution, GetDistributionMut, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, GLWEToMut, prepared::GLWESecretPreparedToBackendRef},
 };
 
 #[doc(hidden)]
@@ -24,14 +21,15 @@ pub trait GLWEPublicKeyGenerateDefault<BE: Backend> {
     ) where
         R: GLWEToMut + GetDistributionMut + GLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE> + GetDistribution;
+        S: GLWESecretPreparedToBackendRef<BE> + GetDistribution;
 }
 
 impl<BE: Backend> GLWEPublicKeyGenerateDefault<BE> for Module<BE>
 where
     Self: GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_public_key_generate<R, S, E>(
         &self,
@@ -43,22 +41,23 @@ where
     ) where
         R: GLWEToMut + GetDistributionMut + GLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE> + GetDistribution,
+        S: GLWESecretPreparedToBackendRef<BE> + GetDistribution,
     {
         {
-            let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+            let sk_ref = sk.to_backend_ref();
 
             assert_eq!(res.n(), self.n() as u32);
-            assert_eq!(sk.n(), self.n() as u32);
+            assert_eq!(sk_ref.n(), self.n() as u32);
 
-            if sk.dist == Distribution::NONE {
+            if sk_ref.dist == Distribution::NONE {
                 panic!("invalid sk: SecretDistribution::NONE")
             }
 
             // Its ok to allocate scratch space here since pk is usually generated only once.
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_encrypt_sk_tmp_bytes(res));
+            let mut scratch: ScratchOwned<BE> =
+                ScratchOwned::alloc(<Module<BE> as GLWEEncryptSk<BE>>::glwe_encrypt_sk_tmp_bytes(self, res));
             let mut res_glwe = res.to_mut();
-            self.glwe_encrypt_zero_sk(&mut res_glwe, sk, enc_infos, source_xe, source_xa, scratch.borrow());
+            self.glwe_encrypt_zero_sk(&mut res_glwe, sk, enc_infos, source_xe, source_xa, &mut scratch.borrow());
         }
         *res.dist_mut() = *sk.dist();
     }

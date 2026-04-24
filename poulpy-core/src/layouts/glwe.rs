@@ -1,10 +1,12 @@
 use poulpy_hal::{
     layouts::{
-        Data, DataMut, DataRef, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, ToOwnedDeep, TransferFrom, VecZnx, VecZnxToBackendMut,
+        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
     },
     source::Source,
 };
 
+use crate::api::ModuleTransfer;
 use crate::layouts::{Base2K, Degree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -76,6 +78,9 @@ pub struct GLWE<D: Data> {
     pub(crate) base2k: Base2K,
 }
 
+pub type GLWEBackendRef<'a, BE> = GLWE<<BE as Backend>::BufRef<'a>>;
+pub type GLWEBackendMut<'a, BE> = GLWE<<BE as Backend>::BufMut<'a>>;
+
 impl<D: DataMut> SetLWEInfos for GLWE<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
@@ -129,6 +134,40 @@ impl<D: DataRef> ToOwnedDeep for GLWE<D> {
     fn to_owned_deep(&self) -> Self::Owned {
         GLWE {
             data: self.data.to_owned_deep(),
+            base2k: self.base2k,
+        }
+    }
+}
+
+impl<D: DataRef> GLWE<D> {
+    /// Copies this ciphertext's backing bytes into an owned buffer of
+    /// backend `To`, routing via host bytes.
+    ///
+    /// `BE` is the backend that produced `self`; `To` is the destination.
+    pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GLWE<To::OwnedBuf>
+    where
+        BE: Backend<OwnedBuf = D>,
+        To: Backend,
+        To: TransferFrom<BE>,
+    {
+        dst.upload_glwe(self)
+    }
+}
+
+impl<D: Data> GLWE<D> {
+    /// Zero-cost rename when both backends share the same `OwnedBuf`.
+    pub fn reinterpret<To>(self) -> GLWE<To::OwnedBuf>
+    where
+        To: Backend<OwnedBuf = D>,
+    {
+        GLWE {
+            data: VecZnx::from_data_with_max_size(
+                self.data.data,
+                self.data.n,
+                self.data.cols,
+                self.data.size,
+                self.data.max_size,
+            ),
             base2k: self.base2k,
         }
     }
@@ -221,6 +260,33 @@ pub trait GLWEToRef: Sized {
     fn to_ref(&self) -> GLWE<&[u8]>;
 }
 
+pub trait GLWEToBackendRef<BE: Backend>: Sized {
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GLWEToBackendRef<BE> for GLWE<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+pub fn glwe_backend_ref_from_ref<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufRef<'b>>) -> GLWEBackendRef<'a, BE> {
+    GLWE {
+        base2k: glwe.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&glwe.data),
+    }
+}
+
+pub fn glwe_backend_ref_from_mut<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufMut<'b>>) -> GLWEBackendRef<'a, BE> {
+    GLWE {
+        base2k: glwe.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&glwe.data),
+    }
+}
+
 impl<D: DataRef> GLWEToRef for GLWE<D> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         GLWE {
@@ -234,6 +300,26 @@ impl<D: DataRef> GLWEToRef for GLWE<D> {
 pub trait GLWEToMut: GLWEToRef {
     /// Borrows the data as `&mut [u8]`.
     fn to_mut(&mut self) -> GLWE<&mut [u8]>;
+}
+
+pub trait GLWEToBackendMut<BE: Backend>: GLWEToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GLWEToBackendMut<BE> for GLWE<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+pub fn glwe_backend_mut_from_mut<'a, 'b, BE: Backend>(glwe: &'a mut GLWE<BE::BufMut<'b>>) -> GLWEBackendMut<'a, BE> {
+    GLWE {
+        base2k: glwe.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut glwe.data),
+    }
 }
 
 impl<D: DataMut> GLWEToMut for GLWE<D> {

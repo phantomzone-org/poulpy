@@ -3,9 +3,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::layouts::{
-    Backend, Data, DataMut, DataRef, DataView, DataViewMut, Device, DeviceBuf, DigestU64, Located, ZnxInfos, ZnxView,
-};
+use crate::layouts::{Backend, Data, DataView, DataViewMut, DigestU64, HostDataMut, HostDataRef, ZnxInfos, ZnxView};
 
 /// Prepared (DFT-domain) polynomial matrix for vector-matrix products.
 ///
@@ -32,7 +30,7 @@ pub struct VmpPMat<D: Data, B: Backend> {
     _phantom: PhantomData<B>,
 }
 
-impl<D: DataRef, B: Backend> DigestU64 for VmpPMat<D, B> {
+impl<D: HostDataRef, B: Backend> DigestU64 for VmpPMat<D, B> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
@@ -45,7 +43,7 @@ impl<D: DataRef, B: Backend> DigestU64 for VmpPMat<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> ZnxView for VmpPMat<D, B> {
+impl<D: HostDataRef, B: Backend> ZnxView for VmpPMat<D, B> {
     type Scalar = B::ScalarPrep;
 }
 
@@ -96,11 +94,9 @@ impl<D: Data, B: Backend> VmpPMat<D, B> {
     }
 }
 
-impl<B: Backend> VmpPMat<DeviceBuf<B>, B> {
+impl<B: Backend> VmpPMat<<B as Backend>::OwnedBuf, B> {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: DeviceBuf<B> = Located::<Device, <B as Backend>::OwnedBuf>::new(B::alloc_bytes(B::bytes_of_vmp_pmat(
-            n, rows, cols_in, cols_out, size,
-        )));
+        let data: <B as Backend>::OwnedBuf = B::alloc_bytes(B::bytes_of_vmp_pmat(n, rows, cols_in, cols_out, size));
         Self {
             data,
             n,
@@ -114,16 +110,85 @@ impl<B: Backend> VmpPMat<DeviceBuf<B>, B> {
 }
 
 /// Owned `VmpPMat` backed by a backend-owned buffer.
-pub type VmpPMatOwned<B> = VmpPMat<DeviceBuf<B>, B>;
+pub type VmpPMatOwned<B> = VmpPMat<<B as Backend>::OwnedBuf, B>;
 /// Immutably borrowed `VmpPMat`.
 pub type VmpPMatRef<'a, B> = VmpPMat<&'a [u8], B>;
+/// Shared backend-native borrow of a `VmpPMat`.
+pub type VmpPMatBackendRef<'a, B> = VmpPMat<<B as Backend>::BufRef<'a>, B>;
+/// Mutable backend-native borrow of a `VmpPMat`.
+pub type VmpPMatBackendMut<'a, B> = VmpPMat<<B as Backend>::BufMut<'a>, B>;
+
+/// Reborrow a mutable backend-native `VmpPMat` view as a shared backend-native view.
+pub fn vmp_pmat_backend_ref_from_mut<'a, B: Backend>(pmat: &'a VmpPMatBackendMut<'a, B>) -> VmpPMatBackendRef<'a, B> {
+    VmpPMat {
+        data: B::view_ref_mut(&pmat.data),
+        n: pmat.n,
+        rows: pmat.rows,
+        cols_in: pmat.cols_in,
+        cols_out: pmat.cols_out,
+        size: pmat.size,
+        _phantom: PhantomData,
+    }
+}
+
+pub fn vmp_pmat_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    pmat: &'a mut VmpPMatBackendMut<'b, B>,
+) -> VmpPMatBackendMut<'a, B> {
+    VmpPMat {
+        data: B::view_mut_ref(&mut pmat.data),
+        n: pmat.n,
+        rows: pmat.rows,
+        cols_in: pmat.cols_in,
+        cols_out: pmat.cols_out,
+        size: pmat.size,
+        _phantom: PhantomData,
+    }
+}
+
+/// Borrow a backend-owned `VmpPMat` using the backend's native view type.
+pub trait VmpPMatToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> VmpPMatBackendRef<'_, B>;
+}
+
+impl<B: Backend> VmpPMatToBackendRef<B> for VmpPMat<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> VmpPMatBackendRef<'_, B> {
+        VmpPMat {
+            data: B::view(&self.data),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+/// Mutably borrow a backend-owned `VmpPMat` using the backend's native view type.
+pub trait VmpPMatToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> VmpPMatBackendMut<'_, B>;
+}
+
+impl<B: Backend> VmpPMatToBackendMut<B> for VmpPMat<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> VmpPMatBackendMut<'_, B> {
+        VmpPMat {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
 
 /// Borrow a `VmpPMat` as a shared reference view.
 pub trait VmpPMatToRef<B: Backend> {
     fn to_ref(&self) -> VmpPMat<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> VmpPMatToRef<B> for VmpPMat<D, B> {
+impl<D: HostDataRef, B: Backend> VmpPMatToRef<B> for VmpPMat<D, B> {
     fn to_ref(&self) -> VmpPMat<&[u8], B> {
         VmpPMat {
             data: self.data.as_ref(),
@@ -142,7 +207,7 @@ pub trait VmpPMatToMut<B: Backend> {
     fn to_mut(&mut self) -> VmpPMat<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> VmpPMatToMut<B> for VmpPMat<D, B> {
+impl<D: HostDataMut, B: Backend> VmpPMatToMut<B> for VmpPMat<D, B> {
     fn to_mut(&mut self) -> VmpPMat<&mut [u8], B> {
         VmpPMat {
             data: self.data.as_mut(),

@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
+    layouts::{Backend, DataMut, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use poulpy_core::{
-    Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchTakeCore,
-    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToRef, LWEInfos, LWESecret, LWESecretToRef},
+    Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchArenaTakeCore,
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 
 use crate::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};
@@ -13,13 +13,15 @@ use crate::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};
 impl<BE: Backend> BlindRotationKeyEncryptSk<CGGI, BE> for Module<BE>
 where
     Self: GGSWEncryptSk<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    // TODO(device): this implementation is still host-backed because the
+    // plaintext staging buffer is built via host-visible scalar views.
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn blind_rotation_key_encrypt_sk_tmp_bytes<A: GGSWInfos>(&self, infos: &A) -> usize {
         self.ggsw_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn blind_rotation_key_encrypt_sk<D, S0, S1, E>(
+    fn blind_rotation_key_encrypt_sk<'s, D, S0, S1, E>(
         &self,
         res: &mut BlindRotationKey<D, CGGI>,
         sk_glwe: &S0,
@@ -27,12 +29,14 @@ where
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         D: DataMut,
-        S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         assert_eq!(res.keys.len() as u32, sk_lwe.n());
         assert!(sk_glwe.n() <= self.n() as u32);
@@ -55,7 +59,8 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                self.ggsw_encrypt_sk(ggsw, &pt, sk_glwe, enc_infos, source_xe, source_xa, scratch);
+                let mut scratch_iter = scratch.borrow();
+                self.ggsw_encrypt_sk(ggsw, &pt, sk_glwe, enc_infos, source_xe, source_xa, &mut scratch_iter);
             }
         }
     }

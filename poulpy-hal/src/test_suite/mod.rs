@@ -5,6 +5,8 @@
 //! [`cross_backend_test_suite!`](crate::cross_backend_test_suite) macros.
 //! Tests validate correctness against the [`crate::reference`] implementation.
 
+use crate::layouts::{Backend, DataMut, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut, VecZnxToBackendRef};
+
 pub mod convolution;
 pub mod serialization;
 pub mod svp;
@@ -29,6 +31,32 @@ pub struct TestParams {
     /// this value via fixed offsets that preserve the original relative
     /// relationships between bases.
     pub base2k: usize,
+}
+
+/// Host-visible backend bound used by the generic test suites.
+///
+/// The current HAL tests allocate owned layouts directly from `BE::OwnedBuf`
+/// and inspect them through host-byte utilities, so they require the backend's
+/// owned storage to remain host-readable and byte-backed.
+pub trait TestBackend: Backend<OwnedBuf = Vec<u8>>
+where
+    Self::OwnedBuf: DataMut,
+{
+}
+
+impl<BE> TestBackend for BE
+where
+    BE: Backend<OwnedBuf = Vec<u8>>,
+    BE::OwnedBuf: DataMut,
+{
+}
+
+pub fn vec_znx_backend_ref<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a VecZnx<BE::OwnedBuf>) -> VecZnxBackendRef<'a, BE> {
+    <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(vec)
+}
+
+pub fn vec_znx_backend_mut<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a mut VecZnx<BE::OwnedBuf>) -> VecZnxBackendMut<'a, BE> {
+    <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(vec)
 }
 
 #[macro_export]

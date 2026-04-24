@@ -1,19 +1,52 @@
-use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, Module, Scratch, Stats},
-};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena, Stats};
 
 use crate::{
-    GLWENormalize, GLWESub, ScratchTakeCore,
+    GLWENormalize, GLWESub, ScratchArenaTakeCore,
     api::GLWENoise,
-    decryption::GLWEDecrypt,
-    layouts::{GLWEInfos, GLWEPlaintext, GLWEToRef, LWEInfos, prepared::GLWESecretPreparedToRef},
+    decryption::{GLWEDecrypt, GLWEDecryptDefault, glwe_decrypt_backend_inner},
+    layouts::{
+        GLWE, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWEToBackendRef, GLWEToRef, LWEInfos,
+        prepared::{GLWESecretPreparedBackendRef, GLWESecretPreparedToBackendRef},
+    },
 };
+
+pub(crate) fn glwe_noise_backend_inner<'s, M, P, BE: Backend>(
+    module: &M,
+    res_ref: &GLWE<&[u8]>,
+    res_backend: &GLWEBackendRef<'_, BE>,
+    pt_want: &P,
+    sk_backend: &GLWESecretPreparedBackendRef<'_, BE>,
+    scratch: &mut ScratchArena<'s, BE>,
+) -> Stats
+where
+    M: GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    P: GLWEToRef,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
+{
+    assert!(
+        scratch.available() >= module.glwe_noise_tmp_bytes(res_ref),
+        "scratch.available(): {} < GLWENoise::glwe_noise_tmp_bytes: {}",
+        scratch.available(),
+        module.glwe_noise_tmp_bytes(res_ref)
+    );
+
+    let (mut pt_have, mut scratch_1) = scratch.borrow().take_glwe_plaintext(res_ref);
+    glwe_decrypt_backend_inner(module, res_ref, res_backend, &mut pt_have, sk_backend, &mut scratch_1);
+    module.glwe_sub_inplace(&mut pt_have, pt_want);
+    let pt_base2k = pt_have.base2k();
+    let mut pt_have_backend = GLWE {
+        base2k: pt_have.base2k,
+        data: pt_have.data,
+    };
+    module.glwe_normalize_inplace(&mut pt_have_backend, &mut scratch_1);
+    pt_have_backend.data.stats(pt_base2k.into(), 0)
+}
 
 impl<BE: Backend> GLWENoise<BE> for Module<BE>
 where
-    Module<BE>: GLWEDecrypt<BE> + GLWESub + GLWENormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Module<BE>: GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn glwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -25,23 +58,16 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_noise<R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats
+    fn glwe_noise<'s, R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut ScratchArena<'s, BE>) -> Stats
     where
-        R: GLWEToRef + GLWEInfos,
+        R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     {
-        assert!(
-            scratch.available() >= self.glwe_noise_tmp_bytes(res),
-            "scratch.available(): {} < GLWENoise::glwe_noise_tmp_bytes: {}",
-            scratch.available(),
-            self.glwe_noise_tmp_bytes(res)
-        );
-
-        let (mut pt_have, scratch_1) = scratch.take_glwe_plaintext(res);
-        self.glwe_decrypt(res, &mut pt_have, sk_prepared, scratch_1);
-        self.glwe_sub_assign(&mut pt_have, pt_want);
-        self.glwe_normalize_assign(&mut pt_have, scratch_1);
-        pt_have.data.stats(pt_have.base2k().into(), 0)
+        let res_ref = res.to_ref();
+        let res_backend = res.to_backend_ref();
+        let sk_backend = sk_prepared.to_backend_ref();
+        glwe_noise_backend_inner(self, &res_ref, &res_backend, pt_want, &sk_backend, scratch)
     }
 }

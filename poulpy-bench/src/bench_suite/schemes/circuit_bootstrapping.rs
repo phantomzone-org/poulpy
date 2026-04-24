@@ -2,15 +2,15 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk,
     layouts::{
         Dsize, GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret,
         GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
     },
 };
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssign},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, Module, ScratchOwned},
     source::Source,
 };
 
@@ -23,7 +23,7 @@ use poulpy_bin_fhe::{
     },
 };
 
-pub fn bench_circuit_bootstrapping<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -39,7 +39,6 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxRotateAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let group_name: String = format!("circuit_bootstrapping::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -113,18 +112,18 @@ where
         &cbt_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_infos);
-    cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
+    cbt_prepared.prepare(&module, &cbt_key, &mut scratch.borrow());
 
     let id: BenchmarkId = BenchmarkId::from_parameter("1-bit");
     group.bench_with_input(id, &(), |b, _| {
         b.iter(|| {
-            cbt_prepared.execute_to_constant(&module, &mut res, &ct_lwe, 1, 1, scratch.borrow());
+            cbt_prepared.execute_to_constant(&module, &mut res, &ct_lwe, 1, 1, &mut scratch.borrow());
             black_box(());
         })
     });

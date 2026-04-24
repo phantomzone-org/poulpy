@@ -1,8 +1,10 @@
+#![allow(clippy::multiple_bound_locations)]
+
 use anyhow::Result;
 use itertools::Itertools;
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution,
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
         GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
@@ -14,7 +16,9 @@ use std::collections::HashMap;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, NoiseInfos, ReaderFrom, Scratch, WriterTo},
+    api::{ScratchFromBytes, ScratchOwnedAlloc},
+    layouts::{Backend, Data, DataMut, DataRef, Module, NoiseInfos, ReaderFrom, Scratch, ScratchArena, ScratchOwned, WriterTo},
+    oep::HalScratchImpl,
     source::Source,
 };
 
@@ -105,7 +109,7 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
 /// and tensor-switching key encryption.  The module-level implementation
 /// derives a fresh intermediate GLWE secret, prepares it, and delegates to
 /// the individual sub-key encryption routines.
-pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
+pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
     /// Returns the minimum scratch-space size (in bytes) required by
     /// [`circuit_bootstrapping_key_encrypt_sk`][Self::circuit_bootstrapping_key_encrypt_sk].
     fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -118,7 +122,7 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> 
     /// Scratch space is reused across sub-key encryptions (peak is the maximum
     /// of the three individual requirements).
     #[allow(clippy::too_many_arguments)]
-    fn circuit_bootstrapping_key_encrypt_sk<D, S0, S1>(
+    fn circuit_bootstrapping_key_encrypt_sk<'s, D, S0, S1>(
         &self,
         res: &mut CircuitBootstrappingKey<D, BRA>,
         sk_lwe: &S0,
@@ -126,11 +130,12 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> 
         enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         D: DataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GLWEInfos + GetDistribution;
+        S1: GLWESecretToRef + GLWEInfos + GetDistribution,
+        BE: 's;
 }
 
 impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
@@ -186,7 +191,7 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
 
 impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<M, S0, S1, BE: Backend>(
+    pub fn encrypt_sk<'s, M, S0, S1, BE: Backend<OwnedBuf = Vec<u8>>>(
         &mut self,
         module: &M,
         sk_lwe: &S0,
@@ -194,23 +199,27 @@ impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
         enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         M: CircuitBootstrappingKeyEncryptSk<BRA, BE>,
+        BE: 's,
     {
         module.circuit_bootstrapping_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyEncryptSk<BRA, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingKeyEncryptSk<BRA, BE> for Module<BE>
 where
     Self: GGLWEToGGSWKeyEncryptSk<BE>
         + BlindRotationKeyEncryptSk<BRA, BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    BE::OwnedBuf: DataMut + DataRef,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
+    BE: HalScratchImpl<BE>,
 {
     fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -221,7 +230,7 @@ where
             .max(self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&infos.tsk_infos()))
     }
 
-    fn circuit_bootstrapping_key_encrypt_sk<D, S0, S1>(
+    fn circuit_bootstrapping_key_encrypt_sk<'s, D, S0, S1>(
         &self,
         res: &mut CircuitBootstrappingKey<D, BRA>,
         sk_lwe: &S0,
@@ -229,12 +238,18 @@ where
         enc_infos: &CircuitBootstrappingEncryptionInfos,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         D: DataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
+        BE: 's,
     {
+        // TODO(device): this bundle encryptor is still effectively host-backed
+        // through the current blind-rotation / automorphism / tensor key
+        // encryptors. Keep the public trait backend-generic and move the host
+        // assumptions down into the sub-key implementations until each path is
+        // migrated.
         let brk_infos: &BlindRotationKeyLayout = &res.brk_infos();
         let atk_infos: &GLWEAutomorphismKeyLayout = &res.atk_infos();
         let tsk_infos: &GGLWEToGGSWKeyLayout = &res.tsk_infos();
@@ -248,11 +263,13 @@ where
 
         let gal_els: Vec<i64> = res.atk.keys().sorted().copied().collect();
         for p in gal_els {
-            let key = res.atk.get_mut(&p).unwrap();
-            self.glwe_automorphism_key_encrypt_sk(key, p, sk_glwe, &enc_infos.atk, source_xe, source_xa, scratch);
+            let atk = res.atk.get_mut(&p).unwrap();
+            let mut atk_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_automorphism_key_encrypt_sk_tmp_bytes(atk));
+            let atk_scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(atk_scratch.data.as_mut_slice());
+            self.glwe_automorphism_key_encrypt_sk(atk, p, sk_glwe, &enc_infos.atk, source_xe, source_xa, atk_scratch_ref);
         }
 
-        let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
+        let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = self.glwe_secret_prepared_alloc(brk_infos.rank());
         self.glwe_secret_prepare(&mut sk_glwe_prepared, sk_glwe);
 
         self.blind_rotation_key_encrypt_sk(
@@ -265,7 +282,9 @@ where
             scratch,
         );
 
-        self.gglwe_to_ggsw_key_encrypt_sk(&mut res.tsk, sk_glwe, &enc_infos.tsk, source_xe, source_xa, scratch);
+        let mut tsk_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&res.tsk));
+        let tsk_scratch_ref = <Scratch<BE> as ScratchFromBytes<BE>>::from_bytes(tsk_scratch.data.as_mut_slice());
+        self.gglwe_to_ggsw_key_encrypt_sk(&mut res.tsk, sk_glwe, &enc_infos.tsk, source_xe, source_xa, tsk_scratch_ref);
     }
 }
 

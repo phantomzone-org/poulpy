@@ -1,8 +1,15 @@
 use std::fmt;
 
-use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
+use poulpy_hal::layouts::{
+    Backend, Data, DataMut, DataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
+    VecZnxToRef, ZnxInfos,
+};
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
+use crate::api::ModuleTransfer;
+use crate::layouts::{
+    Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, Rank, SetLWEInfos,
+    TorusPrecision,
+};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPlaintextLayout {
@@ -36,6 +43,9 @@ pub struct GLWEPlaintext<D: Data> {
     pub base2k: Base2K,
 }
 
+pub type GLWEPlaintextBackendRef<'a, BE> = GLWEPlaintext<<BE as Backend>::BufRef<'a>>;
+pub type GLWEPlaintextBackendMut<'a, BE> = GLWEPlaintext<<BE as Backend>::BufMut<'a>>;
+
 impl<D: DataMut> SetLWEInfos for GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
@@ -59,6 +69,38 @@ impl<D: Data> LWEInfos for GLWEPlaintext<D> {
 impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32 - 1)
+    }
+}
+
+impl<D: DataRef> GLWEPlaintext<D> {
+    /// Copies this plaintext's backing bytes into an owned buffer of
+    /// backend `To`, routing via host bytes.
+    pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GLWEPlaintext<To::OwnedBuf>
+    where
+        BE: Backend<OwnedBuf = D>,
+        To: Backend,
+        To: TransferFrom<BE>,
+    {
+        dst.upload_glwe_plaintext(self)
+    }
+}
+
+impl<D: Data> GLWEPlaintext<D> {
+    /// Zero-cost rename when both backends share the same `OwnedBuf`.
+    pub fn reinterpret<To>(self) -> GLWEPlaintext<To::OwnedBuf>
+    where
+        To: Backend<OwnedBuf = D>,
+    {
+        GLWEPlaintext {
+            data: VecZnx::from_data_with_max_size(
+                self.data.data,
+                self.data.n,
+                self.data.cols,
+                self.data.size,
+                self.data.max_size,
+            ),
+            base2k: self.base2k,
+        }
     }
 }
 
@@ -119,6 +161,15 @@ impl<D: DataRef> GLWEToRef for GLWEPlaintext<D> {
     }
 }
 
+impl<BE: Backend> GLWEToBackendRef<BE> for GLWEPlaintext<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
 impl<D: DataMut> GLWEToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
@@ -128,8 +179,30 @@ impl<D: DataMut> GLWEToMut for GLWEPlaintext<D> {
     }
 }
 
+impl<BE: Backend> GLWEToBackendMut<BE> for GLWEPlaintext<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
+        GLWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
 pub trait GLWEPlaintextToRef {
     fn to_ref(&self) -> GLWEPlaintext<&[u8]>;
+}
+
+pub trait GLWEPlaintextToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GLWEPlaintextToBackendRef<BE> for GLWEPlaintext<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE> {
+        GLWEPlaintext {
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+            base2k: self.base2k,
+        }
+    }
 }
 
 impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
@@ -143,6 +216,19 @@ impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
 
 pub trait GLWEPlaintextToMut {
     fn to_mut(&mut self) -> GLWEPlaintext<&mut [u8]>;
+}
+
+pub trait GLWEPlaintextToBackendMut<BE: Backend>: GLWEPlaintextToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GLWEPlaintextBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GLWEPlaintextToBackendMut<BE> for GLWEPlaintext<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWEPlaintextBackendMut<'_, BE> {
+        GLWEPlaintext {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
 }
 
 impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {

@@ -1,9 +1,9 @@
 use dashu_float::{Context, FBig, round::mode::HalfEven};
 use itertools::izip;
 
-use crate::layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
+use crate::layouts::{HostDataMut, HostDataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
 
-impl<D: DataMut> VecZnx<D> {
+impl<D: HostDataMut> VecZnx<D> {
     /// Encodes an `i64` slice into the limb-decomposed (base-2^k) representation.
     ///
     /// The input `data` (length `N`) is placed at the appropriate limb position
@@ -155,7 +155,7 @@ impl<D: DataMut> VecZnx<D> {
     }
 }
 
-impl<D: DataRef> VecZnx<D> {
+impl<D: HostDataRef> VecZnx<D> {
     /// Decodes column `col` from the limb-decomposed representation back into
     /// an `i64` slice, reconstructing values up to `k` bits of precision.
     pub fn decode_vec_i64(&self, base2k: usize, col: usize, k: usize, data: &mut [i64]) {

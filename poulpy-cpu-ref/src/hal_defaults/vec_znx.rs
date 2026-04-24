@@ -2,7 +2,6 @@
 
 use std::mem::size_of;
 
-use crate::hal_defaults::scratch::HalScratchDefaults;
 use crate::reference::vec_znx::{
     vec_znx_add_assign, vec_znx_add_into, vec_znx_add_normal_ref, vec_znx_add_scalar_assign, vec_znx_add_scalar_into,
     vec_znx_automorphism, vec_znx_automorphism_assign, vec_znx_automorphism_assign_tmp_bytes, vec_znx_copy,
@@ -22,11 +21,18 @@ use crate::reference::znx::{
     ZnxSwitchRing, ZnxZero,
 };
 use poulpy_hal::{
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    api::ScratchArenaTakeHost,
+    layouts::{
+        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
+        VecZnxToRef,
+    },
     source::Source,
 };
 #[doc(hidden)]
-pub trait HalVecZnxDefaults<BE: Backend>: Backend {
+pub trait HalVecZnxDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn vec_znx_zero_default<R>(_module: &Module<BE>, res: &mut R, res_col: usize)
     where
         BE: ZnxZero,
@@ -35,22 +41,31 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         vec_znx_zero::<R, BE>(res, res_col);
     }
 
+    fn vec_znx_zero_backend_default<'r>(_module: &Module<BE>, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize)
+    where
+        BE: ZnxZero,
+        BE::BufMut<'r>: HostDataMut,
+    {
+        vec_znx_zero::<VecZnxBackendMut<'r, BE>, BE>(res, res_col);
+    }
+
     fn vec_znx_normalize_tmp_bytes_default(module: &Module<BE>) -> usize {
         vec_znx_normalize_tmp_bytes(module.n())
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_normalize_default<R, A>(
+    fn vec_znx_normalize_default<'s, 'r, 'a>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_base2k: usize,
         res_offset: i64,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxCopy
             + ZnxAddAssign
@@ -64,8 +79,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepAssign
             + ZnxNormalizeFinalStepAssign
             + ZnxNormalizeDigit,
-        R: VecZnxToMut,
-        A: VecZnxToRef,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
         assert!(
@@ -74,19 +90,23 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             byte_count,
             size_of::<i64>()
         );
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(scratch, byte_count / size_of::<i64>());
-        vec_znx_normalize::<R, A, BE>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        vec_znx_normalize::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
+            res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry,
+        );
     }
 
-    fn vec_znx_normalize_assign_default<R>(
+    fn vec_znx_normalize_inplace_default<'s, R>(
         module: &Module<BE>,
         base2k: usize,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
-        BE: ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
+        BE: 's,
+        BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
         R: VecZnxToMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
         assert!(
@@ -95,8 +115,31 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             byte_count,
             size_of::<i64>()
         );
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(scratch, byte_count / size_of::<i64>());
-        vec_znx_normalize_assign::<R, BE>(base2k, res, res_col, carry);
+        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        vec_znx_normalize_inplace::<R, BE>(base2k, res, res_col, carry);
+    }
+
+    fn vec_znx_normalize_inplace_backend_default<'s, 'r>(
+        module: &Module<BE>,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
+        BE: 's,
+        BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
+        BE::BufMut<'r>: HostDataMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
+    {
+        let byte_count = vec_znx_normalize_tmp_bytes(module.n());
+        assert!(
+            byte_count.is_multiple_of(size_of::<i64>()),
+            "Scratch buffer size {} must be divisible by {}",
+            byte_count,
+            size_of::<i64>()
+        );
+        let (carry, _) = scratch.borrow().take_i64(byte_count / size_of::<i64>());
+        vec_znx_normalize_inplace::<VecZnxBackendMut<'r, BE>, BE>(base2k, res, res_col, carry);
     }
 
     fn vec_znx_add_into_default<R, A, C>(
@@ -243,7 +286,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_default<R, A>(
+    fn vec_znx_rsh_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -251,8 +294,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxCopy
             + ZnxNormalizeFirstStepCarryOnly
@@ -264,16 +308,16 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh::<R, A, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_add_into_default<R, A>(
+    fn vec_znx_rsh_add_into_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -281,8 +325,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxCopy
             + ZnxNormalizeFirstStepCarryOnly
@@ -294,11 +339,11 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh::<R, A, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
@@ -307,7 +352,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_default<R, A>(
+    fn vec_znx_lsh_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -315,8 +360,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxNormalizeFirstStep
             + ZnxNormalizeMiddleStep
@@ -326,16 +372,16 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh::<R, A, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_add_into_default<R, A>(
+    fn vec_znx_lsh_add_into_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -343,8 +389,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxNormalizeFirstStep
             + ZnxNormalizeMiddleStep
@@ -354,16 +401,16 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh::<R, A, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_sub_default<R, A>(
+    fn vec_znx_lsh_sub_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -371,8 +418,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepSub
@@ -380,16 +428,16 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepCarryOnly,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_lsh_sub::<R, A, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_sub_default<R, A>(
+    fn vec_znx_rsh_sub_default<'s, R, A>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -397,8 +445,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxCopy
             + ZnxNormalizeFirstStepCarryOnly
@@ -409,22 +458,23 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_rsh_sub::<R, A, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
-    fn vec_znx_rsh_assign_default<R>(
+    fn vec_znx_rsh_inplace_default<'s, R>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxZero
             + ZnxCopy
             + ZnxNormalizeFirstStepCarryOnly
@@ -434,55 +484,68 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFirstStepAssign
             + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
-        vec_znx_rsh_assign::<R, BE>(base2k, k, res, res_col, carry);
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
+        vec_znx_rsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
     }
 
-    fn vec_znx_lsh_assign_default<R>(
+    fn vec_znx_lsh_inplace_default<'s, R>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
-        BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
+        BE: 's,
+        BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
         R: VecZnxToMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
-        vec_znx_lsh_assign::<R, BE>(base2k, k, res, res_col, carry);
+        let (carry, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
+        vec_znx_lsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
     }
 
-    fn vec_znx_rotate_default<R, A>(_module: &Module<BE>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+    fn vec_znx_rotate_default<'r, 'a>(
+        _module: &Module<BE>,
+        p: i64,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+    ) where
         BE: ZnxRotate + ZnxZero,
-        R: VecZnxToMut,
-        A: VecZnxToRef,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     {
-        vec_znx_rotate::<R, A, BE>(p, res, res_col, a, a_col);
+        vec_znx_rotate::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(p, res, res_col, a, a_col);
     }
 
     fn vec_znx_rotate_assign_tmp_bytes_default(module: &Module<BE>) -> usize {
         vec_znx_rotate_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_rotate_assign_default<R>(module: &Module<BE>, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<BE>)
-    where
+    fn vec_znx_rotate_inplace_default<'s, 'r>(
+        module: &Module<BE>,
+        p: i64,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
+        BE: 's,
         BE: ZnxRotate + ZnxCopy,
-        R: VecZnxToMut,
+        BE::BufMut<'r>: HostDataMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_rotate_assign_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
-        vec_znx_rotate_assign::<R, BE>(p, res, res_col, tmp);
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_rotate_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        vec_znx_rotate_inplace::<VecZnxBackendMut<'r, BE>, BE>(p, res, res_col, tmp);
     }
 
     fn vec_znx_automorphism_default<R, A>(_module: &Module<BE>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -498,16 +561,22 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         vec_znx_automorphism_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_automorphism_assign_default<R>(module: &Module<BE>, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<BE>)
-    where
+    fn vec_znx_automorphism_inplace_default<'s, 'r>(
+        module: &Module<BE>,
+        p: i64,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
+        BE: 's,
         BE: ZnxAutomorphism + ZnxCopy,
-        R: VecZnxToMut,
+        BE::BufMut<'r>: HostDataMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_automorphism_assign_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
-        vec_znx_automorphism_assign::<R, BE>(p, res, res_col, tmp);
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_automorphism_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        vec_znx_automorphism_inplace::<VecZnxBackendMut<'r, BE>, BE>(p, res, res_col, tmp);
     }
 
     fn vec_znx_mul_xp_minus_one_default<R, A>(_module: &Module<BE>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -523,43 +592,45 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         vec_znx_mul_xp_minus_one_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_mul_xp_minus_one_assign_default<R>(
+    fn vec_znx_mul_xp_minus_one_inplace_default<'s, R>(
         module: &Module<BE>,
         p: i64,
         res: &mut R,
         res_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
-        BE: ZnxRotate + ZnxNegate + ZnxSubNegateAssign,
+        BE: 's,
+        BE: ZnxRotate + ZnxNegate + ZnxSubNegateInplace,
         R: VecZnxToMut,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_mul_xp_minus_one_assign_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
-        vec_znx_mul_xp_minus_one_assign::<R, BE>(p, res, res_col, tmp);
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_mul_xp_minus_one_inplace_tmp_bytes(module.n()) / size_of::<i64>());
+        vec_znx_mul_xp_minus_one_inplace::<R, BE>(p, res, res_col, tmp);
     }
 
     fn vec_znx_split_ring_tmp_bytes_default(module: &Module<BE>) -> usize {
         vec_znx_split_ring_tmp_bytes(module.n())
     }
 
-    fn vec_znx_split_ring_default<R, A>(
+    fn vec_znx_split_ring_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut [R],
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxSwitchRing + ZnxRotate + ZnxZero,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_split_ring_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_split_ring_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_split_ring::<R, A, BE>(res, res_col, a, a_col, tmp);
     }
 
@@ -567,22 +638,23 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         vec_znx_merge_rings_tmp_bytes(module.n())
     }
 
-    fn vec_znx_merge_rings_default<R, A>(
+    fn vec_znx_merge_rings_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &[A],
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
         BE: ZnxCopy + ZnxSwitchRing + ZnxRotate + ZnxZero,
         R: VecZnxToMut,
         A: VecZnxToRef,
+        ScratchArena<'s, BE>: ScratchArenaTakeHost<'s, BE>,
     {
-        let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
-            scratch,
-            vec_znx_merge_rings_tmp_bytes(module.n()) / size_of::<i64>(),
-        );
+        let (tmp, _) = scratch
+            .borrow()
+            .take_i64(vec_znx_merge_rings_tmp_bytes(module.n()) / size_of::<i64>());
         vec_znx_merge_rings::<R, A, BE>(res, res_col, a, a_col, tmp);
     }
 
@@ -638,4 +710,4 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> HalVecZnxDefaults<BE> for BE {}
+impl<BE: Backend> HalVecZnxDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}

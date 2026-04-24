@@ -1,24 +1,26 @@
 use dashu_float::{FBig, round::mode::HalfEven};
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize},
-    layouts::{DeviceBuf, FillUniform, Module, Scratch, ScratchOwned, ZnxView},
+    layouts::{FillUniform, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
-    test_suite::TestParams,
+    test_suite::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref},
 };
 
 use crate::{
     DEFAULT_SIGMA_XE, EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize,
     GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
-        GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
-        LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision,
-        prepared::GLWESecretPrepared,
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut,
+        GLWEToBackendRef, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos,
+        LWELayout, LWEPlaintext, LWESecret, LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory,
+        Rank, TorusPrecision, prepared::GLWESecretPrepared,
     },
 };
 
 pub fn test_glwe_base2k_conversion<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + GLWENormalize<BE>
@@ -59,7 +61,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            let mut sk_prep: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
             module.glwe_secret_prepare(&mut sk_prep, &sk);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -81,19 +83,26 @@ where
                 &glwe_infos_in,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             let mut data: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
 
             ct_out.fill_uniform(ct_out.base2k().into(), &mut source_xa);
-            module.glwe_normalize(&mut ct_out, &ct_in, scratch.borrow());
+            {
+                let mut ct_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_out);
+                let ct_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&ct_in);
+                module.glwe_normalize(&mut ct_out_backend, &ct_in_backend, &mut scratch.borrow());
+            }
 
             let mut data_conv: Vec<FBig<HalfEven>> = (0..module.n()).map(|_| FBig::ZERO).collect();
             ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
-            let noise_have = module.glwe_noise(&ct_out, &pt_out, &sk_prep, scratch.borrow()).std().log2();
+            let noise_have = module
+                .glwe_noise(&ct_out, &pt_out, &sk_prep, &mut scratch.borrow())
+                .std()
+                .log2();
             let noise_max = -(k_out as f64) + DEFAULT_SIGMA_XE.log2() + 0.50;
 
             assert!(noise_have <= noise_max, "noise_have: {noise_have} > noise_max: {noise_max}")
@@ -103,6 +112,8 @@ where
 
 pub fn test_lwe_to_glwe<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEFromLWE<BE>
         + LWEToGLWESwitchingKeyEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -159,7 +170,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
     module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
@@ -178,7 +189,7 @@ where
         &lwe_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
@@ -190,30 +201,30 @@ where
         &lwe_to_glwe_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        crate::test_suite::scratch_host_mut(&mut scratch),
     );
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut ksk_prepared: LWEToGLWEKeyPrepared<DeviceBuf<BE>, BE> = module.lwe_to_glwe_key_prepared_alloc_from_infos(&ksk);
-    module.lwe_to_glwe_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: LWEToGLWEKeyPrepared<BE::OwnedBuf, BE> = module.lwe_to_glwe_key_prepared_alloc_from_infos(&ksk);
+    module.lwe_to_glwe_key_prepare(&mut ksk_prepared, &ksk, &mut scratch.borrow());
 
-    module.glwe_from_lwe(&mut glwe_ct, &lwe_ct, &ksk_prepared, scratch.borrow());
+    module.glwe_from_lwe(&mut glwe_ct, &lwe_ct, &ksk_prepared, &mut scratch.borrow());
 
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
-    module.glwe_decrypt(&glwe_ct, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
+    module.glwe_decrypt(&glwe_ct, &mut glwe_pt, &sk_glwe_prepared, &mut scratch.borrow());
 
     let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.max_k());
 
     module.vec_znx_normalize(
-        lwe_pt_conv.data_mut(),
+        &mut vec_znx_backend_mut::<BE>(&mut lwe_pt_conv.data),
         glwe_pt.base2k().as_usize(),
         0,
         0,
-        lwe_pt.data(),
+        &vec_znx_backend_ref::<BE>(&lwe_pt.data),
         lwe_pt.base2k().as_usize(),
         0,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt_conv.data.at(0, 0)[0]);
@@ -221,6 +232,8 @@ where
 
 pub fn test_glwe_to_lwe<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEFromLWE<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
@@ -280,7 +293,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
+    let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk_glwe);
     module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
@@ -301,7 +314,7 @@ where
         &glwe_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_from_infos(&glwe_to_lwe_infos);
@@ -313,30 +326,30 @@ where
         &glwe_to_lwe_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.arena(),
     );
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
-    let mut ksk_prepared: GLWEToLWEKeyPrepared<DeviceBuf<BE>, BE> = module.glwe_to_lwe_key_prepared_alloc_from_infos(&ksk);
-    module.glwe_to_lwe_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: GLWEToLWEKeyPrepared<BE::OwnedBuf, BE> = module.glwe_to_lwe_key_prepared_alloc_from_infos(&ksk);
+    module.glwe_to_lwe_key_prepare(&mut ksk_prepared, &ksk, &mut scratch.borrow());
 
-    module.lwe_from_glwe(&mut lwe_ct, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
+    module.lwe_from_glwe(&mut lwe_ct, &glwe_ct, a_idx, &ksk_prepared, &mut scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
-    module.lwe_decrypt(&lwe_ct, &mut lwe_pt, &sk_lwe, scratch.borrow());
+    module.lwe_decrypt(&lwe_ct, &mut lwe_pt, &sk_lwe, &mut scratch.borrow());
 
     let mut glwe_pt_conv = GLWEPlaintext::<Vec<u8>>::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.max_k());
 
     module.vec_znx_normalize(
-        glwe_pt_conv.data_mut(),
+        &mut vec_znx_backend_mut::<BE>(&mut glwe_pt_conv.data),
         lwe_pt.base2k().as_usize(),
         0,
         0,
-        glwe_pt.data(),
+        &vec_znx_backend_ref::<BE>(&glwe_pt.data),
         glwe_ct.base2k().as_usize(),
         0,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     assert_eq!(glwe_pt_conv.data.at(0, 0)[a_idx], lwe_pt.data.at(0, 0)[0]);

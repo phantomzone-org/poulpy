@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismAssign},
-    layouts::{DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace},
+    layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -10,8 +10,8 @@ use crate::{
     ScratchTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
-        GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEAutomorphismKey,
-        GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GGSWToBackendMut,
+        GLWEAutomorphismKey, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGLWEToGGSWKeyPrepared, GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -19,6 +19,8 @@ use crate::{
 
 pub fn test_ggsw_automorphism<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
@@ -113,7 +115,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.glwe_automorphism_key_encrypt_sk(
@@ -123,9 +125,16 @@ where
                 &auto_key_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
-            module.gglwe_to_ggsw_key_encrypt_sk(&mut tsk, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            module.gglwe_to_ggsw_key_encrypt_sk(
+                &mut tsk,
+                &sk,
+                &tsk_layout,
+                &mut source_xe,
+                &mut source_xa,
+                crate::test_suite::scratch_host_mut(&mut scratch),
+            );
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -136,20 +145,35 @@ where
                 &ggsw_in_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
-            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&auto_key_layout);
-            module.glwe_automorphism_key_prepare(&mut auto_key_prepared, &auto_key, scratch.borrow());
+            module.glwe_automorphism_key_prepare(&mut auto_key_prepared, &auto_key, &mut scratch.borrow());
 
-            let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut tsk_prepared: GGLWEToGGSWKeyPrepared<BE::OwnedBuf, BE> =
                 module.gglwe_to_ggsw_key_prepared_alloc_from_infos(&tsk);
-            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, scratch.borrow());
+            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, &mut scratch.borrow());
 
-            module.ggsw_automorphism(&mut ct_out, &ct_in, &auto_key_prepared, &tsk_prepared, scratch.borrow());
+            {
+                let mut ct_out_backend = <GGSW<Vec<u8>> as GGSWToBackendMut<BE>>::to_backend_mut(&mut ct_out);
+                let ct_in_backend = <GGSW<Vec<u8>> as crate::layouts::GGSWToBackendRef<BE>>::to_backend_ref(&ct_in);
+                module.ggsw_automorphism(
+                    &mut ct_out_backend,
+                    &ct_in_backend,
+                    &auto_key_prepared,
+                    &tsk_prepared,
+                    &mut scratch.borrow(),
+                );
+            }
 
-            module.vec_znx_automorphism_assign(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_automorphism_inplace(
+                p,
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_scalar),
+                0,
+                &mut scratch.borrow(),
+            );
 
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
@@ -170,7 +194,7 @@ where
             for row in 0..ct_out.dnum().as_usize() {
                 for col in 0..ct_out.rank().as_usize() + 1 {
                     let noise = ct_out
-                        .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_scalar, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     let max_noise = max_noise(col);
@@ -184,6 +208,8 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_ggsw_automorphism_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
@@ -264,7 +290,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.glwe_automorphism_key_encrypt_sk(
@@ -274,9 +300,16 @@ where
                 &auto_key_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                crate::test_suite::scratch_host_mut(&mut scratch),
             );
-            module.gglwe_to_ggsw_key_encrypt_sk(&mut tsk, &sk, &tsk_layout, &mut source_xe, &mut source_xa, scratch.borrow());
+            module.gglwe_to_ggsw_key_encrypt_sk(
+                &mut tsk,
+                &sk,
+                &tsk_layout,
+                &mut source_xe,
+                &mut source_xa,
+                crate::test_suite::scratch_host_mut(&mut scratch),
+            );
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
@@ -287,20 +320,28 @@ where
                 &ggsw_out_layout,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
-            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> =
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&auto_key_layout);
-            module.glwe_automorphism_key_prepare(&mut auto_key_prepared, &auto_key, scratch.borrow());
+            module.glwe_automorphism_key_prepare(&mut auto_key_prepared, &auto_key, &mut scratch.borrow());
 
-            let mut tsk_prepared: GGLWEToGGSWKeyPrepared<DeviceBuf<BE>, BE> =
+            let mut tsk_prepared: GGLWEToGGSWKeyPrepared<BE::OwnedBuf, BE> =
                 module.gglwe_to_ggsw_key_prepared_alloc_from_infos(&tsk);
-            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, scratch.borrow());
+            module.gglwe_to_ggsw_key_prepare(&mut tsk_prepared, &tsk, &mut scratch.borrow());
 
-            module.ggsw_automorphism_assign(&mut ct, &auto_key_prepared, &tsk_prepared, scratch.borrow());
+            {
+                let mut ct_backend = <GGSW<Vec<u8>> as GGSWToBackendMut<BE>>::to_backend_mut(&mut ct);
+                module.ggsw_automorphism_inplace(&mut ct_backend, &auto_key_prepared, &tsk_prepared, &mut scratch.borrow());
+            }
 
-            module.vec_znx_automorphism_assign(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_automorphism_inplace(
+                p,
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_scalar),
+                0,
+                &mut scratch.borrow(),
+            );
 
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
@@ -321,7 +362,7 @@ where
             for row in 0..ct.dnum().as_usize() {
                 for col in 0..ct.rank().as_usize() + 1 {
                     let noise_have: f64 = ct
-                        .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        .noise(module, row, col, &pt_scalar, &sk_prepared, &mut scratch.borrow())
                         .std()
                         .log2();
                     let noise_max: f64 = max_noise(col);

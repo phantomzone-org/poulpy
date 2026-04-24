@@ -1,19 +1,18 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
+    api::{ModuleN, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxInfos, ZnxZero},
     source::Source,
 };
 
-pub use crate::api::GGLWECompressedEncryptSk;
 use crate::{
-    EncryptionInfos, ScratchTakeCore,
+    EncryptionInfos, ScratchArenaTakeCore,
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, GLWESecretPrepared, LWEInfos,
+        GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, LWEInfos,
         compressed::{GGLWECompressed, GGLWECompressedToMut},
-        prepared::GLWESecretPreparedToRef,
+        prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -23,7 +22,7 @@ pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_compressed_encrypt_sk<R, P, S, E>(
+    fn gglwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -31,12 +30,14 @@ pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {
         seed: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 impl<BE: Backend> GGLWECompressedEncryptSkDefault<BE> for Module<BE>
@@ -48,7 +49,6 @@ where
         + VecZnxNormalizeAssign<BE>
         + VecZnxAddScalarAssign
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn gglwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -63,7 +63,7 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn gglwe_compressed_encrypt_sk<R, P, S, E>(
+    fn gglwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -71,19 +71,21 @@ where
         seed: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
 
         {
             let res: &mut GGLWECompressed<&mut [u8]> = &mut res.to_mut();
             let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
-            let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+            let sk_ref = sk.to_backend_ref();
 
             assert_eq!(
                 res.rank_in(),
@@ -94,18 +96,19 @@ where
             );
             assert_eq!(
                 res.rank_out(),
-                sk.rank(),
+                sk_ref.rank(),
                 "res.rank_out(): {} != sk.rank(): {}",
                 res.rank_out(),
-                sk.rank()
+                sk_ref.rank()
             );
-            assert_eq!(res.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
+            assert_eq!(res.n(), sk_ref.n());
+            assert_eq!(pt.n() as u32, sk_ref.n());
             assert!(
-                scratch.available() >= self.gglwe_compressed_encrypt_sk_tmp_bytes(res),
+                scratch.available()
+                    >= <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, res),
                 "scratch.available(): {} < GGLWECompressedEncryptSk::gglwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                self.gglwe_compressed_encrypt_sk_tmp_bytes(res)
+                <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.max_k().0,
@@ -125,14 +128,16 @@ where
 
             let mut source_xa = Source::new(seed);
 
-            let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(res);
+            let scratch = scratch.borrow();
+            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
 
             for col_j in 0..rank_in {
                 for row_i in 0..dnum {
                     // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                     tmp_pt.data.zero(); // zeroes for next iteration
                     self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_j);
-                    self.vec_znx_normalize_assign(base2k, &mut tmp_pt.data, 0, scrach_1);
+                    scratch_1 =
+                        scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch));
 
                     let (seed, mut source_xa_tmp) = source_xa.branch();
                     seeds[row_i * rank_in + col_j] = seed;
@@ -147,11 +152,11 @@ where
                         enc_infos,
                         source_xe,
                         &mut source_xa_tmp,
-                        scrach_1,
+                        &mut scratch_1,
                     );
                 }
             }
-        }
+        };
 
         res.seed_mut().copy_from_slice(&seeds);
     }

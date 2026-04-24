@@ -1,19 +1,17 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, HostDataMut, Module, ScratchArena},
     source::Source,
 };
 
-pub use crate::api::GLWECompressedEncryptSk;
 use crate::{
-    EncryptionInfos,
+    EncryptionInfos, ScratchArenaTakeCore,
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},
-        prepared::GLWESecretPreparedToRef,
+        prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -23,7 +21,7 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
     where
         A: GLWEInfos;
 
-    fn glwe_compressed_encrypt_sk<R, P, S, E>(
+    fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -31,18 +29,20 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        BE: 's,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE::BufMut<'s>: HostDataMut;
 }
 
 impl<BE: Backend> GLWECompressedEncryptSkDefault<BE> for Module<BE>
 where
     Self: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
-    Scratch<BE>: ScratchAvailable,
 {
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -54,7 +54,7 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_compressed_encrypt_sk<R, P, S, E>(
+    fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -62,22 +62,26 @@ where
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>,
+        S: GLWESecretPreparedToBackendRef<BE>,
+        BE: 's,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE::BufMut<'s>: HostDataMut,
     {
         {
             let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
             let mut source_xa: Source = Source::new(seed_xa);
             let cols: usize = (res.rank() + 1).into();
             assert!(
-                scratch.available() >= self.glwe_compressed_encrypt_sk_tmp_bytes(res),
+                scratch.available()
+                    >= <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, res),
                 "scratch.available(): {} < GLWECompressedEncryptSk::glwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                self.glwe_compressed_encrypt_sk_tmp_bytes(res)
+                <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, res)
             );
 
             self.glwe_encrypt_sk_internal(
@@ -92,7 +96,7 @@ where
                 &mut source_xa,
                 scratch,
             );
-        }
+        };
 
         res.seed_mut().copy_from_slice(&seed_xa);
     }

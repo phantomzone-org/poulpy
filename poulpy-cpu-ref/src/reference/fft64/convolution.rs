@@ -12,7 +12,8 @@ use crate::{
 
 pub fn convolution_prepare_left<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -22,7 +23,8 @@ where
 
 pub fn convolution_prepare_right<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -32,7 +34,8 @@ where
 
 fn convolution_prepare<R, A, T, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, mask: i64, tmp: &mut T)
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     R: ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
     T: VecZnxDftToMut<BE>,
@@ -54,7 +57,7 @@ where
 
     for i in 0..cols {
         // FFT all limbs (unmasked); the last active limb will be overwritten below.
-        vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
+        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, tmp, 0, a, i);
 
         // Re-compute only the last active limb with the mask applied.
         if min_size > 0 {
@@ -81,7 +84,8 @@ pub fn convolution_prepare_self<L, R, A, T, BE>(
     mask: i64,
     tmp: &mut T,
 ) where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
     A: VecZnxToRef,
@@ -112,7 +116,7 @@ pub fn convolution_prepare_self<L, R, A, T, BE>(
 
     for i in 0..cols {
         // FFT all limbs (unmasked); the last active limb will be overwritten below.
-        vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
+        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, tmp, 0, a, i);
 
         // Re-compute only the last active limb with the mask applied.
         if min_size > 0 {

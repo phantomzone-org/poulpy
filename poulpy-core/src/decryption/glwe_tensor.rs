@@ -1,22 +1,24 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, SvpPPolBytesOf},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
+    api::SvpPPolBytesOf,
+    layouts::{Backend, DataMut, DataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
 };
 
 pub use crate::api::GLWETensorDecrypt;
 use crate::{
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     decryption::GLWEDecryptDefault,
+    decryption::glwe::glwe_decrypt_backend_inner,
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared, GLWETensor,
-        prepared::GLWESecretPreparedFactory,
+        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared,
+        GLWETensor, GLWEToBackendRef, GLWEToRef,
+        prepared::{GLWESecretPreparedFactory, glwe_secret_prepared_backend_ref_from_mut},
     },
 };
 
 pub(crate) trait GLWETensorDecryptDefault<BE: Backend>:
     Sized + GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>
 where
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_tensor_decrypt_tmp_bytes_default<A>(&self, infos: &A) -> usize
     where
@@ -37,12 +39,15 @@ where
         pt: &mut GLWEPlaintext<P>,
         sk: &GLWESecretPrepared<S0, BE>,
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataRef,
+        GLWETensor<R>: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: DataMut,
+        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + crate::layouts::SetLWEInfos,
         S0: DataRef,
         S1: DataRef,
+        for<'a> BE::BufMut<'a>: DataMut,
     {
         assert!(
             scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes_default(res),
@@ -53,7 +58,9 @@ where
 
         let rank: usize = sk.rank().as_usize();
 
-        let (mut sk_grouped, scratch_1) = scratch.take_glwe_secret_prepared(self, (GLWESecretTensor::pairs(rank) + rank).into());
+        let (mut sk_grouped, mut scratch_1) = scratch
+            .borrow()
+            .take_glwe_secret_prepared(self, (GLWESecretTensor::pairs(rank) + rank).into());
 
         for i in 0..rank {
             sk_grouped.data.at_mut(i, 0).copy_from_slice(sk.data.at(i, 0));
@@ -63,13 +70,17 @@ where
             sk_grouped.data.at_mut(i + rank, 0).copy_from_slice(sk_tensor.data.at(i, 0));
         }
 
-        self.glwe_decrypt_default(res, pt, &sk_grouped, scratch_1);
+        let res_ref = res.to_ref();
+        let res_backend = res.to_backend_ref();
+        let mut pt_backend = pt.to_backend_mut();
+        let sk_grouped_ref = glwe_secret_prepared_backend_ref_from_mut(&sk_grouped);
+        glwe_decrypt_backend_inner(self, &res_ref, &res_backend, &mut pt_backend, &sk_grouped_ref, &mut scratch_1);
     }
 }
 
 impl<BE: Backend> GLWETensorDecryptDefault<BE> for Module<BE>
 where
     Self: GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
 }

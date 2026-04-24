@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! hal_impl_scratch {
     () => {
         fn scratch_owned_alloc(size: usize) -> ScratchOwned<Self> {

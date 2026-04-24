@@ -1,30 +1,36 @@
-use super::TestParams;
+use super::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref};
 use rand::Rng;
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign,
-        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign,
-        VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallAssign, VecZnxBigSubSmallB, VecZnxBigSubSmallNegateAssign,
+        ScratchOwnedAlloc, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigAlloc,
+        VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigFromSmall,
+        VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSub,
+        VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB, VecZnxBigSubSmallInplace,
+        VecZnxBigSubSmallNegateInplace,
     },
     layouts::{
-        Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, ZnxView, ZnxViewMut,
+        Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
+        VecZnxBigToBackendRef,
     },
     source::Source,
 };
 
-type VecZnxBigOwned<BE> = VecZnxBig<DeviceBuf<BE>, BE>;
+type VecZnxBigOwned<BE> = VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
 
-pub fn test_vec_znx_big_add_into<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_big_add_into<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>:
         VecZnxBigAddInto<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
         VecZnxBigAddInto<BT> + VecZnxBigAlloc<BT> + VecZnxBigFromSmall<BT> + VecZnxBigNormalize<BT> + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -45,8 +51,8 @@ where
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         assert_eq!(a.digest_u64(), a_digest);
@@ -63,8 +69,8 @@ where
             let mut b_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, b_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut b_ref, j, &b, j);
-                module_test.vec_znx_big_from_small(&mut b_test, j, &b, j);
+                module_ref.vec_znx_big_from_small(&mut b_ref.to_backend_mut(), j, &b, j);
+                module_test.vec_znx_big_from_small(&mut b_test.to_backend_mut(), j, &b, j);
             }
 
             assert_eq!(b.digest_u64(), b_digest);
@@ -82,8 +88,22 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_add_into(&mut res_big_ref, i, &a_ref, i, &b_ref, i);
-                    module_test.vec_znx_big_add_into(&mut res_big_test, i, &a_test, i, &b_test, i);
+                    module_ref.vec_znx_big_add_into(
+                        &mut res_big_ref.to_backend_mut(),
+                        i,
+                        &a_ref.to_backend_ref(),
+                        i,
+                        &b_ref.to_backend_ref(),
+                        i,
+                    );
+                    module_test.vec_znx_big_add_into(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &a_test.to_backend_ref(),
+                        i,
+                        &b_test.to_backend_ref(),
+                        i,
+                    );
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -99,24 +119,24 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -129,11 +149,13 @@ where
     }
 }
 
-pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_add_assign<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigAddAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -144,8 +166,8 @@ pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -165,8 +187,8 @@ pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -180,13 +202,13 @@ pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
             let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_add_assign(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_add_assign(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_add_assign(&mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i);
+                module_test.vec_znx_big_add_assign(&mut res_big_test.to_backend_mut(), i, &a_test.to_backend_ref(), i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -200,24 +222,24 @@ pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -229,11 +251,13 @@ pub fn test_vec_znx_big_add_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_add_small_into<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigAddSmallInto<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -244,8 +268,8 @@ pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -265,8 +289,8 @@ pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -287,8 +311,22 @@ pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_add_small_into(&mut res_big_ref, i, &a_ref, i, &b, i);
-                    module_test.vec_znx_big_add_small_into(&mut res_big_test, i, &a_test, i, &b, i);
+                    module_ref.vec_znx_big_add_small_into(
+                        &mut res_big_ref.to_backend_mut(),
+                        i,
+                        &a_ref.to_backend_ref(),
+                        i,
+                        &b,
+                        i,
+                    );
+                    module_test.vec_znx_big_add_small_into(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &a_test.to_backend_ref(),
+                        i,
+                        &b,
+                        i,
+                    );
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -303,24 +341,24 @@ pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -333,11 +371,13 @@ pub fn test_vec_znx_big_add_small_into<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_add_small_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_add_small_assign<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigAddSmallAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -348,8 +388,8 @@ pub fn test_vec_znx_big_add_small_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -375,13 +415,18 @@ pub fn test_vec_znx_big_add_small_assign<BR: Backend, BT: Backend>(
             let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_add_small_assign(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_add_small_assign(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_add_small_assign(&mut res_big_ref.to_backend_mut(), i, &vec_znx_backend_ref::<BR>(&a), i);
+                module_test.vec_znx_big_add_small_assign(
+                    &mut res_big_test.to_backend_mut(),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    i,
+                );
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -394,24 +439,24 @@ pub fn test_vec_znx_big_add_small_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -423,11 +468,13 @@ pub fn test_vec_znx_big_add_small_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_automorphism<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigAutomorphism<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -438,8 +485,8 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -459,8 +506,8 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -477,8 +524,8 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_automorphism(p, &mut res_big_ref, i, &a_ref, i);
-                    module_test.vec_znx_big_automorphism(p, &mut res_big_test, i, &a_test, i);
+                    module_ref.vec_znx_big_automorphism(p, &mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i);
+                    module_test.vec_znx_big_automorphism(p, &mut res_big_test.to_backend_mut(), i, &a_test.to_backend_ref(), i);
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -492,24 +539,24 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -522,12 +569,14 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_automorphism_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigAutomorphismAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigAutomorphismInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigAutomorphismAssignTmpBytes
@@ -539,8 +588,8 @@ pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
         + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -565,13 +614,13 @@ pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
 
         for p in [-5, 5] {
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_automorphism_assign(p, &mut res_big_ref, i, scratch_ref.borrow());
-                module_test.vec_znx_big_automorphism_assign(p, &mut res_big_test, i, scratch_test.borrow());
+                module_ref.vec_znx_big_automorphism_inplace(p, &mut res_big_ref.to_backend_mut(), i, &mut scratch_ref.arena());
+                module_test.vec_znx_big_automorphism_inplace(p, &mut res_big_test.to_backend_mut(), i, &mut scratch_test.arena());
             }
 
             let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -582,24 +631,24 @@ pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -611,14 +660,19 @@ pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_negate<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+pub fn test_vec_znx_big_negate<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>:
         VecZnxBigNegate<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
         VecZnxBigNegate<BT> + VecZnxBigAlloc<BT> + VecZnxBigFromSmall<BT> + VecZnxBigNormalize<BT> + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -638,8 +692,8 @@ where
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -655,8 +709,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_big_negate(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_negate(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_negate(&mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i);
+                module_test.vec_znx_big_negate(&mut res_big_test.to_backend_mut(), i, &a_test.to_backend_ref(), i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -670,24 +724,24 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -699,12 +753,14 @@ where
     }
 }
 
-pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_negate_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigNegateAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigAutomorphismAssignTmpBytes
@@ -716,8 +772,8 @@ pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
         + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -737,13 +793,13 @@ pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
         let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-            module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+            module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+            module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
         }
 
         for i in 0..cols {
-            module_ref.vec_znx_big_negate_assign(&mut res_big_ref, i);
-            module_test.vec_znx_big_negate_assign(&mut res_big_test, i);
+            module_ref.vec_znx_big_negate_inplace(&mut res_big_ref.to_backend_mut(), i);
+            module_test.vec_znx_big_negate_inplace(&mut res_big_test.to_backend_mut(), i);
         }
 
         let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -754,24 +810,24 @@ pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
 
         for j in 0..cols {
             module_ref.vec_znx_big_normalize(
-                &mut res_small_ref,
+                &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                 base2k,
                 0,
                 j,
-                &res_big_ref,
+                &res_big_ref.to_backend_ref(),
                 base2k,
                 j,
-                scratch_ref.borrow(),
+                &mut scratch_ref.arena(),
             );
             module_test.vec_znx_big_normalize(
-                &mut res_small_test,
+                &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                 base2k,
                 0,
                 j,
-                &res_big_test,
+                &res_big_test.to_backend_ref(),
                 base2k,
                 j,
-                scratch_test.borrow(),
+                &mut scratch_test.arena(),
             );
         }
 
@@ -782,11 +838,13 @@ pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_normalize<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigAutomorphismAssignTmpBytes
@@ -797,8 +855,8 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
         + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -822,8 +880,8 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -841,24 +899,24 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
                 // Reference
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_ref),
                         base2k,
                         res_offset,
                         j,
-                        &a_ref,
+                        &a_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_test),
                         base2k,
                         res_offset,
                         j,
-                        &a_test,
+                        &a_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -871,170 +929,19 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_normalize_fused<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigAlloc<BT> + VecZnxBigFromSmall<BT> + VecZnxBigNormalize<BT> + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
-{
-    let base2k = params.base2k;
-    assert_eq!(module_ref.n(), module_test.n());
-    let n: usize = module_ref.n();
-
-    let mut source: Source = Source::new([1u8; 32]);
-    let cols: usize = 2;
-
-    let mut scratch_ref: ScratchOwned<BR> = ScratchOwned::alloc(module_ref.vec_znx_big_normalize_tmp_bytes());
-    let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
-
-    for a_size in [1, 2, 3, 4] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(63, &mut source);
-
-        let mut a_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_big_alloc(cols, a_size);
-        let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
-        for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
-        }
-
-        for res_size in [1, 2, 3, 4] {
-            for res_offset in -(base2k as i64)..=(base2k as i64) {
-                let mut base_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-                let mut base_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-                base_ref.fill_uniform(base2k, &mut source);
-                base_test.data_mut().copy_from_slice(&base_ref.data);
-
-                let mut normalized_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-                let mut normalized_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-                module_ref.vec_znx_big_normalize_into(
-                    &mut normalized_ref,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_ref,
-                    base2k,
-                    0,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize_into(
-                    &mut normalized_test,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_test,
-                    base2k,
-                    0,
-                    scratch_test.borrow(),
-                );
-                assert_eq!(normalized_ref, normalized_test);
-
-                let mut add_ref = base_ref.clone();
-                let mut add_test = base_test.clone();
-                module_ref.vec_znx_big_normalize_add_assign(
-                    &mut add_ref,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_ref,
-                    base2k,
-                    0,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize_add_assign(
-                    &mut add_test,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_test,
-                    base2k,
-                    0,
-                    scratch_test.borrow(),
-                );
-                assert_eq!(add_ref, add_test);
-
-                // Fused-vs-unfused: `_add_assign` must equal `base + normalize(a)` limb-wise.
-                let mut expected_add = base_ref.clone();
-                for j in 0..res_size {
-                    for (e, n) in expected_add.at_mut(0, j).iter_mut().zip(normalized_ref.at(0, j).iter()) {
-                        *e = e.wrapping_add(*n);
-                    }
-                }
-                assert_eq!(add_ref, expected_add);
-
-                let mut sub_ref = base_ref.clone();
-                let mut sub_test = base_test.clone();
-                module_ref.vec_znx_big_normalize_sub_assign(
-                    &mut sub_ref,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_ref,
-                    base2k,
-                    0,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize_sub_assign(
-                    &mut sub_test,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_test,
-                    base2k,
-                    0,
-                    scratch_test.borrow(),
-                );
-                assert_eq!(sub_ref, sub_test);
-
-                // Fused-vs-unfused: `_sub_assign` must equal `base - normalize(a)` limb-wise.
-                let mut expected_sub = base_ref.clone();
-                for j in 0..res_size {
-                    for (e, n) in expected_sub.at_mut(0, j).iter_mut().zip(normalized_ref.at(0, j).iter()) {
-                        *e = e.wrapping_sub(*n);
-                    }
-                }
-                assert_eq!(sub_ref, expected_sub);
-
-                let mut neg_ref = base_ref;
-                let mut neg_test = base_test;
-                module_ref.vec_znx_big_normalize_negate(
-                    &mut neg_ref,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_ref,
-                    base2k,
-                    0,
-                    scratch_ref.borrow(),
-                );
-                module_test.vec_znx_big_normalize_negate(
-                    &mut neg_test,
-                    base2k,
-                    res_offset,
-                    0,
-                    &a_test,
-                    base2k,
-                    0,
-                    scratch_test.borrow(),
-                );
-                assert_eq!(neg_ref, neg_test);
-            }
-        }
-    }
-}
-
-pub fn test_vec_znx_big_sub<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>:
         VecZnxBigSub<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
     Module<BT>:
         VecZnxBigSub<BT> + VecZnxBigAlloc<BT> + VecZnxBigFromSmall<BT> + VecZnxBigNormalize<BT> + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1054,8 +961,8 @@ where
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -1069,8 +976,8 @@ where
             let mut b_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, b_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut b_ref, j, &b, j);
-                module_test.vec_znx_big_from_small(&mut b_test, j, &b, j);
+                module_ref.vec_znx_big_from_small(&mut b_ref.to_backend_mut(), j, &b, j);
+                module_test.vec_znx_big_from_small(&mut b_test.to_backend_mut(), j, &b, j);
             }
 
             let b_ref_digest: u64 = b_ref.digest_u64();
@@ -1086,8 +993,22 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_sub(&mut res_big_ref, i, &a_ref, i, &b_ref, i);
-                    module_test.vec_znx_big_sub(&mut res_big_test, i, &a_test, i, &b_test, i);
+                    module_ref.vec_znx_big_sub(
+                        &mut res_big_ref.to_backend_mut(),
+                        i,
+                        &a_ref.to_backend_ref(),
+                        i,
+                        &b_ref.to_backend_ref(),
+                        i,
+                    );
+                    module_test.vec_znx_big_sub(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &a_test.to_backend_ref(),
+                        i,
+                        &b_test.to_backend_ref(),
+                        i,
+                    );
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1103,24 +1024,24 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -1133,12 +1054,14 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigSubInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
@@ -1148,8 +1071,8 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1169,8 +1092,8 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -1184,13 +1107,13 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
             let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_assign(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_assign(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_inplace(&mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i);
+                module_test.vec_znx_big_sub_inplace(&mut res_big_test.to_backend_mut(), i, &a_test.to_backend_ref(), i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1204,24 +1127,24 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -1233,12 +1156,14 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_negate_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubNegateAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigSubNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
@@ -1248,8 +1173,8 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1269,8 +1194,8 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -1284,13 +1209,13 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
             let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_negate_assign(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_negate_assign(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_negate_inplace(&mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i);
+                module_test.vec_znx_big_sub_negate_inplace(&mut res_big_test.to_backend_mut(), i, &a_test.to_backend_ref(), i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1304,24 +1229,24 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -1333,11 +1258,13 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_a<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigSubSmallA<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1348,8 +1275,8 @@ pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1369,8 +1296,8 @@ pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -1391,8 +1318,15 @@ pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_sub_small_a(&mut res_big_ref, i, &b, i, &a_ref, i);
-                    module_test.vec_znx_big_sub_small_a(&mut res_big_test, i, &b, i, &a_test, i);
+                    module_ref.vec_znx_big_sub_small_a(&mut res_big_ref.to_backend_mut(), i, &b, i, &a_ref.to_backend_ref(), i);
+                    module_test.vec_znx_big_sub_small_a(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &b,
+                        i,
+                        &a_test.to_backend_ref(),
+                        i,
+                    );
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1407,24 +1341,24 @@ pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -1437,11 +1371,13 @@ pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_b<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
     Module<BR>: VecZnxBigSubSmallB<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -1452,8 +1388,8 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1473,8 +1409,8 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
         let mut a_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, a_size);
 
         for j in 0..cols {
-            module_ref.vec_znx_big_from_small(&mut a_ref, j, &a, j);
-            module_test.vec_znx_big_from_small(&mut a_test, j, &a, j);
+            module_ref.vec_znx_big_from_small(&mut a_ref.to_backend_mut(), j, &a, j);
+            module_test.vec_znx_big_from_small(&mut a_test.to_backend_mut(), j, &a, j);
         }
 
         let a_ref_digest: u64 = a_ref.digest_u64();
@@ -1495,8 +1431,15 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
 
                 // Reference
                 for i in 0..cols {
-                    module_ref.vec_znx_big_sub_small_b(&mut res_big_ref, i, &a_ref, i, &b, i);
-                    module_test.vec_znx_big_sub_small_b(&mut res_big_test, i, &a_test, i, &b, i);
+                    module_ref.vec_znx_big_sub_small_b(&mut res_big_ref.to_backend_mut(), i, &a_ref.to_backend_ref(), i, &b, i);
+                    module_test.vec_znx_big_sub_small_b(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &a_test.to_backend_ref(),
+                        i,
+                        &b,
+                        i,
+                    );
                 }
 
                 assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1511,24 +1454,24 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         0,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         0,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 
@@ -1541,12 +1484,14 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_a_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigSubSmallInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
@@ -1556,8 +1501,8 @@ pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1583,13 +1528,18 @@ pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
             let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_assign(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_assign(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_inplace(&mut res_big_ref.to_backend_mut(), i, &vec_znx_backend_ref::<BR>(&a), i);
+                module_test.vec_znx_big_sub_small_inplace(
+                    &mut res_big_test.to_backend_mut(),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    i,
+                );
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1602,24 +1552,24 @@ pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    &mut res_small_ref,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                     base2k,
                     0,
                     j,
-                    &res_big_ref,
+                    &res_big_ref.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_ref.borrow(),
+                    &mut scratch_ref.arena(),
                 );
                 module_test.vec_znx_big_normalize(
-                    &mut res_small_test,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                     base2k,
                     0,
                     j,
-                    &res_big_test,
+                    &res_big_test.to_backend_ref(),
                     base2k,
                     j,
-                    scratch_test.borrow(),
+                    &mut scratch_test.arena(),
                 );
             }
 
@@ -1631,12 +1581,14 @@ pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_b_inplace<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallNegateAssign<BR>
+    BR::OwnedBuf: crate::layouts::DataMut,
+    BT::OwnedBuf: crate::layouts::DataMut,
+    Module<BR>: VecZnxBigSubSmallNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
@@ -1646,8 +1598,8 @@ pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
-    ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
+    ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
+    ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1674,13 +1626,23 @@ pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
                 let mut res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
                 for j in 0..cols {
-                    module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
-                    module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);
+                    module_ref.vec_znx_big_from_small(&mut res_big_ref.to_backend_mut(), j, &res, j);
+                    module_test.vec_znx_big_from_small(&mut res_big_test.to_backend_mut(), j, &res, j);
                 }
 
                 for i in 0..cols {
-                    module_ref.vec_znx_big_sub_small_negate_assign(&mut res_big_ref, i, &a, i);
-                    module_test.vec_znx_big_sub_small_negate_assign(&mut res_big_test, i, &a, i);
+                    module_ref.vec_znx_big_sub_small_negate_inplace(
+                        &mut res_big_ref.to_backend_mut(),
+                        i,
+                        &vec_znx_backend_ref::<BR>(&a),
+                        i,
+                    );
+                    module_test.vec_znx_big_sub_small_negate_inplace(
+                        &mut res_big_test.to_backend_mut(),
+                        i,
+                        &vec_znx_backend_ref::<BT>(&a),
+                        i,
+                    );
                 }
 
                 assert_eq!(a.digest_u64(), a_digest);
@@ -1693,24 +1655,24 @@ pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        &mut res_small_ref,
+                        &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
                         base2k,
                         res_offset,
                         j,
-                        &res_big_ref,
+                        &res_big_ref.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_ref.borrow(),
+                        &mut scratch_ref.arena(),
                     );
                     module_test.vec_znx_big_normalize(
-                        &mut res_small_test,
+                        &mut vec_znx_backend_mut::<BT>(&mut res_small_test),
                         base2k,
                         res_offset,
                         j,
-                        &res_big_test,
+                        &res_big_test.to_backend_ref(),
                         base2k,
                         j,
-                        scratch_test.borrow(),
+                        &mut scratch_test.arena(),
                     );
                 }
 

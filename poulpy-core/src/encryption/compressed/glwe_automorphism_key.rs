@@ -1,14 +1,13 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAutomorphism},
-    layouts::{Backend, GaloisElement, Module, Scratch},
+    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphism},
+    layouts::{Backend, GaloisElement, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
-pub use crate::api::GLWEAutomorphismKeyCompressedEncryptSk;
 use crate::{
-    EncryptionInfos, GGLWECompressedEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         GLWESecretToRef, LWEInfos, SetGaloisElement,
@@ -40,6 +39,9 @@ impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSkDefault<BE> for Module<B
 where
     Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -74,15 +76,15 @@ where
         assert_eq!(res.rank_out(), res.rank_in());
         assert_eq!(sk.rank(), res.rank_out());
         assert!(
-            scratch.available() >= self.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(res),
+            scratch.available() >= <Module<BE> as GLWEAutomorphismKeyCompressedEncryptSkDefault<BE>>::glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < GLWEAutomorphismKeyCompressedEncryptSk::glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(res)
+            <Module<BE> as GLWEAutomorphismKeyCompressedEncryptSkDefault<BE>>::glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_out_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, sk.rank());
+        let mut sk_out_prepared = self.glwe_secret_prepared_alloc(sk.rank());
         {
-            let (mut sk_out, _) = scratch_1.take_glwe_secret(self.n().into(), sk.rank());
+            let (mut sk_out, _) = scratch.take_glwe_secret(self.n().into(), sk.rank());
             sk_out.dist = sk.dist;
             for i in 0..sk.rank().into() {
                 self.vec_znx_automorphism(
@@ -93,10 +95,23 @@ where
                     i,
                 );
             }
-            self.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
+            let mut sk_out_prepared_data = sk_out_prepared.data.to_backend_mut();
+            for i in 0..sk_out.rank().into() {
+                self.svp_prepare(&mut sk_out_prepared_data, i, &sk_out.data, i);
+            }
+            sk_out_prepared.dist = sk_out.dist;
         }
 
-        self.gglwe_compressed_encrypt_sk(res, &sk.data, &sk_out_prepared, seed_xa, enc_infos, source_xe, scratch_1);
+        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_compressed_encrypt_sk_tmp_bytes(res));
+        self.gglwe_compressed_encrypt_sk(
+            res,
+            &sk.data,
+            &sk_out_prepared,
+            seed_xa,
+            enc_infos,
+            source_xe,
+            &mut enc_scratch.arena(),
+        );
 
         res.set_p(p);
     }

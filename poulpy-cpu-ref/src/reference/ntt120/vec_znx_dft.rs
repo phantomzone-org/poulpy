@@ -26,8 +26,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, Data, Module, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut,
+        Backend, Data, Module, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBackendMut, VecZnxDftToMut,
+        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
@@ -174,22 +174,18 @@ fn limb_u64_mut<D: crate::layouts::DataMut, BE: Backend<ScalarPrep = Q120bScalar
 /// - Converts i64 coefficients to q120b with [`NttFromZnx64`],
 ///   then applies the forward NTT in-place via [`NttDFTExecute`].
 /// - Missing input limbs (out of range) are zeroed in `res`.
-pub fn ntt120_vec_znx_dft_apply<R, A, BE>(
+pub fn ntt120_vec_znx_dft_apply<BE>(
     module: &impl NttModuleHandle,
     step: usize,
     offset: usize,
-    res: &mut R,
+    res: &mut VecZnxDftBackendMut<'_, BE>,
     res_col: usize,
-    a: &A,
+    a: &VecZnxBackendRef<'_, BE>,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttZero,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttZero + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
-
     let a_size = a.size();
     let res_size = res.size();
 
@@ -201,16 +197,16 @@ pub fn ntt120_vec_znx_dft_apply<R, A, BE>(
     for j in 0..min_steps {
         let limb = offset + j * step;
         if limb < a_size {
-            let res_slice: &mut [u64] = limb_u64_mut(&mut res, res_col, j);
+            let res_slice: &mut [u64] = limb_u64_mut(res, res_col, j);
             BE::ntt_from_znx64(res_slice, a.at(a_col, limb));
             BE::ntt_dft_execute(table, res_slice);
         } else {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     }
 
     for j in min_steps..res_size {
-        BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+        BE::ntt_zero(limb_u64_mut(res, res_col, j));
     }
 }
 

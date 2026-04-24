@@ -1,14 +1,13 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes},
-    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, VecZnxAutomorphism},
+    layouts::{Backend, HostDataMut, Module, Scratch, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
-pub use crate::api::LWEToGLWESwitchingKeyEncryptSk;
 use crate::{
-    EncryptionInfos, GGLWEEncryptSk, ScratchTakeCore,
+    EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToRef, LWEInfos, LWESecret,
+        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret,
         LWESecretToRef, Rank,
     },
 };
@@ -30,19 +29,18 @@ pub trait LWEToGLWESwitchingKeyEncryptSkDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
-        S2: GLWESecretPreparedToRef<BE>,
+        S2: GLWESecretPreparedToBackendRef<BE>,
         E: EncryptionInfos,
         R: GGLWEToMut + GGLWEInfos;
 }
 
 impl<BE: Backend> LWEToGLWESwitchingKeyEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN
-        + GGLWEEncryptSk<BE>
-        + VecZnxAutomorphismAssign<BE>
-        + GLWESecretPreparedFactory<BE>
-        + VecZnxAutomorphismAssignTmpBytes,
+    Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxAutomorphism,
     Scratch<BE>: ScratchTakeCore<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn lwe_to_glwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -55,10 +53,8 @@ where
         );
         assert_eq!(self.n() as u32, infos.n());
 
-        let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), infos.rank_in());
-        let lvl_1: usize = self
-            .gglwe_encrypt_sk_tmp_bytes(infos)
-            .max(self.vec_znx_automorphism_assign_tmp_bytes());
+        let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
+        let lvl_1: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
 
         lvl_0 + lvl_1
     }
@@ -75,7 +71,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
-        S2: GLWESecretPreparedToRef<BE>,
+        S2: GLWESecretPreparedToBackendRef<BE>,
         E: EncryptionInfos,
         R: GGLWEToMut + GGLWEInfos,
     {
@@ -83,19 +79,34 @@ where
 
         assert!(sk_lwe.n().0 <= self.n() as u32);
         assert!(
-            scratch.available() >= self.lwe_to_glwe_key_encrypt_sk_tmp_bytes(res),
+            scratch.available()
+                >= <Module<BE> as LWEToGLWESwitchingKeyEncryptSkDefault<BE>>::lwe_to_glwe_key_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < LWEToGLWESwitchingKeyEncryptSk::lwe_to_glwe_key_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_to_glwe_key_encrypt_sk_tmp_bytes(res)
+            <Module<BE> as LWEToGLWESwitchingKeyEncryptSkDefault<BE>>::lwe_to_glwe_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_lwe_as_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        sk_lwe_as_glwe_src.dist = sk_lwe.dist;
+        sk_lwe_as_glwe_src.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
+        sk_lwe_as_glwe_src.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
+
+        let (mut sk_lwe_as_glwe, _) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
         sk_lwe_as_glwe.dist = sk_lwe.dist;
+        {
+            let sk_lwe_as_glwe_src_data = sk_lwe_as_glwe_src.data.as_vec_znx();
+            self.vec_znx_automorphism(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, &sk_lwe_as_glwe_src_data, 0);
+        }
 
-        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
-        sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
-        self.vec_znx_automorphism_assign(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
-
-        self.gglwe_encrypt_sk(res, &sk_lwe_as_glwe.data, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
+        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
+        self.gglwe_encrypt_sk(
+            res,
+            &sk_lwe_as_glwe.data,
+            sk_glwe,
+            enc_infos,
+            source_xe,
+            source_xa,
+            &mut enc_scratch.arena(),
+        );
     }
 }

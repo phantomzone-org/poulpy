@@ -1,28 +1,37 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxAddScalarAssign},
-    layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
+    api::VecZnxAddScalarAssign,
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero},
 };
 
-use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
+use crate::noise::glwe::glwe_noise_backend_inner;
 use crate::{
+    GLWENormalize, GLWESub,
     api::{GGLWENoise, GLWENoise},
-    layouts::{GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, prepared::GLWESecretPreparedToRef},
+    decryption::{GLWEDecrypt, GLWEDecryptDefault},
+    layouts::{
+        GGLWE, GGLWEInfos, GGLWEToBackendRef, GGLWEToRef, GLWEInfos, gglwe_at_backend_ref_from_ref,
+        prepared::GLWESecretPreparedToBackendRef,
+    },
 };
+use crate::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
 
 impl<D: DataRef> GGLWE<D> {
-    pub fn noise<M, S, P, BE: Backend>(
+    pub fn noise<'s, M, S, P, BE: Backend>(
         &self,
         module: &M,
         row: usize,
         col: usize,
         pt_want: &P,
         sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        GGLWE<D>: GGLWEToBackendRef<BE>,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
         M: GGLWENoise<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: DataMut,
     {
         module.gglwe_noise(self, row, col, pt_want, sk_prepared, scratch)
     }
@@ -30,8 +39,8 @@ impl<D: DataRef> GGLWE<D> {
 
 impl<BE: Backend> GGLWENoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn gglwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -43,19 +52,20 @@ where
         lvl_0 + lvl_1
     }
 
-    fn gglwe_noise<R, S, P>(
+    fn gglwe_noise<'s, R, S, P>(
         &self,
         res: &R,
         res_row: usize,
         res_col: usize,
         pt_want: &P,
         sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGLWEToRef + GGLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        R: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         P: ScalarZnxToRef,
+        for<'a> BE::BufMut<'a>: DataMut,
     {
         assert!(
             scratch.available() >= self.gglwe_noise_tmp_bytes(res),
@@ -64,11 +74,15 @@ where
             self.gglwe_noise_tmp_bytes(res)
         );
 
-        let res: &GGLWE<&[u8]> = &res.to_ref();
-        let dsize: usize = res.dsize().into();
-        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
+        let res_ref = res.to_ref();
+        let res_backend = res.to_backend_ref();
+        let sk_backend = sk_prepared.to_backend_ref();
+        let dsize: usize = res_ref.dsize().into();
+        let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_ref);
         pt.data_mut().zero();
         self.vec_znx_add_scalar_assign(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, res_col);
-        self.glwe_noise(&res.at(res_row, res_col), &pt, sk_prepared, scratch_1)
+        let res_at_ref = res_ref.at(res_row, res_col);
+        let res_at_backend = gglwe_at_backend_ref_from_ref::<BE>(&res_backend, res_row, res_col);
+        glwe_noise_backend_inner(self, &res_at_ref, &res_at_backend, &pt, &sk_backend, &mut scratch_1)
     }
 }

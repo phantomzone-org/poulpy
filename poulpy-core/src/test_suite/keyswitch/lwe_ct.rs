@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
-    layouts::{DeviceBuf, Module, Scratch, ScratchOwned, ZnxView},
+    layouts::{Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
-    test_suite::TestParams,
+    test_suite::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref},
 };
 
 use crate::{
@@ -15,6 +15,8 @@ use crate::{
 
 pub fn test_lwe_keyswitch<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: LWEKeySwitch<BE>
         + LWESwitchingKeyEncrypt<BE>
         + LWEEncryptSk<BE>
@@ -87,7 +89,7 @@ where
         &lwe_in_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut ksk: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc_from_infos(&key_apply_infos);
@@ -99,29 +101,29 @@ where
         &key_apply_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        crate::test_suite::scratch_host_mut(&mut scratch),
     );
 
     let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);
 
-    let mut ksk_prepared: LWESwitchingKeyPrepared<DeviceBuf<BE>, BE> = module.lwe_switching_key_prepared_alloc_from_infos(&ksk);
-    module.lwe_switching_key_prepare(&mut ksk_prepared, &ksk, scratch.borrow());
+    let mut ksk_prepared: LWESwitchingKeyPrepared<BE::OwnedBuf, BE> = module.lwe_switching_key_prepared_alloc_from_infos(&ksk);
+    module.lwe_switching_key_prepare(&mut ksk_prepared, &ksk, &mut scratch.borrow());
 
-    module.lwe_keyswitch(&mut lwe_ct_out, &lwe_ct_in, &ksk_prepared, scratch.borrow());
+    module.lwe_keyswitch(&mut lwe_ct_out, &lwe_ct_in, &ksk_prepared, &mut scratch.borrow());
 
     let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
-    module.lwe_decrypt(&lwe_ct_out, &mut lwe_pt_out, &sk_lwe_out, scratch.borrow());
+    module.lwe_decrypt(&lwe_ct_out, &mut lwe_pt_out, &sk_lwe_out, &mut scratch.borrow());
 
     let mut lwe_pt_want: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
     module.vec_znx_normalize(
-        lwe_pt_want.data_mut(),
+        &mut vec_znx_backend_mut::<BE>(&mut lwe_pt_want.data),
         out_base2k,
         0,
         0,
-        lwe_pt_in.data(),
+        &vec_znx_backend_ref::<BE>(&lwe_pt_in.data),
         in_base2k,
         0,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     assert_eq!(lwe_pt_want.data.at(0, 0)[0], lwe_pt_out.data.at(0, 0)[0]);

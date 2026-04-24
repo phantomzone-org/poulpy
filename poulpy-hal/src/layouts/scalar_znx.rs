@@ -7,8 +7,8 @@ use rand_distr::{Distribution, weighted::WeightedIndex};
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo,
-        ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, Data, DataView, DataViewMut, DigestU64, FillUniform, HostDataMut, HostDataRef, ReaderFrom, ToOwnedDeep, VecZnx,
+        WriterTo, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -29,7 +29,7 @@ pub struct ScalarZnx<D: Data> {
     pub cols: usize,
 }
 
-impl<D: DataRef> DigestU64 for ScalarZnx<D> {
+impl<D: HostDataRef> DigestU64 for ScalarZnx<D> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
@@ -39,7 +39,7 @@ impl<D: DataRef> DigestU64 for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> ToOwnedDeep for ScalarZnx<D> {
+impl<D: HostDataRef> ToOwnedDeep for ScalarZnx<D> {
     type Owned = ScalarZnx<Vec<u8>>;
     fn to_owned_deep(&self) -> Self::Owned {
         ScalarZnx {
@@ -81,11 +81,11 @@ impl<D: Data> DataViewMut for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> ZnxView for ScalarZnx<D> {
+impl<D: HostDataRef> ZnxView for ScalarZnx<D> {
     type Scalar = i64;
 }
 
-impl<D: DataMut> ScalarZnx<D> {
+impl<D: HostDataMut> ScalarZnx<D> {
     /// Fills column `col` with ternary values `{-1, 0, 1}` where each
     /// non-zero entry appears with total probability `prob` (split equally
     /// between `-1` and `+1`).
@@ -193,7 +193,7 @@ impl ScalarZnx<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ZnxZero for ScalarZnx<D> {
+impl<D: HostDataMut> ZnxZero for ScalarZnx<D> {
     fn zero(&mut self) {
         self.raw_mut().fill(0)
     }
@@ -202,7 +202,7 @@ impl<D: DataMut> ZnxZero for ScalarZnx<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for ScalarZnx<D> {
+impl<D: HostDataMut> FillUniform for ScalarZnx<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         match log_bound {
             64 => source.fill_bytes(self.data.as_mut()),
@@ -220,6 +220,10 @@ impl<D: DataMut> FillUniform for ScalarZnx<D> {
 
 /// Owned `ScalarZnx` backed by a `Vec<u8>`.
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
+/// Shared backend-native borrow of a `ScalarZnx`.
+pub type ScalarZnxBackendRef<'a, B> = ScalarZnx<<B as Backend>::BufRef<'a>>;
+/// Mutable backend-native borrow of a `ScalarZnx`.
+pub type ScalarZnxBackendMut<'a, B> = ScalarZnx<<B as Backend>::BufMut<'a>>;
 
 impl<D: Data> ScalarZnx<D> {
     /// Constructs a `ScalarZnx` from raw parts without validation.
@@ -228,12 +232,42 @@ impl<D: Data> ScalarZnx<D> {
     }
 }
 
+/// Borrow a backend-owned `ScalarZnx` using the backend's native view type.
+pub trait ScalarZnxToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> ScalarZnxBackendRef<'_, B>;
+}
+
+impl<B: Backend> ScalarZnxToBackendRef<B> for ScalarZnx<B::OwnedBuf> {
+    fn to_backend_ref(&self) -> ScalarZnxBackendRef<'_, B> {
+        ScalarZnx {
+            data: B::view(&self.data),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
+}
+
+/// Mutably borrow a backend-owned `ScalarZnx` using the backend's native view type.
+pub trait ScalarZnxToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> ScalarZnxBackendMut<'_, B>;
+}
+
+impl<B: Backend> ScalarZnxToBackendMut<B> for ScalarZnx<B::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> ScalarZnxBackendMut<'_, B> {
+        ScalarZnx {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
+}
+
 /// Borrow a `ScalarZnx` as a shared reference view.
 pub trait ScalarZnxToRef {
     fn to_ref(&self) -> ScalarZnx<&[u8]>;
 }
 
-impl<D: DataRef> ScalarZnxToRef for ScalarZnx<D> {
+impl<D: HostDataRef> ScalarZnxToRef for ScalarZnx<D> {
     fn to_ref(&self) -> ScalarZnx<&[u8]> {
         ScalarZnx {
             data: self.data.as_ref(),
@@ -248,7 +282,7 @@ pub trait ScalarZnxToMut {
     fn to_mut(&mut self) -> ScalarZnx<&mut [u8]>;
 }
 
-impl<D: DataMut> ScalarZnxToMut for ScalarZnx<D> {
+impl<D: HostDataMut> ScalarZnxToMut for ScalarZnx<D> {
     fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
         ScalarZnx {
             data: self.data.as_mut(),
@@ -258,7 +292,7 @@ impl<D: DataMut> ScalarZnxToMut for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> ScalarZnx<D> {
+impl<D: HostDataRef> ScalarZnx<D> {
     /// Views this `ScalarZnx` as a [`VecZnx`] with `size == 1`.
     pub fn as_vec_znx(&self) -> VecZnx<&[u8]> {
         VecZnx {
@@ -271,7 +305,24 @@ impl<D: DataRef> ScalarZnx<D> {
     }
 }
 
-impl<D: DataMut> ScalarZnx<D> {
+/// Views a backend-owned `ScalarZnx` as a backend-native [`VecZnx`] with `size == 1`.
+pub trait ScalarZnxAsVecZnxBackendRef<B: Backend> {
+    fn as_vec_znx_backend(&self) -> VecZnx<B::BufRef<'_>>;
+}
+
+impl<B: Backend> ScalarZnxAsVecZnxBackendRef<B> for ScalarZnx<B::OwnedBuf> {
+    fn as_vec_znx_backend(&self) -> VecZnx<B::BufRef<'_>> {
+        VecZnx {
+            data: B::view(&self.data),
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+            max_size: 1,
+        }
+    }
+}
+
+impl<D: HostDataMut> ScalarZnx<D> {
     /// Mutably views this `ScalarZnx` as a [`VecZnx`] with `size == 1`.
     pub fn as_vec_znx_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
@@ -284,9 +335,26 @@ impl<D: DataMut> ScalarZnx<D> {
     }
 }
 
+/// Mutably views a backend-owned `ScalarZnx` as a backend-native [`VecZnx`] with `size == 1`.
+pub trait ScalarZnxAsVecZnxBackendMut<B: Backend> {
+    fn as_vec_znx_backend_mut(&mut self) -> VecZnx<B::BufMut<'_>>;
+}
+
+impl<B: Backend> ScalarZnxAsVecZnxBackendMut<B> for ScalarZnx<B::OwnedBuf> {
+    fn as_vec_znx_backend_mut(&mut self) -> VecZnx<B::BufMut<'_>> {
+        VecZnx {
+            data: B::view_mut(&mut self.data),
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+            max_size: 1,
+        }
+    }
+}
+
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
+impl<D: HostDataMut> ReaderFrom for ScalarZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let new_n: usize = reader.read_u64::<LittleEndian>()? as usize;
         let new_cols: usize = reader.read_u64::<LittleEndian>()? as usize;
@@ -315,7 +383,7 @@ impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for ScalarZnx<D> {
+impl<D: HostDataRef> WriterTo for ScalarZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;

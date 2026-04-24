@@ -1,0 +1,309 @@
+use std::ptr::NonNull;
+
+use poulpy_hal::layouts::{Backend, DataViewMut, Host, Module, SvpPPol, VecZnxDft, VmpPMat};
+
+use crate::{
+    api::ModuleTransfer,
+    dist::Distribution,
+    layouts::{Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEPrepared, GLWE, GLWEPrepared, GLWESecretPrepared, Rank, TorusPrecision},
+};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct SrcBackend;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct DstBackend;
+
+fn host_alloc(len: usize) -> Vec<u8> {
+    vec![0; len]
+}
+
+impl Backend for SrcBackend {
+    type ScalarBig = i64;
+    type ScalarPrep = f64;
+    type OwnedBuf = Vec<u8>;
+    type BufRef<'a> = &'a [u8];
+    type BufMut<'a> = &'a mut [u8];
+    type Handle = ();
+    type Location = Host;
+
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        host_alloc(len)
+    }
+
+    fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {
+        bytes.to_vec()
+    }
+
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        bytes
+    }
+
+    fn to_host_bytes(buf: &Self::OwnedBuf) -> Vec<u8> {
+        buf.clone()
+    }
+
+    fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
+        dst.copy_from_slice(buf);
+    }
+
+    fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
+        buf.copy_from_slice(src);
+    }
+    fn len_bytes(buf: &Self::OwnedBuf) -> usize {
+        buf.len()
+    }
+
+    fn view(buf: &Self::OwnedBuf) -> Self::BufRef<'_> {
+        buf.as_slice()
+    }
+
+    fn view_ref<'a, 'b>(buf: &'a Self::BufRef<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut(buf: &mut Self::OwnedBuf) -> Self::BufMut<'_> {
+        buf.as_mut_slice()
+    }
+
+    fn region(buf: &Self::OwnedBuf, offset: usize, len: usize) -> Self::BufRef<'_> {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut(buf: &mut Self::OwnedBuf, offset: usize, len: usize) -> Self::BufMut<'_> {
+        &mut buf[offset..offset + len]
+    }
+
+    fn region_ref<'a, 'b>(buf: &'a Self::BufRef<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        &mut buf[offset..offset + len]
+    }
+
+    unsafe fn destroy(_: NonNull<Self::Handle>) {}
+}
+
+impl Backend for DstBackend {
+    type ScalarBig = i64;
+    type ScalarPrep = f64;
+    type OwnedBuf = Vec<u8>;
+    type BufRef<'a> = &'a [u8];
+    type BufMut<'a> = &'a mut [u8];
+    type Handle = ();
+    type Location = Host;
+
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        host_alloc(len)
+    }
+
+    fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {
+        bytes.to_vec()
+    }
+
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        bytes
+    }
+
+    fn to_host_bytes(buf: &Self::OwnedBuf) -> Vec<u8> {
+        buf.clone()
+    }
+
+    fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
+        dst.copy_from_slice(buf);
+    }
+
+    fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
+        buf.copy_from_slice(src);
+    }
+    fn len_bytes(buf: &Self::OwnedBuf) -> usize {
+        buf.len()
+    }
+
+    fn view(buf: &Self::OwnedBuf) -> Self::BufRef<'_> {
+        buf.as_slice()
+    }
+
+    fn view_ref<'a, 'b>(buf: &'a Self::BufRef<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut(buf: &mut Self::OwnedBuf) -> Self::BufMut<'_> {
+        buf.as_mut_slice()
+    }
+
+    fn region(buf: &Self::OwnedBuf, offset: usize, len: usize) -> Self::BufRef<'_> {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut(buf: &mut Self::OwnedBuf, offset: usize, len: usize) -> Self::BufMut<'_> {
+        &mut buf[offset..offset + len]
+    }
+
+    fn region_ref<'a, 'b>(buf: &'a Self::BufRef<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        &mut buf[offset..offset + len]
+    }
+
+    unsafe fn destroy(_: NonNull<Self::Handle>) {}
+}
+
+fn fill_bytes(buf: &mut [u8]) {
+    for (i, byte) in buf.iter_mut().enumerate() {
+        *byte = (i as u8).wrapping_mul(17).wrapping_add(3);
+    }
+}
+
+#[test]
+fn module_transfer_glwe_roundtrip() {
+    let src_module: Module<SrcBackend> = Module::new_marker(64);
+    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let mut src: GLWE<Vec<u8>> = GLWE::alloc(Degree(64), Base2K(12), TorusPrecision(33), Rank(2));
+    fill_bytes(&mut src.data.data);
+
+    let uploaded = dst_module.upload_glwe::<SrcBackend>(&src);
+    let downloaded = src_module.download_glwe::<DstBackend>(&uploaded);
+    let via_wrapper = src.to_backend::<SrcBackend, DstBackend>(&dst_module);
+
+    assert_eq!(uploaded, via_wrapper);
+    assert_eq!(downloaded, src);
+}
+
+#[test]
+fn module_transfer_gglwe_roundtrip() {
+    let src_module: Module<SrcBackend> = Module::new_marker(64);
+    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let mut src: GGLWE<Vec<u8>> = GGLWE::alloc(
+        Degree(64),
+        Base2K(12),
+        TorusPrecision(33),
+        Rank(1),
+        Rank(2),
+        Dnum(3),
+        Dsize(1),
+    );
+    fill_bytes(src.data.data_mut());
+
+    let uploaded = dst_module.upload_gglwe::<SrcBackend>(&src);
+    let downloaded = src_module.download_gglwe::<DstBackend>(&uploaded);
+    let via_wrapper = src.to_backend::<SrcBackend, DstBackend>(&dst_module);
+
+    assert_eq!(uploaded, via_wrapper);
+    assert_eq!(downloaded, src);
+}
+
+#[test]
+fn module_transfer_glwe_prepared_roundtrip() {
+    let src_module: Module<SrcBackend> = Module::new_marker(64);
+    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let mut src: GLWEPrepared<Vec<u8>, SrcBackend> = GLWEPrepared {
+        data: VecZnxDft::from_data(host_alloc(173), 64, 3, 3),
+        base2k: Base2K(12),
+    };
+    fill_bytes(&mut src.data.data);
+
+    let uploaded = dst_module.upload_glwe_prepared::<SrcBackend>(&src);
+    let downloaded = src_module.download_glwe_prepared::<DstBackend>(&uploaded);
+
+    assert!(downloaded == src);
+}
+
+#[test]
+fn module_transfer_gglwe_prepared_roundtrip() {
+    let src_module: Module<SrcBackend> = Module::new_marker(64);
+    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let mut src: GGLWEPrepared<Vec<u8>, SrcBackend> = GGLWEPrepared {
+        data: VmpPMat::from_data(host_alloc(347), 64, 3, 2, 4, 5),
+        base2k: Base2K(10),
+        dsize: Dsize(2),
+    };
+    fill_bytes(src.data.data_mut());
+
+    let uploaded = dst_module.upload_gglwe_prepared::<SrcBackend>(&src);
+    let downloaded = src_module.download_gglwe_prepared::<DstBackend>(&uploaded);
+
+    assert!(downloaded == src);
+}
+
+#[test]
+fn module_transfer_glwe_secret_prepared_roundtrip() {
+    let src_module: Module<SrcBackend> = Module::new_marker(64);
+    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let mut src: GLWESecretPrepared<Vec<u8>, SrcBackend> = GLWESecretPrepared {
+        data: SvpPPol::from_data(host_alloc(131), 64, 3),
+        dist: Distribution::BinaryBlock(8),
+    };
+    fill_bytes(&mut src.data.data);
+
+    let uploaded = dst_module.upload_glwe_secret_prepared::<SrcBackend>(&src);
+    let downloaded = src_module.download_glwe_secret_prepared::<DstBackend>(&uploaded);
+
+    assert_eq!(downloaded.dist, src.dist);
+    assert_eq!(downloaded.data.n, src.data.n);
+    assert_eq!(downloaded.data.cols, src.data.cols);
+    assert_eq!(downloaded.data.data, src.data.data);
+}

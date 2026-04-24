@@ -1,20 +1,26 @@
 use poulpy_hal::{
+    layouts::DataMut,
     layouts::ScalarZnxToRef,
-    layouts::{Backend, Scratch, Stats},
+    layouts::{Backend, ScratchArena, Stats},
 };
 
-use crate::layouts::{GGLWEInfos, GGLWEToRef, GGSWInfos, GGSWToRef, GLWEInfos, GLWESecretPreparedToRef, GLWEToRef};
+use crate::layouts::{
+    GGLWEInfos, GGLWEToBackendRef, GGLWEToRef, GGSWInfos, GGSWToBackendRef, GGSWToRef, GLWEInfos, GLWESecretPreparedToBackendRef,
+    GLWEToBackendRef, GLWEToRef,
+};
 
 pub trait GLWENoise<BE: Backend> {
     fn glwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos;
 
-    fn glwe_noise<R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut Scratch<BE>) -> Stats
+    fn glwe_noise<'s, R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut ScratchArena<'s, BE>) -> Stats
     where
-        R: GLWEToRef + GLWEInfos,
+        R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEToRef,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos;
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut;
 }
 
 pub trait GGLWENoise<BE: Backend> {
@@ -22,19 +28,21 @@ pub trait GGLWENoise<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_noise<R, S, P>(
+    fn gglwe_noise<'s, R, S, P>(
         &self,
         res: &R,
         res_row: usize,
         res_col: usize,
         pt_want: &P,
         sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGLWEToRef + GGLWEInfos,
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        P: ScalarZnxToRef;
+        R: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        P: ScalarZnxToRef,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: DataMut;
 }
 
 pub trait GGSWNoise<BE: Backend> {
@@ -42,17 +50,19 @@ pub trait GGSWNoise<BE: Backend> {
     where
         A: GGSWInfos;
 
-    fn ggsw_noise<R, S, P>(
+    fn ggsw_noise<'s, R, S, P>(
         &self,
         res: &R,
         res_row: usize,
         res_col: usize,
         pt_want: &P,
         sk_prepared: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGSWToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        P: ScalarZnxToRef;
+        R: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        S: GLWESecretPreparedToBackendRef<BE>,
+        P: ScalarZnxToRef,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: DataMut;
 }

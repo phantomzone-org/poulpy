@@ -27,7 +27,10 @@ use poulpy_hal::{
 };
 
 #[doc(hidden)]
-pub trait FFT64SvpDefaults<BE: Backend>: Backend {
+pub trait FFT64SvpDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         Module<BE>: FFTModuleHandle<f64>,
@@ -76,10 +79,13 @@ pub trait FFT64SvpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> FFT64SvpDefaults<BE> for BE {}
+impl<BE: Backend> FFT64SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}
 
 #[doc(hidden)]
-pub trait NTT120SvpDefaults<BE: Backend>: Backend {
+pub trait NTT120SvpDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+{
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         Module<BE>: NttModuleHandle,
@@ -94,6 +100,7 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend {
     where
         Module<BE>: NttModuleHandle + VecZnxDftApply<BE>,
         BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttMulBbc + NttZero,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         R: VecZnxDftToMut<BE>,
         A: SvpPPolToRef<BE>,
         C: VecZnxToRef,
@@ -101,9 +108,12 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend {
         let b = b.to_ref();
         let b_size = b.size();
         let mut b_dft = poulpy_hal::layouts::VecZnxDftOwned::<BE>::alloc(module.n(), 1, b_size);
+        let mut b_dft_ref = b_dft.to_mut();
 
-        <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(module, 1, 0, &mut b_dft, 0, &b, b_col);
-        ntt120_svp_apply_dft_to_dft::<R, A, _, BE>(module, res, res_col, a, a_col, &b_dft, 0);
+        <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(module, 1, 0, &mut b_dft_ref, 0, &b, b_col);
+        ntt120_svp_apply_dft_to_dft::<R, A, poulpy_hal::layouts::VecZnxDftOwned<BE>, BE>(
+            module, res, res_col, a, a_col, &b_dft, 0,
+        );
     }
 
     fn svp_apply_dft_to_dft_default<R, A, C>(
@@ -135,4 +145,4 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120SvpDefaults<BE> for BE {}
+impl<BE: Backend> NTT120SvpDefaults<BE> for BE where BE::OwnedBuf: poulpy_hal::layouts::DataMut {}

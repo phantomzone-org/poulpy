@@ -1,13 +1,13 @@
-use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, DataMut, Module, Scratch},
-};
+use poulpy_hal::layouts::{Backend, DataMut, Module, ScratchArena};
 
 pub use crate::api::GGLWEKeyswitch;
 use crate::{
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
-    layouts::{GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWESwitchingKey},
+    layouts::{
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWESwitchingKey,
+        gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
+    },
 };
 
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {}
@@ -26,12 +26,13 @@ where
         self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
     }
 
-    fn gglwe_keyswitch_default<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn gglwe_keyswitch_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEInfos,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        B: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         assert_eq!(
             res.rank_in(),
@@ -64,23 +65,29 @@ where
             self.gglwe_keyswitch_tmp_bytes_default(res, a, b)
         );
 
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GGLWE<&[u8]> = &a.to_ref();
+        let mut res = res.to_backend_mut();
+        let a = a.to_backend_ref();
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
-                self.glwe_keyswitch(&mut res.at_mut(row, col), &a.at(row, col), b, scratch);
+                self.glwe_keyswitch(
+                    &mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
+                    &gglwe_at_backend_ref_from_ref::<BE>(&a, row, col),
+                    b,
+                    &mut scratch.borrow(),
+                );
             }
         }
     }
 
-    fn gglwe_keyswitch_assign_default<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn gglwe_keyswitch_inplace_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut,
-        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+        let mut res = res.to_backend_mut();
 
         assert_eq!(
             res.rank_out(),
@@ -90,15 +97,19 @@ where
             a.rank_out()
         );
         assert!(
-            scratch.available() >= self.gglwe_keyswitch_tmp_bytes_default(res, res, a),
+            scratch.available() >= self.gglwe_keyswitch_tmp_bytes_default(&res, &res, a),
             "scratch.available(): {} < GGLWEKeyswitch::gglwe_keyswitch_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_keyswitch_tmp_bytes_default(res, res, a)
+            self.gglwe_keyswitch_tmp_bytes_default(&res, &res, a)
         );
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
-                self.glwe_keyswitch_assign(&mut res.at_mut(row, col), a, scratch);
+                self.glwe_keyswitch_inplace(
+                    &mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
+                    a,
+                    &mut scratch.borrow(),
+                );
             }
         }
     }

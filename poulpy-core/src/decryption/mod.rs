@@ -21,5 +21,6 @@ pub use glwe_tensor::*;
 pub use lwe::*;
 
 pub(crate) use glwe::GLWEDecryptDefault;
+pub(crate) use glwe::glwe_decrypt_backend_inner;
 pub(crate) use glwe_tensor::GLWETensorDecryptDefault;
 pub(crate) use lwe::LWEDecryptDefault;

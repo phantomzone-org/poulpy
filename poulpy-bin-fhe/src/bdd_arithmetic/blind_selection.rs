@@ -1,14 +1,17 @@
 use std::collections::HashMap;
 
 use poulpy_core::{
-    GLWECopy, GLWEDecrypt, ScratchTakeCore,
-    layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut},
+    GLWECopy, GLWEDecrypt, ScratchArenaTakeCore,
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut},
 };
-use poulpy_hal::layouts::{Backend, Module, Scratch, ZnxZero};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxZero};
 
 use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
-impl<T: UnsignedInteger, BE: Backend> GLWEBlindSelection<T, BE> for Module<BE> where Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE> {}
+impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindSelection<T, BE> for Module<BE> where
+    Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>
+{
+}
 
 /// Oblivious selection of one GLWE ciphertext from an encrypted-indexed map.
 ///
@@ -23,7 +26,7 @@ impl<T: UnsignedInteger, BE: Backend> GLWEBlindSelection<T, BE> for Module<BE> w
 /// `bit_mask` most-significant bits of the selected index sub-field, traversing
 /// from MSB to LSB.  Indices absent from the map are treated as encryptions of
 /// zero.
-pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend>
+pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>,
 {
@@ -45,12 +48,13 @@ where
         fhe_uint: &K,
         bit_rsh: usize,
         bit_mask: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GLWEToMut,
         A: GLWEToMut,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(bit_rsh + bit_mask <= T::BITS as usize);
 
@@ -59,7 +63,7 @@ where
         for i in 0..bit_mask {
             let t: usize = 1 << (bit_mask - i - 1);
 
-            let bit: &GGSWPrepared<&[u8], BE> = &fhe_uint.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
+            let bit = fhe_uint.get_bit(bit_rsh + bit_mask - i - 1); // MSB -> LSB traversal
 
             for j in 0..t {
                 let hi: Option<&mut A> = a.remove(&j);
@@ -72,16 +76,16 @@ where
                     }
 
                     (Some(lo), None) => {
-                        let (mut zero, scratch_1) = scratch.take_glwe(res);
+                        let mut zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
                         zero.data_mut().zero();
-                        self.cmux_assign(lo, &zero, bit, scratch_1);
+                        self.cmux_inplace(lo, &zero, bit, scratch);
                         a.insert(j, lo);
                     }
 
                     (None, Some(hi)) => {
-                        let (mut zero, scratch_1) = scratch.take_glwe(res);
+                        let mut zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
                         zero.data_mut().zero();
-                        self.cmux_assign(&mut zero, hi, bit, scratch_1);
+                        self.cmux_inplace(&mut zero, hi, bit, scratch);
                         self.glwe_copy(hi, &zero);
                         a.insert(j, hi);
                     }

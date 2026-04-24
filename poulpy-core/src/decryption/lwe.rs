@@ -1,12 +1,15 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
+    api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, DataMut, Module, ScratchArena, ZnxView, ZnxViewMut, vec_znx_backend_ref_from_mut},
 };
 
 pub use crate::api::LWEDecrypt;
 use crate::{
-    ScratchTakeCore,
-    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef, SetLWEInfos},
+    ScratchArenaTakeCore,
+    layouts::{
+        LWE, LWEInfos, LWEPlaintext, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef,
+        SetLWEInfos,
+    },
 };
 
 pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {
@@ -20,12 +23,13 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
         lvl_0 + lvl_1
     }
 
-    fn lwe_decrypt_default<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    fn lwe_decrypt_default<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
         R: LWEToRef,
-        P: LWEPlaintextToMut + SetLWEInfos + LWEInfos,
+        P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: DataMut,
     {
         let res: &LWE<&[u8]> = &res.to_ref();
         let sk: LWESecret<&[u8]> = sk.to_ref();
@@ -41,7 +45,9 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
             self.lwe_decrypt_tmp_bytes_default(res)
         );
 
-        let (mut tmp, scratch_1) = scratch.take_lwe_plaintext(res);
+        let scratch = scratch.borrow();
+
+        let (mut tmp, mut scratch_1) = scratch.take_lwe_plaintext(res);
         for i in 0..res.size() {
             tmp.data.at_mut(0, i)[0] = res.data.at(0, i)[0]
                 + res.data.at(0, i)[1..]
@@ -53,7 +59,9 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
 
         let pt_base2k = pt.base2k().into();
         let res_base2k = res.base2k().into();
-        self.vec_znx_normalize(&mut pt.to_mut().data, pt_base2k, 0, 0, tmp.data(), res_base2k, 0, scratch_1);
+        let mut pt = pt.to_backend_mut();
+        let tmp_ref = vec_znx_backend_ref_from_mut::<BE>(&tmp.data);
+        self.vec_znx_normalize(&mut pt.data, pt_base2k, 0, 0, &tmp_ref, res_base2k, 0, &mut scratch_1);
     }
 }
 

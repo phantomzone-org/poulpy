@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, NoiseInfos, ScalarZnxToRef, Scratch},
+    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToRef, Scratch, ScratchArena},
     source::Source,
 };
 
@@ -9,10 +9,11 @@ use crate::{
     GetDistribution, GetDistributionMut,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyCompressedToMut, GGLWEToGGSWKeyToMut, GGLWEToMut, GGSWCompressedSeedMut, GGSWCompressedToMut,
-        GGSWInfos, GGSWToMut, GLWECompressedSeedMut, GLWECompressedToMut, GLWEInfos, GLWEPlaintextToRef, GLWEPreparedToRef,
-        GLWESecretPreparedToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos, LWEPlaintextToRef,
-        LWESecretToRef, LWEToMut, SetGaloisElement, TorusPrecision,
+        GGSWInfos, GGSWToMut, GLWECompressedSeedMut, GLWECompressedToMut, GLWEInfos, GLWEPlaintextToRef, GLWESecretToRef,
+        GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef, LWEToMut, SetGaloisElement,
+        TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToMut},
+        prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
 };
 
@@ -29,7 +30,7 @@ pub trait LWEEncryptSk<BE: Backend> {
     where
         A: LWEInfos;
 
-    fn lwe_encrypt_sk<R, P, S, E>(
+    fn lwe_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -37,13 +38,14 @@ pub trait LWEEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: LWEToMut,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
         E: EncryptionInfos,
-        Scratch<BE>: crate::ScratchTakeCore<BE>;
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GLWEEncryptSk<BE: Backend> {
@@ -51,7 +53,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
     where
         A: GLWEInfos;
 
-    fn glwe_encrypt_sk<R, P, S, E>(
+    fn glwe_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -59,25 +61,29 @@ pub trait GLWEEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        BE: 's,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 
-    fn glwe_encrypt_zero_sk<R, E, S>(
+    fn glwe_encrypt_zero_sk<'s, R, E, S>(
         &self,
         res: &mut R,
         sk: &S,
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        BE: 's,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait GLWEEncryptPk<BE: Backend> {
@@ -85,7 +91,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
     where
         A: GLWEInfos;
 
-    fn glwe_encrypt_pk<R, P, K, E>(
+    fn glwe_encrypt_pk<'s, R, P, K, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -93,25 +99,29 @@ pub trait GLWEEncryptPk<BE: Backend> {
         enc_infos: &E,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos;
+        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 
-    fn glwe_encrypt_zero_pk<R, K, E>(
+    fn glwe_encrypt_zero_pk<'s, R, K, E>(
         &self,
         res: &mut R,
         pk: &K,
         enc_infos: &E,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos;
+        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GLWEPublicKeyGenerate<BE: Backend> {
@@ -125,7 +135,7 @@ pub trait GLWEPublicKeyGenerate<BE: Backend> {
     ) where
         R: GLWEToMut + GetDistributionMut + GLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE> + GetDistribution;
+        S: GLWESecretPreparedToBackendRef<BE> + GetDistribution;
 }
 
 pub trait GGLWEEncryptSk<BE: Backend> {
@@ -133,7 +143,7 @@ pub trait GGLWEEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_encrypt_sk<R, P, S, E>(
+    fn gglwe_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -141,12 +151,14 @@ pub trait GGLWEEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GGSWEncryptSk<BE: Backend> {
@@ -154,7 +166,7 @@ pub trait GGSWEncryptSk<BE: Backend> {
     where
         A: GGSWInfos;
 
-    fn ggsw_encrypt_sk<R, P, S, E>(
+    fn ggsw_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -162,12 +174,14 @@ pub trait GGSWEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWToMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
@@ -202,7 +216,7 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
@@ -248,7 +262,7 @@ pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
         enc_infos: &E,
         source_xe: &mut Source,
         source_xa: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
@@ -293,7 +307,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         S1: LWESecretToRef,
-        S2: GLWESecretPreparedToRef<BE>,
+        S2: GLWESecretPreparedToBackendRef<BE>,
         E: EncryptionInfos,
         R: GGLWEToMut + GGLWEInfos;
 }
@@ -329,7 +343,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
     where
         A: GLWEInfos;
 
-    fn glwe_compressed_encrypt_sk<R, P, S, E>(
+    fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -337,12 +351,15 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        BE: 's,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE::BufMut<'s>: HostDataMut;
 }
 
 pub trait GGLWECompressedEncryptSk<BE: Backend> {
@@ -350,7 +367,7 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
     where
         A: GGLWEInfos;
 
-    fn gglwe_compressed_encrypt_sk<R, P, S, E>(
+    fn gglwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -358,12 +375,14 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
         seed: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GGSWCompressedEncryptSk<BE: Backend> {
@@ -371,7 +390,7 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
     where
         A: GGSWInfos;
 
-    fn ggsw_compressed_encrypt_sk<R, P, S, E>(
+    fn ggsw_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
         res: &mut R,
         pt: &P,
@@ -379,12 +398,14 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
         seed_xa: [u8; 32],
         enc_infos: &E,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
         E: EncryptionInfos,
-        S: GLWESecretPreparedToRef<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
 pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {

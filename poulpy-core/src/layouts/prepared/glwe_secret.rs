@@ -1,6 +1,9 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, DeviceBuf, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef,
+        ZnxInfos, svp_ppol_backend_ref_from_mut,
+    },
 };
 
 use crate::{
@@ -17,6 +20,18 @@ use crate::{
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) data: SvpPPol<D, B>,
     pub(crate) dist: Distribution,
+}
+
+pub type GLWESecretPreparedBackendRef<'a, B> = GLWESecretPrepared<<B as Backend>::BufRef<'a>, B>;
+pub type GLWESecretPreparedBackendMut<'a, B> = GLWESecretPrepared<<B as Backend>::BufMut<'a>, B>;
+
+pub fn glwe_secret_prepared_backend_ref_from_mut<'a, 'b, B: Backend>(
+    sk: &'a GLWESecretPrepared<B::BufMut<'b>, B>,
+) -> GLWESecretPreparedBackendRef<'a, B> {
+    GLWESecretPrepared {
+        dist: sk.dist,
+        data: svp_ppol_backend_ref_from_mut(&sk.data),
+    }
 }
 
 impl<D: DataRef, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
@@ -54,13 +69,13 @@ pub trait GLWESecretPreparedFactory<B: Backend>
 where
     Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
-    fn glwe_secret_prepared_alloc(&self, rank: Rank) -> GLWESecretPrepared<DeviceBuf<B>, B> {
+    fn glwe_secret_prepared_alloc(&self, rank: Rank) -> GLWESecretPrepared<B::OwnedBuf, B> {
         GLWESecretPrepared {
             data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-    fn glwe_secret_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<DeviceBuf<B>, B>
+    fn glwe_secret_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<B::OwnedBuf, B>
     where
         A: GLWEInfos,
     {
@@ -81,11 +96,11 @@ where
 
     fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWESecretPreparedToMut<B> + GetDistributionMut,
+        R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
         O: GLWESecretToRef + GetDistribution,
     {
         {
-            let mut res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
+            let mut res = res.to_backend_mut();
             let other: GLWESecret<&[u8]> = other.to_ref();
             for i in 0..res.rank().into() {
                 self.svp_prepare(&mut res.data, i, &other.data, i);
@@ -140,6 +155,32 @@ impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D
         GLWESecretPrepared {
             dist: self.dist,
             data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWESecretPreparedToBackendRef<B: Backend> {
+    fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B>;
+}
+
+impl<B: Backend> GLWESecretPreparedToBackendRef<B> for GLWESecretPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B> {
+        GLWESecretPrepared {
+            dist: self.dist,
+            data: self.data.to_backend_ref(),
+        }
+    }
+}
+
+pub trait GLWESecretPreparedToBackendMut<B: Backend> {
+    fn to_backend_mut(&mut self) -> GLWESecretPreparedBackendMut<'_, B>;
+}
+
+impl<B: Backend> GLWESecretPreparedToBackendMut<B> for GLWESecretPrepared<B::OwnedBuf, B> {
+    fn to_backend_mut(&mut self) -> GLWESecretPreparedBackendMut<'_, B> {
+        GLWESecretPrepared {
+            dist: self.dist,
+            data: self.data.to_backend_mut(),
         }
     }
 }

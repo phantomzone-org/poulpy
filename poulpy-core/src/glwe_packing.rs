@@ -1,30 +1,84 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ModuleLogN, ScratchAvailable},
-    layouts::{Backend, GaloisElement, Module, Scratch},
+    api::ModuleLogN,
+    layouts::{Backend, GaloisElement, HostDataMut, Module, ScratchArena},
 };
 
 pub use crate::api::GLWEPacking;
 use crate::{
-    GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GetGaloisElement},
+    GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
+    layouts::{
+        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut,
+        GetGaloisElement, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+    },
 };
 
+fn glwe_rotate_inplace_on<'s, M, A, BE: Backend + 's>(module: &M, k: i64, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
+where
+    M: GLWERotate<BE> + ?Sized,
+    A: GLWEToBackendMut<BE>,
+{
+    let mut a_backend = a.to_backend_mut();
+    module.glwe_rotate_inplace(k, &mut a_backend, scratch);
+}
+
+fn glwe_normalize_inplace_on<'s, M, A, BE: Backend + 's>(module: &M, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
+where
+    M: GLWENormalize<BE> + ?Sized,
+    A: GLWEToBackendMut<BE>,
+{
+    let mut a_backend = a.to_backend_mut();
+    module.glwe_normalize_inplace(&mut a_backend, scratch)
+}
+
+fn glwe_automorphism_add_inplace_on<'s, M, A, K, BE: Backend + 's>(
+    module: &M,
+    a: &mut A,
+    key: &K,
+    scratch: &mut ScratchArena<'s, BE>,
+)
+where
+    M: GLWEAutomorphism<BE> + ?Sized,
+    A: GLWEToBackendMut<BE>,
+    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+{
+    let mut a_backend = a.to_backend_mut();
+    module.glwe_automorphism_add_inplace(&mut a_backend, key, scratch)
+}
+
+#[allow(dead_code)]
+fn glwe_automorphism_sub_negate_on<'s, M, A, K, BE: Backend + 's>(
+    module: &M,
+    a: &mut A,
+    tmp: &GLWE<BE::BufMut<'_>>,
+    key: &K,
+    scratch: &mut ScratchArena<'s, BE>,
+) where
+    M: GLWEAutomorphism<BE> + ?Sized,
+    A: GLWEToBackendMut<BE>,
+    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+{
+    let mut a_backend = a.to_backend_mut();
+    module.glwe_automorphism_sub_negate(&mut a_backend, &glwe_backend_ref_from_mut::<BE>(tmp), key, scratch)
+}
+
 #[allow(clippy::too_many_arguments)]
-fn pack_internal<M, A, B, K, BE: Backend>(
+fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     module: &M,
     a: &mut Option<&mut A>,
     b: &mut Option<&mut B>,
     i: usize,
     auto_key: &K,
-    scratch: &mut Scratch<BE>,
+    scratch: &mut ScratchArena<'s, BE>,
 ) where
     M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE> + ?Sized,
-    A: GLWEToMut + GLWEInfos,
-    B: GLWEToMut + GLWEInfos,
-    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    B: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+    ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
@@ -40,46 +94,53 @@ fn pack_internal<M, A, B, K, BE: Backend>(
         let t: i64 = 1 << (a.n().log2() - i - 1);
 
         if let Some(b) = b.as_deref_mut() {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe(a);
+            let a_layout = a.glwe_layout();
+            let mut tmp_b = GLWE::alloc_from_infos(&a_layout);
 
-            // a = a * X^-t
-            module.glwe_rotate_assign(-t, a, scratch_1);
+            glwe_rotate_inplace_on(module, -t, a, scratch);
 
-            // tmp_b = a * X^-t - b
             module.glwe_sub(&mut tmp_b, a, b);
-            module.glwe_rsh(1, &mut tmp_b, scratch_1);
+            module.glwe_rsh(1, &mut tmp_b, scratch);
 
-            // a = a * X^-t + b
             module.glwe_add_assign(a, b);
-            module.glwe_rsh(1, a, scratch_1);
+            module.glwe_rsh(1, a, scratch);
 
-            module.glwe_normalize_assign(&mut tmp_b, scratch_1);
+            {
+                let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
+                    <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+                module.glwe_normalize_inplace(&mut tmp_b_backend, scratch);
+            }
 
-            // tmp_b = phi(a * X^-t - b)
-            module.glwe_automorphism_assign(&mut tmp_b, auto_key, scratch_1);
+            {
+                let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
+                    <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+                module.glwe_automorphism_inplace(&mut tmp_b_backend, auto_key, scratch);
+            }
 
-            // a = a * X^-t + b - phi(a * X^-t - b)
-            module.glwe_sub_assign(a, &tmp_b);
-            module.glwe_normalize_assign(a, scratch_1);
+            module.glwe_sub_inplace(a, &tmp_b);
+            glwe_normalize_inplace_on(module, a, scratch);
 
-            // a = a + b * X^t - phi(a * X^-t - b) * X^t
-            //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
-            //   = a + b * X^t + phi(a - b * X^t)
-            module.glwe_rotate_assign(t, a, scratch_1);
+            glwe_rotate_inplace_on(module, t, a, scratch)
         } else {
             module.glwe_rsh(1, a, scratch);
             // a = a + phi(a)
-            module.glwe_automorphism_add_assign(a, auto_key, scratch);
+            glwe_automorphism_add_inplace_on(module, a, auto_key, scratch);
         }
     } else if let Some(b) = b.as_deref_mut() {
         let t: i64 = 1 << (b.n().log2() - i - 1);
 
-        let (mut tmp_b, scratch_1) = scratch.take_glwe(b);
-        module.glwe_rotate(t, &mut tmp_b, b);
-        module.glwe_rsh(1, &mut tmp_b, scratch_1);
+        let b_layout = b.glwe_layout();
+        let mut tmp_b = GLWE::alloc_from_infos(&b_layout);
+        {
+            let b_backend = b.to_backend_ref();
+            let mut tmp_b_backend: GLWEBackendMut<'_, BE> = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+            module.glwe_rotate(t, &mut tmp_b_backend, &b_backend);
+        }
+        module.glwe_rsh(1, &mut tmp_b, scratch);
 
-        // a = (b* X^t - phi(b* X^t))
-        module.glwe_automorphism_sub_negate(b, &tmp_b, auto_key, scratch_1);
+        let tmp_b_ref = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_b);
+        let mut b_backend = b.to_backend_mut();
+        module.glwe_automorphism_sub_negate(&mut b_backend, &tmp_b_ref, auto_key, scratch)
     }
 }
 
@@ -119,19 +180,22 @@ where
         (lvl_0 + lvl_1).max(self.glwe_trace_tmp_bytes(res, res, key))
     }
 
-    fn glwe_pack_default<R, A, K, H>(
+    fn glwe_pack_default<'s, R, A, K, H>(
         &self,
         res: &mut R,
         mut a: HashMap<usize, &mut A>,
         log_gap_out: usize,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToMut + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        BE: 's,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(*a.keys().max().unwrap() < self.n());
         let key_infos = keys.automorphism_key_infos();
@@ -142,8 +206,8 @@ where
             self.glwe_pack_tmp_bytes_default(res, &key_infos)
         );
 
+        let mut scratch_local = scratch.borrow();
         let log_n: usize = self.log_n();
-
         for i in 0..(log_n - log_gap_out) {
             let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
@@ -157,7 +221,9 @@ where
                 let mut lo: Option<&mut A> = a.remove(&j);
                 let mut hi: Option<&mut A> = a.remove(&(j + t));
 
-                pack_internal(self, &mut lo, &mut hi, i, key, scratch);
+                scratch_local = scratch_local.apply_mut(|scratch| {
+                    pack_internal(self, &mut lo, &mut hi, i, key, scratch);
+                });
 
                 if let Some(lo) = lo {
                     a.insert(j, lo);
@@ -167,12 +233,13 @@ where
             }
         }
 
-        self.glwe_trace(res, log_n - log_gap_out, *a.get(&0).unwrap(), keys, scratch);
+        scratch_local.apply_mut(|scratch| {
+            self.glwe_trace(res, log_n - log_gap_out, *a.get(&0).unwrap(), keys, scratch);
+        });
     }
 }
 
-impl<BE: Backend> GLWEPackingDefault<BE> for Module<BE>
-where
+impl<BE: Backend> GLWEPackingDefault<BE> for Module<BE> where
     Self: GLWEAutomorphism<BE>
         + GaloisElement
         + ModuleLogN
@@ -182,7 +249,6 @@ where
         + GLWEAdd
         + GLWENormalize<BE>
         + GLWECopy
-        + GLWETrace<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+        + GLWETrace<BE>
 {
 }

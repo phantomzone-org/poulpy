@@ -1,18 +1,29 @@
-use poulpy_hal::layouts::{Backend, Module, Scratch};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
     api::{GGLWEExternalProduct, GGSWExternalProduct, GLWEExternalProduct},
     external_product::{GGLWEExternalProductDefault, GGSWExternalProductDefault},
     layouts::{
-        GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToRef, GGSWToMut, GGSWToRef, GLWEInfos, GLWEToMut, GLWEToRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef,
+        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
     },
-    oep::CoreImpl,
+    oep::{GGLWEExternalProductImpl, GGSWExternalProductImpl, GLWEExternalProductImpl},
 };
 
-impl<BE> GLWEExternalProduct<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-{
+macro_rules! impl_external_product_delegate {
+    ($trait:ty, [$($bounds:tt)+], $($body:item)+) => {
+        impl<BE> $trait for Module<BE>
+        where
+            $($bounds)+
+        {
+            $($body)+
+        }
+    };
+}
+
+impl_external_product_delegate!(
+    GLWEExternalProduct<BE>,
+    [BE: Backend + GLWEExternalProductImpl<BE>],
     fn glwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GLWEInfos,
@@ -22,29 +33,39 @@ where
         BE::glwe_external_product_tmp_bytes(self, res_infos, a_infos, b_infos)
     }
 
-    fn glwe_external_product_assign<R, D>(&self, res: &mut R, rhs: &D, scratch: &mut Scratch<BE>)
+    fn glwe_external_product_inplace<'s, 'r, D>(
+        &self,
+        res: &mut GLWEBackendMut<'r, BE>,
+        rhs: &D,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GLWEToMut + GLWEInfos,
-        D: GGSWPreparedToRef<BE> + GGSWInfos,
+        D: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::glwe_external_product_assign(self, res, rhs, scratch)
     }
 
-    fn glwe_external_product<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
+    fn glwe_external_product<'s, 'r, 'a, D>(
+        &self,
+        res: &mut GLWEBackendMut<'r, BE>,
+        lhs: &GLWEBackendRef<'a, BE>,
+        rhs: &D,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GLWEToMut + GLWEInfos,
-        A: GLWEToRef + GLWEInfos,
-        D: GGSWPreparedToRef<BE> + GGSWInfos,
+        D: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::glwe_external_product(self, res, lhs, rhs, scratch)
     }
-}
+);
 
-impl<BE> GGLWEExternalProduct<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-    Module<BE>: GGLWEExternalProductDefault<BE>,
-{
+impl_external_product_delegate!(
+    GGLWEExternalProduct<BE>,
+    [BE: Backend + GGLWEExternalProductImpl<BE>, Module<BE>: GGLWEExternalProductDefault<BE>],
     fn gglwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGLWEInfos,
@@ -54,31 +75,42 @@ where
         BE::gglwe_external_product_tmp_bytes(self, res_infos, a_infos, b_infos)
     }
 
-    fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product<'s, R, A, B>(
+        &self,
+        res: &mut R,
+        a: &A,
+        b: &B,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GGLWEToMut + GGLWEInfos,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: crate::ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::gglwe_external_product(self, res, a, b, scratch)
     }
 
-    fn gglwe_external_product_assign<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product_inplace<'s, R, A>(
+        &self,
+        res: &mut R,
+        a: &A,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GGLWEToMut,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: crate::ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::gglwe_external_product_assign(self, res, a, scratch)
     }
-}
+);
 
-impl<BE> GGSWExternalProduct<BE> for Module<BE>
-where
-    BE: Backend + CoreImpl<BE>,
-    Module<BE>: GGSWExternalProductDefault<BE>,
-{
+impl_external_product_delegate!(
+    GGSWExternalProduct<BE>,
+    [BE: Backend + GGSWExternalProductImpl<BE>, Module<BE>: GGSWExternalProductDefault<BE>],
     fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGSWInfos,
@@ -88,22 +120,35 @@ where
         BE::ggsw_external_product_tmp_bytes(self, res_infos, a_infos, b_infos)
     }
 
-    fn ggsw_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn ggsw_external_product<'s, R, A, B>(
+        &self,
+        res: &mut R,
+        a: &A,
+        b: &B,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GGSWToMut,
-        A: GGSWToRef,
-        B: GGSWPreparedToRef<BE>,
-        Scratch<BE>: crate::ScratchTakeCore<BE>,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::ggsw_external_product(self, res, a, b, scratch)
     }
 
-    fn ggsw_external_product_assign<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn ggsw_external_product_inplace<'s, R, A>(
+        &self,
+        res: &mut R,
+        a: &A,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        R: GGSWToMut,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: crate::ScratchTakeCore<BE>,
+        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         BE::ggsw_external_product_assign(self, res, a, scratch)
     }
-}
+);

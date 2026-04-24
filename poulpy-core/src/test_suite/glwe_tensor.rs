@@ -3,10 +3,10 @@ use poulpy_hal::{
         ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxFillUniform, VecZnxNormalize,
         VecZnxNormalizeAssign,
     },
-    layouts::{DeviceBuf, FillUniform, Module, Scratch, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
+    layouts::{FillUniform, Module, Scratch, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
-    test_suite::TestParams,
     test_suite::convolution::bivariate_convolution_naive,
+    test_suite::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref},
 };
 use rand::Rng;
 use std::f64::consts::SQRT_2;
@@ -23,6 +23,8 @@ use crate::{
 
 pub fn test_glwe_tensoring<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -98,21 +100,28 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
         module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc(module.n().into(), rank.into());
-        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, scratch.borrow());
+        module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, crate::test_suite::scratch_host_mut(&mut scratch));
 
-        let mut sk_tensor_prep: GLWESecretTensorPrepared<DeviceBuf<BE>, BE> =
+        let mut sk_tensor_prep: GLWESecretTensorPrepared<BE::OwnedBuf, BE> =
             module.glwe_secret_tensor_prepared_alloc(rank.into());
         module.glwe_secret_tensor_prepared_prepare(&mut sk_tensor_prep, &sk_tensor);
 
         let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk, &tsk_infos, &mut source_xe, &mut source_xa, scratch.borrow());
+        module.glwe_tensor_key_encrypt_sk(
+            &mut tsk,
+            &sk,
+            &tsk_infos,
+            &mut source_xe,
+            &mut source_xa,
+            crate::test_suite::scratch_host_mut(&mut scratch),
+        );
 
-        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
-        module.prepare_tensor_key(&mut tsk_prep, &tsk, scratch.borrow());
+        let mut tsk_prep: GLWETensorKeyPrepared<BE::OwnedBuf, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prep, &tsk, &mut scratch.borrow());
 
         let scale: usize = 2 * in_base2k;
 
@@ -124,7 +133,7 @@ where
         pt_in.encode_vec_i64(&data, TorusPrecision(scale as u32));
 
         let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_in.size());
-        bivariate_convolution_naive(
+        bivariate_convolution_naive::<_, _, _, _, BE>(
             module,
             in_base2k,
             2,
@@ -134,7 +143,7 @@ where
             0,
             pt_in.data(),
             0,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         module.glwe_encrypt_sk(
@@ -144,7 +153,7 @@ where
             &glwe_in_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
         module.glwe_encrypt_sk(
             &mut b,
@@ -153,7 +162,7 @@ where
             &glwe_in_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         for res_offset in 0..scale {
@@ -164,34 +173,34 @@ where
                 a.max_k().as_usize(),
                 &b,
                 b.max_k().as_usize(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
-            module.glwe_tensor_decrypt(&res_tensor, &mut pt_have, &sk_dft, &sk_tensor_prep, scratch.borrow());
+            module.glwe_tensor_decrypt(&res_tensor, &mut pt_have, &sk_dft, &sk_tensor_prep, &mut scratch.borrow());
             module.vec_znx_normalize(
-                pt_want.data_mut(),
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
                 out_base2k,
                 res_offset as i64,
                 0,
-                &pt_want_base2k_in,
+                &vec_znx_backend_ref::<BE>(&pt_want_base2k_in),
                 in_base2k,
                 0,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, &mut scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
 
             assert!(noise_have - noise_want <= 0.5, "{} > {}", noise_have, noise_want);
 
-            module.glwe_tensor_relinearize(&mut res_relin, &res_tensor, &tsk_prep, tsk_prep.size(), scratch.borrow());
-            module.glwe_decrypt(&res_relin, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_tensor_relinearize(&mut res_relin, &res_tensor, &tsk_prep, tsk_prep.size(), &mut scratch.borrow());
+            module.glwe_decrypt(&res_relin, &mut pt_have, &sk_dft, &mut scratch.borrow());
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, &mut scratch.borrow());
 
             // We can reuse the same noise bound because the relinearization noise (which is additive)
             // is much smaller than the tensoring noise (which is multiplicative)
@@ -273,6 +282,8 @@ where
 
 pub fn test_glwe_tensor_square<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -348,7 +359,7 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
         module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let tsk_enc_infos = EncryptionLayout::new_from_default_sigma(tsk_infos).unwrap();
@@ -360,11 +371,11 @@ where
             &tsk_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            crate::test_suite::scratch_host_mut(&mut scratch),
         );
 
-        let mut tsk_prep: GLWETensorKeyPrepared<DeviceBuf<BE>, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
-        module.prepare_tensor_key(&mut tsk_prep, &tsk, scratch.borrow());
+        let mut tsk_prep: GLWETensorKeyPrepared<BE::OwnedBuf, BE> = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
+        module.prepare_tensor_key(&mut tsk_prep, &tsk, &mut scratch.borrow());
 
         let scale: usize = 2 * in_base2k;
 
@@ -380,7 +391,7 @@ where
             &glwe_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         for res_offset in 0..scale {
@@ -389,7 +400,7 @@ where
                 &mut res_square,
                 &a,
                 a.max_k().as_usize(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             module.glwe_tensor_apply(
                 scale + res_offset,
@@ -398,7 +409,7 @@ where
                 a.max_k().as_usize(),
                 &a,
                 a.max_k().as_usize(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             assert_eq!(res_square.data().raw(), res_tensor.data().raw());
@@ -408,22 +419,22 @@ where
                 &res_square,
                 &tsk_prep,
                 tsk_prep.size(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             module.glwe_tensor_relinearize(
                 &mut res_relin_tensor,
                 &res_tensor,
                 &tsk_prep,
                 tsk_prep.size(),
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
             assert_eq!(res_relin_square.data().raw(), res_relin_tensor.data().raw());
 
             // Decrypt one side to ensure the square path remains functionally valid.
-            module.glwe_decrypt(&res_relin_square, &mut pt_have, &sk_dft, scratch.borrow());
-            module.glwe_decrypt(&res_relin_tensor, &mut pt_want, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res_relin_square, &mut pt_have, &sk_dft, &mut scratch.borrow());
+            module.glwe_decrypt(&res_relin_tensor, &mut pt_want, &sk_dft, &mut scratch.borrow());
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, &mut scratch.borrow());
             let noise_have: f64 = pt_tmp.stats().std().log2();
             assert!(noise_have <= -20.0, "{} > -20", noise_have);
         }
@@ -432,6 +443,8 @@ where
 
 pub fn test_glwe_mul_plain<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
@@ -488,7 +501,7 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
         module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
@@ -507,7 +520,7 @@ where
             0,
             pt_b.data(),
             0,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         module.glwe_encrypt_sk(
@@ -517,7 +530,7 @@ where
             &glwe_in_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         let mut scratch_cnv = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(&res, &a, &pt_b));
@@ -530,23 +543,23 @@ where
                 a.max_k().as_usize(),
                 &pt_b,
                 pt_b.max_k().as_usize(),
-                scratch_cnv.borrow(),
+                &mut scratch_cnv.borrow(),
             );
 
-            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, &mut scratch.borrow());
             module.vec_znx_normalize(
-                pt_want.data_mut(),
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
                 out_base2k,
                 res_offset as i64,
                 0,
-                &pt_want_base2k_in,
+                &vec_znx_backend_ref::<BE>(&pt_want_base2k_in),
                 in_base2k,
                 0,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, &mut scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
@@ -558,6 +571,8 @@ where
 
 pub fn test_glwe_mul_const<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
@@ -616,7 +631,7 @@ where
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
+        let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
         module.glwe_secret_prepare(&mut sk_dft, &sk);
 
         let scale: usize = 2 * in_base2k;
@@ -642,7 +657,7 @@ where
             0,
             pt_b.data(),
             0,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         module.glwe_encrypt_sk(
@@ -652,26 +667,26 @@ where
             &glwe_in_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
 
         for res_offset in 0..scale {
-            module.glwe_mul_const(scale + res_offset, &mut res, &a, &b_const, scratch.borrow());
+            module.glwe_mul_const(scale + res_offset, &mut res, &a, &b_const, &mut scratch.borrow());
 
-            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, scratch.borrow());
+            module.glwe_decrypt(&res, &mut pt_have, &sk_dft, &mut scratch.borrow());
             module.vec_znx_normalize(
-                pt_want.data_mut(),
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
                 out_base2k,
                 res_offset as i64,
                 0,
-                &pt_want_base2k_in,
+                &vec_znx_backend_ref::<BE>(&pt_want_base2k_in),
                 in_base2k,
                 0,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, &mut scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);

@@ -4,8 +4,11 @@ use criterion::{BenchmarkId, Criterion};
 use rand::Rng;
 
 use poulpy_hal::{
-    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
-    layouts::{Backend, DataViewMut, DeviceBuf, FillUniform, Module, ScalarZnx, SvpPPol, VecZnx, VecZnxDft},
+    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
+    layouts::{
+        Backend, DataViewMut, FillUniform, Module, ScalarZnx, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx,
+        VecZnxDft,
+    },
     source::Source,
 };
 
@@ -13,6 +16,7 @@ pub fn bench_svp_prepare<B>(params: &crate::params::SvpPrepareParams, c: &mut Cr
 where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
     B: Backend,
+    B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("svp_prepare::{label}");
 
@@ -22,18 +26,19 @@ where
     where
         Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
         B: Backend,
+        B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << log_n);
 
         let cols: usize = 2;
 
-        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
+        let mut svp: SvpPPol<B::OwnedBuf, B> = module.svp_ppol_alloc(cols);
         let mut a: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), cols);
         let mut source = Source::new([0u8; 32]);
         a.fill_uniform(50, &mut source);
 
         move || {
-            module.svp_prepare(&mut svp, 0, &a, 0);
+            module.svp_prepare(&mut svp.to_backend_mut(), 0, &a, 0);
             black_box(());
         }
     }
@@ -51,6 +56,7 @@ pub fn bench_svp_apply_dft<B>(params: &crate::params::HalSweepParams, c: &mut Cr
 where
     Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     B: Backend,
+    B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("svp_apply_dft::{label}");
 
@@ -60,6 +66,7 @@ where
     where
         Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
         B: Backend,
+        B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -67,8 +74,8 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<B::OwnedBuf, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<B::OwnedBuf, B> = module.vec_znx_dft_alloc(cols, size);
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
         let mut source = Source::new([0u8; 32]);
@@ -78,6 +85,7 @@ where
         source.fill_bytes(a.data_mut().as_mut());
 
         move || {
+            let svp = svp.to_backend_ref();
             for j in 0..cols {
                 module.svp_apply_dft(&mut res, j, &svp, j, &a, j);
             }
@@ -98,6 +106,7 @@ pub fn bench_svp_apply_dft_to_dft<B>(params: &crate::params::HalSweepParams, c: 
 where
     Module<B>: SvpApplyDftToDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     B: Backend,
+    B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("svp_apply_dft_to_dft::{label}");
 
@@ -107,6 +116,7 @@ where
     where
         Module<B>: SvpApplyDftToDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
         B: Backend,
+        B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -114,9 +124,9 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
-        let mut a: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<B::OwnedBuf, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<B::OwnedBuf, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut a: VecZnxDft<B::OwnedBuf, B> = module.vec_znx_dft_alloc(cols, size);
 
         let mut source = Source::new([0u8; 32]);
 
@@ -125,6 +135,7 @@ where
         source.fill_bytes(a.data_mut().as_mut());
 
         move || {
+            let svp = svp.to_backend_ref();
             for j in 0..cols {
                 module.svp_apply_dft_to_dft(&mut res, j, &svp, j, &a, j);
             }
@@ -145,6 +156,7 @@ pub fn bench_svp_apply_dft_to_dft_assign<B>(params: &crate::params::HalSweepPara
 where
     Module<B>: SvpApplyDftToDftAssign<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     B: Backend,
+    B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("svp_apply_dft_to_dft_assign::{label}");
 
@@ -154,6 +166,7 @@ where
     where
         Module<B>: SvpApplyDftToDftAssign<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
         B: Backend,
+        B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -161,8 +174,8 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut svp: SvpPPol<DeviceBuf<B>, B> = module.svp_ppol_alloc(cols);
-        let mut res: VecZnxDft<DeviceBuf<B>, B> = module.vec_znx_dft_alloc(cols, size);
+        let mut svp: SvpPPol<B::OwnedBuf, B> = module.svp_ppol_alloc(cols);
+        let mut res: VecZnxDft<B::OwnedBuf, B> = module.vec_znx_dft_alloc(cols, size);
 
         let mut source = Source::new([0u8; 32]);
 
@@ -170,6 +183,7 @@ where
         source.fill_bytes(res.data_mut().as_mut());
 
         move || {
+            let svp = svp.to_backend_ref();
             for j in 0..cols {
                 module.svp_apply_dft_to_dft_assign(&mut res, j, &svp, j);
             }

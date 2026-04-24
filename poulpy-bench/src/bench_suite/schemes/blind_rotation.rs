@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
 use poulpy_core::{
-    EncryptionLayout, GLWEDecrypt, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, LWEEncryptSk,
     layouts::{
         Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout,
         LWESecret, TorusPrecision,
@@ -10,7 +10,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, FillUniform, Module, Scratch, ScratchOwned},
+    layouts::{Backend, FillUniform, Module, ScratchOwned},
     source::Source,
 };
 
@@ -19,7 +19,7 @@ use poulpy_bin_fhe::blind_rotation::{
     BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, LookUpTableLayout, LookupTable, LookupTableFactory,
 };
 
-pub fn bench_blind_rotate<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn bench_blind_rotate<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleN
         + ModuleNew<BE>
@@ -31,7 +31,6 @@ where
         + GLWEDecrypt<BE>
         + LWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let group_name: String = format!("blind_rotate::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -73,7 +72,7 @@ where
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_dft: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
+    let mut sk_glwe_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
     module.glwe_secret_prepare(&mut sk_glwe_dft, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
@@ -89,11 +88,11 @@ where
         &brk_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    let mut brk_prepared: BlindRotationKeyPrepared<DeviceBuf<BE>, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
-    brk_prepared.prepare(&module, &brk, scratch.borrow());
+    let mut brk_prepared: BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
+    brk_prepared.prepare(&module, &brk, &mut scratch.borrow());
 
     let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
     res.data_mut().fill_uniform(glwe_infos.base2k().as_usize(), &mut source_xa);
@@ -115,7 +114,7 @@ where
     let id: BenchmarkId = BenchmarkId::from_parameter(format!("{n_glwe} / {n_lwe}"));
     group.bench_with_input(id, &(), |b, _| {
         b.iter(|| {
-            brk_prepared.execute(&module, &mut res, &lwe, &lut, scratch.borrow());
+            brk_prepared.execute(&module, &mut res, &lwe, &lut, &mut scratch.borrow());
             black_box(())
         })
     });

@@ -1,3 +1,5 @@
+#![allow(clippy::multiple_bound_locations)]
+
 use std::f64::consts::SQRT_2;
 
 use poulpy_hal::api::VecZnxBigAlloc;
@@ -5,8 +7,8 @@ use poulpy_hal::api::VecZnxBigAlloc;
 use crate::{
     api::VecZnxBigAddNormal,
     layouts::{
-        Backend, DeviceBuf, Module, NoiseInfos, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
-        ZnxView, ZnxViewMut,
+        Backend, Module, NoiseInfos, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxView,
+        ZnxViewMut,
     },
     reference::{
         vec_znx::{
@@ -302,10 +304,12 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
     )
 }
 
-pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
+pub fn test_vec_znx_big_add_normal<B: 'static>(module: &Module<B>)
 where
+    B::OwnedBuf: poulpy_hal::layouts::DataMut,
     Module<B>: VecZnxBigAddNormal<B>,
     B: Backend<ScalarBig = i64>,
+    for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
@@ -317,9 +321,10 @@ where
     let k_f64: f64 = (1u64 << noise_infos.k as u64) as f64;
     let sqrt2: f64 = SQRT_2;
     (0..cols).for_each(|col_i| {
-        let mut a: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
-        module.vec_znx_big_add_normal(base2k, &mut a, col_i, noise_infos, &mut source);
-        module.vec_znx_big_add_normal(base2k, &mut a, col_i, noise_infos, &mut source);
+        let mut a: VecZnxBig<B::OwnedBuf, B> = module.vec_znx_big_alloc(cols, size);
+        let mut a_ref = a.to_mut();
+        module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
+        module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {

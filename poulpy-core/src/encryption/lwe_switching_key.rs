@@ -1,17 +1,13 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes},
-    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchAvailable, ScratchOwnedAlloc, VecZnxAutomorphism},
+    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
-pub use crate::api::LWESwitchingKeyEncrypt;
 use crate::{
     EncryptionInfos, ScratchTakeCore,
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
-    layouts::{
-        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef, Rank,
-        prepared::GLWESecretPreparedFactory,
-    },
+    layouts::{GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef, Rank},
 };
 
 #[doc(hidden)]
@@ -38,12 +34,9 @@ pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
 
 impl<BE: Backend> LWESwitchingKeyEncryptDefault<BE> for Module<BE>
 where
-    Self: ModuleN
-        + GLWESwitchingKeyEncryptSk<BE>
-        + GLWESecretPreparedFactory<BE>
-        + VecZnxAutomorphismAssign<BE>
-        + VecZnxAutomorphismAssignTmpBytes,
+    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism,
     Scratch<BE>: ScratchTakeCore<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -56,11 +49,10 @@ where
 
         let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
         let lvl_1: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
-        let lvl_2: usize = self
-            .vec_znx_automorphism_assign_tmp_bytes()
-            .max(self.glwe_switching_key_encrypt_sk_tmp_bytes(infos));
+        let lvl_2: usize = GLWESecret::bytes_of(self.n().into(), Rank(1));
+        let lvl_3: usize = self.glwe_switching_key_encrypt_sk_tmp_bytes(infos);
 
-        lvl_0 + lvl_1 + lvl_2
+        lvl_0 + lvl_1 + lvl_2 + lvl_3
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -86,26 +78,47 @@ where
         assert!(sk_lwe_out.n().0 <= res.n().0);
         assert!(res.n() <= self.n() as u32);
         assert!(
-            scratch.available() >= self.lwe_switching_key_encrypt_sk_tmp_bytes(res),
+            scratch.available()
+                >= <Module<BE> as LWESwitchingKeyEncryptDefault<BE>>::lwe_switching_key_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < LWESwitchingKeyEncrypt::lwe_switching_key_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_switching_key_encrypt_sk_tmp_bytes(res)
+            <Module<BE> as LWESwitchingKeyEncryptDefault<BE>>::lwe_switching_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_glwe_in, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
         let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_glwe_in, _scratch_3) = scratch_2.take_glwe_secret(self.n().into(), Rank(1));
 
-        sk_glwe_in.dist = sk_lwe_in.dist;
         sk_glwe_out.dist = sk_lwe_out.dist;
+        sk_glwe_src.dist = sk_lwe_out.dist;
 
-        sk_glwe_out.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
-        sk_glwe_out.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
-        self.vec_znx_automorphism_assign(-1, &mut sk_glwe_out.data.as_vec_znx_mut(), 0, scratch_2);
+        sk_glwe_src.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
+        sk_glwe_src.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
+        {
+            let sk_glwe_src_data = sk_glwe_src.data.as_vec_znx();
+            self.vec_znx_automorphism(-1, &mut sk_glwe_out.data.as_vec_znx_mut(), 0, &sk_glwe_src_data, 0);
+        }
 
-        sk_glwe_in.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
-        sk_glwe_in.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
-        self.vec_znx_automorphism_assign(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, scratch_2);
+        sk_glwe_src.dist = sk_lwe_in.dist;
+        sk_glwe_in.dist = sk_lwe_in.dist;
+        sk_glwe_src.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
+        sk_glwe_src.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
+        {
+            let sk_glwe_src_data = sk_glwe_src.data.as_vec_znx();
+            self.vec_znx_automorphism(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, &sk_glwe_src_data, 0);
+        }
 
-        self.glwe_switching_key_encrypt_sk(res, &sk_glwe_in, &sk_glwe_out, enc_infos, source_xe, source_xa, scratch_2);
+        // TODO(device): LWESwitchingKey is still on the legacy Scratch path; migrate this
+        // wrapper to ScratchArena once the surrounding offline keygen seam is updated.
+        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_switching_key_encrypt_sk_tmp_bytes(res));
+        self.glwe_switching_key_encrypt_sk(
+            res,
+            &sk_glwe_in,
+            &sk_glwe_out,
+            enc_infos,
+            source_xe,
+            source_xa,
+            &mut enc_scratch.arena(),
+        );
     }
 }

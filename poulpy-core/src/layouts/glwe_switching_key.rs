@@ -1,12 +1,13 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
+        GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -254,6 +255,18 @@ impl<D: DataRef> GGLWEToRef for GLWESwitchingKey<D> {
     /// Borrows the data as `&[u8]`.
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendMut<BE> for GLWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GGLWE<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.key)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for GLWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GGLWE<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.key)
     }
 }
 

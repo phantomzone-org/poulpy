@@ -1,5 +1,5 @@
 use crate::{
-    layouts::{Backend, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
+    layouts::{Backend, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
 
@@ -15,29 +15,41 @@ pub trait VecZnxZero {
         R: VecZnxToMut;
 }
 
+pub trait VecZnxZeroBackend<B: Backend> {
+    fn vec_znx_zero_backend<'r>(&self, res: &mut VecZnxBackendMut<'r, B>, res_col: usize);
+}
+
 pub trait VecZnxNormalize<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
-    fn vec_znx_normalize<R, A>(
+    fn vec_znx_normalize<'s, 'r, 'a>(
         &self,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_base2k: usize,
         res_offset: i64,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 pub trait VecZnxNormalizeAssign<B: Backend> {
     /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_assign<A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_normalize_inplace<'s, A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
     where
         A: VecZnxToMut;
+}
+
+pub trait VecZnxNormalizeInplaceBackend<B: Backend> {
+    fn vec_znx_normalize_inplace_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 pub trait VecZnxAddInto {
@@ -153,7 +165,7 @@ pub trait VecZnxLshTmpBytes {
 pub trait VecZnxLsh<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh<R, A>(
+    fn vec_znx_lsh<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -161,7 +173,7 @@ pub trait VecZnxLsh<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -170,7 +182,7 @@ pub trait VecZnxLsh<B: Backend> {
 pub trait VecZnxLshAddInto<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_add_into<R, A>(
+    fn vec_znx_lsh_add_into<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -178,7 +190,7 @@ pub trait VecZnxLshAddInto<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -192,7 +204,7 @@ pub trait VecZnxRshTmpBytes {
 pub trait VecZnxRsh<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh<R, A>(
+    fn vec_znx_rsh<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -200,7 +212,7 @@ pub trait VecZnxRsh<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -209,7 +221,7 @@ pub trait VecZnxRsh<B: Backend> {
 pub trait VecZnxRshAddInto<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_add_into<R, A>(
+    fn vec_znx_rsh_add_into<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -217,7 +229,7 @@ pub trait VecZnxRshAddInto<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -226,7 +238,7 @@ pub trait VecZnxRshAddInto<B: Backend> {
 pub trait VecZnxLshSub<B: Backend> {
     /// Left shift by k bits and subtract from destination.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_sub<R, A>(
+    fn vec_znx_lsh_sub<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -234,7 +246,7 @@ pub trait VecZnxLshSub<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -243,7 +255,7 @@ pub trait VecZnxLshSub<B: Backend> {
 pub trait VecZnxRshSub<B: Backend> {
     /// Right shift by k bits and subtract from destination.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_sub<R, A>(
+    fn vec_znx_rsh_sub<'s, R, A>(
         &self,
         base2k: usize,
         k: usize,
@@ -251,7 +263,7 @@ pub trait VecZnxRshSub<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
+        scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -259,24 +271,28 @@ pub trait VecZnxRshSub<B: Backend> {
 
 pub trait VecZnxLshAssign<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_assign<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_lsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRshAssign<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_assign<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_rsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
     where
         A: VecZnxToMut;
 }
 
-pub trait VecZnxRotate {
+pub trait VecZnxRotate<B: Backend> {
     /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
-    fn vec_znx_rotate<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    fn vec_znx_rotate<'r, 'a>(
+        &self,
+        p: i64,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxRotateAssignTmpBytes {
@@ -285,9 +301,13 @@ pub trait VecZnxRotateAssignTmpBytes {
 
 pub trait VecZnxRotateAssign<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_assign<A>(&self, p: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_rotate_inplace<'s, 'r>(
+        &self,
+        p: i64,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 pub trait VecZnxAutomorphism {
@@ -304,9 +324,13 @@ pub trait VecZnxAutomorphismAssignTmpBytes {
 
 pub trait VecZnxAutomorphismAssign<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_assign<R>(&self, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
-    where
-        R: VecZnxToMut;
+    fn vec_znx_automorphism_inplace<'s, 'r>(
+        &self,
+        k: i64,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 /// Multiplies the selected column by `(X^p - 1)` in `Z[X]/(X^N + 1)`.
@@ -321,8 +345,8 @@ pub trait VecZnxMulXpMinusOneAssignTmpBytes {
     fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxMulXpMinusOneAssign<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_assign<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
+pub trait VecZnxMulXpMinusOneInplace<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace<'s, R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut ScratchArena<'s, B>)
     where
         R: VecZnxToMut;
 }
@@ -338,7 +362,7 @@ pub trait VecZnxSplitRing<B: Backend> {
     ///
     /// This method requires that all [crate::layouts::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split_ring<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_split_ring<'s, R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -355,8 +379,14 @@ pub trait VecZnxMergeRings<B: Backend> {
     ///
     /// This method requires that all [crate::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge_rings<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
-    where
+    fn vec_znx_merge_rings<'s, R, A>(
+        &self,
+        res: &mut R,
+        res_col: usize,
+        a: &[A],
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }

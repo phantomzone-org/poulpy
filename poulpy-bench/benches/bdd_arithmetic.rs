@@ -2,7 +2,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_core::{
-    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, LWEEncryptSk,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
         GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
@@ -10,7 +10,12 @@ use poulpy_core::{
     },
 };
 
-use poulpy_bin_fhe::{
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchArena, ScratchOwned},
+    source::Source,
+};
+use poulpy_schemes::bin_fhe::{
     bdd_arithmetic::{
         Add, And, BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
         ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, Or, Sll, Slt, Sltu, Sra, Srl, Sub, Xor,
@@ -28,12 +33,12 @@ use poulpy_hal::{
 };
 
 // Common setup data structure
-struct BenchmarkSetup<BE: Backend, BRA: BlindRotationAlgo> {
+struct BenchmarkSetup<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo> {
     module: Module<BE>,
     scratch: ScratchOwned<BE>,
-    a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-    b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-    bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
+    a_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE>,
+    b_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE>,
+    bdd_key_prepared: BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
     glwe_layout: GLWELayout,
 }
 
@@ -45,7 +50,7 @@ struct Params {
     bdd_layout: BDDKeyLayout,
 }
 
-fn setup_benchmark<BE: Backend, BRA: BlindRotationAlgo>(params: &Params) -> BenchmarkSetup<BE, BRA>
+fn setup_benchmark<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(params: &Params) -> BenchmarkSetup<BE, BRA>
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -59,7 +64,9 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
     // Scratch space (16MB)
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 24);
@@ -91,12 +98,12 @@ where
         &cbt_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+    let mut cbt_key_prepared: CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.bdd_layout.cbt_layout);
-    cbt_key_prepared.prepare(&module, &cbt_key, scratch.borrow());
+    cbt_key_prepared.prepare(&module, &cbt_key, &mut scratch.borrow());
 
     let mut sk_glwe_prepared = module.glwe_secret_prepared_alloc_from_infos(&params.glwe_layout);
     module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
@@ -111,7 +118,7 @@ where
         &bdd_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let input_a = 255_u32;
@@ -125,7 +132,7 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&params.glwe_layout);
@@ -136,27 +143,27 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     //////// Homomorphic computation starts here ////////
 
     // Preparing the BDD Key
     // The BDD key must be prepared once before any operation is performed
-    let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+    let mut bdd_key_prepared: BDDKeyPrepared<BE::OwnedBuf, BRA, BE> =
         BDDKeyPrepared::alloc_from_infos(&module, &params.bdd_layout);
-    bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
+    bdd_key_prepared.prepare(&module, &bdd_key, &mut scratch.borrow());
 
     // Input Preparation
     // Before each operation, the inputs to that operation must be prepared
     // Preparation extracts each bit of the integer into a seperate GLWE ciphertext and bootstraps it into a GGSW ciphertext
-    let mut a_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+    let mut a_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
-    a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, scratch.borrow());
+    a_enc_prepared.prepare(&module, &a_enc, &bdd_key_prepared, &mut scratch.borrow());
 
-    let mut b_enc_prepared: FheUintPrepared<DeviceBuf<BE>, u32, BE> =
+    let mut b_enc_prepared: FheUintPrepared<BE::OwnedBuf, u32, BE> =
         FheUintPrepared::alloc_from_infos(&module, &params.ggsw_layout);
-    b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, scratch.borrow());
+    b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     BenchmarkSetup {
         module,
@@ -168,18 +175,20 @@ where
     }
 }
 
-fn create_runner<BE: Backend, BRA: BlindRotationAlgo, F>(setup: BenchmarkSetup<BE, BRA>, operation: F) -> impl FnMut()
+fn create_runner<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
+    setup: BenchmarkSetup<BE, BRA>,
+    operation: F,
+) -> impl FnMut()
 where
     Module<BE>: ExecuteBDDCircuit2WTo1W<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
     ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
     F: Fn(
         &mut FheUint<Vec<u8>, u32>,
         &Module<BE>,
-        &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-        &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-        &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
-        &mut Scratch<BE>,
+        &FheUintPrepared<BE::OwnedBuf, u32, BE>,
+        &FheUintPrepared<BE::OwnedBuf, u32, BE>,
+        &BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
+        &mut ScratchArena<'_, BE>,
     ),
 {
     let BenchmarkSetup {
@@ -200,13 +209,13 @@ where
             &a_enc_prepared,
             &b_enc_prepared,
             &bdd_key_prepared,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
         black_box(());
     }
 }
 
-fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
+fn bench_operation<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo, F>(
     group: &mut criterion::BenchmarkGroup<'_, criterion::measurement::WallTime>,
     params: &Params,
     operation_name: &str,
@@ -225,14 +234,16 @@ fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
     F: Fn(
             &mut FheUint<Vec<u8>, u32>,
             &Module<BE>,
-            &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-            &FheUintPrepared<DeviceBuf<BE>, u32, BE>,
-            &BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
-            &mut Scratch<BE>,
+            &FheUintPrepared<BE::OwnedBuf, u32, BE>,
+            &FheUintPrepared<BE::OwnedBuf, u32, BE>,
+            &BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
+            &mut ScratchArena<'_, BE>,
         ) + 'static,
 {
     let setup = setup_benchmark::<BE, BRA>(params);
@@ -241,7 +252,7 @@ fn bench_operation<BE: Backend, BRA: BlindRotationAlgo, F>(
     group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
 }
 
-pub fn benc_bdd_arithmetic<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn benc_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>>, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -256,7 +267,9 @@ where
         + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]> + Sync,
+    for<'a> BE::BufRef<'a>: AsRef<[u8]> + Send,
 {
     let group_name: String = format!("bdd_arithmetic::{label}");
 

@@ -1,18 +1,22 @@
 use poulpy_core::{
-    GLWECopy, GLWERotate, ScratchTakeCore,
-    layouts::{GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos},
+    GLWECopy, GLWERotate, ScratchArenaTakeCore,
+    layouts::{
+        GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
+        LWEInfos,
+    },
 };
 use poulpy_hal::{
-    api::{VecZnxAddScalarAssign, VecZnxNormalizeAssign},
-    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+    api::{VecZnxAddScalarAssign, VecZnxNormalizeInplace},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxZero},
 };
 
 use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
-impl<T: UnsignedInteger, BE: Backend> GGSWBlindRotation<T, BE> for Module<BE>
+impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
 }
 
@@ -26,7 +30,7 @@ where
 ///   encrypted exponent derived from `fhe_uint`.
 /// - `scalar_to_ggsw_blind_rotation`: constructs a fresh GGSW by first placing
 ///   the scalar test-vector into each row of a temporary GLWE and then rotating.
-pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
+pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
 {
@@ -50,11 +54,13 @@ where
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGSWToMut,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE: Backend<OwnedBuf = Vec<u8>>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
 
@@ -76,12 +82,14 @@ where
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGSWToMut,
         A: GGSWToRef,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE: Backend<OwnedBuf = Vec<u8>>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
@@ -123,12 +131,14 @@ where
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGSWToMut,
         S: ScalarZnxToRef,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE: Backend<OwnedBuf = Vec<u8>>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let test_vector: &ScalarZnx<&[u8]> = &test_vector.to_ref();
@@ -136,13 +146,16 @@ where
         let base2k: usize = res.base2k().into();
         let dsize: usize = res.dsize().into();
 
-        let (mut tmp_glwe, scratch_1) = scratch.take_glwe(res);
+        // TODO(device): this helper still stages a host-owned GLWE row before
+        // calling backend-generic blind rotation.
+        let mut tmp_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&*res);
+        let mut scratch_1 = scratch.borrow();
 
         for col in 0..(res.rank() + 1).into() {
             for row in 0..res.dnum().into() {
                 tmp_glwe.data_mut().zero();
                 self.vec_znx_add_scalar_assign(tmp_glwe.data_mut(), col, (dsize - 1) + row * dsize, test_vector, 0);
-                self.vec_znx_normalize_assign(base2k, tmp_glwe.data_mut(), col, scratch_1);
+                self.vec_znx_normalize_inplace(base2k, tmp_glwe.data_mut(), col, &mut scratch_1.borrow());
 
                 self.glwe_blind_rotation(
                     &mut res.at_mut(row, col),
@@ -152,17 +165,18 @@ where
                     bit_rsh,
                     bit_mask,
                     bit_lsh,
-                    scratch_1,
+                    &mut scratch_1.borrow(),
                 );
             }
         }
     }
 }
 
-impl<BE: Backend> GLWEBlindRotation<BE> for Module<BE>
+impl<BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindRotation<BE> for Module<BE>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
 }
 
@@ -178,7 +192,7 @@ where
 /// where `sign` controls whether the rotation is positive or negative.
 /// The operation is performed using `bit_mask` successive CMux gates, one per
 /// bit of the shift amount.
-pub trait GLWEBlindRotation<BE: Backend>
+pub trait GLWEBlindRotation<BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
 {
@@ -201,44 +215,57 @@ where
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE: Backend<OwnedBuf = Vec<u8>>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let mut res: GLWE<&mut [u8]> = res.to_mut();
+        let res_infos = res.to_ref();
+        // TODO(device): this ping-pong helper still relies on a host-owned
+        // temporary ciphertexts for both ping-pong branches.
+        let mut res_cur: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&res_infos);
+        let mut tmp_res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&res_infos);
+        let mut scratch_1 = scratch.borrow();
+        self.glwe_copy(&mut res_cur, res);
 
-        let (mut tmp_res, scratch_1) = scratch.take_glwe(&res);
-
-        // a_is_res = true  => (a, b) = (&mut res, &mut tmp_res)
-        // a_is_res = false => (a, b) = (&mut tmp_res, &mut res)
-        let mut a_is_res: bool = true;
+        // a_is_cur = true  => source is `res_cur`, dest is `tmp_res`
+        // a_is_cur = false => source is `tmp_res`, dest is `res_cur`
+        let mut a_is_cur: bool = true;
 
         for i in 0..bit_mask {
-            let (a, b) = if a_is_res {
-                (&mut res, &mut tmp_res)
-            } else {
-                (&mut tmp_res, &mut res)
-            };
+            if a_is_cur {
+                let res_cur_ref = res_cur.to_ref();
+                let res_cur_ref_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&res_cur);
+                let mut tmp_res_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_res);
+                match sign {
+                    true => self.glwe_rotate(1 << (i + bit_lsh), &mut tmp_res_backend, &res_cur_ref_backend),
+                    false => self.glwe_rotate(-1 << (i + bit_lsh), &mut tmp_res_backend, &res_cur_ref_backend),
+                }
 
-            // a <- a ; b <- a * X^{-2^{i + bit_lsh}}
-            match sign {
-                true => self.glwe_rotate(1 << (i + bit_lsh), b, a),
-                false => self.glwe_rotate(-1 << (i + bit_lsh), b, a),
+                let bit = value.get_bit(i + bit_rsh);
+                self.cmux_inplace(&mut tmp_res_backend, &res_cur_ref, bit, &mut scratch_1.borrow());
+            } else {
+                let tmp_res_ref = tmp_res.to_ref();
+                let tmp_res_ref_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_res);
+                let mut res_cur_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_cur);
+                match sign {
+                    true => self.glwe_rotate(1 << (i + bit_lsh), &mut res_cur_backend, &tmp_res_ref_backend),
+                    false => self.glwe_rotate(-1 << (i + bit_lsh), &mut res_cur_backend, &tmp_res_ref_backend),
+                }
+
+                let bit = value.get_bit(i + bit_rsh);
+                self.cmux_inplace(&mut res_cur_backend, &tmp_res_ref, bit, &mut scratch_1.borrow());
             }
 
-            // b <- (b - a) * GGSW(b[i]) + a
-            self.cmux_assign(b, a, &value.get_bit(i + bit_rsh), scratch_1);
-
             // ping-pong roles for next iter
-            a_is_res = !a_is_res;
+            a_is_cur = !a_is_cur;
         }
 
-        // Ensure the final value ends up in `res`
-        if !a_is_res {
-            self.glwe_copy(&mut res, &tmp_res);
-        }
+        let final_res: &GLWE<Vec<u8>> = if a_is_cur { &res_cur } else { &tmp_res };
+        self.glwe_copy(res, final_res);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -252,12 +279,14 @@ where
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEToRef + GLWEInfos,
         A: GLWEToRef,
         K: GetGGSWBit<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE: Backend<OwnedBuf = Vec<u8>>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         self.glwe_copy(res, a);
         self.glwe_blind_rotation_assign(res, fhe_uint, sign, bit_rsh, bit_mask, bit_lsh, scratch);

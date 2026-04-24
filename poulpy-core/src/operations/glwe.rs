@@ -1,13 +1,16 @@
 use poulpy_hal::{
     api::{
-        CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAddAssign, VecZnxAddInto,
-        VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshAssign, VecZnxLshSub, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxNegate, VecZnxNegateAssign, VecZnxNormalize, VecZnxNormalizeAssign,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign, VecZnxRotateAssignTmpBytes, VecZnxRshAssign,
-        VecZnxRshTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign, VecZnxZero,
+        CnvPVecBytesOf, Convolution, ModuleN, ScratchArenaTakeBasic, VecZnxAddAssign, VecZnxAddInto, VecZnxBigAddSmallAssign,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
+        VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
+    layouts::{
+        Backend, Data, DataMut, DataRef, HostDataMut, Module, ScratchArena, VecZnx, vec_znx_backend_ref_from_mut,
+        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
+    },
 };
 
 pub use crate::api::{
@@ -15,9 +18,11 @@ pub use crate::api::{
     GLWETensoring,
 };
 use crate::{
-    GGLWEProduct, ScratchTakeCore,
+    GGLWEProduct, ScratchArenaTakeCore,
     layouts::{
-        Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, LWEInfos,
+        Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared,
+        GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
@@ -28,20 +33,28 @@ pub trait GLWEMulConstDefault<BE: Backend> {
         R: GLWEInfos,
         A: GLWEInfos;
 
-    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const<'s, R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        b: &[i64],
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
+
+    fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: DataMut,
-        A: DataRef;
-
-    fn glwe_mul_const_assign<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
-    where
-        R: DataMut;
+        for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 impl<BE: Backend> GLWEMulConstDefault<BE> for Module<BE>
 where
-    Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes + VecZnxCopy,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
     where
@@ -63,11 +76,19 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
-    where
+    fn glwe_mul_const<'s, R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        b: &[i64],
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         R: DataMut,
         A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         assert_eq!(res.rank(), a.rank());
         assert!(
             scratch.available() >= self.glwe_mul_const_tmp_bytes(res, a, b.len()),
@@ -88,17 +109,37 @@ where
 
         let res_dft_size = a.size() + b.len() - cnv_offset_hi;
 
-        let (mut res_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res_dft_size);
+        let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res_dft_size);
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
         for i in 0..cols {
-            self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, a.data(), i, b, scratch_1);
-            self.vec_znx_big_normalize(res.data_mut(), res_base2k, cnv_offset_lo, i, &res_big, a_base2k, 0, scratch_1);
+            {
+                let mut scratch_iter = scratch.borrow();
+                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, a.data(), i, b, &mut scratch_iter);
+            }
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            {
+                let mut scratch_iter = scratch.borrow();
+                self.vec_znx_big_normalize(
+                    &mut res_tmp,
+                    res_base2k,
+                    cnv_offset_lo,
+                    0,
+                    &res_big_ref,
+                    a_base2k,
+                    0,
+                    &mut scratch_iter,
+                );
+            }
+            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
         }
     }
 
-    fn glwe_mul_const_assign<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: DataMut,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         let res_ref: &GLWE<&[u8]> = &res.to_ref();
         assert!(
             scratch.available() >= self.glwe_mul_const_tmp_bytes(res_ref, res_ref, b.len()),
@@ -116,19 +157,28 @@ where
             ((cnv_offset / res_base2k).saturating_sub(1), (cnv_offset % res_base2k) as i64)
         };
 
-        let (mut res_big, scratch_1) = scratch.take_vec_znx_big(self, 1, res.size());
+        let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res.size());
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
         for i in 0..cols {
-            self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, res.data(), i, b, scratch_1);
-            self.vec_znx_big_normalize(
-                res.data_mut(),
-                res_base2k,
-                cnv_offset_lo,
-                i,
-                &res_big,
-                res_base2k,
-                0,
-                scratch_1,
-            );
+            {
+                let mut scratch_iter = scratch.borrow();
+                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, res.data(), i, b, &mut scratch_iter);
+            }
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            {
+                let mut scratch_iter = scratch.borrow();
+                self.vec_znx_big_normalize(
+                    &mut res_tmp,
+                    res_base2k,
+                    cnv_offset_lo,
+                    0,
+                    &res_big_ref,
+                    res_base2k,
+                    0,
+                    &mut scratch_iter,
+                );
+            }
+            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
         }
     }
 }
@@ -142,8 +192,9 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
         + Convolution<BE>
-        + VecZnxBigNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE>,
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxCopy,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
@@ -174,14 +225,15 @@ where
         let lvl_2_cnv_apply: usize = self.cnv_apply_dft_tmp_bytes(res_dft_size, cnv_offset, a_size, b_size);
 
         let lvl_2_res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
+        let lvl_2_res_tmp: usize = VecZnx::bytes_of(self.n(), 1, res.size());
         let lvl_2_norm: usize = self.vec_znx_big_normalize_tmp_bytes();
-        let lvl_2: usize = lvl_2_res_dft + lvl_2_cnv_apply.max(lvl_2_norm);
+        let lvl_2: usize = lvl_2_res_tmp + lvl_2_res_dft + lvl_2_cnv_apply.max(lvl_2_norm);
 
         lvl_0 + lvl_1.max(lvl_2)
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain<R, A, B>(
+    fn glwe_mul_plain<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -189,12 +241,14 @@ where
         a_effective_k: usize,
         b: &GLWEPlaintext<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         assert_eq!(res.rank(), a.rank());
         assert!(
             scratch.available() >= self.glwe_mul_plain_tmp_bytes(res, a, b),
@@ -211,14 +265,14 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, b.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, 1, b.size());
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch_2);
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch));
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch));
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
             (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
@@ -227,38 +281,45 @@ where
         };
 
         let res_dft_size = a.size() + b.size() - cnv_offset_hi;
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
 
         for i in 0..cols {
-            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, 0, scratch_3);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
+            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, 0, &mut scratch_3);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
-
-            self.vec_znx_big_normalize(
-                res.data_mut(),
-                res_base2k,
-                cnv_offset_lo,
-                i,
-                &res_big,
-                ab_base2k,
-                0,
-                scratch_3,
-            );
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            {
+                let mut scratch_iter = scratch_3.borrow();
+                self.vec_znx_big_normalize(
+                    &mut res_tmp,
+                    res_base2k,
+                    cnv_offset_lo,
+                    0,
+                    &res_big_ref,
+                    ab_base2k,
+                    0,
+                    &mut scratch_iter,
+                );
+            }
+            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_assign<R, A>(
+    fn glwe_mul_plain_inplace<'s, R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
         a: &GLWEPlaintext<A>,
         a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         let res_ref: &GLWE<&[u8]> = &res.to_ref();
         assert!(
             scratch.available() >= self.glwe_mul_plain_tmp_bytes(res_ref, res_ref, a),
@@ -274,14 +335,14 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut res_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, res.size());
-        let (mut a_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, 1, a.size());
+        let (mut res_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, res.size());
+        let (mut a_prep, mut scratch) = scratch.take_cnv_pvec_right(self, 1, a.size());
 
         let mask_res = msb_mask_bottom_limb(ab_base2k, res_effective_k);
         let mask_a = msb_mask_bottom_limb(ab_base2k, a_effective_k);
 
-        self.cnv_prepare_left(&mut res_prep, res.data(), mask_res, scratch_2);
-        self.cnv_prepare_right(&mut a_prep, a.data(), mask_a, scratch_2);
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_left(&mut res_prep, res.data(), mask_res, scratch));
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut a_prep, a.data(), mask_a, scratch));
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
             (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
@@ -290,12 +351,27 @@ where
         };
 
         let res_dft_size = a.size() + res.size() - cnv_offset_hi;
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
 
         for i in 0..cols {
-            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &res_prep, i, &a_prep, 0, scratch_3);
-            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            self.vec_znx_big_normalize(res.data_mut(), ab_base2k, cnv_offset_lo, i, &res_big, ab_base2k, 0, scratch_3);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
+            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &res_prep, i, &a_prep, 0, &mut scratch_3);
+            let res_big = self.vec_znx_idft_apply_consume(res_dft);
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            {
+                let mut scratch_iter = scratch_3.borrow();
+                self.vec_znx_big_normalize(
+                    &mut res_tmp,
+                    ab_base2k,
+                    cnv_offset_lo,
+                    0,
+                    &res_big_ref,
+                    ab_base2k,
+                    0,
+                    &mut scratch_iter,
+                );
+            }
+            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
         }
     }
 }
@@ -317,11 +393,12 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         a_effective_k: usize,
         b: &GLWEPlaintext<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_assign<R, A>(
         &self,
@@ -330,10 +407,11 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         res_effective_k: usize,
         a: &GLWEPlaintext<A>,
         a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
-        A: DataRef;
+        A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 #[doc(hidden)]
@@ -361,11 +439,14 @@ pub trait GLWETensoringDefault<BE: Backend> {
         a: &GLWETensor<A>,
         tsk: &GLWETensorKeyPrepared<B, BE>,
         tsk_size: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        B: Data,
+        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
+        GLWETensor<A>: GLWEToBackendRef<BE>,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply<R, A>(
@@ -374,10 +455,11 @@ pub trait GLWETensoringDefault<BE: Backend> {
         res: &mut GLWETensor<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
-        A: DataRef;
+        A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_apply<R, A, B>(
@@ -388,26 +470,12 @@ pub trait GLWETensoringDefault<BE: Backend> {
         a_effective_k: usize,
         b: &GLWE<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
-
-    #[allow(clippy::too_many_arguments)]
-    fn glwe_tensor_apply_add_assign<R, A, B>(
-        &self,
-        cnv_offset: usize,
-        res: &mut GLWETensor<R>,
-        a: &GLWE<A>,
-        a_effective_k: usize,
-        b: &GLWE<B>,
-        b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef;
+        B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 impl<BE: Backend> GLWETensoringDefault<BE> for Module<BE>
@@ -429,7 +497,7 @@ where
         + GGLWEProduct<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_tensor_square_apply_tmp_bytes<R, A>(&self, res: &R, a: &A) -> usize
     where
@@ -535,7 +603,7 @@ where
         } else {
             0
         };
-        let lvl_1_big_norm: usize = self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_1_big_norm: usize = VecZnx::bytes_of(self.n(), 1, res.size()) + self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1_main: usize = lvl_1_res_dft + lvl_1_gglwe_product.max(lvl_1_post_conv).max(lvl_1_big_norm);
         let lvl_1: usize = lvl_1_pre_conv.max(lvl_1_main);
 
@@ -548,12 +616,16 @@ where
         a: &GLWETensor<A>,
         tsk: &GLWETensorKeyPrepared<B, BE>,
         tsk_size: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef,
+        B: Data,
+        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
+        GLWETensor<A>: GLWEToBackendRef<BE>,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         assert!(
             scratch.available() >= self.glwe_tensor_relinearize_tmp_bytes(res, a, tsk),
             "scratch.available(): {} < GLWETensoring::glwe_tensor_relinearize_tmp_bytes: {}",
@@ -564,6 +636,7 @@ where
         let a_base2k: usize = a.base2k().into();
         let key_base2k: usize = tsk.base2k().into();
         let res_base2k: usize = res.base2k().into();
+        let a_backend = a.to_backend_ref();
 
         assert_eq!(res.rank(), tsk.rank_out());
         assert_eq!(a.rank(), tsk.rank_out());
@@ -573,39 +646,52 @@ where
 
         let a_dft_size: usize = (a.size() * a_base2k).div_ceil(key_base2k);
 
-        let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, pairs, a_dft_size);
+        let (mut a_dft, mut scratch) = scratch.take_vec_znx_dft(self, pairs, a_dft_size);
 
-        if a_base2k != key_base2k {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, a_dft_size);
+        {
+            let (mut a_conv, mut scratch_norm) = scratch.borrow().take_vec_znx(self.n(), 1, a_dft_size);
             for i in 0..pairs {
-                self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, a.data(), a_base2k, cols + i, scratch_2);
-                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv, 0);
-            }
-        } else {
-            for i in 0..pairs {
-                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, a.data(), cols + i);
+                let mut scratch_iter = scratch_norm.borrow();
+                self.vec_znx_normalize(
+                    &mut a_conv,
+                    key_base2k,
+                    0,
+                    0,
+                    &a_backend.data,
+                    a_base2k,
+                    cols + i,
+                    &mut scratch_iter,
+                );
+                let a_conv_ref = vec_znx_backend_ref_from_mut::<BE>(&a_conv);
+                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv_ref, 0);
             }
         }
 
-        let (mut res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, cols, tsk_size); // Todo optimise
+        let (mut res_dft, mut scratch_2) = scratch.borrow().take_vec_znx_dft(self, cols, tsk_size); // Todo optimise
+        let tsk = tsk.to_backend_ref();
 
-        self.gglwe_product_dft(&mut res_dft, &a_dft, &tsk.0, scratch_2);
-        let mut res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+        let a_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&a_dft);
+        self.gglwe_product_dft(&mut res_dft, &a_dft_ref, &tsk.0, &mut scratch_2);
+        let mut res_big = self.vec_znx_idft_apply_consume(res_dft);
 
-        if res_base2k == key_base2k {
+        {
+            let (mut a_conv, mut scratch_norm) = scratch_2.borrow().take_vec_znx(self.n(), 1, a_dft_size);
             for i in 0..cols {
-                self.vec_znx_big_add_small_assign(&mut res_big, i, a.data(), i);
-            }
-        } else {
-            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), 1, a_dft_size);
-            for i in 0..cols {
-                self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, a.data(), a_base2k, i, scratch_3);
-                self.vec_znx_big_add_small_assign(&mut res_big, i, &a_conv, 0);
+                let mut scratch_iter = scratch_norm.borrow();
+                self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, &a_backend.data, a_base2k, i, &mut scratch_iter);
+                let a_conv_ref = vec_znx_backend_ref_from_mut::<BE>(&a_conv);
+                self.vec_znx_big_add_small_assign(&mut res_big, i, &a_conv_ref, 0);
             }
         }
 
-        for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_big_normalize(res.data_mut(), res_base2k, 0, i, &res_big, key_base2k, i, scratch_2);
+        {
+            let (mut res_tmp, mut scratch_norm) = scratch_2.borrow().take_vec_znx(self.n(), 1, res.size());
+            for i in 0..(res.rank() + 1).into() {
+                let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                let mut scratch_iter = scratch_norm.borrow();
+                self.vec_znx_big_normalize(&mut res_tmp, res_base2k, 0, 0, &res_big_ref, key_base2k, i, &mut scratch_iter);
+                self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+            }
         }
     }
 
@@ -615,11 +701,13 @@ where
         res: &mut GLWETensor<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         assert!(
             scratch.available() >= self.glwe_tensor_square_apply_tmp_bytes(res, a),
             "scratch.available(): {} < GLWETensoring::glwe_tensor_square_apply_tmp_bytes: {}",
@@ -634,13 +722,14 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, a.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, cols, a.size());
 
         let a_mask = msb_mask_bottom_limb(a_base2k, a_effective_k);
 
-        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), a_mask, scratch_2);
-        let (mut diag_terms, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, res.size());
+        let mut prep_scratch = scratch.borrow();
+        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), a_mask, &mut prep_scratch);
+        let (mut diag_terms, mut scratch) = scratch.take_vec_znx(self.n(), cols, res.size());
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
             (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
@@ -656,18 +745,21 @@ where
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_4);
-            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+            let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
+            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_4);
+            let res_big = self.vec_znx_idft_apply_consume(res_dft);
+            let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let mut scratch_iter = scratch_5.borrow();
             self.vec_znx_big_normalize(
-                &mut diag_terms,
+                &mut tmp,
                 res_base2k,
                 cnv_offset_lo,
-                i,
-                &res_big,
+                0,
+                &res_big_ref,
                 a_base2k,
                 0,
-                scratch_4,
+                &mut scratch_iter,
             );
 
             self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
@@ -677,21 +769,27 @@ where
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             for j in i + 1..cols {
-                let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, pairwise_dft_size);
-                self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_4);
-                let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+                let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
+                self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_4);
+                let res_big = self.vec_znx_idft_apply_consume(res_dft);
+                let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
+                let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                let mut scratch_iter = scratch_5.borrow();
                 self.vec_znx_big_normalize(
-                    res.data_mut(),
+                    &mut tmp,
                     res_base2k,
                     cnv_offset_lo,
-                    col_i + j,
-                    &res_big,
+                    0,
+                    &res_big_ref,
                     a_base2k,
                     0,
-                    scratch_4,
+                    &mut scratch_iter,
                 );
-                self.vec_znx_sub_assign(res.data_mut(), col_i + j, &diag_terms, i);
-                self.vec_znx_sub_assign(res.data_mut(), col_i + j, &diag_terms, j);
+                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
+                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
+
+                // TODO: Do we need copy?
+                self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
             }
         }
     }
@@ -704,12 +802,14 @@ where
         a_effective_k: usize,
         b: &GLWE<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: DataMut,
         A: DataRef,
         B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut,
     {
+        let scratch = scratch.borrow();
         assert!(
             scratch.available() >= self.glwe_tensor_apply_tmp_bytes(res, a, b),
             "scratch.available(): {} < GLWETensoring::glwe_tensor_apply_tmp_bytes: {}",
@@ -726,15 +826,15 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch_1) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, scratch_2) = scratch_1.take_cnv_pvec_right(self, cols, b.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, cols, b.size());
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
 
-        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch_2);
-        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch_2);
-
+        let mut prep_scratch = scratch.borrow();
+        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, &mut prep_scratch);
+        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, &mut prep_scratch);
         // Example for rank=3
         //
         // (a0, a1, a2, a3) x (b0, b1, b2, a3)
@@ -777,11 +877,22 @@ where
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_3);
-            let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_4);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
+            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_3);
+            let res_big = self.vec_znx_idft_apply_consume(res_dft);
+            let (mut tmp, mut scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let mut scratch_iter = scratch_4.borrow();
+            self.vec_znx_big_normalize(
+                &mut tmp,
+                res_base2k,
+                cnv_offset_lo,
+                0,
+                &res_big_ref,
+                ab_base2k,
+                0,
+                &mut scratch_iter,
+            );
 
             self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
 
@@ -805,11 +916,22 @@ where
             for j in i..cols {
                 if j != i {
                     // res_dft = (a[i] + a[j]) * (b[i] + b[j])
-                    let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, pairwise_dft_size);
-                    self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_3);
-                    let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-                    let (mut tmp, scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                    self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, ab_base2k, 0, scratch_3);
+                    let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
+                    self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_3);
+                    let res_big = self.vec_znx_idft_apply_consume(res_dft);
+                    let (mut tmp, mut scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
+                    let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                    let mut scratch_iter = scratch_3.borrow();
+                    self.vec_znx_big_normalize(
+                        &mut tmp,
+                        res_base2k,
+                        cnv_offset_lo,
+                        0,
+                        &res_big_ref,
+                        ab_base2k,
+                        0,
+                        &mut scratch_iter,
+                    );
 
                     self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
                 }
@@ -966,27 +1088,20 @@ impl<BE: Backend> GLWESub for Module<BE> where
 impl<BE: Backend> GLWENegate for Module<BE> where Self: VecZnxNegate + VecZnxNegateAssign + VecZnxZero + ModuleN {}
 
 impl<BE: Backend> GLWERotateDefault<BE> for Module<BE> where
-    Self: ModuleN + VecZnxRotate + VecZnxRotateAssign<BE> + VecZnxRotateAssignTmpBytes + VecZnxZero
+    Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>
 {
 }
 
 #[doc(hidden)]
 pub trait GLWERotateDefault<BE: Backend>
 where
-    Self: ModuleN + VecZnxRotate + VecZnxRotateAssign<BE> + VecZnxRotateAssignTmpBytes + VecZnxZero,
+    Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()
     }
 
-    fn glwe_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
+    fn glwe_rotate<'r, 'a>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, a: &GLWEBackendRef<'a, BE>) {
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.n(), self.n() as u32);
         assert!(res.rank() == a.rank() || a.rank() == 0);
@@ -995,19 +1110,17 @@ where
         let a_cols = (a.rank() + 1).into();
 
         for i in 0..a_cols {
-            self.vec_znx_rotate(k, res.data_mut(), i, a.data(), i);
+            self.vec_znx_rotate(k, &mut res.data, i, &a.data, i);
         }
         for i in a_cols..res_cols {
-            self.vec_znx_zero(res.data_mut(), i);
+            self.vec_znx_zero_backend(&mut res.data, i);
         }
     }
 
-    fn glwe_rotate_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         assert!(
             scratch.available() >= self.glwe_rotate_tmp_bytes(),
             "scratch.available(): {} < GLWERotate::glwe_rotate_tmp_bytes: {}",
@@ -1016,7 +1129,8 @@ where
         );
 
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_rotate_assign(k, res.data_mut(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_rotate_inplace(k, &mut res.data, i, &mut scratch_iter);
         }
     }
 }
@@ -1048,7 +1162,7 @@ where
         }
     }
 
-    fn glwe_mul_xp_minus_one_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_mul_xp_minus_one_inplace<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
     {
@@ -1057,7 +1171,8 @@ where
         assert_eq!(res.n(), self.n() as u32);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_mul_xp_minus_one_assign(k, res.data_mut(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_mul_xp_minus_one_inplace(k, res.data_mut(), i, &mut scratch_iter);
         }
     }
 }
@@ -1093,10 +1208,10 @@ where
         lvl_0
     }
 
-    fn glwe_rsh<R>(&self, k: usize, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_rsh<'s, R>(&self, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         assert!(
@@ -1107,14 +1222,15 @@ where
         );
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_rsh_assign(base2k, k, res.data_mut(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_rsh_inplace(base2k, k, res.data_mut(), i, &mut scratch_iter);
         }
     }
 
-    fn glwe_lsh_assign<R>(&self, res: &mut R, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
 
@@ -1127,15 +1243,16 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_assign(base2k, k, res.data_mut(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_lsh_inplace(base2k, k, res.data_mut(), i, &mut scratch_iter);
         }
     }
 
-    fn glwe_lsh<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -1153,15 +1270,16 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_lsh(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch_iter);
         }
     }
 
-    fn glwe_lsh_add<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_add<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -1179,15 +1297,16 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_add_into(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_lsh_add_into(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch_iter);
         }
     }
 
-    fn glwe_lsh_sub<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_sub<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -1205,93 +1324,92 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_sub(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_lsh_sub(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch_iter);
         }
     }
 }
 
 impl<BE: Backend> GLWENormalizeDefault<BE> for Module<BE> where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeAssign<BE> + VecZnxNormalizeTmpBytes
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes
 {
 }
 
 #[doc(hidden)]
 pub trait GLWENormalizeDefault<BE: Backend>
 where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeAssign<BE> + VecZnxNormalizeTmpBytes,
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes,
 {
     fn glwe_normalize_tmp_bytes(&self) -> usize {
         let lvl_0: usize = self.vec_znx_normalize_tmp_bytes();
         lvl_0
     }
 
-    fn glwe_maybe_cross_normalize_to_ref<'a, A>(
+    fn glwe_maybe_cross_normalize_to_ref<'a>(
         &self,
-        glwe: &'a A,
+        glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
-        scratch: &'a mut Scratch<BE>,
-    ) -> (GLWE<&'a [u8]>, &'a mut Scratch<BE>)
+        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        scratch: &'a mut ScratchArena<'a, BE>,
+    ) -> GLWEBackendRef<'a, BE>
     where
-        A: GLWEToRef + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if glwe.base2k().as_usize() == target_base2k {
             tmp_slot.take();
-            return (glwe.to_ref(), scratch);
+            return glwe_backend_ref_from_ref::<BE>(glwe);
         }
 
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
+        let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
-        self.glwe_normalize(tmp_ref, glwe, scratch2);
+        let glwe_ref = glwe_backend_ref_from_ref::<BE>(glwe);
+        self.glwe_normalize(tmp_ref, &glwe_ref, &mut scratch2);
 
-        (tmp_ref.to_ref(), scratch2)
+        glwe_backend_ref_from_mut::<BE>(tmp_ref)
     }
 
-    fn glwe_maybe_cross_normalize_to_mut<'a, A>(
+    fn glwe_maybe_cross_normalize_to_mut<'a>(
         &self,
-        glwe: &'a mut A,
+        glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
-        scratch: &'a mut Scratch<BE>,
-    ) -> (GLWE<&'a mut [u8]>, &'a mut Scratch<BE>)
+        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        scratch: &'a mut ScratchArena<'a, BE>,
+    ) -> GLWEBackendMut<'a, BE>
     where
-        A: GLWEToMut + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if glwe.base2k().as_usize() == target_base2k {
             tmp_slot.take();
-            return (glwe.to_mut(), scratch);
+            return glwe_backend_mut_from_mut::<BE>(glwe);
         }
 
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
+        let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
-        self.glwe_normalize(tmp_ref, glwe, scratch2);
+        self.glwe_normalize(tmp_ref, &glwe_backend_ref_from_mut::<BE>(&*glwe), &mut scratch2);
 
-        (tmp_ref.to_mut(), scratch2)
+        glwe_backend_mut_from_mut::<BE>(tmp_ref)
     }
 
-    fn glwe_normalize<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+    fn glwe_normalize<'s, 'r, 'a>(
+        &self,
+        res: &mut GLWEBackendMut<'r, BE>,
+        a: &GLWEBackendRef<'a, BE>,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank());
@@ -1305,16 +1423,24 @@ where
         let res_base2k = res.base2k().into();
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize(res.data_mut(), res_base2k, 0, i, a.data(), a.base2k().into(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_normalize(
+                &mut res.data,
+                res_base2k,
+                0,
+                i,
+                &a.data,
+                a.base2k().into(),
+                i,
+                &mut scratch_iter,
+            );
         }
     }
 
-    fn glwe_normalize_assign<R>(&self, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_normalize_inplace<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         assert!(
             scratch.available() >= self.glwe_normalize_tmp_bytes(),
             "scratch.available(): {} < GLWENormalize::glwe_normalize_tmp_bytes: {}",
@@ -1322,7 +1448,8 @@ where
             self.glwe_normalize_tmp_bytes()
         );
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize_assign(res.base2k().into(), res.data_mut(), i, scratch);
+            let mut scratch_iter = scratch.borrow();
+            self.vec_znx_normalize_inplace_backend(res.base2k().into(), &mut res.data, i, &mut scratch_iter);
         }
     }
 }

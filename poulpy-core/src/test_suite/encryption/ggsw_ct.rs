@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned},
+    layouts::{Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -16,6 +16,8 @@ use crate::{
 
 pub fn test_ggsw_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
     Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE>,
@@ -53,7 +55,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             module.ggsw_encrypt_sk(
@@ -63,7 +65,7 @@ where
                 &ggsw_infos,
                 &mut source_xe,
                 &mut source_xa,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             let noise_f = |_col_i: usize| -(k as f64) + DEFAULT_SIGMA_XE.log2() + 0.5;
@@ -71,7 +73,7 @@ where
             for row in 0..ct.dnum().as_usize() {
                 for col in 0..ct.rank().as_usize() + 1 {
                     assert!(
-                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, &mut scratch.borrow())
                             .std()
                             .log2()
                             <= noise_f(col)
@@ -84,6 +86,8 @@ where
 
 pub fn test_ggsw_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
     Module<BE>: GGSWCompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE> + GGSWDecompress,
@@ -120,7 +124,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let mut sk_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+            let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
             module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
             let seed_xa: [u8; 32] = [1u8; 32];
@@ -132,7 +136,7 @@ where
                 seed_xa,
                 &ggsw_infos,
                 &mut source_xe,
-                scratch.borrow(),
+                &mut scratch.borrow(),
             );
 
             let noise_f = |_col_i: usize| -(k as f64) + DEFAULT_SIGMA_XE.log2() + 0.5;
@@ -143,7 +147,7 @@ where
             for row in 0..ct.dnum().as_usize() {
                 for col in 0..ct.rank().as_usize() + 1 {
                     assert!(
-                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, &mut scratch.borrow())
                             .std()
                             .log2()
                             <= noise_f(col)

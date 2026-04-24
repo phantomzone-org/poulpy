@@ -24,7 +24,7 @@ pub use glwe_blind_selection::*;
 pub use or::*;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    layouts::{Backend, HostDataMut, Module, ScratchOwned},
     source::Source,
 };
 pub use prepare::*;
@@ -38,7 +38,7 @@ pub use swap::*;
 pub use xor::*;
 
 use poulpy_core::{
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESecret,
         GLWESecretPrepared, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
@@ -52,14 +52,14 @@ use crate::{
     circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 
-pub struct TestContext<BRA: BlindRotationAlgo, BE: Backend> {
+pub struct TestContext<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
     pub module: Module<BE>,
-    pub sk_glwe: GLWESecretPrepared<DeviceBuf<BE>, BE>,
+    pub sk_glwe: GLWESecretPrepared<BE::OwnedBuf, BE>,
     pub sk_lwe: LWESecret<Vec<u8>>,
-    pub bdd_key: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE>,
+    pub bdd_key: BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> Default for TestContext<BRA, BE>
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> Default for TestContext<BRA, BE>
 where
     Module<BE>: ModuleNew<BE>
         + BDDKeyEncryptSk<BRA, BE>
@@ -67,14 +67,16 @@ where
         + BlindRotationKeyPreparedFactory<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: poulpy_hal::layouts::DataRef + poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> TestContext<BRA, BE> {
     pub fn glwe_infos(&self) -> GLWELayout {
         TEST_GLWE_INFOS
     }
@@ -91,7 +93,9 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
             + BlindRotationKeyPreparedFactory<BRA, BE>
             + BDDKeyPreparedFactory<BRA, BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        BE::OwnedBuf: poulpy_hal::layouts::DataRef + poulpy_hal::layouts::DataMut,
+        for<'a> BE::BufMut<'a>: HostDataMut,
+        for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let module: Module<BE> = Module::<BE>::new(TEST_N_GLWE as u64);
 
@@ -103,7 +107,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
 
         let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(TEST_N_GLWE.into(), TEST_RANK.into());
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_glwe_prep: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(TEST_RANK.into());
+        let mut sk_glwe_prep: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(TEST_RANK.into());
         module.glwe_secret_prepare(&mut sk_glwe_prep, &sk_glwe);
 
         let n_lwe: u32 = TEST_N_LWE;
@@ -120,11 +124,11 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
             &bdd_enc_infos,
             &mut source_xe,
             &mut source_xa,
-            scratch.borrow(),
+            &mut scratch.borrow(),
         );
-        let mut bdd_key_prepared: BDDKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+        let mut bdd_key_prepared: BDDKeyPrepared<BE::OwnedBuf, BRA, BE> =
             BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
-        bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
+        bdd_key_prepared.prepare(&module, &bdd_key, &mut scratch.borrow());
 
         TestContext {
             bdd_key: bdd_key_prepared,

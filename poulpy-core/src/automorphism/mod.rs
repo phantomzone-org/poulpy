@@ -24,5 +24,4 @@ pub use gglwe_atk::*;
 pub use ggsw_ct::*;
 pub use glwe_ct::*;
 
-pub(crate) use gglwe_atk::GLWEAutomorphismKeyAutomorphismDefault;
 pub(crate) use glwe_ct::GLWEAutomorphismDefault;

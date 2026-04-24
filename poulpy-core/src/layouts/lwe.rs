@@ -1,10 +1,14 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, TransferFrom, VecZnx, VecZnxToBackendMut,
+        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 
+use crate::api::ModuleTransfer;
 use crate::layouts::{Base2K, Degree, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -82,6 +86,9 @@ pub struct LWE<D: Data> {
     pub(crate) base2k: Base2K,
 }
 
+pub type LWEBackendRef<'a, BE> = LWE<<BE as Backend>::BufRef<'a>>;
+pub type LWEBackendMut<'a, BE> = LWE<<BE as Backend>::BufMut<'a>>;
+
 impl<D: Data> LWEInfos for LWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
@@ -113,6 +120,38 @@ impl<D: DataMut> LWE<D> {
     /// Returns a mutable reference to the underlying [`VecZnx`].
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
+    }
+}
+
+impl<D: DataRef> LWE<D> {
+    /// Copies this ciphertext's backing bytes into an owned buffer of
+    /// backend `To`, routing via host bytes.
+    pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> LWE<To::OwnedBuf>
+    where
+        BE: Backend<OwnedBuf = D>,
+        To: Backend,
+        To: TransferFrom<BE>,
+    {
+        dst.upload_lwe(self)
+    }
+}
+
+impl<D: Data> LWE<D> {
+    /// Zero-cost rename when both backends share the same `OwnedBuf`.
+    pub fn reinterpret<To>(self) -> LWE<To::OwnedBuf>
+    where
+        To: Backend<OwnedBuf = D>,
+    {
+        LWE {
+            data: VecZnx::from_data_with_max_size(
+                self.data.data,
+                self.data.n,
+                self.data.cols,
+                self.data.size,
+                self.data.max_size,
+            ),
+            base2k: self.base2k,
+        }
     }
 }
 
@@ -182,6 +221,19 @@ pub trait LWEToRef {
     fn to_ref(&self) -> LWE<&[u8]>;
 }
 
+pub trait LWEToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> LWEBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> LWEToBackendRef<BE> for LWE<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> LWEBackendRef<'_, BE> {
+        LWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
 impl<D: DataRef> LWEToRef for LWE<D> {
     fn to_ref(&self) -> LWE<&[u8]> {
         LWE {
@@ -196,6 +248,19 @@ pub trait LWEToMut {
     /// Borrows the data as `&mut [u8]`.
     #[allow(dead_code)]
     fn to_mut(&mut self) -> LWE<&mut [u8]>;
+}
+
+pub trait LWEToBackendMut<BE: Backend>: LWEToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> LWEToBackendMut<BE> for LWE<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE> {
+        LWE {
+            base2k: self.base2k,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
 }
 
 impl<D: DataMut> LWEToMut for LWE<D> {

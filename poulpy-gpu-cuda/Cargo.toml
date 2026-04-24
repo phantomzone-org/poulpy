@@ -1,0 +1,10 @@
+[package]
+name = "poulpy-gpu-cuda"
+version = "0.5.0"
+edition = "2024"
+
+[dependencies]
+poulpy-hal.workspace = true
+poulpy-cpu-ref.workspace = true
+bytemuck.workspace = true
+cudarc = { version = "0.19.4", default-features = false, features = ["std", "driver", "dynamic-loading", "nvrtc", "cuda-13010"] }

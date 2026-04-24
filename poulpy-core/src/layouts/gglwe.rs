@@ -1,8 +1,12 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
+        MatZnxToBackendRef, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, TransferFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 
+use crate::api::ModuleTransfer;
 use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -89,6 +93,9 @@ pub struct GGLWE<D: Data> {
     pub(crate) dsize: Dsize,
 }
 
+pub type GGLWEBackendRef<'a, BE> = GGLWE<<BE as Backend>::BufRef<'a>>;
+pub type GGLWEBackendMut<'a, BE> = GGLWE<<BE as Backend>::BufMut<'a>>;
+
 impl<D: Data> LWEInfos for GGLWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
@@ -133,10 +140,70 @@ impl<D: DataRef> GGLWE<D> {
     }
 }
 
+pub trait GGLWEAtBackendRef<BE: Backend> {
+    fn at_backend(&self, row: usize, col: usize) -> GLWE<BE::BufRef<'_>>;
+}
+
+impl<BE: Backend> GGLWEAtBackendRef<BE> for GGLWE<BE::OwnedBuf> {
+    fn at_backend(&self, row: usize, col: usize) -> GLWE<BE::BufRef<'_>> {
+        let data = <MatZnx<BE::OwnedBuf> as MatZnxAtBackendRef<BE>>::at_backend(&self.data, row, col);
+        GLWE {
+            base2k: self.base2k,
+            data,
+        }
+    }
+}
+
+pub fn gglwe_at_backend_ref_from_ref<'a, 'b, BE: Backend>(
+    gglwe: &'a GGLWE<BE::BufRef<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufRef<'a>> {
+    let data = poulpy_hal::layouts::mat_znx_at_backend_ref_from_ref::<BE>(&gglwe.data, row, col);
+    GLWE {
+        base2k: gglwe.base2k,
+        data,
+    }
+}
+
+pub fn gglwe_at_backend_ref_from_mut<'a, 'b, BE: Backend>(
+    gglwe: &'a GGLWE<BE::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufRef<'a>> {
+    let data = poulpy_hal::layouts::mat_znx_at_backend_ref_from_mut::<BE>(&gglwe.data, row, col);
+    GLWE {
+        base2k: gglwe.base2k,
+        data,
+    }
+}
+
 impl<D: DataMut> GGLWE<D> {
     pub fn data_mut(&mut self) -> &mut MatZnx<D> {
         &mut self.data
     }
+}
+
+pub trait GGLWEAtBackendMut<BE: Backend> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWE<BE::BufMut<'_>>;
+}
+
+impl<BE: Backend> GGLWEAtBackendMut<BE> for GGLWE<BE::OwnedBuf> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWE<BE::BufMut<'_>> {
+        let base2k = self.base2k;
+        let data = <MatZnx<BE::OwnedBuf> as MatZnxAtBackendMut<BE>>::at_backend_mut(&mut self.data, row, col);
+        GLWE { base2k, data }
+    }
+}
+
+pub fn gglwe_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
+    gglwe: &'a mut GGLWE<BE::BufMut<'b>>,
+    row: usize,
+    col: usize,
+) -> GLWE<BE::BufMut<'a>> {
+    let base2k = gglwe.base2k;
+    let data = poulpy_hal::layouts::mat_znx_at_backend_mut_from_mut::<BE>(&mut gglwe.data, row, col);
+    GLWE { base2k, data }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWE<D> {
@@ -179,6 +246,40 @@ impl<D: DataMut> GGLWE<D> {
         let base2k = self.base2k;
         let data = self.data.at_mut(row, col);
         GLWE { base2k, data }
+    }
+}
+
+impl<D: DataRef> GGLWE<D> {
+    /// Copies this ciphertext's backing bytes into an owned buffer of
+    /// backend `To`, routing via host bytes.
+    pub fn to_backend<BE, To>(&self, dst: &Module<To>) -> GGLWE<To::OwnedBuf>
+    where
+        BE: Backend<OwnedBuf = D>,
+        To: Backend,
+        To: TransferFrom<BE>,
+    {
+        dst.upload_gglwe(self)
+    }
+}
+
+impl<D: Data> GGLWE<D> {
+    /// Zero-cost rename when both backends share the same `OwnedBuf`.
+    pub fn reinterpret<To>(self) -> GGLWE<To::OwnedBuf>
+    where
+        To: Backend<OwnedBuf = D>,
+    {
+        let (n, rows, cols_in, cols_out, size) = (
+            self.data.n(),
+            self.data.rows(),
+            self.data.cols_in(),
+            self.data.cols_out(),
+            self.data.size(),
+        );
+        GGLWE {
+            data: MatZnx::from_data(self.data.into_data(), n, rows, cols_in, cols_out, size),
+            base2k: self.base2k,
+            dsize: self.dsize,
+        }
     }
 }
 
@@ -278,6 +379,20 @@ pub trait GGLWEToMut {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]>;
 }
 
+pub trait GGLWEToBackendMut<BE: Backend>: GGLWEToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGLWEToBackendMut<BE> for GGLWE<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        GGLWE {
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
 impl<D: DataMut> GGLWEToMut for GGLWE<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         GGLWE {
@@ -290,6 +405,20 @@ impl<D: DataMut> GGLWEToMut for GGLWE<D> {
 
 pub trait GGLWEToRef {
     fn to_ref(&self) -> GGLWE<&[u8]>;
+}
+
+pub trait GGLWEToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for GGLWE<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        GGLWE {
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
 }
 
 impl<D: DataRef> GGLWEToRef for GGLWE<D> {

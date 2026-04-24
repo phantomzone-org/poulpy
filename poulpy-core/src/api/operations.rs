@@ -3,21 +3,23 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxAddInto, VecZnxCopy, VecZnxLsh, VecZnxLshAddInto,
-        VecZnxLshAssign, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxNegate,
-        VecZnxNegateAssign, VecZnxNormalize, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign,
-        VecZnxRotateAssignTmpBytes, VecZnxRshAssign, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign,
-        VecZnxZero,
+        VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate,
+        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace,
+        VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
     },
-    layouts::{Backend, DataMut, DataRef, GaloisElement, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, GaloisElement, HostDataMut, ScratchArena},
 };
 
 use crate::{
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     api::GLWEAutomorphism,
     glwe_packer::{GLWEPacker, pack_core},
     layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos,
-        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
+        GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
+        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
+        ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
@@ -30,18 +32,24 @@ pub trait GLWETrace<BE: Backend> {
         A: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>;
+        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
+        BE::BufMut<'s>: HostDataMut;
 
-    fn glwe_trace_assign<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>;
+        R: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
+        BE::BufMut<'s>: HostDataMut;
 }
 
 pub trait GLWEPacking<BE: Backend> {
@@ -52,18 +60,22 @@ pub trait GLWEPacking<BE: Backend> {
         R: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_pack<R, A, K, H>(
+    fn glwe_pack<'s, R, A, K, H>(
         &self,
         res: &mut R,
         a: HashMap<usize, &mut A>,
         log_gap_out: usize,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToMut + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>;
+        A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        BE: 's,
+        BE::BufMut<'s>: HostDataMut;
 }
 
 pub trait GLWEPackerOps<BE: Backend>
@@ -79,12 +91,21 @@ where
         + GLWENormalize<BE>
         + GLWECopy,
 {
-    fn packer_add<A, K, H>(&self, packer: &mut GLWEPacker, a: Option<&A>, i: usize, auto_keys: &H, scratch: &mut Scratch<BE>)
-    where
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+    fn packer_add<'s, A, K, H>(
+        &self,
+        packer: &mut GLWEPacker,
+        a: Option<&A>,
+        i: usize,
+        auto_keys: &H,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
+        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        BE: 's,
+        for<'a> BE::BufMut<'a>: DataMut,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }
@@ -96,14 +117,22 @@ pub trait GLWEMulConst<BE: Backend> {
         R: GLWEInfos,
         A: GLWEInfos;
 
-    fn glwe_mul_const<R, A>(&self, cnv_offset: usize, res: &mut GLWE<R>, a: &GLWE<A>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const<'s, R, A>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        b: &[i64],
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
+
+    fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: DataMut,
-        A: DataRef;
-
-    fn glwe_mul_const_assign<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
-    where
-        R: DataMut;
+        for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 pub trait GLWEMulPlain<BE: Backend> {
@@ -114,7 +143,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         B: GLWEInfos;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain<R, A, B>(
+    fn glwe_mul_plain<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -122,24 +151,26 @@ pub trait GLWEMulPlain<BE: Backend> {
         a_effective_k: usize,
         b: &GLWEPlaintext<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_assign<R, A>(
+    fn glwe_mul_plain_inplace<'s, R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         res_effective_k: usize,
         a: &GLWEPlaintext<A>,
         a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
-        A: DataRef;
+        A: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 pub trait GLWETensoring<BE: Backend> {
@@ -158,7 +189,7 @@ pub trait GLWETensoring<BE: Backend> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_tensor_apply<R, A, B>(
+    fn glwe_tensor_apply<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWETensor<R>,
@@ -166,50 +197,40 @@ pub trait GLWETensoring<BE: Backend> {
         a_effective_k: usize,
         b: &GLWE<B>,
         b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        B: DataRef,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_tensor_apply_add_assign<R, A, B>(
+    fn glwe_tensor_square_apply<'s, R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWETensor<R>,
         a: &GLWE<A>,
         a_effective_k: usize,
-        b: &GLWE<B>,
-        b_effective_k: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
-    #[allow(clippy::too_many_arguments)]
-    fn glwe_tensor_square_apply<R, A>(
-        &self,
-        cnv_offset: usize,
-        res: &mut GLWETensor<R>,
-        a: &GLWE<A>,
-        a_effective_k: usize,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataMut,
-        A: DataRef;
-
-    fn glwe_tensor_relinearize<R, A, B>(
+    fn glwe_tensor_relinearize<'s, R, A, B>(
         &self,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
         tsk: &GLWETensorKeyPrepared<B, BE>,
         tsk_size: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: DataMut,
         A: DataRef,
-        B: DataRef;
+        B: Data,
+        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
+        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
+        for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
     where
@@ -414,20 +435,13 @@ where
 
 pub trait GLWERotate<BE: Backend>
 where
-    Self: ModuleN + VecZnxRotate + VecZnxRotateAssign<BE> + VecZnxRotateAssignTmpBytes + VecZnxZero,
+    Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()
     }
 
-    fn glwe_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
+    fn glwe_rotate<'r, 'a>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, a: &GLWEBackendRef<'a, BE>) {
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.n(), self.n() as u32);
         assert!(res.rank() == a.rank() || a.rank() == 0);
@@ -436,19 +450,17 @@ where
         let a_cols = (a.rank() + 1).into();
 
         for i in 0..a_cols {
-            self.vec_znx_rotate(k, res.data_mut(), i, a.data(), i);
+            self.vec_znx_rotate(k, &mut res.data, i, &a.data, i);
         }
         for i in a_cols..res_cols {
-            self.vec_znx_zero(res.data_mut(), i);
+            self.vec_znx_zero_backend(&mut res.data, i);
         }
     }
 
-    fn glwe_rotate_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         assert!(
             scratch.available() >= self.glwe_rotate_tmp_bytes(),
             "scratch.available(): {} < GLWERotate::glwe_rotate_tmp_bytes: {}",
@@ -457,7 +469,7 @@ where
         );
 
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_rotate_assign(k, res.data_mut(), i, scratch);
+            self.vec_znx_rotate_inplace(k, &mut res.data, i, &mut scratch.borrow());
         }
     }
 }
@@ -470,14 +482,7 @@ where
         self.glwe_rotate_tmp_bytes()
     }
 
-    fn ggsw_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
-    where
-        R: GGSWToMut,
-        A: GGSWToRef,
-    {
-        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let a: &GGSW<&[u8]> = &a.to_ref();
-
+    fn ggsw_rotate<'r, 'a>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, a: &GGSWBackendRef<'a, BE>) {
         assert!(res.dnum() <= a.dnum());
         assert_eq!(res.dsize(), a.dsize());
         assert_eq!(res.rank(), a.rank());
@@ -486,15 +491,18 @@ where
 
         for row in 0..rows {
             for col in 0..cols {
-                self.glwe_rotate(k, &mut res.at_mut(row, col), &a.at(row, col));
+                self.glwe_rotate(
+                    k,
+                    &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col),
+                    &ggsw_at_backend_ref_from_ref::<BE>(a, row, col),
+                );
             }
         }
     }
 
-    fn ggsw_rotate_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn ggsw_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut,
-        Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE> + ScratchAvailable,
     {
         assert!(
             scratch.available() >= self.ggsw_rotate_tmp_bytes(),
@@ -502,14 +510,14 @@ where
             scratch.available(),
             self.ggsw_rotate_tmp_bytes()
         );
-        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
 
         let rows: usize = res.dnum().into();
         let cols: usize = (res.rank() + 1).into();
 
+        let mut scratch = scratch.borrow();
         for row in 0..rows {
             for col in 0..cols {
-                self.glwe_rotate_assign(k, &mut res.at_mut(row, col), scratch);
+                self.glwe_rotate_inplace(k, &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col), &mut scratch);
             }
         }
     }
@@ -536,7 +544,7 @@ where
         }
     }
 
-    fn glwe_mul_xp_minus_one_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_mul_xp_minus_one_inplace<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
     {
@@ -545,7 +553,7 @@ where
         assert_eq!(res.n(), self.n() as u32);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_mul_xp_minus_one_assign(k, res.data_mut(), i, scratch);
+            self.vec_znx_mul_xp_minus_one_inplace(k, res.data_mut(), i, &mut scratch.borrow());
         }
     }
 }
@@ -593,10 +601,10 @@ where
         self.vec_znx_rsh_tmp_bytes().max(self.vec_znx_lsh_tmp_bytes())
     }
 
-    fn glwe_rsh<R>(&self, k: usize, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_rsh<'s, R>(&self, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         assert!(
@@ -607,14 +615,14 @@ where
         );
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_rsh_assign(base2k, k, res.data_mut(), i, scratch);
+            self.vec_znx_rsh_inplace(base2k, k, res.data_mut(), i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_lsh_assign<R>(&self, res: &mut R, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
 
@@ -627,15 +635,15 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_assign(base2k, k, res.data_mut(), i, scratch);
+            self.vec_znx_lsh_inplace(base2k, k, res.data_mut(), i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_lsh<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -653,15 +661,15 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            self.vec_znx_lsh(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_lsh_add<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_add<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -679,15 +687,15 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_add_into(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            self.vec_znx_lsh_add_into(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_lsh_sub<R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_sub<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
         let res = &mut res.to_mut();
         let a = &a.to_ref();
@@ -705,86 +713,83 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_sub(base2k, k, res.data_mut(), i, a.data(), i, scratch);
+            self.vec_znx_lsh_sub(base2k, k, res.data_mut(), i, a.data(), i, &mut scratch.borrow());
         }
     }
 }
 
 pub trait GLWENormalize<BE: Backend>
 where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeAssign<BE> + VecZnxNormalizeTmpBytes,
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes,
 {
     fn glwe_normalize_tmp_bytes(&self) -> usize {
         self.vec_znx_normalize_tmp_bytes()
     }
 
-    fn glwe_maybe_cross_normalize_to_ref<'a, A>(
+    fn glwe_maybe_cross_normalize_to_ref<'a>(
         &self,
-        glwe: &'a A,
+        glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
-        scratch: &'a mut Scratch<BE>,
-    ) -> (GLWE<&'a [u8]>, &'a mut Scratch<BE>)
+        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        scratch: &'a mut ScratchArena<'a, BE>,
+    ) -> GLWEBackendRef<'a, BE>
     where
-        A: GLWEToRef + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if glwe.base2k().as_usize() == target_base2k {
             tmp_slot.take();
-            return (glwe.to_ref(), scratch);
+            return glwe_backend_ref_from_ref::<BE>(glwe);
         }
 
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
+        let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
+        let glwe_ref = glwe_backend_ref_from_ref::<BE>(glwe);
+        self.glwe_normalize(tmp_ref, &glwe_ref, &mut scratch2);
 
-        self.glwe_normalize(tmp_ref, glwe, scratch2);
-
-        (tmp_ref.to_ref(), scratch2)
+        glwe_backend_ref_from_mut::<BE>(tmp_ref)
     }
 
-    fn glwe_maybe_cross_normalize_to_mut<'a, A>(
+    fn glwe_maybe_cross_normalize_to_mut<'a>(
         &self,
-        glwe: &'a mut A,
+        glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>,
-        scratch: &'a mut Scratch<BE>,
-    ) -> (GLWE<&'a mut [u8]>, &'a mut Scratch<BE>)
+        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        scratch: &'a mut ScratchArena<'a, BE>,
+    ) -> GLWEBackendMut<'a, BE>
     where
-        A: GLWEToMut + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if glwe.base2k().as_usize() == target_base2k {
             tmp_slot.take();
-            return (glwe.to_mut(), scratch);
+            return glwe_backend_mut_from_mut::<BE>(glwe);
         }
 
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
         *tmp_slot = Some(tmp);
 
-        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
+        let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
-        self.glwe_normalize(tmp_ref, glwe, scratch2);
+        self.glwe_normalize(tmp_ref, &glwe_backend_ref_from_mut::<BE>(&*glwe), &mut scratch2);
 
-        (tmp_ref.to_mut(), scratch2)
+        glwe_backend_mut_from_mut::<BE>(tmp_ref)
     }
 
-    fn glwe_normalize<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        Scratch<BE>: ScratchTakeCore<BE>,
+    fn glwe_normalize<'s, 'r, 'a>(
+        &self,
+        res: &mut GLWEBackendMut<'r, BE>,
+        a: &GLWEBackendRef<'a, BE>,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.rank(), a.rank());
@@ -798,16 +803,23 @@ where
         let res_base2k = res.base2k().into();
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize(res.data_mut(), res_base2k, 0, i, a.data(), a.base2k().into(), i, scratch);
+            self.vec_znx_normalize(
+                &mut res.data,
+                res_base2k,
+                0,
+                i,
+                &a.data,
+                a.base2k().into(),
+                i,
+                &mut scratch.borrow(),
+            );
         }
     }
 
-    fn glwe_normalize_assign<R>(&self, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_normalize_inplace<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         assert!(
             scratch.available() >= self.glwe_normalize_tmp_bytes(),
             "scratch.available(): {} < GLWENormalize::glwe_normalize_tmp_bytes: {}",
@@ -815,7 +827,7 @@ where
             self.glwe_normalize_tmp_bytes()
         );
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize_assign(res.base2k().into(), res.data_mut(), i, scratch);
+            self.vec_znx_normalize_inplace_backend(res.base2k().into(), &mut res.data, i, &mut scratch.borrow());
         }
     }
 }

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
-    layouts::{DeviceBuf, Module, Scratch, ScratchOwned},
+    layouts::{Module, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -20,6 +20,8 @@ use crate::{
 
 pub fn test_gglwe_switching_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
         + GGLWEKeyswitch<BE>
@@ -65,7 +67,7 @@ where
 
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
-                let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
+                let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> =
                     module.glwe_secret_prepared_alloc(rank_out.into());
                 module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
@@ -76,7 +78,7 @@ where
                     &gglwe_infos,
                     &mut source_xe,
                     &mut source_xa,
-                    scratch.borrow(),
+                    &mut scratch.arena(),
                 );
 
                 let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;
@@ -85,7 +87,7 @@ where
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
                             .std()
                             .log2();
 
@@ -104,6 +106,8 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
     params: &TestParams,
     module: &Module<BE>,
 ) where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
         + GGLWEKeyswitch<BE>
@@ -151,7 +155,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
 
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
-                let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
+                let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> =
                     module.glwe_secret_prepared_alloc(rank_out.into());
                 module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
@@ -164,7 +168,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                     seed_xa,
                     &gglwe_infos,
                     &mut source_xe,
-                    scratch.borrow(),
+                    crate::test_suite::scratch_host_mut(&mut scratch),
                 );
 
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
@@ -176,7 +180,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
                             .std()
                             .log2();
 
@@ -193,6 +197,8 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
 
 pub fn test_gglwe_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
+    BE::OwnedBuf: poulpy_hal::layouts::DataMut,
+    for<'a> BE::BufMut<'a>: poulpy_hal::layouts::DataMut,
     Module<BE>: GGLWEEncryptSk<BE>
         + GGLWEPreparedFactory<BE>
         + GGLWEKeyswitch<BE>
@@ -239,7 +245,7 @@ where
 
                 let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
-                let mut sk_out_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> =
+                let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> =
                     module.glwe_secret_prepared_alloc(rank_out.into());
                 module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
@@ -252,7 +258,7 @@ where
                     seed_xa,
                     &gglwe_infos,
                     &mut source_xe,
-                    scratch.borrow(),
+                    &mut scratch.borrow(),
                 );
 
                 let mut ksk: GGLWE<Vec<u8>> = GGLWE::alloc_from_infos(&gglwe_infos);
@@ -263,7 +269,7 @@ where
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, scratch.borrow())
+                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
                             .std()
                             .log2();
 

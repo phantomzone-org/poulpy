@@ -6,8 +6,8 @@ use poulpy_hal::{
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
-        TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWELayout, GGLWEToBackendMut,
+        GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -244,6 +244,18 @@ impl<D: DataRef> GGLWEToRef for GLWEAutomorphismKey<D> {
     /// Borrows the data as `&[u8]`.
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendMut<BE> for GLWEAutomorphismKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GGLWE<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.key)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for GLWEAutomorphismKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GGLWE<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.key)
     }
 }
 

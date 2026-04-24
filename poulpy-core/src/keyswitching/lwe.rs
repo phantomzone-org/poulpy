@@ -1,13 +1,13 @@
-use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
-};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, ZnxZero};
 
 pub use crate::api::LWEKeySwitch;
 use crate::{
-    LWESampleExtract, ScratchTakeCore,
+    LWESampleExtract, ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision},
+    layouts::{
+        GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision, glwe_backend_ref_from_mut,
+        prepared::GGLWEPreparedToBackendRef,
+    },
 };
 
 #[doc(hidden)]
@@ -46,12 +46,13 @@ where
         lvl_0 + lvl_1 + lvl_2
     }
 
-    fn lwe_keyswitch_default<R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    fn lwe_keyswitch_default<'s, R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut ScratchArena<'s, BE>)
     where
         R: LWEToMut,
         A: LWEToRef,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let a: &LWE<&[u8]> = &a.to_ref();
@@ -66,6 +67,7 @@ where
             self.lwe_keyswitch_tmp_bytes_default(res, a, ksk)
         );
 
+        let scratch = scratch.borrow();
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
@@ -82,14 +84,15 @@ where
             glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
         }
 
-        let (mut glwe_out, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+        let (mut glwe_out, mut scratch_2) = scratch_1.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: res.base2k(),
             k: res.max_k(),
             rank: Rank(1),
         });
 
-        self.glwe_keyswitch(&mut glwe_out, &glwe_in, ksk, scratch_2);
+        let glwe_in_ref = glwe_backend_ref_from_mut::<BE>(&glwe_in);
+        self.glwe_keyswitch(&mut glwe_out, &glwe_in_ref, ksk, &mut scratch_2);
         self.lwe_sample_extract(res, &glwe_out);
     }
 }

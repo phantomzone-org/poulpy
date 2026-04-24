@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, SvpPPolAlloc, SvpPrepare},
-    layouts::{Backend, DataMut, DataRef, DeviceBuf, Module, ScalarZnx, Scratch, SvpPPolOwned},
+    api::{SvpPPolAlloc, SvpPrepare},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScratchArena, SvpPPolOwned},
 };
 
 use std::marker::PhantomData;
@@ -18,9 +18,9 @@ use crate::blind_rotation::{
 impl<BE: Backend> BlindRotationKeyPreparedFactory<CGGI, BE> for Module<BE>
 where
     Self: GGSWPreparedFactory<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE>,
-    Scratch<BE>: ScratchAvailable,
+    BE::OwnedBuf: DataMut + DataRef,
 {
-    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<DeviceBuf<BE>, CGGI, BE>
+    fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>
     where
         A: BlindRotationKeyInfos,
     {
@@ -41,13 +41,12 @@ where
         self.ggsw_prepare_tmp_bytes(infos)
     }
 
-    fn prepare_blind_rotation_key<DM, DR>(
+    fn prepare_blind_rotation_key<DR>(
         &self,
-        res: &mut BlindRotationKeyPrepared<DM, CGGI, BE>,
+        res: &mut BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
         other: &BlindRotationKey<DR, CGGI>,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
-        DM: DataMut,
         DR: DataRef,
     {
         #[cfg(debug_assertions)]
@@ -58,7 +57,7 @@ where
         let n: usize = other.n().as_usize();
 
         for (a, b) in res.data.iter_mut().zip(other.keys.iter()) {
-            self.ggsw_prepare(a, b, scratch);
+            self.ggsw_prepare(a, b, &mut scratch.borrow());
         }
 
         res.dist = other.dist;

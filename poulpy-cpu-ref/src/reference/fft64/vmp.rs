@@ -16,7 +16,7 @@ pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
 
 pub fn vmp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, pmat: &mut R, mat: &A, tmp: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
     R: VmpPMatToMut<BE>,
     A: MatZnxToRef,
 {
@@ -99,7 +99,8 @@ pub fn vmp_apply_dft_tmp_bytes(n: usize, a_size: usize, prows: usize, pcols_in: 
 
 pub fn vmp_apply_dft<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
-    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
     M: VmpPMatToRef<BE>,
@@ -123,7 +124,7 @@ where
 
     let offset: usize = cols - a.cols();
     for j in 0..cols {
-        vec_znx_dft_apply(table, 1, 0, &mut a_dft, j, &a, offset + j);
+        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, &mut a_dft, j, &a, offset + j);
     }
 
     vmp_apply_dft_to_dft(res, &a_dft, &pmat, 0, tmp_bytes);

@@ -17,16 +17,17 @@
 //! from [`GLWETrace::glwe_trace_galois_elements`].
 
 use poulpy_hal::{
-    api::{ModuleLogN, ScratchAvailable, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, CyclotomicOrder, GaloisElement, Module, Scratch, VecZnx, galois_element},
+    api::ModuleLogN,
+    layouts::{Backend, CyclotomicOrder, GaloisElement, HostDataMut, Module, ScratchArena, galois_element},
 };
 
 pub use crate::api::GLWETrace;
 use crate::{
-    GLWEAutomorphism, GLWECopy, GLWENormalize, GLWEShift, ScratchTakeCore,
+    GLWEAutomorphism, GLWECopy, GLWENormalize, GLWEShift, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEToMut,
-        GLWEToRef, GetGaloisElement, LWEInfos,
+        GGLWEInfos, GGLWELayout, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWELayout, GLWEToBackendMut,
+        GLWEToBackendRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -43,17 +44,90 @@ pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
         .collect()
 }
 
-#[doc(hidden)]
-pub trait GLWETraceDefault<BE: Backend>
-where
-    Self: ModuleLogN
+fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
+    module: &M,
+    res: &mut GLWEBackendMut<'r, BE>,
+    skip: usize,
+    keys: &H,
+    scratch: &mut ScratchArena<'s, BE>,
+) where
+    M: ModuleLogN
         + GaloisElement
         + GLWEAutomorphism<BE>
         + GLWEShift<BE>
         + GLWECopy
         + CyclotomicOrder
-        + VecZnxNormalizeTmpBytes
-        + GLWENormalize<BE>,
+        + GLWENormalize<BE>
+        + GLWETraceDefault<BE>
+        + ?Sized,
+    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+    H: GLWEAutomorphismKeyHelper<K, BE>,
+    ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+{
+    let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
+    let log_n: usize = module.log_n();
+
+    assert_eq!(res.n(), module.n() as u32);
+    assert_eq!(ksk_infos.n(), module.n() as u32);
+    assert!(skip <= log_n);
+    assert_eq!(ksk_infos.rank_in(), res.rank());
+    assert_eq!(ksk_infos.rank_out(), res.rank());
+    assert!(
+        scratch.available() >= module.glwe_trace_tmp_bytes_default(res, res, ksk_infos),
+        "scratch.available(): {} < GLWETrace::glwe_trace_tmp_bytes: {}",
+        scratch.available(),
+        module.glwe_trace_tmp_bytes_default(res, res, ksk_infos)
+    );
+
+    if res.base2k() != ksk_infos.base2k() {
+        let res_conv_layout = GLWELayout {
+            n: module.n().into(),
+            base2k: ksk_infos.base2k(),
+            k: res.max_k(),
+            rank: res.rank(),
+        };
+        let res_conv_size = res_conv_layout.size();
+        let mut res_conv: GLWE<BE::OwnedBuf> = GLWE {
+            base2k: res_conv_layout.base2k,
+            data: poulpy_hal::layouts::VecZnx {
+                data: BE::alloc_bytes(GLWE::<Vec<u8>>::bytes_of_from_infos(&res_conv_layout)),
+                n: res_conv_layout.n.into(),
+                cols: (res_conv_layout.rank + 1).into(),
+                size: res_conv_size,
+                max_size: res_conv_size,
+            },
+        };
+        {
+            let mut res_conv_backend: GLWEBackendMut<'_, BE> =
+                <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_conv);
+            module.glwe_normalize(&mut res_conv_backend, &glwe_backend_ref_from_mut::<BE>(&*res), scratch);
+        }
+        {
+            let mut res_conv_backend: GLWEBackendMut<'_, BE> =
+                <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_conv);
+            trace_inplace_internal::<M, K, H, BE>(module, &mut res_conv_backend, skip, keys, scratch);
+        }
+        let res_conv_ref = <GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&res_conv);
+        module.glwe_normalize(res, &res_conv_ref, scratch);
+        return;
+    }
+
+    for i in skip..log_n {
+        let p: i64 = if i == 0 { -1 } else { module.galois_element(1 << (i - 1)) };
+        module.glwe_rsh(1, res, scratch);
+        if let Some(key) = keys.get_automorphism_key(p) {
+            module.glwe_automorphism_add_inplace(res, key, scratch);
+        } else {
+            panic!("keys[{p}] is empty")
+        }
+    }
+}
+
+#[doc(hidden)]
+pub trait GLWETraceDefault<BE: Backend>
+where
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy + CyclotomicOrder + GLWENormalize<BE>,
 {
     fn glwe_trace_galois_elements_default(&self) -> Vec<i64> {
         trace_galois_elements(self.log_n(), self.cyclotomic_order())
@@ -71,12 +145,15 @@ where
 
         let lvl_0: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
         if a_infos.base2k() != key_infos.base2k() {
-            let lvl_1: usize = VecZnx::bytes_of(
-                self.n(),
-                (key_infos.rank_out() + 1).into(),
-                res_infos.max_k().min(a_infos.max_k()).div_ceil(key_infos.base2k()) as usize,
-            ) + self.vec_znx_normalize_tmp_bytes();
-            return lvl_0 + lvl_1;
+            let a_conv_infos: GLWELayout = GLWELayout {
+                n: a_infos.n(),
+                base2k: key_infos.base2k(),
+                k: a_infos.max_k(),
+                rank: a_infos.rank(),
+            };
+            let lvl_1: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos) + self.glwe_normalize_tmp_bytes();
+            let lvl_2: usize = self.glwe_trace_tmp_bytes_default(&a_conv_infos, &a_conv_infos, key_infos);
+            return lvl_1 + lvl_2;
         }
 
         let lvl_1: usize = if res_infos.max_k() > a_infos.max_k() {
@@ -88,13 +165,15 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_trace_default<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_default<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &'s mut ScratchArena<'s, BE>)
     where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let atk_layout: &GGLWELayout = &keys.automorphism_key_infos();
         assert!(
@@ -104,88 +183,62 @@ where
             self.glwe_trace_tmp_bytes_default(res, a, atk_layout)
         );
 
-        let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
+        let scratch_local = scratch.borrow();
+        let (mut tmp, scratch_1) = scratch_local.take_glwe(&GLWELayout {
             n: res.n(),
             base2k: atk_layout.base2k(),
             k: a.max_k().max(res.max_k()),
             rank: res.rank(),
         });
+        let mut scratch_1 = scratch_1;
 
         if a.base2k() == atk_layout.base2k() {
             self.glwe_copy(&mut tmp, a);
         } else {
-            self.glwe_normalize(&mut tmp, a, scratch_1);
+            let mut tmp_backend = glwe_backend_mut_from_mut::<BE>(&mut tmp);
+            scratch_1 = scratch_1.apply_mut(|scratch| {
+                self.glwe_normalize(&mut tmp_backend, &a.to_backend_ref(), scratch);
+            });
         }
 
-        self.glwe_trace_assign_default(&mut tmp, skip, keys, scratch_1);
+        {
+            let mut tmp_backend = glwe_backend_mut_from_mut::<BE>(&mut tmp);
+            scratch_1 = scratch_1.apply_mut(|scratch| {
+                trace_inplace_internal::<Self, K, H, BE>(self, &mut tmp_backend, skip, keys, scratch);
+            });
+        }
 
         if res.base2k() == atk_layout.base2k() {
             self.glwe_copy(res, &tmp);
         } else {
-            self.glwe_normalize(res, &tmp, scratch_1);
+            let (mut res_out, scratch_2) = scratch_1.take_glwe(&res.glwe_layout());
+            {
+                let mut res_out_backend = glwe_backend_mut_from_mut::<BE>(&mut res_out);
+                scratch_2.apply_mut(|scratch| {
+                    self.glwe_normalize(&mut res_out_backend, &glwe_backend_ref_from_mut::<BE>(&tmp), scratch);
+                });
+            }
+            self.glwe_copy(res, &res_out);
         }
     }
 
-    fn glwe_trace_assign_default<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_inplace_default<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
+        for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-
-        let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
-        let log_n: usize = self.log_n();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(ksk_infos.n(), self.n() as u32);
-        assert!(skip <= log_n);
-        assert_eq!(ksk_infos.rank_in(), res.rank());
-        assert_eq!(ksk_infos.rank_out(), res.rank());
-        assert!(
-            scratch.available() >= self.glwe_trace_tmp_bytes_default(res, res, ksk_infos),
-            "scratch.available(): {} < GLWETrace::glwe_trace_tmp_bytes: {}",
-            scratch.available(),
-            self.glwe_trace_tmp_bytes_default(res, res, ksk_infos)
-        );
-
-        if res.base2k() != ksk_infos.base2k() {
-            let (mut res_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
-                n: self.n().into(),
-                base2k: ksk_infos.base2k(),
-                k: res.max_k(),
-                rank: res.rank(),
-            });
-            self.glwe_normalize(&mut res_conv, res, scratch_1);
-            self.glwe_trace_assign_default(&mut res_conv, skip, keys, scratch_1);
-            self.glwe_normalize(res, &res_conv, scratch_1);
-        } else {
-            for i in skip..log_n {
-                self.glwe_rsh(1, res, scratch);
-
-                let p: i64 = if i == 0 { -1 } else { self.galois_element(1 << (i - 1)) };
-
-                if let Some(key) = keys.get_automorphism_key(p) {
-                    self.glwe_automorphism_add_assign(res, key, scratch);
-                } else {
-                    panic!("keys[{p}] is empty")
-                }
-            }
-        }
+        {
+            let mut res_backend = res.to_backend_mut();
+            trace_inplace_internal::<Self, K, H, BE>(self, &mut res_backend, skip, keys, scratch)
+        };
     }
 }
 
-impl<BE: Backend> GLWETraceDefault<BE> for Module<BE>
-where
-    Self: ModuleLogN
-        + GaloisElement
-        + GLWEAutomorphism<BE>
-        + GLWEShift<BE>
-        + GLWECopy
-        + CyclotomicOrder
-        + VecZnxNormalizeTmpBytes
-        + GLWENormalize<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+impl<BE: Backend> GLWETraceDefault<BE> for Module<BE> where
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy + CyclotomicOrder + GLWENormalize<BE>
 {
 }

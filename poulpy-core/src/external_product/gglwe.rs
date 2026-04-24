@@ -1,12 +1,12 @@
-use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, Module, Scratch, ZnxZero},
-};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena, ZnxZero};
 
 pub use crate::api::GGLWEExternalProduct;
 use crate::{
-    GLWEExternalProduct, ScratchTakeCore,
-    layouts::{GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEInfos, prepared::GGSWPreparedToRef},
+    GLWEExternalProduct, ScratchArenaTakeCore,
+    layouts::{
+        GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos,
+        prepared::GGSWPreparedToBackendRef,
+    },
 };
 
 #[doc(hidden)]
@@ -23,12 +23,13 @@ where
         self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 
-    fn gglwe_external_product_default<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEInfos,
-        A: GGLWEToRef + GGLWEInfos,
-        B: GGSWPreparedToRef<BE> + GGSWInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>,
+        BE: 's,
     {
         assert_eq!(
             res.rank_in(),
@@ -59,32 +60,41 @@ where
             self.gglwe_external_product_tmp_bytes_default(res, a, b)
         );
 
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GGLWE<&[u8]> = &a.to_ref();
-        let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
-
-        for row in 0..res.dnum().into() {
-            for col in 0..res.rank_in().into() {
-                self.glwe_external_product(&mut res.at_mut(row, col), &a.at(row, col), b, scratch);
+        let min_dnum: usize = res.dnum().min(a.dnum()).into();
+        let res_dnum: usize = res.dnum().into();
+        let res_rank_in: usize = res.rank_in().into();
+        {
+            let mut res = res.to_backend_mut();
+            let a = a.to_backend_ref();
+            for row in 0..min_dnum {
+                for col in 0..res_rank_in {
+                    self.glwe_external_product(
+                        &mut crate::layouts::gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
+                        &crate::layouts::gglwe_at_backend_ref_from_ref::<BE>(&a, row, col),
+                        b,
+                        &mut scratch.borrow(),
+                    );
+                }
             }
         }
 
-        for row in res.dnum().min(a.dnum()).into()..res.dnum().into() {
-            for col in 0..res.rank_in().into() {
-                res.at_mut(row, col).data_mut().zero();
+        if min_dnum < res_dnum {
+            let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+            for row in min_dnum..res_dnum {
+                for col in 0..res_rank_in {
+                    res.at_mut(row, col).data_mut().zero();
+                }
             }
         }
     }
 
-    fn gglwe_external_product_assign_default<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    fn gglwe_external_product_inplace_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut,
-        A: GGSWPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>,
+        BE: 's,
     {
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GGSWPrepared<&[u8], BE> = &a.to_ref();
-
         assert_eq!(
             res.rank_out(),
             a.rank(),
@@ -99,14 +109,19 @@ where
             self.gglwe_external_product_tmp_bytes_default(res, res, a)
         );
 
-        for row in 0..res.dnum().into() {
-            for col in 0..res.rank_in().into() {
-                self.glwe_external_product_assign(&mut res.at_mut(row, col), a, scratch);
+        let res_dnum: usize = res.dnum().into();
+        let res_rank_in: usize = res.rank_in().into();
+        let mut res = res.to_backend_mut();
+        for row in 0..res_dnum {
+            for col in 0..res_rank_in {
+                self.glwe_external_product_inplace(
+                    &mut crate::layouts::gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
+                    a,
+                    &mut scratch.borrow(),
+                );
             }
         }
     }
 }
 
 impl<BE: Backend> GGLWEExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
-
-// module-only API: external product is provided by `GGLWEExternalProduct` on `Module`.

@@ -1,8 +1,8 @@
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssign},
-    layouts::{Backend, DeviceBuf, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, DataMut, DataRef, HostDataMut, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -16,10 +16,10 @@ use crate::{
 };
 
 use poulpy_core::{
-    EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk,
     layouts::{
         Dsize, GGLWEToGGSWKeyLayout, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWEInfos,
-        GLWESecretPreparedFactory, LWELayout,
+        GLWESecretPreparedFactory, GLWEToBackendMut, LWELayout,
     },
 };
 
@@ -28,7 +28,7 @@ use poulpy_core::layouts::{
     prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
-pub fn test_circuit_bootstrapping_to_exponent<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
+pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>>, M, BRA: BlindRotationAlgo>(module: &M)
 where
     M: ModuleN
         + GLWESecretPreparedFactory<BE>
@@ -43,7 +43,8 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxRotateAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     let n_glwe: usize = module.n();
     let res_base2k: usize = 15;
@@ -125,7 +126,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+    let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
     module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let data: i64 = 1;
@@ -144,7 +145,7 @@ where
         &lwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let now: Instant = Instant::now();
@@ -160,7 +161,7 @@ where
         &cbt_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
@@ -168,9 +169,9 @@ where
 
     let log_gap_out = 1;
 
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
-    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
+    cbt_prepared.prepare(module, &cbt_key, &mut scratch.borrow());
 
     let now: Instant = Instant::now();
     cbt_prepared.execute_to_exponent(
@@ -180,20 +181,19 @@ where
         &ct_lwe,
         k_lwe_pt,
         extension_factor,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     // X^{data * 2^log_gap_out}
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n_glwe, 1);
-    pt_ggsw.at_mut(0, 0)[0] = 1;
-    module.vec_znx_rotate_assign(data * (1 << log_gap_out), &mut pt_ggsw.as_vec_znx_mut(), 0, scratch.borrow());
+    pt_ggsw.at_mut(0, 0)[data as usize * (1 << log_gap_out)] = 1;
 
     for row in 0..res.dnum().as_usize() {
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, scratch.borrow())
+                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, &mut scratch.borrow())
                     .std()
                     .log2()
             )
@@ -211,16 +211,19 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
-    module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&res);
+    module.ggsw_prepare(&mut res_prepared, &res, &mut scratch.borrow());
 
-    module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, scratch.borrow());
+    {
+        let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
+        module.glwe_external_product_inplace(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+    }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
-    module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
+    module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, &mut scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];
@@ -228,7 +231,7 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-pub fn test_circuit_bootstrapping_to_constant<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
+pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>>, M, BRA: BlindRotationAlgo>(module: &M)
 where
     M: ModuleN
         + GLWESecretPreparedFactory<BE>
@@ -243,7 +246,8 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxRotateAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
+    BE::OwnedBuf: DataRef + DataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     let n_glwe: usize = module.n();
     let res_base2k: usize = 15;
@@ -325,7 +329,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_prepared: GLWESecretPrepared<DeviceBuf<BE>, BE> = module.glwe_secret_prepared_alloc(rank.into());
+    let mut sk_glwe_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
     module.glwe_secret_prepare(&mut sk_glwe_prepared, &sk_glwe);
 
     let data: i64 = 1;
@@ -344,7 +348,7 @@ where
         &lwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
     let now: Instant = Instant::now();
@@ -360,18 +364,18 @@ where
         &cbt_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
-    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<DeviceBuf<BE>, BRA, BE> =
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
-    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
+    cbt_prepared.prepare(module, &cbt_key, &mut scratch.borrow());
 
     let now: Instant = Instant::now();
-    cbt_prepared.execute_to_constant(module, &mut res, &ct_lwe, k_lwe_pt, extension_factor, scratch.borrow());
+    cbt_prepared.execute_to_constant(module, &mut res, &ct_lwe, k_lwe_pt, extension_factor, &mut scratch.borrow());
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     // X^{data * 2^log_gap_out}
@@ -382,7 +386,7 @@ where
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, scratch.borrow())
+                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, &mut scratch.borrow())
                     .std()
                     .log2()
             )
@@ -401,16 +405,19 @@ where
         &glwe_enc_infos,
         &mut source_xe,
         &mut source_xa,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 
-    let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
-    module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&res);
+    module.ggsw_prepare(&mut res_prepared, &res, &mut scratch.borrow());
 
-    module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, scratch.borrow());
+    {
+        let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
+        module.glwe_external_product_inplace(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+    }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
-    module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
+    module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, &mut scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];
