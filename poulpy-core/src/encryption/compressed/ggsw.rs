@@ -3,7 +3,8 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
+        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        ZnxZero,
     },
     source::Source,
 };
@@ -13,7 +14,7 @@ use crate::{
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGSWCompressedSeedMut, GGSWInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GGSWCompressed, GGSWCompressedToBackendMut, GGSWCompressedToMut, ggsw_compressed_at_backend_mut_from_mut},
+        compressed::{GGSWCompressedToBackendMut, ggsw_compressed_at_backend_mut_from_mut},
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -100,7 +101,7 @@ where
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.dnum().as_usize() * (res.rank().as_usize() + 1)];
 
         {
-        let mut res = res.to_backend_mut();
+            let mut res = res.to_backend_mut();
 
             let scratch = scratch.borrow();
             let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(&res);

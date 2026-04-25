@@ -45,8 +45,9 @@ impl GLWEBlindRetriever {
         }
     }
 
-    pub fn retrieve_tmp_bytes<M, R, S, BE: Backend<OwnedBuf = Vec<u8>>>(module: &M, res: &R, selector: &S) -> usize
+    pub fn retrieve_tmp_bytes<M, R, S, BE>(module: &M, res: &R, selector: &S) -> usize
     where
+        BE: Backend<OwnedBuf = Vec<u8>>,
         M: Cmux<BE>,
         R: GLWEInfos,
         S: GGSWInfos,
@@ -54,7 +55,7 @@ impl GLWEBlindRetriever {
         module.cmux_tmp_bytes(res, res, selector)
     }
 
-    pub fn retrieve<M, R, A, S, BE: Backend<OwnedBuf = Vec<u8>>>(
+    pub fn retrieve<M, R, A, S, BE>(
         &mut self,
         module: &M,
         res: &mut R,
@@ -64,7 +65,7 @@ impl GLWEBlindRetriever {
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: GLWECopy<BE> + Cmux<BE>,
-        BE: 'static,
+        BE: Backend<OwnedBuf = Vec<u8>> + 'static,
         R: GLWEToBackendMut<BE> + GLWEToMut,
         A: GLWEToBackendRef<BE> + GLWEToRef,
         S: GetGGSWBit<BE>,
@@ -79,18 +80,12 @@ impl GLWEBlindRetriever {
         self.flush(module, res, selector, offset, scratch);
     }
 
-    pub fn add<A, S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
-        &mut self,
-        module: &M,
-        a: &A,
-        selector: &S,
-        offset: usize,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) where
+    pub fn add<A, S, M, BE>(&mut self, module: &M, a: &A, selector: &S, offset: usize, scratch: &mut ScratchArena<'_, BE>)
+    where
         A: GLWEToBackendRef<BE> + GLWEToRef,
         S: GetGGSWBit<BE>,
         M: GLWECopy<BE> + Cmux<BE>,
-        BE: 'static,
+        BE: Backend<OwnedBuf = Vec<u8>> + 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
@@ -105,18 +100,12 @@ impl GLWEBlindRetriever {
         self.counter += 1;
     }
 
-    pub fn flush<R, M, S, BE: Backend<OwnedBuf = Vec<u8>>>(
-        &mut self,
-        module: &M,
-        res: &mut R,
-        selector: &S,
-        offset: usize,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) where
+    pub fn flush<R, M, S, BE>(&mut self, module: &M, res: &mut R, selector: &S, offset: usize, scratch: &mut ScratchArena<'_, BE>)
+    where
         R: GLWEToBackendMut<BE> + GLWEToMut,
         S: GetGGSWBit<BE>,
         M: GLWECopy<BE> + Cmux<BE>,
-        BE: 'static,
+        BE: Backend<OwnedBuf = Vec<u8>> + 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
@@ -165,7 +154,7 @@ impl Accumulator {
     }
 }
 
-fn add_core<A, S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+fn add_core<A, S, M, BE>(
     module: &M,
     a: &A,
     accumulators: &mut [Accumulator],
@@ -177,7 +166,7 @@ fn add_core<A, S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     A: GLWEToBackendRef<BE> + GLWEToRef,
     S: GetGGSWBit<BE>,
     M: GLWECopy<BE> + Cmux<BE>,
-    BE: 'static,
+    BE: Backend<OwnedBuf = Vec<u8>> + 'static,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,

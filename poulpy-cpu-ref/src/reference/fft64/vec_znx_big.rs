@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use std::f64::consts::SQRT_2;
 
 use poulpy_hal::api::VecZnxBigAlloc;
@@ -279,13 +277,9 @@ pub fn vec_znx_big_normalize<R, A, BE>(
     vec_znx_normalize::<_, _, BE>(res, res_base2k, res_offset, res_col, &a_vznx, a_base2k, a_col, carry);
 }
 
-pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
-    base2k: usize,
-    res: &mut R,
-    res_col: usize,
-    noise_infos: NoiseInfos,
-    source: &mut Source,
-) where
+pub fn vec_znx_big_add_normal_ref<R, B>(base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source: &mut Source)
+where
+    B: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<B>,
 {
     let mut res: VecZnxBig<&mut [u8], B> = res.to_mut();
@@ -304,11 +298,11 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
     )
 }
 
-pub fn test_vec_znx_big_add_normal<B: 'static>(module: &Module<B>)
+pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
+    B: Backend<ScalarBig = i64> + 'static,
     B::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend<ScalarBig = i64>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
     let n: usize = module.n();

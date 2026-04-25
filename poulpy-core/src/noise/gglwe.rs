@@ -19,7 +19,7 @@ use crate::{
 use crate::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
 
 impl<D: HostDataRef> GGLWE<D> {
-    pub fn noise<'s, M, S, BE: Backend>(
+    pub fn noise<'s, M, S, BE>(
         &self,
         module: &M,
         row: usize,

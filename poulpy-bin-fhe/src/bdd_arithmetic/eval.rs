@@ -11,9 +11,10 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigAddSmallIntoBackend, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallABackend, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftZero,
-        VecZnxIdftApply, VecZnxNormalizeTmpBytes, VmpApplyDftToDftBackendRef, VmpApplyDftToDftTmpBytes,
+        ModuleN, ScratchArenaTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigAddSmallIntoBackend, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallABackend, VecZnxDftAddAssign, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxDftZero, VecZnxIdftApply, VecZnxNormalizeTmpBytes, VmpApplyDftToDftBackendRef,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{
         Backend, HostDataMut, Module, ScratchArena, VecZnxBig, ZnxZero, vec_znx_backend_ref_from_mut,
@@ -222,7 +223,7 @@ where
     }
 }
 
-fn eval_level<M, R, G, BE: Backend<OwnedBuf = Vec<u8>>>(
+fn eval_level<M, R, G, BE>(
     module: &M,
     res: &mut R,
     inputs: &G,
@@ -231,7 +232,7 @@ fn eval_level<M, R, G, BE: Backend<OwnedBuf = Vec<u8>>>(
     scratch: &mut ScratchArena<'_, BE>,
 ) where
     M: Cmux<BE> + GLWECopy<BE>,
-    BE: 'static,
+    BE: Backend<OwnedBuf = Vec<u8>> + 'static,
     R: GLWEToMut,
     G: GetGGSWBit<BE> + BitSize,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

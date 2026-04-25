@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use crate::{FFT64Ref, NTT120Ref};
 use poulpy_core::{
     ScratchArenaTakeCore,
@@ -34,10 +32,10 @@ macro_rules! decryption_helper {
 }
 
 decryption_helper! {
-    fn decryption_glwe_decrypt_tmp_bytes [BE: Backend, A] (module: &Module<BE>, infos: &A) -> usize
-    where [BE: DecryptionDefaults<BE>, A: GLWEInfos,] => glwe_decrypt_tmp_bytes(module, infos);
+    fn decryption_glwe_decrypt_tmp_bytes [BE, A] (module: &Module<BE>, infos: &A) -> usize
+    where [BE: Backend + DecryptionDefaults<BE>, A: GLWEInfos,] => glwe_decrypt_tmp_bytes(module, infos);
 
-    fn decryption_glwe_decrypt ['s, BE: Backend, R, P, S] (
+    fn decryption_glwe_decrypt ['s, BE, R, P, S] (
         module: &Module<BE>,
         res: &R,
         pt: &mut P,
@@ -45,7 +43,7 @@ decryption_helper! {
         scratch: &mut ScratchArena<'s, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE> + HostBackend,
+        BE: Backend + DecryptionDefaults<BE> + HostBackend,
         R: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: GLWEPlaintextToMut + poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
@@ -54,10 +52,10 @@ decryption_helper! {
         for<'a> BE::BufMut<'a>: HostDataMut,
     ] => glwe_decrypt(module, res, pt, sk, scratch);
 
-    fn decryption_lwe_decrypt_tmp_bytes [BE: Backend, A] (module: &Module<BE>, infos: &A) -> usize
-    where [BE: DecryptionDefaults<BE>, A: LWEInfos,] => lwe_decrypt_tmp_bytes(module, infos);
+    fn decryption_lwe_decrypt_tmp_bytes [BE, A] (module: &Module<BE>, infos: &A) -> usize
+    where [BE: Backend + DecryptionDefaults<BE>, A: LWEInfos,] => lwe_decrypt_tmp_bytes(module, infos);
 
-    fn decryption_lwe_decrypt [BE: Backend, R, P, S] (
+    fn decryption_lwe_decrypt [BE, R, P, S] (
         module: &Module<BE>,
         res: &R,
         pt: &mut P,
@@ -65,7 +63,7 @@ decryption_helper! {
         scratch: &mut ScratchArena<'_, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE> + HostBackend,
+        BE: Backend + DecryptionDefaults<BE> + HostBackend,
         R: LWEToRef,
         P: LWEPlaintextToMut + poulpy_core::layouts::LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
         S: LWESecretToRef,
@@ -73,10 +71,10 @@ decryption_helper! {
         for<'a> BE::BufMut<'a>: HostDataMut,
     ] => lwe_decrypt(module, res, pt, sk, scratch);
 
-    fn decryption_glwe_tensor_decrypt_tmp_bytes [BE: Backend, A] (module: &Module<BE>, infos: &A) -> usize
-    where [BE: DecryptionDefaults<BE>, A: GLWEInfos,] => glwe_tensor_decrypt_tmp_bytes(module, infos);
+    fn decryption_glwe_tensor_decrypt_tmp_bytes [BE, A] (module: &Module<BE>, infos: &A) -> usize
+    where [BE: Backend + DecryptionDefaults<BE>, A: GLWEInfos,] => glwe_tensor_decrypt_tmp_bytes(module, infos);
 
-    fn decryption_glwe_tensor_decrypt [BE: Backend, R, P, S0, S1] (
+    fn decryption_glwe_tensor_decrypt [BE, R, P, S0, S1] (
         module: &Module<BE>,
         res: &GLWETensor<R>,
         pt: &mut GLWEPlaintext<P>,
@@ -85,7 +83,7 @@ decryption_helper! {
         scratch: &mut ScratchArena<'_, BE>
     ) -> ()
     where [
-        BE: DecryptionDefaults<BE> + HostBackend,
+        BE: Backend + DecryptionDefaults<BE> + HostBackend,
         R: HostDataRef,
         GLWETensor<R>: poulpy_core::layouts::GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
@@ -119,16 +117,16 @@ macro_rules! conversion_helper {
 }
 
 conversion_helper! {
-    fn conversion_glwe_from_lwe_tmp_bytes [BE: Backend, R, A, K] (
+    fn conversion_glwe_from_lwe_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
         glwe_infos: &R,
         lwe_infos: &A,
         key_infos: &K
     ) -> usize
-    where [BE: ConversionDefaults<BE>, R: GLWEInfos, A: LWEInfos, K: GGLWEInfos,]
+    where [BE: Backend + ConversionDefaults<BE>, R: GLWEInfos, A: LWEInfos, K: GGLWEInfos,]
     => glwe_from_lwe_tmp_bytes(module, glwe_infos, lwe_infos, key_infos);
 
-    fn conversion_glwe_from_lwe ['s, BE: Backend, R, A, K] (
+    fn conversion_glwe_from_lwe ['s, BE, R, A, K] (
         module: &Module<BE>,
         res: &mut R,
         lwe: &A,
@@ -136,7 +134,7 @@ conversion_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: ConversionDefaults<BE>,
+        BE: Backend + ConversionDefaults<BE>,
         R: GLWEToMut + poulpy_core::layouts::GLWEToBackendMut<BE>,
         A: LWEToRef,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -146,16 +144,16 @@ conversion_helper! {
     ]
     => glwe_from_lwe(module, res, lwe, ksk, scratch);
 
-    fn conversion_lwe_from_glwe_tmp_bytes [BE: Backend, R, A, K] (
+    fn conversion_lwe_from_glwe_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
         lwe_infos: &R,
         glwe_infos: &A,
         key_infos: &K
     ) -> usize
-    where [BE: ConversionDefaults<BE>, R: LWEInfos, A: GLWEInfos, K: GGLWEInfos,]
+    where [BE: Backend + ConversionDefaults<BE>, R: LWEInfos, A: GLWEInfos, K: GGLWEInfos,]
     => lwe_from_glwe_tmp_bytes(module, lwe_infos, glwe_infos, key_infos);
 
-    fn conversion_lwe_from_glwe ['s, BE: Backend, R, A, K] (
+    fn conversion_lwe_from_glwe ['s, BE, R, A, K] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -164,7 +162,7 @@ conversion_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: ConversionDefaults<BE>,
+        BE: Backend + ConversionDefaults<BE>,
         R: LWEToMut,
         A: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -173,11 +171,11 @@ conversion_helper! {
         BE: 's,
     ] => lwe_from_glwe(module, res, a, a_idx, key, scratch);
 
-    fn conversion_ggsw_from_gglwe_tmp_bytes [BE: Backend, R, A] (module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
-    where [BE: ConversionDefaults<BE>, R: GGSWInfos, A: GGLWEInfos,]
+    fn conversion_ggsw_from_gglwe_tmp_bytes [BE, R, A] (module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
+    where [BE: Backend + ConversionDefaults<BE>, R: GGSWInfos, A: GGLWEInfos,]
     => ggsw_from_gglwe_tmp_bytes(module, res_infos, tsk_infos);
 
-    fn conversion_ggsw_from_gglwe ['s, BE: Backend, R, A, T] (
+    fn conversion_ggsw_from_gglwe ['s, BE, R, A, T] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -185,7 +183,7 @@ conversion_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: ConversionDefaults<BE>,
+        BE: Backend + ConversionDefaults<BE>,
         R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
@@ -194,18 +192,18 @@ conversion_helper! {
         BE: 's,
     ] => ggsw_from_gglwe(module, res, a, tsk, scratch);
 
-    fn conversion_ggsw_expand_rows_tmp_bytes [BE: Backend, R, A] (module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
-    where [BE: ConversionDefaults<BE>, R: GGSWInfos, A: GGLWEInfos,]
+    fn conversion_ggsw_expand_rows_tmp_bytes [BE, R, A] (module: &Module<BE>, res_infos: &R, tsk_infos: &A) -> usize
+    where [BE: Backend + ConversionDefaults<BE>, R: GGSWInfos, A: GGLWEInfos,]
     => ggsw_expand_rows_tmp_bytes(module, res_infos, tsk_infos);
 
-    fn conversion_ggsw_expand_row ['s, 'r, BE: Backend, T] (
+    fn conversion_ggsw_expand_row ['s, 'r, BE, T] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GGSWBackendMut<'r, BE>,
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: ConversionDefaults<BE>,
+        BE: Backend + ConversionDefaults<BE>,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
@@ -235,16 +233,16 @@ macro_rules! external_helper {
 }
 
 external_helper! {
-    fn external_glwe_external_product_tmp_bytes [BE: Backend, R, A, G] (
+    fn external_glwe_external_product_tmp_bytes [BE, R, A, G] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         ggsw_infos: &G
     ) -> usize
-    where [BE: GLWEExternalProductDefaults<BE>, R: GLWEInfos, A: GLWEInfos, G: GGSWInfos,]
+    where [BE: Backend + GLWEExternalProductDefaults<BE>, R: GLWEInfos, A: GLWEInfos, G: GGSWInfos,]
     => [GLWEExternalProductDefaults<BE>]::glwe_external_product_tmp_bytes(module, res_infos, a_infos, ggsw_infos);
 
-    fn external_glwe_external_product ['s, 'r, 'a, BE: Backend, G] (
+    fn external_glwe_external_product ['s, 'r, 'a, BE, G] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'r, BE>,
         a: &poulpy_core::layouts::GLWEBackendRef<'a, BE>,
@@ -258,29 +256,29 @@ external_helper! {
         BE: 's,
     ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product(module, res, a, ggsw, scratch);
 
-    fn external_glwe_external_product_inplace ['s, 'r, BE: Backend, G] (
+    fn external_glwe_external_product_inplace ['s, 'r, BE, G] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'r, BE>,
         ggsw: &G,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GLWEExternalProductDefaults<BE>,
+        BE: Backend + GLWEExternalProductDefaults<BE>,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product_inplace(module, res, ggsw, scratch);
 
-    fn external_gglwe_external_product_tmp_bytes [BE: Backend, R, A, B] (
+    fn external_gglwe_external_product_tmp_bytes [BE, R, A, B] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         b_infos: &B
     ) -> usize
-    where [BE: GGLWEExternalProductDefaults<BE>, R: GGLWEInfos, A: GGLWEInfos, B: GGSWInfos,]
+    where [BE: Backend + GGLWEExternalProductDefaults<BE>, R: GGLWEInfos, A: GGLWEInfos, B: GGSWInfos,]
     => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product_tmp_bytes(module, res_infos, a_infos, b_infos);
 
-    fn external_gglwe_external_product ['s, BE: Backend, R, A, B] (
+    fn external_gglwe_external_product ['s, BE, R, A, B] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -288,7 +286,7 @@ external_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGLWEExternalProductDefaults<BE>,
+        BE: Backend + GGLWEExternalProductDefaults<BE>,
         R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -296,30 +294,30 @@ external_helper! {
         BE: 's,
     ] => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product(module, res, a, b, scratch);
 
-    fn external_gglwe_external_product_inplace ['s, BE: Backend, R, A] (
+    fn external_gglwe_external_product_inplace ['s, BE, R, A] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGLWEExternalProductDefaults<BE>,
+        BE: Backend + GGLWEExternalProductDefaults<BE>,
         R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     ] => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product_inplace(module, res, a, scratch);
 
-    fn external_ggsw_external_product_tmp_bytes [BE: Backend, R, A, B] (
+    fn external_ggsw_external_product_tmp_bytes [BE, R, A, B] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         b_infos: &B
     ) -> usize
-    where [BE: GGSWExternalProductDefaults<BE>, R: GGSWInfos, A: GGSWInfos, B: GGSWInfos,]
+    where [BE: Backend + GGSWExternalProductDefaults<BE>, R: GGSWInfos, A: GGSWInfos, B: GGSWInfos,]
     => [GGSWExternalProductDefaults<BE>]::ggsw_external_product_tmp_bytes(module, res_infos, a_infos, b_infos);
 
-    fn external_ggsw_external_product ['s, BE: Backend, R, A, B] (
+    fn external_ggsw_external_product ['s, BE, R, A, B] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -327,7 +325,7 @@ external_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGSWExternalProductDefaults<BE>,
+        BE: Backend + GGSWExternalProductDefaults<BE>,
         R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -335,14 +333,14 @@ external_helper! {
         BE: 's,
     ] => [GGSWExternalProductDefaults<BE>]::ggsw_external_product(module, res, a, b, scratch);
 
-    fn external_ggsw_external_product_inplace ['s, BE: Backend, R, A] (
+    fn external_ggsw_external_product_inplace ['s, BE, R, A] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGSWExternalProductDefaults<BE>,
+        BE: Backend + GGSWExternalProductDefaults<BE>,
         R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -373,16 +371,16 @@ macro_rules! keyswitch_helper {
 }
 
 keyswitch_helper! {
-    fn keyswitch_glwe_keyswitch_tmp_bytes [BE: Backend, R, A, K] (
+    fn keyswitch_glwe_keyswitch_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         key_infos: &K
     ) -> usize
-    where [BE: GLWEKeyswitchDefaults<BE>, R: GLWEInfos, A: GLWEInfos, K: GGLWEInfos,]
+    where [BE: Backend + GLWEKeyswitchDefaults<BE>, R: GLWEInfos, A: GLWEInfos, K: GGLWEInfos,]
     => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos);
 
-    fn keyswitch_glwe_keyswitch ['s, BE: Backend, K] (
+    fn keyswitch_glwe_keyswitch ['s, BE, K] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
         a: &poulpy_core::layouts::GLWEBackendRef<'_, BE>,
@@ -390,33 +388,33 @@ keyswitch_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GLWEKeyswitchDefaults<BE>,
+        BE: Backend + GLWEKeyswitchDefaults<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch(module, res, a, key, scratch);
 
-    fn keyswitch_glwe_keyswitch_inplace ['s, BE: Backend, K] (
+    fn keyswitch_glwe_keyswitch_inplace ['s, BE, K] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
         key: &K,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GLWEKeyswitchDefaults<BE>,
+        BE: Backend + GLWEKeyswitchDefaults<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_inplace(module, res, key, scratch);
 
-    fn keyswitch_gglwe_keyswitch_tmp_bytes [BE: Backend, R, A, K] (
+    fn keyswitch_gglwe_keyswitch_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         key_infos: &K
     ) -> usize
-    where [BE: GGLWEKeyswitchDefaults<BE>, R: GGLWEInfos, A: GGLWEInfos, K: GGLWEInfos,]
+    where [BE: Backend + GGLWEKeyswitchDefaults<BE>, R: GGLWEInfos, A: GGLWEInfos, K: GGLWEInfos,]
     => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos);
 
-    fn keyswitch_gglwe_keyswitch ['s, BE: Backend, R, A, K] (
+    fn keyswitch_gglwe_keyswitch ['s, BE, R, A, K] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -424,37 +422,37 @@ keyswitch_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGLWEKeyswitchDefaults<BE>,
+        BE: Backend + GGLWEKeyswitchDefaults<BE>,
         R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch(module, res, a, key, scratch);
 
-    fn keyswitch_gglwe_keyswitch_inplace ['s, BE: Backend, R, K] (
+    fn keyswitch_gglwe_keyswitch_inplace ['s, BE, R, K] (
         module: &Module<BE>,
         res: &mut R,
         key: &K,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGLWEKeyswitchDefaults<BE>,
+        BE: Backend + GGLWEKeyswitchDefaults<BE>,
         R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch_inplace(module, res, key, scratch);
 
-    fn keyswitch_ggsw_keyswitch_tmp_bytes [BE: Backend, R, A, K, T] (
+    fn keyswitch_ggsw_keyswitch_tmp_bytes [BE, R, A, K, T] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         key_infos: &K,
         tsk_infos: &T
     ) -> usize
-    where [BE: GGSWKeyswitchDefaults<BE>, R: GGSWInfos, A: GGSWInfos, K: GGLWEInfos, T: GGLWEInfos,]
+    where [BE: Backend + GGSWKeyswitchDefaults<BE>, R: GGSWInfos, A: GGSWInfos, K: GGLWEInfos, T: GGLWEInfos,]
     => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos, tsk_infos);
 
-    fn keyswitch_ggsw_keyswitch ['s, BE: Backend, R, A, K, T] (
+    fn keyswitch_ggsw_keyswitch ['s, BE, R, A, K, T] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -463,7 +461,7 @@ keyswitch_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGSWKeyswitchDefaults<BE>,
+        BE: Backend + GGSWKeyswitchDefaults<BE>,
         R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -471,7 +469,7 @@ keyswitch_helper! {
         BE: 's,
     ] => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch(module, res, a, key, tsk, scratch);
 
-    fn keyswitch_ggsw_keyswitch_inplace ['s, BE: Backend, R, K, T] (
+    fn keyswitch_ggsw_keyswitch_inplace ['s, BE, R, K, T] (
         module: &Module<BE>,
         res: &mut R,
         key: &K,
@@ -479,23 +477,23 @@ keyswitch_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: GGSWKeyswitchDefaults<BE>,
+        BE: Backend + GGSWKeyswitchDefaults<BE>,
         R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch_inplace(module, res, key, tsk, scratch);
 
-    fn keyswitch_lwe_keyswitch_tmp_bytes [BE: Backend, R, A, K] (
+    fn keyswitch_lwe_keyswitch_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
         res_infos: &R,
         a_infos: &A,
         key_infos: &K
     ) -> usize
-    where [BE: LWEKeyswitchDefaults<BE>, R: LWEInfos, A: LWEInfos, K: GGLWEInfos,]
+    where [BE: Backend + LWEKeyswitchDefaults<BE>, R: LWEInfos, A: LWEInfos, K: GGLWEInfos,]
     => [LWEKeyswitchDefaults<BE>]::lwe_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos);
 
-    fn keyswitch_lwe_keyswitch ['s, BE: Backend, R, A, K] (
+    fn keyswitch_lwe_keyswitch ['s, BE, R, A, K] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -503,7 +501,7 @@ keyswitch_helper! {
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
-        BE: LWEKeyswitchDefaults<BE>,
+        BE: Backend + LWEKeyswitchDefaults<BE>,
         R: LWEToMut,
         A: LWEToRef,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,

@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-pub(crate) fn glwe_noise_backend_inner<'s, M, P, BE: Backend>(
+pub(crate) fn glwe_noise_backend_inner<'s, M, P, BE>(
     module: &M,
     res_ref: &GLWE<&[u8]>,
     res_backend: &GLWEBackendRef<'_, BE>,

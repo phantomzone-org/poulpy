@@ -474,7 +474,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_lsh<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_lsh<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
     Module<B>: VecZnxLshBackend<B> + ModuleNew<B>,
@@ -484,7 +484,7 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
         Module<B>: VecZnxLshBackend<B> + ModuleNew<B>,
@@ -584,7 +584,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rsh<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rsh<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
     Module<B>: VecZnxRshBackend<B> + ModuleNew<B>,
@@ -594,7 +594,7 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
         Module<B>: VecZnxRshBackend<B> + ModuleNew<B>,

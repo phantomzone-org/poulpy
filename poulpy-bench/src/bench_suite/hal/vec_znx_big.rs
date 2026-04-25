@@ -121,8 +121,7 @@ pub fn bench_vec_znx_big_add_small_into<B: Backend<OwnedBuf = Vec<u8>>>(
     params: &crate::params::HalSweepParams,
     c: &mut Criterion,
     label: &str,
-)
-where
+) where
     Module<B>: VecZnxBigAddSmallIntoBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
@@ -828,8 +827,7 @@ pub fn bench_vec_znx_big_sub_small_a<B: Backend<OwnedBuf = Vec<u8>>>(
     params: &crate::params::HalSweepParams,
     c: &mut Criterion,
     label: &str,
-)
-where
+) where
     Module<B>: VecZnxBigSubSmallABackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
@@ -882,8 +880,7 @@ pub fn bench_vec_znx_big_sub_small_b<B: Backend<OwnedBuf = Vec<u8>>>(
     params: &crate::params::HalSweepParams,
     c: &mut Criterion,
     label: &str,
-)
-where
+) where
     Module<B>: VecZnxBigSubSmallBBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {

@@ -7,10 +7,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::{
-    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision},
-    vec_znx_host_ops::vec_znx_copy,
-};
+use crate::layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -275,7 +272,7 @@ impl<BE: Backend> GLWECompressedToBackendRef<BE> for GLWECompressed<BE::OwnedBuf
     }
 }
 
-impl<'a, 'b, BE: Backend + 'b> GLWECompressedToBackendRef<BE> for &'a GLWECompressed<BE::BufRef<'b>> {
+impl<'b, BE: Backend + 'b> GLWECompressedToBackendRef<BE> for &GLWECompressed<BE::BufRef<'b>> {
     fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE> {
         GLWECompressed {
             seed: self.seed,

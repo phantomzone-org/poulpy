@@ -3,8 +3,8 @@ use std::fmt;
 use poulpy_hal::{
     api::VecZnxFillUniformSourceBackend,
     layouts::{
-        Backend, Data, DataView, DataViewMut, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToBackendMut,
-        VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, DataView, DataViewMut, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx,
+        VecZnxToBackendMut, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -135,18 +135,19 @@ where
 
         let mut source: Source = Source::new(other.seed);
         let mut res_backend = VecZnx::from_data(
-            <Self::Backend as Backend>::from_host_bytes(res.data.data().as_ref()),
+            <Self::Backend as Backend>::from_host_bytes(res.data.data()),
             res.data.n(),
             res.data.cols(),
             res.data.size(),
         );
         {
-            let mut res_backend_mut = <VecZnx<<Self::Backend as Backend>::OwnedBuf> as VecZnxToBackendMut<Self::Backend>>::to_backend_mut(
-                &mut res_backend,
-            );
+            let mut res_backend_mut =
+                <VecZnx<<Self::Backend as Backend>::OwnedBuf> as VecZnxToBackendMut<Self::Backend>>::to_backend_mut(
+                    &mut res_backend,
+                );
             self.vec_znx_fill_uniform_source_backend(other.base2k().into(), &mut res_backend_mut, 0, &mut source);
         }
-        <Self::Backend as Backend>::copy_to_host(res_backend.data(), res.data.data_mut().as_mut());
+        <Self::Backend as Backend>::copy_to_host(res_backend.data(), res.data.data_mut());
         for i in 0..res.size() {
             res.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         }

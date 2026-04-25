@@ -3,7 +3,9 @@ use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, ReaderFrom, V
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision},
+    layouts::{
+        Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision,
+    },
 };
 
 #[derive(PartialEq, Eq)]

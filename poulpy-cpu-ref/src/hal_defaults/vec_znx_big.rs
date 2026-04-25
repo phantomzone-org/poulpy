@@ -43,8 +43,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef,
+        VecZnxToMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -190,8 +190,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i64> + ZnxAddInplace,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
@@ -259,8 +258,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i64> + ZnxSubInplace,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
@@ -293,8 +291,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
@@ -494,8 +491,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
@@ -563,8 +559,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
@@ -597,8 +592,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
         for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,

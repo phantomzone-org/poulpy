@@ -95,7 +95,7 @@ impl<D: HostDataRef, T: UnsignedInteger> GGSWInfos for FheUintPreparedDebug<D, T
 }
 
 impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
-    pub fn noise<S, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+    pub fn noise<S, M, BE>(
         &self,
         module: &M,
         row: usize,
@@ -107,7 +107,7 @@ impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
     where
         S: GLWESecretPreparedToBackendRef<BE>,
         M: GGSWNoise<BE>,
-        BE: HostBackend,
+        BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
         for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
     {
         let mut stats = Vec::new();

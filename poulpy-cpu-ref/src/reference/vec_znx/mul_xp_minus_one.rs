@@ -3,7 +3,10 @@ use crate::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend,
         VecZnxMulXpMinusOneInplaceTmpBytes,
     },
-    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{
+        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
+        ZnxInfos, ZnxView, ZnxViewMut,
+    },
     reference::{
         vec_znx::{vec_znx_rotate, vec_znx_sub_assign},
         znx::{ZnxNegate, ZnxRotate, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero},
@@ -40,7 +43,7 @@ where
     }
 }
 
-pub fn bench_vec_znx_mul_xp_minus_one<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_mul_xp_minus_one<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
     Module<B>: VecZnxMulXpMinusOneBackend<B> + ModuleNew<B>,
@@ -49,7 +52,7 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
         Module<B>: VecZnxMulXpMinusOneBackend<B> + ModuleNew<B>,
@@ -88,7 +91,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_mul_xp_minus_one_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_mul_xp_minus_one_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
     Module<B>: VecZnxMulXpMinusOneInplaceBackend<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
@@ -98,7 +101,7 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
         Module<B>: VecZnxMulXpMinusOneInplaceBackend<B> + ModuleNew<B> + VecZnxMulXpMinusOneInplaceTmpBytes,

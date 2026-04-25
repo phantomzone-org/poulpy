@@ -7,7 +7,7 @@ use poulpy_hal::{
     api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
     layouts::{
         Backend, DataViewMut, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, SvpPPol, SvpPPolToBackendMut,
-        SvpPPolToBackendRef, VecZnx, VecZnxDft,
+        SvpPPolToBackendRef, VecZnx, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendRef,
     },
     source::Source,
 };
@@ -61,7 +61,7 @@ where
 pub fn bench_svp_apply_dft<B>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-    B: Backend,
+    B: Backend<OwnedBuf = Vec<u8>>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("svp_apply_dft::{label}");
@@ -71,7 +71,7 @@ where
     fn runner<B>(sweep: [usize; 3]) -> impl FnMut()
     where
         Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-        B: Backend,
+        B: Backend<OwnedBuf = Vec<u8>>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let n: usize = 1 << sweep[0];
@@ -92,6 +92,8 @@ where
 
         move || {
             let svp = svp.to_backend_ref();
+            let a = <VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
+            let mut res = <VecZnxDft<B::OwnedBuf, B> as VecZnxDftToBackendMut<B>>::to_backend_mut(&mut res);
             for j in 0..cols {
                 module.svp_apply_dft(&mut res, j, &svp, j, &a, j);
             }

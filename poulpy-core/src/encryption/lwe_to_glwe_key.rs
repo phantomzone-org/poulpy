@@ -10,8 +10,8 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret,
-        LWESecretToRef, Rank,
+        GGLWEInfos, GGLWEToBackendMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToBackendRef, LWEInfos,
+        LWESecret, LWESecretToRef, Rank,
     },
 };
 

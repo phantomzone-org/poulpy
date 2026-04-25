@@ -31,8 +31,9 @@ use poulpy_cpu_ref::FFT64Ref;
 // This example demonstrates and end-to-end example usage of the BDD arithmetic API
 // to compute the maximum of an array of integers.
 
-fn example_max_array<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 'static, BRA: BlindRotationAlgo>()
+fn example_max_array<BE, BRA: BlindRotationAlgo>()
 where
+    BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 'static,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>

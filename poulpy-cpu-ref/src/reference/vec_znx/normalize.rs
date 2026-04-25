@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
@@ -643,8 +641,9 @@ fn test_vec_znx_normalize_inter_base2k() {
         }
     }
 }
-pub fn bench_vec_znx_normalize<B: Backend + 'static>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_normalize<B>(c: &mut Criterion, label: &str)
 where
+    B: Backend + 'static,
     Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
@@ -653,8 +652,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend + 'static>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
+        B: Backend + 'static,
         Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
@@ -697,8 +697,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_normalize_inplace<B: Backend<OwnedBuf = Vec<u8>>>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_normalize_inplace<B>(c: &mut Criterion, label: &str)
 where
+    B: Backend<OwnedBuf = Vec<u8>>,
     Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
@@ -706,8 +707,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
+        B: Backend<OwnedBuf = Vec<u8>>,
         Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {

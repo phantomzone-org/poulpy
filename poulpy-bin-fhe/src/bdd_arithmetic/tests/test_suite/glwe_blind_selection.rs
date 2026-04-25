@@ -22,8 +22,9 @@ use crate::{
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_glwe_blind_selection<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(test_context: &TestContext<BRA, BE>)
+pub fn test_glwe_blind_selection<BRA, BE>(test_context: &TestContext<BRA, BE>)
 where
+    BRA: BlindRotationAlgo,
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
@@ -31,7 +32,7 @@ where
         + GLWEBlindSelection<u32, BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
-    BE: HostBackend,
+    BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
     BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,

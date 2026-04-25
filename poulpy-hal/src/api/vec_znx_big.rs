@@ -1,6 +1,7 @@
 use crate::{
     layouts::{
-        Backend, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxBigBackendRef, VecZnxBigOwned,
+        Backend, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxBigBackendRef,
+        VecZnxBigOwned,
     },
     source::Source,
 };

@@ -1,9 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToRef,
-    },
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToRef},
     source::Source,
 };
 
@@ -352,7 +350,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         noise_infos: NoiseInfos,
         seed: [u8; 32],
     );
-
 }
 
 /// Big-coefficient `VecZnxBig` extension point.
@@ -653,17 +650,15 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn svp_apply_dft<R, C>(
+    fn svp_apply_dft(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::SvpPPolBackendRef<'_, BE>,
         a_col: usize,
-        b: &C,
+        b: &crate::layouts::VecZnxBackendRef<'_, BE>,
         b_col: usize,
-    ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        C: VecZnxToRef;
+    );
 
     fn svp_apply_dft_to_dft<R, C>(
         module: &Module<BE>,

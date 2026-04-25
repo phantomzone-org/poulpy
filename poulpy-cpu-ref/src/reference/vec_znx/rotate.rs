@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion};
@@ -64,8 +62,9 @@ where
     }
 }
 
-pub fn bench_vec_znx_rotate<B: Backend<OwnedBuf = Vec<u8>> + 'static>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rotate<B>(c: &mut Criterion, label: &str)
 where
+    B: Backend<OwnedBuf = Vec<u8>> + 'static,
     Module<B>: VecZnxRotateBackend<B> + ModuleNew<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
@@ -73,8 +72,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend<OwnedBuf = Vec<u8>> + 'static>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
+        B: Backend<OwnedBuf = Vec<u8>> + 'static,
         Module<B>: VecZnxRotateBackend<B> + ModuleNew<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     {
@@ -116,8 +116,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rotate_inplace<B: Backend<OwnedBuf = Vec<u8>> + 'static>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rotate_inplace<B>(c: &mut Criterion, label: &str)
 where
+    B: Backend<OwnedBuf = Vec<u8>> + 'static,
     Module<B>: VecZnxRotateInplaceBackend<B> + VecZnxRotateInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
@@ -126,8 +127,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend<OwnedBuf = Vec<u8>> + 'static>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
+        B: Backend<OwnedBuf = Vec<u8>> + 'static,
         Module<B>: VecZnxRotateInplaceBackend<B> + ModuleNew<B> + VecZnxRotateInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,

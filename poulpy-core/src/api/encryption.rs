@@ -8,13 +8,11 @@ use poulpy_hal::{
 use crate::{
     GetDistribution, GetDistributionMut,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGLWEToMut,
-        GGSWCompressedSeedMut,
-        GGSWCompressedToBackendMut, GGSWCompressedToMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWECompressedSeedMut,
-        GLWECompressedToBackendMut, GLWECompressedToMut, GLWEInfos, GLWEPlaintextToBackendRef,
-        GLWEPlaintextToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, GLWEToMut, LWEInfos,
-        LWEPlaintextToRef, LWESecretToRef, LWEToBackendMut, LWEToMut, SetGaloisElement, TorusPrecision,
-        compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWECompressedToMut},
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut,
+        GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut, GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos,
+        GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos,
+        LWEPlaintextToRef, LWESecretToRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
+        compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut},
         prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
 };

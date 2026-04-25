@@ -385,7 +385,6 @@ impl<BE: Backend> GGSWToBackendMut<BE> for GGSW<BE::OwnedBuf> {
     }
 }
 
-
 pub fn ggsw_backend_mut_from_mut<'a, 'b, BE: Backend>(ggsw: &'a mut GGSW<BE::BufMut<'b>>) -> GGSWBackendMut<'a, BE> {
     GGSW {
         dsize: ggsw.dsize,

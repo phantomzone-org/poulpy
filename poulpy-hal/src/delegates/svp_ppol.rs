@@ -1,8 +1,8 @@
 use crate::{
     api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Module, ScalarZnxBackendRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxDftToMut, VecZnxDftToRef,
-        VecZnxToRef,
+        Backend, Module, ScalarZnxBackendRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxBackendRef,
+        VecZnxDftBackendMut, VecZnxDftToMut, VecZnxDftToRef,
     },
     oep::HalSvpImpl,
 };
@@ -39,11 +39,15 @@ impl_svp_delegate!(
 
 impl_svp_delegate!(
     SvpApplyDft<B>,
-    fn svp_apply_dft<R, C>(&self, res: &mut R, res_col: usize, a: &SvpPPolBackendRef<'_, B>, a_col: usize, b: &C, b_col: usize)
-    where
-        R: VecZnxDftToMut<B>,
-        C: VecZnxToRef,
-    {
+    fn svp_apply_dft(
+        &self,
+        res: &mut VecZnxDftBackendMut<'_, B>,
+        res_col: usize,
+        a: &SvpPPolBackendRef<'_, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'_, B>,
+        b_col: usize,
+    ) {
         <B as HalSvpImpl<B>>::svp_apply_dft(self, res, res_col, a, a_col, b, b_col);
     }
 );

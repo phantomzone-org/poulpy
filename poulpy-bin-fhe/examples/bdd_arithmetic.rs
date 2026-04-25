@@ -44,8 +44,9 @@ use poulpy_cpu_ref::FFT64Ref;
 // There also is an example use of the GLWE Blind Selection operation,
 // which can choose between any number of encrypted fheuint inputs
 
-fn example_bdd_arithmetic<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 'static, BRA: BlindRotationAlgo>()
+fn example_bdd_arithmetic<BE, BRA: BlindRotationAlgo>()
 where
+    BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 'static,
     Module<BE>: ModuleNew<BE>
         + ModuleN
         + GLWESecretPreparedFactory<BE>

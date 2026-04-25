@@ -7,9 +7,8 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToBackendMut, GLWEInfos, GLWESecret,
-        GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef, gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut,
-        prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToGGSWKeyCompressedToBackendMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
+        GLWESecretToRef, gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut, prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_copy,
 };

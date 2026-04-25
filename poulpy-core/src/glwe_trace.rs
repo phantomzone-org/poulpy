@@ -103,7 +103,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         }
 
         scratch_1.apply_mut(|scratch| {
-            module.glwe_normalize(res, &glwe_backend_ref_from_mut::<BE>(&mut res_conv), scratch);
+            module.glwe_normalize(res, &glwe_backend_ref_from_mut::<BE>(&res_conv), scratch);
         });
         return;
     }

@@ -26,7 +26,7 @@ use poulpy_core::{
 
 use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
-    layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, ReaderFrom, ScratchArena, WriterTo},
+    layouts::{Backend, Data, HostBackend, HostDataRef, Module, ReaderFrom, ScratchArena, WriterTo},
     source::Source,
 };
 

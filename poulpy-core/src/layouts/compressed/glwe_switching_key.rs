@@ -4,9 +4,12 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESwitchingKeyDegrees,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GLWEInfos, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
-    compressed::{GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
+    compressed::{
+        GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef,
+        GGLWEDecompress,
+    },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;

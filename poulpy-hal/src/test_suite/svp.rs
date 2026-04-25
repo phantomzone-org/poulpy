@@ -98,8 +98,22 @@ pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
             source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
-                module_ref.svp_apply_dft(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j, &a, j);
-                module_test.svp_apply_dft(&mut res_dft_test, j, &svp_test.to_backend_ref(), j, &a, j);
+                module_ref.svp_apply_dft(
+                    &mut res_dft_ref.to_backend_mut(),
+                    j,
+                    &svp_ref.to_backend_ref(),
+                    j,
+                    &vec_znx_backend_ref::<BR>(&a),
+                    j,
+                );
+                module_test.svp_apply_dft(
+                    &mut res_dft_test.to_backend_mut(),
+                    j,
+                    &svp_test.to_backend_ref(),
+                    j,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    j,
+                );
             }
 
             // Assert no change to inputs

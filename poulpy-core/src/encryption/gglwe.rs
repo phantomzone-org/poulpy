@@ -12,8 +12,8 @@ use crate::{
     EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
-        GGLWE, GGLWEAtBackendMut, GGLWEInfos, GGLWEToBackendMut, GGLWEToMut, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        gglwe_at_backend_mut_from_mut, prepared::GLWESecretPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos, gglwe_at_backend_mut_from_mut,
+        prepared::GLWESecretPreparedToBackendRef,
     },
 };
 

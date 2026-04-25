@@ -4,8 +4,8 @@ use poulpy_hal::{
     api::{
         ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxCopyBackend,
         VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
+        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
+        VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
         VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
         VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },

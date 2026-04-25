@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use anyhow::Result;
 use itertools::Itertools;
 use poulpy_core::{
@@ -111,7 +109,11 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
 /// and tensor-switching key encryption.  The module-level implementation
 /// derives a fresh intermediate GLWE secret, prepares it, and delegates to
 /// the individual sub-key encryption routines.
-pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
+pub trait CircuitBootstrappingKeyEncryptSk<BRA, BE>
+where
+    BRA: BlindRotationAlgo,
+    BE: Backend<OwnedBuf = Vec<u8>>,
+{
     /// Returns the minimum scratch-space size (in bytes) required by
     /// [`circuit_bootstrapping_key_encrypt_sk`][Self::circuit_bootstrapping_key_encrypt_sk].
     fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -192,7 +194,7 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
 
 impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<'s, M, S0, S1, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
+    pub fn encrypt_sk<'s, M, S0, S1, BE>(
         &mut self,
         module: &M,
         sk_lwe: &S0,
@@ -205,7 +207,7 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         M: CircuitBootstrappingKeyEncryptSk<BRA, BE>,
-        BE: 's,
+        BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 's,
     {
         module.circuit_bootstrapping_key_encrypt_sk(self, sk_lwe, sk_glwe, enc_infos, source_xe, source_xa, scratch);
     }

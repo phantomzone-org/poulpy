@@ -93,7 +93,6 @@ impl<D: Data> SetLWEInfos for &mut GLWE<D> {
     }
 }
 
-
 impl<D: HostDataRef> GLWE<D> {
     /// Returns a shared reference to the underlying [`VecZnx`].
     pub fn data(&self) -> &VecZnx<D> {

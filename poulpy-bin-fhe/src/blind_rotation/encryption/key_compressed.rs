@@ -4,7 +4,7 @@ use poulpy_core::{
     layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecretToRef},
 };
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, ScratchArena},
+    layouts::{Backend, ScratchArena},
     source::Source,
 };
 

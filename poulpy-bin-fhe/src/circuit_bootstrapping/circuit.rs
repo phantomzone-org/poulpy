@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use std::collections::HashMap;
 
 use poulpy_hal::{
@@ -32,7 +30,11 @@ use crate::{
 /// required polynomial-arithmetic trait bounds.  Callers should use the
 /// convenience methods on [`CircuitBootstrappingKeyPrepared`] rather than
 /// invoking this trait directly.
-pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> {
+pub trait CircuitBootstrappingExecute<BRA, BE>
+where
+    BRA: BlindRotationAlgo,
+    BE: Backend<OwnedBuf = Vec<u8>>,
+{
     /// Returns the minimum scratch-space size (bytes) required by the circuit
     /// bootstrapping evaluation methods.
     ///
@@ -87,7 +89,11 @@ pub trait CircuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend<OwnedB
         L: LWEToRef + LWEInfos;
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> {
+impl<BRA, BE> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>
+where
+    BRA: BlindRotationAlgo,
+    BE: Backend<OwnedBuf = Vec<u8>>,
+{
     /// Convenience method: bootstraps `lwe` into the GGSW ciphertext `res`
     /// using the constant-term encoding.
     ///
@@ -131,8 +137,10 @@ impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappi
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingExecute<BRA, BE> for Module<BE>
+impl<BRA, BE> CircuitBootstrappingExecute<BRA, BE> for Module<BE>
 where
+    BRA: BlindRotationAlgo,
+    BE: Backend<OwnedBuf = Vec<u8>> + 'static,
     Self: ModuleN
         + LookupTableFactory
         + BlindRotationExecute<BRA, BE>
@@ -149,7 +157,6 @@ where
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     BE::OwnedBuf: HostDataRef,
-    BE: 'static,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
@@ -227,7 +234,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(
+pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
     to_exponent: bool,
     module: &M,
     log_gap_out: usize,
@@ -238,6 +245,8 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
     key: &CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
+    BRA: BlindRotationAlgo,
+    BE: Backend<OwnedBuf = Vec<u8>> + 'static,
     R: GGSWToMut + GGSWToBackendMut<BE>,
     L: LWEToRef,
     M: ModuleN
@@ -256,7 +265,6 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     BE::OwnedBuf: HostDataRef,
-    BE: 'static,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     // TODO(device): this core routine still drops to host GLWE/LWE views for
@@ -399,7 +407,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
 }
 
 #[allow(clippy::too_many_arguments)]
-fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
+fn post_process<'s, R, A, M, H, K, BE>(
     module: &M,
     res: &mut R,
     a: &A,
@@ -409,6 +417,7 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
     auto_keys: &H,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
+    BE: Backend<OwnedBuf = Vec<u8>> + 'static + 's,
     R: GLWEToMut + GLWEInfos,
     A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -417,8 +426,6 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
-    BE: 'static,
-    BE: 's,
 {
     // TODO(device): post-processing still uses host GLWE slices and scratch
     // layouts directly. Once trace/packing are available end-to-end on

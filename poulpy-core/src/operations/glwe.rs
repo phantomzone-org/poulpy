@@ -4,10 +4,10 @@ use poulpy_hal::{
         VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLshAddIntoBackend, VecZnxLshBackend,
         VecZnxLshInplaceBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes, VecZnxMulXpMinusOneBackend,
-        VecZnxMulXpMinusOneInplaceBackend, VecZnxNegateBackend,
-        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
-        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend,
-        VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
+        VecZnxMulXpMinusOneInplaceBackend, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
+        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
+        VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, VecZnxBigReborrowBackendRef,
@@ -23,7 +23,7 @@ use crate::{
     GGLWEProduct, ScratchArenaTakeCore,
     layouts::{
         Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared,
-        GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        GLWEToBackendMut, GLWEToBackendRef, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
         glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };

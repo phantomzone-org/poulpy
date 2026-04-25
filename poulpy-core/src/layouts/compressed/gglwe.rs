@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWECompressed, GLWECompressedBackendMut, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -198,30 +198,6 @@ impl GGLWECompressed<Vec<u8>> {
     }
 }
 
-impl<D: HostDataRef> GGLWECompressed<D> {
-    pub(crate) fn at(&self, row: usize, col: usize) -> GLWECompressed<&[u8]> {
-        let rank_in: usize = self.rank_in().into();
-        GLWECompressed {
-            data: self.data.at(row, col),
-            base2k: self.base2k,
-            rank: self.rank_out,
-            seed: self.seed[rank_in * row + col],
-        }
-    }
-}
-
-impl<D: HostDataMut> GGLWECompressed<D> {
-    pub(crate) fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
-        let rank_in: usize = self.rank_in().into();
-        GLWECompressed {
-            base2k: self.base2k,
-            rank: self.rank_out,
-            data: self.data.at_mut(row, col),
-            seed: self.seed[rank_in * row + col], // Warning: value is copied and not borrow mut
-        }
-    }
-}
-
 impl<D: HostDataMut> ReaderFrom for GGLWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
@@ -325,7 +301,7 @@ impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GGLWECompressed<BE::OwnedB
     }
 }
 
-impl<'a, 'b, BE: Backend + 'b> GGLWECompressedToBackendRef<BE> for &'a GGLWECompressed<BE::BufRef<'b>> {
+impl<'b, BE: Backend + 'b> GGLWECompressedToBackendRef<BE> for &GGLWECompressed<BE::BufRef<'b>> {
     fn to_backend_ref(&self) -> GGLWECompressedBackendRef<'_, BE> {
         GGLWECompressed {
             k: self.max_k(),

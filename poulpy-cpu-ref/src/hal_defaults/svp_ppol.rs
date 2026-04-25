@@ -22,8 +22,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::VecZnxDftApply,
     layouts::{
-        Backend, HostDataRef, Module, ScalarZnxBackendRef, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
-        VecZnxToRef, ZnxInfos,
+        Backend, HostDataRef, Module, ScalarZnxBackendRef, SvpPPolToMut, SvpPPolToRef, VecZnxBackendRef, VecZnxDftBackendMut,
+        VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
     },
 };
 
@@ -42,15 +42,22 @@ where
         fft64_svp_prepare::<R, BE>(module.get_fft_table(), res, res_col, a, a_col);
     }
 
-    fn svp_apply_dft_default<R, A, C>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
-    where
+    fn svp_apply_dft_default<'r, 'b, A>(
+        module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &VecZnxBackendRef<'b, BE>,
+        b_col: usize,
+    ) where
+        BE: 'r + 'b,
         Module<BE>: FFTModuleHandle<f64>,
         BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
-        R: VecZnxDftToMut<BE>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
-        C: VecZnxToRef,
     {
-        fft64_svp_apply_dft::<R, A, C, BE>(module.get_fft_table(), res, res_col, a, a_col, b, b_col);
+        fft64_svp_apply_dft(module.get_fft_table(), res, res_col, a, a_col, b, b_col);
     }
 
     fn svp_apply_dft_to_dft_default<R, A, C>(
@@ -97,24 +104,27 @@ where
         ntt120_svp_prepare::<R, BE>(module, res, res_col, a, a_col);
     }
 
-    fn svp_apply_dft_default<R, A, C>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
-    where
+    fn svp_apply_dft_default<'r, 'b, A>(
+        module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &VecZnxBackendRef<'b, BE>,
+        b_col: usize,
+    ) where
+        BE: 'r + 'b,
         Module<BE>: NttModuleHandle + VecZnxDftApply<BE>,
         BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttMulBbc + NttZero,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
-        R: VecZnxDftToMut<BE>,
         A: SvpPPolToRef<BE>,
-        C: VecZnxToRef,
     {
-        let b = b.to_ref();
         let b_size = b.size();
         let mut b_dft = poulpy_hal::layouts::VecZnxDftOwned::<BE>::alloc(module.n(), 1, b_size);
         let mut b_dft_ref = b_dft.to_mut();
 
-        <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(module, 1, 0, &mut b_dft_ref, 0, &b, b_col);
-        ntt120_svp_apply_dft_to_dft::<R, A, poulpy_hal::layouts::VecZnxDftOwned<BE>, BE>(
-            module, res, res_col, a, a_col, &b_dft, 0,
-        );
+        <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(module, 1, 0, &mut b_dft_ref, 0, b, b_col);
+        ntt120_svp_apply_dft_to_dft(module, res, res_col, a, a_col, &b_dft, 0);
     }
 
     fn svp_apply_dft_to_dft_default<R, A, C>(

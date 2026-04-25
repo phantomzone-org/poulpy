@@ -1,5 +1,3 @@
-#![allow(clippy::multiple_bound_locations)]
-
 use poulpy_hal::{
     layouts::{Backend, HostBackend, HostDataMut, ScratchArena},
     source::Source,
@@ -59,7 +57,7 @@ pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
 
 impl<D: HostDataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<'s, M, S0, S1, E, BE: Backend + HostBackend>(
+    pub fn encrypt_sk<'s, M, S0, S1, E, BE>(
         &mut self,
         module: &M,
         sk_glwe: &S0,
@@ -74,7 +72,7 @@ impl<D: HostDataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
         E: EncryptionInfos,
         M: BlindRotationKeyEncryptSk<BRA, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: Backend<OwnedBuf = D> + 's,
+        BE: Backend<OwnedBuf = D> + HostBackend + 's,
     {
         module.blind_rotation_key_encrypt_sk(self, sk_glwe, sk_lwe, enc_infos, source_xe, source_xa, scratch);
     }

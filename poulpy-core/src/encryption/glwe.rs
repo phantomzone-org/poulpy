@@ -2,8 +2,8 @@ use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddAssignBackend, VecZnxAddNormalSourceBackend, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniformSourceBackend, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniformSourceBackend, VecZnxIdftApplyConsume,
+        VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
     },
     layouts::{
         Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, SvpPPolReborrowBackendRef, VecZnx,
@@ -17,7 +17,8 @@ use crate::{
     EncryptionInfos, GetDistribution, ScratchArenaTakeCore,
     dist::Distribution,
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextBackendRef, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWEToBackendMut, LWEInfos,
+        GLWEInfos, GLWEPlaintext, GLWEPlaintextBackendRef, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWEToBackendMut,
+        LWEInfos,
         prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
     vec_znx_host_ops::{vec_znx_copy, vec_znx_sub, vec_znx_sub_inplace},
@@ -443,13 +444,13 @@ where
 
 pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn glwe_encrypt_sk_internal<'s, R, S, E>(
+    fn glwe_encrypt_sk_internal<'s, 'pt, R, S, E>(
         &self,
         base2k: usize,
         res: &mut R,
         cols: usize,
         compressed: bool,
-        pt: Option<(GLWEPlaintext<&[u8]>, GLWEPlaintextBackendRef<'_, BE>, usize)>,
+        pt: GLWEEncryptSkPlaintext<'pt, BE>,
         sk: &S,
         enc_infos: &E,
         source_xe: &mut Source,
@@ -462,6 +463,8 @@ pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
+
+type GLWEEncryptSkPlaintext<'a, BE> = Option<(GLWEPlaintext<&'a [u8]>, GLWEPlaintextBackendRef<'a, BE>, usize)>;
 
 impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where
@@ -480,13 +483,13 @@ where
         + VecZnxBigNormalizeTmpBytes,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
-    fn glwe_encrypt_sk_internal<'s, R, S, E>(
+    fn glwe_encrypt_sk_internal<'s, 'pt, R, S, E>(
         &self,
         base2k: usize,
         res: &mut R,
         cols: usize,
         compressed: bool,
-        pt: Option<(GLWEPlaintext<&[u8]>, GLWEPlaintextBackendRef<'_, BE>, usize)>,
+        pt: GLWEEncryptSkPlaintext<'pt, BE>,
         sk: &S,
         enc_infos: &E,
         source_xe: &mut Source,

@@ -23,9 +23,9 @@ use crate::{
     blind_rotation::BlindRotationAlgo,
 };
 
-pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>(
-    test_context: &TestContext<BRA, BE>,
-) where
+pub fn test_scalar_to_ggsw_blind_rotation<BRA, BE>(test_context: &TestContext<BRA, BE>)
+where
+    BRA: BlindRotationAlgo,
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
@@ -35,7 +35,7 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>
         + VecZnxRotateInplaceBackend<BE>,
-    BE: HostBackend,
+    BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
     BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,

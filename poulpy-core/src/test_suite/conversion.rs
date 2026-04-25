@@ -21,11 +21,7 @@ pub fn test_glwe_base2k_conversion<BE: crate::test_suite::TestBackend>(params: &
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: GLWEEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWENormalize<BE>
-        + GLWESecretPreparedFactory<BE>
-        + GLWENoise<BE>,
+    Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWENormalize<BE> + GLWESecretPreparedFactory<BE> + GLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {

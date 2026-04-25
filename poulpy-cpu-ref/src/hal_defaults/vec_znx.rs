@@ -23,8 +23,8 @@ use crate::reference::znx::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
-        ZnxView, ZnxViewMut,
+        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, ZnxView,
+        ZnxViewMut,
     },
     source::Source,
 };
@@ -343,9 +343,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_rsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, true>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_rsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -374,9 +372,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_rsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, false>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_rsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     fn vec_znx_lsh_tmp_bytes_default(module: &Module<BE>) -> usize {
@@ -407,9 +403,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_lsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, true>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_lsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, true>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -436,9 +430,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_lsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, false>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_lsh::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE, false>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -463,9 +455,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_lsh_sub::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_lsh_sub::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -493,9 +483,7 @@ where
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_rsh_sub::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
-            base2k, k, res, res_col, a, a_col, carry,
-        );
+        vec_znx_rsh_sub::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
     fn vec_znx_rsh_inplace_backend_default<'s, 'r>(
@@ -622,8 +610,7 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
-    )
-    where
+    ) where
         BE: ZnxRotate + ZnxZero + ZnxSubInplace,
         BE::BufMut<'r>: HostDataMut,
         BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,

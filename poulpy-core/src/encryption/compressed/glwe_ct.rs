@@ -10,8 +10,7 @@ use crate::{
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GLWECompressed, GLWECompressedToBackendMut, GLWECompressedToMut},
-        prepared::GLWESecretPreparedToBackendRef,
+        compressed::GLWECompressedToBackendMut, prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -80,7 +79,10 @@ where
             let cols: usize = (res_backend.rank() + 1).into();
             assert!(
                 scratch.available()
-                    >= <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, &res_backend),
+                    >= <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(
+                        self,
+                        &res_backend
+                    ),
                 "scratch.available(): {} < GLWECompressedEncryptSk::glwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
                 <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, &res_backend)

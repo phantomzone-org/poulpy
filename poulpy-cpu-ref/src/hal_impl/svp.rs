@@ -11,18 +11,15 @@ macro_rules! hal_impl_svp {
             <Self as $defaults<Self>>::svp_prepare_default(module, res, res_col, a, a_col)
         }
 
-        fn svp_apply_dft<R, C>(
+        fn svp_apply_dft(
             module: &Module<Self>,
-            res: &mut R,
+            res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::SvpPPolBackendRef<'_, Self>,
             a_col: usize,
-            b: &C,
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             b_col: usize,
-        ) where
-            R: VecZnxDftToMut<Self>,
-            C: VecZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::svp_apply_dft_default(module, res, res_col, a, a_col, b, b_col)
         }
 
