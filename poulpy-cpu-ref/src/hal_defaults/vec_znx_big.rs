@@ -811,6 +811,46 @@ pub trait NTTIfmaVecZnxBigDefaults<BE: Backend>: Backend {
         ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
+    fn vec_znx_big_normalize_add_assign_default<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<BE>,
+    {
+        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        ntt120_vec_znx_big_normalize_add_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+    }
+
+    fn vec_znx_big_normalize_sub_assign_default<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<BE>,
+    {
+        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        ntt120_vec_znx_big_normalize_sub_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+    }
+
     fn vec_znx_big_automorphism_default<R, A>(_module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,

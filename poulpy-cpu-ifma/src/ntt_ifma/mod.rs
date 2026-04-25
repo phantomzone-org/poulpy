@@ -61,11 +61,14 @@ pub struct NTTIfma;
 use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps};
 
 use vec_znx_big_avx512::{
-    nfc_final_step_inplace_avx512, nfc_final_step_inplace_scalar, nfc_middle_step_avx512, nfc_middle_step_inplace_avx512,
-    nfc_middle_step_inplace_scalar, nfc_middle_step_scalar, vi128_add_avx512, vi128_add_inplace_avx512, vi128_add_small_avx512,
-    vi128_add_small_inplace_avx512, vi128_from_small_avx512, vi128_neg_from_small_avx512, vi128_negate_avx512,
-    vi128_negate_inplace_avx512, vi128_sub_avx512, vi128_sub_inplace_avx512, vi128_sub_negate_inplace_avx512,
-    vi128_sub_small_a_avx512, vi128_sub_small_b_avx512, vi128_sub_small_inplace_avx512, vi128_sub_small_negate_inplace_avx512,
+    nfc_final_step_add_assign_avx512, nfc_final_step_add_assign_scalar, nfc_final_step_inplace_avx512,
+    nfc_final_step_inplace_scalar, nfc_final_step_sub_assign_avx512, nfc_final_step_sub_assign_scalar,
+    nfc_middle_step_add_assign_avx512, nfc_middle_step_add_assign_scalar, nfc_middle_step_avx512, nfc_middle_step_inplace_avx512,
+    nfc_middle_step_inplace_scalar, nfc_middle_step_scalar, nfc_middle_step_sub_assign_avx512, nfc_middle_step_sub_assign_scalar,
+    vi128_add_avx512, vi128_add_inplace_avx512, vi128_add_small_avx512, vi128_add_small_inplace_avx512, vi128_from_small_avx512,
+    vi128_neg_from_small_avx512, vi128_negate_avx512, vi128_negate_inplace_avx512, vi128_sub_avx512, vi128_sub_inplace_avx512,
+    vi128_sub_negate_inplace_avx512, vi128_sub_small_a_avx512, vi128_sub_small_b_avx512, vi128_sub_small_inplace_avx512,
+    vi128_sub_small_negate_inplace_avx512,
 };
 
 impl I128BigOps for NTTIfma {
@@ -149,11 +152,43 @@ impl I128NormalizeOps for NTTIfma {
         }
     }
     #[inline(always)]
+    fn nfc_middle_step_add_assign(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+        if base2k <= 64 && res.len() >= 8 {
+            unsafe { nfc_middle_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
+        } else {
+            nfc_middle_step_add_assign_scalar(base2k, lsh, res, a, carry);
+        }
+    }
+    #[inline(always)]
+    fn nfc_middle_step_sub_assign(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+        if base2k <= 64 && res.len() >= 8 {
+            unsafe { nfc_middle_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
+        } else {
+            nfc_middle_step_sub_assign_scalar(base2k, lsh, res, a, carry);
+        }
+    }
+    #[inline(always)]
     fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
         if base2k <= 64 && res.len() >= 8 {
             unsafe { nfc_final_step_inplace_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
         } else {
             nfc_final_step_inplace_scalar(base2k, lsh, res, carry);
+        }
+    }
+    #[inline(always)]
+    fn nfc_final_step_add_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        if base2k <= 64 && res.len() >= 8 {
+            unsafe { nfc_final_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
+        } else {
+            nfc_final_step_add_assign_scalar(base2k, lsh, res, carry);
+        }
+    }
+    #[inline(always)]
+    fn nfc_final_step_sub_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        if base2k <= 64 && res.len() >= 8 {
+            unsafe { nfc_final_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
+        } else {
+            nfc_final_step_sub_assign_scalar(base2k, lsh, res, carry);
         }
     }
 }

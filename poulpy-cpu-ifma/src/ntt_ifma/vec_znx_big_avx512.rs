@@ -55,6 +55,54 @@ pub(super) fn nfc_middle_step_scalar(base2k: usize, lsh: usize, res: &mut [i64],
 }
 
 #[inline(always)]
+pub(super) fn nfc_middle_step_add_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+    if lsh == 0 {
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k, ai);
+            let co = get_carry_i128(base2k, ai, digit);
+            let d_plus_c = digit + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = r.wrapping_add(out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k_lsh, ai);
+            let co = get_carry_i128(base2k_lsh, ai, digit);
+            let d_plus_c = (digit << lsh) + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = r.wrapping_add(out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    }
+}
+
+#[inline(always)]
+pub(super) fn nfc_middle_step_sub_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+    if lsh == 0 {
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k, ai);
+            let co = get_carry_i128(base2k, ai, digit);
+            let d_plus_c = digit + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = r.wrapping_sub(out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k_lsh, ai);
+            let co = get_carry_i128(base2k_lsh, ai, digit);
+            let d_plus_c = (digit << lsh) + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = r.wrapping_sub(out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    }
+}
+
+#[inline(always)]
 pub(super) fn nfc_middle_step_inplace_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     if lsh == 0 {
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
@@ -92,6 +140,38 @@ pub(super) fn nfc_final_step_inplace_scalar(base2k: usize, lsh: usize, res: &mut
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let ri = *r as i128;
             *r = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, ri) << lsh) + *c) as i64;
+        });
+    }
+}
+
+#[inline(always)]
+pub(super) fn nfc_final_step_add_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    if lsh == 0 {
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
+            *r = r.wrapping_add(out as i64);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
+            *r = r.wrapping_add(out as i64);
+        });
+    }
+}
+
+#[inline(always)]
+pub(super) fn nfc_final_step_sub_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    if lsh == 0 {
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
+            *r = r.wrapping_sub(out as i64);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
+            *r = r.wrapping_sub(out as i64);
         });
     }
 }
@@ -308,6 +388,120 @@ pub(super) unsafe fn nfc_middle_step_avx512(base2k: u32, lsh: u32, n: usize, res
     }
 }
 
+#[target_feature(enable = "avx512f")]
+pub(super) unsafe fn nfc_middle_step_add_assign_avx512(
+    base2k: u32,
+    lsh: u32,
+    n: usize,
+    res: &mut [i64],
+    a: &[i128],
+    carry: &mut [i128],
+) {
+    unsafe {
+        let s = NfcShifts512::new(base2k, lsh);
+        let a_ptr = a.as_ptr() as *const __m512i;
+        let c_ptr = carry.as_mut_ptr() as *mut __m512i;
+        let r_ptr = res.as_mut_ptr();
+
+        let idx_deinterleave_lo = _mm512_loadu_si512(DEINTERLEAVE_LO.as_ptr() as *const __m512i);
+        let idx_deinterleave_hi = _mm512_loadu_si512(DEINTERLEAVE_HI.as_ptr() as *const __m512i);
+        let idx_interleave_lo = _mm512_loadu_si512(INTERLEAVE_LO.as_ptr() as *const __m512i);
+        let idx_interleave_hi = _mm512_loadu_si512(INTERLEAVE_HI.as_ptr() as *const __m512i);
+
+        let chunks = n / 8;
+        for i in 0..chunks {
+            let a_lo8 = _mm512_loadu_si512(a_ptr.add(2 * i));
+            let a_hi8 = _mm512_loadu_si512(a_ptr.add(2 * i + 1));
+            let lo_a = _mm512_permutex2var_epi64(a_lo8, idx_deinterleave_lo, a_hi8);
+            let hi_a = _mm512_permutex2var_epi64(a_lo8, idx_deinterleave_hi, a_hi8);
+
+            let c_lo8 = _mm512_loadu_si512(c_ptr.add(2 * i) as *const __m512i);
+            let c_hi8 = _mm512_loadu_si512(c_ptr.add(2 * i + 1) as *const __m512i);
+            let lo_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_lo, c_hi8);
+            let hi_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_hi, c_hi8);
+
+            let (lo_out, new_lo_c, new_hi_c) = nfc_middle_chunk_512(&s, lo_a, hi_a, lo_c, hi_c);
+            let lo_res = _mm512_loadu_si512(r_ptr.add(8 * i) as *const __m512i);
+            let lo_sum = _mm512_add_epi64(lo_res, lo_out);
+
+            _mm512_storeu_si512(r_ptr.add(8 * i) as *mut __m512i, lo_sum);
+
+            let out_c_lo8 = _mm512_permutex2var_epi64(new_lo_c, idx_interleave_lo, new_hi_c);
+            let out_c_hi8 = _mm512_permutex2var_epi64(new_lo_c, idx_interleave_hi, new_hi_c);
+            _mm512_storeu_si512(c_ptr.add(2 * i), out_c_lo8);
+            _mm512_storeu_si512(c_ptr.add(2 * i + 1), out_c_hi8);
+        }
+
+        let tail = chunks * 8;
+        if tail < n {
+            nfc_middle_step_add_assign_scalar(
+                base2k as usize,
+                lsh as usize,
+                &mut res[tail..],
+                &a[tail..],
+                &mut carry[tail..],
+            );
+        }
+    }
+}
+
+#[target_feature(enable = "avx512f")]
+pub(super) unsafe fn nfc_middle_step_sub_assign_avx512(
+    base2k: u32,
+    lsh: u32,
+    n: usize,
+    res: &mut [i64],
+    a: &[i128],
+    carry: &mut [i128],
+) {
+    unsafe {
+        let s = NfcShifts512::new(base2k, lsh);
+        let a_ptr = a.as_ptr() as *const __m512i;
+        let c_ptr = carry.as_mut_ptr() as *mut __m512i;
+        let r_ptr = res.as_mut_ptr();
+
+        let idx_deinterleave_lo = _mm512_loadu_si512(DEINTERLEAVE_LO.as_ptr() as *const __m512i);
+        let idx_deinterleave_hi = _mm512_loadu_si512(DEINTERLEAVE_HI.as_ptr() as *const __m512i);
+        let idx_interleave_lo = _mm512_loadu_si512(INTERLEAVE_LO.as_ptr() as *const __m512i);
+        let idx_interleave_hi = _mm512_loadu_si512(INTERLEAVE_HI.as_ptr() as *const __m512i);
+
+        let chunks = n / 8;
+        for i in 0..chunks {
+            let a_lo8 = _mm512_loadu_si512(a_ptr.add(2 * i));
+            let a_hi8 = _mm512_loadu_si512(a_ptr.add(2 * i + 1));
+            let lo_a = _mm512_permutex2var_epi64(a_lo8, idx_deinterleave_lo, a_hi8);
+            let hi_a = _mm512_permutex2var_epi64(a_lo8, idx_deinterleave_hi, a_hi8);
+
+            let c_lo8 = _mm512_loadu_si512(c_ptr.add(2 * i) as *const __m512i);
+            let c_hi8 = _mm512_loadu_si512(c_ptr.add(2 * i + 1) as *const __m512i);
+            let lo_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_lo, c_hi8);
+            let hi_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_hi, c_hi8);
+
+            let (lo_out, new_lo_c, new_hi_c) = nfc_middle_chunk_512(&s, lo_a, hi_a, lo_c, hi_c);
+            let lo_res = _mm512_loadu_si512(r_ptr.add(8 * i) as *const __m512i);
+            let lo_diff = _mm512_sub_epi64(lo_res, lo_out);
+
+            _mm512_storeu_si512(r_ptr.add(8 * i) as *mut __m512i, lo_diff);
+
+            let out_c_lo8 = _mm512_permutex2var_epi64(new_lo_c, idx_interleave_lo, new_hi_c);
+            let out_c_hi8 = _mm512_permutex2var_epi64(new_lo_c, idx_interleave_hi, new_hi_c);
+            _mm512_storeu_si512(c_ptr.add(2 * i), out_c_lo8);
+            _mm512_storeu_si512(c_ptr.add(2 * i + 1), out_c_hi8);
+        }
+
+        let tail = chunks * 8;
+        if tail < n {
+            nfc_middle_step_sub_assign_scalar(
+                base2k as usize,
+                lsh as usize,
+                &mut res[tail..],
+                &a[tail..],
+                &mut carry[tail..],
+            );
+        }
+    }
+}
+
 /// AVX-512 kernel for `nfc_middle_step_inplace` -- in-place update of `i64` `res` with `i128` carry.
 ///
 /// Like `nfc_middle_step_avx512` but the input `ai = *r as i128` is read from `res` itself.
@@ -388,6 +582,58 @@ pub(super) unsafe fn nfc_final_step_inplace_avx512(base2k: u32, lsh: u32, n: usi
         let tail = chunks * 8;
         if tail < n {
             nfc_final_step_inplace_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
+        }
+    }
+}
+
+#[target_feature(enable = "avx512f")]
+pub(super) unsafe fn nfc_final_step_add_assign_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
+    unsafe {
+        let s = NfcShifts512::new(base2k, lsh);
+        let c_ptr = carry.as_ptr() as *const __m512i;
+        let r_ptr = res.as_mut_ptr();
+        let idx_deinterleave_lo = _mm512_loadu_si512(DEINTERLEAVE_LO.as_ptr() as *const __m512i);
+
+        let chunks = n / 8;
+        for i in 0..chunks {
+            let lo_res = _mm512_loadu_si512(r_ptr.add(8 * i) as *const __m512i);
+            let c_lo8 = _mm512_loadu_si512(c_ptr.add(2 * i));
+            let c_hi8 = _mm512_loadu_si512(c_ptr.add(2 * i + 1));
+            let lo_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_lo, c_hi8);
+            let lo_out = nfc_final_chunk_512(&s, lo_res, lo_c);
+            let lo_sum = _mm512_add_epi64(lo_res, lo_out);
+            _mm512_storeu_si512(r_ptr.add(8 * i) as *mut __m512i, lo_sum);
+        }
+
+        let tail = chunks * 8;
+        if tail < n {
+            nfc_final_step_add_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
+        }
+    }
+}
+
+#[target_feature(enable = "avx512f")]
+pub(super) unsafe fn nfc_final_step_sub_assign_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
+    unsafe {
+        let s = NfcShifts512::new(base2k, lsh);
+        let c_ptr = carry.as_ptr() as *const __m512i;
+        let r_ptr = res.as_mut_ptr();
+        let idx_deinterleave_lo = _mm512_loadu_si512(DEINTERLEAVE_LO.as_ptr() as *const __m512i);
+
+        let chunks = n / 8;
+        for i in 0..chunks {
+            let lo_res = _mm512_loadu_si512(r_ptr.add(8 * i) as *const __m512i);
+            let c_lo8 = _mm512_loadu_si512(c_ptr.add(2 * i));
+            let c_hi8 = _mm512_loadu_si512(c_ptr.add(2 * i + 1));
+            let lo_c = _mm512_permutex2var_epi64(c_lo8, idx_deinterleave_lo, c_hi8);
+            let lo_out = nfc_final_chunk_512(&s, lo_res, lo_c);
+            let lo_diff = _mm512_sub_epi64(lo_res, lo_out);
+            _mm512_storeu_si512(r_ptr.add(8 * i) as *mut __m512i, lo_diff);
+        }
+
+        let tail = chunks * 8;
+        if tail < n {
+            nfc_final_step_sub_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
         }
     }
 }
