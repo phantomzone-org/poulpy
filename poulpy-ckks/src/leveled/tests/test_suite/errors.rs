@@ -1,9 +1,10 @@
 use crate::{
     CKKSCompositionError, CKKSInfos,
     layouts::{ciphertext::CKKSMaintainOps, plaintext::alloc_pt_znx},
-    leveled::operations::add::CKKSAddOps,
+    leveled::operations::{add::CKKSAddOps, composite::CKKSDotProductOps},
 };
 use poulpy_core::layouts::LWEInfos;
+use poulpy_core::layouts::{Base2K, Degree, TorusPrecision};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 use super::helpers::{TestAddBackend as Backend, TestContext, TestScalar, assert_ckks_error};
@@ -63,5 +64,24 @@ pub fn test_add_pt_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestCon
             pt_log_decimal: ctx.meta().log_decimal,
             pt_max_k: pt_znx.max_k().as_usize(),
         },
+    );
+}
+
+pub fn test_dot_product_overflow_guard<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let mut scratch = ctx.alloc_scratch();
+    let mut dst = crate::layouts::CKKSCiphertext::alloc(Degree(8), TorusPrecision(64), Base2K(63));
+    dst.meta = ctx.meta();
+    let a = crate::layouts::CKKSCiphertext::alloc(Degree(8), TorusPrecision(64), Base2K(63));
+    let b = crate::layouts::CKKSCiphertext::alloc(Degree(8), TorusPrecision(64), Base2K(63));
+    let a_refs = vec![&a, &a];
+    let b_refs = vec![&b, &b];
+    let err = ctx
+        .module
+        .ckks_dot_product_ct(&mut dst, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("risks i64 overflow"),
+        "dot_product_overflow_guard: unexpected error: {err}"
     );
 }

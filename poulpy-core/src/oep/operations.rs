@@ -66,6 +66,21 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
         B: DataRef;
 
     #[allow(clippy::too_many_arguments)]
+    fn glwe_tensor_apply_add_assign_default<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
@@ -133,6 +148,52 @@ pub trait CoreOperationsDefaults<BE: Backend>: Backend {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos;
+
+    fn glwe_mul_ct_rank1_fused_tmp_bytes_default<R, A, B, T>(module: &Module<BE>, res: &R, a: &A, b: &B, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+        T: GGLWEInfos;
+
+    fn glwe_square_ct_rank1_fused_tmp_bytes_default<R, A, T>(module: &Module<BE>, res: &R, a: &A, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        T: GGLWEInfos;
+
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_mul_ct_rank1_fused_default<R, A, B, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+        T: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
+    fn glwe_square_ct_rank1_fused_default<R, A, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        T: DataRef;
 
     fn glwe_rotate_tmp_bytes_default(module: &Module<BE>) -> usize;
 
@@ -437,6 +498,32 @@ where
         )
     }
 
+    fn glwe_tensor_apply_add_assign_default<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply_add_assign(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            b,
+            b_effective_k,
+            scratch,
+        )
+    }
+
     fn glwe_tensor_square_apply_default<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
@@ -473,6 +560,82 @@ where
         B: GGLWEInfos,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_relinearize_tmp_bytes(module, res, a, tsk)
+    }
+
+    fn glwe_mul_ct_rank1_fused_tmp_bytes_default<R, A, B, T>(module: &Module<BE>, res: &R, a: &A, b: &B, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+        T: GGLWEInfos,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_mul_ct_rank1_fused_tmp_bytes(module, res, a, b, tsk)
+    }
+
+    fn glwe_square_ct_rank1_fused_tmp_bytes_default<R, A, T>(module: &Module<BE>, res: &R, a: &A, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        T: GGLWEInfos,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_square_ct_rank1_fused_tmp_bytes(module, res, a, tsk)
+    }
+
+    fn glwe_mul_ct_rank1_fused_default<R, A, B, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+        T: DataRef,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_mul_ct_rank1_fused(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            b,
+            b_effective_k,
+            tsk,
+            tsk_size,
+            scratch,
+        )
+    }
+
+    fn glwe_square_ct_rank1_fused_default<R, A, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        T: DataRef,
+    {
+        <Module<BE> as GLWETensoringDefault<BE>>::glwe_square_ct_rank1_fused(
+            module,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
+            tsk,
+            tsk_size,
+            scratch,
+        )
     }
 
     fn glwe_rotate_tmp_bytes_default(module: &Module<BE>) -> usize {
@@ -853,6 +1016,32 @@ macro_rules! impl_core_operations_default_methods {
             )
         }
 
+        fn glwe_tensor_apply_add_assign<R, A, B>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
+            res: &mut $crate::layouts::GLWETensor<R>,
+            a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
+            b: &$crate::layouts::GLWE<B>,
+            b_effective_k: usize,
+            scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+        ) where
+            R: poulpy_hal::layouts::DataMut,
+            A: poulpy_hal::layouts::DataRef,
+            B: poulpy_hal::layouts::DataRef,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_apply_add_assign_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                b,
+                b_effective_k,
+                scratch,
+            )
+        }
+
         fn glwe_tensor_square_apply<R, A>(
             module: &poulpy_hal::layouts::Module<$be>,
             cnv_offset: usize,
@@ -898,6 +1087,93 @@ macro_rules! impl_core_operations_default_methods {
             B: $crate::layouts::GGLWEInfos,
         {
             <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_tensor_relinearize_tmp_bytes_default(module, res, a, tsk)
+        }
+
+        fn glwe_mul_ct_rank1_fused_tmp_bytes<R, A, B, T>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            res: &R,
+            a: &A,
+            b: &B,
+            tsk: &T,
+        ) -> usize
+        where
+            R: $crate::layouts::GLWEInfos,
+            A: $crate::layouts::GLWEInfos,
+            B: $crate::layouts::GLWEInfos,
+            T: $crate::layouts::GGLWEInfos,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_ct_rank1_fused_tmp_bytes_default(module, res, a, b, tsk)
+        }
+
+        fn glwe_square_ct_rank1_fused_tmp_bytes<R, A, T>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            res: &R,
+            a: &A,
+            tsk: &T,
+        ) -> usize
+        where
+            R: $crate::layouts::GLWEInfos,
+            A: $crate::layouts::GLWEInfos,
+            T: $crate::layouts::GGLWEInfos,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_square_ct_rank1_fused_tmp_bytes_default(module, res, a, tsk)
+        }
+
+        fn glwe_mul_ct_rank1_fused<R, A, B, T>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
+            res: &mut $crate::layouts::GLWE<R>,
+            a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
+            b: &$crate::layouts::GLWE<B>,
+            b_effective_k: usize,
+            tsk: &$crate::layouts::GLWETensorKeyPrepared<T, $be>,
+            tsk_size: usize,
+            scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+        ) where
+            R: poulpy_hal::layouts::DataMut,
+            A: poulpy_hal::layouts::DataRef,
+            B: poulpy_hal::layouts::DataRef,
+            T: poulpy_hal::layouts::DataRef,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_mul_ct_rank1_fused_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                b,
+                b_effective_k,
+                tsk,
+                tsk_size,
+                scratch,
+            )
+        }
+
+        fn glwe_square_ct_rank1_fused<R, A, T>(
+            module: &poulpy_hal::layouts::Module<$be>,
+            cnv_offset: usize,
+            res: &mut $crate::layouts::GLWE<R>,
+            a: &$crate::layouts::GLWE<A>,
+            a_effective_k: usize,
+            tsk: &$crate::layouts::GLWETensorKeyPrepared<T, $be>,
+            tsk_size: usize,
+            scratch: &mut poulpy_hal::layouts::Scratch<$be>,
+        ) where
+            R: poulpy_hal::layouts::DataMut,
+            A: poulpy_hal::layouts::DataRef,
+            T: poulpy_hal::layouts::DataRef,
+        {
+            <$be as $crate::oep::CoreOperationsDefaults<$be>>::glwe_square_ct_rank1_fused_default(
+                module,
+                cnv_offset,
+                res,
+                a,
+                a_effective_k,
+                tsk,
+                tsk_size,
+                scratch,
+            )
         }
 
         fn glwe_rotate_tmp_bytes(module: &poulpy_hal::layouts::Module<$be>) -> usize {

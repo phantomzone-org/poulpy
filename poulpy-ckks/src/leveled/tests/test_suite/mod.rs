@@ -277,6 +277,26 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::add::test_add_pt_rnx_smaller_output
             );
             run_test!(
+                add_ct_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_ct_aligned_without_normalization
+            );
+            run_test!(
+                add_ct_inplace_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_ct_inplace_aligned_without_normalization
+            );
+            run_test!(
+                add_pt_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_pt_znx_aligned_without_normalization
+            );
+            run_test!(
+                add_pt_rnx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_pt_rnx_aligned_without_normalization
+            );
+            run_test!(
+                add_const_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::add_without_normalization::test_add_const_znx_aligned_without_normalization
+            );
+            run_test!(
                 sub_ct_aligned,
                 $crate::leveled::tests::test_suite::sub::test_sub_ct_aligned
             );
@@ -337,6 +357,30 @@ macro_rules! ckks_backend_test_suite {
             run_test!(
                 sub_const_znx_aligned,
                 $crate::leveled::tests::test_suite::sub::test_sub_const_znx_aligned
+            );
+            run_test!(
+                sub_ct_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_ct_aligned_without_normalization
+            );
+            run_test!(
+                sub_ct_inplace_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_ct_inplace_aligned_without_normalization
+            );
+            run_test!(
+                sub_pt_znx_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_pt_znx_without_normalization
+            );
+            run_test!(
+                sub_pt_rnx_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_pt_rnx_without_normalization
+            );
+            run_test!(
+                sub_const_znx_aligned_without_normalization,
+                $crate::leveled::tests::test_suite::sub_without_normalization::test_sub_const_znx_aligned_without_normalization
+            );
+            run_test!(
+                dot_product_overflow_guard,
+                $crate::leveled::tests::test_suite::errors::test_dot_product_overflow_guard
             );
             run_test_result!(neg, $crate::leveled::tests::test_suite::neg::test_neg_aligned);
             run_test_result!(
@@ -523,6 +567,154 @@ macro_rules! ckks_backend_test_suite {
                 composition_repeated_square_exhausts_capacity,
                 $crate::leveled::tests::test_suite::composition::test_repeated_square_exhausts_capacity
             );
+            run_test!(
+                add_many_aligned,
+                $crate::leveled::tests::test_suite::add_many::test_add_many_aligned
+            );
+            run_test!(
+                add_many_single_smaller_output,
+                $crate::leveled::tests::test_suite::add_many::test_add_many_single_smaller_output
+            );
+            run_test!(
+                add_many_unaligned_log_hom_rem,
+                $crate::leveled::tests::test_suite::add_many::test_add_many_unaligned_log_hom_rem
+            );
+            run_test!(
+                add_many_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add_many::test_add_many_delta_log_decimal
+            );
+            run_test!(
+                add_many_smaller_output,
+                $crate::leveled::tests::test_suite::add_many::test_add_many_smaller_output
+            );
+            run_test!(
+                mul_many_aligned,
+                $crate::leveled::tests::test_suite::mul_many::test_mul_many_aligned
+            );
+            run_test!(
+                mul_many_single_smaller_output,
+                $crate::leveled::tests::test_suite::mul_many::test_mul_many_single_smaller_output
+            );
+            run_test!(
+                mul_many_odd_tree,
+                $crate::leveled::tests::test_suite::mul_many::test_mul_many_odd_tree
+            );
+            run_test!(
+                mul_many_unaligned_log_hom_rem,
+                $crate::leveled::tests::test_suite::mul_many::test_mul_many_unaligned_log_hom_rem
+            );
+            run_test!(
+                mul_many_smaller_output,
+                $crate::leveled::tests::test_suite::mul_many::test_mul_many_smaller_output
+            );
+            run_test!(
+                mul_add_ct_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_ct_aligned
+            );
+            run_test!(
+                mul_add_ct_unaligned_dst,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_ct_unaligned_dst
+            );
+            run_test!(
+                mul_add_pt_vec_znx_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_aligned
+            );
+            run_test!(
+                mul_add_pt_vec_znx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_delta_log_decimal
+            );
+            run_test!(
+                mul_add_pt_vec_rnx_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_rnx_aligned
+            );
+            run_test!(
+                mul_add_const_znx_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_znx_aligned
+            );
+            run_test!(
+                mul_add_const_rnx_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_aligned
+            );
+            run_test!(
+                mul_add_const_znx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_znx_zero_preserves_dst_meta
+            );
+            run_test!(
+                mul_add_const_rnx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_zero_preserves_dst_meta
+            );
+            run_test!(
+                mul_sub_ct_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_ct_aligned
+            );
+            run_test!(
+                mul_sub_ct_unaligned_dst,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_ct_unaligned_dst
+            );
+            run_test!(
+                mul_sub_pt_vec_znx_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_znx_aligned
+            );
+            run_test!(
+                mul_sub_pt_vec_znx_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_znx_delta_log_decimal
+            );
+            run_test!(
+                mul_sub_pt_vec_rnx_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_rnx_aligned
+            );
+            run_test!(
+                mul_sub_const_znx_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_znx_aligned
+            );
+            run_test!(
+                mul_sub_const_rnx_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_rnx_aligned
+            );
+            run_test!(
+                mul_sub_const_znx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_znx_zero_preserves_dst_meta
+            );
+            run_test!(
+                mul_sub_const_rnx_zero_preserves_dst_meta,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_const_rnx_zero_preserves_dst_meta
+            );
+            run_test!(
+                dot_product_ct_aligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_ct_aligned
+            );
+            run_test!(
+                dot_product_ct_unaligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_ct_unaligned
+            );
+            run_test!(
+                dot_product_ct_unaligned_b,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_ct_unaligned_b
+            );
+            run_test!(
+                dot_product_ct_delta_log_decimal,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_ct_delta_log_decimal
+            );
+            run_test!(
+                dot_product_ct_smaller_output,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_ct_smaller_output
+            );
+            run_test!(
+                dot_product_pt_vec_znx_aligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_pt_vec_znx_aligned
+            );
+            run_test!(
+                dot_product_pt_vec_rnx_aligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_pt_vec_rnx_aligned
+            );
+            run_test!(
+                dot_product_const_znx_aligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_const_znx_aligned
+            );
+            run_test!(
+                dot_product_const_rnx_aligned,
+                $crate::leveled::tests::test_suite::dot_product::test_dot_product_const_rnx_aligned
+            );
         }
     };
 }
@@ -530,13 +722,20 @@ macro_rules! ckks_backend_test_suite {
 pub use crate::ckks_backend_test_suite;
 
 pub mod add;
+pub mod add_many;
+pub mod add_without_normalization;
 pub mod composition;
 pub mod conjugate;
+pub mod dot_product;
 pub mod encryption;
 pub mod errors;
 pub mod helpers;
 pub mod mul;
+pub mod mul_add;
+pub mod mul_many;
+pub mod mul_sub;
 pub mod neg;
 pub mod pow2;
 pub mod rotate;
 pub mod sub;
+pub mod sub_without_normalization;

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWEShift, GLWESub, ScratchTakeCore,
+    GLWENormalize, GLWEShift, GLWESub, ScratchTakeCore,
     layouts::{GLWEInfos, GLWEPlaintext, GLWEPlaintextLayout, LWEInfos},
 };
 use poulpy_hal::{
@@ -24,14 +24,16 @@ use crate::{
 pub(crate) trait CKKSSubDefault<BE: Backend> {
     fn ckks_sub_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
-        self.glwe_shift_tmp_bytes().max(self.vec_znx_rsh_tmp_bytes())
+        self.glwe_shift_tmp_bytes()
+            .max(self.vec_znx_rsh_tmp_bytes())
+            .max(self.glwe_normalize_tmp_bytes())
     }
 
     fn ckks_sub_pt_vec_znx_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
         self.ckks_sub_tmp_bytes_default()
     }
@@ -40,7 +42,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
     where
         R: GLWEInfos,
         A: GLWEInfos,
-        Self: ModuleN + GLWEShift<BE> + VecZnxRshTmpBytes,
+        Self: ModuleN + GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
         let b_infos = GLWEPlaintextLayout {
             n: self.n().into(),
@@ -52,12 +54,28 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
 
     fn ckks_sub_const_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE>,
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
     {
-        self.glwe_shift_tmp_bytes()
+        self.glwe_shift_tmp_bytes().max(self.glwe_normalize_tmp_bytes())
     }
 
     fn ckks_sub_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        b: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_without_normalization_default(dst, a, b, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_without_normalization_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -93,6 +111,21 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_inplace_without_normalization_default(dst, a, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_inplace_without_normalization_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
@@ -119,6 +152,22 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_pt_vec_znx_without_normalization_default(dst, a, pt_znx, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_pt_vec_znx_without_normalization_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
         Self: VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
@@ -126,11 +175,26 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
         dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_pt_znx", a.log_hom_rem(), offset)?;
-        self.ckks_sub_pt_vec_znx_inplace_default(dst, pt_znx, scratch)?;
+        self.ckks_sub_pt_vec_znx_inplace_without_normalization_default(dst, pt_znx, scratch)?;
         Ok(())
     }
 
     fn ckks_sub_pt_vec_znx_inplace_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_pt_vec_znx_inplace_without_normalization_default(dst, pt_znx, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_pt_vec_znx_inplace_without_normalization_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -153,6 +217,24 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
+    {
+        self.ckks_sub_pt_vec_rnx_without_normalization_default(dst, a, pt_rnx, prec, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_pt_vec_rnx_without_normalization_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
+        prec: CKKSMeta,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
         Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
@@ -164,11 +246,28 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         });
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        CKKSSubDefault::ckks_sub_pt_vec_znx_default(self, dst, a, &pt_znx, scratch_1)?;
+        CKKSSubDefault::ckks_sub_pt_vec_znx_without_normalization_default(self, dst, a, &pt_znx, scratch_1)?;
         Ok(())
     }
 
     fn ckks_sub_pt_vec_rnx_inplace_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        pt_rnx: &CKKSPlaintextVecRnx<F>,
+        prec: CKKSMeta,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: ModuleN + VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
+    {
+        self.ckks_sub_pt_vec_rnx_inplace_without_normalization_default(dst, pt_rnx, prec, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_pt_vec_rnx_inplace_without_normalization_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -187,11 +286,27 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         });
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        self.ckks_sub_pt_vec_znx_inplace_default(dst, &pt_znx, scratch_1)?;
+        self.ckks_sub_pt_vec_znx_inplace_without_normalization_default(dst, &pt_znx, scratch_1)?;
         Ok(())
     }
 
     fn ckks_sub_const_znx_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_const_znx_without_normalization_default(dst, a, cst_znx, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_const_znx_without_normalization_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -206,10 +321,25 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
         dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_const_znx", a.log_hom_rem(), offset)?;
-        self.ckks_sub_const_znx_inplace_default(dst, cst_znx, scratch)
+        self.ckks_sub_const_znx_inplace_without_normalization_default(dst, cst_znx, scratch)
     }
 
     fn ckks_sub_const_znx_inplace_default(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_znx: &CKKSPlaintextCstZnx,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Self: GLWENormalize<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    {
+        self.ckks_sub_const_znx_inplace_without_normalization_default(dst, cst_znx, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_const_znx_inplace_without_normalization_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -251,11 +381,36 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: GLWEShift<BE> + GLWENormalize<BE>,
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        self.ckks_sub_const_rnx_without_normalization_default(dst, a, cst_rnx, prec, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_const_rnx_without_normalization_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        a: &CKKSCiphertext<impl DataRef>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKSMeta,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
         let offset = dst.offset_unary(a);
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            self.glwe_lsh(dst, a, offset, scratch);
+            dst.meta = a.meta();
+            dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_const_rnx", a.log_hom_rem(), offset)?;
+            return Ok(());
+        }
+
         let res_log_hom_rem = checked_log_hom_rem_sub("sub_const_rnx", a.log_hom_rem(), offset)?;
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
@@ -264,7 +419,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
                 .expect("aligned precision overflow"),
             prec.log_decimal,
         )?;
-        self.ckks_sub_const_znx_default(dst, a, &cst_znx, scratch)
+        self.ckks_sub_const_znx_without_normalization_default(dst, a, &cst_znx, scratch)
     }
 
     fn ckks_sub_const_rnx_inplace_default<F>(
@@ -275,9 +430,30 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
+        Self: GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
+        self.ckks_sub_const_rnx_inplace_without_normalization_default(dst, cst_rnx, prec, scratch)?;
+        self.glwe_normalize_inplace(dst, scratch);
+        Ok(())
+    }
+
+    fn ckks_sub_const_rnx_inplace_without_normalization_default<F>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        cst_rnx: &CKKSPlaintextCstRnx<F>,
+        prec: CKKSMeta,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
+    where
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
+    {
+        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
+            return Ok(());
+        }
+
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
             dst.log_hom_rem()
@@ -285,7 +461,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
                 .expect("aligned precision overflow"),
             prec.log_decimal,
         )?;
-        self.ckks_sub_const_znx_inplace_default(dst, &cst_znx, scratch)
+        self.ckks_sub_const_znx_inplace_without_normalization_default(dst, &cst_znx, scratch)
     }
 }
 

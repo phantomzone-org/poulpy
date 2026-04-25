@@ -3,7 +3,7 @@
 //! Mirrors [`crate::reference::ntt120::convolution`] but uses the 3-prime
 //! IFMA NTT tables and pointwise arithmetic.
 
-use bytemuck::cast_slice_mut;
+use bytemuck::{cast_slice, cast_slice_mut};
 use std::mem::size_of;
 
 use crate::{
@@ -303,7 +303,7 @@ pub fn ntt_ifma_cnv_pairwise_apply_dft<R, A, B, BE>(
 }
 
 pub fn ntt_ifma_cnv_prepare_self_tmp_bytes(n: usize) -> usize {
-    ntt_ifma_cnv_prepare_left_tmp_bytes(n).max(ntt_ifma_cnv_prepare_right_tmp_bytes(n))
+    ntt_ifma_cnv_prepare_left_tmp_bytes(n)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -320,11 +320,31 @@ pub fn ntt_ifma_cnv_prepare_self<L, R, A, BE>(
     R: CnvPVecRToMut<BE>,
     A: VecZnxToRef + ZnxInfos,
 {
-    // Prepare left side.
-    ntt_ifma_cnv_prepare_left::<L, A, BE>(module, left, a, mask, tmp);
-    // Prepare right side reusing the same source.
-    let right_bytes = ntt_ifma_cnv_prepare_right_tmp_bytes(a.n());
-    let (prefix, _) = tmp.split_at_mut(right_bytes);
-    let tmp_u64: &mut [u64] = bytemuck::cast_slice_mut(prefix);
-    ntt_ifma_cnv_prepare_right::<R, A, BE>(module, right, a, mask, tmp_u64);
+    let mut left: CnvPVecL<&mut [u8], BE> = left.to_mut();
+    let mut right: CnvPVecR<&mut [u8], BE> = right.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
+    let table = module.get_ntt_ifma_table();
+    let n = left.n();
+    let cols = left.cols();
+    let res_size = left.size();
+    let min_size = res_size.min(a.size());
+    let _ = tmp;
+    let _ = mask;
+
+    for col in 0..cols {
+        for j in 0..min_size {
+            {
+                let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, j));
+                BE::ntt_ifma_from_znx64(left_u64, a.at(col, j));
+                BE::ntt_ifma_dft_execute(table, left_u64);
+            }
+            let left_u64: &[u64] = cast_slice(left.at(col, j));
+            let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, j));
+            BE::ntt_ifma_c_from_b(n, right_u32, left_u64);
+        }
+        for j in min_size..res_size {
+            cast_slice_mut::<_, u64>(left.at_mut(col, j)).fill(0);
+            cast_slice_mut::<_, u64>(right.at_mut(col, j)).fill(0);
+        }
+    }
 }

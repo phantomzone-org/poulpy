@@ -396,6 +396,20 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         A: DataRef,
         B: DataRef;
 
+    fn glwe_tensor_apply_add_assign<R, A, B>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef;
+
     fn glwe_mul_plain_inplace<R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
@@ -461,6 +475,50 @@ pub unsafe trait CoreImpl<BE: Backend>: Backend {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos;
+
+    fn glwe_mul_ct_rank1_fused_tmp_bytes<R, A, B, T>(module: &Module<BE>, res: &R, a: &A, b: &B, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GLWEInfos,
+        T: GGLWEInfos;
+
+    fn glwe_square_ct_rank1_fused_tmp_bytes<R, A, T>(module: &Module<BE>, res: &R, a: &A, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        T: GGLWEInfos;
+
+    fn glwe_mul_ct_rank1_fused<R, A, B, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+        T: DataRef;
+
+    fn glwe_square_ct_rank1_fused<R, A, T>(
+        module: &Module<BE>,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        T: DataRef;
 
     fn glwe_rotate_tmp_bytes(module: &Module<BE>) -> usize;
 

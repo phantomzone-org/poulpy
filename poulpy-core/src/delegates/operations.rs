@@ -136,6 +136,23 @@ where
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     }
 
+    fn glwe_tensor_apply_add_assign<R, A, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWETensor<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        b: &GLWE<B>,
+        b_effective_k: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+    {
+        BE::glwe_tensor_apply_add_assign(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
+    }
+
     fn glwe_tensor_square_apply<R, A>(
         &self,
         cnv_offset: usize,
@@ -184,6 +201,15 @@ where
         <Self as GLWETensoringDefault<BE>>::glwe_mul_ct_rank1_fused_tmp_bytes(self, res, a, b, tsk)
     }
 
+    fn glwe_square_ct_rank1_fused_tmp_bytes<R, A, T>(&self, res: &R, a: &A, tsk: &T) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        T: GGLWEInfos,
+    {
+        <Self as GLWETensoringDefault<BE>>::glwe_square_ct_rank1_fused_tmp_bytes(self, res, a, tsk)
+    }
+
     fn glwe_mul_ct_rank1_fused<R, A, B, T>(
         &self,
         cnv_offset: usize,
@@ -209,6 +235,32 @@ where
             a_effective_k,
             b,
             b_effective_k,
+            tsk,
+            tsk_size,
+            scratch,
+        )
+    }
+
+    fn glwe_square_ct_rank1_fused<R, A, T>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        a: &GLWE<A>,
+        a_effective_k: usize,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        tsk_size: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: DataMut,
+        A: DataRef,
+        T: DataRef,
+    {
+        <Self as GLWETensoringDefault<BE>>::glwe_square_ct_rank1_fused(
+            self,
+            cnv_offset,
+            res,
+            a,
+            a_effective_k,
             tsk,
             tsk_size,
             scratch,

@@ -11,11 +11,13 @@
 //! | [`sub`] | Ciphertext subtraction (same variants as add) |
 //! | [`neg`] | Ciphertext negation |
 //! | [`mul`] | Ciphertext multiplication (ct×ct, ct×pt, ct×const, prepared-pt, integer) |
+//! | [`composite`] | Composite operations built from primitive CKKS ops |
 //! | [`pow2`] | Metadata-preserving multiplication and division by powers of two |
 //! | [`rotate`] | Slot rotation via automorphism |
 //! | [`conjugate`] | Complex conjugation via automorphism (Galois element `-1`) |
 
 pub mod add;
+pub mod composite;
 pub mod conjugate;
 pub mod mul;
 pub mod neg;

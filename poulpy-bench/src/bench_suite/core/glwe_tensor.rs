@@ -70,6 +70,39 @@ where
     group.finish();
 }
 
+pub fn bench_glwe_tensor_apply_add_assign<BE: Backend>(glwe_infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+where
+    Module<BE>: ModuleNew<BE> + GLWETensoring<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
+{
+    let n: usize = glwe_infos.n().into();
+    let module = Module::<BE>::new(n as u64);
+
+    let a = GLWE::<Vec<u8>>::alloc_from_infos(glwe_infos);
+    let b = GLWE::<Vec<u8>>::alloc_from_infos(glwe_infos);
+    let mut tensor = GLWETensor::<Vec<u8>>::alloc_from_infos(glwe_infos);
+    let mut scratch = ScratchOwned::<BE>::alloc(module.glwe_tensor_apply_tmp_bytes(&tensor, &a, &b));
+
+    let group_name = format!("glwe_tensor_apply_add_assign::{label}");
+    let mut group = c.benchmark_group(group_name);
+    group.bench_function(format!("n={n}"), |bench| {
+        bench.iter(|| {
+            module.glwe_tensor_apply_add_assign(
+                0,
+                &mut tensor,
+                &a,
+                a.max_k().as_usize(),
+                &b,
+                b.max_k().as_usize(),
+                scratch.borrow(),
+            );
+            black_box(());
+        })
+    });
+    group.finish();
+}
+
 pub fn bench_glwe_tensor_prepare_left<BE: Backend>(glwe_infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
