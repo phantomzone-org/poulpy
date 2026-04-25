@@ -7,7 +7,8 @@ use crate::{
     },
     layouts::{
         Backend, DataViewMut, DigestU64, FillUniform, MatZnx, MatZnxToBackendRef, Module, ScratchOwned, VecZnx, VecZnxBig,
-        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VmpPMat, VmpPMatToBackendMut,
+        VmpPMatToBackendRef,
     },
     source::Source,
 };
@@ -260,14 +261,14 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
 
                     module_ref.vmp_apply_dft_to_dft(
                         &mut res_dft_ref,
-                        &a_dft_ref,
+                        &a_dft_ref.to_backend_ref(),
                         &pmat_ref.to_backend_ref(),
                         0,
                         &mut scratch_ref.arena(),
                     );
                     module_test.vmp_apply_dft_to_dft(
                         &mut res_dft_test,
-                        &a_dft_test,
+                        &a_dft_test.to_backend_ref(),
                         &pmat_test.to_backend_ref(),
                         0,
                         &mut scratch_test.arena(),
@@ -317,14 +318,14 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
 
                         module_ref.vmp_apply_dft_to_dft(
                             &mut res_dft_ref,
-                            &a_dft_ref,
+                            &a_dft_ref.to_backend_ref(),
                             &pmat_ref.to_backend_ref(),
                             limb_offset,
                             &mut scratch_ref.arena(),
                         );
                         module_test.vmp_apply_dft_to_dft(
                             &mut res_dft_test,
-                            &a_dft_test,
+                            &a_dft_test.to_backend_ref(),
                             &pmat_test.to_backend_ref(),
                             limb_offset,
                             &mut scratch_test.arena(),

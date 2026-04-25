@@ -30,8 +30,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
-        VmpPMat, VmpPMatBackendMut, VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnxDft, VecZnxDftBackendRef, VecZnxDftToMut,
+        VecZnxDftToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttCFromB, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2, mat_vec::BbcMeta,
@@ -301,18 +301,17 @@ fn vmp_apply_dft_to_dft_core<const OVERWRITE: bool, BE>(
 /// of `pmat` using lazy q120b × q120c accumulation.
 ///
 /// `tmp` must hold at least `ntt120_vmp_apply_dft_to_dft_tmp_bytes(...) / size_of::<u64>()` elements.
-pub fn ntt120_vmp_apply_dft_to_dft<R, A, M, BE>(
+pub fn ntt120_vmp_apply_dft_to_dft<R, BE>(
     module: &impl NttModuleHandle,
     res: &mut R,
-    a: &A,
-    pmat: &M,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    pmat: &VmpPMatBackendRef<'_, BE>,
     limb_offset: usize,
     tmp: &mut [u64],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    M: VmpPMatToRef<BE>,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: VecZnxDft<&[u8], BE> = a.to_ref();

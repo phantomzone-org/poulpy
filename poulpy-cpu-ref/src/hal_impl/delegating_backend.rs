@@ -6,9 +6,8 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
-        Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, Module, NoiseInfos, ScratchArena,
-        ScratchOwned, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
-        ZnxInfos,
+        Backend, CnvPVecLToMut, CnvPVecRToMut, Data, Module, NoiseInfos, ScratchArena, ScratchOwned, VecZnxBackendMut,
+        VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
     },
     oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
 };

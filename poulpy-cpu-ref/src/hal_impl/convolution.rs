@@ -73,20 +73,18 @@ macro_rules! hal_impl_convolution {
         }
 
         #[allow(clippy::too_many_arguments)]
-        fn cnv_apply_dft<'s, R, A, B>(
+        fn cnv_apply_dft<'s, R>(
             module: &Module<Self>,
             cnv_offset: usize,
             res: &mut R,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::CnvPVecLBackendRef<'_, Self>,
             a_col: usize,
-            b: &B,
+            b: &poulpy_hal::layouts::CnvPVecRBackendRef<'_, Self>,
             b_col: usize,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) where
             R: VecZnxDftToMut<Self>,
-            A: CnvPVecLToRef<Self>,
-            B: CnvPVecRToRef<Self>,
         {
             let mut scratch = scratch.borrow();
             <Self as $defaults<Self>>::cnv_apply_dft_default(module, cnv_offset, res, res_col, a, a_col, b, b_col, &mut scratch);
@@ -103,20 +101,18 @@ macro_rules! hal_impl_convolution {
         }
 
         #[allow(clippy::too_many_arguments)]
-        fn cnv_pairwise_apply_dft<'s, R, A, B>(
+        fn cnv_pairwise_apply_dft<'s, R>(
             module: &Module<Self>,
             cnv_offset: usize,
             res: &mut R,
             res_col: usize,
-            a: &A,
-            b: &B,
+            a: &poulpy_hal::layouts::CnvPVecLBackendRef<'_, Self>,
+            b: &poulpy_hal::layouts::CnvPVecRBackendRef<'_, Self>,
             i: usize,
             j: usize,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) where
             R: VecZnxDftToMut<Self>,
-            A: CnvPVecLToRef<Self>,
-            B: CnvPVecRToRef<Self>,
         {
             let mut scratch = scratch.borrow();
             <Self as $defaults<Self>>::cnv_pairwise_apply_dft_default(module, cnv_offset, res, res_col, a, b, i, j, &mut scratch);

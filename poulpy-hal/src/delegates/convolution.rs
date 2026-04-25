@@ -1,8 +1,8 @@
 use crate::{
     api::{CnvPVecAlloc, CnvPVecBytesOf, Convolution},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, Module, ScratchArena,
-        VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
+        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, Module,
+        ScratchArena, VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
     },
     oep::HalConvolutionImpl,
 };
@@ -78,40 +78,36 @@ impl_convolution_delegate!(
     {
         <BE as HalConvolutionImpl<BE>>::cnv_by_const_apply(self, cnv_offset, res, res_col, a, a_col, b, scratch)
     },
-    fn cnv_apply_dft<'s, R, A, B>(
+    fn cnv_apply_dft<'s, R>(
         &self,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &CnvPVecLBackendRef<'_, BE>,
         a_col: usize,
-        b: &B,
+        b: &CnvPVecRBackendRef<'_, BE>,
         b_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: VecZnxDftToMut<BE>,
-        A: CnvPVecLToRef<BE>,
-        B: CnvPVecRToRef<BE>,
     {
         <BE as HalConvolutionImpl<BE>>::cnv_apply_dft(self, cnv_offset, res, res_col, a, a_col, b, b_col, scratch)
     },
     fn cnv_pairwise_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize {
         <BE as HalConvolutionImpl<BE>>::cnv_pairwise_apply_dft_tmp_bytes(self, res_size, cnv_offset, a_size, b_size)
     },
-    fn cnv_pairwise_apply_dft<'s, R, A, B>(
+    fn cnv_pairwise_apply_dft<'s, R>(
         &self,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
-        b: &B,
+        a: &CnvPVecLBackendRef<'_, BE>,
+        b: &CnvPVecRBackendRef<'_, BE>,
         i: usize,
         j: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: VecZnxDftToMut<BE>,
-        A: CnvPVecLToRef<BE>,
-        B: CnvPVecRToRef<BE>,
     {
         <BE as HalConvolutionImpl<BE>>::cnv_pairwise_apply_dft(self, cnv_offset, res, res_col, a, b, i, j, scratch)
     },

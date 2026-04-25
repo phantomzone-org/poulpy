@@ -1,6 +1,6 @@
 use crate::layouts::{
     Backend, MatZnxBackendRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
-    VecZnxDftToRef, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
+    VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
 };
 
 /// Allocates a [`VmpPMat`](crate::layouts::VmpPMat).
@@ -90,16 +90,15 @@ pub trait VmpApplyDftToDft<B: Backend> {
     /// * `a`: the left operand [crate::layouts::VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [crate::layouts::VmpPMat] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyDftToDftTmpBytes::vmp_apply_dft_to_dft_tmp_bytes].
-    fn vmp_apply_dft_to_dft<'s, R, A>(
+    fn vmp_apply_dft_to_dft<'s, R>(
         &self,
         res: &mut R,
-        a: &A,
+        a: &VecZnxDftBackendRef<'_, B>,
         pmat: &VmpPMatBackendRef<'_, B>,
         limb_offset: usize,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxDftToRef<B>;
+        R: VecZnxDftToMut<B>;
 }
 
 /// Applies the vector-matrix product using a backend-native prepared-matrix borrow.

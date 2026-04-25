@@ -1,6 +1,6 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, ScratchArena, VecZnxBackendRef,
-    VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
+    Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, ScratchArena,
+    VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
 };
 
 /// Allocates prepared convolution operands ([`CnvPVecL`], [`CnvPVecR`]).
@@ -99,20 +99,18 @@ pub trait Convolution<BE: Backend> {
     ///       Y^3[  0,   0,   0 ,  0]
     /// ```
     /// If res.size() < a.size() + b.size() + k, result is truncated accordingly in the Y dimension.
-    fn cnv_apply_dft<'s, R, A, B>(
+    fn cnv_apply_dft<'s, R>(
         &self,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &CnvPVecLBackendRef<'_, BE>,
         a_col: usize,
-        b: &B,
+        b: &CnvPVecRBackendRef<'_, BE>,
         b_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: VecZnxDftToMut<BE>,
-        A: CnvPVecLToRef<BE>,
-        B: CnvPVecRToRef<BE>;
+        R: VecZnxDftToMut<BE>;
 
     /// Returns scratch bytes required for [`cnv_pairwise_apply_dft`](Convolution::cnv_pairwise_apply_dft).
     fn cnv_pairwise_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize;
@@ -121,20 +119,18 @@ pub trait Convolution<BE: Backend> {
     /// Evaluates the bivariate pair-wise convolution res = (a\[i\] + a\[j\]) * (b\[i\] + b\[j\]).
     /// If i == j then calls [Convolution::cnv_apply_dft], i.e. res = a\[i\] * b\[i\].
     /// See [Convolution::cnv_apply_dft] for information about the bivariate convolution.
-    fn cnv_pairwise_apply_dft<'s, R, A, B>(
+    fn cnv_pairwise_apply_dft<'s, R>(
         &self,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
-        b: &B,
+        a: &CnvPVecLBackendRef<'_, BE>,
+        b: &CnvPVecRBackendRef<'_, BE>,
         i: usize,
         j: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: VecZnxDftToMut<BE>,
-        A: CnvPVecLToRef<BE>,
-        B: CnvPVecRToRef<BE>;
+        R: VecZnxDftToMut<BE>;
 
     /// Returns scratch bytes required for [`cnv_prepare_self`](Convolution::cnv_prepare_self).
     fn cnv_prepare_self_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;

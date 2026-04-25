@@ -1,13 +1,16 @@
 use crate::{
     cast_mut,
-    layouts::{Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnx, VecZnxToRef, VmpPMatBackendMut, VmpPMatToMut, ZnxView, ZnxViewMut},
+    layouts::{
+        Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnx, VecZnxDftBackendRef, VecZnxDftReborrowBackendRef,
+        VecZnxToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToMut, VmpPMatToRef, ZnxView, ZnxViewMut,
+    },
     reference::fft64::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
         reim4::Reim4BlkMatVec,
         vec_znx_dft::vec_znx_dft_apply,
     },
 };
-use crate::layouts::{VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToRef, ZnxInfos};
+use crate::layouts::{VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 
 pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
@@ -123,7 +126,7 @@ where
         vec_znx_dft_apply(table, 1, 0, &mut a_dft, j, &a, offset + j);
     }
 
-    vmp_apply_dft_to_dft(res, &a_dft, &pmat, 0, tmp_bytes);
+    vmp_apply_dft_to_dft(res, &a_dft.reborrow_backend_ref(), &pmat, 0, tmp_bytes);
 }
 
 pub fn vmp_apply_dft_to_dft_tmp_bytes(a_size: usize, prows: usize, pcols_in: usize) -> usize {
@@ -138,12 +141,17 @@ where
     res.to_mut().data_mut().fill(0);
 }
 
-pub fn vmp_apply_dft_to_dft<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, limb_offset: usize, tmp_bytes: &mut [f64])
+pub fn vmp_apply_dft_to_dft<R, BE>(
+    res: &mut R,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    pmat: &VmpPMatBackendRef<'_, BE>,
+    limb_offset: usize,
+    tmp_bytes: &mut [f64],
+)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    M: VmpPMatToRef<BE>,
 {
     use crate::layouts::{ZnxView, ZnxViewMut};
 

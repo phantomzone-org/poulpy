@@ -8,7 +8,8 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, SvpPPolOwned, SvpPPolToBackendRef, VecZnx,
-        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, VmpPMatToBackendRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        VecZnxDftReborrowBackendRef, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, VmpPMatToBackendRef, ZnxInfos, ZnxView,
+        ZnxViewMut, ZnxZero,
         vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
     oep::HalVecZnxImpl,
@@ -256,7 +257,13 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
             for i in 0..extension_factor {
                 let skii_ref = skii.data().to_backend_ref();
                 scratch_5.scope(|mut scratch_local| {
-                    module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], &skii_ref, 0, &mut scratch_local);
+                    module.vmp_apply_dft_to_dft(
+                        &mut vmp_res[i],
+                        &acc_dft[i].reborrow_backend_ref(),
+                        &skii_ref,
+                        0,
+                        &mut scratch_local,
+                    );
                 });
             }
 
@@ -422,7 +429,13 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
             // vmp_res = DFT(acc) * BRK[i]
             let skii_ref = skii.data().to_backend_ref();
-            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, &skii_ref, 0, &mut scratch_4.borrow());
+            module.vmp_apply_dft_to_dft(
+                &mut vmp_res,
+                &acc_dft.reborrow_backend_ref(),
+                &skii_ref,
+                0,
+                &mut scratch_4.borrow(),
+            );
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             for i in 0..cols {

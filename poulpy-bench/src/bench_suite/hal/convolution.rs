@@ -5,8 +5,8 @@ use criterion::{BenchmarkId, Criterion};
 use poulpy_hal::{
     api::{CnvPVecAlloc, Convolution, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc},
     layouts::{
-        Backend, CnvPVecL, CnvPVecR, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxToRef,
-        vec_znx_backend_ref_from_ref,
+        Backend, CnvPVecL, CnvPVecLToBackendRef, CnvPVecR, CnvPVecRToBackendRef, FillUniform, Module, ScratchOwned, VecZnx,
+        VecZnxBig, VecZnxToRef, vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
@@ -184,7 +184,16 @@ where
             &mut scratch.borrow(),
         );
         move || {
-            module.cnv_apply_dft(0, &mut c_dft, 0, &a_prep, 0, &b_prep, 0, &mut scratch.borrow());
+            module.cnv_apply_dft(
+                0,
+                &mut c_dft,
+                0,
+                &a_prep.to_backend_ref(),
+                0,
+                &b_prep.to_backend_ref(),
+                0,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }
@@ -258,7 +267,16 @@ where
             &mut scratch.borrow(),
         );
         move || {
-            module.cnv_pairwise_apply_dft(0, &mut c_dft, 0, &a_prep, &b_prep, 0, 1, &mut scratch.borrow());
+            module.cnv_pairwise_apply_dft(
+                0,
+                &mut c_dft,
+                0,
+                &a_prep.to_backend_ref(),
+                &b_prep.to_backend_ref(),
+                0,
+                1,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }

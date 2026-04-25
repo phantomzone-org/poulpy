@@ -728,16 +728,15 @@ pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
         b_size: usize,
     ) -> usize;
 
-    fn vmp_apply_dft_to_dft<'s, R, A>(
+    fn vmp_apply_dft_to_dft<'s, R>(
         module: &Module<BE>,
         res: &mut R,
-        a: &A,
+        a: &crate::layouts::VecZnxDftBackendRef<'_, BE>,
         b: &crate::layouts::VmpPMatBackendRef<'_, BE>,
         limb_offset: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        A: crate::layouts::VecZnxDftToRef<BE>;
+        R: crate::layouts::VecZnxDftToMut<BE>;
 
     fn vmp_apply_dft_to_dft_backend_ref<'s, 'r, 'a>(
         module: &Module<BE>,
@@ -803,20 +802,18 @@ pub unsafe trait HalConvolutionImpl<BE: Backend>: Backend {
         R: crate::layouts::VecZnxBigToMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
-    fn cnv_apply_dft<'s, R, A, B>(
+    fn cnv_apply_dft<'s, R>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &crate::layouts::CnvPVecLBackendRef<'_, BE>,
         a_col: usize,
-        b: &B,
+        b: &crate::layouts::CnvPVecRBackendRef<'_, BE>,
         b_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        A: crate::layouts::CnvPVecLToRef<BE>,
-        B: crate::layouts::CnvPVecRToRef<BE>;
+        R: crate::layouts::VecZnxDftToMut<BE>;
 
     fn cnv_pairwise_apply_dft_tmp_bytes(
         module: &Module<BE>,
@@ -827,20 +824,18 @@ pub unsafe trait HalConvolutionImpl<BE: Backend>: Backend {
     ) -> usize;
 
     #[allow(clippy::too_many_arguments)]
-    fn cnv_pairwise_apply_dft<'s, R, A, B>(
+    fn cnv_pairwise_apply_dft<'s, R>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
-        b: &B,
+        a: &crate::layouts::CnvPVecLBackendRef<'_, BE>,
+        b: &crate::layouts::CnvPVecRBackendRef<'_, BE>,
         i: usize,
         j: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        A: crate::layouts::CnvPVecLToRef<BE>,
-        B: crate::layouts::CnvPVecRToRef<BE>;
+        R: crate::layouts::VecZnxDftToMut<BE>;
 
     fn cnv_prepare_self_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 

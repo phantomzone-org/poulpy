@@ -1,7 +1,7 @@
 use crate::{
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnxBackendRef, VecZnxBig,
-        VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecRBackendRef, CnvPVecRToMut, HostDataRef, VecZnxBackendRef,
+        VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
@@ -203,24 +203,21 @@ pub fn convolution_apply_dft_tmp_bytes(res_size: usize, a_size: usize, b_size: u
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn convolution_apply_dft<R, A, B, BE>(
+pub fn convolution_apply_dft<R, BE>(
     cnv_offset: usize,
     res: &mut R,
     res_col: usize,
-    a: &A,
+    a: &CnvPVecLBackendRef<'_, BE>,
     a_col: usize,
-    b: &B,
+    b: &CnvPVecRBackendRef<'_, BE>,
     b_col: usize,
     tmp: &mut [f64],
 ) where
     BE: Backend<ScalarPrep = f64> + Reim4BlkMatVec + Reim4Convolution,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: CnvPVecLToRef<BE>,
-    B: CnvPVecRToRef<BE>,
 {
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
-    let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
-    let b: &CnvPVecR<&[u8], BE> = &b.to_ref();
 
     let n: usize = res.n();
     assert_eq!(a.n(), n);
@@ -260,20 +257,19 @@ pub fn convolution_pairwise_apply_dft_tmp_bytes(res_size: usize, a_size: usize, 
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
+pub fn convolution_pairwise_apply_dft<R, BE>(
     cnv_offset: usize,
     res: &mut R,
     res_col: usize,
-    a: &A,
-    b: &B,
+    a: &CnvPVecLBackendRef<'_, BE>,
+    b: &CnvPVecRBackendRef<'_, BE>,
     col_i: usize,
     col_j: usize,
     tmp: &mut [f64],
 ) where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + Reim4Convolution,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: CnvPVecLToRef<BE>,
-    B: CnvPVecRToRef<BE>,
 {
     if col_i == col_j {
         convolution_apply_dft(cnv_offset, res, res_col, a, col_i, b, col_j, tmp);
@@ -281,8 +277,6 @@ pub fn convolution_pairwise_apply_dft<R, A, B, BE>(
     }
 
     let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
-    let a: &CnvPVecL<&[u8], BE> = &a.to_ref();
-    let b: &CnvPVecR<&[u8], BE> = &b.to_ref();
 
     let n: usize = res.n();
     let m: usize = n >> 1;

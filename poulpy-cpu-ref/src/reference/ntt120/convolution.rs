@@ -32,8 +32,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnxBackendRef, VecZnxBig,
-        VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, HostDataRef,
+        VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttAddAssign, NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc1ColX2, NttMulBbc2ColsX2, NttPackLeft1BlkX2,
@@ -260,25 +260,22 @@ pub fn ntt120_cnv_apply_dft_tmp_bytes(_res_size: usize, a_size: usize, b_size: u
 ///
 /// Output limbs `min_size..res.size()` are zeroed.
 #[allow(clippy::too_many_arguments)]
-pub fn ntt120_cnv_apply_dft<R, A, B, BE>(
+pub fn ntt120_cnv_apply_dft<R, BE>(
     module: &impl NttModuleHandle,
     cnv_offset: usize,
     res: &mut R,
     res_col: usize,
-    a: &A,
+    a: &CnvPVecLBackendRef<'_, BE>,
     a_col: usize,
-    b: &B,
+    b: &CnvPVecRBackendRef<'_, BE>,
     b_col: usize,
     tmp: &mut [u8],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc1ColX2 + NttPackLeft1BlkX2 + NttPackRight1BlkX2,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: CnvPVecLToRef<BE>,
-    B: CnvPVecRToRef<BE>,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: CnvPVecL<&[u8], BE> = a.to_ref();
-    let b: CnvPVecR<&[u8], BE> = b.to_ref();
 
     let n = res.n();
     let res_size = res.size();
@@ -455,13 +452,13 @@ pub fn ntt120_cnv_pairwise_apply_dft_tmp_bytes(res_size: usize, a_size: usize, b
 ///
 /// Output limbs `min_size..res.size()` are zeroed.
 #[allow(clippy::too_many_arguments)]
-pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
+pub fn ntt120_cnv_pairwise_apply_dft<R, BE>(
     module: &impl NttModuleHandle,
     cnv_offset: usize,
     res: &mut R,
     res_col: usize,
-    a: &A,
-    b: &B,
+    a: &CnvPVecLBackendRef<'_, BE>,
+    b: &CnvPVecRBackendRef<'_, BE>,
     col_i: usize,
     col_j: usize,
     tmp: &mut [u8],
@@ -474,9 +471,8 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
         + NttPackRight1BlkX2
         + NttPairwisePackLeft1BlkX2
         + NttPairwisePackRight1BlkX2,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,
-    A: CnvPVecLToRef<BE>,
-    B: CnvPVecRToRef<BE>,
 {
     if col_i == col_j {
         ntt120_cnv_apply_dft(module, cnv_offset, res, res_col, a, col_i, b, col_j, tmp);
@@ -484,8 +480,6 @@ pub fn ntt120_cnv_pairwise_apply_dft<R, A, B, BE>(
     }
 
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: CnvPVecL<&[u8], BE> = a.to_ref();
-    let b: CnvPVecR<&[u8], BE> = b.to_ref();
 
     let meta = module.get_bbc_meta();
     let n = res.n();

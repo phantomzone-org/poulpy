@@ -10,7 +10,7 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, DataViewMut, MatZnx, MatZnxBackendRef, MatZnxToBackendRef, Module, ScratchOwned, VecZnx, VecZnxDft,
-        VecZnxToBackendRef, VmpPMat, VmpPMatBackendMut, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        VecZnxDftToBackendRef, VecZnxToBackendRef, VmpPMat, VmpPMatBackendMut, VmpPMatToBackendMut, VmpPMatToBackendRef,
     },
     source::Source,
 };
@@ -172,7 +172,7 @@ where
 
         move || {
             let pmat = pmat.to_backend_ref();
-            module.vmp_apply_dft_to_dft(&mut res, &a, &pmat, 0, &mut scratch.borrow());
+            module.vmp_apply_dft_to_dft(&mut res, &a.to_backend_ref(), &pmat, 0, &mut scratch.borrow());
             black_box(());
         }
     }

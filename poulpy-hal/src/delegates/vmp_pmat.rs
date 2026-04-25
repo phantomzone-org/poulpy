@@ -5,7 +5,7 @@ use crate::{
     },
     layouts::{
         Backend, MatZnxBackendRef, Module, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
-        VecZnxDftToMut, VecZnxDftToRef, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
+        VecZnxDftToMut, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
     },
     oep::HalVmpImpl,
 };
@@ -95,16 +95,15 @@ impl_vmp_delegate!(
 
 impl_vmp_delegate!(
     VmpApplyDftToDft<B>,
-    fn vmp_apply_dft_to_dft<'s, R, A>(
+    fn vmp_apply_dft_to_dft<'s, R>(
         &self,
         res: &mut R,
-        a: &A,
+        a: &VecZnxDftBackendRef<'_, B>,
         b: &VmpPMatBackendRef<'_, B>,
         limb_offset: usize,
         scratch: &mut ScratchArena<'s, B>,
     ) where
         R: VecZnxDftToMut<B>,
-        A: VecZnxDftToRef<B>,
     {
         <B as HalVmpImpl<B>>::vmp_apply_dft_to_dft(self, res, a, b, limb_offset, scratch)
     }

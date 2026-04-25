@@ -10,8 +10,8 @@ use poulpy_hal::{
         VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, VecZnxBigReborrowBackendRef,
-        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        Backend, CnvPVecLReborrowBackendRef, CnvPVecRReborrowBackendRef, Data, HostDataMut, HostDataRef, Module, ScratchArena,
+        VecZnx, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
     },
 };
 
@@ -305,7 +305,16 @@ where
 
         for i in 0..cols {
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, 0, &mut scratch_3);
+            self.cnv_apply_dft(
+                cnv_offset_hi,
+                &mut res_dft,
+                0,
+                &a_prep.reborrow_backend_ref(),
+                i,
+                &b_prep.reborrow_backend_ref(),
+                0,
+                &mut scratch_3,
+            );
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let res_big_ref = res_big.reborrow_backend_ref();
             {
@@ -383,7 +392,16 @@ where
 
         for i in 0..cols {
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &res_prep, i, &a_prep, 0, &mut scratch_3);
+            self.cnv_apply_dft(
+                cnv_offset_hi,
+                &mut res_dft,
+                0,
+                &res_prep.reborrow_backend_ref(),
+                i,
+                &a_prep.reborrow_backend_ref(),
+                0,
+                &mut scratch_3,
+            );
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let res_big_ref = res_big.reborrow_backend_ref();
             {
@@ -797,7 +815,16 @@ where
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_4);
+            self.cnv_apply_dft(
+                cnv_offset_hi,
+                &mut res_dft,
+                0,
+                &a_prep.reborrow_backend_ref(),
+                i,
+                &b_prep.reborrow_backend_ref(),
+                i,
+                &mut scratch_4,
+            );
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -832,7 +859,16 @@ where
 
             for j in i + 1..cols {
                 let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
-                self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_4);
+                self.cnv_pairwise_apply_dft(
+                    cnv_offset_hi,
+                    &mut res_dft,
+                    0,
+                    &a_prep.reborrow_backend_ref(),
+                    &b_prep.reborrow_backend_ref(),
+                    i,
+                    j,
+                    &mut scratch_4,
+                );
                 let res_big = self.vec_znx_idft_apply_consume(res_dft);
                 let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
                 let res_big_ref = res_big.reborrow_backend_ref();
@@ -952,7 +988,16 @@ where
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
-            self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_3);
+            self.cnv_apply_dft(
+                cnv_offset_hi,
+                &mut res_dft,
+                0,
+                &a_prep.reborrow_backend_ref(),
+                i,
+                &b_prep.reborrow_backend_ref(),
+                i,
+                &mut scratch_3,
+            );
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, mut scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -999,7 +1044,16 @@ where
                 if j != i {
                     // res_dft = (a[i] + a[j]) * (b[i] + b[j])
                     let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
-                    self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_3);
+                    self.cnv_pairwise_apply_dft(
+                        cnv_offset_hi,
+                        &mut res_dft,
+                        0,
+                        &a_prep.reborrow_backend_ref(),
+                        &b_prep.reborrow_backend_ref(),
+                        i,
+                        j,
+                        &mut scratch_3,
+                    );
                     let res_big = self.vec_znx_idft_apply_consume(res_dft);
                     let (mut tmp, mut scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
                     let res_big_ref = res_big.reborrow_backend_ref();
