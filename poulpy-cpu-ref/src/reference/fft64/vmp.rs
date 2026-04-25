@@ -124,7 +124,7 @@ where
 
     let offset: usize = cols - a.cols();
     for j in 0..cols {
-        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, &mut a_dft, j, &a, offset + j);
+        vec_znx_dft_apply(table, 1, 0, &mut a_dft, j, &a, offset + j);
     }
 
     vmp_apply_dft_to_dft(res, &a_dft, &pmat, 0, tmp_bytes);

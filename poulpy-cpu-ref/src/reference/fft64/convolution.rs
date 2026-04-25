@@ -1,7 +1,7 @@
 use crate::{
     layouts::{
-        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnx, VecZnxBackendRef,
-        VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, VecZnxBackendRef, VecZnxBig,
+        VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     reference::fft64::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
@@ -63,7 +63,7 @@ where
 
     for i in 0..cols {
         // FFT all limbs (unmasked); the last active limb will be overwritten below.
-        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, tmp, 0, a, i);
+        vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
 
         // Re-compute only the last active limb with the mask applied.
         if min_size > 0 {
@@ -120,7 +120,7 @@ pub fn convolution_prepare_self<L, R, T, BE>(
 
     for i in 0..cols {
         // FFT all limbs (unmasked); the last active limb will be overwritten below.
-        vec_znx_dft_apply::<VecZnxDft<&mut [u8], BE>, VecZnx<&[u8]>, BE>(table, 1, 0, tmp, 0, a, i);
+        vec_znx_dft_apply(table, 1, 0, tmp, 0, a, i);
 
         // Re-compute only the last active limb with the mask applied.
         if min_size > 0 {

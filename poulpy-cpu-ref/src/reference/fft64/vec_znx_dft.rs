@@ -2,8 +2,8 @@ use bytemuck::cast_slice_mut;
 
 use crate::{
     layouts::{
-        Backend, Data, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBackendMut, VecZnxDftToMut,
-        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataMut, HostDataRef, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft,
+        VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::{
         fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},
@@ -11,17 +11,18 @@ use crate::{
     },
 };
 
-pub fn vec_znx_dft_add_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
+pub fn vec_znx_dft_add_into<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    b: &VecZnxDftBackendRef<'_, BE>,
+    b_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    B: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -65,15 +66,16 @@ where
     }
 }
 
-pub fn vec_znx_dft_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn vec_znx_dft_add_assign<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -90,15 +92,17 @@ where
 }
 
 /// res = res + a * 2^{a_scale * base2k}.
-pub fn vec_znx_dft_add_scaled_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
-where
+pub fn vec_znx_dft_add_scaled_assign<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    a_scale: i64,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -127,15 +131,18 @@ where
     }
 }
 
-pub fn vec_znx_dft_copy<R, A, BE>(step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn vec_znx_dft_copy<BE>(
+    step: usize,
+    offset: usize,
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.n(), a.n())
@@ -157,7 +164,7 @@ where
     })
 }
 
-pub fn vec_znx_dft_apply<R, A, BE>(
+pub fn vec_znx_dft_apply<BE>(
     table: &ReimFFTTable<f64>,
     step: usize,
     offset: usize,
@@ -195,15 +202,17 @@ pub fn vec_znx_dft_apply<R, A, BE>(
     });
 }
 
-pub fn vec_znx_idft_apply<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn vec_znx_idft_apply<BE>(
+    table: &ReimIFFTTable<f64>,
+    res: &mut VecZnxBigBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(table.m() << 1, res.n());
@@ -227,15 +236,16 @@ where
     }
 }
 
-pub fn vec_znx_idft_apply_tmpa<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
-where
+pub fn vec_znx_idft_apply_tmpa<BE>(
+    table: &ReimIFFTTable<f64>,
+    res: &mut VecZnxBigBackendMut<'_, BE>,
+    res_col: usize,
+    a: &mut VecZnxDftBackendMut<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64> + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToMut<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let mut a: VecZnxDft<&mut [u8], BE> = a.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(table.m() << 1, res.n());
@@ -283,17 +293,18 @@ where
     res.into_big()
 }
 
-pub fn vec_znx_dft_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
+pub fn vec_znx_dft_sub<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    b: &VecZnxDftBackendRef<'_, BE>,
+    b_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    B: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -337,15 +348,16 @@ where
     }
 }
 
-pub fn vec_znx_dft_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn vec_znx_dft_sub_inplace<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -361,15 +373,16 @@ where
     }
 }
 
-pub fn vec_znx_dft_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn vec_znx_dft_sub_negate_inplace<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -389,12 +402,11 @@ where
     }
 }
 
-pub fn vec_znx_dft_zero<R, BE>(res: &mut R, res_col: usize)
+pub fn vec_znx_dft_zero<BE>(res: &mut VecZnxDftBackendMut<'_, BE>, res_col: usize)
 where
-    R: VecZnxDftToMut<BE>,
     BE: Backend<ScalarPrep = f64> + ReimArith,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
 {
-    let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
     for j in 0..res.size() {
         BE::reim_zero(res.at_mut(res_col, j))
     }

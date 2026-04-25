@@ -26,8 +26,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, Data, Module, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBackendMut, VecZnxDftToMut,
-        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft,
+        VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
@@ -229,21 +229,18 @@ pub fn ntt120_vec_znx_idft_apply_tmp_bytes(n: usize) -> usize {
 /// 3. CRT-reconstructs the `i128` coefficients via [`NttToZnx128`].
 ///
 /// `tmp` must hold at least `4 * n` `u64` values.
-pub fn ntt120_vec_znx_idft_apply<R, A, BE>(
+pub fn ntt120_vec_znx_idft_apply<BE>(
     module: &impl NttModuleHandle,
-    res: &mut R,
+    res: &mut VecZnxBigBackendMut<'_, BE>,
     res_col: usize,
-    a: &A,
+    a: &VecZnxDftBackendRef<'_, BE>,
     a_col: usize,
     tmp: &mut [u64],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttDFTExecute<NttTableInv<Primes30>> + NttToZnx128 + NttCopy,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     let n = res.n();
     let res_size = res.size();
     let min_size = res_size.min(a.size());
@@ -267,20 +264,16 @@ pub fn ntt120_vec_znx_idft_apply<R, A, BE>(
 ///
 /// Like [`ntt120_vec_znx_idft_apply`] but applies the inverse NTT
 /// **in place** to `a`, modifying it.  Requires no scratch space.
-pub fn ntt120_vec_znx_idft_apply_tmpa<R, A, BE>(
+pub fn ntt120_vec_znx_idft_apply_tmpa<BE>(
     module: &impl NttModuleHandle,
-    res: &mut R,
+    res: &mut VecZnxBigBackendMut<'_, BE>,
     res_col: usize,
-    a: &mut A,
+    a: &mut VecZnxDftBackendMut<'_, BE>,
     a_col: usize,
 ) where
     BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttDFTExecute<NttTableInv<Primes30>> + NttToZnx128,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToMut<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let mut a: VecZnxDft<&mut [u8], BE> = a.to_mut();
-
     let n = res.n();
     let res_size = res.size();
     let min_size = res_size.min(a.size());
@@ -288,7 +281,7 @@ pub fn ntt120_vec_znx_idft_apply_tmpa<R, A, BE>(
     let table = module.get_intt_table();
 
     for j in 0..min_size {
-        BE::ntt_dft_execute(table, limb_u64_mut(&mut a, a_col, j));
+        BE::ntt_dft_execute(table, limb_u64_mut(a, a_col, j));
         let a_slice: &[u64] = limb_u64(&a, a_col, j);
         BE::ntt_to_znx128(res.at_mut(res_col, j), n, a_slice);
     }
@@ -411,17 +404,18 @@ where
 /// DFT-domain add: `res[res_col] = a[a_col] + b[b_col]`.
 ///
 /// Uses lazy q120b addition; out-of-range limbs are copied or zeroed.
-pub fn ntt120_vec_znx_dft_add_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
+pub fn ntt120_vec_znx_dft_add_into<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    b: &VecZnxDftBackendRef<'_, BE>,
+    b_col: usize,
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttAdd + NttCopy + NttZero,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    B: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.size();
@@ -430,50 +424,43 @@ where
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add(
-                limb_u64_mut(&mut res, res_col, j),
-                limb_u64(&a, a_col, j),
-                limb_u64(&b, b_col, j),
-            );
+            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(&mut res, res_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&b, b_col, j));
         }
         for j in cpy_size..res_size {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     } else {
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add(
-                limb_u64_mut(&mut res, res_col, j),
-                limb_u64(&a, a_col, j),
-                limb_u64(&b, b_col, j),
-            );
+            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
         }
         for j in cpy_size..res_size {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     }
 }
 
 /// DFT-domain in-place add: `res[res_col] += a[a_col]`.
-pub fn ntt120_vec_znx_dft_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+pub fn ntt120_vec_znx_dft_add_assign<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
     }
 }
 
@@ -481,15 +468,17 @@ where
 ///
 /// `a_scale > 0` shifts `a` down by `a_scale` limbs (drops low limbs);
 /// `a_scale < 0` shifts `a` up by `|a_scale|` limbs (adds into higher limbs).
-pub fn ntt120_vec_znx_dft_add_scaled_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
-where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+pub fn ntt120_vec_znx_dft_add_scaled_assign<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    a_scale: i64,
+) where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     let res_size = res.size();
     let a_size = a.size();
 
@@ -497,34 +486,35 @@ where
         let shift = (a_scale as usize).min(a_size);
         let sum_size = a_size.min(res_size).saturating_sub(shift);
         for j in 0..sum_size {
-            BE::ntt_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j + shift));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j + shift));
         }
     } else if a_scale < 0 {
         let shift = (a_scale.unsigned_abs() as usize).min(res_size);
         let sum_size = a_size.min(res_size.saturating_sub(shift));
         for j in 0..sum_size {
-            BE::ntt_add_assign(limb_u64_mut(&mut res, res_col, j + shift), limb_u64(&a, a_col, j));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j + shift), limb_u64(&a, a_col, j));
         }
     } else {
         let sum_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
         }
     }
 }
 
 /// DFT-domain sub: `res[res_col] = a[a_col] - b[b_col]`.
-pub fn ntt120_vec_znx_dft_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
+pub fn ntt120_vec_znx_dft_sub<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+    b: &VecZnxDftBackendRef<'_, BE>,
+    b_col: usize,
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttSub + NttNegate + NttCopy + NttZero,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    B: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
     let res_size = res.size();
     let a_size = a.size();
     let b_size = b.size();
@@ -533,87 +523,84 @@ where
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_sub(
-                limb_u64_mut(&mut res, res_col, j),
-                limb_u64(&a, a_col, j),
-                limb_u64(&b, b_col, j),
-            );
+            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_negate(limb_u64_mut(&mut res, res_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_negate(limb_u64_mut(res, res_col, j), limb_u64(&b, b_col, j));
         }
         for j in cpy_size..res_size {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     } else {
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_sub(
-                limb_u64_mut(&mut res, res_col, j),
-                limb_u64(&a, a_col, j),
-                limb_u64(&b, b_col, j),
-            );
+            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
         }
         for j in cpy_size..res_size {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     }
 }
 
 /// DFT-domain in-place sub: `res[res_col] -= a[a_col]`.
-pub fn ntt120_vec_znx_dft_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttSubAssign,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+pub fn ntt120_vec_znx_dft_sub_inplace<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttSubInplace,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_sub_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_sub_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
     }
 }
 
 /// DFT-domain in-place swap-sub: `res[res_col] = a[a_col] - res[res_col]`.
 ///
 /// Extra `res` limbs beyond `a.size()` are negated.
-pub fn ntt120_vec_znx_dft_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateAssign + NttNegateAssign,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+pub fn ntt120_vec_znx_dft_sub_negate_inplace<BE>(
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
+    BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateInplace + NttNegateInplace,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     let res_size = res.size();
     let sum_size = res_size.min(a.size());
     for j in 0..sum_size {
-        BE::ntt_sub_negate_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_sub_negate_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
     }
     for j in sum_size..res_size {
-        BE::ntt_negate_assign(limb_u64_mut(&mut res, res_col, j));
+        BE::ntt_negate_inplace(limb_u64_mut(res, res_col, j));
     }
 }
 
 /// DFT-domain copy with stride: `res[res_col][j] = a[a_col][offset + j*step]`.
 ///
 /// Mirrors `vec_znx_dft_copy` from the FFT64 backend.
-pub fn ntt120_vec_znx_dft_copy<R, A, BE>(step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn ntt120_vec_znx_dft_copy<BE>(
+    step: usize,
+    offset: usize,
+    res: &mut VecZnxDftBackendMut<'_, BE>,
+    res_col: usize,
+    a: &VecZnxDftBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttCopy + NttZero,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.n(), a.n())
@@ -625,24 +612,23 @@ where
     for j in 0..min_steps {
         let limb = offset + j * step;
         if limb < a.size() {
-            BE::ntt_copy(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, limb));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, limb));
         } else {
-            BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+            BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }
     }
     for j in min_steps..res.size() {
-        BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+        BE::ntt_zero(limb_u64_mut(res, res_col, j));
     }
 }
 
 /// Zero all limbs of `res[res_col]`.
-pub fn ntt120_vec_znx_dft_zero<R, BE>(res: &mut R, res_col: usize)
+pub fn ntt120_vec_znx_dft_zero<BE>(res: &mut VecZnxDftBackendMut<'_, BE>, res_col: usize)
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttZero,
-    R: VecZnxDftToMut<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     for j in 0..res.size() {
-        BE::ntt_zero(limb_u64_mut(&mut res, res_col, j));
+        BE::ntt_zero(limb_u64_mut(res, res_col, j));
     }
 }

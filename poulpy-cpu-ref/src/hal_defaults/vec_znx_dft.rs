@@ -84,15 +84,7 @@ where
         BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     {
-        fft64_vec_znx_dft_apply::<VecZnxDftBackendMut<'_, BE>, VecZnxBackendRef<'_, BE>, BE>(
-            module.get_fft_table(),
-            step,
-            offset,
-            res,
-            res_col,
-            a,
-            a_col,
-        );
+        fft64_vec_znx_dft_apply(module.get_fft_table(), step, offset, res, res_col, a, a_col);
     }
 
     fn vec_znx_idft_apply_tmp_bytes_default(_module: &Module<BE>) -> usize
