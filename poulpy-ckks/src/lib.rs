@@ -21,7 +21,7 @@
 //! | [`encoding`] | CKKS encoders/decoders, including slot-wise real/imaginary packing |
 //! | [`layouts`] | CKKS-level data structures: ciphertext, plaintext, prepared plaintext, tensor, and evaluation keys |
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
-//! | [`bootstrapping`] | (Planned) CKKS bootstrapping |
+//! | bootstrapping | Planned CKKS bootstrapping work |
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 

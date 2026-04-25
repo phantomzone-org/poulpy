@@ -419,7 +419,8 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
         k: i64,
         keys: &H,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Module<BE>: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -1144,7 +1145,8 @@ macro_rules! impl_ckks_default_methods {
             k: i64,
             keys: &H,
             scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
-        ) where
+        ) -> anyhow::Result<()>
+        where
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend>,
             K: poulpy_core::layouts::GGLWEPreparedToRef<$backend> + poulpy_core::layouts::GetGaloisElement + poulpy_core::layouts::GGLWEInfos,
             H: poulpy_core::layouts::GLWEAutomorphismKeyHelper<K, $backend>,

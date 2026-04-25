@@ -28,7 +28,13 @@ pub trait CKKSRotateOps<BE: Backend + CKKSImpl<BE>> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn ckks_rotate_inplace<H, K>(&self, dst: &mut CKKSCiphertext<impl DataMut>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    fn ckks_rotate_inplace<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,

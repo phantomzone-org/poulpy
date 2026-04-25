@@ -76,6 +76,19 @@ pub const NTT120_PARAMS_F64: CKKSTestParams = CKKSTestParams {
     dsize: 1,
 };
 
+/// FFT64 parameter set.
+pub const FFT64_PARAMS_F64: CKKSTestParams = CKKSTestParams {
+    n: 256,
+    base2k: 19,
+    k: 8 * 19,
+    prec: CKKSMeta {
+        log_decimal: 30,
+        log_hom_rem: 0,
+    },
+    hw: 192,
+    dsize: 1,
+};
+
 /// NTT120 parameter set.
 pub const NTT120_PARAMS_F128: CKKSTestParams = CKKSTestParams {
     n: 256,
@@ -400,6 +413,10 @@ macro_rules! ckks_backend_test_suite {
                 rotate_inplace,
                 $crate::leveled::tests::test_suite::rotate::test_rotate_inplace,
                 $rotations
+            );
+            run_test!(
+                rotate_inplace_missing_key_error,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_inplace_missing_key_error
             );
             run_test!(
                 mul_ct_aligned,

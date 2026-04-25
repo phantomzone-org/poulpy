@@ -88,12 +88,12 @@ The main CKKS-facing types are:
 - `CKKSPlaintextVecRnx<F>`
 - `CKKSPlaintextCstRnx<F>`
 - `CKKSPlaintextCstZnx`
-- `CKKS`
+- `CKKSMeta`
 
-`CKKS` stores the logical precision metadata used by the scheme:
+`CKKSMeta` stores the logical precision metadata used by the scheme:
 
 ```rust
-pub struct CKKS {
+pub struct CKKSMeta {
     pub log_decimal: usize,
     pub log_hom_rem: usize,
 }
