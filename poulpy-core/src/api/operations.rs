@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxAddInto, VecZnxCopy, VecZnxLsh, VecZnxLshAddInto,
-        VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate,
-        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace,
-        VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
+        ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxCopyBackend, VecZnxLsh,
+        VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace,
+        VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSubBackend,
+        VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{Backend, Data, GaloisElement, HostDataMut, HostDataRef, ScratchArena},
 };
@@ -17,9 +17,10 @@ use crate::{
     glwe_packer::{GLWEPacker, pack_core},
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
-        ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
-        glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef,
+        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
+        GetGaloisElement, LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
+        glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
+        prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
@@ -34,7 +35,7 @@ pub trait GLWETrace<BE: Backend> {
 
     fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -68,7 +69,7 @@ pub trait GLWEPacking<BE: Backend> {
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -85,11 +86,11 @@ where
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy,
+        + GLWECopy<BE>,
 {
     fn packer_add<'s, A, K, H>(
         &self,
@@ -127,11 +128,13 @@ pub trait GLWEMulConst<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -156,6 +159,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -170,6 +174,7 @@ pub trait GLWEMulPlain<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -202,6 +207,7 @@ pub trait GLWETensoring<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -215,6 +221,7 @@ pub trait GLWETensoring<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
@@ -228,6 +235,7 @@ pub trait GLWETensoring<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
@@ -239,19 +247,19 @@ pub trait GLWETensoring<BE: Backend> {
         B: GGLWEInfos;
 }
 
-pub trait GLWEAdd
+pub trait GLWEAdd<BE: Backend>
 where
-    Self: ModuleN + VecZnxAddInto + VecZnxCopy + VecZnxAddAssign + VecZnxZero,
+    Self: ModuleN + VecZnxAddIntoBackend<BE> + VecZnxCopyBackend<BE> + VecZnxAddAssignBackend<BE> + VecZnxZeroBackend<BE>,
 {
     fn glwe_add_into<R, A, B>(&self, res: &mut R, a: &A, b: &B)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        B: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWE<&[u8]> = &b.to_ref();
+        let res = &mut res.to_backend_mut();
+        let a = &a.to_backend_ref();
+        let b = &b.to_backend_ref();
 
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(b.n(), self.n() as u32);
@@ -273,91 +281,81 @@ where
         let self_col: usize = (res.rank() + 1).into();
 
         for i in 0..min_col {
-            self.vec_znx_add_into(res.data_mut(), i, a.data(), i, b.data(), i);
+            self.vec_znx_add_into_backend(&mut res.data, i, &a.data, i, &b.data, i);
         }
 
         if a.rank() > b.rank() {
             for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, a.data(), i);
+                self.vec_znx_copy_backend(&mut res.data, i, &a.data, i);
             }
         } else {
             for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, b.data(), i);
+                self.vec_znx_copy_backend(&mut res.data, i, &b.data, i);
             }
         }
 
         for i in max_col..self_col {
-            self.vec_znx_zero(res.data_mut(), i);
+            self.vec_znx_zero_backend(&mut res.data, i);
         }
     }
 
     fn glwe_add_assign<R, A>(&self, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
+        let mut res = res.to_backend_mut();
+        let a = a.to_backend_ref();
+        self.glwe_add_assign_backend(&mut res, &a);
+    }
 
+    fn glwe_add_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
         assert!(res.rank() >= a.rank());
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_add_assign(res.data_mut(), i, a.data(), i);
+            self.vec_znx_add_assign_backend(&mut res.data, i, &a.data, i);
         }
     }
 }
 
-pub trait GLWENegate
+pub trait GLWENegate<BE: Backend>
 where
-    Self: VecZnxNegate + VecZnxNegateAssign + VecZnxZero + ModuleN,
+    Self: VecZnxNegateBackend<BE> + VecZnxNegateInplaceBackend<BE> + ModuleN,
 {
-    fn glwe_negate<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
+    fn glwe_negate(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.rank(), res.rank());
         let cols = res.rank().as_usize() + 1;
         for i in 0..cols {
-            self.vec_znx_negate(res.data_mut(), i, a.data(), i);
+            self.vec_znx_negate_backend(&mut res.data, i, &a.data, i);
         }
         res.base2k = a.base2k;
     }
 
-    fn glwe_negate_assign<R>(&self, res: &mut R)
-    where
-        R: GLWEToMut,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+    fn glwe_negate_inplace(&self, res: &mut GLWEBackendMut<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         let cols = res.rank().as_usize() + 1;
         for i in 0..cols {
-            self.vec_znx_negate_assign(res.data_mut(), i);
+            self.vec_znx_negate_inplace_backend(&mut res.data, i);
         }
     }
 }
 
-pub trait GLWESub
+pub trait GLWESub<BE: Backend>
 where
-    Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubAssign + VecZnxSubNegateAssign,
+    Self: ModuleN
+        + VecZnxSubBackend<BE>
+        + VecZnxSubInplaceBackend<BE>
+        + VecZnxSubNegateInplaceBackend<BE>
+        + VecZnxCopyBackend<BE>
+        + VecZnxNegateBackend<BE>
+        + VecZnxZeroBackend<BE>,
 {
-    fn glwe_sub<R, A, B>(&self, res: &mut R, a: &A, b: &B)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        B: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWE<&[u8]> = &b.to_ref();
-
+    fn glwe_sub_backend<'a>(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'a, BE>, b: &GLWEBackendRef<'a, BE>) {
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(b.n(), self.n() as u32);
         assert_eq!(res.n(), self.n() as u32);
@@ -378,58 +376,72 @@ where
         let self_col: usize = (res.rank() + 1).into();
 
         for i in 0..min_col {
-            self.vec_znx_sub(res.data_mut(), i, a.data(), i, b.data(), i);
+            self.vec_znx_sub_backend(&mut res.data, i, &a.data, i, &b.data, i);
         }
 
         if a.rank() > b.rank() {
             for i in min_col..max_col {
-                self.vec_znx_copy(res.data_mut(), i, a.data(), i);
+                self.vec_znx_copy_backend(&mut res.data, i, &a.data, i);
             }
         } else {
             for i in min_col..max_col {
-                self.vec_znx_negate(res.data_mut(), i, b.data(), i);
+                self.vec_znx_negate_backend(&mut res.data, i, &b.data, i);
             }
         }
 
         for i in max_col..self_col {
-            self.vec_znx_zero(res.data_mut(), i);
+            self.vec_znx_zero_backend(&mut res.data, i);
+        }
+    }
+
+    fn glwe_sub<R, A, B>(&self, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
+    {
+        let mut res = res.to_backend_mut();
+        let a = a.to_backend_ref();
+        let b = b.to_backend_ref();
+        self.glwe_sub_backend(&mut res, &a, &b);
+    }
+
+    fn glwe_sub_inplace_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(res.base2k(), a.base2k());
+        assert!(res.rank() == a.rank() || a.rank() == 0);
+
+        for i in 0..(a.rank() + 1).into() {
+            self.vec_znx_sub_inplace_backend(&mut res.data, i, &a.data, i);
         }
     }
 
     fn glwe_sub_assign<R, A>(&self, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
+        self.glwe_sub_inplace_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
+    }
 
+    fn glwe_sub_negate_inplace_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
         assert!(res.rank() == a.rank() || a.rank() == 0);
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_assign(res.data_mut(), i, a.data(), i);
+            self.vec_znx_sub_negate_inplace_backend(&mut res.data, i, &a.data, i);
         }
     }
 
     fn glwe_sub_negate_assign<R, A>(&self, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
-        assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(res.base2k(), a.base2k());
-        assert!(res.rank() == a.rank() || a.rank() == 0);
-
-        for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_negate_assign(res.data_mut(), i, a.data(), i);
-        }
+        self.glwe_sub_negate_inplace_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
     }
 }
 
@@ -558,18 +570,11 @@ where
     }
 }
 
-pub trait GLWECopy
+pub trait GLWECopy<BE: Backend>
 where
-    Self: ModuleN + VecZnxCopy + VecZnxZero,
+    Self: ModuleN + VecZnxCopyBackend<BE> + VecZnxZeroBackend<BE>,
 {
-    fn glwe_copy<R, A>(&self, res: &mut R, a: &A)
-    where
-        R: GLWEToMut,
-        A: GLWEToRef,
-    {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-
+    fn glwe_copy(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert!(res.rank() == a.rank() || a.rank() == 0);
@@ -577,11 +582,11 @@ where
         let min_rank: usize = res.rank().min(a.rank()).as_usize() + 1;
 
         for i in 0..min_rank {
-            self.vec_znx_copy(res.data_mut(), i, a.data(), i);
+            self.vec_znx_copy_backend(&mut res.data, i, &a.data, i);
         }
 
         for i in min_rank..(res.rank() + 1).into() {
-            self.vec_znx_zero(res.data_mut(), i);
+            self.vec_znx_zero_backend(&mut res.data, i);
         }
     }
 }

@@ -8,13 +8,6 @@ pub trait VecZnxNormalizeTmpBytes {
     fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 }
 
-/// Zeroes all limbs of the selected column.
-pub trait VecZnxZero {
-    fn vec_znx_zero<R>(&self, res: &mut R, res_col: usize)
-    where
-        R: VecZnxToMut;
-}
-
 pub trait VecZnxZeroBackend<B: Backend> {
     fn vec_znx_zero_backend<'r>(&self, res: &mut VecZnxBackendMut<'r, B>, res_col: usize);
 }
@@ -52,21 +45,27 @@ pub trait VecZnxNormalizeInplaceBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxAddInto {
-    /// Adds the selected column of `a` to the selected column of `b` and writes the result on the selected column of `res`.
-    fn vec_znx_add_into<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-        B: VecZnxToRef;
+pub trait VecZnxAddIntoBackend<B: Backend> {
+    /// Adds the selected backend-native column of `a` to the selected backend-native column of `b`.
+    fn vec_znx_add_into_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+    );
 }
 
-pub trait VecZnxAddAssign {
-    /// Adds the selected column of `a` to the selected column of `res` and writes the result on the selected column of `res`.
-    fn vec_znx_add_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxAddAssignBackend<B: Backend> {
+    fn vec_znx_add_assign_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxAddScalarInto {
@@ -95,33 +94,36 @@ pub trait VecZnxAddScalarAssign {
         A: ScalarZnxToRef;
 }
 
-pub trait VecZnxSub {
-    /// Subtracts the selected column of `b` from the selected column of `a` and writes the result on the selected column of `res`.
-    fn vec_znx_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-        B: VecZnxToRef;
+pub trait VecZnxSubBackend<B: Backend> {
+    fn vec_znx_sub_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+    );
 }
 
-pub trait VecZnxSubAssign {
-    /// Subtracts the selected column of `a` from the selected column of `res` inplace.
-    ///
-    /// res\[res_col\] -= a\[a_col\]
-    fn vec_znx_sub_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxSubInplaceBackend<B: Backend> {
+    fn vec_znx_sub_inplace_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
-pub trait VecZnxSubNegateAssign {
-    /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
-    ///
-    /// res\[res_col\] = a\[a_col\] - res\[res_col\]
-    fn vec_znx_sub_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxSubNegateInplaceBackend<B: Backend> {
+    fn vec_znx_sub_negate_inplace_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxSubScalar {
@@ -142,19 +144,18 @@ pub trait VecZnxSubScalarAssign {
         A: ScalarZnxToRef;
 }
 
-pub trait VecZnxNegate {
-    /// Negates the selected column of `a` and stores the result in `res_col` of `res`.
-    fn vec_znx_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxNegateBackend<B: Backend> {
+    fn vec_znx_negate_backend(
+        &self,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    );
 }
 
-pub trait VecZnxNegateAssign {
-    /// Negates the selected column of `a`.
-    fn vec_znx_negate_assign<A>(&self, a: &mut A, a_col: usize)
-    where
-        A: VecZnxToMut;
+pub trait VecZnxNegateInplaceBackend<B: Backend> {
+    fn vec_znx_negate_inplace_backend(&self, a: &mut VecZnxBackendMut<'_, B>, a_col: usize);
 }
 
 /// Returns scratch bytes required for left-shift operations.
@@ -392,19 +393,18 @@ pub trait VecZnxMergeRings<B: Backend> {
 }
 
 /// Switches ring degree between `a` and `res` by truncation or zero-padding.
-pub trait VecZnxSwitchRing {
-    fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxSwitchRingBackend<B: Backend> {
+    fn vec_znx_switch_ring_backend(
+        &self,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    );
 }
 
-/// Copies the selected column of `a` into the selected column of `res`.
-pub trait VecZnxCopy {
-    fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxCopyBackend<B: Backend> {
+    fn vec_znx_copy_backend(&self, res: &mut VecZnxBackendMut<'_, B>, res_col: usize, a: &VecZnxBackendRef<'_, B>, a_col: usize);
 }
 
 pub trait VecZnxFillUniform {
@@ -412,6 +412,11 @@ pub trait VecZnxFillUniform {
     fn vec_znx_fill_uniform<R>(&self, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut;
+}
+
+pub trait VecZnxFillUniformBackend<B: Backend> {
+    /// Fills the selected backend-native column from a backend-defined uniform sampler seeded by `seed`.
+    fn vec_znx_fill_uniform_backend(&self, base2k: usize, res: &mut VecZnxBackendMut<'_, B>, res_col: usize, seed: [u8; 32]);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -424,9 +429,35 @@ pub trait VecZnxFillNormal {
 }
 
 #[allow(clippy::too_many_arguments)]
+pub trait VecZnxFillNormalBackend<B: Backend> {
+    /// Fills the selected backend-native column from a backend-defined normal sampler seeded by `seed`.
+    fn vec_znx_fill_normal_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxAddNormal {
     /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
     fn vec_znx_add_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
     where
         R: VecZnxToMut;
+}
+
+#[allow(clippy::too_many_arguments)]
+pub trait VecZnxAddNormalBackend<B: Backend> {
+    /// Adds backend-defined normal noise to the selected backend-native column using `seed`.
+    fn vec_znx_add_normal_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    );
 }

@@ -164,6 +164,25 @@ impl<B: Backend> VmpPMatToBackendRef<B> for VmpPMat<B::OwnedBuf, B> {
     }
 }
 
+/// Reborrow an already backend-borrowed `VmpPMat` as a shared backend-native view.
+pub trait VmpPMatReborrowBackendRef<B: Backend> {
+    fn reborrow_backend_ref(&self) -> VmpPMatBackendRef<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> VmpPMatReborrowBackendRef<B> for VmpPMat<B::BufMut<'b>, B> {
+    fn reborrow_backend_ref(&self) -> VmpPMatBackendRef<'_, B> {
+        VmpPMat {
+            data: B::view_ref_mut(&self.data),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 /// Mutably borrow a backend-owned `VmpPMat` using the backend's native view type.
 pub trait VmpPMatToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> VmpPMatBackendMut<'_, B>;
@@ -180,6 +199,17 @@ impl<B: Backend> VmpPMatToBackendMut<B> for VmpPMat<B::OwnedBuf, B> {
             size: self.size,
             _phantom: std::marker::PhantomData,
         }
+    }
+}
+
+/// Reborrow an already backend-borrowed `VmpPMat` as a mutable backend-native view.
+pub trait VmpPMatReborrowBackendMut<B: Backend> {
+    fn reborrow_backend_mut(&mut self) -> VmpPMatBackendMut<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> VmpPMatReborrowBackendMut<B> for VmpPMat<B::BufMut<'b>, B> {
+    fn reborrow_backend_mut(&mut self) -> VmpPMatBackendMut<'_, B> {
+        vmp_pmat_backend_mut_from_mut::<B>(self)
     }
 }
 

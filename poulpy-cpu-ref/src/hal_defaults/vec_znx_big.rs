@@ -109,6 +109,21 @@ where
         fft64_vec_znx_big_add_normal_ref(res_base2k, res, res_col, noise_infos, source);
     }
 
+    fn vec_znx_big_add_normal_seed_default<R>(
+        module: &Module<BE>,
+        res_base2k: usize,
+        res: &mut R,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    ) where
+        BE: Backend<ScalarBig = i64>,
+        R: VecZnxBigToMut<BE>,
+    {
+        let mut source = Source::new(seed);
+        Self::vec_znx_big_add_normal_default(module, res_base2k, res, res_col, noise_infos, &mut source);
+    }
+
     fn vec_znx_big_add_into_default<R, A, C>(
         _module: &Module<BE>,
         res: &mut R,
@@ -371,6 +386,21 @@ where
         R: VecZnxBigToMut<BE>,
     {
         ntt120_vec_znx_big_add_normal_ref(res_base2k, res, res_col, noise_infos, source);
+    }
+
+    fn vec_znx_big_add_normal_seed_default<R>(
+        module: &Module<BE>,
+        res_base2k: usize,
+        res: &mut R,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    ) where
+        BE: Backend<ScalarBig = i128>,
+        R: VecZnxBigToMut<BE>,
+    {
+        let mut source = Source::new(seed);
+        Self::vec_znx_big_add_normal_default(module, res_base2k, res, res_col, noise_infos, &mut source);
     }
 
     fn vec_znx_big_add_into_default<R, A, C>(

@@ -55,7 +55,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         + GaloisElement
         + GLWEAutomorphism<BE>
         + GLWEShift<BE>
-        + GLWECopy
+        + GLWECopy<BE>
         + CyclotomicOrder
         + GLWENormalize<BE>
         + GLWETraceDefault<BE>
@@ -122,7 +122,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
 #[doc(hidden)]
 pub trait GLWETraceDefault<BE: Backend>
 where
-    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy + CyclotomicOrder + GLWENormalize<BE>,
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy<BE> + CyclotomicOrder + GLWENormalize<BE>,
 {
     fn glwe_trace_galois_elements_default(&self) -> Vec<i64> {
         trace_galois_elements(self.log_n(), self.cyclotomic_order())
@@ -162,7 +162,7 @@ where
 
     fn glwe_trace_default<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &'s mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -188,7 +188,7 @@ where
         let mut scratch_1 = scratch_1;
 
         if a.base2k() == atk_layout.base2k() {
-            self.glwe_copy(&mut tmp, a);
+            self.glwe_copy(&mut glwe_backend_mut_from_mut::<BE>(&mut tmp), &a.to_backend_ref());
         } else {
             let mut tmp_backend = glwe_backend_mut_from_mut::<BE>(&mut tmp);
             scratch_1 = scratch_1.apply_mut(|scratch| {
@@ -204,7 +204,7 @@ where
         }
 
         if res.base2k() == atk_layout.base2k() {
-            self.glwe_copy(res, &tmp);
+            self.glwe_copy(&mut res.to_backend_mut(), &glwe_backend_ref_from_mut::<BE>(&tmp));
         } else {
             let (mut res_out, scratch_2) = scratch_1.take_glwe(&res.glwe_layout());
             {
@@ -213,7 +213,7 @@ where
                     self.glwe_normalize(&mut res_out_backend, &glwe_backend_ref_from_mut::<BE>(&tmp), scratch);
                 });
             }
-            self.glwe_copy(res, &res_out);
+            self.glwe_copy(&mut res.to_backend_mut(), &glwe_backend_ref_from_mut::<BE>(&res_out));
         }
     }
 
@@ -234,6 +234,6 @@ where
 }
 
 impl<BE: Backend> GLWETraceDefault<BE> for Module<BE> where
-    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy + CyclotomicOrder + GLWENormalize<BE>
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy<BE> + CyclotomicOrder + GLWENormalize<BE>
 {
 }

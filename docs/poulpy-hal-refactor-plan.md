@@ -33,7 +33,7 @@ The following move to `poulpy-cpu-ref`:
 
 | Item | Notes |
 |------|-------|
-| `ScratchArenaTakeHost` | Returns host slices (`&mut [u8]`, etc.) |
+| `ScratchArenaTakeHost` | Removed; CPU defaults now use local typed-take helpers over `ScratchArena::take_region(...)` + `HostBufMut::into_bytes()` |
 | Stats / debug layout printing | Require host byte visibility |
 
 `poulpy-core` must use exclusively `BackendRef/Mut` variants so it does not depend on
@@ -117,23 +117,42 @@ Sampling traits migrate to `_Backend` signatures in Phase 5. The existing
 
 ## Phase 1 — Fix scratch reuse in `poulpy-core`
 
-### 1a — Add missing `VecZnxToBackendRef/Mut` impls for borrowed buffer types
+### 1a — Add explicit reborrow traits for borrowed backend views
 
-In `poulpy-hal/src/layouts/vec_znx.rs`, next to the existing `OwnedBuf` impls:
+The original plan here was to add `VecZnxToBackendRef/Mut` impls for
+`VecZnx<B::BufRef<'b>>` / `VecZnx<B::BufMut<'b>>`. That shape does **not**
+work: those impls overlap the existing `VecZnx<B::OwnedBuf>` impls under Rust
+coherence because `OwnedBuf`, `BufRef<'_>`, and `BufMut<'_>` are associated
+types and the compiler cannot assume they are distinct.
+
+Use a separate API family instead:
 
 ```rust
-impl<'b, B: Backend> VecZnxToBackendRef<B> for VecZnx<B::BufMut<'b>> where B: 'b {
-    fn to_backend_ref(&self) -> VecZnxBackendRef<'_, B> { vec_znx_backend_ref_from_mut(self) }
+pub trait VecZnxReborrowBackendRef<B: Backend> {
+    fn reborrow_backend_ref(&self) -> VecZnxBackendRef<'_, B>;
 }
-impl<'b, B: Backend> VecZnxToBackendMut<B> for VecZnx<B::BufMut<'b>> where B: 'b {
-    fn to_backend_mut(&mut self) -> VecZnxBackendMut<'_, B> { vec_znx_backend_mut_from_mut(self) }
-}
-impl<'b, B: Backend> VecZnxToBackendRef<B> for VecZnx<B::BufRef<'b>> where B: 'b {
-    fn to_backend_ref(&self) -> VecZnxBackendRef<'_, B> { vec_znx_backend_ref_from_ref(self) }
+
+pub trait VecZnxReborrowBackendMut<B: Backend> {
+    fn reborrow_backend_mut(&mut self) -> VecZnxBackendMut<'_, B>;
 }
 ```
 
+Implement those traits only for mutable backend-borrowed layouts:
+
+- `VecZnx<B::BufMut<'b>>` → `reborrow_backend_ref` and `reborrow_backend_mut`
+
+They are thin method wrappers over the existing `*_backend_*_from_*` helper
+functions and do not overlap the owned-buffer `ToBackendRef/Mut` traits.
+
+Do **not** add the same trait for both `BufRef<'_>` and `BufMut<'_>` under one
+trait name. That overlaps for the same reason as the original `ToBackendRef`
+plan: the compiler cannot assume `BufRef<'_>` and `BufMut<'_>` are distinct
+associated types. Shared borrowed views can continue using the existing
+free-function adapters or inline `B::view_ref(...)` construction.
+
 ### 1b — Refactor `glwe_encrypt_sk_internal`
+
+Status on April 24, 2026: complete.
 
 In `poulpy-core/src/encryption/glwe.rs`:
 
@@ -146,6 +165,8 @@ In `poulpy-core/src/encryption/glwe.rs`:
 Follow the model of `glwe_encrypt_pk_internal`, which already uses the arena correctly.
 
 ### 1c — Fix `glwe_trace.rs`
+
+Status on April 24, 2026: complete.
 
 In `poulpy-core/src/glwe_trace.rs`: replace the remaining `BE::alloc_bytes` call with a
 `scratch.take_*` carve.
@@ -187,21 +208,22 @@ This avoids giving `HostBackend` stronger guarantees than it actually expresses.
 
 ---
 
-## Phase 3 — Complete `BackendRef/Mut` conversions for all layout types
+## Phase 3 — Complete borrowed backend reborrow coverage for all layout types
 
-The gap from Phase 1a (`BufMut<'b>` / `BufRef<'b>` variants) exists for every layout type.
-After Phase 1a covers `VecZnx`, apply the same pattern to:
+The same gap from Phase 1a exists for every layout type that can be carved out
+of a `ScratchArena`. After `VecZnx`, apply the same `BufMut<'_>`-only
+`ReborrowBackendRef/Mut` pattern to:
 
 | Type | Missing impls |
 |------|--------------|
-| `VecZnxBig<D, B>` | `ToBackendRef/Mut` for `BufMut<'b>`; `ToBackendRef` for `BufRef<'b>` |
+| `VecZnxBig<D, B>` | `ReborrowBackendRef/Mut` for `BufMut<'b>` |
 | `VecZnxDft<D, B>` | same |
 | `SvpPPol<D, B>` | same |
 | `VmpPMat<D, B>` | same |
 | `CnvPVecL/R<D, B>` | same |
 
 After this phase, any type carved from a scratch arena can be passed directly to any
-backend-native API trait without manual free-function conversion.
+backend-native API trait without reaching for manual free-function conversion.
 
 ---
 
@@ -254,7 +276,7 @@ Can be done trait-by-trait, incrementally, without breaking anything else.
 Once `poulpy-core` uses only `BackendRef/Mut` variants (Phase 5 complete):
 
 **Move to `poulpy-cpu-ref`:**
-- `ScratchArenaTakeHost`
+- `ScratchArenaTakeHost` is already removed; keep only local CPU-ref typed-take helpers where host scratch slices are needed
 - `layouts/stats.rs` and debug layout printing
 - CPU-specific host defaults and helper algorithms that still require raw slices
 

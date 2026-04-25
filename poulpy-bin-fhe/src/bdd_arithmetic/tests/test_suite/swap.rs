@@ -22,9 +22,11 @@ pub fn test_cmux_direct<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cmux<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
     BE: HostBackend,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
@@ -101,9 +103,11 @@ pub fn test_cswap_direct<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cswap<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
     BE: HostBackend,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
@@ -182,9 +186,11 @@ pub fn test_fhe_uint_swap<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + Cswap<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
     BE: HostBackend,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
@@ -256,9 +262,11 @@ pub fn test_glwe_blind_retrieval_statefull<BRA: BlindRotationAlgo, BE: Backend<O
     test_context: &TestContext<BRA, BE>,
 ) where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEBlindRetrieval<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;
@@ -320,9 +328,11 @@ pub fn test_glwe_blind_retriever<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = 
     test_context: &TestContext<BRA, BE>,
 ) where
     Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWEBlindRetrieval<BE> + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: poulpy_core::layouts::GGSWLayout = TEST_GGSW_INFOS;

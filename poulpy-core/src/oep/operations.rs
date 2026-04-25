@@ -9,7 +9,7 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement,
+        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToMut, GLWEToRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     operations::{
@@ -39,6 +39,10 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(
@@ -49,6 +53,10 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -78,6 +86,10 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_inplace<'s, R, A>(
@@ -91,6 +103,10 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -125,6 +141,10 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_square_apply<'s, R, A>(
@@ -137,6 +157,10 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
@@ -150,6 +174,7 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
@@ -311,7 +336,7 @@ pub unsafe trait GLWETraceImpl<BE: Backend>: Backend {
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -355,7 +380,7 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -394,7 +419,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: HostDataMut,
-        A: HostDataRef;
+        A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>;
 
     fn glwe_mul_const_inplace_default<'s, R>(
         module: &Module<BE>,
@@ -403,7 +429,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut;
+        R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>;
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -424,7 +451,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
-        B: HostDataRef;
+        B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<'s, R, A>(
@@ -437,7 +465,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: HostDataMut,
-        A: HostDataRef;
+        A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>;
 
     fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -463,7 +492,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
-        B: HostDataRef;
+        B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply_default<'s, R, A>(
@@ -475,7 +505,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: HostDataMut,
-        A: HostDataRef;
+        A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>;
 
     fn glwe_tensor_relinearize_default<'s, R, A, B>(
         module: &Module<BE>,
@@ -488,6 +519,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
@@ -601,7 +633,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -638,7 +670,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -695,6 +727,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
     }
@@ -707,6 +740,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, scratch)
     }
@@ -733,6 +767,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain(
             module,
@@ -757,6 +792,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_assign(
             module,
@@ -799,6 +835,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(
             module,
@@ -822,6 +859,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply(module, cnv_offset, res, a, a_effective_k, scratch)
     }
@@ -837,6 +875,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
     {
@@ -1019,7 +1058,7 @@ where
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -1069,7 +1108,7 @@ where
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,

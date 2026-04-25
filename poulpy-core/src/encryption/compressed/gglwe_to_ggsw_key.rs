@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxCopy},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare},
     layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
@@ -10,6 +10,7 @@ use crate::{
         GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToMut, GLWEInfos, GLWESecret, GLWESecretTensor,
         GLWESecretTensorFactory, GLWESecretToRef, prepared::GLWESecretPreparedFactory,
     },
+    vec_znx_host_ops::vec_znx_copy,
 };
 
 #[doc(hidden)]
@@ -34,7 +35,7 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> GGLWEToGGSWKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopy,
+    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -105,7 +106,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                self.vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+                vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let (seed_xa_tmp, _) = source_xa.branch();

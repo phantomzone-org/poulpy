@@ -1,15 +1,16 @@
 use poulpy_hal::{
     api::{
-        CnvPVecBytesOf, Convolution, ModuleN, ScratchArenaTakeBasic, VecZnxAddAssign, VecZnxAddInto, VecZnxBigAddSmallAssign,
-        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero, VecZnxZeroBackend,
+        CnvPVecBytesOf, Convolution, ModuleN, ScratchArenaTakeBasic, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
+        VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub,
+        VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
+        VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
+        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, vec_znx_backend_ref_from_mut,
-        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, VecZnxBigReborrowBackendRef,
+        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
     },
 };
 
@@ -21,7 +22,7 @@ use crate::{
     GGLWEProduct, ScratchArenaTakeCore,
     layouts::{
         Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared,
-        GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
         glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
@@ -43,17 +44,20 @@ pub trait GLWEMulConstDefault<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
 impl<BE: Backend> GLWEMulConstDefault<BE> for Module<BE>
 where
-    Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes + VecZnxCopy,
+    Self: Convolution<BE> + VecZnxBigBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes,
+    Self: VecZnxCopyBackend<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
@@ -86,6 +90,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -116,7 +121,7 @@ where
                 let mut scratch_iter = scratch.borrow();
                 self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, a.data(), i, b, &mut scratch_iter);
             }
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             {
                 let mut scratch_iter = scratch.borrow();
                 self.vec_znx_big_normalize(
@@ -130,13 +135,16 @@ where
                     &mut scratch_iter,
                 );
             }
-            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+            let mut res_backend = <GLWE<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -164,7 +172,7 @@ where
                 let mut scratch_iter = scratch.borrow();
                 self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, res.data(), i, b, &mut scratch_iter);
             }
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             {
                 let mut scratch_iter = scratch.borrow();
                 self.vec_znx_big_normalize(
@@ -178,7 +186,9 @@ where
                     &mut scratch_iter,
                 );
             }
-            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+            let mut res_backend = <GLWE<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
 }
@@ -193,7 +203,7 @@ where
         + VecZnxBigNormalize<BE>
         + Convolution<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxCopy,
+        + VecZnxCopyBackend<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
     fn glwe_mul_plain_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
@@ -246,6 +256,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -287,7 +298,7 @@ where
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, 0, &mut scratch_3);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             {
                 let mut scratch_iter = scratch_3.borrow();
                 self.vec_znx_big_normalize(
@@ -301,7 +312,9 @@ where
                     &mut scratch_iter,
                 );
             }
-            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+            let mut res_backend = <GLWE<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
 
@@ -317,6 +330,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -357,7 +371,7 @@ where
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &res_prep, i, &a_prep, 0, &mut scratch_3);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             {
                 let mut scratch_iter = scratch_3.borrow();
                 self.vec_znx_big_normalize(
@@ -371,7 +385,9 @@ where
                     &mut scratch_iter,
                 );
             }
-            self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+            let mut res_backend = <GLWE<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
 }
@@ -398,6 +414,7 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_assign<R, A>(
@@ -411,6 +428,7 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -444,6 +462,7 @@ pub trait GLWETensoringDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
@@ -459,6 +478,7 @@ pub trait GLWETensoringDefault<BE: Backend> {
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -475,6 +495,7 @@ pub trait GLWETensoringDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -487,13 +508,13 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
         + Convolution<BE>
-        + VecZnxSubAssign
-        + VecZnxNegate
-        + VecZnxAddAssign
+        + VecZnxSubInplaceBackend<BE>
+        + VecZnxAddAssignBackend<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxCopy
         + VecZnxNormalize<BE>
         + VecZnxDftApply<BE>
+        + VecZnxCopyBackend<BE>
+        + VecZnxNegateBackend<BE>
         + GGLWEProduct<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxNormalizeTmpBytes,
@@ -621,6 +642,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
@@ -662,7 +684,7 @@ where
                     cols + i,
                     &mut scratch_iter,
                 );
-                let a_conv_ref = vec_znx_backend_ref_from_mut::<BE>(&a_conv);
+                let a_conv_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv);
                 self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv_ref, 0);
             }
         }
@@ -670,7 +692,8 @@ where
         let (mut res_dft, mut scratch_2) = scratch.borrow().take_vec_znx_dft(self, cols, tsk_size); // Todo optimise
         let tsk = tsk.to_backend_ref();
 
-        let a_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&a_dft);
+        let a_dft_ref =
+            <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendRef<BE>>::reborrow_backend_ref(&a_dft);
         self.gglwe_product_dft(&mut res_dft, &a_dft_ref, &tsk.0, &mut scratch_2);
         let mut res_big = self.vec_znx_idft_apply_consume(res_dft);
 
@@ -679,7 +702,7 @@ where
             for i in 0..cols {
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, &a_backend.data, a_base2k, i, &mut scratch_iter);
-                let a_conv_ref = vec_znx_backend_ref_from_mut::<BE>(&a_conv);
+                let a_conv_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv);
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &a_conv_ref, 0);
             }
         }
@@ -687,10 +710,15 @@ where
         {
             let (mut res_tmp, mut scratch_norm) = scratch_2.borrow().take_vec_znx(self.n(), 1, res.size());
             for i in 0..(res.rank() + 1).into() {
-                let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                let res_big_ref =
+                    <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<BE>>::reborrow_backend_ref(
+                        &res_big,
+                    );
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_big_normalize(&mut res_tmp, res_base2k, 0, 0, &res_big_ref, key_base2k, i, &mut scratch_iter);
-                self.vec_znx_copy(res.data_mut(), i, &res_tmp, 0);
+                let mut res_backend = <GLWE<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+                self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
             }
         }
     }
@@ -705,6 +733,7 @@ where
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -749,7 +778,7 @@ where
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_4);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             let mut scratch_iter = scratch_5.borrow();
             self.vec_znx_big_normalize(
                 &mut tmp,
@@ -762,7 +791,18 @@ where
                 &mut scratch_iter,
             );
 
-            self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
+            // TODO: Do we need 2 copies?
+            {
+                let mut diag_terms_mut =
+                    <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut diag_terms);
+                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                self.vec_znx_copy_backend(&mut diag_terms_mut, i, &tmp_ref, 0);
+            }
+            {
+                let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                let diag_terms_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&diag_terms);
+                self.vec_znx_copy_backend(&mut res_backend.data, col_i + i, &diag_terms_ref, i);
+            }
         }
 
         for i in 0..cols {
@@ -773,7 +813,7 @@ where
                 self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_4);
                 let res_big = self.vec_znx_idft_apply_consume(res_dft);
                 let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
-                let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                let res_big_ref = res_big.reborrow_backend_ref();
                 let mut scratch_iter = scratch_5.borrow();
                 self.vec_znx_big_normalize(
                     &mut tmp,
@@ -785,11 +825,18 @@ where
                     0,
                     &mut scratch_iter,
                 );
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
+                {
+                    let mut tmp_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp);
+                    let diag_terms_ref =
+                        <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&diag_terms);
+                    self.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, i);
+                    self.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, j);
+                }
 
                 // TODO: Do we need copy?
-                self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
+                let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                self.vec_znx_copy_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
             }
         }
     }
@@ -807,6 +854,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -881,7 +929,7 @@ where
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, &mut scratch_3);
             let res_big = self.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, mut scratch_4) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-            let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             let mut scratch_iter = scratch_4.borrow();
             self.vec_znx_big_normalize(
                 &mut tmp,
@@ -894,7 +942,11 @@ where
                 &mut scratch_iter,
             );
 
-            self.vec_znx_copy(res.data_mut(), col_i + i, &tmp, 0);
+            {
+                let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                self.vec_znx_copy_backend(&mut res_backend.data, col_i + i, &tmp_ref, 0);
+            }
 
             // Pre-subtracts
             // res[i!=j] = NEG(a[i] * b[i]) + SUB(a[j] * b[j])
@@ -902,9 +954,13 @@ where
                 if j != i {
                     if j < i {
                         let col_j = j * cols - (j * (j + 1) / 2);
-                        self.vec_znx_sub_assign(res.data_mut(), col_j + i, &tmp, 0);
+                        let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                        let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                        self.vec_znx_sub_inplace_backend(&mut res_backend.data, col_j + i, &tmp_ref, 0);
                     } else {
-                        self.vec_znx_negate(res.data_mut(), col_i + j, &tmp, 0);
+                        let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                        let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                        self.vec_znx_negate_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
                     }
                 }
             }
@@ -920,7 +976,7 @@ where
                     self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, &mut scratch_3);
                     let res_big = self.vec_znx_idft_apply_consume(res_dft);
                     let (mut tmp, mut scratch_3) = scratch_3.take_vec_znx(self.n(), 1, res.size());
-                    let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
+                    let res_big_ref = res_big.reborrow_backend_ref();
                     let mut scratch_iter = scratch_3.borrow();
                     self.vec_znx_big_normalize(
                         &mut tmp,
@@ -933,7 +989,9 @@ where
                         &mut scratch_iter,
                     );
 
-                    self.vec_znx_add_assign(res.data_mut(), col_i + j, &tmp, 0);
+                    let mut res_backend = <GLWETensor<R> as GLWEToBackendMut<BE>>::to_backend_mut(res);
+                    let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                    self.vec_znx_add_assign_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
                 }
             }
         }
@@ -1078,14 +1136,23 @@ fn normalize_input_limb_bound_with_offset(
     normalize_input_limb_bound(full_size, res_size, res_base2k, in_base2k, offset_bits as usize)
 }
 
-impl<BE: Backend> GLWEAdd for Module<BE> where Self: ModuleN + VecZnxAddInto + VecZnxCopy + VecZnxAddAssign + VecZnxZero {}
-
-impl<BE: Backend> GLWESub for Module<BE> where
-    Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubAssign + VecZnxSubNegateAssign
+impl<BE: Backend> GLWEAdd<BE> for Module<BE> where
+    Self: ModuleN + VecZnxAddIntoBackend<BE> + VecZnxCopyBackend<BE> + VecZnxAddAssignBackend<BE> + VecZnxZeroBackend<BE>
 {
 }
 
-impl<BE: Backend> GLWENegate for Module<BE> where Self: VecZnxNegate + VecZnxNegateAssign + VecZnxZero + ModuleN {}
+impl<BE: Backend> GLWESub<BE> for Module<BE> where
+    Self: ModuleN
+        + VecZnxSubBackend<BE>
+        + VecZnxSubInplaceBackend<BE>
+        + VecZnxSubNegateInplaceBackend<BE>
+        + VecZnxCopyBackend<BE>
+        + VecZnxNegateBackend<BE>
+        + VecZnxZeroBackend<BE>
+{
+}
+
+impl<BE: Backend> GLWENegate<BE> for Module<BE> where Self: VecZnxNegateBackend<BE> + VecZnxNegateInplaceBackend<BE> + ModuleN {}
 
 impl<BE: Backend> GLWERotateDefault<BE> for Module<BE> where
     Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>
@@ -1177,7 +1244,7 @@ where
     }
 }
 
-impl<BE: Backend> GLWECopy for Module<BE> where Self: ModuleN + VecZnxCopy + VecZnxZero {}
+impl<BE: Backend> GLWECopy<BE> for Module<BE> where Self: ModuleN + VecZnxCopyBackend<BE> + VecZnxZeroBackend<BE> {}
 
 impl<BE: Backend> GLWEShiftDefault<BE> for Module<BE> where
     Self: ModuleN

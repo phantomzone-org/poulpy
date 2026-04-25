@@ -52,8 +52,10 @@ cross_backend_test_suite! {
     backend_test = crate::NTT120Ref,
     params = TestParams { size: 1<<8, base2k: 12 },
     tests = {
-        test_vec_znx_add_into => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_into,
+        test_vec_znx_zero_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_zero_backend_matches_wrapper,
+        test_vec_znx_add_into_backend_matches_reference => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_into_backend_matches_reference,
         test_vec_znx_add_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_assign,
+        test_vec_znx_add_assign_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_assign_backend_matches_wrapper,
         test_vec_znx_add_scalar_into => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar_into,
         test_vec_znx_add_scalar_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_scalar_assign,
         test_vec_znx_sub => poulpy_hal::test_suite::vec_znx::test_vec_znx_sub,
@@ -66,7 +68,9 @@ cross_backend_test_suite! {
         test_vec_znx_lsh => poulpy_hal::test_suite::vec_znx::test_vec_znx_lsh,
         test_vec_znx_lsh_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_lsh_assign,
         test_vec_znx_negate => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate,
-        test_vec_znx_negate_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate_assign,
+        test_vec_znx_negate_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate_backend_matches_wrapper,
+        test_vec_znx_negate_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate_inplace,
+        test_vec_znx_negate_inplace_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_negate_inplace_backend_matches_wrapper,
         test_vec_znx_rotate => poulpy_hal::test_suite::vec_znx::test_vec_znx_rotate,
         test_vec_znx_rotate_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_rotate_assign,
         test_vec_znx_automorphism => poulpy_hal::test_suite::vec_znx::test_vec_znx_automorphism,
@@ -76,8 +80,10 @@ cross_backend_test_suite! {
         test_vec_znx_normalize => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize,
         test_vec_znx_normalize_assign => poulpy_hal::test_suite::vec_znx::test_vec_znx_normalize_assign,
         test_vec_znx_switch_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_switch_ring,
+        test_vec_znx_switch_ring_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_switch_ring_backend_matches_wrapper,
         test_vec_znx_split_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_split_ring,
         test_vec_znx_copy => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy,
+        test_vec_znx_copy_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy_backend_matches_wrapper,
     }
 }
 cross_backend_test_suite! {
@@ -98,6 +104,7 @@ cross_backend_test_suite! {
     tests = {
         test_vec_znx_big_add_into => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_into,
         test_vec_znx_big_add_assign => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_assign,
+        test_vec_znx_big_seed_add_normal_matches_source_wrapper => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_seed_add_normal_matches_source_wrapper,
         test_vec_znx_big_add_small_into => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_into,
         test_vec_znx_big_add_small_assign => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_small_assign,
         test_vec_znx_big_sub => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_sub,
@@ -148,6 +155,7 @@ backend_test_suite! {
     params = TestParams { size: 1<<12, base2k: 12 },
     tests = {
         test_vec_znx_fill_uniform => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_uniform,
+        test_vec_znx_seed_sampling_matches_source_wrappers => poulpy_hal::test_suite::vec_znx::test_vec_znx_seed_sampling_matches_source_wrappers,
         test_vec_znx_fill_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_fill_normal,
         test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
     }

@@ -381,6 +381,11 @@ impl<B: Backend> VecZnxToBackendRef<B> for VecZnx<B::OwnedBuf> {
     }
 }
 
+/// Reborrow an already backend-borrowed `VecZnx` as a shared backend-native view.
+pub trait VecZnxReborrowBackendRef<B: Backend> {
+    fn reborrow_backend_ref(&self) -> VecZnxBackendRef<'_, B>;
+}
+
 pub fn vec_znx_backend_ref_from_ref<'a, 'b, B: Backend + 'b>(vec: &'a VecZnx<B::BufRef<'b>>) -> VecZnxBackendRef<'a, B> {
     VecZnx {
         data: B::view_ref(&vec.data),
@@ -401,6 +406,12 @@ pub fn vec_znx_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(vec: &'a VecZnx<B::
     }
 }
 
+impl<'b, B: Backend + 'b> VecZnxReborrowBackendRef<B> for VecZnx<B::BufMut<'b>> {
+    fn reborrow_backend_ref(&self) -> VecZnxBackendRef<'_, B> {
+        vec_znx_backend_ref_from_mut::<B>(self)
+    }
+}
+
 /// Mutably borrow a backend-owned `VecZnx` using the backend's native view type.
 pub trait VecZnxToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> VecZnxBackendMut<'_, B>;
@@ -418,6 +429,11 @@ impl<B: Backend> VecZnxToBackendMut<B> for VecZnx<B::OwnedBuf> {
     }
 }
 
+/// Reborrow an already backend-borrowed `VecZnx` as a mutable backend-native view.
+pub trait VecZnxReborrowBackendMut<B: Backend> {
+    fn reborrow_backend_mut(&mut self) -> VecZnxBackendMut<'_, B>;
+}
+
 pub fn vec_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(vec: &'a mut VecZnx<B::BufMut<'b>>) -> VecZnxBackendMut<'a, B> {
     VecZnx {
         data: B::view_mut_ref(&mut vec.data),
@@ -425,6 +441,12 @@ pub fn vec_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(vec: &'a mut VecZnx
         cols: vec.cols,
         size: vec.size,
         max_size: vec.max_size,
+    }
+}
+
+impl<'b, B: Backend + 'b> VecZnxReborrowBackendMut<B> for VecZnx<B::BufMut<'b>> {
+    fn reborrow_backend_mut(&mut self) -> VecZnxBackendMut<'_, B> {
+        vec_znx_backend_mut_from_mut::<B>(self)
     }
 }
 

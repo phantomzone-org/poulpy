@@ -1,13 +1,32 @@
 use poulpy_core::layouts::{Base2K, Degree, GLWE, LWEInfos, Rank, TorusPrecision};
-use poulpy_cpu_ref::reference::vec_znx::vec_znx_rotate_inplace;
+use poulpy_cpu_ref::reference::vec_znx::{vec_znx_rotate_inplace, vec_znx_switch_ring};
 use poulpy_cpu_ref::reference::znx::ZnxRef;
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
+        VecZnxRotateInplaceTmpBytes,
     },
-    layouts::{Backend, Data, HostDataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, ZnxInfos, ZnxViewMut},
+    layouts::{
+        Backend, Data, HostDataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToMut, VecZnxToRef,
+        ZnxInfos, ZnxView, ZnxViewMut,
+    },
 };
+
+fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let mut res = res.to_mut();
+    let a = a.to_ref();
+    let min_size = res.size().min(a.size());
+    for j in 0..min_size {
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+    }
+    for j in min_size..res.size() {
+        res.at_mut(res_col, j).fill(0);
+    }
+}
 
 /// Specifies in which direction the LUT is rotated by the LWE constant term
 /// during blind rotation.
@@ -278,11 +297,9 @@ where
     Self: VecZnxRotateAssign<BE>
         + VecZnxNormalizeAssign<BE>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxCopy
-        + VecZnxRotateAssignTmpBytes
-        + VecZnxRotateAssign<BE>
-        + VecZnxRotateAssignTmpBytes,
+        + VecZnxRotateInplaceTmpBytes
+        + VecZnxRotateInplace<BE>
+        + VecZnxRotateInplaceTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     fn lookup_table_set(&self, res: &mut LookupTable<Vec<u8>>, f: &[i64], k: usize) {
@@ -340,13 +357,13 @@ where
             let mut tmp: Vec<i64> = vec![0i64; lut_full.n()];
 
             for i in 0..res.extension_factor() {
-                self.vec_znx_switch_ring(res.data[i].data_mut(), 0, &lut_full, 0);
+                vec_znx_switch_ring::<_, _, ZnxRef>(res.data[i].data_mut(), 0, &lut_full, 0);
                 if i < res.extension_factor() {
                     vec_znx_rotate_inplace::<_, ZnxRef>(-1, &mut lut_full, 0, &mut tmp);
                 }
             }
         } else {
-            self.vec_znx_copy(res.data[0].data_mut(), 0, &lut_full, 0);
+            vec_znx_copy(res.data[0].data_mut(), 0, &lut_full, 0);
         }
 
         for a in res.data.iter_mut() {

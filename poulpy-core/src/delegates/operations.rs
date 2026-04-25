@@ -12,7 +12,7 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor,
-        GLWETensorKeyPrepared, GLWEToMut, GLWEToRef, GetGaloisElement,
+        GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToMut, GLWEToRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     oep::{
@@ -58,6 +58,7 @@ impl_operations_delegate!(
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
@@ -65,6 +66,7 @@ impl_operations_delegate!(
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: HostDataMut,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const_assign(self, cnv_offset, res, b, scratch)
@@ -96,6 +98,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -111,6 +114,7 @@ impl_operations_delegate!(
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWE<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain_assign(self, cnv_offset, res, res_effective_k, a, a_effective_k, scratch)
@@ -149,6 +153,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -163,6 +168,7 @@ impl_operations_delegate!(
     ) where
         R: HostDataMut,
         A: HostDataRef,
+        GLWETensor<R>: GLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_square_apply(self, cnv_offset, res, a, a_effective_k, scratch)
@@ -178,6 +184,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         B: Data,
+        GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
@@ -371,7 +378,7 @@ impl_operations_delegate!(
     },
     fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + GLWEInfos,
+        R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -416,7 +423,7 @@ impl_operations_delegate!(
         keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,

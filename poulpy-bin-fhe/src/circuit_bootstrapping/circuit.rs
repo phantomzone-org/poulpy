@@ -13,7 +13,7 @@ use poulpy_core::{
     layouts::{
         Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut,
         GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
-        GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
+        GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank, glwe_backend_mut_from_mut,
     },
 };
 
@@ -144,11 +144,13 @@ where
         + GLWEDecrypt<BE>
         + GLWERotate<BE>
         + GLWENormalize<BE>
-        + GLWECopy
+        + GLWECopy<BE>
         + GGSWExpandRows<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     BE::OwnedBuf: HostDataRef,
+    BE: 'static,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
         &self,
@@ -249,11 +251,13 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
         + GLWERotate<BE>
         + ModuleLogN
         + GLWENormalize<BE>
-        + GLWECopy
+        + GLWECopy<BE>
         + GGSWExpandRows<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     BE::OwnedBuf: HostDataRef,
+    BE: 'static,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     // TODO(device): this core routine still drops to host GLWE/LWE views for
     // trace/packing orchestration. It is intentionally kept behind a
@@ -337,7 +341,10 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
             .execute(module, &mut res_glwe_brk_layout, lwe, &lut, &mut scratch_1.borrow());
 
         if res_glwe_brk_layout.base2k() == res_glwe_atk_layout.base2k() {
-            module.glwe_copy(&mut res_glwe_atk_layout, &res_glwe_brk_layout);
+            module.glwe_copy(
+                &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_glwe_atk_layout),
+                &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&res_glwe_brk_layout),
+            );
         } else {
             let mut atk_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_glwe_atk_layout);
             let brk_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&res_glwe_brk_layout);
@@ -372,7 +379,12 @@ pub fn circuit_bootstrap_core<R, L, M, BRA: BlindRotationAlgo, BE: Backend<Owned
                 &mut scratch_1,
             );
         } else {
-            module.glwe_trace(&mut res_row, 0, &res_glwe_atk_layout, &key.atk, &mut scratch_1.borrow());
+            let mut tmp_row: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&res_row);
+            module.glwe_trace(&mut tmp_row, 0, &res_glwe_atk_layout, &key.atk, &mut scratch_1.borrow());
+            module.glwe_copy(
+                &mut glwe_backend_mut_from_mut::<BE>(&mut res_row),
+                &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_row),
+            );
         }
 
         if i + 1 < dnum_res {
@@ -401,9 +413,11 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
     A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy,
+    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
+    BE: 'static,
     BE: 's,
 {
     // TODO(device): post-processing still uses host GLWE slices and scratch
@@ -413,6 +427,7 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
     // If gap_out < gap_in, then we need to repack, i.e. reduce the cap between coefficients.
     if log_gap_in != log_gap_out {
         let mut a_trace: GLWE<Vec<u8>> = GLWE::alloc_from_infos(a);
+        let mut packed: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
 
         // First partial trace, vanishes all coefficients which are not multiples of gap_in
         // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -434,7 +449,10 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
                 module.glwe_rotate_inplace(-(1 << log_gap_in), &mut a_trace_backend, &mut scratch.borrow());
             }
 
-            module.glwe_copy(ct, &a_trace);
+            module.glwe_copy(
+                &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(ct),
+                &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&a_trace),
+            );
         }
 
         let mut cts = HashMap::new();
@@ -442,8 +460,19 @@ fn post_process<'s, R, A, M, H, K, BE: Backend<OwnedBuf = Vec<u8>>>(
             cts.insert(i * (1 << log_gap_out), ct);
         }
 
-        module.glwe_pack(res, cts, log_gap_out, auto_keys, &mut scratch.borrow());
+        module.glwe_pack(&mut packed, cts, log_gap_out, auto_keys, &mut scratch.borrow());
+        let mut res_host = res.to_mut();
+        module.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut res_host),
+            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&packed),
+        );
     } else {
-        module.glwe_trace(res, module.log_n() - log_gap_in + 1, a, auto_keys, scratch);
+        let mut traced: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+        module.glwe_trace(&mut traced, module.log_n() - log_gap_in + 1, a, auto_keys, scratch);
+        let mut res_host = res.to_mut();
+        module.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut res_host),
+            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&traced),
+        );
     }
 }

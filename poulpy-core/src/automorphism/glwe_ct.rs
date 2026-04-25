@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxDftBytesOf, VecZnxIdftApply,
         VecZnxIdftApplyTmpBytes, VecZnxNormalize,
     },
-    layouts::{Backend, Module, ScratchArena, vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut},
+    layouts::{Backend, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendRef},
 };
 
 pub use crate::api::GLWEAutomorphism;
@@ -146,7 +146,7 @@ where
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -157,7 +157,7 @@ where
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &a_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,
@@ -207,7 +207,7 @@ where
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -218,7 +218,7 @@ where
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &res_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,
@@ -265,7 +265,7 @@ where
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -275,7 +275,7 @@ where
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, &a_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,
@@ -322,7 +322,7 @@ where
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -332,7 +332,7 @@ where
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &a_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,
@@ -382,7 +382,7 @@ where
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -392,7 +392,7 @@ where
                 self.vec_znx_big_sub_small_inplace(&mut res_big, i, &res_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,
@@ -442,7 +442,7 @@ where
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
             let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
-            let res_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&res_dft);
+            let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
             }
@@ -452,7 +452,7 @@ where
                 self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &res_norm.data, i);
             }
 
-            let res_big_ref = vec_znx_big_backend_ref_from_mut(&res_big);
+            let res_big_ref = res_big.reborrow_backend_ref();
             for i in 0..cols {
                 self.vec_znx_big_normalize(
                     &mut res.data,

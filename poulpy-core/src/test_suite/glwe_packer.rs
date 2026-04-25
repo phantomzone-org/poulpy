@@ -28,7 +28,7 @@ where
         + GLWEPackerOps<BE>
         + GLWEPacking<BE>
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEDecrypt<BE>
         + GLWERotate<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

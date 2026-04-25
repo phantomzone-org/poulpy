@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Module, ScalarZnx, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -14,6 +14,7 @@ use crate::{
         GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
         prepared::GLWESecretPrepared,
     },
+    vec_znx_host_ops::vec_znx_copy,
 };
 
 pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
@@ -24,8 +25,7 @@ where
         + GLWESecretTensorFactory<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
-        + GGLWENoise<BE>
-        + VecZnxCopy,
+        + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -80,7 +80,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                module.vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+                vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);
@@ -166,7 +166,7 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                module.vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+                vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);

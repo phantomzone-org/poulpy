@@ -36,9 +36,11 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
         + GLWEEncryptSk<BE>
         + VecZnxRotateInplace<BE>,
     BE: HostBackend,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let module: &Module<BE> = &test_context.module;
     let sk_glwe_prep: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;

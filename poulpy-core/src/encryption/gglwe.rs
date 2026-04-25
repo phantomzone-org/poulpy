@@ -1,6 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxInfos, ZnxZero},
+    layouts::{
+        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, VecZnxReborrowBackendRef, ZnxInfos, ZnxZero,
+    },
     source::Source,
 };
 
@@ -8,7 +10,9 @@ pub use crate::api::GGLWEEncryptSk;
 use crate::{
     EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
-    layouts::{GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos, prepared::GLWESecretPreparedToBackendRef},
+    layouts::{
+        GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos, prepared::GLWESecretPreparedToBackendRef,
+    },
 };
 
 #[doc(hidden)]
@@ -140,13 +144,20 @@ where
                 });
                 {
                     let mut scratch = scratch_1.borrow();
+                    let tmp_pt_ref = tmp_pt.to_ref();
+                    let tmp_pt_backend = GLWEPlaintext {
+                        data: <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(
+                            &tmp_pt.data,
+                        ),
+                        base2k: tmp_pt.base2k,
+                    };
                     <Module<BE> as GLWEEncryptSkInternal<BE>>::glwe_encrypt_sk_internal(
                         self,
                         base2k,
                         &mut res.at_mut(row_i, col_i).data,
                         cols,
                         false,
-                        Some((&tmp_pt, 0)),
+                        Some((tmp_pt_ref, tmp_pt_backend, 0)),
                         sk,
                         enc_infos,
                         source_xe,

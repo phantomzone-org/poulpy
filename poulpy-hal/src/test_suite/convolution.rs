@@ -1,10 +1,11 @@
-use super::vec_znx_backend_mut;
+use super::{vec_znx_backend_mut, vec_znx_backend_ref};
 use rand::Rng;
 
 use crate::{
     api::{
-        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, VecZnxAddInto, VecZnxBigAlloc, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
+        CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, VecZnxAddIntoBackend, VecZnxBigAlloc, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
+        VecZnxNormalizeInplace,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, ScratchArena, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
@@ -198,8 +199,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxNormalizeAssign<BE>
         + VecZnxBigAlloc<BE>
-        + VecZnxAddInto
-        + VecZnxCopy,
+        + VecZnxAddIntoBackend<BE>
+        + VecZnxCopyBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
     let mut source: Source = Source::new([0u8; 32]);
@@ -263,11 +264,35 @@ where
                 );
 
                 if col_i != col_j {
-                    module.vec_znx_add_into(&mut tmp_a, 0, &a, col_i, &a, col_j);
-                    module.vec_znx_add_into(&mut tmp_b, 0, &b, col_i, &b, col_j);
+                    module.vec_znx_add_into_backend(
+                        &mut vec_znx_backend_mut::<BE>(&mut tmp_a),
+                        0,
+                        &vec_znx_backend_ref::<BE>(&a),
+                        col_i,
+                        &vec_znx_backend_ref::<BE>(&a),
+                        col_j,
+                    );
+                    module.vec_znx_add_into_backend(
+                        &mut vec_znx_backend_mut::<BE>(&mut tmp_b),
+                        0,
+                        &vec_znx_backend_ref::<BE>(&b),
+                        col_i,
+                        &vec_znx_backend_ref::<BE>(&b),
+                        col_j,
+                    );
                 } else {
-                    module.vec_znx_copy(&mut tmp_a, 0, &a, col_i);
-                    module.vec_znx_copy(&mut tmp_b, 0, &b, col_j);
+                    module.vec_znx_copy_backend(
+                        &mut vec_znx_backend_mut::<BE>(&mut tmp_a),
+                        0,
+                        &vec_znx_backend_ref::<BE>(&a),
+                        col_i,
+                    );
+                    module.vec_znx_copy_backend(
+                        &mut vec_znx_backend_mut::<BE>(&mut tmp_b),
+                        0,
+                        &vec_znx_backend_ref::<BE>(&b),
+                        col_j,
+                    );
                 }
 
                 bivariate_convolution_naive(

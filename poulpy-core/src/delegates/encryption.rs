@@ -25,8 +25,8 @@ use crate::{
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GGLWEToGGSWKeyCompressedToMut, GGLWEToGGSWKeyToMut, GGLWEToMut,
         GGSWCompressedSeedMut, GGSWCompressedToMut, GGSWInfos, GGSWToMut, GLWECompressedSeedMut, GLWECompressedToMut, GLWEInfos,
-        GLWEPlaintextToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef,
-        LWEToMut, SetGaloisElement,
+        GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos,
+        LWEPlaintextToRef, LWESecretToRef, LWEToMut, SetGaloisElement,
         prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
 };
@@ -93,7 +93,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -140,7 +140,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEInfos,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -493,7 +493,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,

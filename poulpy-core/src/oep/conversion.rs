@@ -4,7 +4,7 @@ use crate::{
     ScratchArenaTakeCore,
     conversion::{GGSWExpandRowsDefault, GGSWFromGGLWEDefault, GLWEFromLWEDefault, LWEFromGLWEDefault},
     layouts::{
-        GGLWEInfos, GGLWEToRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWEInfos, GLWEToBackendMut,
+        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWEInfos, GLWEToBackendMut,
         GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, LWEToMut, LWEToRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
@@ -61,7 +61,7 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
     fn ggsw_from_gglwe<'s, R, A, T>(module: &Module<BE>, res: &mut R, a: &A, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGLWEToRef + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -128,7 +128,7 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
     fn ggsw_from_gglwe<'s, R, A, T>(module: &Module<BE>, res: &mut R, a: &A, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGLWEToRef + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -214,7 +214,7 @@ where
     fn ggsw_from_gglwe<'s, R, A, T>(module: &Module<BE>, res: &mut R, a: &A, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGLWEToRef + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

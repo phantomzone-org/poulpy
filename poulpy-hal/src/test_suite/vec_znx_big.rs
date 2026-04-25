@@ -3,20 +3,48 @@ use rand::Rng;
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigAlloc,
-        VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigFromSmall,
-        VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSub,
-        VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB, VecZnxBigSubSmallInplace,
-        VecZnxBigSubSmallNegateInplace,
+        ScratchOwnedAlloc, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddNormal, VecZnxBigAddNormalBackend,
+        VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
+        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
+        VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
     layouts::{
-        Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
+        Backend, DataViewMut, DigestU64, FillUniform, Module, NoiseInfos, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
         VecZnxBigToBackendRef,
     },
     source::Source,
 };
 
 type VecZnxBigOwned<BE> = VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
+
+pub fn test_vec_znx_big_seed_add_normal_matches_source_wrapper<
+    BR: crate::test_suite::TestBackend,
+    BT: crate::test_suite::TestBackend,
+>(
+    params: &TestParams,
+    _module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BT::OwnedBuf: crate::layouts::HostDataMut,
+    Module<BT>: VecZnxBigAddNormal<BT> + VecZnxBigAddNormalBackend<BT> + VecZnxBigAlloc<BT>,
+{
+    let base2k = params.base2k;
+    let size: usize = 5;
+    let cols: usize = 2;
+    let col_i: usize = 1;
+    let noise_infos = NoiseInfos::new(2 * base2k, 3.2, 6.0 * 3.2).unwrap();
+
+    let mut seed_source = Source::new([2u8; 32]);
+    let seed = seed_source.new_seed();
+    let mut wrapper_source = Source::new([2u8; 32]);
+
+    let mut wrapper: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, size);
+    let mut backend: VecZnxBigOwned<BT> = module_test.vec_znx_big_alloc(cols, size);
+    module_test.vec_znx_big_add_normal(base2k, &mut wrapper.to_backend_mut(), col_i, noise_infos, &mut wrapper_source);
+    module_test.vec_znx_big_add_normal_backend(base2k, &mut backend.to_backend_mut(), col_i, noise_infos, seed);
+    assert_eq!(wrapper.digest_u64(), backend.digest_u64());
+}
 
 pub fn test_vec_znx_big_add_into<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchArenaTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, ZnxView, ZnxViewMut, ZnxZero, vec_znx_backend_ref_from_mut},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 pub use crate::api::GLWEFromLWE;
@@ -108,7 +108,7 @@ where
                     ksk.base2k().into(),
                     0,
                     0,
-                    &vec_znx_backend_ref_from_mut::<BE>(&a_conv),
+                    &<VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv),
                     lwe.base2k().into(),
                     0,
                     &mut scratch_2.borrow(),
@@ -125,7 +125,7 @@ where
                     ksk.base2k().into(),
                     0,
                     1,
-                    &vec_znx_backend_ref_from_mut::<BE>(&a_conv),
+                    &<VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv),
                     lwe.base2k().into(),
                     0,
                     &mut scratch_2.borrow(),

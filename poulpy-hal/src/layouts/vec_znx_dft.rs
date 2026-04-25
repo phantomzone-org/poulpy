@@ -215,6 +215,17 @@ impl<B: Backend> VecZnxDftToBackendRef<B> for VecZnxDft<B::OwnedBuf, B> {
     }
 }
 
+/// Reborrow an already backend-borrowed `VecZnxDft` as a shared backend-native view.
+pub trait VecZnxDftReborrowBackendRef<B: Backend> {
+    fn reborrow_backend_ref(&self) -> VecZnxDftBackendRef<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> VecZnxDftReborrowBackendRef<B> for VecZnxDft<B::BufMut<'b>, B> {
+    fn reborrow_backend_ref(&self) -> VecZnxDftBackendRef<'_, B> {
+        vec_znx_dft_backend_ref_from_mut::<B>(self)
+    }
+}
+
 /// Mutably borrow a backend-owned `VecZnxDft` using the backend's native view type.
 pub trait VecZnxDftToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> VecZnxDftBackendMut<'_, B>;
@@ -230,6 +241,17 @@ impl<B: Backend> VecZnxDftToBackendMut<B> for VecZnxDft<B::OwnedBuf, B> {
             max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
+    }
+}
+
+/// Reborrow an already backend-borrowed `VecZnxDft` as a mutable backend-native view.
+pub trait VecZnxDftReborrowBackendMut<B: Backend> {
+    fn reborrow_backend_mut(&mut self) -> VecZnxDftBackendMut<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> VecZnxDftReborrowBackendMut<B> for VecZnxDft<B::BufMut<'b>, B> {
+    fn reborrow_backend_mut(&mut self) -> VecZnxDftBackendMut<'_, B> {
+        vec_znx_dft_backend_mut_from_mut::<B>(self)
     }
 }
 

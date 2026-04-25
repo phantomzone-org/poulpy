@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxFillUniform},
+    api::VecZnxFillUniform,
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo,
         ZnxInfos,
@@ -7,7 +7,10 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision};
+use crate::{
+    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetLWEInfos, TorusPrecision},
+    vec_znx_host_ops::vec_znx_copy,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -156,7 +159,7 @@ impl<D: HostDataRef> WriterTo for GLWECompressed<D> {
 /// the mask polynomials from the stored PRNG seed.
 pub trait GLWEDecompress
 where
-    Self: GetDegree + VecZnxFillUniform + VecZnxCopy,
+    Self: GetDegree + VecZnxFillUniform,
 {
     /// Decompresses `other` into `res` by copying the body and regenerating the mask.
     fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
@@ -179,7 +182,7 @@ where
 
             let mut source: Source = Source::new(other.seed);
 
-            self.vec_znx_copy(&mut res.data, 0, &other.data, 0);
+            vec_znx_copy(&mut res.data, 0, &other.data, 0);
             (1..(other.rank() + 1).into()).for_each(|i| {
                 self.vec_znx_fill_uniform(other.base2k.into(), &mut res.data, i, &mut source);
             });
@@ -189,7 +192,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
+impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform {}
 
 // module-only API: decompression is provided by `GLWEDecompress` on `Module`.
 

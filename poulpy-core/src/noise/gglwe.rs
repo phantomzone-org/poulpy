@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::noise::glwe::glwe_noise_backend_inner;
 use crate::{
-    GLWENormalize, GLWESub,
+    GLWENormalize,
     api::{GGLWENoise, GLWENoise},
     decryption::{GLWEDecrypt, GLWEDecryptDefault},
     layouts::{
@@ -40,7 +40,7 @@ impl<D: HostDataRef> GGLWE<D> {
 
 impl<BE: Backend + HostBackend> GGLWENoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn gglwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize

@@ -52,6 +52,18 @@ pub trait VecZnxBigAddNormal<B: Backend> {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
+pub trait VecZnxBigAddNormalBackend<B: Backend> {
+    fn vec_znx_big_add_normal_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBigBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    );
+}
+
 pub trait VecZnxBigAddInto<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
     fn vec_znx_big_add_into(

@@ -1,10 +1,11 @@
 use crate::{
     api::{
-        VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddNormal, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigAlloc,
-        VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigBytesOf,
-        VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallAssign, VecZnxBigSubSmallB, VecZnxBigSubSmallNegateAssign,
+        VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddNormal, VecZnxBigAddNormalBackend, VecZnxBigAddSmallAssign,
+        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
+        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf, VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate,
+        VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace,
+        VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB, VecZnxBigSubSmallInplace,
+        VecZnxBigSubSmallNegateInplace,
     },
     layouts::{
         Backend, Module, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut,
@@ -63,7 +64,21 @@ impl_vec_znx_big_delegate!(
         noise_infos: NoiseInfos,
         source: &mut Source,
     ) {
-        <B as HalVecZnxBigImpl<B>>::vec_znx_big_add_normal(self, base2k, res, res_col, noise_infos, source);
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_add_normal_backend(self, base2k, res, res_col, noise_infos, source.new_seed());
+    }
+);
+
+impl_vec_znx_big_delegate!(
+    VecZnxBigAddNormalBackend<B>,
+    fn vec_znx_big_add_normal_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBigBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        seed: [u8; 32],
+    ) {
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_add_normal_backend(self, base2k, res, res_col, noise_infos, seed);
     }
 );
 

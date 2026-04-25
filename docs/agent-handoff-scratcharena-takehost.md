@@ -19,7 +19,7 @@ Current task:
   - `cargo check -p poulpy-cpu-ref --message-format short` passed
   - `cargo check --workspace --message-format short` passed
 
-## What was just edited, but has NOT been validated yet
+## What was just edited and is now validated
 
 - [poulpy-cpu-ref/src/hal_defaults/vec_znx_big.rs](/home/pro7ech/gausslabs/poulpy_ckks/poulpy-cpu-ref/src/hal_defaults/vec_znx_big.rs)
   - replaced `api::ScratchArenaTakeHost` import with `api::HostBufMut`
@@ -35,30 +35,19 @@ Current task:
   - replaced all visible `ScratchArenaTakeHost`-based `take_i64(...)` usages/bounds with `BE::BufMut<'s>: HostBufMut<'s>` plus `take_host_typed::<BE, i64>(...)`
   - touched normalize / normalize_inplace / rsh / lsh / rotate_inplace / automorphism_inplace / mul_xp_minus_one_inplace / split_ring / merge_rings paths
 
+## Validation result
+
+- `cargo check -p poulpy-cpu-ref --message-format short` passed
+- `cargo check --workspace --message-format short` passed
+- `rg -n "ScratchArenaTakeHost" poulpy-cpu-ref/src -S` returned no matches
+- `ScratchArenaTakeHost` is now gone from `poulpy-cpu-ref/src`
+
 ## Important
 
-- I was interrupted by the user right after these two patches, before running `cargo check`.
-- so these two files are the only unverified edits right now
-
-## Recommended immediate next step
-
-1. Run:
-
-```bash
-cargo check -p poulpy-cpu-ref --message-format short
-```
-
-2. If green, run:
-
-```bash
-cargo check --workspace --message-format short
-```
-
-3. Then inspect remaining uses:
-
-```bash
-rg -n "ScratchArenaTakeHost" poulpy-cpu-ref/src -S
-```
+- the slice described in this handoff is complete
+- `ScratchArenaTakeHost` has also been removed from `poulpy-hal/src/api/scratch.rs`
+- `HostBufMut` remains in `poulpy-hal` as the narrow host-visible borrowed-buffer capability used by CPU defaults
+- no algorithm/control-flow changes were made in this seam, only host scratch typed-take plumbing
 
 ## Expected outcome if current patch is correct
 
@@ -75,8 +64,7 @@ rg -n "ScratchArenaTakeHost" poulpy-cpu-ref/src -S
 
 ## Current modified files in working tree from this last slice
 
-- `poulpy-cpu-ref/src/hal_defaults/vec_znx_big.rs`
-- `poulpy-cpu-ref/src/hal_defaults/vec_znx.rs`
+- none required for this slice anymore
 
 ## Known good pattern to copy from
 

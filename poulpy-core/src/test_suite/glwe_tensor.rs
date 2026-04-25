@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace},
     layouts::{FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::convolution::bivariate_convolution_naive,
@@ -27,10 +27,9 @@ where
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
-        + VecZnxNormalizeAssign<BE>
+        + GLWESub<BE>
+        + VecZnxNormalizeInplace<BE>
         + GLWESecretTensorFactory<BE>
-        + VecZnxCopy
         + VecZnxNormalize<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
@@ -286,10 +285,9 @@ where
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
-        + VecZnxNormalizeAssign<BE>
+        + GLWESub<BE>
+        + VecZnxNormalizeInplace<BE>
         + GLWESecretTensorFactory<BE>
-        + VecZnxCopy
         + VecZnxNormalize<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>,
@@ -446,9 +444,8 @@ where
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
-        + VecZnxNormalizeAssign<BE>
-        + VecZnxCopy
+        + GLWESub<BE>
+        + VecZnxNormalizeInplace<BE>
         + VecZnxNormalize<BE>
         + GLWEMulPlain<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -574,9 +571,8 @@ where
         + GLWEDecrypt<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
-        + VecZnxNormalizeAssign<BE>
-        + VecZnxCopy
+        + GLWESub<BE>
+        + VecZnxNormalizeInplace<BE>
         + VecZnxNormalize<BE>
         + GLWEMulConst<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

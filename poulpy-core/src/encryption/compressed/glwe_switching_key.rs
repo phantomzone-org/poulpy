@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxSwitchRing},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare},
     layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
@@ -10,6 +10,7 @@ use crate::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
         GLWESwitchingKeyDegreesMut, LWEInfos, prepared::GLWESecretPreparedFactory,
     },
+    vec_znx_host_ops::vec_znx_switch_ring,
 };
 
 #[doc(hidden)]
@@ -36,7 +37,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing,
+    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -84,7 +85,7 @@ where
 
         let mut sk_in_tmp = ScalarZnx::alloc(self.n(), sk_in.rank().into());
         for i in 0..sk_in.rank().into() {
-            self.vec_znx_switch_ring(&mut sk_in_tmp.as_vec_znx_mut(), i, &sk_in.data.as_vec_znx(), i);
+            vec_znx_switch_ring(&mut sk_in_tmp.as_vec_znx_mut(), i, &sk_in.data.as_vec_znx(), i);
         }
 
         let mut sk_out_tmp = self.glwe_secret_prepared_alloc(sk_out.rank());
@@ -92,7 +93,7 @@ where
             let mut tmp = ScalarZnx::alloc(self.n(), 1);
             let mut sk_out_tmp_data = sk_out_tmp.data.to_backend_mut();
             for i in 0..sk_out.rank().into() {
-                self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
+                vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
                 self.svp_prepare(&mut sk_out_tmp_data, i, &tmp, 0);
             }
         }

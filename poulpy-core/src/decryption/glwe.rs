@@ -3,7 +3,7 @@ use poulpy_hal::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmall,
         VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, vec_znx_big_backend_ref_from_mut},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef},
 };
 
 pub use crate::api::GLWEDecrypt;
@@ -122,11 +122,11 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
         module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
         module.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
         let ci_big = module.vec_znx_idft_apply_consume(ci_dft);
-        let ci_big_ref = vec_znx_big_backend_ref_from_mut(&ci_big);
+        let ci_big_ref = ci_big.reborrow_backend_ref();
         module.vec_znx_big_add_assign(&mut c0_big, 0, &ci_big_ref, 0);
     }
 
-    let c0_big_ref = vec_znx_big_backend_ref_from_mut(&c0_big);
+    let c0_big_ref = c0_big.reborrow_backend_ref();
     let pt_base2k = pt.base2k();
     let _ = scratch_1.apply_mut(|scratch| {
         module.vec_znx_big_normalize(

@@ -6,7 +6,7 @@ use poulpy_core::{
     api::GLWEExternalProductInternal,
     layouts::{
         GGSWInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos,
-        glwe_backend_ref_from_mut, prepared::GGSWPreparedToBackendRef,
+        glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGSWPreparedToBackendRef,
     },
 };
 use poulpy_hal::{
@@ -162,9 +162,11 @@ pub trait BitSize {
 
 impl<BE: Backend<OwnedBuf = Vec<u8>>> ExecuteBDDCircuit<BE> for Module<BE>
 where
-    Self: Cmux<BE> + GLWECopy,
+    Self: Cmux<BE> + GLWECopy<BE>,
+    BE: 'static,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     fn execute_bdd_circuit_tmp_bytes<R, G>(&self, res_infos: &R, state_size: usize, ggsw_infos: &G) -> usize
     where
@@ -228,11 +230,13 @@ fn eval_level<M, R, G, BE: Backend<OwnedBuf = Vec<u8>>>(
     state_size: usize,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    M: Cmux<BE> + GLWECopy,
+    M: Cmux<BE> + GLWECopy<BE>,
+    BE: 'static,
     R: GLWEToMut,
     G: GetGGSWBit<BE> + BitSize,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     assert!(nodes.len().is_multiple_of(state_size));
     let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -265,7 +269,10 @@ fn eval_level<M, R, G, BE: Backend<OwnedBuf = Vec<u8>>>(
                         &mut scratch_1.borrow(),
                     );
                 }
-                Node::Copy => module.glwe_copy(next_level[j], prev_level[j]), /* Update BDD circuits to order Cmux -> Copy -> None so that mem swap can be used */
+                Node::Copy => module.glwe_copy(
+                    &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(next_level[j]),
+                    &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(prev_level[j]),
+                ), /* Update BDD circuits to order Cmux -> Copy -> None so that mem swap can be used */
                 Node::None => {}
             }
         }
@@ -322,8 +329,8 @@ impl<BE: Backend<OwnedBuf = Vec<u8>>> Cswap<BE> for Module<BE> where
     Self: Sized
         + ModuleN
         + GLWEExternalProductInternal<BE>
-        + GLWESub
-        + GLWECopy
+        + GLWESub<BE>
+        + GLWECopy<BE>
         + GLWENormalize<BE>
         + VecZnxBigAddSmallInto<BE>
         + VecZnxBigBytesOf
@@ -358,8 +365,8 @@ where
     Self: Sized
         + ModuleN
         + GLWEExternalProductInternal<BE>
-        + GLWESub
-        + GLWECopy
+        + GLWESub<BE>
+        + GLWECopy<BE>
         + GLWENormalize<BE>
         + VecZnxBigAddSmallInto<BE>
         + VecZnxBigBytesOf
@@ -449,8 +456,14 @@ where
             let (mut b_prev, scratch_2) = scratch_1.take_glwe(&res_b_backend);
             let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, cols, s.size());
             let (res_big_tmp, scratch_4) = scratch_3.take_vec_znx_big(self, 1, s.size());
-            self.glwe_copy(&mut a_prev, &res_a_backend);
-            self.glwe_copy(&mut b_prev, &res_b_backend);
+            self.glwe_copy(
+                &mut glwe_backend_mut_from_mut::<BE>(&mut a_prev),
+                &glwe_backend_ref_from_mut::<BE>(&res_a_backend),
+            );
+            self.glwe_copy(
+                &mut glwe_backend_mut_from_mut::<BE>(&mut b_prev),
+                &glwe_backend_ref_from_mut::<BE>(&res_b_backend),
+            );
 
             let (res_big, mut scratch_norm): (VecZnxBig<BE::BufMut<'_>, BE>, _);
             {
@@ -461,7 +474,11 @@ where
                     rank: s.rank(),
                 };
                 let (mut tmp_c, scratch_5) = scratch_4.take_glwe(&tmp_c_infos);
-                self.glwe_sub(&mut tmp_c, &res_b_backend, &res_a_backend);
+                self.glwe_sub_backend(
+                    &mut glwe_backend_mut_from_mut::<BE>(&mut tmp_c),
+                    &glwe_backend_ref_from_mut::<BE>(&res_b_backend),
+                    &glwe_backend_ref_from_mut::<BE>(&res_a_backend),
+                );
                 let (tmp_res_big, mut scratch_6) = scratch_5.take_vec_znx_big(self, cols, s.size());
                 let mut tmp_res_big = tmp_res_big;
                 self.glwe_external_product_dft(
@@ -538,7 +555,11 @@ where
                     rank: s.rank(),
                 };
                 let (mut tmp_c, scratch_5) = scratch_4.take_glwe(&tmp_c_infos);
-                self.glwe_sub(&mut tmp_c, &tmp_b, &tmp_a);
+                self.glwe_sub_backend(
+                    &mut glwe_backend_mut_from_mut::<BE>(&mut tmp_c),
+                    &glwe_backend_ref_from_mut::<BE>(&tmp_b),
+                    &glwe_backend_ref_from_mut::<BE>(&tmp_a),
+                );
                 let (tmp_res_big, mut scratch_6) = scratch_5.take_vec_znx_big(self, cols, s.size());
                 let mut tmp_res_big = tmp_res_big;
                 self.glwe_external_product_dft(
@@ -605,8 +626,8 @@ pub trait Cmux<BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: Sized
         + GLWEExternalProductInternal<BE>
-        + GLWECopy
-        + GLWESub
+        + GLWECopy<BE>
+        + GLWESub<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigBytesOf
         + GLWENormalize<BE>
@@ -638,8 +659,10 @@ where
         T: GLWEToRef,
         F: GLWEToRef,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+        for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let f: GLWE<&[u8]> = f.to_ref();
@@ -648,12 +671,22 @@ where
         let res_base2k: usize = res.base2k().into();
         let ggsw_base2k: usize = s.base2k().into();
 
-        self.glwe_sub(res, t, &f);
+        self.glwe_sub_backend(
+            &mut glwe_backend_mut_from_mut::<BE>(res),
+            &glwe_backend_ref_from_ref::<BE>(&t.to_ref()),
+            &glwe_backend_ref_from_ref::<BE>(&f),
+        );
         let cols: usize = (res.rank() + 1).into();
         let (mut tmp_in, scratch_1) = scratch.take_glwe(res);
         let (mut tmp_f, scratch_2) = scratch_1.take_glwe(&f);
-        self.glwe_copy(&mut tmp_in, res);
-        self.glwe_copy(&mut tmp_f, &f);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut tmp_in),
+            &glwe_backend_ref_from_mut::<BE>(res),
+        );
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut tmp_f),
+            &glwe_backend_ref_from_ref::<BE>(&f),
+        );
         let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, cols, s.size());
         let (res_big, mut scratch_norm): (VecZnxBig<BE::BufMut<'_>, BE>, _);
         {
@@ -683,7 +716,10 @@ where
                 &mut scratch_norm.borrow(),
             );
         }
-        self.glwe_copy(res, &tmp_in);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(res),
+            &glwe_backend_ref_from_mut::<BE>(&tmp_in),
+        );
     }
 
     // res = (a - res) * s + res
@@ -692,8 +728,10 @@ where
         R: GLWEToMut,
         A: GLWEToRef,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+        for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
@@ -710,8 +748,15 @@ where
             rank: res.rank(),
         });
         let (mut res_prev, scratch_2) = scratch_1.take_glwe(res);
-        self.glwe_copy(&mut res_prev, res);
-        self.glwe_sub(&mut tmp, a, res);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut res_prev),
+            &glwe_backend_ref_from_mut::<BE>(res),
+        );
+        self.glwe_sub_backend(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut tmp),
+            &glwe_backend_ref_from_ref::<BE>(a),
+            &glwe_backend_ref_from_mut::<BE>(res),
+        );
         let cols: usize = (res.rank() + 1).into();
         let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, cols, s.size());
         let (res_big, mut scratch_norm): (VecZnxBig<BE::BufMut<'_>, BE>, _);
@@ -746,7 +791,10 @@ where
                 &mut scratch_norm.borrow(),
             );
         }
-        self.glwe_copy(res, &tmp);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(res),
+            &glwe_backend_ref_from_mut::<BE>(&tmp),
+        );
     }
 
     // res = (res - a) * s + a
@@ -755,20 +803,31 @@ where
         R: GLWEToMut,
         A: GLWEToRef,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
+        BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
+        for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: GLWE<&[u8]> = a.to_ref();
         let scratch = scratch.borrow();
         let res_base2k: usize = res.base2k().into();
         let ggsw_base2k: usize = s.base2k().into();
-        self.glwe_sub_inplace(res, &a);
+        self.glwe_sub_inplace_backend(
+            &mut glwe_backend_mut_from_mut::<BE>(res),
+            &glwe_backend_ref_from_ref::<BE>(&a),
+        );
         let cols: usize = (res.rank() + 1).into();
         let (mut tmp, scratch_1) = scratch.take_glwe(res);
         let (mut tmp_a, scratch_2) = scratch_1.take_glwe(&a);
-        self.glwe_copy(&mut tmp, res);
-        self.glwe_copy(&mut tmp_a, &a);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut tmp),
+            &glwe_backend_ref_from_mut::<BE>(res),
+        );
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut tmp_a),
+            &glwe_backend_ref_from_ref::<BE>(&a),
+        );
         let (mut res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, cols, s.size());
         let (res_big, mut scratch_norm): (VecZnxBig<BE::BufMut<'_>, BE>, _);
         {
@@ -798,7 +857,10 @@ where
                 &mut scratch_norm.borrow(),
             );
         }
-        self.glwe_copy(res, &tmp);
+        self.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(res),
+            &glwe_backend_ref_from_mut::<BE>(&tmp),
+        );
     }
 }
 
@@ -806,8 +868,8 @@ impl<BE: Backend<OwnedBuf = Vec<u8>>> Cmux<BE> for Module<BE>
 where
     Self: Sized
         + GLWEExternalProductInternal<BE>
-        + GLWECopy
-        + GLWESub
+        + GLWECopy<BE>
+        + GLWESub<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigBytesOf
         + GLWENormalize<BE>

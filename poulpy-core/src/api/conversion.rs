@@ -7,7 +7,7 @@ use crate::{
     ScratchArenaTakeCore,
     api::{GLWEKeyswitch, GLWERotate},
     layouts::{
-        GGLWEInfos, GGLWEToRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWE, GLWEInfos, GLWELayout,
+        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWE, GLWEInfos, GLWELayout,
         GLWEToBackendRef, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank, glwe_backend_ref_from_mut,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
@@ -143,7 +143,7 @@ pub trait GGSWFromGGLWE<BE: Backend> {
     fn ggsw_from_gglwe<'s, R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGLWEToRef + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

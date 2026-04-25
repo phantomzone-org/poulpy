@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{ScratchArenaTakeBasic, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, ScratchOwned, VecZnx},
+    layouts::{Backend, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
 };
 
-use crate::CudaGpuBackend;
+use crate::{CudaBufRef, CudaGpuBackend};
 
 fn panic_message(err: Box<dyn std::any::Any + Send>) -> Option<String> {
     if let Some(msg) = err.downcast_ref::<String>() {
@@ -11,6 +11,11 @@ fn panic_message(err: Box<dyn std::any::Any + Send>) -> Option<String> {
     } else {
         err.downcast_ref::<&'static str>().map(|msg| (*msg).to_string())
     }
+}
+
+fn is_cuda_unavailable(msg: &str) -> bool {
+    msg.contains("failed to initialize CUDA context for device 0")
+        || msg.contains("Unable to dynamically load the \"cuda\" shared library")
 }
 
 fn sized_sample_vec_znx(n: usize, cols: usize, size: usize, modulus: i64, bias: i64, scale: i64) -> VecZnx<Vec<u8>> {
@@ -25,6 +30,11 @@ fn sized_sample_vec_znx(n: usize, cols: usize, size: usize, modulus: i64, bias: 
 
 fn vec_range_cuda<'a>(vec: &VecZnx<crate::CudaBufMut<'a>>) -> std::ops::Range<usize> {
     // Recover the byte range carved out of the CUDA-owned scratch buffer.
+    vec.data.offset..vec.data.offset + vec.data.len
+}
+
+fn vec_range_cuda_ref<'a>(vec: &VecZnx<CudaBufRef<'a>>) -> std::ops::Range<usize> {
+    // Recover the byte range of a shared CUDA-native VecZnx view.
     vec.data.offset..vec.data.offset + vec.data.len
 }
 
@@ -50,7 +60,7 @@ fn cuda_scratch_arena_take_vec_znx_roundtrips_through_device() {
         Ok(scratch) => scratch,
         Err(err) => {
             let msg = panic_message(err).unwrap_or_else(|| "unknown CUDA initialization failure".to_string());
-            if msg.contains("failed to initialize CUDA context for device 0") {
+            if is_cuda_unavailable(&msg) {
                 eprintln!("skipping CUDA scratch test: {msg}");
                 return;
             }
@@ -89,4 +99,51 @@ fn cuda_scratch_arena_take_vec_znx_roundtrips_through_device() {
     let roundtrip = <CudaGpuBackend as Backend>::to_host_bytes(&scratch.data);
     assert_eq!(&roundtrip[lhs_range.clone()], lhs_host.data.as_slice());
     assert_eq!(&roundtrip[rhs_range.clone()], rhs_host.data.as_slice());
+}
+
+#[test]
+fn cuda_scratch_vec_znx_supports_backend_reborrows() {
+    let n = 64;
+    let cols = 2;
+    let size = 3;
+    let bytes = VecZnx::<Vec<u8>>::bytes_of(n, cols, size);
+
+    let mut scratch =
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| ScratchOwned::<CudaGpuBackend>::alloc(bytes))) {
+            Ok(scratch) => scratch,
+            Err(err) => {
+                let msg = panic_message(err).unwrap_or_else(|| "unknown CUDA initialization failure".to_string());
+                if is_cuda_unavailable(&msg) {
+                    eprintln!("skipping CUDA backend reborrow test: {msg}");
+                    return;
+                }
+                panic!("{msg}");
+            }
+        };
+
+    let arena = scratch.borrow();
+    let (mut vec, _) = arena.take_vec_znx(n, cols, size);
+    let raw_range = vec_range_cuda(&vec);
+    let raw_ptr = vec.data.ptr;
+    let raw_len = vec.data.len;
+
+    let backend_ref: VecZnx<CudaBufRef<'_>> =
+        <VecZnx<crate::CudaBufMut<'_>> as VecZnxReborrowBackendRef<CudaGpuBackend>>::reborrow_backend_ref(&vec);
+    assert_eq!(backend_ref.n, n);
+    assert_eq!(backend_ref.cols, cols);
+    assert_eq!(backend_ref.size, size);
+    assert_eq!(backend_ref.max_size, size);
+    assert_eq!(backend_ref.data.ptr, raw_ptr);
+    assert_eq!(backend_ref.data.len, raw_len);
+    assert_eq!(vec_range_cuda_ref(&backend_ref), raw_range);
+
+    let backend_mut: VecZnx<crate::CudaBufMut<'_>> =
+        <VecZnx<crate::CudaBufMut<'_>> as VecZnxReborrowBackendMut<CudaGpuBackend>>::reborrow_backend_mut(&mut vec);
+    assert_eq!(backend_mut.n, n);
+    assert_eq!(backend_mut.cols, cols);
+    assert_eq!(backend_mut.size, size);
+    assert_eq!(backend_mut.max_size, size);
+    assert_eq!(backend_mut.data.ptr, raw_ptr);
+    assert_eq!(backend_mut.data.len, raw_len);
+    assert_eq!(vec_range_cuda(&backend_mut), raw_range);
 }

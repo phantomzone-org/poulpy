@@ -9,7 +9,7 @@ use crate::{
     glwe_trace::GLWETrace,
     layouts::{
         GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
-        GetGaloisElement, LWEInfos, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GetGaloisElement, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -142,8 +142,12 @@ pub fn glwe_packer_add<A, K, H, M, BE: Backend>(
 }
 
 /// Flushes the packed result into `res`.
-pub fn glwe_packer_flush<R, M, BE: Backend>(module: &M, packer: &mut GLWEPacker, res: &mut R, scratch: &mut ScratchArena<'_, BE>)
-where
+pub fn glwe_packer_flush<R, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+    module: &M,
+    packer: &mut GLWEPacker,
+    res: &mut R,
+    scratch: &mut ScratchArena<'_, BE>,
+) where
     R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
     M: GLWEPackerOps<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -154,10 +158,16 @@ where
     let out: &GLWE<Vec<u8>> = &packer.accumulators[module.log_n() - packer.log_batch - 1].data;
 
     if out.base2k() == res.base2k() {
-        module.glwe_copy(res, out)
+        module.glwe_copy(
+            &mut res.to_backend_mut(),
+            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(out),
+        )
     } else {
         let (mut out_tmp, mut scratch) = scratch.borrow().take_glwe(out);
-        module.glwe_copy(&mut out_tmp, out);
+        module.glwe_copy(
+            &mut glwe_backend_mut_from_mut::<BE>(&mut out_tmp),
+            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(out),
+        );
         let mut res_backend = res.to_backend_mut();
         let out_backend = glwe_backend_ref_from_mut::<BE>(&out_tmp);
         module.glwe_normalize(&mut res_backend, &out_backend, &mut scratch);
@@ -174,11 +184,11 @@ where
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy,
+        + GLWECopy<BE>,
 {
     fn packer_add_default<A, K, H>(
         &self,
@@ -205,11 +215,11 @@ impl<BE: Backend> GLWEPackerOpsDefault<BE> for Module<BE> where
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy
+        + GLWECopy<BE>
 {
 }
 
@@ -226,11 +236,11 @@ pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy,
+        + GLWECopy<BE>,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
@@ -253,7 +263,7 @@ pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
         // No previous value -> copies and sets flags accordingly
         if let Some(a_ref) = a {
             if a_ref.base2k() == acc_mut_ref.data.base2k() {
-                module.glwe_copy(&mut acc_mut_ref.data, a_ref);
+                module.glwe_copy(&mut acc_mut_ref.data.to_backend_mut(), &a_ref.to_backend_ref());
             } else {
                 let a_backend = a_ref.to_backend_ref();
                 module.glwe_normalize(&mut acc_mut_ref.data.to_backend_mut(), &a_backend, &mut scratch.borrow());
@@ -304,11 +314,11 @@ fn combine<B, K, H, M, BE: Backend>(
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy,
+        + GLWECopy<BE>,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
@@ -345,7 +355,11 @@ fn combine<B, K, H, M, BE: Backend>(
             module.glwe_sub(&mut tmp, a, b);
             module.glwe_rsh(1, &mut tmp, &mut scratch_local);
             // a = a * X^-t + b
-            module.glwe_add_assign(a, b);
+            {
+                let mut a_backend = a.to_backend_mut();
+                let b_backend = b.to_backend_ref();
+                module.glwe_add_assign_backend(&mut a_backend, &b_backend);
+            }
 
             module.glwe_rsh(1, a, &mut scratch_local);
             {

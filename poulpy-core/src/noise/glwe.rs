@@ -1,7 +1,8 @@
 use poulpy_hal::layouts::{Backend, HostBackend, Module, ScratchArena, Stats};
 
+use crate::vec_znx_host_ops::vec_znx_sub_inplace;
 use crate::{
-    GLWENormalize, GLWESub, ScratchArenaTakeCore,
+    GLWENormalize, ScratchArenaTakeCore,
     api::GLWENoise,
     decryption::{GLWEDecrypt, GLWEDecryptDefault, glwe_decrypt_backend_inner},
     layouts::{
@@ -19,7 +20,7 @@ pub(crate) fn glwe_noise_backend_inner<'s, M, P, BE: Backend>(
     scratch: &mut ScratchArena<'s, BE>,
 ) -> Stats
 where
-    M: GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    M: GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWENormalize<BE>,
     P: GLWEToRef,
     BE: HostBackend,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -34,7 +35,7 @@ where
 
     let (mut pt_have, mut scratch_1) = scratch.borrow().take_glwe_plaintext(res_ref);
     glwe_decrypt_backend_inner(module, res_ref, res_backend, &mut pt_have, sk_backend, &mut scratch_1);
-    module.glwe_sub_inplace(&mut pt_have, pt_want);
+    vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.to_ref().data, 0);
     let pt_base2k = pt_have.base2k();
     let mut pt_have_backend = GLWE {
         base2k: pt_have.base2k,
@@ -46,7 +47,7 @@ where
 
 impl<BE: Backend + HostBackend> GLWENoise<BE> for Module<BE>
 where
-    Module<BE>: GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWESub + GLWENormalize<BE>,
+    Module<BE>: GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn glwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize

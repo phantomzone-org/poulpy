@@ -4,15 +4,15 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{
-        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnxToRef, ScratchArena, Stats, ZnxZero,
-        vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut,
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnxToRef, ScratchArena, Stats, VecZnxBigReborrowBackendRef,
+        VecZnxReborrowBackendRef, ZnxZero,
     },
 };
 
 use crate::layouts::{GGSW, GGSWInfos, GGSWToBackendRef, GGSWToRef, LWEInfos};
 use crate::noise::glwe::glwe_noise_backend_inner;
 use crate::{
-    GLWENormalize, GLWESub,
+    GLWENormalize,
     api::{GGSWNoise, GLWENoise},
     decryption::{GLWEDecrypt, GLWEDecryptDefault},
     layouts::{ggsw_at_backend_ref_from_ref, prepared::GLWESecretPreparedToBackendRef},
@@ -54,7 +54,6 @@ where
         + GLWENoise<BE>
         + GLWEDecrypt<BE>
         + GLWEDecryptDefault<BE>
-        + GLWESub
         + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -109,7 +108,14 @@ where
         if res_col > 0 {
             let scratch_mul = scratch_1.borrow();
             let (mut pt_dft, mut scratch_2) = scratch_mul.take_vec_znx_dft(self, 1, res_ref.size());
-            self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &vec_znx_backend_ref_from_mut::<BE>(&pt.data), 0);
+            self.vec_znx_dft_apply(
+                1,
+                0,
+                &mut pt_dft,
+                0,
+                &<poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&pt.data),
+                0,
+            );
             self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_backend.data, res_col - 1);
             let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
             self.vec_znx_big_normalize(
@@ -117,7 +123,9 @@ where
                 base2k,
                 0,
                 0,
-                &vec_znx_big_backend_ref_from_mut::<BE>(&pt_big),
+                &<poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<BE>>::reborrow_backend_ref(
+                    &pt_big,
+                ),
                 base2k,
                 0,
                 &mut scratch_2,

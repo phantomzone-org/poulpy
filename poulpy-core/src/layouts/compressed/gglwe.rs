@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxFillUniform},
+    api::VecZnxFillUniform,
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo,
         ZnxInfos,
@@ -272,7 +272,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform + VecZnxCopy {}
+impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform {}
 
 // module-only API: decompression is provided by `GGLWEDecompress` on `Module`.
 

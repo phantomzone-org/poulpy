@@ -9,9 +9,9 @@ use crate::{
     GetDistribution, GetDistributionMut,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyCompressedToMut, GGLWEToGGSWKeyToMut, GGLWEToMut, GGSWCompressedSeedMut, GGSWCompressedToMut,
-        GGSWInfos, GGSWToMut, GLWECompressedSeedMut, GLWECompressedToMut, GLWEInfos, GLWEPlaintextToRef, GLWESecretToRef,
-        GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef, LWEToMut, SetGaloisElement,
-        TorusPrecision,
+        GGSWInfos, GGSWToMut, GLWECompressedSeedMut, GLWECompressedToMut, GLWEInfos, GLWEPlaintextToBackendRef,
+        GLWEPlaintextToRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef,
+        LWEToMut, SetGaloisElement, TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToMut},
         prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
@@ -64,7 +64,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -102,7 +102,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEInfos,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -354,7 +354,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToMut + GLWECompressedSeedMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,

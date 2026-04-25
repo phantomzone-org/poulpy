@@ -2,7 +2,7 @@ use poulpy_core::{
     EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
-        GLWESecretPreparedFactory, Rank, TorusPrecision,
+        GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -31,9 +31,11 @@ pub fn test_glwe_to_glwe_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Owne
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
     BE: HostBackend,
+    BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     let module: &Module<BE> = &test_context.module;
     let sk_glwe_prep: &GLWESecretPrepared<BE::OwnedBuf, BE> = &test_context.sk_glwe;
@@ -108,8 +110,8 @@ pub fn test_glwe_to_glwe_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Owne
             let bit_size: usize = (32 - bit_start).min(digit);
 
             module.glwe_blind_rotation(
-                &mut res,
-                &test_glwe,
+                &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res),
+                &<GLWEPlaintext<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&test_glwe),
                 &k_enc_prep,
                 false,
                 bit_start,

@@ -12,15 +12,15 @@ macro_rules! hal_impl_vec_znx_big {
             <Self as $defaults<Self>>::vec_znx_big_from_small_default(res, res_col, a, a_col)
         }
 
-        fn vec_znx_big_add_normal(
+        fn vec_znx_big_add_normal_backend(
             module: &Module<Self>,
             res_base2k: usize,
             res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, Self>,
             res_col: usize,
             noise_infos: NoiseInfos,
-            source: &mut Source,
+            seed: [u8; 32],
         ) {
-            <Self as $defaults<Self>>::vec_znx_big_add_normal_default(module, res_base2k, res, res_col, noise_infos, source)
+            <Self as $defaults<Self>>::vec_znx_big_add_normal_seed_default(module, res_base2k, res, res_col, noise_infos, seed)
         }
 
         fn vec_znx_big_add_into(

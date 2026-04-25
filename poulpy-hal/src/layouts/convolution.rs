@@ -199,6 +199,23 @@ impl<BE: Backend> CnvPVecRToBackendRef<BE> for CnvPVecR<BE::OwnedBuf, BE> {
     }
 }
 
+/// Reborrow an already backend-borrowed `CnvPVecR` as a shared backend-native view.
+pub trait CnvPVecRReborrowBackendRef<BE: Backend> {
+    fn reborrow_backend_ref(&self) -> CnvPVecRBackendRef<'_, BE>;
+}
+
+impl<'b, BE: Backend + 'b> CnvPVecRReborrowBackendRef<BE> for CnvPVecR<BE::BufMut<'b>, BE> {
+    fn reborrow_backend_ref(&self) -> CnvPVecRBackendRef<'_, BE> {
+        CnvPVecR {
+            data: BE::view_ref_mut(&self.data),
+            n: self.n,
+            size: self.size,
+            cols: self.cols,
+            _phantom: self._phantom,
+        }
+    }
+}
+
 /// Mutably borrow a backend-owned `CnvPVecR` using the backend's native view type.
 pub trait CnvPVecRToBackendMut<BE: Backend> {
     fn to_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE>;
@@ -208,6 +225,23 @@ impl<BE: Backend> CnvPVecRToBackendMut<BE> for CnvPVecR<BE::OwnedBuf, BE> {
     fn to_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE> {
         CnvPVecR {
             data: BE::view_mut(&mut self.data),
+            n: self.n,
+            size: self.size,
+            cols: self.cols,
+            _phantom: self._phantom,
+        }
+    }
+}
+
+/// Reborrow an already backend-borrowed `CnvPVecR` as a mutable backend-native view.
+pub trait CnvPVecRReborrowBackendMut<BE: Backend> {
+    fn reborrow_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE>;
+}
+
+impl<'b, BE: Backend + 'b> CnvPVecRReborrowBackendMut<BE> for CnvPVecR<BE::BufMut<'b>, BE> {
+    fn reborrow_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE> {
+        CnvPVecR {
+            data: BE::view_mut_ref(&mut self.data),
             n: self.n,
             size: self.size,
             cols: self.cols,
@@ -267,6 +301,23 @@ impl<BE: Backend> CnvPVecLToBackendRef<BE> for CnvPVecL<BE::OwnedBuf, BE> {
     }
 }
 
+/// Reborrow an already backend-borrowed `CnvPVecL` as a shared backend-native view.
+pub trait CnvPVecLReborrowBackendRef<BE: Backend> {
+    fn reborrow_backend_ref(&self) -> CnvPVecLBackendRef<'_, BE>;
+}
+
+impl<'b, BE: Backend + 'b> CnvPVecLReborrowBackendRef<BE> for CnvPVecL<BE::BufMut<'b>, BE> {
+    fn reborrow_backend_ref(&self) -> CnvPVecLBackendRef<'_, BE> {
+        CnvPVecL {
+            data: BE::view_ref_mut(&self.data),
+            n: self.n,
+            size: self.size,
+            cols: self.cols,
+            _phantom: self._phantom,
+        }
+    }
+}
+
 /// Mutably borrow a backend-owned `CnvPVecL` using the backend's native view type.
 pub trait CnvPVecLToBackendMut<BE: Backend> {
     fn to_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE>;
@@ -276,6 +327,23 @@ impl<BE: Backend> CnvPVecLToBackendMut<BE> for CnvPVecL<BE::OwnedBuf, BE> {
     fn to_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE> {
         CnvPVecL {
             data: BE::view_mut(&mut self.data),
+            n: self.n,
+            size: self.size,
+            cols: self.cols,
+            _phantom: self._phantom,
+        }
+    }
+}
+
+/// Reborrow an already backend-borrowed `CnvPVecL` as a mutable backend-native view.
+pub trait CnvPVecLReborrowBackendMut<BE: Backend> {
+    fn reborrow_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE>;
+}
+
+impl<'b, BE: Backend + 'b> CnvPVecLReborrowBackendMut<BE> for CnvPVecL<BE::BufMut<'b>, BE> {
+    fn reborrow_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE> {
+        CnvPVecL {
+            data: BE::view_mut_ref(&mut self.data),
             n: self.n,
             size: self.size,
             cols: self.cols,

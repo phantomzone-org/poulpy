@@ -1,6 +1,6 @@
 use poulpy_core::{
     GLWECopy, GLWEPacking, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GetGaloisElement},
+    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEToBackendMut, GetGaloisElement},
 };
 use poulpy_hal::{
     api::ModuleLogN,
@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::bdd_arithmetic::{ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, UnsignedInteger, circuits};
 
 impl<BE: Backend<OwnedBuf = Vec<u8>>> ExecuteBDDCircuit1WTo1W<BE> for Module<BE> where
-    Self: Sized + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy
+    Self: Sized + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy<BE>
 {
 }
 
@@ -22,11 +22,11 @@ impl<BE: Backend<OwnedBuf = Vec<u8>>> ExecuteBDDCircuit1WTo1W<BE> for Module<BE>
 /// [`GLWEPacking`].
 pub trait ExecuteBDDCircuit1WTo1W<BE: Backend<OwnedBuf = Vec<u8>>>
 where
-    Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy,
+    Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy<BE>,
 {
-    fn execute_bdd_circuit_1w_to_1w<R, C, K, H, T>(
+    fn execute_bdd_circuit_1w_to_1w<C, K, H, T>(
         &self,
-        out: &mut FheUint<R, T>,
+        out: &mut FheUint<BE::OwnedBuf, T>,
         circuit: &C,
         a: &FheUintPrepared<BE::OwnedBuf, T, BE>,
         key: &H,
@@ -34,7 +34,6 @@ where
     ) where
         T: UnsignedInteger,
         C: GetBitCircuitInfo,
-        R: HostDataMut,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: Backend<OwnedBuf = Vec<u8>>,
@@ -46,10 +45,10 @@ where
 
     #[allow(clippy::too_many_arguments)]
     /// Operations Z x Z -> Z
-    fn execute_bdd_circuit_1w_to_1w_multi_thread<R, C, K, H, T>(
+    fn execute_bdd_circuit_1w_to_1w_multi_thread<C, K, H, T>(
         &self,
         threads: usize,
-        out: &mut FheUint<R, T>,
+        out: &mut FheUint<BE::OwnedBuf, T>,
         circuit: &C,
         a: &FheUintPrepared<BE::OwnedBuf, T, BE>,
         key: &H,
@@ -57,7 +56,6 @@ where
     ) where
         T: UnsignedInteger,
         C: GetBitCircuitInfo,
-        R: HostDataMut,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: Backend<OwnedBuf = Vec<u8>>,
@@ -96,6 +94,7 @@ macro_rules! define_bdd_1w_to_1w_trait {
                     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
                     H: GLWEAutomorphismKeyHelper<K, BE>,
                     BE: Backend<OwnedBuf = Vec<u8>>,
+                    Self: GLWEToBackendMut<BE>,
                     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
                     for<'a> BE::BufMut<'a>: HostDataMut;
 
@@ -112,6 +111,7 @@ macro_rules! define_bdd_1w_to_1w_trait {
                     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
                     H: GLWEAutomorphismKeyHelper<K, BE>,
                     BE: Backend<OwnedBuf = Vec<u8>>,
+                    Self: GLWEToBackendMut<BE>,
                     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
                     for<'a> BE::BufMut<'a>: HostDataMut;
             }
@@ -123,7 +123,7 @@ macro_rules! define_bdd_1w_to_1w_trait {
 macro_rules! impl_bdd_1w_to_1w_trait {
     ($trait_name:ident, $method_name:ident, $ty:ty, $circuit_ty:ty, $output_circuits:path) => {
         paste::paste! {
-            impl<D: HostDataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
+            impl<BE: Backend<OwnedBuf = Vec<u8>>> $trait_name<$ty, BE> for FheUint<BE::OwnedBuf, $ty> {
 
                 fn $method_name<M, K, H>(
                     &mut self,

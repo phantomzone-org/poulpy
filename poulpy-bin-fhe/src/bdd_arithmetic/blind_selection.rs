@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use poulpy_core::{
     GLWECopy, GLWEDecrypt, ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut},
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, glwe_backend_mut_from_mut},
 };
 use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxZero};
 
 use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindSelection<T, BE> for Module<BE> where
-    Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>
+    Self: GLWECopy<BE> + Cmux<BE> + GLWEDecrypt<BE>
 {
 }
 
@@ -28,7 +28,7 @@ impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindSelection<T, 
 /// zero.
 pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
-    Self: GLWECopy + Cmux<BE> + GLWEDecrypt<BE>,
+    Self: GLWECopy<BE> + Cmux<BE> + GLWEDecrypt<BE>,
 {
     /// Returns the minimum scratch-space size in bytes required by
     /// [`glwe_blind_selection`][Self::glwe_blind_selection].
@@ -50,11 +50,13 @@ where
         bit_mask: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut,
-        A: GLWEToMut,
+        R: GLWEToBackendMut<BE> + GLWEToMut,
+        A: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEToMut,
         K: GetGGSWBit<BE>,
+        BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
+        for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         assert!(bit_rsh + bit_mask <= T::BITS as usize);
 
@@ -86,7 +88,10 @@ where
                         let mut zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
                         zero.data_mut().zero();
                         self.cmux_inplace(&mut zero, hi, bit, scratch);
-                        self.glwe_copy(hi, &zero);
+                        self.glwe_copy(
+                            &mut hi.to_backend_mut(),
+                            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&zero),
+                        );
                         a.insert(j, hi);
                     }
 
@@ -101,7 +106,7 @@ where
         let out: Option<&mut A> = a.remove(&0);
 
         if let Some(out) = out {
-            self.glwe_copy(res, out);
+            self.glwe_copy(&mut glwe_backend_mut_from_mut::<BE>(res), &out.to_backend_ref());
         } else {
             res.data_mut().zero();
         }

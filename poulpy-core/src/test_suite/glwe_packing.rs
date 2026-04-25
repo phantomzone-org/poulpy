@@ -27,7 +27,7 @@ where
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEPacking<BE>
         + GLWESecretPreparedFactory<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEDecrypt<BE>
         + GLWERotate<BE>
         + GLWENoise<BE>,

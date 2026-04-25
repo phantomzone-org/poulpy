@@ -117,6 +117,17 @@ impl<B: Backend> SvpPPolToBackendRef<B> for SvpPPol<B::OwnedBuf, B> {
     }
 }
 
+/// Reborrow an already backend-borrowed `SvpPPol` as a shared backend-native view.
+pub trait SvpPPolReborrowBackendRef<B: Backend> {
+    fn reborrow_backend_ref(&self) -> SvpPPolBackendRef<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> SvpPPolReborrowBackendRef<B> for SvpPPol<B::BufMut<'b>, B> {
+    fn reborrow_backend_ref(&self) -> SvpPPolBackendRef<'_, B> {
+        svp_ppol_backend_ref_from_mut::<B>(self)
+    }
+}
+
 /// Mutably borrow a backend-owned `SvpPPol` using the backend's native view type.
 pub trait SvpPPolToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B>;
@@ -126,6 +137,22 @@ impl<B: Backend> SvpPPolToBackendMut<B> for SvpPPol<B::OwnedBuf, B> {
     fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
         SvpPPol {
             data: B::view_mut(&mut self.data),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+/// Reborrow an already backend-borrowed `SvpPPol` as a mutable backend-native view.
+pub trait SvpPPolReborrowBackendMut<B: Backend> {
+    fn reborrow_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B>;
+}
+
+impl<'b, B: Backend + 'b> SvpPPolReborrowBackendMut<B> for SvpPPol<B::BufMut<'b>, B> {
+    fn reborrow_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
+        SvpPPol {
+            data: B::view_mut_ref(&mut self.data),
             n: self.n,
             cols: self.cols,
             _phantom: PhantomData,

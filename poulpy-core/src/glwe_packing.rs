@@ -71,7 +71,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     auto_key: &K,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE> + ?Sized,
+    M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub<BE> + GLWEShift<BE> + GLWEAdd<BE> + GLWENormalize<BE> + ?Sized,
     A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
     B: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -101,7 +101,11 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
             module.glwe_sub(&mut tmp_b, a, b);
             module.glwe_rsh(1, &mut tmp_b, scratch);
 
-            module.glwe_add_assign(a, b);
+            {
+                let mut a_backend = a.to_backend_mut();
+                let b_backend = b.to_backend_ref();
+                module.glwe_add_assign_backend(&mut a_backend, &b_backend);
+            }
             module.glwe_rsh(1, a, scratch);
 
             {
@@ -150,11 +154,11 @@ where
         + GaloisElement
         + ModuleLogN
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy
+        + GLWECopy<BE>
         + GLWETrace<BE>,
 {
     fn glwe_pack_galois_elements_default(&self) -> Vec<i64> {
@@ -187,7 +191,7 @@ where
         keys: &H,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -243,11 +247,11 @@ impl<BE: Backend> GLWEPackingDefault<BE> for Module<BE> where
         + GaloisElement
         + ModuleLogN
         + GLWERotate<BE>
-        + GLWESub
+        + GLWESub<BE>
         + GLWEShift<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
-        + GLWECopy
+        + GLWECopy<BE>
         + GLWETrace<BE>
 {
 }

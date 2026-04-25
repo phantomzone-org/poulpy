@@ -10,9 +10,9 @@ use std::hint::black_box;
 
 use criterion::Criterion;
 
-pub fn bench_glwe_add_into<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_into<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
-    Module<BE>: ModuleNew<BE> + GLWEAdd,
+    Module<BE>: ModuleNew<BE> + GLWEAdd<BE>,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -32,9 +32,9 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_add_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_add_assign<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
-    Module<BE>: ModuleNew<BE> + GLWEAdd,
+    Module<BE>: ModuleNew<BE> + GLWEAdd<BE>,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -46,16 +46,18 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.glwe_add_assign(&mut res, &b);
+            let mut res_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res);
+            let b_ref = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&b);
+            module.glwe_add_assign_backend(&mut res_backend, &b_ref);
             black_box(());
         })
     });
     group.finish();
 }
 
-pub fn bench_glwe_sub<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_sub<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
-    Module<BE>: ModuleNew<BE> + GLWESub,
+    Module<BE>: ModuleNew<BE> + GLWESub<BE>,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
@@ -75,9 +77,9 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_sub_assign<BE: Backend>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_sub_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
-    Module<BE>: ModuleNew<BE> + GLWESub,
+    Module<BE>: ModuleNew<BE> + GLWESub<BE>,
 {
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);

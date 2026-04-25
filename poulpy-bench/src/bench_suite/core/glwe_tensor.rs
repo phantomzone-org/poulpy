@@ -8,10 +8,29 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{
         CnvPVecAlloc, Convolution, ModuleNew, ScratchArenaTakeBasic, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize,
-        VecZnxCopy, VecZnxIdftApplyConsume, VecZnxSubInplace,
+        VecZnxIdftApplyConsume, VecZnxSubInplaceBackend,
     },
-    layouts::{Backend, HostDataMut, Module, ScratchOwned, VecZnx, vec_znx_big_backend_ref_from_mut},
+    layouts::{
+        Backend, HostDataMut, Module, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxToMut, VecZnxToRef, ZnxInfos,
+        ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
+    },
 };
+
+fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let mut res = res.to_mut();
+    let a = a.to_ref();
+    let min_size = res.size().min(a.size());
+    for j in 0..min_size {
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+    }
+    for j in min_size..res.size() {
+        res.at_mut(res_col, j).fill(0);
+    }
+}
 
 #[inline]
 fn msb_mask_bottom_limb(base2k: usize, k: usize) -> i64 {
@@ -207,8 +226,7 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
         + CnvPVecAlloc<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxCopy
-        + VecZnxSubAssign,
+        + VecZnxSubInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'x> BE::BufMut<'x>: HostDataMut + AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'x> BE::BufRef<'x>: AsRef<[u8]> + Send,
@@ -266,7 +284,7 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
                 0,
                 &mut scratch,
             );
-            module.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
+            vec_znx_copy(&mut diag_terms, i, &tmp, 0);
         }
     }
 
@@ -289,8 +307,11 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
                 0,
                 &mut scratch,
             );
-            module.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 0);
-            module.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 1);
+            let mut tmp_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp);
+            let diag_terms_ref =
+                <VecZnx<BE::OwnedBuf> as poulpy_hal::layouts::VecZnxToBackendRef<BE>>::to_backend_ref(&diag_terms);
+            module.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, 0);
+            module.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, 1);
             black_box(());
         })
     });

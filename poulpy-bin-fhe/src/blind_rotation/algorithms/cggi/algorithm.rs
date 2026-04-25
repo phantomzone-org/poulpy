@@ -2,23 +2,42 @@ use itertools::izip;
 use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace,
-        VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotate, VecZnxZeroBackend, VmpApplyDftToDft,
-        VmpApplyDftToDftTmpBytes,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace, VecZnxDftZero,
+        VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotate, VecZnxZeroBackend, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, SvpPPolOwned, SvpPPolToBackendRef, VecZnx,
-        VecZnxToBackendRef, VmpPMatToBackendRef, ZnxZero, vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut,
-        vec_znx_dft_backend_ref_from_mut,
+        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, VmpPMatToBackendRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
+    oep::HalVecZnxImpl,
 };
 
 use poulpy_core::{
     Distribution, GLWEAdd, GLWECopy, GLWEExternalProduct, GLWEMulXpMinusOne, GLWENormalize, ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToMut, LWE, LWEInfos, LWEToRef, glwe_backend_ref_from_mut},
+    layouts::{
+        GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, LWE, LWEInfos, LWEToRef,
+        glwe_backend_ref_from_mut,
+    },
 };
 
-use crate::blind_rotation::{
+fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let mut res = res.to_mut();
+    let a = a.to_ref();
+    let min_size = res.size().min(a.size());
+    for j in 0..min_size {
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+    }
+    for j in min_size..res.size() {
+        res.at_mut(res_col, j).fill(0);
+    }
+}
+
+use crate::bin_fhe::blind_rotation::{
     BlindRotationExecute, BlindRotationKeyInfos, BlindRotationKeyPrepared, CGGI, LookupTable, mod_switch_2n,
 };
 
@@ -41,9 +60,8 @@ where
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxCopy
         + GLWEMulXpMinusOne<BE>
-        + GLWEAdd
+        + GLWEAdd<BE>
         + GLWENormalize<BE>
         + VecZnxZeroBackend<BE>,
     // TODO(device): CGGI blind rotation still contains host-visible sub-steps
@@ -52,6 +70,7 @@ where
     // host-backed until those helpers are migrated.
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::OwnedBuf: HostDataRef,
+    BE: HalVecZnxImpl<BE>,
 {
     fn blind_rotation_execute_tmp_bytes<G, B>(
         &self,
@@ -158,8 +177,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxCopy
-        + GLWECopy
+        + GLWECopy<BE>
         + VecZnxBigBytesOf,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     // TODO(device): this extended block-binary path still performs host-side
@@ -314,7 +332,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
     let mut res_mut = res.to_mut();
     (0..cols).for_each(|i| {
-        module.vec_znx_copy(res_mut.data_mut(), i, &acc[0], i);
+        vec_znx_copy(res_mut.data_mut(), i, &acc[0], i);
     });
 }
 
@@ -341,8 +359,7 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxCopy
-        + GLWECopy
+        + GLWECopy<BE>
         + VecZnxBigBytesOf,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     // TODO(device): this block-binary path still assumes host-visible
@@ -445,7 +462,10 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
             }
         }
     }
-    module.glwe_copy(res, &out_tmp);
+    module.glwe_copy(
+        &mut res.to_backend_mut(),
+        &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&out_tmp),
+    );
 }
 
 fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
@@ -459,7 +479,7 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
     DataIn: Data,
     LWE<DataIn>: LWEToRef,
-    M: VecZnxRotate<BE> + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd + GLWENormalize<BE> + GLWECopy,
+    M: VecZnxRotate<BE> + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd<BE> + GLWENormalize<BE> + GLWECopy<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     // TODO(device): the standard CGGI path still uses host-visible
     // coefficient staging for the accumulator.
@@ -494,7 +514,10 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
     let mut out_tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
-    module.glwe_copy(&mut out_tmp, res);
+    module.glwe_copy(
+        &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp),
+        &res.to_backend_ref(),
+    );
     let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
     mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref, lut.rotation_direction());
@@ -530,7 +553,9 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp, &mut scratch_1.borrow());
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
-        module.glwe_add_assign(&mut out_tmp, &acc_tmp);
+        let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
+        let acc_tmp_ref = glwe_backend_ref_from_mut::<BE>(&acc_tmp);
+        module.glwe_add_assign_backend(&mut out_backend, &acc_tmp_ref);
     }
 
     // We can normalize only at the end because we add normalized values in [-2^{base2k-1}, 2^{base2k-1}]
@@ -539,5 +564,8 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
         module.glwe_normalize_inplace(&mut out_backend, &mut scratch_1.borrow());
     }
-    module.glwe_copy(res, &out_tmp);
+    module.glwe_copy(
+        &mut res.to_backend_mut(),
+        &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&out_tmp),
+    );
 }

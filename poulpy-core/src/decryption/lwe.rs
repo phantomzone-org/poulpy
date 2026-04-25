@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, vec_znx_backend_ref_from_mut},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut},
 };
 
 pub use crate::api::LWEDecrypt;
@@ -61,7 +61,8 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
         let pt_base2k = pt.base2k().into();
         let res_base2k = res.base2k().into();
         let mut pt = pt.to_backend_mut();
-        let tmp_ref = vec_znx_backend_ref_from_mut::<BE>(&tmp.data);
+        let tmp_ref =
+            <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp.data);
         self.vec_znx_normalize(&mut pt.data, pt_base2k, 0, 0, &tmp_ref, res_base2k, 0, &mut scratch_1);
     }
 }

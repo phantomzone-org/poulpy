@@ -1,14 +1,13 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddAssign,
-        VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
+        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare,
+        VecZnxAddAssignBackend, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
     },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, VecZnx, VecZnxToMut, ZnxInfos, ZnxZero,
-        svp_ppol_backend_ref_from_mut, vec_znx_backend_mut_from_mut, vec_znx_backend_ref_from_mut,
-        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_mut_from_mut,
+        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendRef,
+        VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, VecZnxToMut, ZnxInfos, ZnxZero,
     },
     source::Source,
 };
@@ -17,9 +16,11 @@ use crate::{
     EncryptionInfos, GetDistribution, ScratchArenaTakeCore,
     dist::Distribution,
     layouts::{
-        GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, GLWEToMut, LWEInfos,
+        GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextBackendRef, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWEToMut,
+        LWEInfos,
         prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
+    vec_znx_host_ops::{vec_znx_copy, vec_znx_sub, vec_znx_sub_inplace},
 };
 
 pub(crate) fn normalize_scratch_vec_znx<'a, BE: Backend + 'a>(
@@ -31,7 +32,7 @@ pub(crate) fn normalize_scratch_vec_znx<'a, BE: Backend + 'a>(
     Module<BE>: VecZnxNormalizeInplaceBackend<BE>,
 {
     scratch.scope(|mut scratch| {
-        let mut vec_mut = vec_znx_backend_mut_from_mut::<BE>(vec);
+        let mut vec_mut = <VecZnx<BE::BufMut<'a>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(vec);
         <Module<BE> as VecZnxNormalizeInplaceBackend<BE>>::vec_znx_normalize_inplace_backend(
             module,
             base2k,
@@ -59,7 +60,7 @@ pub trait GLWEEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -113,20 +114,21 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let pt: &GLWEPlaintext<&[u8]> = &pt.to_ref();
+        let pt_ref: GLWEPlaintext<&[u8]> = pt.to_ref();
+        let pt_backend = pt.to_backend_ref();
         let sk_ref = sk.to_backend_ref();
 
         assert_eq!(res.rank(), sk_ref.rank());
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk_ref.n(), self.n() as u32);
-        assert_eq!(pt.n(), self.n() as u32);
+        assert_eq!(pt_ref.n(), self.n() as u32);
         assert!(
             scratch.available() >= <Module<BE> as GLWEEncryptSkDefault<BE>>::glwe_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < GLWE::encrypt_sk_tmp_bytes: {}",
@@ -140,7 +142,7 @@ where
             res.data_mut(),
             cols,
             false,
-            Some((pt, 0)),
+            Some((pt_ref, pt_backend, 0)),
             sk,
             enc_infos,
             source_xe,
@@ -183,7 +185,7 @@ where
             res.data_mut(),
             cols,
             false,
-            None::<(&GLWEPlaintext<Vec<u8>>, usize)>,
+            None,
             sk,
             enc_infos,
             source_xe,
@@ -210,7 +212,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEInfos,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -263,7 +265,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEInfos,
+        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -275,7 +277,15 @@ where
             scratch.available(),
             <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_pk_tmp_bytes(self, res)
         );
-        self.glwe_encrypt_pk_internal(res, Some((pt, 0)), pk, enc_infos, source_xu, source_xe, scratch)
+        self.glwe_encrypt_pk_internal(
+            res,
+            Some((pt.to_backend_ref(), 0)),
+            pk,
+            enc_infos,
+            source_xu,
+            source_xe,
+            scratch,
+        )
     }
 
     fn glwe_encrypt_zero_pk<'s, R, K, E>(
@@ -299,24 +309,16 @@ where
             scratch.available(),
             <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_pk_tmp_bytes(self, res)
         );
-        self.glwe_encrypt_pk_internal(
-            res,
-            None::<(&GLWEPlaintext<Vec<u8>>, usize)>,
-            pk,
-            enc_infos,
-            source_xu,
-            source_xe,
-            scratch,
-        )
+        self.glwe_encrypt_pk_internal(res, None, pk, enc_infos, source_xu, source_xe, scratch)
     }
 }
 
 pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn glwe_encrypt_pk_internal<'s, R, P, K, E>(
+    fn glwe_encrypt_pk_internal<'s, R, K, E>(
         &self,
         res: &mut R,
-        pt: Option<(&P, usize)>,
+        pt: Option<(GLWEPlaintextBackendRef<'_, BE>, usize)>,
         pk: &K,
         enc_infos: &E,
         source_xu: &mut Source,
@@ -324,7 +326,6 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -338,17 +339,16 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigAddNormal<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxAddAssign
-        + VecZnxCopy
+        + VecZnxAddAssignBackend<BE>
         + SvpPPolBytesOf
         + ModuleN
         + VecZnxDftBytesOf,
 {
     #[allow(clippy::too_many_arguments)]
-    fn glwe_encrypt_pk_internal<'s, R, P, K, E>(
+    fn glwe_encrypt_pk_internal<'s, R, K, E>(
         &self,
         res: &mut R,
-        pt: Option<(&P, usize)>,
+        pt: Option<(GLWEPlaintextBackendRef<'_, BE>, usize)>,
         pk: &K,
         enc_infos: &E,
         source_xu: &mut Source,
@@ -357,7 +357,6 @@ where
     ) where
         R: GLWEToMut,
         E: EncryptionInfos,
-        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -367,7 +366,7 @@ where
         assert_eq!(res.base2k(), pk.base2k());
         assert_eq!(res.n(), pk.n());
         assert_eq!(res.rank(), pk.rank());
-        if let Some((pt, _)) = pt {
+        if let Some((pt, _)) = &pt {
             assert_eq!(pt.base2k(), pk.base2k());
             assert_eq!(pt.n(), pk.n());
         }
@@ -406,7 +405,7 @@ where
             for i in 0..cols {
                 let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, size_pk);
                 // ci_dft = DFT(u) * DFT(pk[i])
-                let u_dft_ref = svp_ppol_backend_ref_from_mut::<BE>(&u_dft);
+                let u_dft_ref = u_dft.reborrow_backend_ref();
                 self.svp_apply_dft_to_dft(&mut ci_dft, 0, &u_dft_ref, 0, &pk.data, i);
 
                 // ci_big = u * p[i]
@@ -417,19 +416,20 @@ where
 
                 let (mut ci, scratch_3) = scratch_2.take_vec_znx(self.n(), 1, size_pk);
                 let scratch_next = {
-                    let ci_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&ci_big);
+                    let ci_big_ref = ci_big.reborrow_backend_ref();
                     scratch_3
                         .apply_mut(|scratch| self.vec_znx_big_normalize(&mut ci, base2k, 0, 0, &ci_big_ref, base2k, 0, scratch))
                 };
                 scratch_1 = scratch_next;
 
-                if let Some((pt, col)) = pt
-                    && col == i
+                if let Some((pt, col)) = &pt
+                    && *col == i
                 {
-                    self.vec_znx_add_assign(&mut ci, 0, &pt.to_ref().data, 0);
+                    let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
+                    self.vec_znx_add_assign_backend(&mut ci_mut, 0, &pt.data, 0);
                 }
 
-                self.vec_znx_copy(&mut res.data, i, &ci, 0);
+                vec_znx_copy(&mut res.data, i, &ci, 0);
             }
         }
     }
@@ -437,13 +437,13 @@ where
 
 pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn glwe_encrypt_sk_internal<'s, R, P, S, E>(
+    fn glwe_encrypt_sk_internal<'s, R, S, E>(
         &self,
         base2k: usize,
         res: &mut R,
         cols: usize,
         compressed: bool,
-        pt: Option<(&P, usize)>,
+        pt: Option<(GLWEPlaintext<&[u8]>, GLWEPlaintextBackendRef<'_, BE>, usize)>,
         sk: &S,
         enc_infos: &E,
         source_xe: &mut Source,
@@ -451,7 +451,6 @@ pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: VecZnxToMut,
-        P: GLWEPlaintextToRef,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -468,23 +467,20 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
-        + VecZnxSubAssign
-        + VecZnxAddAssign
+        + VecZnxAddAssignBackend<BE>
         + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddNormal
         + VecZnxNormalize<BE>
-        + VecZnxSub
-        + VecZnxCopy
         + VecZnxBigNormalizeTmpBytes,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
-    fn glwe_encrypt_sk_internal<'s, R, P, S, E>(
+    fn glwe_encrypt_sk_internal<'s, R, S, E>(
         &self,
         base2k: usize,
         res: &mut R,
         cols: usize,
         compressed: bool,
-        pt: Option<(&P, usize)>,
+        pt: Option<(GLWEPlaintext<&[u8]>, GLWEPlaintextBackendRef<'_, BE>, usize)>,
         sk: &S,
         enc_infos: &E,
         source_xe: &mut Source,
@@ -492,7 +488,6 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: VecZnxToMut,
-        P: GLWEPlaintextToRef,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -522,13 +517,13 @@ where
             let col_ct: usize = if compressed { 0 } else { i };
             self.vec_znx_fill_uniform(base2k, ct, col_ct, source_xa);
 
-            if let Some((pt, col)) = pt
-                && i == col
+            if let Some((pt, _, col)) = &pt
+                && i == *col
             {
-                self.vec_znx_sub(&mut ci, 0, ct, col_ct, &pt.to_ref().data, 0);
+                vec_znx_sub(&mut ci, 0, ct, col_ct, &pt.data, 0);
                 {
                     let mut scratch_norm = scratch_2.borrow();
-                    let mut ci_mut = vec_znx_backend_mut_from_mut::<BE>(&mut ci);
+                    let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
                     <Module<BE> as VecZnxNormalizeInplaceBackend<BE>>::vec_znx_normalize_inplace_backend(
                         self,
                         base2k,
@@ -538,15 +533,17 @@ where
                     );
                 }
             } else {
-                self.vec_znx_copy(&mut ci, 0, ct, col_ct);
+                vec_znx_copy(&mut ci, 0, ct, col_ct);
             }
 
             {
                 let scratch_dft = scratch_2.borrow();
                 let (mut ci_dft, mut scratch_3) = scratch_dft.take_vec_znx_dft(self, 1, size);
                 {
-                    let ci_ref = vec_znx_backend_ref_from_mut::<BE>(&ci);
-                    let mut ci_dft_mut = vec_znx_dft_backend_mut_from_mut::<BE>(&mut ci_dft);
+                    let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
+                    let mut ci_dft_mut = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
+                        BE,
+                    >>::reborrow_backend_mut(&mut ci_dft);
                     <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(self, 1, 0, &mut ci_dft_mut, 0, &ci_ref, 0);
                 }
 
@@ -554,8 +551,10 @@ where
                 let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
                 {
                     let mut scratch_norm = scratch_3.borrow();
-                    let ci_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&ci_big);
-                    let mut ci_mut = vec_znx_backend_mut_from_mut::<BE>(&mut ci);
+                    let ci_big_ref = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<
+                        BE,
+                    >>::reborrow_backend_ref(&ci_big);
+                    let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
                     <Module<BE> as VecZnxBigNormalize<BE>>::vec_znx_big_normalize(
                         self,
                         &mut ci_mut,
@@ -570,22 +569,23 @@ where
                 }
             }
 
-            self.vec_znx_sub_inplace(&mut c0, 0, &ci, 0);
+            vec_znx_sub_inplace(&mut c0, 0, &ci, 0);
         }
 
         // c[0] += e
         self.vec_znx_add_normal(base2k, &mut c0, 0, enc_infos.noise_infos(), source_xe);
 
         // c[0] += m if col = 0
-        if let Some((pt, col)) = pt
-            && col == 0
+        if let Some((_, pt, col)) = &pt
+            && *col == 0
         {
-            self.vec_znx_add_assign(&mut c0, 0, &pt.to_ref().data, 0);
+            let mut c0_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut c0);
+            self.vec_znx_add_assign_backend(&mut c0_mut, 0, &pt.data, 0);
         }
 
         {
             let mut scratch_norm = scratch_2.borrow();
-            let mut c0_mut = vec_znx_backend_mut_from_mut::<BE>(&mut c0);
+            let mut c0_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut c0);
             <Module<BE> as VecZnxNormalizeInplaceBackend<BE>>::vec_znx_normalize_inplace_backend(
                 self,
                 base2k,
@@ -594,6 +594,6 @@ where
                 &mut scratch_norm,
             );
         }
-        self.vec_znx_copy(ct, 0, &c0, 0);
+        vec_znx_copy(ct, 0, &c0, 0);
     }
 }

@@ -83,6 +83,7 @@ pub mod oep;
 mod operations;
 mod scratch;
 mod utils;
+mod vec_znx_host_ops;
 
 pub use operations::*;
 pub mod layouts;

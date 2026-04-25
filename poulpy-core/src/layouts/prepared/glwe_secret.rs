@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut,
-        SvpPPolToRef, ZnxInfos, svp_ppol_backend_ref_from_mut,
+        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolReborrowBackendRef, SvpPPolToBackendMut,
+        SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef, ZnxInfos,
     },
 };
 
@@ -30,7 +30,7 @@ pub fn glwe_secret_prepared_backend_ref_from_mut<'a, 'b, B: Backend>(
 ) -> GLWESecretPreparedBackendRef<'a, B> {
     GLWESecretPrepared {
         dist: sk.dist,
-        data: svp_ppol_backend_ref_from_mut(&sk.data),
+        data: sk.data.reborrow_backend_ref(),
     }
 }
 
