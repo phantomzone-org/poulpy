@@ -235,6 +235,18 @@ const POW40_MOD_Q_IFMA: [u64; 4] = {
 /// Result: `res[4*i+k] = a[i] mod Q[k]` for k in {0,1,2}, `res[4*i+3] = 0`.
 #[target_feature(enable = "avx512vl")]
 unsafe fn simd_b_from_znx64(n: usize, res: &mut [u64], a: &[i64]) {
+    unsafe { simd_b_from_znx64_impl(n, res, a, !0i64) }
+}
+
+/// Same as [`simd_b_from_znx64`] but ANDs each input by `mask` first.
+#[target_feature(enable = "avx512vl")]
+unsafe fn simd_b_from_znx64_masked(n: usize, res: &mut [u64], a: &[i64], mask: i64) {
+    unsafe { simd_b_from_znx64_impl(n, res, a, mask) }
+}
+
+#[inline]
+#[target_feature(enable = "avx512vl")]
+unsafe fn simd_b_from_znx64_impl(n: usize, res: &mut [u64], a: &[i64], mask: i64) {
     unsafe {
         let oq_vec = _mm256_loadu_si256(OQ_IFMA.as_ptr() as *const __m256i);
         let i64_max = _mm256_set1_epi64x(i64::MAX);
@@ -242,38 +254,26 @@ unsafe fn simd_b_from_znx64(n: usize, res: &mut [u64], a: &[i64]) {
         let mask40 = _mm256_set1_epi64x((1i64 << 40) - 1);
         let pow40 = _mm256_loadu_si256(POW40_MOD_Q_IFMA.as_ptr() as *const __m256i);
         let q = q_vec();
-        // Mask to zero lane 3: [all-ones, all-ones, all-ones, 0]
         let lane3_zero = _mm256_set_epi64x(0, -1, -1, -1);
+        let mask_vec = _mm256_set1_epi64x(mask);
         let mut r_ptr = res.as_mut_ptr() as *mut __m256i;
 
         for &xval in &a[..n] {
-            // Broadcast xval into all 4 lanes
-            let xv = _mm256_set1_epi64x(xval);
-            // Strip sign bit: xl = xval as u64 & 0x7FFF_FFFF_FFFF_FFFF
+            let xv = _mm256_and_si256(_mm256_set1_epi64x(xval), mask_vec);
             let xl = _mm256_and_si256(xv, i64_max);
-            // sign = all-ones in lanes where xval < 0
             let sign = _mm256_cmpgt_epi64(zero, xv);
-            // add oq[k] only for negative inputs
             let add = _mm256_and_si256(sign, oq_vec);
             let val = _mm256_add_epi64(xl, add);
 
-            // Two-pass modular reduction: val (< 2^63) → [0, Q)
-            // Pass 1: split at bit 40
-            let hi = _mm256_srli_epi64::<40>(val); // < 2^23, fits in 32 bits
+            let hi = _mm256_srli_epi64::<40>(val);
             let lo = _mm256_and_si256(val, mask40);
-            // y = hi * (2^40 mod Q) + lo < 2^23 * 2^22 + 2^40 < 2^46
             let y = _mm256_add_epi64(_mm256_mul_epu32(hi, pow40), lo);
 
-            // Pass 2: split at bit 40 again
-            let hi2 = _mm256_srli_epi64::<40>(y); // < 2^6
+            let hi2 = _mm256_srli_epi64::<40>(y);
             let lo2 = _mm256_and_si256(y, mask40);
-            // z = hi2 * (2^40 mod Q) + lo2 < 2^6 * 2^22 + 2^40 < 2^41 < 2*Q
             let z = _mm256_add_epi64(_mm256_mul_epu32(hi2, pow40), lo2);
 
-            // Final: conditional subtract to get [0, Q)
             let result = cond_sub_2q_si256(z, q);
-
-            // Zero lane 3 (padding)
             let result = _mm256_and_si256(result, lane3_zero);
 
             _mm256_storeu_si256(r_ptr, result);
@@ -336,6 +336,11 @@ impl NttIfmaFromZnx64 for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_from_znx64(res: &mut [u64], a: &[i64]) {
         unsafe { simd_b_from_znx64(a.len(), res, a) };
+    }
+
+    #[inline(always)]
+    fn ntt_ifma_from_znx64_masked(res: &mut [u64], a: &[i64], mask: i64) {
+        unsafe { simd_b_from_znx64_masked(a.len(), res, a, mask) };
     }
 }
 

@@ -36,7 +36,7 @@ pub fn ntt_ifma_cnv_prepare_left_tmp_bytes(_n: usize) -> usize {
     0
 }
 
-pub fn ntt_ifma_cnv_prepare_left<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, _mask: i64, _tmp: &mut [u8])
+pub fn ntt_ifma_cnv_prepare_left<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, mask: i64, _tmp: &mut [u8])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>>,
     R: CnvPVecLToMut<BE>,
@@ -50,9 +50,15 @@ where
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
-        for j in 0..min_size {
+        for j in 0..min_size.saturating_sub(1) {
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, j));
             BE::ntt_ifma_from_znx64(res_u64, a.at(col, j));
+            BE::ntt_ifma_dft_execute(table, res_u64);
+        }
+        if min_size > 0 {
+            let last = min_size - 1;
+            let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(col, last));
+            BE::ntt_ifma_from_znx64_masked(res_u64, a.at(col, last), mask);
             BE::ntt_ifma_dft_execute(table, res_u64);
         }
         for j in min_size..res_size {
@@ -65,7 +71,7 @@ pub fn ntt_ifma_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
     4 * n * size_of::<u64>()
 }
 
-pub fn ntt_ifma_cnv_prepare_right<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, _mask: i64, tmp: &mut [u64])
+pub fn ntt_ifma_cnv_prepare_right<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, mask: i64, tmp: &mut [u64])
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
     R: CnvPVecRToMut<BE>,
@@ -80,10 +86,17 @@ where
     let min_size = res_size.min(a.size());
 
     for col in 0..cols {
-        for j in 0..min_size {
+        for j in 0..min_size.saturating_sub(1) {
             BE::ntt_ifma_from_znx64(tmp, a.at(col, j));
             BE::ntt_ifma_dft_execute(table, tmp);
             let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, j));
+            BE::ntt_ifma_c_from_b(n, res_u32, tmp);
+        }
+        if min_size > 0 {
+            let last = min_size - 1;
+            BE::ntt_ifma_from_znx64_masked(tmp, a.at(col, last), mask);
+            BE::ntt_ifma_dft_execute(table, tmp);
+            let res_u32: &mut [u32] = cast_slice_mut(res.at_mut(col, last));
             BE::ntt_ifma_c_from_b(n, res_u32, tmp);
         }
         for j in min_size..res_size {
@@ -329,10 +342,9 @@ pub fn ntt_ifma_cnv_prepare_self<L, R, A, BE>(
     let res_size = left.size();
     let min_size = res_size.min(a.size());
     let _ = tmp;
-    let _ = mask;
 
     for col in 0..cols {
-        for j in 0..min_size {
+        for j in 0..min_size.saturating_sub(1) {
             {
                 let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, j));
                 BE::ntt_ifma_from_znx64(left_u64, a.at(col, j));
@@ -340,6 +352,17 @@ pub fn ntt_ifma_cnv_prepare_self<L, R, A, BE>(
             }
             let left_u64: &[u64] = cast_slice(left.at(col, j));
             let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, j));
+            BE::ntt_ifma_c_from_b(n, right_u32, left_u64);
+        }
+        if min_size > 0 {
+            let last = min_size - 1;
+            {
+                let left_u64: &mut [u64] = cast_slice_mut(left.at_mut(col, last));
+                BE::ntt_ifma_from_znx64_masked(left_u64, a.at(col, last), mask);
+                BE::ntt_ifma_dft_execute(table, left_u64);
+            }
+            let left_u64: &[u64] = cast_slice(left.at(col, last));
+            let right_u32: &mut [u32] = cast_slice_mut(right.at_mut(col, last));
             BE::ntt_ifma_c_from_b(n, right_u32, left_u64);
         }
         for j in min_size..res_size {

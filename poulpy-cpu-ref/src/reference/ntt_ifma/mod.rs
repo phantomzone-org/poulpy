@@ -101,6 +101,10 @@ pub trait NttIfmaDFTExecute<Table> {
 /// `res` has length `4 * a.len()` (3 active residues + 1 padding per coefficient).
 pub trait NttIfmaFromZnx64 {
     fn ntt_ifma_from_znx64(res: &mut [u64], a: &[i64]);
+
+    fn ntt_ifma_from_znx64_masked(res: &mut [u64], a: &[i64], mask: i64) {
+        self::arithmetic::b_ifma_from_znx64_masked_ref(a.len(), res, a, mask)
+    }
 }
 
 /// Recover `i128` coefficients from 3-prime CRT format via Garner's algorithm.
