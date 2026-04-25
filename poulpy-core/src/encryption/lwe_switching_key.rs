@@ -1,6 +1,9 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphism},
-    layouts::{Backend, Module, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphismBackend},
+    layouts::{
+        Backend, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchArena, ScratchOwned,
+        ZnxView, ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -34,7 +37,7 @@ pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
 
 impl<BE: Backend> LWESwitchingKeyEncryptDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism,
+    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphismBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -95,8 +98,26 @@ where
         sk_glwe_src.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_glwe_src.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
         {
-            let sk_glwe_src_data = sk_glwe_src.data.as_vec_znx();
-            self.vec_znx_automorphism(-1, &mut sk_glwe_out.data.as_vec_znx_mut(), 0, &sk_glwe_src_data, 0);
+            let sk_glwe_src_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_glwe_src.data.data.as_ref()),
+                sk_glwe_src.data.n,
+                sk_glwe_src.data.cols,
+            );
+            let mut sk_glwe_out_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_glwe_out.data.data.as_ref()),
+                sk_glwe_out.data.n,
+                sk_glwe_out.data.cols,
+            );
+            self.vec_znx_automorphism_backend(
+                -1,
+                &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
+                    &mut sk_glwe_out_backend,
+                ),
+                0,
+                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_glwe_src_backend),
+                0,
+            );
+            BE::copy_to_host(&sk_glwe_out_backend.data, sk_glwe_out.data.data.as_mut());
         }
 
         sk_glwe_src.dist = sk_lwe_in.dist;
@@ -104,8 +125,26 @@ where
         sk_glwe_src.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_glwe_src.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
         {
-            let sk_glwe_src_data = sk_glwe_src.data.as_vec_znx();
-            self.vec_znx_automorphism(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, &sk_glwe_src_data, 0);
+            let sk_glwe_src_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_glwe_src.data.data.as_ref()),
+                sk_glwe_src.data.n,
+                sk_glwe_src.data.cols,
+            );
+            let mut sk_glwe_in_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_glwe_in.data.data.as_ref()),
+                sk_glwe_in.data.n,
+                sk_glwe_in.data.cols,
+            );
+            self.vec_znx_automorphism_backend(
+                -1,
+                &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
+                    &mut sk_glwe_in_backend,
+                ),
+                0,
+                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_glwe_src_backend),
+                0,
+            );
+            BE::copy_to_host(&sk_glwe_in_backend.data, sk_glwe_in.data.data.as_mut());
         }
 
         // TODO(device): LWESwitchingKey still stages its offline keygen through a

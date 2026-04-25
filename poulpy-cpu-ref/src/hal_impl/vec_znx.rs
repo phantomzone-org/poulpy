@@ -349,12 +349,15 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_rotate_inplace_backend_default(module, k, a, a_col, &mut scratch);
         }
 
-        fn vec_znx_automorphism<R, A>(module: &Module<Self>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-        where
-            R: VecZnxToMut,
-            A: VecZnxToRef,
-        {
-            <Self as HalVecZnxDefaults<Self>>::vec_znx_automorphism_default(module, k, res, res_col, a, a_col)
+        fn vec_znx_automorphism_backend<'r, 'a>(
+            module: &Module<Self>,
+            k: i64,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'a, Self>,
+            a_col: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_automorphism_backend_default(module, k, res, res_col, a, a_col)
         }
 
         fn vec_znx_automorphism_assign_tmp_bytes(module: &Module<Self>) -> usize {

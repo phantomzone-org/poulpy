@@ -264,10 +264,14 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_automorphism<R, A>(module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    fn vec_znx_automorphism_backend<'r, 'a>(
+        module: &Module<BE>,
+        k: i64,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+    );
 
     fn vec_znx_automorphism_assign_tmp_bytes(module: &Module<BE>) -> usize;
 

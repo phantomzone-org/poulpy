@@ -322,12 +322,16 @@ pub trait VecZnxRotateInplaceBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxAutomorphism {
+pub trait VecZnxAutomorphismBackend<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a` and stores the result in `res_col` column of `res`.
-    fn vec_znx_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    fn vec_znx_automorphism_backend<'r, 'a>(
+        &self,
+        k: i64,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxAutomorphismAssignTmpBytes {

@@ -1,10 +1,10 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphism},
+    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphismBackend},
     layouts::{
-        Backend, GaloisElement, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned,
-        SvpPPolToBackendMut,
+        Backend, GaloisElement, HostDataMut, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef,
+        ScalarZnxToBackendRef, ScratchArena, ScratchOwned, SvpPPolToBackendMut,
     },
     source::Source,
 };
@@ -40,7 +40,7 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
+    Self: ModuleN + GaloisElement + VecZnxAutomorphismBackend<BE> + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -88,15 +88,24 @@ where
         {
             let mut sk_out = GLWESecret::alloc(self.n().into(), sk.rank());
             sk_out.dist = sk.dist;
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data), sk.data.n, sk.data.cols);
+            let mut sk_out_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_out.data.data.as_ref()),
+                sk_out.data.n,
+                sk_out.data.cols,
+            );
             for i in 0..sk.rank().into() {
-                self.vec_znx_automorphism(
+                self.vec_znx_automorphism_backend(
                     self.galois_element_inv(p),
-                    &mut sk_out.data.as_vec_znx_mut(),
+                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
+                        &mut sk_out_backend,
+                    ),
                     i,
-                    &sk.data.as_vec_znx(),
+                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
                     i,
                 );
             }
+            BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
             let sk_out_backend = ScalarZnx::from_data(
                 BE::from_host_bytes(sk_out.data.to_ref().data),
                 sk_out.data.n,

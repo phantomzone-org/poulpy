@@ -4,8 +4,8 @@ use crate::{
     api::{GGSWAutomorphism, GLWEAutomorphism, GLWEAutomorphismKeyAutomorphism},
     automorphism::GGSWAutomorphismDefault,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos,
+        GLWEBackendMut, GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::AutomorphismImpl,
@@ -209,7 +209,7 @@ impl_automorphism_delegate!(
     )
     where
         R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         BE::glwe_automorphism_key_automorphism(self, res, a, key, scratch)

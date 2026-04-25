@@ -1,6 +1,8 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxFillUniform},
-    layouts::{GaloisElement, Module, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend, VecZnxFillUniform},
+    layouts::{
+        Backend, GaloisElement, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchOwned,
+    },
     source::Source,
     test_suite::TestParams,
 };
@@ -17,8 +19,10 @@ use crate::{
     noise::GGLWENoise,
 };
 
-pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
-where
+pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
+    params: &TestParams,
+    module: &Module<BE>,
+) where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
@@ -29,7 +33,7 @@ where
         + GLWESwitchingKeyDecompress
         + GGLWENoise<BE>
         + VecZnxFillUniform
-        + VecZnxAutomorphism,
+        + VecZnxAutomorphismBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -76,15 +80,24 @@ where
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
-            (0..atk.rank().into()).for_each(|i| {
-                module.vec_znx_automorphism(
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let mut sk_out_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_out.data.data.as_ref()),
+                sk_out.data.n,
+                sk_out.data.cols,
+            );
+            for i in 0..atk.rank().into() {
+                module.vec_znx_automorphism_backend(
                     module.galois_element_inv(p),
-                    &mut sk_out.data.as_vec_znx_mut(),
+                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
+                        &mut sk_out_backend,
+                    ),
                     i,
-                    &sk.data.as_vec_znx(),
+                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
                     i,
                 );
-            });
+            }
+            BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
             let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
             module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
@@ -119,7 +132,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWEAutomorphismKeyDecompress
-        + VecZnxAutomorphism
+        + VecZnxAutomorphismBackend<BE>
         + VecZnxFillUniform
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -170,15 +183,24 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
-            (0..atk_compressed.rank().into()).for_each(|i| {
-                module.vec_znx_automorphism(
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let mut sk_out_backend = ScalarZnx::from_data(
+                BE::from_host_bytes(sk_out.data.data.as_ref()),
+                sk_out.data.n,
+                sk_out.data.cols,
+            );
+            for i in 0..atk_compressed.rank().into() {
+                module.vec_znx_automorphism_backend(
                     module.galois_element_inv(p),
-                    &mut sk_out.data.as_vec_znx_mut(),
+                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
+                        &mut sk_out_backend,
+                    ),
                     i,
-                    &sk.data.as_vec_znx(),
+                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
                     i,
                 );
-            });
+            }
+            BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
             let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
             module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 

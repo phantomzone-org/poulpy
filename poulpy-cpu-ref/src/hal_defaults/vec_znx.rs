@@ -565,13 +565,19 @@ where
         vec_znx_rotate_inplace::<VecZnxBackendMut<'r, BE>, BE>(p, res, res_col, tmp);
     }
 
-    fn vec_znx_automorphism_default<R, A>(_module: &Module<BE>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+    fn vec_znx_automorphism_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        p: i64,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+    ) where
         BE: ZnxAutomorphism + ZnxZero,
-        R: VecZnxToMut,
-        A: VecZnxToRef,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     {
-        vec_znx_automorphism::<R, A, BE>(p, res, res_col, a, a_col);
+        vec_znx_automorphism::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(p, res, res_col, a, a_col);
     }
 
     fn vec_znx_automorphism_assign_tmp_bytes_default(module: &Module<BE>) -> usize {

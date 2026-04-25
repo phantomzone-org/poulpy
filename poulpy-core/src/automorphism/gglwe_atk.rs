@@ -1,13 +1,14 @@
 use poulpy_hal::{
-    api::{VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
+    api::{VecZnxAutomorphismBackend, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
     layouts::{Backend, CyclotomicOrder, GaloisElement, HostDataMut, Module, ScratchArena},
 };
 
 use crate::{
     GLWEKeyswitch, ScratchArenaTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToMut, GGLWEToRef, GLWE, GetGaloisElement, SetGaloisElement,
-        gglwe_at_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWE, GetGaloisElement,
+        SetGaloisElement, gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, glwe_backend_ref_from_mut,
+        prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -16,9 +17,9 @@ pub trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
     Sized
     + GaloisElement
     + GLWEKeyswitch<BE>
-    + VecZnxAutomorphism
-    + VecZnxAutomorphismAssign<BE>
-    + VecZnxAutomorphismAssignTmpBytes
+    + VecZnxAutomorphismBackend<BE>
+    + VecZnxAutomorphismInplace<BE>
+    + VecZnxAutomorphismInplaceTmpBytes
     + CyclotomicOrder
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -52,7 +53,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         assert!(
@@ -79,16 +80,18 @@ where
 
         {
             let res: &mut GGLWE<BE::BufMut<'_>> = &mut res.to_backend_mut();
-            let a = &a.to_ref();
+            let a_ref = &a.to_ref();
+            let a_backend = <A as GGLWEToBackendRef<BE>>::to_backend_ref(a);
 
             for row in 0..res.dnum().as_usize() {
                 for col in 0..cols_in {
                     let mut res_tmp = gglwe_at_backend_mut_from_mut::<BE>(res, row, col);
-                    let a_ct = a.at(row, col);
+                    let a_ct = a_ref.at(row, col);
+                    let a_ct_backend = gglwe_at_backend_ref_from_ref::<BE>(&a_backend, row, col);
 
                     if same_layout {
                         for i in 0..cols_out {
-                            self.vec_znx_automorphism(p, &mut res_tmp.data, i, &a_ct.data, i);
+                            self.vec_znx_automorphism_backend(p, &mut res_tmp.data, i, &a_ct_backend.data, i);
                         }
 
                         let mut scratch_iter = scratch.borrow();
@@ -101,7 +104,7 @@ where
                         let (mut tmp_glwe, mut scratch_iter) = scratch.borrow().take_glwe(&a_ct);
 
                         for i in 0..cols_out {
-                            self.vec_znx_automorphism(p, &mut tmp_glwe.data, i, &a_ct.data, i);
+                            self.vec_znx_automorphism_backend(p, &mut tmp_glwe.data, i, &a_ct_backend.data, i);
                         }
 
                         let tmp_glwe_ref = glwe_backend_ref_from_mut::<BE>(&tmp_glwe);
@@ -168,9 +171,9 @@ impl<BE: Backend> GLWEAutomorphismKeyAutomorphismDefault<BE> for Module<BE>
 where
     Self: GaloisElement
         + GLWEKeyswitch<BE>
-        + VecZnxAutomorphism
-        + VecZnxAutomorphismAssign<BE>
-        + VecZnxAutomorphismAssignTmpBytes
+        + VecZnxAutomorphismBackend<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismInplaceTmpBytes
         + CyclotomicOrder,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,

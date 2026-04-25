@@ -154,7 +154,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 
     fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(
@@ -314,7 +314,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
@@ -601,7 +601,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,

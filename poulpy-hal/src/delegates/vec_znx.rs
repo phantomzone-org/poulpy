@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddNormalBackend, VecZnxAddScalarAssignBackend,
-        VecZnxAddScalarIntoBackend, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
+        VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
         VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh,
         VecZnxLshAddInto, VecZnxLshInplaceBackend, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
         VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
@@ -415,13 +415,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxAutomorphism,
-    fn vec_znx_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_automorphism(self, k, res, res_col, a, a_col)
+    VecZnxAutomorphismBackend<B>,
+    fn vec_znx_automorphism_backend<'r, 'a>(
+        &self,
+        k: i64,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+    ) {
+        B::vec_znx_automorphism_backend(self, k, res, res_col, a, a_col)
     }
 );
 

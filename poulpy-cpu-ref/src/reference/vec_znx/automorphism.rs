@@ -5,7 +5,14 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
+        VecZnxAutomorphismInplaceTmpBytes,
+    },
+    layouts::{
+        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
+        ZnxInfos, ZnxView, ZnxViewMut,
+    },
     reference::znx::{ZnxAutomorphism, ZnxCopy, ZnxZero},
 };
 
@@ -56,17 +63,17 @@ where
     }
 }
 
-pub fn bench_vec_znx_automorphism<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_automorphism<B: Backend<OwnedBuf = Vec<u8>>>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxAutomorphism + ModuleNew<B>,
+    Module<B>: VecZnxAutomorphismBackend<B> + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_automorphism::{label}");
+    let group_name: String = format!("vec_znx_automorphism_backend::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxAutomorphism + ModuleNew<B>,
+        Module<B>: VecZnxAutomorphismBackend<B> + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -85,7 +92,13 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_automorphism(-7, &mut res, i, &a, i);
+                module.vec_znx_automorphism_backend(
+                    -7,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res),
+                    i,
+                    &<VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a),
+                    i,
+                );
             }
             black_box(());
         }

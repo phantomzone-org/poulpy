@@ -4,7 +4,7 @@ use std::f64::consts::SQRT_2;
 use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal,
-        VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
         VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform,
         VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRings,
         VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
@@ -349,8 +349,8 @@ pub fn test_vec_znx_automorphism<BR: crate::test_suite::TestBackend, BT: crate::
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxAutomorphism,
-    Module<BT>: VecZnxAutomorphism,
+    Module<BR>: VecZnxAutomorphismBackend<BR>,
+    Module<BT>: VecZnxAutomorphismBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -372,8 +372,20 @@ pub fn test_vec_znx_automorphism<BR: crate::test_suite::TestBackend, BT: crate::
 
             // Normalize on c
             for i in 0..cols {
-                module_ref.vec_znx_automorphism(p, &mut res_ref, i, &a, i);
-                module_test.vec_znx_automorphism(p, &mut res_test, i, &a, i);
+                module_ref.vec_znx_automorphism_backend(
+                    p,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    i,
+                    &vec_znx_backend_ref::<BR>(&a),
+                    i,
+                );
+                module_test.vec_znx_automorphism_backend(
+                    p,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    i,
+                );
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -383,8 +395,20 @@ pub fn test_vec_znx_automorphism<BR: crate::test_suite::TestBackend, BT: crate::
 
             // Normalize on c
             for i in 0..cols {
-                module_ref.vec_znx_automorphism(p, &mut res_ref, i, &a, i);
-                module_test.vec_znx_automorphism(p, &mut res_test, i, &a, i);
+                module_ref.vec_znx_automorphism_backend(
+                    p,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    i,
+                    &vec_znx_backend_ref::<BR>(&a),
+                    i,
+                );
+                module_test.vec_znx_automorphism_backend(
+                    p,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    i,
+                );
             }
 
             assert_eq!(a.digest_u64(), a_digest);

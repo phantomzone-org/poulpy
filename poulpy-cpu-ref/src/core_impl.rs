@@ -1186,7 +1186,7 @@ macro_rules! impl_automorphism_via_defaults {
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
                 R: GGLWEToMut + GGLWEToBackendMut<Self> + poulpy_core::layouts::SetGaloisElement + GGLWEInfos,
-                A: GGLWEToRef + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
+                A: GGLWEToRef + GGLWEToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_default(module, res, a, key, scratch)

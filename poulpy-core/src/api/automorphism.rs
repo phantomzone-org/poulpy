@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     api::GGSWExpandRows,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos,
+        GLWEBackendMut, GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -183,7 +183,7 @@ pub trait GLWEAutomorphismKeyAutomorphism<BE: Backend> {
     fn glwe_automorphism_key_automorphism<'s, R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 
     fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(&self, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
