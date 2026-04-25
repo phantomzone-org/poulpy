@@ -1,7 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, ScratchOwned, VecZnxToMut, VecZnxToRef},
+    layouts::{
+        Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -439,6 +441,78 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
     ) where
         R: VecZnxToMut,
         A: crate::layouts::VecZnxBigToRef<BE>;
+
+    #[allow(clippy::too_many_arguments)]
+    #[doc(hidden)]
+    fn vec_znx_big_normalize_assign_fallback<R, A, const SUB: bool>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxToMut,
+        A: crate::layouts::VecZnxBigToRef<BE>,
+    {
+        let (n, size) = {
+            let res_ref = res.to_mut();
+            (res_ref.n, res_ref.size)
+        };
+
+        let mut tmp = VecZnx::alloc(n, 1, size);
+        Self::vec_znx_big_normalize(module, &mut tmp, res_base2k, res_offset, 0, a, a_base2k, a_col, scratch);
+
+        let mut res_ref = res.to_mut();
+        for j in 0..size {
+            for (ri, ti) in res_ref.at_mut(res_col, j).iter_mut().zip(tmp.at(0, j).iter()) {
+                *ri = if SUB { ri.wrapping_sub(*ti) } else { ri.wrapping_add(*ti) };
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_add_assign<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxToMut,
+        A: crate::layouts::VecZnxBigToRef<BE>,
+    {
+        Self::vec_znx_big_normalize_assign_fallback::<R, A, false>(
+            module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_sub_assign<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxToMut,
+        A: crate::layouts::VecZnxBigToRef<BE>,
+    {
+        Self::vec_znx_big_normalize_assign_fallback::<R, A, true>(
+            module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
+    }
 
     fn vec_znx_big_automorphism<R, A>(module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where

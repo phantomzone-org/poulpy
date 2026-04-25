@@ -145,6 +145,79 @@ fn nfc_middle_step(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry
     }
 }
 
+/// Compile-time selector for fused `±= normalize(a)` operations.
+///
+/// `AddOp` and `SubOp` are zero-sized tag types that pick `wrapping_add` vs
+/// `wrapping_sub` at every leaf of the normalization pipeline.  Generic over
+/// `O: AssignOp`, the cross/inter outer loops and the `I128NormalizeOps` hot
+/// kernels share a single implementation for both directions; monomorphization
+/// produces two specialized copies with the right sign at codegen time.
+pub trait AssignOp {
+    /// `true` for `SubOp`, `false` for `AddOp`. Const-foldable per monomorphization.
+    const SUB: bool;
+    /// `r ± x` (wrapping).
+    fn apply_i64(r: i64, x: i64) -> i64;
+}
+
+/// Tag selecting `res += normalize(a)` semantics.
+pub struct AddOp;
+/// Tag selecting `res -= normalize(a)` semantics.
+pub struct SubOp;
+
+impl AssignOp for AddOp {
+    const SUB: bool = false;
+    #[inline(always)]
+    fn apply_i64(r: i64, x: i64) -> i64 {
+        r.wrapping_add(x)
+    }
+}
+
+impl AssignOp for SubOp {
+    const SUB: bool = true;
+    #[inline(always)]
+    fn apply_i64(r: i64, x: i64) -> i64 {
+        r.wrapping_sub(x)
+    }
+}
+
+#[inline(always)]
+fn nfc_middle_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+    debug_assert_eq!(res.len(), a.len());
+    debug_assert!(res.len() <= carry.len());
+    debug_assert!(lsh < base2k);
+
+    if lsh == 0 {
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k, ai);
+            let co = get_carry_i128(base2k, ai, digit);
+            let d_plus_c = digit + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = O::apply_i64(*r, out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
+            let digit = get_digit_i128(base2k_lsh, ai);
+            let co = get_carry_i128(base2k_lsh, ai, digit);
+            let d_plus_c = (digit << lsh) + *c;
+            let out = get_digit_i128(base2k, d_plus_c);
+            *r = O::apply_i64(*r, out as i64);
+            *c = co + get_carry_i128(base2k, d_plus_c, out);
+        });
+    }
+}
+
+#[inline(always)]
+fn nfc_middle_carry_assign<O: AssignOp>(base2k: usize, res: &mut [i64], carry: &mut [i128]) {
+    debug_assert!(res.len() <= carry.len());
+    res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+        let out = get_digit_i128(base2k, *c);
+        *r = O::apply_i64(*r, out as i64);
+        *c = get_carry_i128(base2k, *c, out);
+    });
+}
+
 /// Middle in-place: update an existing `i64` `res` limb using `i128` carry.
 ///
 /// Analogous to `znx_normalize_middle_step_inplace_ref` but with `i128` carry.
@@ -201,6 +274,33 @@ fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mu
     }
 }
 
+#[inline(always)]
+fn nfc_final_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    debug_assert!(res.len() <= carry.len());
+    debug_assert!(lsh < base2k);
+
+    if lsh == 0 {
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
+            *r = O::apply_i64(*r, out as i64);
+        });
+    } else {
+        let base2k_lsh = base2k - lsh;
+        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+            let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
+            *r = O::apply_i64(*r, out as i64);
+        });
+    }
+}
+
+#[inline(always)]
+fn nfc_final_carry_assign<O: AssignOp>(base2k: usize, res: &mut [i64], carry: &mut [i128]) {
+    debug_assert!(res.len() <= carry.len());
+    res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
+        *r = O::apply_i64(*r, get_digit_i128(base2k, *c) as i64);
+    });
+}
+
 /// Normalize an `i128` limb into an `i128` intermediate (`a_norm`), with `i128` carry.
 ///
 /// Used in the cross-base2k path to convert the `a` limb to the standard representation
@@ -243,6 +343,15 @@ fn nfc_extract_digit_addmul(base2k: usize, scale: usize, res: &mut [i64], src: &
         let digit = get_digit_i128(base2k, *s);
         *s = get_carry_i128(base2k, *s, digit);
         *r = r.wrapping_add((digit as i64).wrapping_shl(scale as u32));
+    }
+}
+
+#[inline(always)]
+fn nfc_extract_digit_assignmul<O: AssignOp>(base2k: usize, scale: usize, res: &mut [i64], src: &mut [i128]) {
+    for (r, s) in res.iter_mut().zip(src.iter_mut()) {
+        let digit = get_digit_i128(base2k, *s);
+        *s = get_carry_i128(base2k, *s, digit);
+        *r = O::apply_i64(*r, (digit as i64).wrapping_shl(scale as u32));
     }
 }
 
@@ -487,6 +596,212 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn ntt120_vec_znx_big_normalize_inter_assign<O, R, A, BE>(
+    base2k: usize,
+    res: &mut R,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i128],
+) where
+    O: AssignOp,
+    R: VecZnxToMut,
+    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+{
+    let mut res = res.to_mut();
+    let a = a.to_ref();
+
+    let n = res.n();
+    let res_size = res.size();
+    let a_size = a.size();
+
+    let (carry, _) = carry.split_at_mut(n);
+
+    let mut lsh: i64 = res_offset % base2k as i64;
+    let mut limbs_offset: i64 = res_offset / base2k as i64;
+
+    if res_offset < 0 && lsh != 0 {
+        lsh = (lsh + base2k as i64) % (base2k as i64);
+        limbs_offset -= 1;
+    }
+
+    let lsh_pos: usize = lsh as usize;
+    let res_end: usize = (-limbs_offset).clamp(0, res_size as i64) as usize;
+    let res_start: usize = (a_size as i64 - limbs_offset).clamp(0, res_size as i64) as usize;
+    let a_end: usize = limbs_offset.clamp(0, a_size as i64) as usize;
+    let a_start: usize = (res_size as i64 + limbs_offset).clamp(0, a_size as i64) as usize;
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+
+    for j in 0..a_out_range {
+        if j == 0 {
+            nfc_first_carry_only(base2k, lsh_pos, a.at(a_col, a_size - j - 1), carry);
+        } else {
+            nfc_middle_carry_only(base2k, lsh_pos, a.at(a_col, a_size - j - 1), carry);
+        }
+    }
+    if a_out_range == 0 {
+        nfc_zero(carry);
+    }
+
+    let mid_range: usize = a_start.saturating_sub(a_end);
+    for j in 0..mid_range {
+        BE::nfc_middle_step_assign::<O>(
+            base2k,
+            lsh_pos,
+            res.at_mut(res_col, res_start - j - 1),
+            a.at(a_col, a_start - j - 1),
+            carry,
+        );
+    }
+
+    for j in 0..res_end {
+        if j == res_end - 1 {
+            nfc_final_carry_assign::<O>(base2k, res.at_mut(res_col, res_end - j - 1), carry);
+        } else {
+            nfc_middle_carry_assign::<O>(base2k, res.at_mut(res_col, res_end - j - 1), carry);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn ntt120_vec_znx_big_normalize_cross_assign<O, R, A, BE>(
+    res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_base2k: usize,
+    a_col: usize,
+    carry: &mut [i128],
+) where
+    O: AssignOp,
+    R: VecZnxToMut,
+    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+{
+    let mut res = res.to_mut();
+    let a = a.to_ref();
+
+    let n = res.n();
+    let res_size = res.size();
+    let a_size = a.size();
+
+    let (a_norm, carry) = carry.split_at_mut(n);
+    let (res_carry, a_carry) = carry[..2 * n].split_at_mut(n);
+    nfc_zero(res_carry);
+
+    let a_tot_bits: usize = a_size * a_base2k;
+    let res_tot_bits: usize = res_size * res_base2k;
+
+    let mut lsh: i64 = res_offset % a_base2k as i64;
+    let mut limbs_offset: i64 = res_offset / a_base2k as i64;
+
+    if res_offset < 0 && lsh != 0 {
+        lsh = (lsh + a_base2k as i64) % (a_base2k as i64);
+        limbs_offset -= 1;
+    }
+
+    let lsh_pos: usize = lsh as usize;
+    let res_end_bit: usize = (-limbs_offset * a_base2k as i64).clamp(0, res_tot_bits as i64) as usize;
+    let res_start_bit: usize = (a_tot_bits as i64 - limbs_offset * a_base2k as i64).clamp(0, res_tot_bits as i64) as usize;
+    let a_end_bit: usize = (limbs_offset * a_base2k as i64).clamp(0, a_tot_bits as i64) as usize;
+    let a_start_bit: usize = (res_tot_bits as i64 + limbs_offset * a_base2k as i64).clamp(0, a_tot_bits as i64) as usize;
+
+    let res_end: usize = res_end_bit / res_base2k;
+    let res_start: usize = res_start_bit.div_ceil(res_base2k);
+    let a_end: usize = a_end_bit / a_base2k;
+    let a_start: usize = a_start_bit.div_ceil(a_base2k);
+
+    if res_start == 0 {
+        return;
+    }
+
+    let a_out_range: usize = a_size.saturating_sub(a_start);
+    for j in 0..a_out_range {
+        if j == 0 {
+            nfc_first_carry_only(a_base2k, lsh_pos, a.at(a_col, a_size - j - 1), a_carry);
+        } else {
+            nfc_middle_carry_only(a_base2k, lsh_pos, a.at(a_col, a_size - j - 1), a_carry);
+        }
+    }
+    if a_out_range == 0 {
+        nfc_zero(a_carry);
+    }
+
+    let mut res_acc_left: usize = res_base2k;
+    let mut res_limb: usize = res_start - 1;
+    let mid_range: usize = a_start.saturating_sub(a_end);
+
+    'outer: for j in 0..mid_range {
+        let a_limb: usize = a_start - j - 1;
+        let a_slice: &[i128] = a.at(a_col, a_limb);
+        let mut a_take_left: usize = a_base2k;
+
+        nfc_middle_step_i128(a_base2k, lsh_pos, a_norm, a_slice, a_carry);
+
+        if j == 0 {
+            if !(a_tot_bits - a_start_bit).is_multiple_of(a_base2k) {
+                let take: usize = (a_tot_bits - a_start_bit) % a_base2k;
+                nfc_mul_pow2_inplace(-(take as i64), a_norm);
+                a_take_left -= take;
+            } else if !(res_tot_bits - res_start_bit).is_multiple_of(res_base2k) {
+                res_acc_left -= (res_tot_bits - res_start_bit) % res_base2k;
+            }
+        }
+
+        'inner: loop {
+            let res_slice: &mut [i64] = res.at_mut(res_col, res_limb);
+            let a_take: usize = a_base2k.min(a_take_left).min(res_acc_left);
+
+            if a_take != 0 {
+                let scale: usize = res_base2k - res_acc_left;
+                nfc_extract_digit_assignmul::<O>(a_take, scale, res_slice, a_norm);
+                a_take_left -= a_take;
+                res_acc_left -= a_take;
+            }
+
+            if res_acc_left == 0 || a_limb == 0 {
+                if a_limb == 0 && a_take_left == 0 {
+                    nfc_add_inplace(a_carry, a_norm);
+                    if res_acc_left != 0 {
+                        let scale: usize = res_base2k - res_acc_left;
+                        nfc_extract_digit_assignmul::<O>(res_acc_left, scale, res_slice, a_carry);
+                    }
+                    BE::nfc_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
+                    nfc_add_inplace(res_carry, a_carry);
+                    break 'outer;
+                }
+
+                if res_limb == 0 {
+                    break 'outer;
+                }
+
+                res_acc_left += res_base2k;
+                res_limb -= 1;
+            }
+
+            if a_take_left == 0 {
+                nfc_add_inplace(a_carry, a_norm);
+                break 'inner;
+            }
+        }
+    }
+
+    if res_end != 0 {
+        let carry_to_use = if a_start == a_end { a_carry } else { res_carry };
+        for j in 0..res_end {
+            if j == res_end - 1 {
+                nfc_final_carry_assign::<O>(res_base2k, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+            } else {
+                nfc_middle_carry_assign::<O>(res_base2k, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+            }
+        }
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Per-slice i128 arithmetic dispatch trait
 // ──────────────────────────────────────────────────────────────────────────────
@@ -638,6 +953,12 @@ pub trait I128NormalizeOps {
         }
     }
 
+    /// Fused middle step for `res ±= normalize(a)`.  `O = AddOp` adds; `O = SubOp` subtracts.
+    #[inline(always)]
+    fn nfc_middle_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+        nfc_middle_step_assign::<O>(base2k, lsh, res, a, carry);
+    }
+
     /// Update an existing `i64` res limb using `i128` carry, updating carry in place.
     ///
     /// Equivalent to the private `nfc_middle_step_inplace` helper.
@@ -684,6 +1005,12 @@ pub trait I128NormalizeOps {
                 *r = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, ri) << lsh) + *c) as i64;
             });
         }
+    }
+
+    /// Fused final step for `res ±= normalize(a)`.  `O = AddOp` adds; `O = SubOp` subtracts.
+    #[inline(always)]
+    fn nfc_final_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        nfc_final_step_assign::<O>(base2k, lsh, res, carry);
     }
 }
 
@@ -1072,6 +1399,65 @@ pub fn ntt120_vec_znx_big_normalize<R, A, BE>(
     } else {
         ntt120_vec_znx_big_normalize_cross(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn ntt120_vec_znx_big_normalize_assign<O, R, A, BE>(
+    res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_base2k: usize,
+    a_col: usize,
+    carry: &mut [i128],
+) where
+    O: AssignOp,
+    R: VecZnxToMut,
+    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+{
+    if res_base2k == a_base2k {
+        ntt120_vec_znx_big_normalize_inter_assign::<O, _, _, _>(res_base2k, res, res_offset, res_col, a, a_col, carry);
+    } else {
+        ntt120_vec_znx_big_normalize_cross_assign::<O, _, _, _>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn ntt120_vec_znx_big_normalize_add_assign<R, A, BE>(
+    res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_base2k: usize,
+    a_col: usize,
+    carry: &mut [i128],
+) where
+    R: VecZnxToMut,
+    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+{
+    ntt120_vec_znx_big_normalize_assign::<AddOp, _, _, _>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn ntt120_vec_znx_big_normalize_sub_assign<R, A, BE>(
+    res: &mut R,
+    res_base2k: usize,
+    res_offset: i64,
+    res_col: usize,
+    a: &A,
+    a_base2k: usize,
+    a_col: usize,
+    carry: &mut [i128],
+) where
+    R: VecZnxToMut,
+    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+{
+    ntt120_vec_znx_big_normalize_assign::<SubOp, _, _, _>(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
 }
 
 /// Apply the Galois automorphism `X → X^p` to `a[a_col]`, writing to `res[res_col]`.

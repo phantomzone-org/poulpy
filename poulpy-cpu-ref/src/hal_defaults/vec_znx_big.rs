@@ -28,10 +28,10 @@ use crate::reference::{
         ntt120_vec_znx_big_add_normal_ref, ntt120_vec_znx_big_add_small_assign, ntt120_vec_znx_big_add_small_into,
         ntt120_vec_znx_big_automorphism, ntt120_vec_znx_big_automorphism_inplace,
         ntt120_vec_znx_big_automorphism_inplace_tmp_bytes, ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate,
-        ntt120_vec_znx_big_negate_inplace, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes,
-        ntt120_vec_znx_big_sub, ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace,
-        ntt120_vec_znx_big_sub_small_a, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace,
-        ntt120_vec_znx_big_sub_small_negate_inplace,
+        ntt120_vec_znx_big_negate_inplace, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_add_assign,
+        ntt120_vec_znx_big_normalize_sub_assign, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
+        ntt120_vec_znx_big_sub_inplace, ntt120_vec_znx_big_sub_negate_inplace, ntt120_vec_znx_big_sub_small_a,
+        ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_inplace, ntt120_vec_znx_big_sub_small_negate_inplace,
     },
     znx::{
         ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
@@ -523,6 +523,46 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
     {
         let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
         ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+    }
+
+    fn vec_znx_big_normalize_add_assign_default<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<BE>,
+    {
+        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        ntt120_vec_znx_big_normalize_add_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
+    }
+
+    fn vec_znx_big_normalize_sub_assign_default<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+        Scratch<BE>: TakeSlice,
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<BE>,
+    {
+        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        ntt120_vec_znx_big_normalize_sub_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
     fn vec_znx_big_automorphism_default<R, A>(_module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)

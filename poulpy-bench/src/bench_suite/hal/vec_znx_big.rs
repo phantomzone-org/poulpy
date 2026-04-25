@@ -11,7 +11,7 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB,
     },
-    layouts::{Backend, DataViewMut, DeviceBuf, Module, ScratchOwned, VecZnx, VecZnxBig},
+    layouts::{Backend, DataView, DataViewMut, DeviceBuf, Module, ScratchOwned, VecZnx, VecZnxBig, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -414,6 +414,218 @@ where
         let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << sweep[0], sweep[1], sweep[2],));
         let mut runner = runner::<B>(*sweep);
         group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_normalize_add_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let group_name: String = format!("vec_znx_big_normalize_add_assign::{label}");
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let n: usize = 1 << sweep[0];
+        let cols: usize = sweep[1];
+        let size: usize = sweep[2];
+
+        let module: Module<B> = Module::<B>::new(n as u64);
+        let base2k: usize = 50;
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(res.data_mut().as_mut());
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_normalize_add_assign(&mut res, base2k, 0, i, &a, base2k, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for sweep in &params.sweeps {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << sweep[0], sweep[1], sweep[2],));
+        let mut runner = runner::<B>(*sweep);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_normalize_sub_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let group_name: String = format!("vec_znx_big_normalize_sub_assign::{label}");
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let n: usize = 1 << sweep[0];
+        let cols: usize = sweep[1];
+        let size: usize = sweep[2];
+
+        let module: Module<B> = Module::<B>::new(n as u64);
+        let base2k: usize = 50;
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(res.data_mut().as_mut());
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_normalize_sub_assign(&mut res, base2k, 0, i, &a, base2k, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for sweep in &params.sweeps {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << sweep[0], sweep[1], sweep[2],));
+        let mut runner = runner::<B>(*sweep);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_normalize_add_assign_compare<B: Backend>(
+    params: &crate::params::HalSweepParams,
+    c: &mut Criterion,
+    label: &str,
+) where
+    Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let group_name: String = format!("vec_znx_big_normalize_add_assign_compare::{label}");
+    let mut group = c.benchmark_group(group_name);
+
+    for sweep in &params.sweeps {
+        let n: usize = 1 << sweep[0];
+        let cols: usize = sweep[1];
+        let size: usize = sweep[2];
+        let module: Module<B> = Module::<B>::new(n as u64);
+        let base2k: usize = 50;
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut res_fused: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut res_fallback: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut tmp: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
+
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(res_fused.data_mut().as_mut());
+        res_fallback.data_mut().copy_from_slice(res_fused.data());
+
+        let mut scratch_fused: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+        let mut scratch_fallback: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+
+        let id = format!("{}x({}x{})", n, cols, size);
+
+        group.bench_with_input(BenchmarkId::new("fused", &id), &(), |b, _| {
+            b.iter(|| {
+                for i in 0..cols {
+                    module.vec_znx_big_normalize_add_assign(&mut res_fused, base2k, 0, i, &a, base2k, i, scratch_fused.borrow());
+                }
+                black_box(());
+            })
+        });
+
+        group.bench_with_input(BenchmarkId::new("fallback", &id), &(), |b, _| {
+            b.iter(|| {
+                for i in 0..cols {
+                    module.vec_znx_big_normalize(&mut tmp, base2k, 0, 0, &a, base2k, i, scratch_fallback.borrow());
+                    for j in 0..size {
+                        for (ri, ti) in res_fallback.at_mut(i, j).iter_mut().zip(tmp.at(0, j).iter()) {
+                            *ri = ri.wrapping_add(*ti);
+                        }
+                    }
+                }
+                black_box(());
+            })
+        });
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_normalize_sub_assign_compare<B: Backend>(
+    params: &crate::params::HalSweepParams,
+    c: &mut Criterion,
+    label: &str,
+) where
+    Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let group_name: String = format!("vec_znx_big_normalize_sub_assign_compare::{label}");
+    let mut group = c.benchmark_group(group_name);
+
+    for sweep in &params.sweeps {
+        let n: usize = 1 << sweep[0];
+        let cols: usize = sweep[1];
+        let size: usize = sweep[2];
+        let module: Module<B> = Module::<B>::new(n as u64);
+        let base2k: usize = 50;
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
+        let mut res_fused: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut res_fallback: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut tmp: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, size);
+
+        source.fill_bytes(a.data_mut().as_mut());
+        source.fill_bytes(res_fused.data_mut().as_mut());
+        res_fallback.data_mut().copy_from_slice(res_fused.data());
+
+        let mut scratch_fused: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+        let mut scratch_fallback: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_normalize_tmp_bytes());
+
+        let id = format!("{}x({}x{})", n, cols, size);
+
+        group.bench_with_input(BenchmarkId::new("fused", &id), &(), |b, _| {
+            b.iter(|| {
+                for i in 0..cols {
+                    module.vec_znx_big_normalize_sub_assign(&mut res_fused, base2k, 0, i, &a, base2k, i, scratch_fused.borrow());
+                }
+                black_box(());
+            })
+        });
+
+        group.bench_with_input(BenchmarkId::new("fallback", &id), &(), |b, _| {
+            b.iter(|| {
+                for i in 0..cols {
+                    module.vec_znx_big_normalize(&mut tmp, base2k, 0, 0, &a, base2k, i, scratch_fallback.borrow());
+                    for j in 0..size {
+                        for (ri, ti) in res_fallback.at_mut(i, j).iter_mut().zip(tmp.at(0, j).iter()) {
+                            *ri = ri.wrapping_sub(*ti);
+                        }
+                    }
+                }
+                black_box(());
+            })
+        });
     }
 
     group.finish();
