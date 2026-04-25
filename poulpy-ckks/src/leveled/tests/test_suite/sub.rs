@@ -35,7 +35,7 @@
 //! | [`test_sub_pt_rnx`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
 //! | [`test_sub_pt_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
-use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::sub::CKKSSubOps};
+use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::api::CKKSSubOps};
 
 use super::helpers::{
     TestContext, TestScalar, TestSubBackend as Backend, TestVector, assert_binary_output_meta, assert_ct_meta,

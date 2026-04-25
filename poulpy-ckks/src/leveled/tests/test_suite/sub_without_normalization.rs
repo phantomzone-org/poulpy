@@ -24,9 +24,7 @@
 use poulpy_core::GLWENormalize;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
-use crate::{
-    CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::sub::CKKSSubOpsWithoutNormalization,
-};
+use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::api::CKKSSubOpsWithoutNormalization};
 
 use super::helpers::{
     TestContext, TestScalar, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta,

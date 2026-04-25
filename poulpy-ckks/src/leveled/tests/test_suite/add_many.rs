@@ -12,7 +12,7 @@
 
 use poulpy_hal::api::ScratchOwnedBorrow;
 
-use crate::{CKKSInfos, leveled::operations::composite::CKKSAddManyOps, leveled::tests::test_suite::helpers::assert_ct_meta};
+use crate::{CKKSInfos, leveled::api::CKKSAddManyOps, leveled::tests::test_suite::helpers::assert_ct_meta};
 
 use super::helpers::{TestAddBackend as Backend, TestContext, TestScalar, TestVector};
 

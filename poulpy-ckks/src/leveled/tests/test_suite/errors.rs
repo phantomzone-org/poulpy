@@ -1,7 +1,7 @@
 use crate::{
     CKKSCompositionError, CKKSInfos,
     layouts::{ciphertext::CKKSMaintainOps, plaintext::alloc_pt_znx},
-    leveled::operations::{add::CKKSAddOps, composite::CKKSDotProductOps},
+    leveled::api::{CKKSAddOps, CKKSDotProductOps},
 };
 use poulpy_core::layouts::LWEInfos;
 use poulpy_core::layouts::{Base2K, Degree, TorusPrecision};

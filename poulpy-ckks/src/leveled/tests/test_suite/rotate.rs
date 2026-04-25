@@ -14,7 +14,7 @@
 //! |----------|----------------|
 //! | [`test_rotate_inplace`] | in-place rotation for each requested shift |
 
-use crate::{CKKSInfos, leveled::operations::rotate::CKKSRotateOps};
+use crate::{CKKSInfos, leveled::api::CKKSRotateOps};
 use std::collections::HashMap;
 
 use super::helpers::{

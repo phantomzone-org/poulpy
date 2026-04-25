@@ -7,15 +7,9 @@ use poulpy_ckks::{
         CKKSCiphertext,
         plaintext::{CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx, alloc_pt_znx},
     },
-    leveled::operations::{
-        add::CKKSAddOps,
-        composite::{CKKSAddManyOps, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulSubOps},
-        conjugate::CKKSConjugateOps,
-        mul::CKKSMulOps,
-        neg::CKKSNegOps,
-        pow2::CKKSPow2Ops,
-        rotate::CKKSRotateOps,
-        sub::CKKSSubOps,
+    leveled::api::{
+        CKKSAddManyOps, CKKSAddOps, CKKSConjugateOps, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulOps,
+        CKKSMulSubOps, CKKSNegOps, CKKSPow2Ops, CKKSRotateOps, CKKSSubOps,
     },
     oep::CKKSImpl,
 };
@@ -509,7 +503,7 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
     group.bench_function("rotate_inplace", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            s.module
+            let _ = s.module
                 .ckks_rotate_inplace::<_, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>(
                     &mut s.ct_dst,
                     ROTATION,

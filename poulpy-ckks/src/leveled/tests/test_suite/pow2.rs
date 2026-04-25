@@ -21,7 +21,7 @@
 //! | [`test_div_pow2_smaller_output`] | out-of-place into a smaller output buffer |
 //! | [`test_div_pow2_inplace`] | in-place, message / 2^bits |
 
-use crate::{CKKSCompositionError, CKKSInfos, leveled::operations::pow2::CKKSPow2Ops};
+use crate::{CKKSCompositionError, CKKSInfos, leveled::api::CKKSPow2Ops};
 
 use super::helpers::{
     TestContext, TestPow2Backend as Backend, TestScalar, assert_ckks_error, assert_ct_meta, assert_unary_output_meta,

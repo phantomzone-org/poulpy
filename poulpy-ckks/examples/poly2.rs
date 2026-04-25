@@ -24,11 +24,7 @@ use poulpy_ckks::{
     layouts::{
         CKKSCiphertext, CKKSMaintainOps, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx, CKKSPlaintextVecZnx,
     },
-    leveled::{
-        encryption::{CKKSDecrypt, CKKSEncrypt},
-        operations::{add::CKKSAddOps, mul::CKKSMulOps},
-        tmp_bytes::CKKSAllOpsTmpBytes,
-    },
+    leveled::api::{CKKSAddOps, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulOps},
 };
 use poulpy_core::{
     EncryptionLayout, GLWENormalize, GLWETensorKeyEncryptSk,

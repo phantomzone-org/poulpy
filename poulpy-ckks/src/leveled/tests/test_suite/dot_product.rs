@@ -23,7 +23,7 @@ use poulpy_hal::{
 
 use crate::{
     layouts::plaintext::{CKKSConstPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx},
-    leveled::operations::composite::CKKSDotProductOps,
+    leveled::api::CKKSDotProductOps,
 };
 
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};

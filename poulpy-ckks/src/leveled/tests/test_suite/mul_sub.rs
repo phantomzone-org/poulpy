@@ -19,7 +19,7 @@ use poulpy_hal::{
     layouts::ScratchOwned,
 };
 
-use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::operations::composite::CKKSMulSubOps};
+use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::api::CKKSMulSubOps};
 
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector, assert_ct_meta};
 

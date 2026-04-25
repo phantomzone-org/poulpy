@@ -15,10 +15,7 @@ use crate::{
         ciphertext::CKKSOffset,
         plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, alloc_pt_znx},
     },
-    leveled::{
-        encryption::{CKKSDecrypt, CKKSEncrypt},
-        tmp_bytes::CKKSAllOpsTmpBytes,
-    },
+    leveled::api::{CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt},
     oep::CKKSImpl,
 };
 use poulpy_core::{

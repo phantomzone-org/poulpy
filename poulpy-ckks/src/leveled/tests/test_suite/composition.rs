@@ -3,7 +3,7 @@
 use super::helpers::{TestCompositionBackend, TestContext, TestScalar, assert_ckks_error};
 use crate::{
     CKKSCompositionError, CKKSInfos,
-    leveled::operations::{add::CKKSAddOps, mul::CKKSMulOps},
+    leveled::api::{CKKSAddOps, CKKSMulOps},
 };
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},

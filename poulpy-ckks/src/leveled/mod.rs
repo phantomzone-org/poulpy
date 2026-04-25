@@ -2,18 +2,21 @@
 //!
 //! This module provides the core leveled evaluation pipeline:
 //!
-//! - [`encryption`]: secret-key encrypt / decrypt with explicit torus placement.
-//! - [`operations`]: add, sub, neg, mul, rotate, conjugate, and rescale.
-//! - [`rescale`]: explicit rescaling and level-alignment helpers.
-//! - [`tmp_bytes`]: aggregate scratch-size helpers covering broad CKKS workflows.
+//! - [`api`]: public trait definitions for all CKKS operations.
+//! - [`delegates`]: blanket `impl Trait for Module<BE>` forwarding to OEP/default impls.
+//! - [`oep`]: backend dispatch traits bridging delegates to `CKKSImpl`.
+//! - Operation-family modules (`add`, `sub`, `neg`, `mul`, `pow2`, `rotate`,
+//!   `conjugate`, `pt_znx`, `rescale`): default algorithm implementations.
 //!
 //! All hot-path operations use scratch-based allocation; no heap allocation
 //! occurs during leveled arithmetic.
 
-pub mod encryption;
-pub mod operations;
-pub mod rescale;
-pub mod tests;
-pub mod tmp_bytes;
+pub mod api;
+pub(crate) mod delegates;
+pub(crate) mod oep;
 
-pub use tmp_bytes::CKKSAllOpsTmpBytes;
+pub(crate) mod default;
+
+pub mod tests;
+
+pub use api::*;

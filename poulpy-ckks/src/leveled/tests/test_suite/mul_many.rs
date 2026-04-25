@@ -15,7 +15,7 @@ use poulpy_hal::{
     layouts::ScratchOwned,
 };
 
-use crate::leveled::operations::composite::CKKSMulManyOps;
+use crate::leveled::api::CKKSMulManyOps;
 
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar};
 

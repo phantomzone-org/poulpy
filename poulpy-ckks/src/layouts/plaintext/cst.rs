@@ -15,14 +15,6 @@ pub struct CKKSPlaintextCstRnx<F> {
     im: Option<F>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-/// Constant CKKS plaintext in ZNX digit form.
-pub struct CKKSPlaintextCstZnx {
-    re: Option<Vec<i64>>,
-    im: Option<Vec<i64>>,
-    meta: CKKSMeta,
-}
-
 impl<F> CKKSPlaintextCstRnx<F> {
     /// Creates a constant plaintext from optional real and imaginary parts.
     pub fn new(re: Option<F>, im: Option<F>) -> Self {
@@ -43,6 +35,14 @@ impl<F> CKKSPlaintextCstRnx<F> {
     pub fn into_parts(self) -> (Option<F>, Option<F>) {
         (self.re, self.im)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Constant CKKS plaintext in ZNX digit form.
+pub struct CKKSPlaintextCstZnx {
+    re: Option<Vec<i64>>,
+    im: Option<Vec<i64>>,
+    meta: CKKSMeta,
 }
 
 impl CKKSPlaintextCstZnx {
