@@ -22,7 +22,7 @@ use crate::{
         GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWEPlaintextToRef,
         GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef,
         LWEToBackendMut, SetGaloisElement,
-        prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
+        prepared::{GLWEPreparedToBackendRef, GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
 };
 
@@ -104,7 +104,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         R: GLWEToBackendMut<BE> + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
@@ -120,7 +120,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
@@ -570,7 +570,7 @@ where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -589,7 +589,7 @@ where
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,

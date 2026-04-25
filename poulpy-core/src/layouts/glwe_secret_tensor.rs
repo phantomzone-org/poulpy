@@ -6,8 +6,8 @@ use poulpy_hal::{
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxAsVecZnxBackendRef, ScalarZnxToBackendRef,
         ScalarZnxToMut, ScratchArena, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBig,
-        VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, ZnxInfos, ZnxView,
-        ZnxViewMut,
+        VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef,
+        VecZnxToBackendMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
 };
 
@@ -156,6 +156,7 @@ where
         + VecZnxBigBytesOf
         + VecZnxBigNormalizeTmpBytes,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    BE::OwnedBuf: HostDataMut,
 {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize {
         let lvl_0: usize = self.glwe_secret_prepared_bytes_of(rank);
@@ -201,25 +202,19 @@ where
 
         let base2k: usize = 17;
 
-        let mut a_dft =
-            VecZnxDft::<Vec<u8>, BE>::from_data(vec![0; BE::bytes_of_vec_znx_dft(self.n(), rank, 1)], self.n(), rank, 1);
+        let mut a_dft = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), rank, 1);
         let a_backend = GLWESecret {
             data: ScalarZnx::from_data(BE::from_host_bytes(a.data.data), a.data.n, a.data.cols),
             dist: *a.dist(),
         };
         let a_backend_vec = <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&a_backend.data);
-        let mut a_i_dft_backend = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         for i in 0..rank {
-            {
-                let mut a_i_dft = a_i_dft_backend.to_backend_mut();
-                self.vec_znx_dft_apply(1, 0, &mut a_i_dft, 0, &a_backend_vec, i);
-            }
-            BE::copy_to_host(&a_i_dft_backend.data, bytemuck::cast_slice_mut(a_dft.at_mut(i, 0)));
+            let mut a_dft_backend = a_dft.to_backend_mut();
+            self.vec_znx_dft_apply(1, 0, &mut a_dft_backend, i, &a_backend_vec, i);
         }
 
-        let mut a_ij_dft = VecZnxDft::<Vec<u8>, BE>::from_data(vec![0; BE::bytes_of_vec_znx_dft(self.n(), 1, 1)], self.n(), 1, 1);
+        let mut a_ij_dft = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         let a_prepared_ref = a_prepared.data.to_backend_ref();
-        let mut a_ij_dft_backend = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         let mut a_ij_big_backend = VecZnxBig::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         let mut a_ij_small_backend: VecZnx<BE::OwnedBuf> =
             VecZnx::from_data(BE::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(self.n(), 1, 1)), self.n(), 1, 1);
@@ -233,11 +228,11 @@ where
         for i in 0..rank {
             for j in i..rank {
                 let idx: usize = i * rank + j - (i * (i + 1) / 2);
-                self.svp_apply_dft_to_dft(&mut a_ij_dft, 0, &a_prepared_ref, j, &a_dft, i);
-                BE::copy_from_host(&mut a_ij_dft_backend.data, &a_ij_dft.data);
+                let a_dft_ref = a_dft.to_backend_ref();
+                self.svp_apply_dft_to_dft(&mut a_ij_dft, 0, &a_prepared_ref, j, &a_dft_ref, i);
                 {
                     let mut a_ij_big = a_ij_big_backend.to_backend_mut();
-                    let mut a_ij_dft = a_ij_dft_backend.to_backend_mut();
+                    let mut a_ij_dft = a_ij_dft.to_backend_mut();
                     self.vec_znx_idft_apply_tmpa(&mut a_ij_big, 0, &mut a_ij_dft, 0);
                 }
                 {

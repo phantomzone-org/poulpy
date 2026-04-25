@@ -7,7 +7,7 @@ use poulpy_hal::{
     api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
     layouts::{
         Backend, DataViewMut, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, SvpPPol, SvpPPolToBackendMut,
-        SvpPPolToBackendRef, VecZnx, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendRef,
+        SvpPPolToBackendRef, VecZnx, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VecZnxToBackendRef,
     },
     source::Source,
 };
@@ -145,7 +145,7 @@ where
         move || {
             let svp = svp.to_backend_ref();
             for j in 0..cols {
-                module.svp_apply_dft_to_dft(&mut res, j, &svp, j, &a, j);
+                module.svp_apply_dft_to_dft(&mut res, j, &svp, j, &a.to_backend_ref(), j);
             }
             black_box(());
         }

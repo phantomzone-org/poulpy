@@ -71,11 +71,10 @@ where
             sk_grouped.data.at_mut(i + rank, 0).copy_from_slice(sk_tensor.data.at(i, 0));
         }
 
-        let res_ref = res.to_ref();
         let res_backend = res.to_backend_ref();
         let mut pt_backend = pt.to_backend_mut();
         let sk_grouped_ref = glwe_secret_prepared_backend_ref_from_mut(&sk_grouped);
-        glwe_decrypt_backend_inner(self, &res_ref, &res_backend, &mut pt_backend, &sk_grouped_ref, &mut scratch_1);
+        glwe_decrypt_backend_inner(self, &res_backend, &mut pt_backend, &sk_grouped_ref, &mut scratch_1);
     }
 }
 

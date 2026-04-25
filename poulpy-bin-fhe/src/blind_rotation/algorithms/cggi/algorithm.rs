@@ -275,7 +275,8 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                     for j in 0..extension_factor {
                         for i in 0..cols {
                             let x_pow_a_ref = x_pow_a[ai_hi].to_backend_ref();
-                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res[j], i);
+                            let vmp_res_j_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[j]);
+                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res_j_ref, i);
                             let vmp_res_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[j]);
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[j], i, &vmp_xai_ref, 0);
@@ -294,7 +295,8 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                     for (i, j) in (0..ai_lo).zip(extension_factor - ai_lo..extension_factor) {
                         for k in 0..cols {
                             let x_pow_a_ref = x_pow_a[ai_hi + 1].to_backend_ref();
-                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res[j], k);
+                            let vmp_res_j_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[j]);
+                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res_j_ref, k);
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             let vmp_res_i_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[i]);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[i], k, &vmp_xai_ref, 0);
@@ -309,7 +311,8 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                     for (i, j) in (ai_lo..extension_factor).zip(0..extension_factor - ai_lo) {
                         for k in 0..cols {
                             let x_pow_a_ref = x_pow_a[ai_hi].to_backend_ref();
-                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res[j], k);
+                            let vmp_res_j_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[j]);
+                            module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res_j_ref, k);
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             let vmp_res_i_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[i]);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[i], k, &vmp_xai_ref, 0);
@@ -440,7 +443,8 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             for i in 0..cols {
                 let x_pow_a_ref = x_pow_a[ai_pos].to_backend_ref();
-                module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res, i);
+                let vmp_res_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res);
+                module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a_ref, 0, &vmp_res_ref, i);
                 let vmp_res_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res);
                 let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                 module.vec_znx_dft_add_assign(&mut acc_add_dft, i, &vmp_xai_ref, 0);

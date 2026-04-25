@@ -10,8 +10,7 @@ pub use crate::api::GLWEDecrypt;
 use crate::{
     ScratchArenaTakeCore,
     layouts::{
-        GLWE, GLWEBackendRef, GLWEInfos, GLWEPlaintextBackendMut, GLWEPlaintextToBackendMut, GLWEPlaintextToMut,
-        GLWEToBackendRef, GLWEToRef, LWEInfos, SetLWEInfos,
+        GLWEBackendRef, GLWEInfos, GLWEPlaintextBackendMut, GLWEPlaintextToBackendMut, GLWEToBackendRef, LWEInfos, SetLWEInfos,
         prepared::{GLWESecretPreparedBackendRef, GLWESecretPreparedToBackendRef},
     },
 };
@@ -46,19 +45,18 @@ where
 
     fn glwe_decrypt_default<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: HostBackend + 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res_ref: &GLWE<&[u8]> = &res.to_ref();
         let res_backend = res.to_backend_ref();
         let mut pt_backend = pt.to_backend_mut();
         let sk_backend = sk.to_backend_ref();
 
-        glwe_decrypt_backend_inner(self, res_ref, &res_backend, &mut pt_backend, &sk_backend, scratch);
+        glwe_decrypt_backend_inner(self, &res_backend, &mut pt_backend, &sk_backend, scratch);
     }
 }
 
@@ -80,7 +78,6 @@ where
 
 pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
     module: &M,
-    res_ref: &GLWE<&[u8]>,
     res: &GLWEBackendRef<'_, BE>,
     pt: &mut GLWEPlaintextBackendMut<'_, BE>,
     sk: &GLWESecretPreparedBackendRef<'_, BE>,
@@ -102,15 +99,15 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
 {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(res_ref.rank(), sk.rank());
-        assert_eq!(res_ref.n(), sk.n());
+        assert_eq!(res.rank(), sk.rank());
+        assert_eq!(res.n(), sk.n());
         assert_eq!(pt.n(), sk.n());
     }
     assert!(
-        scratch.available() >= module.glwe_decrypt_tmp_bytes_default(res_ref),
+        scratch.available() >= module.glwe_decrypt_tmp_bytes_default(res),
         "scratch.available(): {} < GLWEDecrypt::glwe_decrypt_tmp_bytes: {}",
         scratch.available(),
-        module.glwe_decrypt_tmp_bytes_default(res_ref)
+        module.glwe_decrypt_tmp_bytes_default(res)
     );
 
     let cols: usize = (res.rank() + 1).into();

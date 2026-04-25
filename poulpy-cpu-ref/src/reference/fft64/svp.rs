@@ -1,7 +1,7 @@
 use crate::{
     layouts::{
         Backend, HostDataRef, ScalarZnxBackendRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
 };
@@ -53,16 +53,21 @@ pub fn svp_apply_dft<R, A, B, BE>(
     }
 }
 
-pub fn svp_apply_dft_to_dft<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn svp_apply_dft_to_dft<R, A, BE>(
+    res: &mut R,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    b: &VecZnxDft<&[u8], BE>,
+    b_col: usize,
+)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
-    B: VecZnxDftToRef<BE>,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
 
     let res_size: usize = res.size();
     let b_size: usize = b.size();

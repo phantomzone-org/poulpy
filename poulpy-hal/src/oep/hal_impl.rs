@@ -660,17 +660,16 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn svp_apply_dft_to_dft<R, C>(
+    fn svp_apply_dft_to_dft<R>(
         module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &crate::layouts::SvpPPolBackendRef<'_, BE>,
         a_col: usize,
-        b: &C,
+        b: &crate::layouts::VecZnxDftBackendRef<'_, BE>,
         b_col: usize,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        C: crate::layouts::VecZnxDftToRef<BE>;
+        R: crate::layouts::VecZnxDftToMut<BE>;
 
     fn svp_apply_dft_to_dft_inplace<R>(
         module: &Module<BE>,

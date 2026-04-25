@@ -1,9 +1,9 @@
 use poulpy_hal::layouts::{Backend, HostDataMut, HostDataRef, ScratchArena};
 
 use crate::layouts::{
-    GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretTensorPrepared,
-    GLWETensor, GLWEToBackendRef, GLWEToRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef,
-    SetLWEInfos, prepared::GLWESecretPreparedToBackendRef,
+    GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
+    GLWEToBackendRef, GLWEToRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
+    prepared::GLWESecretPreparedToBackendRef,
 };
 
 pub trait GLWEDecrypt<BE: Backend> {
@@ -13,8 +13,8 @@ pub trait GLWEDecrypt<BE: Backend> {
 
     fn glwe_decrypt<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToMut + GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,

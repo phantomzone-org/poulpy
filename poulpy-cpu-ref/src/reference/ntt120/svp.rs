@@ -26,8 +26,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, HostDataRef, ScalarZnxBackendRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
-        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, HostDataRef, ScalarZnxBackendRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut, ZnxInfos,
+        ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero, ntt::NttTable, primes::Primes30, types::Q120bScalar,
@@ -89,23 +89,21 @@ pub fn ntt120_svp_prepare<R, BE>(
 /// `a`: prepared [`SvpPPol`] in q120c format.
 /// `b`: input [`VecZnxDft`] in q120b format.
 /// `res`: output [`VecZnxDft`] in q120b format.
-pub fn ntt120_svp_apply_dft_to_dft<R, A, C, BE>(
+pub fn ntt120_svp_apply_dft_to_dft<R, A, BE>(
     module: &impl NttModuleHandle,
     res: &mut R,
     res_col: usize,
     a: &A,
     a_col: usize,
-    b: &C,
+    b: &VecZnxDft<&[u8], BE>,
     b_col: usize,
 ) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttZero,
     R: VecZnxDftToMut<BE>,
     A: SvpPPolToRef<BE>,
-    C: VecZnxDftToRef<BE>,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
 
     let meta = module.get_bbc_meta();
     let n = res.n();

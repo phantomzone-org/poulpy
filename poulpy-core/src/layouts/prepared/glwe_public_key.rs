@@ -8,7 +8,8 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedBackendMut, GLWEPreparedFactory, GLWEPreparedToBackendMut,
-        GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree, LWEInfos, Rank,
+        GLWEPreparedBackendRef, GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree,
+        LWEInfos, Rank,
         TorusPrecision,
     },
 };
@@ -155,5 +156,11 @@ impl<B: Backend> GLWEPublicKeyPreparedToBackendMut<B> for GLWEPublicKeyPrepared<
 impl<B: Backend> GLWEPreparedToBackendMut<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
     fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B> {
         self.key.to_backend_mut()
+    }
+}
+
+impl<B: Backend> GLWEPreparedToBackendRef<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+    fn to_backend_ref(&self) -> GLWEPreparedBackendRef<'_, B> {
+        self.key.to_backend_ref()
     }
 }

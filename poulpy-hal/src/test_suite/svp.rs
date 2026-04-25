@@ -9,6 +9,7 @@ use crate::{
     layouts::{
         Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, SvpPPolOwned,
         SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
+        VecZnxDftToBackendRef,
     },
     source::Source,
 };
@@ -252,8 +253,8 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
             source.fill_bytes(res_dft_test.data_mut().as_mut());
 
             for j in 0..cols {
-                module_ref.svp_apply_dft_to_dft(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j, &a_dft_ref, j);
-                module_test.svp_apply_dft_to_dft(&mut res_dft_test, j, &svp_test.to_backend_ref(), j, &a_dft_test, j);
+                module_ref.svp_apply_dft_to_dft(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j, &a_dft_ref.to_backend_ref(), j);
+                module_test.svp_apply_dft_to_dft(&mut res_dft_test, j, &svp_test.to_backend_ref(), j, &a_dft_test.to_backend_ref(), j);
             }
 
             // Assert no change to inputs

@@ -28,7 +28,7 @@ use crate::{
         GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWEPlaintextToRef,
         GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef,
         LWEToBackendMut, SetGaloisElement,
-        prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
+        prepared::{GLWEPreparedToBackendRef, GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
 };
 
@@ -143,7 +143,7 @@ impl_encryption_delegate!(
         R: GLWEToBackendMut<BE> + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -160,7 +160,7 @@ impl_encryption_delegate!(
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {

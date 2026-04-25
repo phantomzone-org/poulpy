@@ -4,7 +4,7 @@ use poulpy_core::{
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
         GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GGSWToRef, GLWEInfos, GLWEPlaintext,
-        GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
+        GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
         GLWEToMut, GLWEToRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToMut, LWEToRef, SetLWEInfos,
     },
     oep::{
@@ -44,8 +44,8 @@ decryption_helper! {
     ) -> ()
     where [
         BE: Backend + DecryptionDefaults<BE> + HostBackend,
-        R: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToMut + poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        P: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -523,8 +523,8 @@ macro_rules! impl_decryption_via_helpers {
 
             fn glwe_decrypt<'s, R, P, S>(module: &Module<Self>, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToRef + poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
-                P: GLWEPlaintextToMut + poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
+                R: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                P: poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
                 S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<Self> + GLWEInfos,
                 Self: HostBackend + 's,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,

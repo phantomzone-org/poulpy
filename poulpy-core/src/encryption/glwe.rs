@@ -19,7 +19,7 @@ use crate::{
     layouts::{
         GLWEInfos, GLWEPlaintext, GLWEPlaintextBackendRef, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, GLWEToBackendMut,
         LWEInfos,
-        prepared::{GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
+        prepared::{GLWEPreparedToBackendRef, GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
     },
     vec_znx_host_ops::{vec_znx_copy, vec_znx_sub, vec_znx_sub_inplace},
 };
@@ -214,7 +214,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
         R: GLWEToBackendMut<BE> + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
 
@@ -229,7 +229,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
 }
@@ -267,7 +267,7 @@ where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -299,7 +299,7 @@ where
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -327,7 +327,7 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
     ) where
         R: GLWEToBackendMut<BE>,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
 }
@@ -357,7 +357,7 @@ where
     ) where
         R: GLWEToBackendMut<BE>,
         E: EncryptionInfos,
-        K: GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -406,7 +406,7 @@ where
         }
 
         {
-            let pk = pk.to_ref();
+            let pk = <K as GLWEPreparedToBackendRef<BE>>::to_backend_ref(pk);
 
             // ct[i] = pk[i] * u + ei (+ m if col = i)
             for i in 0..cols {
