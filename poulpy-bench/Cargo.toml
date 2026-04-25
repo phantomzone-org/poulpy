@@ -135,7 +135,3 @@ harness = false
 [[bench]]
 name = "ckks_mul_table"
 harness = false
-
-[[bench]]
-name = "ckks_mul_profile"
-harness = false

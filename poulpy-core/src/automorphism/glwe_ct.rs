@@ -113,7 +113,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -156,7 +156,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -202,7 +202,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -248,7 +248,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if a_base2k != key_base2k {
             let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -291,7 +291,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -334,7 +334,7 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size());
 
         if res_base2k != key_base2k {
             let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {

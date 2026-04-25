@@ -37,18 +37,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: res.rank(),
         };
 
-        let sequential = GLWETensor::bytes_of_from_infos(&glwe_layout)
+        GLWETensor::bytes_of_from_infos(&glwe_layout)
             + self
                 .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
-                .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
-
-        let fused = if res.rank().as_usize() == 1 {
-            self.glwe_mul_ct_rank1_fused_tmp_bytes(res, res, res, tsk)
-        } else {
-            0
-        };
-
-        sequential.max(fused)
+                .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk))
     }
 
     fn ckks_mul_default(
@@ -68,46 +60,25 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let a_ref = a.to_ref();
         let b_ref = b.to_ref();
 
-        let fused_eligible = dst.rank().as_usize() == 1
-            && a.rank().as_usize() == 1
-            && b.rank().as_usize() == 1
-            && a.base2k() == b.base2k()
-            && a.base2k() == tsk.base2k()
-            && a.base2k() == dst.base2k();
-        if fused_eligible {
-            let mut dst_view = dst.to_mut();
-            self.glwe_mul_ct_rank1_fused(
-                cnv_offset,
-                &mut dst_view,
-                &a_ref,
-                a.effective_k(),
-                &b_ref,
-                b.effective_k(),
-                tsk,
-                tsk.size(),
-                scratch,
-            );
-        } else {
-            let tensor_layout = GLWELayout {
-                n: dst.n(),
-                base2k: dst.base2k(),
-                k: a.max_k().max(b.max_k()),
-                rank: dst.rank(),
-            };
+        let tensor_layout = GLWELayout {
+            n: dst.n(),
+            base2k: dst.base2k(),
+            k: a.max_k().max(b.max_k()),
+            rank: dst.rank(),
+        };
 
-            let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
 
-            self.glwe_tensor_apply(
-                cnv_offset,
-                &mut tmp,
-                &a_ref,
-                a.effective_k(),
-                &b_ref,
-                b.effective_k(),
-                scratch_1,
-            );
-            self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
-        }
+        self.glwe_tensor_apply(
+            cnv_offset,
+            &mut tmp,
+            &a_ref,
+            a.effective_k(),
+            &b_ref,
+            b.effective_k(),
+            scratch_1,
+        );
+        self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
         dst.meta.log_hom_rem = res_log_hom_rem;
         dst.meta.log_decimal = res_log_decimal;
@@ -169,14 +140,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let lvl_1 = self
             .glwe_tensor_square_apply_tmp_bytes(&glwe_layout, res)
             .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
-        let sequential = lvl_0 + lvl_1;
-        let fused = if res.rank().as_usize() == 1 {
-            self.glwe_square_ct_rank1_fused_tmp_bytes(res, res, tsk)
-        } else {
-            0
-        };
-
-        sequential.max(fused)
+        lvl_0 + lvl_1
     }
 
     fn ckks_square_default(
@@ -192,23 +156,16 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     {
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, a, a)?;
         let a_ref = a.to_ref();
-        let fused_eligible =
-            dst.rank().as_usize() == 1 && a.rank().as_usize() == 1 && a.base2k() == tsk.base2k() && a.base2k() == dst.base2k();
-        if fused_eligible {
-            let mut dst_view = dst.to_mut();
-            self.glwe_square_ct_rank1_fused(cnv_offset, &mut dst_view, &a_ref, a.effective_k(), tsk, tsk.size(), scratch);
-        } else {
-            let tensor_layout = GLWELayout {
-                n: dst.n(),
-                base2k: dst.base2k(),
-                k: a.max_k(),
-                rank: dst.rank(),
-            };
+        let tensor_layout = GLWELayout {
+            n: dst.n(),
+            base2k: dst.base2k(),
+            k: a.max_k(),
+            rank: dst.rank(),
+        };
 
-            let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
-            self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
-            self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
-        }
+        let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
+        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
+        self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
         dst.meta.log_hom_rem = res_log_hom_rem;
         dst.meta.log_decimal = res_log_decimal;

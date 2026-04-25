@@ -216,56 +216,6 @@ pub trait GLWETensoring<BE: Backend> {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos;
-
-    fn glwe_mul_ct_rank1_fused_tmp_bytes<R, A, B, T>(&self, res: &R, a: &A, b: &B, tsk: &T) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        B: GLWEInfos,
-        T: GGLWEInfos;
-
-    fn glwe_square_ct_rank1_fused_tmp_bytes<R, A, T>(&self, res: &R, a: &A, tsk: &T) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        T: GGLWEInfos;
-
-    /// Rank-1 fused `tensor + relinearize`: convolution and Karatsuba cross
-    /// term run in DFT, skipping the caller-visible GLWETensor.
-    #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_ct_rank1_fused<R, A, B, T>(
-        &self,
-        cnv_offset: usize,
-        res: &mut GLWE<R>,
-        a: &GLWE<A>,
-        a_effective_k: usize,
-        b: &GLWE<B>,
-        b_effective_k: usize,
-        tsk: &GLWETensorKeyPrepared<T, BE>,
-        tsk_size: usize,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataMut,
-        A: DataRef,
-        B: DataRef,
-        T: DataRef;
-
-    /// Rank-1 fused `square + relinearize`: reuses `cnv_prepare_self` and
-    /// skips the caller-visible GLWETensor.
-    #[allow(clippy::too_many_arguments)]
-    fn glwe_square_ct_rank1_fused<R, A, T>(
-        &self,
-        cnv_offset: usize,
-        res: &mut GLWE<R>,
-        a: &GLWE<A>,
-        a_effective_k: usize,
-        tsk: &GLWETensorKeyPrepared<T, BE>,
-        tsk_size: usize,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: DataMut,
-        A: DataRef,
-        T: DataRef;
 }
 
 pub trait GLWEAdd
