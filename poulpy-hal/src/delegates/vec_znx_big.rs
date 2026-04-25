@@ -263,6 +263,44 @@ where
     {
         <B as HalImpl<B>>::vec_znx_big_normalize(self, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch);
     }
+
+    fn vec_znx_big_normalize_add_assign<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        <B as HalImpl<B>>::vec_znx_big_normalize_add_assign(
+            self, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
+    }
+
+    fn vec_znx_big_normalize_sub_assign<R, A>(
+        &self,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<B>,
+    {
+        <B as HalImpl<B>>::vec_znx_big_normalize_sub_assign(
+            self, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
+    }
 }
 
 impl<B> VecZnxBigAutomorphism<B> for Module<B>
