@@ -248,7 +248,7 @@ pub fn ntt120_vec_znx_idft_apply<BE>(
     let table = module.get_intt_table();
 
     for j in 0..min_size {
-        let a_slice: &[u64] = limb_u64(&a, a_col, j);
+        let a_slice: &[u64] = limb_u64(a, a_col, j);
         let tmp_n: &mut [u64] = &mut tmp[..4 * n];
         BE::ntt_copy(tmp_n, a_slice);
         BE::ntt_dft_execute(table, tmp_n);
@@ -282,7 +282,7 @@ pub fn ntt120_vec_znx_idft_apply_tmpa<BE>(
 
     for j in 0..min_size {
         BE::ntt_dft_execute(table, limb_u64_mut(a, a_col, j));
-        let a_slice: &[u64] = limb_u64(&a, a_col, j);
+        let a_slice: &[u64] = limb_u64(a, a_col, j);
         BE::ntt_to_znx128(res.at_mut(res_col, j), n, a_slice);
     }
 
@@ -424,10 +424,10 @@ pub fn ntt120_vec_znx_dft_add_into<BE>(
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j), limb_u64(b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(b, b_col, j));
         }
         for j in cpy_size..res_size {
             BE::ntt_zero(limb_u64_mut(res, res_col, j));
@@ -436,10 +436,10 @@ pub fn ntt120_vec_znx_dft_add_into<BE>(
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_add(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j), limb_u64(b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
         }
         for j in cpy_size..res_size {
             BE::ntt_zero(limb_u64_mut(res, res_col, j));
@@ -460,7 +460,7 @@ pub fn ntt120_vec_znx_dft_add_assign<BE>(
 {
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
     }
 }
 
@@ -486,18 +486,18 @@ pub fn ntt120_vec_znx_dft_add_scaled_assign<BE>(
         let shift = (a_scale as usize).min(a_size);
         let sum_size = a_size.min(res_size).saturating_sub(shift);
         for j in 0..sum_size {
-            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j + shift));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j + shift));
         }
     } else if a_scale < 0 {
         let shift = (a_scale.unsigned_abs() as usize).min(res_size);
         let sum_size = a_size.min(res_size.saturating_sub(shift));
         for j in 0..sum_size {
-            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j + shift), limb_u64(&a, a_col, j));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j + shift), limb_u64(a, a_col, j));
         }
     } else {
         let sum_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_add_inplace(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
         }
     }
 }
@@ -523,10 +523,10 @@ pub fn ntt120_vec_znx_dft_sub<BE>(
         let sum_size = a_size.min(res_size);
         let cpy_size = b_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j), limb_u64(b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_negate(limb_u64_mut(res, res_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_negate(limb_u64_mut(res, res_col, j), limb_u64(b, b_col, j));
         }
         for j in cpy_size..res_size {
             BE::ntt_zero(limb_u64_mut(res, res_col, j));
@@ -535,10 +535,10 @@ pub fn ntt120_vec_znx_dft_sub<BE>(
         let sum_size = b_size.min(res_size);
         let cpy_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j), limb_u64(&b, b_col, j));
+            BE::ntt_sub(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j), limb_u64(b, b_col, j));
         }
         for j in sum_size..cpy_size {
-            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
         }
         for j in cpy_size..res_size {
             BE::ntt_zero(limb_u64_mut(res, res_col, j));
@@ -559,7 +559,7 @@ pub fn ntt120_vec_znx_dft_sub_inplace<BE>(
 {
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_sub_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_sub_inplace(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
     }
 }
 
@@ -579,7 +579,7 @@ pub fn ntt120_vec_znx_dft_sub_negate_inplace<BE>(
     let res_size = res.size();
     let sum_size = res_size.min(a.size());
     for j in 0..sum_size {
-        BE::ntt_sub_negate_inplace(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_sub_negate_inplace(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, j));
     }
     for j in sum_size..res_size {
         BE::ntt_negate_inplace(limb_u64_mut(res, res_col, j));
@@ -612,7 +612,7 @@ pub fn ntt120_vec_znx_dft_copy<BE>(
     for j in 0..min_steps {
         let limb = offset + j * step;
         if limb < a.size() {
-            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(&a, a_col, limb));
+            BE::ntt_copy(limb_u64_mut(res, res_col, j), limb_u64(a, a_col, limb));
         } else {
             BE::ntt_zero(limb_u64_mut(res, res_col, j));
         }

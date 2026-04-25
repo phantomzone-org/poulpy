@@ -7,8 +7,8 @@ use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
         Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos, ScratchArena,
-        ScratchOwned, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToRef, ZnxInfos,
+        ScratchOwned, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+        ZnxInfos,
     },
     oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
 };

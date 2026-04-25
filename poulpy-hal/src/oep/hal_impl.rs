@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToRef},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
     source::Source,
 };
 
@@ -709,15 +709,14 @@ pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
         b_size: usize,
     ) -> usize;
 
-    fn vmp_apply_dft<'s, R, A>(
+    fn vmp_apply_dft<'s, R>(
         module: &Module<BE>,
         res: &mut R,
-        a: &A,
+        a: &crate::layouts::VecZnxBackendRef<'_, BE>,
         b: &crate::layouts::VmpPMatBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>,
-        A: VecZnxToRef;
+        R: crate::layouts::VecZnxDftToMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn vmp_apply_dft_to_dft_tmp_bytes(

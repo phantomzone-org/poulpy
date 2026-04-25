@@ -1,6 +1,6 @@
 use crate::layouts::{
-    Backend, MatZnxToRef, ScratchArena, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
-    VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
+    Backend, MatZnxToRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
+    VecZnxDftToRef, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
 };
 
 /// Allocates a [`VmpPMat`](crate::layouts::VmpPMat).
@@ -42,10 +42,15 @@ pub trait VmpApplyDftTmpBytes {
 
 /// Applies the vector-matrix product `VecZnx x VmpPMat -> VecZnxDft`.
 pub trait VmpApplyDft<B: Backend> {
-    fn vmp_apply_dft<'s, R, A>(&self, res: &mut R, a: &A, pmat: &VmpPMatBackendRef<'_, B>, scratch: &mut ScratchArena<'s, B>)
+    fn vmp_apply_dft<'s, R>(
+        &self,
+        res: &mut R,
+        a: &VecZnxBackendRef<'_, B>,
+        pmat: &VmpPMatBackendRef<'_, B>,
+        scratch: &mut ScratchArena<'s, B>,
+    )
     where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxToRef;
+        R: VecZnxDftToMut<B>;
 }
 
 #[allow(clippy::too_many_arguments)]

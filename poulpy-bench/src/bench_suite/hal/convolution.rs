@@ -11,8 +11,9 @@ use poulpy_hal::{
     source::Source,
 };
 
-pub fn bench_cnv_prepare_left<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_prepare_left<BE>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
+    BE: Backend + 'static,
     Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -22,8 +23,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE>(n: usize, size: usize) -> impl FnMut()
     where
+        BE: Backend + 'static,
         Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -67,8 +69,9 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_prepare_right<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_prepare_right<BE>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
+    BE: Backend + 'static,
     Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -78,8 +81,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE>(n: usize, size: usize) -> impl FnMut()
     where
+        BE: Backend + 'static,
         Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -123,8 +127,9 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_apply_dft<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_apply_dft<BE>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
+    BE: Backend + 'static,
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -134,8 +139,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE>(n: usize, size: usize) -> impl FnMut()
     where
+        BE: Backend + 'static,
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -194,8 +200,9 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_pairwise_apply_dft<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_pairwise_apply_dft<BE>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
+    BE: Backend + 'static,
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -205,8 +212,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE>(n: usize, size: usize) -> impl FnMut()
     where
+        BE: Backend + 'static,
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -266,8 +274,9 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_by_const_apply<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_by_const_apply<BE>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
+    BE: Backend + 'static,
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxBigAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
@@ -277,8 +286,9 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE>(n: usize, size: usize) -> impl FnMut()
     where
+        BE: Backend + 'static,
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxBigAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,

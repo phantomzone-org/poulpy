@@ -86,8 +86,18 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
                     source.fill_bytes(res_dft_ref.data_mut().as_mut());
                     source.fill_bytes(res_dft_test.data_mut().as_mut());
 
-                    module_ref.vmp_apply_dft(&mut res_dft_ref, &a, &pmat_ref.to_backend_ref(), &mut scratch_ref.arena());
-                    module_test.vmp_apply_dft(&mut res_dft_test, &a, &pmat_test.to_backend_ref(), &mut scratch_test.arena());
+                    module_ref.vmp_apply_dft(
+                        &mut res_dft_ref,
+                        &vec_znx_backend_ref::<BR>(&a),
+                        &pmat_ref.to_backend_ref(),
+                        &mut scratch_ref.arena(),
+                    );
+                    module_test.vmp_apply_dft(
+                        &mut res_dft_test,
+                        &vec_znx_backend_ref::<BT>(&a),
+                        &pmat_test.to_backend_ref(),
+                        &mut scratch_test.arena(),
+                    );
 
                     assert_eq!(a.digest_u64(), a_digest);
 

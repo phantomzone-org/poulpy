@@ -9,9 +9,8 @@ use crate::{
 use poulpy_hal::{
     api::{VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
-        Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos, VecZnx,
-        VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
-        ZnxInfos,
+        Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos,
+        VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
     },
     oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
 };

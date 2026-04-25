@@ -15,20 +15,17 @@ macro_rules! hal_impl_vmp {
                 + Self::vmp_apply_dft_to_dft_tmp_bytes(module, res_size, a_dft_size, b_rows, b_cols_in, b_cols_out, b_size)
         }
 
-        fn vmp_apply_dft<'s, R, A>(
+        fn vmp_apply_dft<'s, R>(
             module: &Module<Self>,
             res: &mut R,
-            a: &A,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             b: &poulpy_hal::layouts::VmpPMatBackendRef<'_, Self>,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) where
             R: VecZnxDftToMut<Self>,
-            A: VecZnxToRef,
         {
-            let a = a.to_ref();
-
-            let a_cols = <VecZnx<&[u8]> as ZnxInfos>::cols(&a);
-            let a_size = <VecZnx<&[u8]> as ZnxInfos>::size(&a);
+            let a_cols = <poulpy_hal::layouts::VecZnxBackendRef<'_, Self> as ZnxInfos>::cols(a);
+            let a_size = <poulpy_hal::layouts::VecZnxBackendRef<'_, Self> as ZnxInfos>::size(a);
             let b_rows = <poulpy_hal::layouts::VmpPMatBackendRef<'_, Self> as ZnxInfos>::rows(b);
             let cols_to_copy = a_cols.min(b.cols_in());
             let a_start_col = a_cols - cols_to_copy;
@@ -50,7 +47,7 @@ macro_rules! hal_impl_vmp {
                         0,
                         &mut a_dft,
                         offset + j,
-                        &a,
+                        a,
                         a_start_col + j,
                     );
                 }
