@@ -6,7 +6,7 @@ use poulpy_core::{
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 use crate::{
-    CKKSInfos, checked_log_hom_rem_sub,
+    CKKSCompositionError, CKKSInfos, checked_log_hom_rem_sub,
     layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
 };
 
@@ -36,7 +36,10 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
     {
         let key = keys
             .get_automorphism_key(k)
-            .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
+            .ok_or(CKKSCompositionError::MissingAutomorphismKey {
+                op: "rotate",
+                rotation: k,
+            })?;
 
         let offset = dst.offset_unary(src);
 
@@ -58,7 +61,8 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         k: i64,
         keys: &H,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Self: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
@@ -66,8 +70,12 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
     {
         let key = keys
             .get_automorphism_key(k)
-            .unwrap_or_else(|| panic!("missing automorphism key for rotation {k}"));
+            .ok_or(CKKSCompositionError::MissingAutomorphismKey {
+                op: "rotate_inplace",
+                rotation: k,
+            })?;
         self.glwe_automorphism_inplace(dst, key, scratch);
+        Ok(())
     }
 }
 

@@ -28,7 +28,10 @@
 use std::arch::x86_64::*;
 
 use itertools::izip;
-use poulpy_cpu_ref::reference::znx::{get_carry_i128, get_digit_i128};
+use poulpy_cpu_ref::reference::{
+    ntt120::vec_znx_big::AssignOp,
+    znx::{get_carry_i128, get_digit_i128},
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scalar fallback helpers (used as tails in AVX2 kernels)
@@ -59,14 +62,20 @@ pub(super) fn nfc_middle_step_scalar(base2k: usize, lsh: usize, res: &mut [i64],
 }
 
 #[inline(always)]
-pub(super) fn nfc_middle_step_add_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+pub(super) fn nfc_middle_step_assign_scalar<O: AssignOp>(
+    base2k: usize,
+    lsh: usize,
+    res: &mut [i64],
+    a: &[i128],
+    carry: &mut [i128],
+) {
     if lsh == 0 {
         izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
             let digit = get_digit_i128(base2k, ai);
             let co = get_carry_i128(base2k, ai, digit);
             let d_plus_c = digit + *c;
             let out = get_digit_i128(base2k, d_plus_c);
-            *r = r.wrapping_add(out as i64);
+            *r = O::apply_i64(*r, out as i64);
             *c = co + get_carry_i128(base2k, d_plus_c, out);
         });
     } else {
@@ -76,31 +85,7 @@ pub(super) fn nfc_middle_step_add_assign_scalar(base2k: usize, lsh: usize, res: 
             let co = get_carry_i128(base2k_lsh, ai, digit);
             let d_plus_c = (digit << lsh) + *c;
             let out = get_digit_i128(base2k, d_plus_c);
-            *r = r.wrapping_add(out as i64);
-            *c = co + get_carry_i128(base2k, d_plus_c, out);
-        });
-    }
-}
-
-#[inline(always)]
-pub(super) fn nfc_middle_step_sub_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
-    if lsh == 0 {
-        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
-            let digit = get_digit_i128(base2k, ai);
-            let co = get_carry_i128(base2k, ai, digit);
-            let d_plus_c = digit + *c;
-            let out = get_digit_i128(base2k, d_plus_c);
-            *r = r.wrapping_sub(out as i64);
-            *c = co + get_carry_i128(base2k, d_plus_c, out);
-        });
-    } else {
-        let base2k_lsh = base2k - lsh;
-        izip!(res.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(r, &ai, c)| {
-            let digit = get_digit_i128(base2k_lsh, ai);
-            let co = get_carry_i128(base2k_lsh, ai, digit);
-            let d_plus_c = (digit << lsh) + *c;
-            let out = get_digit_i128(base2k, d_plus_c);
-            *r = r.wrapping_sub(out as i64);
+            *r = O::apply_i64(*r, out as i64);
             *c = co + get_carry_i128(base2k, d_plus_c, out);
         });
     }
@@ -149,33 +134,17 @@ pub(super) fn nfc_final_step_inplace_scalar(base2k: usize, lsh: usize, res: &mut
 }
 
 #[inline(always)]
-pub(super) fn nfc_final_step_add_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) fn nfc_final_step_assign_scalar<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     if lsh == 0 {
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
-            *r = r.wrapping_add(out as i64);
+            *r = O::apply_i64(*r, out as i64);
         });
     } else {
         let base2k_lsh = base2k - lsh;
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
-            *r = r.wrapping_add(out as i64);
-        });
-    }
-}
-
-#[inline(always)]
-pub(super) fn nfc_final_step_sub_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
-    if lsh == 0 {
-        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
-            let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
-            *r = r.wrapping_sub(out as i64);
-        });
-    } else {
-        let base2k_lsh = base2k - lsh;
-        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
-            let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
-            *r = r.wrapping_sub(out as i64);
+            *r = O::apply_i64(*r, out as i64);
         });
     }
 }
@@ -405,7 +374,7 @@ pub(super) unsafe fn nfc_middle_step_avx2(base2k: u32, lsh: u32, n: usize, res: 
 }
 
 #[target_feature(enable = "avx2")]
-pub(super) unsafe fn nfc_middle_step_add_assign_avx2(
+pub(super) unsafe fn nfc_middle_step_assign_avx2<O: AssignOp>(
     base2k: u32,
     lsh: u32,
     n: usize,
@@ -433,65 +402,20 @@ pub(super) unsafe fn nfc_middle_step_add_assign_avx2(
 
             let (lo_out, new_lo_c, new_hi_c) = nfc_middle_chunk(&s, lo_a, hi_a, lo_c, hi_c);
             let lo_res = _mm256_permute4x64_epi64(_mm256_loadu_si256(r_ptr.add(4 * i) as *const __m256i), 0xD8);
-            let lo_sum = _mm256_add_epi64(lo_res, lo_out);
+            let lo_combined = if O::SUB {
+                _mm256_sub_epi64(lo_res, lo_out)
+            } else {
+                _mm256_add_epi64(lo_res, lo_out)
+            };
 
-            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_sum, 0xD8));
+            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_combined, 0xD8));
             _mm256_storeu_si256(c_ptr.add(2 * i), _mm256_unpacklo_epi64(new_lo_c, new_hi_c));
             _mm256_storeu_si256(c_ptr.add(2 * i + 1), _mm256_unpackhi_epi64(new_lo_c, new_hi_c));
         }
 
         let tail = chunks * 4;
         if tail < n {
-            nfc_middle_step_add_assign_scalar(
-                base2k as usize,
-                lsh as usize,
-                &mut res[tail..],
-                &a[tail..],
-                &mut carry[tail..],
-            );
-        }
-    }
-}
-
-#[target_feature(enable = "avx2")]
-pub(super) unsafe fn nfc_middle_step_sub_assign_avx2(
-    base2k: u32,
-    lsh: u32,
-    n: usize,
-    res: &mut [i64],
-    a: &[i128],
-    carry: &mut [i128],
-) {
-    unsafe {
-        let s = NfcShifts::new(base2k, lsh);
-        let a_ptr = a.as_ptr() as *const __m256i;
-        let c_ptr = carry.as_mut_ptr() as *mut __m256i;
-        let r_ptr = res.as_mut_ptr();
-
-        let chunks = n / 4;
-        for i in 0..chunks {
-            let a01 = _mm256_loadu_si256(a_ptr.add(2 * i));
-            let a23 = _mm256_loadu_si256(a_ptr.add(2 * i + 1));
-            let lo_a = _mm256_unpacklo_epi64(a01, a23);
-            let hi_a = _mm256_unpackhi_epi64(a01, a23);
-
-            let c01 = _mm256_loadu_si256(c_ptr.add(2 * i));
-            let c23 = _mm256_loadu_si256(c_ptr.add(2 * i + 1));
-            let lo_c = _mm256_unpacklo_epi64(c01, c23);
-            let hi_c = _mm256_unpackhi_epi64(c01, c23);
-
-            let (lo_out, new_lo_c, new_hi_c) = nfc_middle_chunk(&s, lo_a, hi_a, lo_c, hi_c);
-            let lo_res = _mm256_permute4x64_epi64(_mm256_loadu_si256(r_ptr.add(4 * i) as *const __m256i), 0xD8);
-            let lo_diff = _mm256_sub_epi64(lo_res, lo_out);
-
-            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_diff, 0xD8));
-            _mm256_storeu_si256(c_ptr.add(2 * i), _mm256_unpacklo_epi64(new_lo_c, new_hi_c));
-            _mm256_storeu_si256(c_ptr.add(2 * i + 1), _mm256_unpackhi_epi64(new_lo_c, new_hi_c));
-        }
-
-        let tail = chunks * 4;
-        if tail < n {
-            nfc_middle_step_sub_assign_scalar(
+            nfc_middle_step_assign_scalar::<O>(
                 base2k as usize,
                 lsh as usize,
                 &mut res[tail..],
@@ -571,7 +495,13 @@ pub(super) unsafe fn nfc_final_step_inplace_avx2(base2k: u32, lsh: u32, n: usize
 }
 
 #[target_feature(enable = "avx2")]
-pub(super) unsafe fn nfc_final_step_add_assign_avx2(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) unsafe fn nfc_final_step_assign_avx2<O: AssignOp>(
+    base2k: u32,
+    lsh: u32,
+    n: usize,
+    res: &mut [i64],
+    carry: &mut [i128],
+) {
     unsafe {
         let s = NfcShifts::new(base2k, lsh);
         let c_ptr = carry.as_ptr() as *const __m256i;
@@ -582,36 +512,17 @@ pub(super) unsafe fn nfc_final_step_add_assign_avx2(base2k: u32, lsh: u32, n: us
             let lo_res = _mm256_permute4x64_epi64(_mm256_loadu_si256(r_ptr.add(4 * i) as *const __m256i), 0xD8);
             let lo_c = _mm256_unpacklo_epi64(_mm256_loadu_si256(c_ptr.add(2 * i)), _mm256_loadu_si256(c_ptr.add(2 * i + 1)));
             let lo_out = nfc_final_chunk(&s, lo_res, lo_c);
-            let lo_sum = _mm256_add_epi64(lo_res, lo_out);
-            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_sum, 0xD8));
+            let lo_combined = if O::SUB {
+                _mm256_sub_epi64(lo_res, lo_out)
+            } else {
+                _mm256_add_epi64(lo_res, lo_out)
+            };
+            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_combined, 0xD8));
         }
 
         let tail = chunks * 4;
         if tail < n {
-            nfc_final_step_add_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
-        }
-    }
-}
-
-#[target_feature(enable = "avx2")]
-pub(super) unsafe fn nfc_final_step_sub_assign_avx2(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
-    unsafe {
-        let s = NfcShifts::new(base2k, lsh);
-        let c_ptr = carry.as_ptr() as *const __m256i;
-        let r_ptr = res.as_mut_ptr();
-
-        let chunks = n / 4;
-        for i in 0..chunks {
-            let lo_res = _mm256_permute4x64_epi64(_mm256_loadu_si256(r_ptr.add(4 * i) as *const __m256i), 0xD8);
-            let lo_c = _mm256_unpacklo_epi64(_mm256_loadu_si256(c_ptr.add(2 * i)), _mm256_loadu_si256(c_ptr.add(2 * i + 1)));
-            let lo_out = nfc_final_chunk(&s, lo_res, lo_c);
-            let lo_diff = _mm256_sub_epi64(lo_res, lo_out);
-            _mm256_storeu_si256(r_ptr.add(4 * i) as *mut __m256i, _mm256_permute4x64_epi64(lo_diff, 0xD8));
-        }
-
-        let tail = chunks * 4;
-        if tail < n {
-            nfc_final_step_sub_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
+            nfc_final_step_assign_scalar::<O>(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
         }
     }
 }

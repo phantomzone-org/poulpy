@@ -36,7 +36,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSRotateOps<BE> for Module<BE> {
         CKKSRotateOep::ckks_rotate(self, dst, src, k, keys, scratch)
     }
 
-    fn ckks_rotate_inplace<H, K>(&self, dst: &mut CKKSCiphertext<impl DataMut>, k: i64, keys: &H, scratch: &mut Scratch<BE>)
+    fn ckks_rotate_inplace<H, K>(
+        &self,
+        dst: &mut CKKSCiphertext<impl DataMut>,
+        k: i64,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,

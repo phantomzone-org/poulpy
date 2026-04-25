@@ -17,15 +17,26 @@ use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::plaintext::alloc
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
-const EXTRACT_SRC_PREC: CKKSMeta = CKKSMeta {
-    log_decimal: 40,
-    log_hom_rem: 12,
-};
+fn extract_src_prec<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> CKKSMeta {
+    if ctx.base2k().as_usize() == 19 {
+        CKKSMeta {
+            log_decimal: 40,
+            log_hom_rem: 17,
+        }
+    } else {
+        CKKSMeta {
+            log_decimal: 40,
+            log_hom_rem: 12,
+        }
+    }
+}
+
 fn extract_fixture<BE: Backend, F: TestScalar>(
     ctx: &TestContext<BE, F>,
     scratch: &mut poulpy_hal::layouts::Scratch<BE>,
 ) -> crate::layouts::CKKSCiphertext<Vec<u8>> {
-    ctx.encrypt_with_prec(EXTRACT_SRC_PREC.effective_k(), &ctx.re1, &ctx.im1, EXTRACT_SRC_PREC, scratch)
+    let src_prec = extract_src_prec(ctx);
+    ctx.encrypt_with_prec(src_prec.effective_k(), &ctx.re1, &ctx.im1, src_prec, scratch)
 }
 
 fn assert_decrypt_extract_success<BE: Backend, F: TestScalar>(label: &str, ctx: &TestContext<BE, F>, dst_prec: CKKSMeta)
@@ -33,24 +44,20 @@ where
     poulpy_hal::layouts::Module<BE>: CKKSDecrypt<BE>,
     poulpy_hal::layouts::Scratch<BE>: poulpy_core::ScratchTakeCore<BE>,
 {
+    let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
-    assert_ct_meta(
-        &format!("{label} src"),
-        &ct,
-        EXTRACT_SRC_PREC.log_decimal,
-        EXTRACT_SRC_PREC.log_hom_rem,
-    );
+    assert_ct_meta(&format!("{label} src"), &ct, src_prec.log_decimal, src_prec.log_hom_rem);
 
     let pt = ctx.decrypt_with_prec(&ct, dst_prec, scratch.borrow()).unwrap();
     assert_eq!(pt.meta, dst_prec, "{label}: decrypt changed destination metadata");
 
     let (re_out, im_out) = ctx.decode_pt_znx(&pt);
-    let (want_prec, assert_log_decimal) = if dst_prec.log_decimal > EXTRACT_SRC_PREC.log_decimal {
+    let (want_prec, assert_log_decimal) = if dst_prec.log_decimal > src_prec.log_decimal {
         // A left-shift during extraction only repacks the same source
         // quantization at a larger scale; it does not manufacture additional
         // absolute precision.
-        (EXTRACT_SRC_PREC, EXTRACT_SRC_PREC.log_decimal)
+        (src_prec, src_prec.log_decimal)
     } else {
         (dst_prec, dst_prec.log_decimal)
     };
@@ -75,51 +82,55 @@ pub fn test_encrypt_decrypt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>
 }
 
 pub fn test_decrypt_extract_same_meta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
-    assert_decrypt_extract_success("decrypt_extract_same_meta", ctx, EXTRACT_SRC_PREC);
+    assert_decrypt_extract_success("decrypt_extract_same_meta", ctx, extract_src_prec(ctx));
 }
 
 pub fn test_decrypt_extract_truncates_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
         "decrypt_extract_truncates_log_hom_rem",
         ctx,
         CKKSMeta {
-            log_decimal: EXTRACT_SRC_PREC.log_decimal,
+            log_decimal: src_prec.log_decimal,
             log_hom_rem: 0,
         },
     );
 }
 
 pub fn test_decrypt_extract_rsh_for_smaller_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
         "decrypt_extract_rsh",
         ctx,
         CKKSMeta {
-            log_decimal: EXTRACT_SRC_PREC.log_decimal - 8,
-            log_hom_rem: EXTRACT_SRC_PREC.log_hom_rem,
+            log_decimal: src_prec.log_decimal - 8,
+            log_hom_rem: src_prec.log_hom_rem,
         },
     );
 }
 
 pub fn test_decrypt_extract_lsh_for_larger_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
         "decrypt_extract_lsh",
         ctx,
         CKKSMeta {
-            log_decimal: EXTRACT_SRC_PREC.log_decimal,
-            log_hom_rem: EXTRACT_SRC_PREC.log_hom_rem - 8,
+            log_decimal: src_prec.log_decimal,
+            log_hom_rem: src_prec.log_hom_rem - 8,
         },
     );
 }
 
 pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
     let mut pt = alloc_pt_znx(
         ctx.degree(),
         ctx.base2k(),
         CKKSMeta {
-            log_decimal: EXTRACT_SRC_PREC.log_decimal,
-            log_hom_rem: EXTRACT_SRC_PREC.log_hom_rem + 1,
+            log_decimal: src_prec.log_decimal,
+            log_hom_rem: src_prec.log_hom_rem + 1,
         },
     );
     let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
@@ -128,18 +139,19 @@ pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>
         &err,
         CKKSCompositionError::PlaintextAlignmentImpossible {
             op: "ckks_extract_pt_znx",
-            ct_log_hom_rem: EXTRACT_SRC_PREC.log_hom_rem,
-            pt_log_decimal: EXTRACT_SRC_PREC.log_decimal,
+            ct_log_hom_rem: src_prec.log_hom_rem,
+            pt_log_decimal: src_prec.log_decimal,
             pt_max_k: pt.max_k().as_usize(),
         },
     );
 }
 
 pub fn test_decrypt_extract_base2k_mismatch_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+    let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
     let mismatched_base2k = (ctx.base2k().as_usize() / 2).into();
-    let mut pt = alloc_pt_znx(ctx.degree(), mismatched_base2k, EXTRACT_SRC_PREC);
+    let mut pt = alloc_pt_znx(ctx.degree(), mismatched_base2k, src_prec);
     let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
     assert_ckks_error(
         "decrypt_extract_base2k_mismatch",

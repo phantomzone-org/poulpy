@@ -515,7 +515,8 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
                     ROTATION,
                     &s.atks,
                     s.scratch.borrow(),
-                );
+                )
+                .unwrap();
         })
     });
     group.bench_function("conjugate", |b| {

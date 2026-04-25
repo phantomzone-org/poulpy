@@ -443,7 +443,8 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         A: crate::layouts::VecZnxBigToRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_big_normalize_add_assign<R, A>(
+    #[doc(hidden)]
+    fn vec_znx_big_normalize_assign_fallback<R, A, const SUB: bool>(
         module: &Module<BE>,
         res: &mut R,
         res_base2k: usize,
@@ -468,9 +469,29 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         let mut res_ref = res.to_mut();
         for j in 0..size {
             for (ri, ti) in res_ref.at_mut(res_col, j).iter_mut().zip(tmp.at(0, j).iter()) {
-                *ri = ri.wrapping_add(*ti);
+                *ri = if SUB { ri.wrapping_sub(*ti) } else { ri.wrapping_add(*ti) };
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_big_normalize_add_assign<R, A>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &A,
+        a_base2k: usize,
+        a_col: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: VecZnxToMut,
+        A: crate::layouts::VecZnxBigToRef<BE>,
+    {
+        Self::vec_znx_big_normalize_assign_fallback::<R, A, false>(
+            module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -488,20 +509,9 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         R: VecZnxToMut,
         A: crate::layouts::VecZnxBigToRef<BE>,
     {
-        let (n, size) = {
-            let res_ref = res.to_mut();
-            (res_ref.n, res_ref.size)
-        };
-
-        let mut tmp = VecZnx::alloc(n, 1, size);
-        Self::vec_znx_big_normalize(module, &mut tmp, res_base2k, res_offset, 0, a, a_base2k, a_col, scratch);
-
-        let mut res_ref = res.to_mut();
-        for j in 0..size {
-            for (ri, ti) in res_ref.at_mut(res_col, j).iter_mut().zip(tmp.at(0, j).iter()) {
-                *ri = ri.wrapping_sub(*ti);
-            }
-        }
+        Self::vec_znx_big_normalize_assign_fallback::<R, A, true>(
+            module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+        );
     }
 
     fn vec_znx_big_automorphism<R, A>(module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -757,48 +767,6 @@ pub unsafe trait HalImpl<BE: Backend>: Backend {
         R: crate::layouts::VecZnxDftToMut<BE>,
         A: crate::layouts::CnvPVecLToRef<BE>,
         B: crate::layouts::CnvPVecRToRef<BE>;
-
-    /// Fused rank-1 tensor convolution: emit both diagonals and the pairwise
-    /// cross-term in one sweep over `a_prep` / `b_prep`.
-    ///
-    /// The default implementation preserves behaviour by calling the three
-    /// sequential methods above; IFMA-style backends override it with a
-    /// single-pass kernel that halves the prep-data read traffic.
-    fn cnv_tensor_r1_fused_apply_dft_tmp_bytes(
-        module: &Module<BE>,
-        cnv_offset: usize,
-        res_size: usize,
-        a_size: usize,
-        b_size: usize,
-    ) -> usize {
-        let s_diag = <Self as HalImpl<BE>>::cnv_apply_dft_tmp_bytes(module, cnv_offset, res_size, a_size, b_size);
-        let s_pair = <Self as HalImpl<BE>>::cnv_pairwise_apply_dft_tmp_bytes(module, cnv_offset, res_size, a_size, b_size);
-        s_diag.max(s_pair)
-    }
-
-    /// Default impl = three sequential sub-convolutions, same semantics as
-    /// the two current callers in `glwe_tensor_apply`.
-    #[allow(clippy::too_many_arguments)]
-    fn cnv_tensor_r1_fused_apply_dft<R0, R1, RP, A, B>(
-        module: &Module<BE>,
-        cnv_offset: usize,
-        res_diag_0: &mut R0,
-        res_diag_1: &mut R1,
-        res_pair: &mut RP,
-        a: &A,
-        b: &B,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R0: crate::layouts::VecZnxDftToMut<BE>,
-        R1: crate::layouts::VecZnxDftToMut<BE>,
-        RP: crate::layouts::VecZnxDftToMut<BE>,
-        A: crate::layouts::CnvPVecLToRef<BE>,
-        B: crate::layouts::CnvPVecRToRef<BE>,
-    {
-        <Self as HalImpl<BE>>::cnv_apply_dft(module, cnv_offset, res_diag_0, 0, a, 0, b, 0, scratch);
-        <Self as HalImpl<BE>>::cnv_apply_dft(module, cnv_offset, res_diag_1, 0, a, 1, b, 1, scratch);
-        <Self as HalImpl<BE>>::cnv_pairwise_apply_dft(module, cnv_offset, res_pair, 0, a, b, 0, 1, scratch);
-    }
 
     fn cnv_prepare_self_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 

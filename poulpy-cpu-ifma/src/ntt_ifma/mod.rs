@@ -58,7 +58,7 @@ mod tests;
 #[derive(Debug, Clone, Copy)]
 pub struct NTTIfma;
 
-use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps};
+use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps, vec_znx_big::AssignOp};
 
 use vec_znx_big_avx512::{
     nfc_final_step_add_assign_avx512, nfc_final_step_add_assign_scalar, nfc_final_step_inplace_avx512,
@@ -152,19 +152,17 @@ impl I128NormalizeOps for NTTIfma {
         }
     }
     #[inline(always)]
-    fn nfc_middle_step_add_assign(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+    fn nfc_middle_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
         if base2k <= 64 && res.len() >= 8 {
-            unsafe { nfc_middle_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
+            if O::SUB {
+                unsafe { nfc_middle_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
+            } else {
+                unsafe { nfc_middle_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
+            }
+        } else if O::SUB {
+            nfc_middle_step_sub_assign_scalar(base2k, lsh, res, a, carry);
         } else {
             nfc_middle_step_add_assign_scalar(base2k, lsh, res, a, carry);
-        }
-    }
-    #[inline(always)]
-    fn nfc_middle_step_sub_assign(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
-        if base2k <= 64 && res.len() >= 8 {
-            unsafe { nfc_middle_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, a, carry) }
-        } else {
-            nfc_middle_step_sub_assign_scalar(base2k, lsh, res, a, carry);
         }
     }
     #[inline(always)]
@@ -176,19 +174,17 @@ impl I128NormalizeOps for NTTIfma {
         }
     }
     #[inline(always)]
-    fn nfc_final_step_add_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    fn nfc_final_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
         if base2k <= 64 && res.len() >= 8 {
-            unsafe { nfc_final_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
+            if O::SUB {
+                unsafe { nfc_final_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
+            } else {
+                unsafe { nfc_final_step_add_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
+            }
+        } else if O::SUB {
+            nfc_final_step_sub_assign_scalar(base2k, lsh, res, carry);
         } else {
             nfc_final_step_add_assign_scalar(base2k, lsh, res, carry);
-        }
-    }
-    #[inline(always)]
-    fn nfc_final_step_sub_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
-        if base2k <= 64 && res.len() >= 8 {
-            unsafe { nfc_final_step_sub_assign_avx512(base2k as u32, lsh as u32, res.len(), res, carry) }
-        } else {
-            nfc_final_step_sub_assign_scalar(base2k, lsh, res, carry);
         }
     }
 }

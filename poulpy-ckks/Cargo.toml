@@ -5,9 +5,9 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "A backend agnostic crate implementing the CKKS FHE scheme"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
-documentation = "https://docs.rs/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
+documentation = "https://docs.rs/poulpy-ckks"
 
 [features]
 enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx", "poulpy-cpu-avx/enable-avx"]

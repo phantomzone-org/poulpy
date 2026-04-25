@@ -28,6 +28,8 @@ pub enum CKKSCompositionError {
         ct_base2k: usize,
         pt_base2k: usize,
     },
+    /// A requested rotation/conjugation key is not present in the provided key map.
+    MissingAutomorphismKey { op: &'static str, rotation: i64 },
     /// A plaintext cannot be aligned into the requested destination precision.
     PlaintextAlignmentImpossible {
         op: &'static str,
@@ -74,6 +76,12 @@ impl fmt::Display for CKKSCompositionError {
                 f,
                 "{op} requires matching base2k values, got ciphertext base2k={ct_base2k} and plaintext base2k={pt_base2k}"
             ),
+            Self::MissingAutomorphismKey { op, rotation } => {
+                write!(
+                    f,
+                    "{op} requires an automorphism key for rotation {rotation}, but none was provided"
+                )
+            }
             Self::PlaintextAlignmentImpossible {
                 op,
                 ct_log_hom_rem,

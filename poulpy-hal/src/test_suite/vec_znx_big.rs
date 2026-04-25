@@ -9,7 +9,9 @@ use crate::{
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
-    layouts::{Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
+    layouts::{
+        Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, ZnxView, ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -955,6 +957,15 @@ pub fn test_vec_znx_big_normalize_fused<BR: Backend, BT: Backend>(
                 );
                 assert_eq!(add_ref, add_test);
 
+                // Fused-vs-unfused: `_add_assign` must equal `base + normalize(a)` limb-wise.
+                let mut expected_add = base_ref.clone();
+                for j in 0..res_size {
+                    for (e, n) in expected_add.at_mut(0, j).iter_mut().zip(normalized_ref.at(0, j).iter()) {
+                        *e = e.wrapping_add(*n);
+                    }
+                }
+                assert_eq!(add_ref, expected_add);
+
                 let mut sub_ref = base_ref.clone();
                 let mut sub_test = base_test.clone();
                 module_ref.vec_znx_big_normalize_sub_assign(
@@ -978,6 +989,15 @@ pub fn test_vec_znx_big_normalize_fused<BR: Backend, BT: Backend>(
                     scratch_test.borrow(),
                 );
                 assert_eq!(sub_ref, sub_test);
+
+                // Fused-vs-unfused: `_sub_assign` must equal `base - normalize(a)` limb-wise.
+                let mut expected_sub = base_ref.clone();
+                for j in 0..res_size {
+                    for (e, n) in expected_sub.at_mut(0, j).iter_mut().zip(normalized_ref.at(0, j).iter()) {
+                        *e = e.wrapping_sub(*n);
+                    }
+                }
+                assert_eq!(sub_ref, expected_sub);
 
                 let mut neg_ref = base_ref;
                 let mut neg_test = base_test;
