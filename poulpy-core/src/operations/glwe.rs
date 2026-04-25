@@ -454,10 +454,9 @@ where
             normalize_input_limb_bound_worst_case(2 * a_size, res_size, res.base2k().as_usize(), a.base2k().as_usize());
         let lvl_2_pairwise: usize = self.cnv_pairwise_apply_dft_tmp_bytes(cnv_offset, pairwise_dft_size, a_size, a_size);
 
-        let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size)
-            + lvl_2_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
-        let lvl_2b: usize = self.bytes_of_vec_znx_dft(1, pairwise_dft_size)
-            + lvl_2_pairwise.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size) + lvl_2_apply.max(self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2b: usize =
+            self.bytes_of_vec_znx_dft(1, pairwise_dft_size) + lvl_2_pairwise.max(self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2: usize = lvl_2a.max(lvl_2b);
 
         lvl_0 + lvl_diag_cache + lvl_1.max(lvl_2)
@@ -660,11 +659,17 @@ where
             let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, diag_dft_size);
             self.cnv_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, i, &b_prep, i, scratch_4);
             let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-            let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
-            self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
+            self.vec_znx_big_normalize(
+                &mut diag_terms,
+                res_base2k,
+                cnv_offset_lo,
+                i,
+                &res_big,
+                a_base2k,
+                0,
+                scratch_4,
+            );
 
-            // TODO: Do we need 2 copies?
-            self.vec_znx_copy(&mut diag_terms, i, &tmp, 0);
             self.vec_znx_copy(res.data_mut(), col_i + i, &diag_terms, i);
         }
 
@@ -675,13 +680,18 @@ where
                 let (mut res_dft, scratch_4) = scratch_3.take_vec_znx_dft(self, 1, pairwise_dft_size);
                 self.cnv_pairwise_apply_dft(cnv_offset_hi, &mut res_dft, 0, &a_prep, &b_prep, i, j, scratch_4);
                 let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
-                let (mut tmp, scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
-                self.vec_znx_big_normalize(&mut tmp, res_base2k, cnv_offset_lo, 0, &res_big, a_base2k, 0, scratch_5);
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, i);
-                self.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, j);
-
-                // TODO: Do we need copy?
-                self.vec_znx_copy(res.data_mut(), col_i + j, &tmp, 0);
+                self.vec_znx_big_normalize(
+                    res.data_mut(),
+                    res_base2k,
+                    cnv_offset_lo,
+                    col_i + j,
+                    &res_big,
+                    a_base2k,
+                    0,
+                    scratch_4,
+                );
+                self.vec_znx_sub_inplace(res.data_mut(), col_i + j, &diag_terms, i);
+                self.vec_znx_sub_inplace(res.data_mut(), col_i + j, &diag_terms, j);
             }
         }
     }
