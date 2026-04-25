@@ -1,6 +1,6 @@
 use poulpy_core::{
     api::{GLWERotate, ModuleTransfer},
-    layouts::{GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, LWEInfos},
+    layouts::{GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
     oep::{GLWEMulXpMinusOneImpl, GLWERotateImpl},
 };
 use poulpy_hal::{
@@ -174,11 +174,11 @@ unsafe impl HalVecZnxDftImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
 unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
     fn glwe_mul_xp_minus_one<R, A>(module: &Module<DelegatingFFT64Ref>, k: i64, res: &mut R, a: &A)
     where
-        R: poulpy_core::layouts::GLWEToMut,
-        A: poulpy_core::layouts::GLWEToRef,
+        R: GLWEToBackendMut<DelegatingFFT64Ref>,
+        A: GLWEToBackendRef<DelegatingFFT64Ref>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
+        let res: &mut GLWEBackendMut<'_, DelegatingFFT64Ref> = &mut res.to_backend_mut();
+        let a: &GLWEBackendRef<'_, DelegatingFFT64Ref> = &a.to_backend_ref();
 
         assert_eq!(res.n(), module.n() as u32);
         assert_eq!(a.n(), module.n() as u32);
@@ -195,9 +195,9 @@ unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
         res: &mut R,
         _scratch: &mut ScratchArena<'s, DelegatingFFT64Ref>,
     ) where
-        R: poulpy_core::layouts::GLWEToMut,
+        R: GLWEToBackendMut<DelegatingFFT64Ref>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWEBackendMut<'_, DelegatingFFT64Ref> = &mut res.to_backend_mut();
 
         assert_eq!(res.n(), module.n() as u32);
 

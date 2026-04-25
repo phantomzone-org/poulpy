@@ -90,7 +90,11 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    Module<BE>: GGSWCompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GGSWNoise<BE> + GGSWDecompress,
+    Module<BE>: GGSWCompressedEncryptSk<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GGSWDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>,
 {
     let base2k: usize = params.base2k;
     let k: usize = 4 * base2k + 1;

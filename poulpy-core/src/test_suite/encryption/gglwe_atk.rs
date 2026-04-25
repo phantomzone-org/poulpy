@@ -31,6 +31,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>
         + GGLWENoise<BE>
         + VecZnxFillUniformSourceBackend<BE>
         + VecZnxAutomorphismBackend<BE>,
@@ -132,6 +133,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWEAutomorphismKeyDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>
         + VecZnxAutomorphismBackend<BE>
         + VecZnxFillUniformSourceBackend<BE>
         + GGLWENoise<BE>,

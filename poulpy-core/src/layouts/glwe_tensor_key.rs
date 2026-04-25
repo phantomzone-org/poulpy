@@ -232,3 +232,15 @@ impl<BE: Backend> GGLWEToBackendMut<BE> for GLWETensorKey<BE::OwnedBuf> {
         <GGLWE<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.0)
     }
 }
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for &mut GLWETensorKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GLWETensorKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(self)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendMut<BE> for &mut GLWETensorKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GLWETensorKey<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(self)
+    }
+}

@@ -228,13 +228,14 @@ fn main() {
     // Allocate "ideal" GGSW(data) plaintext
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n_glwe, 1);
     pt_ggsw.at_mut(0, 0)[0] = data;
+    let pt_ggsw_ref = ScalarZnx::from_data(pt_ggsw.data.as_slice(), pt_ggsw.n, pt_ggsw.cols);
 
     // Prints noise of GGSW(data)
     for row in 0..res.dnum().as_usize() {
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(&module, row, col, &pt_ggsw, &sk_glwe_prepared, &mut scratch.borrow())
+                res.noise(&module, row, col, &pt_ggsw_ref, &sk_glwe_prepared, &mut scratch.borrow())
                     .std()
                     .log2()
             )

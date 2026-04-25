@@ -7,8 +7,8 @@ use poulpy_core::{
 };
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
-    layouts::{Backend, Module, ScratchOwned},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend},
+    layouts::{Backend, Module, ScratchOwned, VecZnxToBackendMut},
     source::Source,
 };
 
@@ -50,7 +50,12 @@ fn main() {
         module.glwe_secret_prepared_alloc(rank);
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    module.vec_znx_fill_uniform(base2k.into(), &mut pt_want.data, 0, &mut source_xa);
+    module.vec_znx_fill_uniform_source_backend(
+        base2k.into(),
+        &mut <poulpy_hal::layouts::VecZnx<Vec<u8>> as VecZnxToBackendMut<BackendImpl>>::to_backend_mut(&mut pt_want.data),
+        0,
+        &mut source_xa,
+    );
 
     module.glwe_encrypt_sk(
         &mut ct,

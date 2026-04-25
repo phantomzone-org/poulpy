@@ -81,11 +81,18 @@ pub struct GLWE<D: Data> {
 pub type GLWEBackendRef<'a, BE> = GLWE<<BE as Backend>::BufRef<'a>>;
 pub type GLWEBackendMut<'a, BE> = GLWE<<BE as Backend>::BufMut<'a>>;
 
-impl<D: HostDataMut> SetLWEInfos for GLWE<D> {
+impl<D: Data> SetLWEInfos for GLWE<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
 }
+
+impl<D: Data> SetLWEInfos for &mut GLWE<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
+        self.base2k = base2k
+    }
+}
+
 
 impl<D: HostDataRef> GLWE<D> {
     /// Returns a shared reference to the underlying [`VecZnx`].

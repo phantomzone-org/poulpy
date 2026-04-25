@@ -1,5 +1,9 @@
 use crate::{
-    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend,
+        VecZnxMulXpMinusOneInplaceTmpBytes,
+    },
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::{
         vec_znx::{vec_znx_rotate, vec_znx_sub_assign},
         znx::{ZnxNegate, ZnxRotate, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero},
@@ -38,7 +42,8 @@ where
 
 pub fn bench_vec_znx_mul_xp_minus_one<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxMulXpMinusOne + ModuleNew<B>,
+    B: Backend<OwnedBuf = Vec<u8>>,
+    Module<B>: VecZnxMulXpMinusOneBackend<B> + ModuleNew<B>,
 {
     let group_name: String = format!("vec_znx_mul_xp_minus_one::{label}");
 
@@ -46,7 +51,8 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxMulXpMinusOne + ModuleNew<B>,
+        B: Backend<OwnedBuf = Vec<u8>>,
+        Module<B>: VecZnxMulXpMinusOneBackend<B> + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -64,8 +70,10 @@ where
         res.fill_uniform(50, &mut source);
 
         move || {
+            let a_backend = <VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
+            let mut res_backend = <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res);
             for i in 0..cols {
-                module.vec_znx_mul_xp_minus_one(-7, &mut res, i, &a, i);
+                module.vec_znx_mul_xp_minus_one_backend(-7, &mut res_backend, i, &a_backend, i);
             }
             black_box(());
         }
@@ -82,7 +90,8 @@ where
 
 pub fn bench_vec_znx_mul_xp_minus_one_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
+    B: Backend<OwnedBuf = Vec<u8>>,
+    Module<B>: VecZnxMulXpMinusOneInplaceBackend<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_mul_xp_minus_one_inplace::{label}");
@@ -91,7 +100,8 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxMulXpMinusOneInplace<B> + ModuleNew<B> + VecZnxMulXpMinusOneInplaceTmpBytes,
+        B: Backend<OwnedBuf = Vec<u8>>,
+        Module<B>: VecZnxMulXpMinusOneInplaceBackend<B> + ModuleNew<B> + VecZnxMulXpMinusOneInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -110,8 +120,9 @@ where
         res.fill_uniform(50, &mut source);
 
         move || {
+            let mut res_backend = <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res);
             for i in 0..cols {
-                module.vec_znx_mul_xp_minus_one_inplace(-7, &mut res, i, &mut scratch.borrow());
+                module.vec_znx_mul_xp_minus_one_inplace_backend(-7, &mut res_backend, i, &mut scratch.borrow());
             }
             black_box(());
         }

@@ -6,8 +6,8 @@ use poulpy_core::{
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
         GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GGSWToRef, GLWEInfos, GLWEPlaintext,
-        GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToMut, GLWEToRef,
-        LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToMut, LWEToRef, SetLWEInfos,
+        GLWEPlaintextToMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
+        GLWEToMut, GLWEToRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToMut, LWEToRef, SetLWEInfos,
     },
     oep::{
         AutomorphismDefaults, AutomorphismImpl, ConversionDefaults, ConversionImpl, DecryptionDefaults, DecryptionImpl,
@@ -1468,8 +1468,8 @@ macro_rules! impl_operations_via_defaults {
         unsafe impl GLWEMulXpMinusOneImpl<$be> for $be {
             fn glwe_mul_xp_minus_one<R, A>(module: &Module<Self>, k: i64, res: &mut R, a: &A)
             where
-                R: GLWEToMut,
-                A: GLWEToRef,
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_xp_minus_one_default(module, k, res, a)
             }
@@ -1479,7 +1479,7 @@ macro_rules! impl_operations_via_defaults {
                 res: &mut R,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: GLWEToMut,
+                R: GLWEToBackendMut<Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_xp_minus_one_inplace_default(module, k, res, scratch)
             }
@@ -1504,24 +1504,24 @@ macro_rules! impl_operations_via_defaults {
             }
             fn glwe_lsh<'s, R, A>(module: &Module<Self>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToMut,
-                A: GLWEToRef,
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self>,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_lsh_default(module, res, a, k, scratch)
             }
             fn glwe_lsh_add<'s, R, A>(module: &Module<Self>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToMut,
-                A: GLWEToRef,
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self>,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_lsh_add_default(module, res, a, k, scratch)
             }
             fn glwe_lsh_sub<'s, R, A>(module: &Module<Self>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToMut,
-                A: GLWEToRef,
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self>,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_lsh_sub_default(module, res, a, k, scratch)

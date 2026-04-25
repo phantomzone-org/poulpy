@@ -13,7 +13,7 @@ use crate::{
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGSWCompressedSeedMut, GGSWInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GGSWCompressed, GGSWCompressedAtBackendMut, GGSWCompressedToBackendMut, GGSWCompressedToMut},
+        compressed::{GGSWCompressed, GGSWCompressedToBackendMut, GGSWCompressedToMut, ggsw_compressed_at_backend_mut_from_mut},
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -100,10 +100,10 @@ where
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.dnum().as_usize() * (res.rank().as_usize() + 1)];
 
         {
-        let mut res: &mut crate::layouts::GGSWCompressedBackendMut<'_, BE> = &mut res.to_backend_mut();
+        let mut res = res.to_backend_mut();
 
             let scratch = scratch.borrow();
-            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
+            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(&res);
 
             let mut source = Source::new(seed_xa);
 
@@ -140,12 +140,10 @@ where
                         ),
                         base2k: tmp_pt.base2k,
                     };
-                    let mut ct =
-                        <&mut crate::layouts::GGSWCompressedBackendMut<'_, BE> as GGSWCompressedAtBackendMut<BE>>::at_backend_mut(
-                            &mut res, row_i, col_j,
-                        );
+                    let base2k = res.base2k().into();
+                    let mut ct = ggsw_compressed_at_backend_mut_from_mut::<BE>(&mut res, row_i, col_j);
                     self.glwe_encrypt_sk_internal(
-                        res.base2k().into(),
+                        base2k,
                         &mut ct.data,
                         cols,
                         true,

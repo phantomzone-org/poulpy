@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedBackendMut, GGLWECompressedToBackendMut,
     GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKey,
-    GGLWEToGGSWKeyToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    GGLWEToGGSWKeyToBackendMut, GGLWEToGGSWKeyToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -193,16 +193,18 @@ where
     /// Decompresses `other` into `res` by decompressing each GGLWE entry.
     fn decompress_gglwe_to_ggsw_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToGGSWKeyToMut,
-        O: GGLWEToGGSWKeyCompressedToRef,
+        R: GGLWEToGGSWKeyToBackendMut<Self::Backend>,
+        O: GGLWEToGGSWKeyCompressedToBackendRef<Self::Backend>,
     {
-        let res: &mut GGLWEToGGSWKey<&mut [u8]> = &mut res.to_mut();
-        let other: &GGLWEToGGSWKeyCompressed<&[u8]> = &other.to_ref();
+        let mut res = res.to_backend_mut();
+        let other = other.to_backend_ref();
 
         assert_eq!(res.keys.len(), other.keys.len());
 
         for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
-            self.decompress_gglwe(a, b);
+            let mut a_ref = a;
+            let b_ref = b;
+            self.decompress_gglwe(&mut a_ref, &b_ref);
         }
     }
 }
@@ -259,18 +261,6 @@ impl<BE: Backend> GGLWEToGGSWKeyCompressedToBackendRef<BE> for GGLWEToGGSWKeyCom
     }
 }
 
-impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyCompressedToBackendRef<BE> for &mut GGLWEToGGSWKeyCompressed<BE::BufMut<'b>> {
-    fn to_backend_ref(&self) -> GGLWEToGGSWKeyCompressedBackendRef<'_, BE> {
-        GGLWEToGGSWKeyCompressed {
-            keys: self
-                .keys
-                .iter_mut()
-                .map(|c| GGLWECompressedToBackendRef::<BE>::to_backend_ref(&mut *c))
-                .collect(),
-        }
-    }
-}
-
 pub trait GGLWEToGGSWKeyCompressedToBackendMut<BE: Backend>: GGLWEToGGSWKeyCompressedToBackendRef<BE> {
     fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyCompressedBackendMut<'_, BE>;
 }
@@ -287,18 +277,6 @@ impl<BE: Backend> GGLWEToGGSWKeyCompressedToBackendMut<BE> for GGLWEToGGSWKeyCom
     }
 }
 
-impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyCompressedToBackendMut<BE> for &mut GGLWEToGGSWKeyCompressed<BE::BufMut<'b>> {
-    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyCompressedBackendMut<'_, BE> {
-        GGLWEToGGSWKeyCompressed {
-            keys: self
-                .keys
-                .iter_mut()
-                .map(|c| GGLWECompressedToBackendMut::<BE>::to_backend_mut(&mut *c))
-                .collect(),
-        }
-    }
-}
-
 pub trait GGLWEToGGSWKeyCompressedAtBackendMut<BE: Backend> {
     fn at_backend_mut(&mut self, i: usize) -> GGLWECompressedBackendMut<'_, BE>;
 }
@@ -306,13 +284,22 @@ pub trait GGLWEToGGSWKeyCompressedAtBackendMut<BE: Backend> {
 impl<BE: Backend> GGLWEToGGSWKeyCompressedAtBackendMut<BE> for GGLWEToGGSWKeyCompressed<BE::OwnedBuf> {
     fn at_backend_mut(&mut self, i: usize) -> GGLWECompressedBackendMut<'_, BE> {
         assert!((i as u32) < self.rank());
-        self.keys[i].to_backend_mut()
+        <GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.keys[i])
     }
 }
 
-impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyCompressedAtBackendMut<BE> for &mut GGLWEToGGSWKeyCompressed<BE::BufMut<'b>> {
-    fn at_backend_mut(&mut self, i: usize) -> GGLWECompressedBackendMut<'_, BE> {
-        assert!((i as u32) < self.rank());
-        GGLWECompressedToBackendMut::<BE>::to_backend_mut(&mut self.keys[i])
+pub fn gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
+    key: &'a mut GGLWEToGGSWKeyCompressed<BE::BufMut<'b>>,
+    i: usize,
+) -> GGLWECompressedBackendMut<'a, BE> {
+    assert!((i as u32) < key.rank());
+    let key_i = &mut key.keys[i];
+    GGLWECompressed {
+        k: key_i.k,
+        base2k: key_i.base2k,
+        dsize: key_i.dsize,
+        seed: key_i.seed.clone(),
+        rank_out: key_i.rank_out,
+        data: poulpy_hal::layouts::mat_znx_backend_mut_from_mut::<BE>(&mut key_i.data),
     }
 }

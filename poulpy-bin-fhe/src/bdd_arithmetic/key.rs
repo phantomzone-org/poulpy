@@ -168,9 +168,9 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
     /// When `res.ks_glwe` is `Some`, a fresh intermediate GLWE key is sampled
     /// from `source_xe` and used as the bridging secret; `ks_lwe` is then
     /// encrypted under that intermediate key rather than `sk_glwe` directly.
-    fn bdd_key_encrypt_sk<'s, D, S0, S1>(
+    fn bdd_key_encrypt_sk<'s, S0, S1>(
         &self,
-        res: &mut BDDKey<D, BRA>,
+        res: &mut BDDKey<BE::OwnedBuf, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
         enc_infos: &BDDEncryptionInfos,
@@ -178,7 +178,6 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GetDistribution + GLWEInfos,
         BE: 's;
@@ -198,9 +197,9 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn bdd_key_encrypt_sk<'s, D, S0, S1>(
+    fn bdd_key_encrypt_sk<'s, S0, S1>(
         &self,
-        res: &mut BDDKey<D, BRA>,
+        res: &mut BDDKey<BE::OwnedBuf, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
         enc_infos: &BDDEncryptionInfos,
@@ -208,7 +207,6 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GetDistribution + GLWEInfos,
         BE: 's,
@@ -246,7 +244,7 @@ where
     }
 }
 
-impl<D: HostDataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
+impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<'s, S0, S1, M, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 's>(
         &mut self,

@@ -139,8 +139,8 @@ where
 {
     fn decompress_tensor_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToMut,
-        O: GGLWECompressedToRef,
+        R: crate::layouts::GGLWEToBackendMut<Self::Backend>,
+        O: GGLWECompressedToBackendRef<Self::Backend>,
     {
         self.decompress_gglwe(res, other);
     }

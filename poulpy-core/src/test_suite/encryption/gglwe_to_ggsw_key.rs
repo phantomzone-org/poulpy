@@ -107,7 +107,8 @@ where
         + GLWESecretTensorFactory<BE>
         + GGLWENoise<BE>
         + GGLWEDecompress
-        + GGLWEToGGSWKeyDecompress,
+        + GGLWEToGGSWKeyDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {

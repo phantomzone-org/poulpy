@@ -144,8 +144,8 @@ where
 {
     fn decompress_automorphism_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToMut + SetGaloisElement,
-        O: GGLWECompressedToRef + GetGaloisElement,
+        R: crate::layouts::GGLWEToBackendMut<Self::Backend> + SetGaloisElement,
+        O: GGLWECompressedToBackendRef<Self::Backend> + GetGaloisElement,
     {
         self.decompress_gglwe(res, other);
         res.set_p(other.p());

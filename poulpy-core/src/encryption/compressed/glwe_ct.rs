@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnxToBackendMut},
+    layouts::{Backend, HostDataMut, Module, ScratchArena},
     source::Source,
 };
 
@@ -23,7 +23,7 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
 
     fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
-        res: &mut R,
+        res: &'s mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
@@ -56,7 +56,7 @@ where
     #[allow(clippy::too_many_arguments)]
     fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
-        res: &mut R,
+        res: &'s mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
@@ -72,21 +72,23 @@ where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE::BufMut<'s>: HostDataMut,
     {
+        res.seed_mut().copy_from_slice(&seed_xa);
+
         {
-            let res = &mut res.to_backend_mut();
+            let mut res_backend = res.to_backend_mut();
             let mut source_xa: Source = Source::new(seed_xa);
-            let cols: usize = (res.rank() + 1).into();
+            let cols: usize = (res_backend.rank() + 1).into();
             assert!(
                 scratch.available()
-                    >= <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, res),
+                    >= <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, &res_backend),
                 "scratch.available(): {} < GLWECompressedEncryptSk::glwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, res)
+                <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk_tmp_bytes(self, &res_backend)
             );
 
             self.glwe_encrypt_sk_internal(
-                res.base2k().into(),
-                &mut res.data,
+                res_backend.base2k().into(),
+                &mut res_backend.data,
                 cols,
                 true,
                 Some((pt.to_ref(), pt.to_backend_ref(), 0)),
@@ -96,8 +98,6 @@ where
                 &mut source_xa,
                 scratch,
             );
-        };
-
-        res.seed_mut().copy_from_slice(&seed_xa);
+        }
     }
 }

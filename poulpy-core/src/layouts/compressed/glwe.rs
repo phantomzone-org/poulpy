@@ -37,7 +37,7 @@ pub trait GLWECompressedSeedMut {
     fn seed_mut(&mut self) -> &mut [u8; 32];
 }
 
-impl<D: HostDataMut> GLWECompressedSeedMut for GLWECompressed<D> {
+impl<D: Data> GLWECompressedSeedMut for GLWECompressed<D> {
     fn seed_mut(&mut self) -> &mut [u8; 32] {
         &mut self.seed
     }
@@ -71,6 +71,26 @@ impl<D: Data> LWEInfos for GLWECompressed<D> {
 impl<D: Data> GLWEInfos for GLWECompressed<D> {
     fn rank(&self) -> Rank {
         self.rank
+    }
+}
+
+impl<D: Data> LWEInfos for &GLWECompressed<D> {
+    fn n(&self) -> Degree {
+        (*self).n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        (*self).base2k()
+    }
+
+    fn size(&self) -> usize {
+        (*self).size()
+    }
+}
+
+impl<D: Data> GLWEInfos for &GLWECompressed<D> {
+    fn rank(&self) -> Rank {
+        (*self).rank()
     }
 }
 
@@ -251,6 +271,17 @@ impl<BE: Backend> GLWECompressedToBackendRef<BE> for GLWECompressed<BE::OwnedBuf
             base2k: self.base2k,
             rank: self.rank,
             data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+impl<'a, 'b, BE: Backend + 'b> GLWECompressedToBackendRef<BE> for &'a GLWECompressed<BE::BufRef<'b>> {
+    fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE> {
+        GLWECompressed {
+            seed: self.seed,
+            base2k: self.base2k,
+            rank: self.rank,
+            data: poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&self.data),
         }
     }
 }

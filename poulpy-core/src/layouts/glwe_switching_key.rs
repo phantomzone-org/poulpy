@@ -264,9 +264,31 @@ impl<BE: Backend> GGLWEToBackendMut<BE> for GLWESwitchingKey<BE::OwnedBuf> {
     }
 }
 
+impl<BE: Backend> GGLWEToBackendMut<BE> for &mut GLWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(self)
+    }
+}
+
 impl<BE: Backend> GGLWEToBackendRef<BE> for GLWESwitchingKey<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
         <GGLWE<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.key)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for &mut GLWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(self)
+    }
+}
+
+impl<D: Data> GLWESwitchingKeyDegreesMut for &mut GLWESwitchingKey<D> {
+    fn input_degree(&mut self) -> &mut Degree {
+        &mut self.input_degree
+    }
+
+    fn output_degree(&mut self) -> &mut Degree {
+        &mut self.output_degree
     }
 }
 

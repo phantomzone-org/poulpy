@@ -7,9 +7,9 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedAtBackendMut,
-        GGLWEToGGSWKeyCompressedToBackendMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWESecretToRef, prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToBackendMut, GLWEInfos, GLWESecret,
+        GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef, gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut,
+        prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_copy,
 };
@@ -85,7 +85,7 @@ where
             <Module<BE> as GGLWEToGGSWKeyCompressedEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let mut res = &mut res.to_backend_mut();
+        let mut res = res.to_backend_mut();
         let rank: usize = res.rank_out().as_usize();
 
         let mut sk_prepared = self.glwe_secret_prepared_alloc(res.rank());
@@ -103,7 +103,7 @@ where
         self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch);
 
         let mut sk_ij = ScalarZnx::alloc(self.n(), rank);
-        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_compressed_encrypt_sk_tmp_bytes(res));
+        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_compressed_encrypt_sk_tmp_bytes(&res));
 
         let mut source_xa = Source::new(seed_xa);
 
@@ -116,9 +116,7 @@ where
 
             let (seed_xa_tmp, _) = source_xa.branch();
 
-            let mut ct = <&mut crate::layouts::GGLWEToGGSWKeyCompressedBackendMut<'_, BE> as GGLWEToGGSWKeyCompressedAtBackendMut<
-                BE,
-            >>::at_backend_mut(&mut res, i);
+            let mut ct = gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut::<BE>(&mut res, i);
             let mut ct_ref = &mut ct;
 
             self.gglwe_compressed_encrypt_sk(

@@ -115,6 +115,7 @@ impl<D: HostDataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
+        GLWE<D>: GLWEToBackendMut<BE>,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEEncryptSk<BE>,
         E: EncryptionInfos,

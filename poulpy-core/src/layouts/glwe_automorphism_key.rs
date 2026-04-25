@@ -253,9 +253,27 @@ impl<BE: Backend> GGLWEToBackendMut<BE> for GLWEAutomorphismKey<BE::OwnedBuf> {
     }
 }
 
+impl<BE: Backend> GGLWEToBackendMut<BE> for &mut GLWEAutomorphismKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GLWEAutomorphismKey<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(self)
+    }
+}
+
 impl<BE: Backend> GGLWEToBackendRef<BE> for GLWEAutomorphismKey<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
         <GGLWE<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.key)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for &mut GLWEAutomorphismKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GLWEAutomorphismKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(self)
+    }
+}
+
+impl<D: Data> SetGaloisElement for &mut GLWEAutomorphismKey<D> {
+    fn set_p(&mut self, p: i64) {
+        self.p = p;
     }
 }
 

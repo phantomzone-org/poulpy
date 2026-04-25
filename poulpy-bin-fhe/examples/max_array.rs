@@ -12,8 +12,8 @@ use poulpy_core::{
     EncryptionLayout, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, GLWEToMut, GLWEToRef,
-        LWESecret, Rank, TorusPrecision,
+        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToBackendMut, GLWEToBackendRef,
+        GLWEToLWEKeyLayout, LWESecret, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -31,7 +31,7 @@ use poulpy_cpu_ref::FFT64Ref;
 // This example demonstrates and end-to-end example usage of the BDD arithmetic API
 // to compute the maximum of an array of integers.
 
-fn example_max_array<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend, BRA: BlindRotationAlgo>()
+fn example_max_array<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 'static, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE>
         + ModuleN
@@ -50,6 +50,7 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     BE::OwnedBuf: HostDataRef + HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]> + 'static,
     for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
 {
     ////////// Parameter Selection
@@ -231,7 +232,10 @@ where
 
         compare_enc_prepared.prepare(&module, &compare_enc, &bdd_key_prepared, &mut scratch.borrow());
 
-        module.glwe_copy(&mut max_enc_copy.to_mut(), &max_enc.to_ref());
+        module.glwe_copy(
+            &mut <FheUint<Vec<u8>, u32> as GLWEToBackendMut<BE>>::to_backend_mut(&mut max_enc_copy),
+            &<FheUint<Vec<u8>, u32> as GLWEToBackendRef<BE>>::to_backend_ref(&max_enc),
+        );
 
         let cts = HashMap::from([(0, input_i), (1, &mut max_enc_copy)]);
 

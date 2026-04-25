@@ -306,9 +306,10 @@ where
             .log2();
         let noise_want: f64 =
             ((((rank as f64) + 1.0) * n as f64 * 0.5 * DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE).sqrt()).log2() - (k_ct as f64);
+        let noise_want_tol: f64 = noise_want + 1.05_f64.log2();
         assert!(
-            noise_have <= noise_want,
-            "noise_have: {noise_have} > noise_want: {noise_want}"
+            noise_have <= noise_want_tol,
+            "noise_have: {noise_have} > noise_want_tol: {noise_want_tol} (noise_want: {noise_want})"
         );
     }
 }

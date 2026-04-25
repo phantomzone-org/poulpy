@@ -21,9 +21,9 @@ where
         self.ggsw_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn blind_rotation_key_encrypt_sk<'s, D, S0, S1, E>(
+    fn blind_rotation_key_encrypt_sk<'s, S0, S1, E>(
         &self,
-        res: &mut BlindRotationKey<D, CGGI>,
+        res: &mut BlindRotationKey<BE::OwnedBuf, CGGI>,
         sk_glwe: &S0,
         sk_lwe: &S1,
         enc_infos: &E,
@@ -31,7 +31,6 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
@@ -40,7 +39,7 @@ where
     {
         assert_eq!(res.keys.len() as u32, sk_lwe.n());
         assert!(sk_glwe.n() <= self.n() as u32);
-        assert_eq!(sk_glwe.rank(), res.rank());
+        assert_eq!(sk_glwe.rank(), res.keys[0].rank());
 
         match sk_lwe.dist() {
             Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {}

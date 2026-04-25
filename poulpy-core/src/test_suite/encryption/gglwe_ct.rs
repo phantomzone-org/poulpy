@@ -123,6 +123,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>
         + GGLWENoise<BE>
         + VecZnxFillUniformSourceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -221,6 +222,7 @@ where
         + GLWESwitchingKeyEncryptSk<BE>
         + GGLWECompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>
         + GGLWENoise<BE>
         + VecZnxFillUniformSourceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

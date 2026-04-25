@@ -551,7 +551,8 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         }
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
-        module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp, &mut scratch_1.borrow());
+        let mut acc_tmp_ref = &mut acc_tmp;
+        module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp_ref, &mut scratch_1.borrow());
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);

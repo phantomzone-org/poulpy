@@ -172,8 +172,8 @@ where
     /// Decompresses `other` into `res`, copying degree metadata.
     fn decompress_glwe_switching_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
-        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
+        R: crate::layouts::GGLWEToBackendMut<Self::Backend> + GLWESwitchingKeyDegreesMut,
+        O: GGLWECompressedToBackendRef<Self::Backend> + GLWESwitchingKeyDegrees,
     {
         self.decompress_gglwe(res, other);
 

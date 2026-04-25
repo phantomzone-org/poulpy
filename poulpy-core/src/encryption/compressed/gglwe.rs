@@ -13,7 +13,7 @@ use crate::{
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GGLWECompressed, GGLWECompressedAtBackendMut, GGLWECompressedToBackendMut, GGLWECompressedToMut},
+        compressed::{GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToMut, gglwe_compressed_at_backend_mut_from_mut},
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -85,7 +85,7 @@ where
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
 
         {
-        let mut res: &mut crate::layouts::GGLWECompressedBackendMut<'_, BE> = &mut res.to_backend_mut();
+        let mut res = res.to_backend_mut();
             let pt_backend = pt.to_backend_ref();
             let sk_ref = sk.to_backend_ref();
 
@@ -107,10 +107,10 @@ where
             assert_eq!(pt_backend.n as u32, sk_ref.n());
             assert!(
                 scratch.available()
-                    >= <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, res),
+                    >= <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, &res),
                 "scratch.available(): {} < GGLWECompressedEncryptSk::gglwe_compressed_encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, res)
+                <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk_tmp_bytes(self, &res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.max_k().0,
@@ -131,7 +131,7 @@ where
             let mut source_xa = Source::new(seed);
 
             let scratch = scratch.borrow();
-            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
+            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(&res);
 
             for col_j in 0..rank_in {
                 for row_i in 0..dnum {
@@ -168,12 +168,10 @@ where
                         ),
                         base2k: tmp_pt.base2k,
                     };
-                    let mut ct =
-                        <&mut crate::layouts::GGLWECompressedBackendMut<'_, BE> as GGLWECompressedAtBackendMut<BE>>::at_backend_mut(
-                            &mut res, row_i, col_j,
-                        );
+                    let base2k = res.base2k().into();
+                    let mut ct = gglwe_compressed_at_backend_mut_from_mut::<BE>(&mut res, row_i, col_j);
                     self.glwe_encrypt_sk_internal(
-                        res.base2k().into(),
+                        base2k,
                         &mut ct.data,
                         cols,
                         true,

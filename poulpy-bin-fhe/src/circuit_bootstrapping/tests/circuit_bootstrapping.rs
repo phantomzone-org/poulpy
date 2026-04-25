@@ -189,12 +189,13 @@ pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + 
     // X^{data * 2^log_gap_out}
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n_glwe, 1);
     pt_ggsw.at_mut(0, 0)[data as usize * (1 << log_gap_out)] = 1;
+    let pt_ggsw_ref = ScalarZnx::from_data(pt_ggsw.data.as_slice(), pt_ggsw.n, pt_ggsw.cols);
 
     for row in 0..res.dnum().as_usize() {
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, &mut scratch.borrow())
+                res.noise(module, row, col, &pt_ggsw_ref, &sk_glwe_prepared, &mut scratch.borrow())
                     .std()
                     .log2()
             )
@@ -383,12 +384,13 @@ pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + 
     // X^{data * 2^log_gap_out}
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n_glwe, 1);
     pt_ggsw.at_mut(0, 0)[0] = data;
+    let pt_ggsw_ref = ScalarZnx::from_data(pt_ggsw.data.as_slice(), pt_ggsw.n, pt_ggsw.cols);
 
     for row in 0..res.dnum().as_usize() {
         for col in 0..res.rank().as_usize() + 1 {
             println!(
                 "row:{row} col:{col} -> {}",
-                res.noise(module, row, col, &pt_ggsw, &sk_glwe_prepared, &mut scratch.borrow())
+                res.noise(module, row, col, &pt_ggsw_ref, &sk_glwe_prepared, &mut scratch.borrow())
                     .std()
                     .log2()
             )

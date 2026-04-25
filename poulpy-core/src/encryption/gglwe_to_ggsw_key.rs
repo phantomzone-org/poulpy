@@ -7,8 +7,8 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyAtBackendMut, GGLWEToGGSWKeyToBackendMut, GLWEInfos, GLWESecret,
-        GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef, prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyToBackendMut, GLWEInfos, GLWESecret, GLWESecretTensor,
+        GLWESecretTensorFactory, GLWESecretToRef, gglwe_to_ggsw_key_at_backend_mut_from_mut, prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_copy,
 };
@@ -73,15 +73,15 @@ where
         E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
-        let mut res = &mut res.to_backend_mut();
+        let mut res = res.to_backend_mut();
 
         let rank: usize = res.rank_out().as_usize();
         assert!(
             scratch.available()
-                >= <Module<BE> as GGLWEToGGSWKeyEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, res),
+                >= <Module<BE> as GGLWEToGGSWKeyEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, &res),
             "scratch.available(): {} < GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes: {}",
             scratch.available(),
-            <Module<BE> as GGLWEToGGSWKeyEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, res)
+            <Module<BE> as GGLWEToGGSWKeyEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, &res)
         );
 
         let mut sk_prepared = self.glwe_secret_prepared_alloc(res.rank());
@@ -99,7 +99,7 @@ where
         self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch);
 
         let mut sk_ij = ScalarZnx::alloc(self.n(), rank);
-        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
+        let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(&res));
 
         for i in 0..rank {
             for j in 0..rank {
@@ -108,10 +108,7 @@ where
             let sk_ij_ref = sk_ij.to_ref();
             let sk_ij_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ij_ref.data), sk_ij_ref.n, sk_ij_ref.cols);
 
-            let mut ct =
-                <&mut crate::layouts::GGLWEToGGSWKeyBackendMut<'_, BE> as GGLWEToGGSWKeyAtBackendMut<BE>>::at_backend_mut(
-                    &mut res, i,
-                );
+            let mut ct = gglwe_to_ggsw_key_at_backend_mut_from_mut::<BE>(&mut res, i);
             let mut ct_ref = &mut ct;
 
             self.gglwe_encrypt_sk(

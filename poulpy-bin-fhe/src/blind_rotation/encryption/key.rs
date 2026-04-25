@@ -40,9 +40,9 @@ pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
     /// Encrypts each bit of `sk_lwe` as a GGSW ciphertext under `sk_glwe`,
     /// storing the result in `res`.
     #[allow(clippy::too_many_arguments)]
-    fn blind_rotation_key_encrypt_sk<'s, D, S0, S1, E>(
+    fn blind_rotation_key_encrypt_sk<'s, S0, S1, E>(
         &self,
-        res: &mut BlindRotationKey<D, BRA>,
+        res: &mut BlindRotationKey<B::OwnedBuf, BRA>,
         sk_glwe: &S0,
         sk_lwe: &S1,
         enc_infos: &E,
@@ -50,7 +50,6 @@ pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<B> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
@@ -75,7 +74,7 @@ impl<D: HostDataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
         E: EncryptionInfos,
         M: BlindRotationKeyEncryptSk<BRA, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
+        BE: Backend<OwnedBuf = D> + 's,
     {
         module.blind_rotation_key_encrypt_sk(self, sk_glwe, sk_lwe, enc_infos, source_xe, source_xa, scratch);
     }

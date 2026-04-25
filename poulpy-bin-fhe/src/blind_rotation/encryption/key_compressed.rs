@@ -33,9 +33,9 @@ pub trait BlindRotationKeyCompressedEncryptSk<B: Backend, BRA: BlindRotationAlgo
     /// `seed_xa` is the 32-byte root seed from which per-element mask seeds
     /// are derived.  `source_xe` provides randomness for the error components.
     #[allow(clippy::too_many_arguments)]
-    fn blind_rotation_key_compressed_encrypt_sk<'s, D, S0, S1, E>(
+    fn blind_rotation_key_compressed_encrypt_sk<'s, S0, S1, E>(
         &self,
-        res: &mut BlindRotationKeyCompressed<D, BRA>,
+        res: &mut BlindRotationKeyCompressed<B::OwnedBuf, BRA>,
         sk_glwe: &S0,
         sk_lwe: &S1,
         seed_xa: [u8; 32],
@@ -43,7 +43,6 @@ pub trait BlindRotationKeyCompressedEncryptSk<B: Backend, BRA: BlindRotationAlgo
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        D: HostDataMut,
         S0: GLWESecretPreparedToBackendRef<B> + GLWEInfos,
         E: EncryptionInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,

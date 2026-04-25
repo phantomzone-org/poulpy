@@ -124,9 +124,9 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<O
     /// Scratch space is reused across sub-key encryptions (peak is the maximum
     /// of the three individual requirements).
     #[allow(clippy::too_many_arguments)]
-    fn circuit_bootstrapping_key_encrypt_sk<'s, D, S0, S1>(
+    fn circuit_bootstrapping_key_encrypt_sk<'s, S0, S1>(
         &self,
-        res: &mut CircuitBootstrappingKey<D, BRA>,
+        res: &mut CircuitBootstrappingKey<BE::OwnedBuf, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
         enc_infos: &CircuitBootstrappingEncryptionInfos,
@@ -134,7 +134,6 @@ pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<O
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         BE: 's;
@@ -191,7 +190,7 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
     pub(crate) atk: HashMap<i64, GLWEAutomorphismKey<Vec<u8>>>,
 }
 
-impl<D: HostDataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
+impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<'s, M, S0, S1, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>(
         &mut self,
@@ -231,9 +230,9 @@ where
             .max(self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&infos.tsk_infos()))
     }
 
-    fn circuit_bootstrapping_key_encrypt_sk<'s, D, S0, S1>(
+    fn circuit_bootstrapping_key_encrypt_sk<'s, S0, S1>(
         &self,
-        res: &mut CircuitBootstrappingKey<D, BRA>,
+        res: &mut CircuitBootstrappingKey<BE::OwnedBuf, BRA>,
         sk_lwe: &S0,
         sk_glwe: &S1,
         enc_infos: &CircuitBootstrappingEncryptionInfos,
@@ -241,7 +240,6 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        D: HostDataMut,
         S0: LWESecretToRef + GetDistribution + LWEInfos,
         S1: GLWESecretToRef + GLWEInfos + GetDistribution,
         BE: 's,

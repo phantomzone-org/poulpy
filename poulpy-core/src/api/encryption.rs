@@ -347,7 +347,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
 
     fn glwe_compressed_encrypt_sk<'s, R, P, S, E>(
         &self,
-        res: &mut R,
+        res: &'s mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],

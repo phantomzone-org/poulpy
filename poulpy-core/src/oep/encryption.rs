@@ -323,7 +323,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
 
     fn glwe_compressed_encrypt_sk_default<'s, R, P, S, E>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &'s mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
@@ -877,7 +877,7 @@ where
 
     fn glwe_compressed_encrypt_sk_default<'s, R, P, S, E>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &'s mut R,
         pt: &P,
         sk: &S,
         seed_xa: [u8; 32],
