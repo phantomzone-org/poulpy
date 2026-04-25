@@ -1,15 +1,15 @@
 use crate::{
     api::{
         VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddNormal, VecZnxBigAddNormalBackend, VecZnxBigAddSmallAssign,
-        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
-        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf, VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate,
+        VecZnxBigAddSmallIntoBackend, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
+        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf, VecZnxBigFromBytes, VecZnxBigFromSmallBackend, VecZnxBigNegate,
         VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace,
-        VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB, VecZnxBigSubSmallInplace,
+        VecZnxBigSubNegateInplace, VecZnxBigSubSmallABackend, VecZnxBigSubSmallBBackend, VecZnxBigSubSmallInplace,
         VecZnxBigSubSmallNegateInplace,
     },
     layouts::{
         Backend, Module, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut,
-        VecZnxBigBackendRef, VecZnxBigOwned, VecZnxToRef,
+        VecZnxBigBackendRef, VecZnxBigOwned,
     },
     oep::HalVecZnxBigImpl,
     source::Source,
@@ -27,12 +27,15 @@ macro_rules! impl_vec_znx_big_delegate {
 }
 
 impl_vec_znx_big_delegate!(
-    VecZnxBigFromSmall<B>,
-    fn vec_znx_big_from_small<A>(&self, res: &mut VecZnxBigBackendMut<'_, B>, res_col: usize, a: &A, a_col: usize)
-    where
-        A: VecZnxToRef,
-    {
-        <B as HalVecZnxBigImpl<B>>::vec_znx_big_from_small(res, res_col, a, a_col);
+    VecZnxBigFromSmallBackend<B>,
+    fn vec_znx_big_from_small_backend(
+        &self,
+        res: &mut VecZnxBigBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    ) {
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_from_small_backend(res, res_col, a, a_col);
     }
 );
 
@@ -111,19 +114,17 @@ impl_vec_znx_big_delegate!(
 );
 
 impl_vec_znx_big_delegate!(
-    VecZnxBigAddSmallInto<B>,
-    fn vec_znx_big_add_small_into<C>(
+    VecZnxBigAddSmallIntoBackend<B>,
+    fn vec_znx_big_add_small_into_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxBigBackendRef<'_, B>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef,
-    {
-        <B as HalVecZnxBigImpl<B>>::vec_znx_big_add_small_into(self, res, res_col, a, a_col, b, b_col);
+    ) {
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_add_small_into_backend(self, res, res_col, a, a_col, b, b_col);
     }
 );
 
@@ -182,19 +183,17 @@ impl_vec_znx_big_delegate!(
 );
 
 impl_vec_znx_big_delegate!(
-    VecZnxBigSubSmallA<B>,
-    fn vec_znx_big_sub_small_a<A>(
+    VecZnxBigSubSmallABackend<B>,
+    fn vec_znx_big_sub_small_a_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, B>,
         a_col: usize,
         b: &VecZnxBigBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        A: VecZnxToRef,
-    {
-        <B as HalVecZnxBigImpl<B>>::vec_znx_big_sub_small_a(self, res, res_col, a, a_col, b, b_col);
+    ) {
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_sub_small_a_backend(self, res, res_col, a, a_col, b, b_col);
     }
 );
 
@@ -212,19 +211,17 @@ impl_vec_znx_big_delegate!(
 );
 
 impl_vec_znx_big_delegate!(
-    VecZnxBigSubSmallB<B>,
-    fn vec_znx_big_sub_small_b<C>(
+    VecZnxBigSubSmallBBackend<B>,
+    fn vec_znx_big_sub_small_b_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxBigBackendRef<'_, B>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef,
-    {
-        <B as HalVecZnxBigImpl<B>>::vec_znx_big_sub_small_b(self, res, res_col, a, a_col, b, b_col);
+    ) {
+        <B as HalVecZnxBigImpl<B>>::vec_znx_big_sub_small_b_backend(self, res, res_col, a, a_col, b, b_col);
     }
 );
 

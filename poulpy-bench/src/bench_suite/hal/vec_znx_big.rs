@@ -6,10 +6,10 @@ use rand::Rng;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign,
-        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign,
-        VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallB,
+        VecZnxBigAddSmallIntoBackend, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
+        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallABackend,
+        VecZnxBigSubSmallBBackend,
     },
     layouts::{
         Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef,
@@ -117,18 +117,22 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_add_small_into<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_add_small_into<B: Backend<OwnedBuf = Vec<u8>>>(
+    params: &crate::params::HalSweepParams,
+    c: &mut Criterion,
+    label: &str,
+)
 where
-    Module<B>: VecZnxBigAddSmallInto<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigAddSmallIntoBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
-    let group_name: String = format!("vec_znx_big_add_small_into::{label}");
+    let group_name: String = format!("vec_znx_big_add_small_into_backend::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
+    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigAddSmallInto<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigAddSmallIntoBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let n: usize = 1 << sweep[0];
@@ -150,9 +154,10 @@ where
 
         move || {
             let a = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendRef<B>>::to_backend_ref(&a);
+            let b = <VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&b);
             let mut c = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendMut<B>>::to_backend_mut(&mut c);
             for i in 0..cols {
-                module.vec_znx_big_add_small_into(&mut c, i, &a, i, &b, i);
+                module.vec_znx_big_add_small_into_backend(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }
@@ -819,18 +824,22 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_small_a<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_small_a<B: Backend<OwnedBuf = Vec<u8>>>(
+    params: &crate::params::HalSweepParams,
+    c: &mut Criterion,
+    label: &str,
+)
 where
-    Module<B>: VecZnxBigSubSmallA<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubSmallABackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
-    let group_name: String = format!("vec_znx_big_sub_small_a::{label}");
+    let group_name: String = format!("vec_znx_big_sub_small_a_backend::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
+    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubSmallA<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubSmallABackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << sweep[0]);
@@ -850,10 +859,11 @@ where
         source.fill_bytes(c.data_mut().as_mut());
 
         move || {
+            let a = <VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
             let b = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendRef<B>>::to_backend_ref(&b);
             let mut c = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendMut<B>>::to_backend_mut(&mut c);
             for i in 0..cols {
-                module.vec_znx_big_sub_small_a(&mut c, i, &a, i, &b, i);
+                module.vec_znx_big_sub_small_a_backend(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }
@@ -868,18 +878,22 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_small_b<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_small_b<B: Backend<OwnedBuf = Vec<u8>>>(
+    params: &crate::params::HalSweepParams,
+    c: &mut Criterion,
+    label: &str,
+)
 where
-    Module<B>: VecZnxBigSubSmallB<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubSmallBBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
-    let group_name: String = format!("vec_znx_big_sub_small_b::{label}");
+    let group_name: String = format!("vec_znx_big_sub_small_b_backend::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
+    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubSmallB<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubSmallBBackend<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << sweep[0]);
@@ -900,9 +914,10 @@ where
 
         move || {
             let a = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendRef<B>>::to_backend_ref(&a);
+            let b = <VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&b);
             let mut c = <VecZnxBig<B::OwnedBuf, B> as VecZnxBigToBackendMut<B>>::to_backend_mut(&mut c);
             for i in 0..cols {
-                module.vec_znx_big_sub_small_b(&mut c, i, &a, i, &b, i);
+                module.vec_znx_big_sub_small_b_backend(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }

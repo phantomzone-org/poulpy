@@ -43,7 +43,7 @@ use crate::reference::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,
         ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
@@ -68,19 +68,34 @@ where
     (slice, arena)
 }
 
+#[inline]
+fn vec_znx_backend_ref_as_host_ref<'a, 'b, BE>(a: &'a VecZnx<BE::BufRef<'b>>) -> VecZnx<&'a [u8]>
+where
+    BE: Backend + 'b,
+    BE::BufRef<'b>: AsRef<[u8]>,
+{
+    VecZnx {
+        data: a.data.as_ref(),
+        n: a.n,
+        cols: a.cols,
+        size: a.size,
+        max_size: a.max_size,
+    }
+}
+
 #[doc(hidden)]
 pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
-    fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_from_small_default<R>(res: &mut R, res_col: usize, a: &VecZnxBackendRef<'_, BE>, a_col: usize)
     where
         BE: Backend<ScalarBig = i64>,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
         let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-        let a: VecZnx<&[u8]> = a.to_ref();
+        let a: VecZnx<&[u8]> = vec_znx_backend_ref_as_host_ref::<BE>(a);
 
         let res_size = res.size();
         let a_size = a.size();
@@ -134,6 +149,7 @@ where
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxAdd + ZnxCopy + ZnxZero,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
         C: VecZnxBigToRef<BE>,
@@ -150,30 +166,38 @@ where
         fft64_vec_znx_big_add_assign(res, res_col, a, a_col);
     }
 
-    fn vec_znx_big_add_small_into_default<R, A, C>(
+    fn vec_znx_big_add_small_into_default<R, A>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxAdd + ZnxCopy + ZnxZero,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
-        C: VecZnxToRef,
     {
-        fft64_vec_znx_big_add_small_into(res, res_col, a, a_col, b, b_col);
+        let b = vec_znx_backend_ref_as_host_ref::<BE>(b);
+        fft64_vec_znx_big_add_small_into(res, res_col, a, a_col, &b, b_col);
     }
 
-    fn vec_znx_big_add_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_add_small_assign_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
-        BE: Backend<ScalarBig = i64> + ZnxAddAssign,
+        BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        fft64_vec_znx_big_add_small_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        fft64_vec_znx_big_add_small_assign(res, res_col, &a, a_col);
     }
 
     fn vec_znx_big_sub_default<R, A, C>(
@@ -211,56 +235,72 @@ where
         fft64_vec_znx_big_sub_negate_assign(res, res_col, a, a_col);
     }
 
-    fn vec_znx_big_sub_small_a_default<R, A, C>(
+    fn vec_znx_big_sub_small_a_default<R, C>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
         b: &C,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxSub + ZnxNegate + ZnxZero + ZnxCopy,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
         C: VecZnxBigToRef<BE>,
     {
-        fft64_vec_znx_big_sub_small_a(res, res_col, a, a_col, b, b_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        fft64_vec_znx_big_sub_small_a(res, res_col, &a, a_col, b, b_col);
     }
 
-    fn vec_znx_big_sub_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubAssign,
+        BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        fft64_vec_znx_big_sub_small_a_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        fft64_vec_znx_big_sub_small_a_inplace(res, res_col, &a, a_col);
     }
 
-    fn vec_znx_big_sub_small_b_default<R, A, C>(
+    fn vec_znx_big_sub_small_b_default<R, A>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i64> + ZnxSub + ZnxNegate + ZnxZero + ZnxCopy,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
-        C: VecZnxToRef,
     {
-        fft64_vec_znx_big_sub_small_b(res, res_col, a, a_col, b, b_col);
+        let b = vec_znx_backend_ref_as_host_ref::<BE>(b);
+        fft64_vec_znx_big_sub_small_b(res, res_col, a, a_col, &b, b_col);
     }
 
-    fn vec_znx_big_sub_small_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
+        BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        fft64_vec_znx_big_sub_small_b_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        fft64_vec_znx_big_sub_small_b_inplace(res, res_col, &a, a_col);
     }
 
     fn vec_znx_big_negate_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -365,11 +405,11 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
-    fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_from_small_default<R>(res: &mut R, res_col: usize, a: &VecZnxBackendRef<'_, BE>, a_col: usize)
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
         ntt120_vec_znx_big_from_small(res, res_col, a, a_col);
     }
@@ -413,6 +453,7 @@ where
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
         C: VecZnxBigToRef<BE>,
@@ -429,30 +470,38 @@ where
         ntt120_vec_znx_big_add_assign(res, res_col, a, a_col);
     }
 
-    fn vec_znx_big_add_small_into_default<R, A, C>(
+    fn vec_znx_big_add_small_into_default<R, A>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
-        C: VecZnxToRef,
     {
-        ntt120_vec_znx_big_add_small_into(res, res_col, a, a_col, b, b_col);
+        let b = vec_znx_backend_ref_as_host_ref::<BE>(b);
+        ntt120_vec_znx_big_add_small_into(res, res_col, a, a_col, &b, b_col);
     }
 
-    fn vec_znx_big_add_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_add_small_assign_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_add_small_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        ntt120_vec_znx_big_add_small_assign(res, res_col, &a, a_col);
     }
 
     fn vec_znx_big_sub_default<R, A, C>(
@@ -490,56 +539,72 @@ where
         ntt120_vec_znx_big_sub_negate_assign(res, res_col, a, a_col);
     }
 
-    fn vec_znx_big_sub_small_a_default<R, A, C>(
+    fn vec_znx_big_sub_small_a_default<R, C>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
         b: &C,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
         C: VecZnxBigToRef<BE>,
     {
-        ntt120_vec_znx_big_sub_small_a(res, res_col, a, a_col, b, b_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        ntt120_vec_znx_big_sub_small_a(res, res_col, &a, a_col, b, b_col);
     }
 
-    fn vec_znx_big_sub_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        ntt120_vec_znx_big_sub_small_inplace(res, res_col, &a, a_col);
     }
 
-    fn vec_znx_big_sub_small_b_default<R, A, C>(
+    fn vec_znx_big_sub_small_b_default<R, A>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
     ) where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
-        C: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_b(res, res_col, a, a_col, b, b_col);
+        let b = vec_znx_backend_ref_as_host_ref::<BE>(b);
+        ntt120_vec_znx_big_sub_small_b(res, res_col, a, a_col, &b, b_col);
     }
 
-    fn vec_znx_big_sub_small_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace_default<R>(
+        _module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    )
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
+        for<'a> BE::BufRef<'a>: AsRef<[u8]>,
         R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef,
     {
-        ntt120_vec_znx_big_sub_small_negate_assign(res, res_col, a, a_col);
+        let a = vec_znx_backend_ref_as_host_ref::<BE>(a);
+        ntt120_vec_znx_big_sub_small_negate_inplace(res, res_col, &a, a_col);
     }
 
     fn vec_znx_big_negate_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)

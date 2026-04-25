@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmall,
+        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmallBackend,
         VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef},
@@ -22,7 +22,7 @@ pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     + VecZnxDftBytesOf
     + VecZnxNormalizeTmpBytes
     + VecZnxBigBytesOf
-    + VecZnxBigFromSmall<BE>
+    + VecZnxBigFromSmallBackend<BE>
     + VecZnxDftApply<BE>
     + SvpApplyDftToDftAssign<BE>
     + VecZnxIdftApplyConsume<BE>
@@ -68,7 +68,7 @@ where
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
-        + VecZnxBigFromSmall<BE>
+        + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftAssign<BE>
         + VecZnxIdftApplyConsume<BE>
@@ -91,7 +91,7 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
-        + VecZnxBigFromSmall<BE>
+        + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
         + VecZnxIdftApplyConsume<BE>
@@ -115,7 +115,7 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
 
     let cols: usize = (res.rank() + 1).into();
     let (mut c0_big, mut scratch_1) = scratch.borrow().take_vec_znx_big(module, 1, res.size());
-    module.vec_znx_big_from_small(&mut c0_big, 0, &res_ref.data, 0);
+    module.vec_znx_big_from_small_backend(&mut c0_big, 0, &res.data, 0);
 
     for i in 1..cols {
         let (mut ci_dft, _) = scratch_1.borrow().take_vec_znx_dft(module, 1, res.size());

@@ -361,9 +361,12 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 /// Implementations must uphold the backend safety contract for backend-native
 /// accumulator layouts and arithmetic correctness.
 pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
-    fn vec_znx_big_from_small<A>(res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>, res_col: usize, a: &A, a_col: usize)
-    where
-        A: VecZnxToRef;
+    fn vec_znx_big_from_small_backend(
+        res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    );
 
     fn vec_znx_big_add_normal_backend(
         module: &Module<BE>,
@@ -403,16 +406,15 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_big_add_small_into<C>(
+    fn vec_znx_big_add_small_into_backend(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::VecZnxBigBackendRef<'_, BE>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef;
+    );
 
     fn vec_znx_big_add_small_assign<'r, 'a>(
         module: &Module<BE>,
@@ -448,16 +450,15 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_big_sub_small_a<A>(
+    fn vec_znx_big_sub_small_a_backend(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
         b: &crate::layouts::VecZnxBigBackendRef<'_, BE>,
         b_col: usize,
-    ) where
-        A: VecZnxToRef;
+    );
 
     fn vec_znx_big_sub_small_inplace<'r, 'a>(
         module: &Module<BE>,
@@ -467,16 +468,15 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_big_sub_small_b<C>(
+    fn vec_znx_big_sub_small_b_backend(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::VecZnxBigBackendRef<'_, BE>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, BE>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef;
+    );
 
     fn vec_znx_big_sub_small_negate_inplace<'r, 'a>(
         module: &Module<BE>,

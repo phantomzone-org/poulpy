@@ -1,17 +1,20 @@
 use crate::{
     layouts::{
-        Backend, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxBigBackendRef,
-        VecZnxBigOwned, VecZnxToRef,
+        Backend, NoiseInfos, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxBigBackendRef, VecZnxBigOwned,
     },
     source::Source,
 };
 
 /// Converts a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) column
 /// into a [`VecZnxBig`](crate::layouts::VecZnxBig) column.
-pub trait VecZnxBigFromSmall<B: Backend> {
-    fn vec_znx_big_from_small<A>(&self, res: &mut VecZnxBigBackendMut<'_, B>, res_col: usize, a: &A, a_col: usize)
-    where
-        A: VecZnxToRef;
+pub trait VecZnxBigFromSmallBackend<B: Backend> {
+    fn vec_znx_big_from_small_backend(
+        &self,
+        res: &mut VecZnxBigBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    );
 }
 
 /// Allocates as [crate::layouts::VecZnxBig].
@@ -88,18 +91,17 @@ pub trait VecZnxBigAddAssign<B: Backend> {
     );
 }
 
-pub trait VecZnxBigAddSmallInto<B: Backend> {
+pub trait VecZnxBigAddSmallIntoBackend<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add_small_into<C>(
+    fn vec_znx_big_add_small_into_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxBigBackendRef<'_, B>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef;
+    );
 }
 
 pub trait VecZnxBigAddSmallAssign<B: Backend> {
@@ -148,18 +150,17 @@ pub trait VecZnxBigSubNegateAssign<B: Backend> {
     );
 }
 
-pub trait VecZnxBigSubSmallA<B: Backend> {
+pub trait VecZnxBigSubSmallABackend<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_a<A>(
+    fn vec_znx_big_sub_small_a_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, B>,
         a_col: usize,
         b: &VecZnxBigBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        A: VecZnxToRef;
+    );
 }
 
 pub trait VecZnxBigSubSmallAssign<B: Backend> {
@@ -173,18 +174,17 @@ pub trait VecZnxBigSubSmallAssign<B: Backend> {
     );
 }
 
-pub trait VecZnxBigSubSmallB<B: Backend> {
+pub trait VecZnxBigSubSmallBBackend<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_b<C>(
+    fn vec_znx_big_sub_small_b_backend(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxBigBackendRef<'_, B>,
         a_col: usize,
-        b: &C,
+        b: &VecZnxBackendRef<'_, B>,
         b_col: usize,
-    ) where
-        C: VecZnxToRef;
+    );
 }
 
 pub trait VecZnxBigSubSmallNegateAssign<B: Backend> {

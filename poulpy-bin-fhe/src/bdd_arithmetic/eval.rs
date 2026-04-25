@@ -11,8 +11,8 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallA, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftZero,
+        ModuleN, ScratchArenaTakeBasic, VecZnxBigAddSmallAssign, VecZnxBigAddSmallIntoBackend, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallABackend, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftZero,
         VecZnxIdftApply, VecZnxNormalizeTmpBytes, VmpApplyDftToDftBackendRef, VmpApplyDftToDftTmpBytes,
     },
     layouts::{
@@ -332,11 +332,11 @@ impl<BE: Backend<OwnedBuf = Vec<u8>>> Cswap<BE> for Module<BE> where
         + GLWESub<BE>
         + GLWECopy<BE>
         + GLWENormalize<BE>
-        + VecZnxBigAddSmallInto<BE>
+        + VecZnxBigAddSmallIntoBackend<BE>
         + VecZnxBigBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxBigSubSmallA<BE>
+        + VecZnxBigSubSmallABackend<BE>
         + VecZnxDftAddAssign<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftBytesOf
@@ -368,11 +368,11 @@ where
         + GLWESub<BE>
         + GLWECopy<BE>
         + GLWENormalize<BE>
-        + VecZnxBigAddSmallInto<BE>
+        + VecZnxBigAddSmallIntoBackend<BE>
         + VecZnxBigBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxBigSubSmallA<BE>
+        + VecZnxBigSubSmallABackend<BE>
         + VecZnxDftAddAssign<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftBytesOf
@@ -498,7 +498,14 @@ where
             let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
 
             for j in 0..cols {
-                self.vec_znx_big_add_small_into(&mut res_big_tmp, 0, &res_big_ref, j, a_prev.data(), j);
+                self.vec_znx_big_add_small_into_backend(
+                    &mut res_big_tmp,
+                    0,
+                    &res_big_ref,
+                    j,
+                    &vec_znx_backend_ref_from_mut::<BE>(a_prev.data()),
+                    j,
+                );
                 let res_big_tmp_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big_tmp);
                 self.vec_znx_big_normalize(
                     res_a_backend.data_mut(),
@@ -513,7 +520,14 @@ where
             }
 
             for j in 0..cols {
-                self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, b_prev.data(), j, &res_big_ref, j);
+                self.vec_znx_big_sub_small_a_backend(
+                    &mut res_big_tmp,
+                    0,
+                    &vec_znx_backend_ref_from_mut::<BE>(b_prev.data()),
+                    j,
+                    &res_big_ref,
+                    j,
+                );
                 let res_big_tmp_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big_tmp);
                 self.vec_znx_big_normalize(
                     res_b_backend.data_mut(),
@@ -579,7 +593,14 @@ where
             let res_big_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big);
 
             for j in 0..cols {
-                self.vec_znx_big_add_small_into(&mut res_big_tmp, 0, &res_big_ref, j, tmp_a.data(), j);
+                self.vec_znx_big_add_small_into_backend(
+                    &mut res_big_tmp,
+                    0,
+                    &res_big_ref,
+                    j,
+                    &vec_znx_backend_ref_from_mut::<BE>(tmp_a.data()),
+                    j,
+                );
                 let res_big_tmp_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big_tmp);
                 self.vec_znx_big_normalize(
                     res_a_backend.data_mut(),
@@ -594,7 +615,14 @@ where
             }
 
             for j in 0..cols {
-                self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, tmp_b.data(), j, &res_big_ref, j);
+                self.vec_znx_big_sub_small_a_backend(
+                    &mut res_big_tmp,
+                    0,
+                    &vec_znx_backend_ref_from_mut::<BE>(tmp_b.data()),
+                    j,
+                    &res_big_ref,
+                    j,
+                );
                 let res_big_tmp_ref = vec_znx_big_backend_ref_from_mut::<BE>(&res_big_tmp);
                 self.vec_znx_big_normalize(
                     res_b_backend.data_mut(),

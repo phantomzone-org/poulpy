@@ -1,14 +1,12 @@
 #[macro_export]
 macro_rules! hal_impl_vec_znx_big {
     ($defaults:ident) => {
-        fn vec_znx_big_from_small<A>(
+        fn vec_znx_big_from_small_backend(
             res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, Self>,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             a_col: usize,
-        ) where
-            A: VecZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::vec_znx_big_from_small_default(res, res_col, a, a_col)
         }
 
@@ -45,17 +43,15 @@ macro_rules! hal_impl_vec_znx_big {
             <Self as $defaults<Self>>::vec_znx_big_add_assign_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_big_add_small_into<C>(
+        fn vec_znx_big_add_small_into_backend(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::VecZnxBigBackendRef<'_, Self>,
             a_col: usize,
-            b: &C,
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             b_col: usize,
-        ) where
-            C: VecZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::vec_znx_big_add_small_into_default(module, res, res_col, a, a_col, b, b_col)
         }
 
@@ -101,17 +97,15 @@ macro_rules! hal_impl_vec_znx_big {
             <Self as $defaults<Self>>::vec_znx_big_sub_negate_inplace_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_big_sub_small_a<A>(
+        fn vec_znx_big_sub_small_a_backend(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, Self>,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             a_col: usize,
             b: &poulpy_hal::layouts::VecZnxBigBackendRef<'_, Self>,
             b_col: usize,
-        ) where
-            A: VecZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::vec_znx_big_sub_small_a_default(module, res, res_col, a, a_col, b, b_col)
         }
 
@@ -125,17 +119,15 @@ macro_rules! hal_impl_vec_znx_big {
             <Self as $defaults<Self>>::vec_znx_big_sub_small_inplace_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_big_sub_small_b<C>(
+        fn vec_znx_big_sub_small_b_backend(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::VecZnxBigBackendRef<'_, Self>,
             a_col: usize,
-            b: &C,
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             b_col: usize,
-        ) where
-            C: VecZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::vec_znx_big_sub_small_b_default(module, res, res_col, a, a_col, b, b_col)
         }
 
