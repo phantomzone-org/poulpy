@@ -130,6 +130,7 @@ pub trait GLWEMulConst<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
@@ -161,6 +162,8 @@ pub trait GLWEMulPlain<BE: Backend> {
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -176,6 +179,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -209,6 +213,8 @@ pub trait GLWETensoring<BE: Backend> {
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -223,6 +229,7 @@ pub trait GLWETensoring<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(

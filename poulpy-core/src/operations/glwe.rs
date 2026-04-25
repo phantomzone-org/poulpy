@@ -22,9 +22,9 @@ pub use crate::api::{
 use crate::{
     GGLWEProduct, ScratchArenaTakeCore,
     layouts::{
-        Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared,
-        GLWEToBackendMut, GLWEToBackendRef, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
-        glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
+        Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendRef,
+        GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GLWEToRef, LWEInfos, glwe_backend_mut_from_mut,
+        glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
@@ -46,6 +46,7 @@ pub trait GLWEMulConstDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
@@ -92,6 +93,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -106,6 +108,7 @@ where
         let cols: usize = res.rank().as_usize() + 1;
         let a_base2k: usize = a.base2k().as_usize();
         let res_base2k: usize = res.base2k().as_usize();
+        let a_backend = <GLWE<A> as GLWEToBackendRef<BE>>::to_backend_ref(a);
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
             (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
@@ -120,7 +123,7 @@ where
         for i in 0..cols {
             {
                 let mut scratch_iter = scratch.borrow();
-                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, a.data(), i, b, &mut scratch_iter);
+                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, &a_backend.data, i, b, &mut scratch_iter);
             }
             let res_big_ref = res_big.reborrow_backend_ref();
             {
@@ -170,8 +173,9 @@ where
         let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
         for i in 0..cols {
             {
+                let res_backend = <GLWE<R> as GLWEToBackendRef<BE>>::to_backend_ref(res);
                 let mut scratch_iter = scratch.borrow();
-                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, res.data(), i, b, &mut scratch_iter);
+                self.cnv_by_const_apply(cnv_offset_hi, &mut res_big, 0, &res_backend.data, i, b, &mut scratch_iter);
             }
             let res_big_ref = res_big.reborrow_backend_ref();
             {
@@ -258,6 +262,8 @@ where
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -282,9 +288,11 @@ where
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
+        let a_backend = <GLWE<A> as GLWEToBackendRef<BE>>::to_backend_ref(a);
+        let b_backend = <GLWEPlaintext<B> as GLWEPlaintextToBackendRef<BE>>::to_backend_ref(b);
 
-        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, scratch));
-        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, scratch));
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_left(&mut a_prep, &a_backend.data, a_mask, scratch));
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut b_prep, &b_backend.data, b_mask, scratch));
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
             (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
@@ -332,6 +340,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -355,9 +364,13 @@ where
 
         let mask_res = msb_mask_bottom_limb(ab_base2k, res_effective_k);
         let mask_a = msb_mask_bottom_limb(ab_base2k, a_effective_k);
+        let a_backend = <GLWEPlaintext<A> as GLWEPlaintextToBackendRef<BE>>::to_backend_ref(a);
 
-        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_left(&mut res_prep, res.data(), mask_res, scratch));
-        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut a_prep, a.data(), mask_a, scratch));
+        scratch = scratch.apply_mut(|scratch| {
+            let res_backend = <GLWE<R> as GLWEToBackendRef<BE>>::to_backend_ref(res);
+            self.cnv_prepare_left(&mut res_prep, &res_backend.data, mask_res, scratch)
+        });
+        scratch = scratch.apply_mut(|scratch| self.cnv_prepare_right(&mut a_prep, &a_backend.data, mask_a, scratch));
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < ab_base2k {
             (0, -((ab_base2k - (cnv_offset % ab_base2k)) as i64))
@@ -416,6 +429,8 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_assign<R, A>(
@@ -430,6 +445,7 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -480,6 +496,7 @@ pub trait GLWETensoringDefault<BE: Backend> {
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     #[allow(clippy::too_many_arguments)]
@@ -497,6 +514,8 @@ pub trait GLWETensoringDefault<BE: Backend> {
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWE<B>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -735,6 +754,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -756,9 +776,10 @@ where
         let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, cols, a.size());
 
         let a_mask = msb_mask_bottom_limb(a_base2k, a_effective_k);
+        let a_backend = <GLWE<A> as GLWEToBackendRef<BE>>::to_backend_ref(a);
 
         let mut prep_scratch = scratch.borrow();
-        self.cnv_prepare_self(&mut a_prep, &mut b_prep, a.data(), a_mask, &mut prep_scratch);
+        self.cnv_prepare_self(&mut a_prep, &mut b_prep, &a_backend.data, a_mask, &mut prep_scratch);
         let (mut diag_terms, mut scratch) = scratch.take_vec_znx(self.n(), cols, res.size());
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
@@ -856,6 +877,8 @@ where
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWE<B>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let scratch = scratch.borrow();
@@ -880,10 +903,12 @@ where
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
+        let a_backend = <GLWE<A> as GLWEToBackendRef<BE>>::to_backend_ref(a);
+        let b_backend = <GLWE<B> as GLWEToBackendRef<BE>>::to_backend_ref(b);
 
         let mut prep_scratch = scratch.borrow();
-        self.cnv_prepare_left(&mut a_prep, a.data(), a_mask, &mut prep_scratch);
-        self.cnv_prepare_right(&mut b_prep, b.data(), b_mask, &mut prep_scratch);
+        self.cnv_prepare_left(&mut a_prep, &a_backend.data, a_mask, &mut prep_scratch);
+        self.cnv_prepare_right(&mut b_prep, &b_backend.data, b_mask, &mut prep_scratch);
         // Example for rank=3
         //
         // (a0, a1, a2, a3) x (b0, b1, b2, a3)

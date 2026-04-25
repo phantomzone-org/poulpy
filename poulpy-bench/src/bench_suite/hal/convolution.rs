@@ -4,25 +4,30 @@ use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
     api::{CnvPVecAlloc, Convolution, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc},
-    layouts::{Backend, CnvPVecL, CnvPVecR, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
+    layouts::{
+        Backend, CnvPVecL, CnvPVecR, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxToRef,
+        vec_znx_backend_ref_from_ref,
+    },
     source::Source,
 };
 
-pub fn bench_cnv_prepare_left<BE: Backend>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_prepare_left<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
 {
     let group_name: String = format!("cnv_prepare_left::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
     {
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -41,7 +46,12 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_left_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_left(&mut a_prep, &a, !0i64, &mut scratch.borrow());
+            module.cnv_prepare_left(
+                &mut a_prep,
+                &vec_znx_backend_ref_from_ref::<BE>(&a.to_ref()),
+                !0i64,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }
@@ -57,21 +67,23 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_prepare_right<BE: Backend>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_prepare_right<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
 {
     let group_name: String = format!("cnv_prepare_right::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE> + Convolution<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
     {
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -90,7 +102,12 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_prepare_right_tmp_bytes(c_size, size));
 
         move || {
-            module.cnv_prepare_right(&mut a_prep, &a, !0i64, &mut scratch.borrow());
+            module.cnv_prepare_right(
+                &mut a_prep,
+                &vec_znx_backend_ref_from_ref::<BE>(&a.to_ref()),
+                !0i64,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }
@@ -106,21 +123,23 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_apply_dft<BE: Backend>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_apply_dft<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
 {
     let group_name: String = format!("cnv_apply_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
     {
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -146,8 +165,18 @@ where
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, !0i64, &mut scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, !0i64, &mut scratch.borrow());
+        module.cnv_prepare_left(
+            &mut a_prep,
+            &vec_znx_backend_ref_from_ref::<BE>(&a.to_ref()),
+            !0i64,
+            &mut scratch.borrow(),
+        );
+        module.cnv_prepare_right(
+            &mut b_prep,
+            &vec_znx_backend_ref_from_ref::<BE>(&b.to_ref()),
+            !0i64,
+            &mut scratch.borrow(),
+        );
         move || {
             module.cnv_apply_dft(0, &mut c_dft, 0, &a_prep, 0, &b_prep, 0, &mut scratch.borrow());
             black_box(());
@@ -165,21 +194,23 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_pairwise_apply_dft<BE: Backend>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_pairwise_apply_dft<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
 {
     let group_name: String = format!("cnv_pairwise_apply_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxDftAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
     {
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -206,8 +237,18 @@ where
                 .max(module.cnv_prepare_left_tmp_bytes(c_size, size))
                 .max(module.cnv_prepare_right_tmp_bytes(c_size, size)),
         );
-        module.cnv_prepare_left(&mut a_prep, &a, !0i64, &mut scratch.borrow());
-        module.cnv_prepare_right(&mut b_prep, &b, !0i64, &mut scratch.borrow());
+        module.cnv_prepare_left(
+            &mut a_prep,
+            &vec_znx_backend_ref_from_ref::<BE>(&a.to_ref()),
+            !0i64,
+            &mut scratch.borrow(),
+        );
+        module.cnv_prepare_right(
+            &mut b_prep,
+            &vec_znx_backend_ref_from_ref::<BE>(&b.to_ref()),
+            !0i64,
+            &mut scratch.borrow(),
+        );
         move || {
             module.cnv_pairwise_apply_dft(0, &mut c_dft, 0, &a_prep, &b_prep, 0, 1, &mut scratch.borrow());
             black_box(());
@@ -225,21 +266,23 @@ where
     group.finish();
 }
 
-pub fn bench_cnv_by_const_apply<BE: Backend>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_cnv_by_const_apply<BE: Backend + 'static>(params: &crate::params::CnvSweepParams, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxBigAlloc<BE> + CnvPVecAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+    for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
 {
     let group_name: String = format!("cnv_by_const::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<BE: Backend>(n: usize, size: usize) -> impl FnMut()
+    fn runner<BE: Backend + 'static>(n: usize, size: usize) -> impl FnMut()
     where
         Module<BE>: ModuleNew<BE> + Convolution<BE> + VecZnxBigAlloc<BE> + CnvPVecAlloc<BE>,
         ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
         BE::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
     {
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -261,7 +304,15 @@ where
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(0, c_size, size, size));
         move || {
-            module.cnv_by_const_apply(0, &mut c_big, 0, &a, 0, &b, &mut scratch.borrow());
+            module.cnv_by_const_apply(
+                0,
+                &mut c_big,
+                0,
+                &vec_znx_backend_ref_from_ref::<BE>(&a.to_ref()),
+                0,
+                &b,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }

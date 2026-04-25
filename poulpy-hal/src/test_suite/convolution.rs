@@ -63,7 +63,15 @@ where
 
     for a_col in 0..a.cols() {
         for cnv_offset in 0..res_size {
-            module.cnv_by_const_apply(cnv_offset, &mut res_big, 0, &a, a_col, &b_const, &mut scratch.arena());
+            module.cnv_by_const_apply(
+                cnv_offset,
+                &mut res_big,
+                0,
+                &vec_znx_backend_ref::<BE>(&a),
+                a_col,
+                &b_const,
+                &mut scratch.arena(),
+            );
             module.vec_znx_big_normalize(
                 &mut vec_znx_backend_mut::<BE>(&mut res_have),
                 base2k,
@@ -138,8 +146,8 @@ where
             .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
-    module.cnv_prepare_left(&mut a_prep, &a, !0i64, &mut scratch.arena());
-    module.cnv_prepare_right(&mut b_prep, &b, !0i64, &mut scratch.arena());
+    module.cnv_prepare_left(&mut a_prep, &vec_znx_backend_ref::<BE>(&a), !0i64, &mut scratch.arena());
+    module.cnv_prepare_right(&mut b_prep, &vec_znx_backend_ref::<BE>(&b), !0i64, &mut scratch.arena());
 
     for a_col in 0..a.cols() {
         for b_col in 0..b.cols() {
@@ -234,8 +242,8 @@ where
             .max(module.vec_znx_big_normalize_tmp_bytes()),
     );
 
-    module.cnv_prepare_left(&mut a_prep, &a, !0i64, &mut scratch.arena());
-    module.cnv_prepare_right(&mut b_prep, &b, !0i64, &mut scratch.arena());
+    module.cnv_prepare_left(&mut a_prep, &vec_znx_backend_ref::<BE>(&a), !0i64, &mut scratch.arena());
+    module.cnv_prepare_right(&mut b_prep, &vec_znx_backend_ref::<BE>(&b), !0i64, &mut scratch.arena());
 
     for col_i in 0..cols {
         for col_j in 0..cols {

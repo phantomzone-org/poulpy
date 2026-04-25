@@ -1,6 +1,6 @@
 use crate::layouts::{
-    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, ScratchArena, VecZnxBigToMut,
-    VecZnxDftToMut, VecZnxToRef, ZnxInfos, ZnxViewMut,
+    Backend, CnvPVecL, CnvPVecLToMut, CnvPVecLToRef, CnvPVecR, CnvPVecRToMut, CnvPVecRToRef, ScratchArena, VecZnxBackendRef,
+    VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
 };
 
 /// Allocates prepared convolution operands ([`CnvPVecL`], [`CnvPVecR`]).
@@ -24,19 +24,17 @@ pub trait Convolution<BE: Backend> {
     fn cnv_prepare_left_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
     /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the left
     /// operand of a bivariate convolution.
-    fn cnv_prepare_left<'s, R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut ScratchArena<'s, BE>)
+    fn cnv_prepare_left<'s, R>(&self, res: &mut R, a: &VecZnxBackendRef<'_, BE>, mask: i64, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
-        A: VecZnxToRef + ZnxInfos;
+        R: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>;
 
     /// Returns scratch bytes required for [`cnv_prepare_right`](Convolution::cnv_prepare_right).
     fn cnv_prepare_right_tmp_bytes(&self, res_size: usize, a_size: usize) -> usize;
     /// Prepares a coefficient-domain [`VecZnx`](crate::layouts::VecZnx) as the right
     /// operand of a bivariate convolution.
-    fn cnv_prepare_right<'s, R, A>(&self, res: &mut R, a: &A, mask: i64, scratch: &mut ScratchArena<'s, BE>)
+    fn cnv_prepare_right<'s, R>(&self, res: &mut R, a: &VecZnxBackendRef<'_, BE>, mask: i64, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
-        A: VecZnxToRef + ZnxInfos;
+        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>;
 
     /// Returns scratch bytes required for [`cnv_apply_dft`](Convolution::cnv_apply_dft).
     fn cnv_apply_dft_tmp_bytes(&self, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize;
@@ -59,18 +57,17 @@ pub trait Convolution<BE: Backend> {
     /// ```
     /// This method is intended to be used for multiplications by constants that are greater than the base2k.
     #[allow(clippy::too_many_arguments)]
-    fn cnv_by_const_apply<'s, R, A>(
+    fn cnv_by_const_apply<'s, R>(
         &self,
         cnv_offset: usize,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: VecZnxBigToMut<BE>,
-        A: VecZnxToRef;
+        R: VecZnxBigToMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
     /// Evaluates a bivariate convolution over Z\[X, Y\] (x) Z\[X, Y\] mod (X^N + 1) where Y = 2^-K over the
@@ -145,9 +142,14 @@ pub trait Convolution<BE: Backend> {
     /// Prepares both left and right convolution operands from the same input polynomial,
     /// sharing the FFT/NTT computation. This is an optimization for self-convolution
     /// (squaring) where both operands are the same polynomial.
-    fn cnv_prepare_self<'s, L, R, A>(&self, left: &mut L, right: &mut R, a: &A, mask: i64, scratch: &mut ScratchArena<'s, BE>)
-    where
+    fn cnv_prepare_self<'s, L, R>(
+        &self,
+        left: &mut L,
+        right: &mut R,
+        a: &VecZnxBackendRef<'_, BE>,
+        mask: i64,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         L: CnvPVecLToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
-        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>,
-        A: VecZnxToRef + ZnxInfos;
+        R: CnvPVecRToMut<BE> + ZnxInfos + ZnxViewMut<Scalar = BE::ScalarPrep>;
 }

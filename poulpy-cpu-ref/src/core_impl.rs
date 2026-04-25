@@ -1234,6 +1234,7 @@ macro_rules! impl_operations_via_defaults {
                 R: HostDataMut,
                 A: HostDataRef,
                 poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
+                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, scratch)
@@ -1278,6 +1279,8 @@ macro_rules! impl_operations_via_defaults {
                 A: HostDataRef,
                 B: HostDataRef,
                 poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
+                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
+                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_default(
@@ -1304,6 +1307,7 @@ macro_rules! impl_operations_via_defaults {
                 R: HostDataMut,
                 A: HostDataRef,
                 poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
+                poulpy_core::layouts::GLWEPlaintext<A>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_inplace_default(
@@ -1350,6 +1354,8 @@ macro_rules! impl_operations_via_defaults {
                 A: HostDataRef,
                 B: HostDataRef,
                 GLWETensor<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
+                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
+                poulpy_core::layouts::GLWE<B>: poulpy_core::layouts::GLWEToBackendRef<Self>,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_apply_default(
@@ -1375,6 +1381,7 @@ macro_rules! impl_operations_via_defaults {
                 R: HostDataMut,
                 A: HostDataRef,
                 GLWETensor<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
+                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
                 for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_square_apply_default(

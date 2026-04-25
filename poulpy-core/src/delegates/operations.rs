@@ -59,6 +59,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
@@ -99,6 +100,8 @@ impl_operations_delegate!(
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -115,6 +118,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain_assign(self, cnv_offset, res, res_effective_k, a, a_effective_k, scratch)
@@ -154,6 +158,8 @@ impl_operations_delegate!(
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
@@ -169,6 +175,7 @@ impl_operations_delegate!(
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_square_apply(self, cnv_offset, res, a, a_effective_k, scratch)

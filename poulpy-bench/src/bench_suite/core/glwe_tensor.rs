@@ -11,8 +11,8 @@ use poulpy_hal::{
         VecZnxIdftApplyConsume, VecZnxSubInplaceBackend,
     },
     layouts::{
-        Backend, HostDataMut, Module, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxToMut, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
+        Backend, HostDataMut, Module, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxToBackendRef, VecZnxToMut,
+        VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
     },
 };
 
@@ -111,7 +111,12 @@ pub fn bench_glwe_tensor_prepare_left<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.cnv_prepare_left(&mut a_prep, a.data(), a_mask, &mut scratch.borrow());
+            module.cnv_prepare_left(
+                &mut a_prep,
+                &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(a.data()),
+                a_mask,
+                &mut scratch.borrow(),
+            );
             black_box(());
         })
     });
@@ -140,7 +145,12 @@ pub fn bench_glwe_tensor_prepare_right<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            module.cnv_prepare_right(&mut b_prep, b.data(), b_mask, &mut scratch.borrow());
+            module.cnv_prepare_right(
+                &mut b_prep,
+                &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(b.data()),
+                b_mask,
+                &mut scratch.borrow(),
+            );
             black_box(());
         })
     });
@@ -185,8 +195,18 @@ where
             .cnv_prepare_left_tmp_bytes(a.size(), a.size())
             .max(module.cnv_prepare_right_tmp_bytes(b.size(), b.size())),
     );
-    module.cnv_prepare_left(&mut a_prep, a.data(), a_mask, &mut prep_scratch.borrow());
-    module.cnv_prepare_right(&mut b_prep, b.data(), b_mask, &mut prep_scratch.borrow());
+    module.cnv_prepare_left(
+        &mut a_prep,
+        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(a.data()),
+        a_mask,
+        &mut prep_scratch.borrow(),
+    );
+    module.cnv_prepare_right(
+        &mut b_prep,
+        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(b.data()),
+        b_mask,
+        &mut prep_scratch.borrow(),
+    );
 
     let mut scratch = ScratchOwned::<BE>::alloc(module.glwe_tensor_apply_tmp_bytes(&tensor, &a, &b));
 
@@ -261,8 +281,18 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
             .cnv_prepare_left_tmp_bytes(a.size(), a.size())
             .max(module.cnv_prepare_right_tmp_bytes(b.size(), b.size())),
     );
-    module.cnv_prepare_left(&mut a_prep, a.data(), a_mask, &mut prep_scratch.borrow());
-    module.cnv_prepare_right(&mut b_prep, b.data(), b_mask, &mut prep_scratch.borrow());
+    module.cnv_prepare_left(
+        &mut a_prep,
+        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(a.data()),
+        a_mask,
+        &mut prep_scratch.borrow(),
+    );
+    module.cnv_prepare_right(
+        &mut b_prep,
+        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(b.data()),
+        b_mask,
+        &mut prep_scratch.borrow(),
+    );
 
     let mut diag_terms = VecZnx::alloc(n, cols, tensor.size());
     let mut scratch = ScratchOwned::<BE>::alloc(module.glwe_tensor_apply_tmp_bytes(&tensor, &a, &b));

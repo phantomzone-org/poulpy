@@ -41,9 +41,7 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_const_inplace<'s, R>(
@@ -88,9 +86,8 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_mul_plain_inplace<'s, R, A>(
@@ -105,9 +102,7 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 }
 
@@ -143,9 +138,8 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_square_apply<'s, R, A>(
@@ -159,9 +153,7 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
@@ -421,7 +413,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>;
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>;
 
     fn glwe_mul_const_inplace_default<'s, R>(
         module: &Module<BE>,
@@ -453,7 +446,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>;
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace_default<'s, R, A>(
@@ -467,7 +462,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>;
+        GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -494,7 +490,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         R: HostDataMut,
         A: HostDataRef,
         B: HostDataRef,
-        GLWETensor<R>: GLWEToBackendMut<BE>;
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply_default<'s, R, A>(
@@ -507,7 +505,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     ) where
         R: HostDataMut,
         A: HostDataRef,
-        GLWETensor<R>: GLWEToBackendMut<BE>;
+        GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_default<'s, R, A, B>(
         module: &Module<BE>,
@@ -729,6 +728,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
     }
@@ -769,6 +769,8 @@ where
         A: HostDataRef,
         B: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain(
             module,
@@ -794,6 +796,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWE<R>: GLWEToBackendMut<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_assign(
             module,
@@ -837,6 +840,8 @@ where
         A: HostDataRef,
         B: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_apply(
             module,
@@ -861,6 +866,7 @@ where
         R: HostDataMut,
         A: HostDataRef,
         GLWETensor<R>: GLWEToBackendMut<BE>,
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply(module, cnv_offset, res, a, a_effective_k, scratch)
     }
