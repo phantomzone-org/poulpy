@@ -61,14 +61,12 @@ macro_rules! hal_impl_vmp {
             <Self as $defaults<Self>>::vmp_prepare_tmp_bytes_default(module, rows, cols_in, cols_out, size)
         }
 
-        fn vmp_prepare<'s, A>(
+        fn vmp_prepare<'s>(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VmpPMatBackendMut<'_, Self>,
-            a: &A,
+            a: &poulpy_hal::layouts::MatZnxBackendRef<'_, Self>,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
-        ) where
-            A: MatZnxToRef,
-        {
+        ) {
             let mut scratch = scratch.borrow();
             <Self as $defaults<Self>>::vmp_prepare_default(module, res, a, &mut scratch);
         }

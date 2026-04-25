@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEToBackendRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of [`GGLWE`].
@@ -189,11 +189,11 @@ where
     fn gglwe_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEPreparedToBackendMut<BE>,
-        O: GGLWEToRef,
+        O: GGLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchAvailable,
     {
         let mut res = res.to_backend_mut();
-        let other: GGLWE<&[u8]> = other.to_ref();
+        let other = other.to_backend_ref();
 
         assert_eq!(res.n(), self.ring_degree());
         assert_eq!(other.n(), self.ring_degree());

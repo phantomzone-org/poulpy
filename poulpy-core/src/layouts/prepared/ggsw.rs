@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSWInfos, GGSWToBackendRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of [`GGSW`].
@@ -145,11 +145,11 @@ where
     fn ggsw_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
         R: GGSWPreparedToBackendMut<B>,
-        O: GGSWToRef,
+        O: GGSWToBackendRef<B>,
         ScratchArena<'s, B>: ScratchAvailable,
     {
         let mut res = res.to_backend_mut();
-        let other: GGSW<&[u8]> = other.to_ref();
+        let other = other.to_backend_ref();
         assert_eq!(res.n(), self.ring_degree());
         assert_eq!(other.n(), self.ring_degree());
         assert_eq!(res.base2k, other.base2k);

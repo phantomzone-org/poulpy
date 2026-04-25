@@ -9,15 +9,16 @@ use poulpy_hal::{
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, VmpPrepareTmpBytes,
     },
     layouts::{
-        Backend, DataViewMut, MatZnx, Module, ScratchOwned, VecZnx, VecZnxDft, VecZnxToBackendRef, VmpPMat, VmpPMatToBackendMut,
-        VmpPMatToBackendRef,
+        Backend, DataViewMut, MatZnx, MatZnxBackendRef, MatZnxToBackendRef, Module, ScratchOwned, VecZnx, VecZnxDft,
+        VecZnxToBackendRef, VmpPMat, VmpPMatBackendMut, VmpPMatToBackendMut, VmpPMatToBackendRef,
     },
     source::Source,
 };
 
-pub fn bench_vmp_prepare<B: Backend>(params: &crate::params::VmpSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vmp_prepare<B>(params: &crate::params::VmpSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: ModuleNew<B> + VmpPMatAlloc<B> + VmpPrepare<B> + VmpPrepareTmpBytes,
+    B: Backend<OwnedBuf = Vec<u8>>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
@@ -25,9 +26,10 @@ where
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(sweep: [usize; 5]) -> impl FnMut()
+    fn runner<B>(sweep: [usize; 5]) -> impl FnMut()
     where
         Module<B>: ModuleNew<B> + VmpPMatAlloc<B> + VmpPrepare<B> + VmpPrepareTmpBytes,
+        B: Backend<OwnedBuf = Vec<u8>>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
@@ -49,7 +51,9 @@ where
         source.fill_bytes(pmat.data_mut().as_mut());
 
         move || {
-            module.vmp_prepare(&mut pmat.to_backend_mut(), &mat, &mut scratch.borrow());
+            let mut pmat_backend: VmpPMatBackendMut<'_, B> = pmat.to_backend_mut();
+            let mat_backend: MatZnxBackendRef<'_, B> = <MatZnx<Vec<u8>> as MatZnxToBackendRef<B>>::to_backend_ref(&mat);
+            module.vmp_prepare(&mut pmat_backend, &mat_backend, &mut scratch.borrow());
             black_box(());
         }
     }

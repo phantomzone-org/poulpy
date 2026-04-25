@@ -690,13 +690,12 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
 pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
     fn vmp_prepare_tmp_bytes(module: &Module<BE>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 
-    fn vmp_prepare<'s, A>(
+    fn vmp_prepare<'s>(
         module: &Module<BE>,
         res: &mut crate::layouts::VmpPMatBackendMut<'_, BE>,
-        a: &A,
+        a: &crate::layouts::MatZnxBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: crate::layouts::MatZnxToRef;
+    );
 
     #[allow(clippy::too_many_arguments)]
     fn vmp_apply_dft_tmp_bytes(

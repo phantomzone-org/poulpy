@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedBackendMut, GGLWEPreparedFactory, GGLWEPreparedToMut,
-    GGLWEPreparedToRef, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    GGLWEPreparedToRef, GGLWEToBackendRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of a GLWE tensor key.
@@ -100,7 +100,7 @@ where
     fn prepare_tensor_key<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
         R: GGLWEPreparedToMut<B> + GGLWEPreparedToBackendMut<B>,
-        O: GGLWEToRef,
+        O: GGLWEToBackendRef<B>,
         ScratchArena<'s, B>: ScratchAvailable,
         B: 's,
     {

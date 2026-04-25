@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, Data, HostDataRef, ScratchArena, SvpPPolOwned};
+use poulpy_hal::layouts::{Backend, Data, ScratchArena, SvpPPolOwned};
 
 use std::marker::PhantomData;
 
@@ -32,13 +32,12 @@ pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
     ///
     /// For the `BinaryBlock` distribution this also pre-computes the
     /// `X^{a_i}` scalar polynomial products used in the batched CMux loop.
-    fn prepare_blind_rotation_key<DR>(
+    fn prepare_blind_rotation_key(
         &self,
         res: &mut BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE>,
-        other: &BlindRotationKey<DR, BRA>,
+        other: &BlindRotationKey<BE::OwnedBuf, BRA>,
         scratch: &mut ScratchArena<'_, BE>,
-    ) where
-        DR: HostDataRef;
+    );
 }
 
 impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE> {
@@ -64,10 +63,10 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<BE::OwnedBuf,
     ///
     /// Convenience wrapper around
     /// [`BlindRotationKeyPreparedFactory::prepare_blind_rotation_key`].
-    pub fn prepare<DR: HostDataRef, M>(
+    pub fn prepare<M>(
         &mut self,
         module: &M,
-        other: &BlindRotationKey<DR, BRA>,
+        other: &BlindRotationKey<BE::OwnedBuf, BRA>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: BlindRotationKeyPreparedFactory<BRA, BE>,

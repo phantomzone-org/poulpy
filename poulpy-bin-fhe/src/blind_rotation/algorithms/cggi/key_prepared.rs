@@ -41,14 +41,12 @@ where
         self.ggsw_prepare_tmp_bytes(infos)
     }
 
-    fn prepare_blind_rotation_key<DR>(
+    fn prepare_blind_rotation_key(
         &self,
         res: &mut BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
-        other: &BlindRotationKey<DR, CGGI>,
+        other: &BlindRotationKey<BE::OwnedBuf, CGGI>,
         scratch: &mut ScratchArena<'_, BE>,
-    ) where
-        DR: HostDataRef,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(res.data.len(), other.keys.len());

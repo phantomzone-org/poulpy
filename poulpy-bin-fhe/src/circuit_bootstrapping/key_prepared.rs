@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 use crate::{
@@ -33,9 +33,13 @@ impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappi
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> {
-    pub fn prepare<'s, DR, M>(&mut self, module: &M, other: &CircuitBootstrappingKey<DR, BRA>, scratch: &mut ScratchArena<'s, BE>)
+    pub fn prepare<'s, M>(
+        &mut self,
+        module: &M,
+        other: &CircuitBootstrappingKey<BE::OwnedBuf, BRA>,
+        scratch: &mut ScratchArena<'s, BE>,
+    )
     where
-        DR: HostDataRef,
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable,
         BE: 's,
@@ -101,13 +105,12 @@ where
             .max(self.glwe_automorphism_key_prepare_tmp_bytes(&infos.atk_infos()))
     }
 
-    fn circuit_bootstrapping_key_prepare<'s, DR>(
+    fn circuit_bootstrapping_key_prepare<'s>(
         &self,
         res: &mut CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>,
-        other: &CircuitBootstrappingKey<DR, BRA>,
+        other: &CircuitBootstrappingKey<BE::OwnedBuf, BRA>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        DR: HostDataRef,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable,
         BE: 's,
     {

@@ -6,8 +6,8 @@ use crate::{
         VmpPrepare, VmpPrepareTmpBytes,
     },
     layouts::{
-        Backend, DataViewMut, DigestU64, FillUniform, MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendRef,
-        VecZnxDft, VecZnxDftToBackendMut, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        Backend, DataViewMut, DigestU64, FillUniform, MatZnx, MatZnxToBackendRef, Module, ScratchOwned, VecZnx, VecZnxBig,
+        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
     },
     source::Source,
 };
@@ -75,8 +75,16 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
                     let mut pmat_ref: VmpPMatOwned<BR> = module_ref.vmp_pmat_alloc(rows, cols_in, cols_out, size_out);
                     let mut pmat_test: VmpPMatOwned<BT> = module_test.vmp_pmat_alloc(rows, cols_in, cols_out, size_out);
 
-                    module_ref.vmp_prepare(&mut pmat_ref.to_backend_mut(), &mat, &mut scratch_ref.arena());
-                    module_test.vmp_prepare(&mut pmat_test.to_backend_mut(), &mat, &mut scratch_test.arena());
+                    module_ref.vmp_prepare(
+                        &mut pmat_ref.to_backend_mut(),
+                        &<MatZnx<Vec<u8>> as MatZnxToBackendRef<BR>>::to_backend_ref(&mat),
+                        &mut scratch_ref.arena(),
+                    );
+                    module_test.vmp_prepare(
+                        &mut pmat_test.to_backend_mut(),
+                        &<MatZnx<Vec<u8>> as MatZnxToBackendRef<BT>>::to_backend_ref(&mat),
+                        &mut scratch_test.arena(),
+                    );
 
                     assert_eq!(mat.digest_u64(), mat_digest);
 
@@ -231,8 +239,16 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
                     let mut pmat_ref: VmpPMatOwned<BR> = module_ref.vmp_pmat_alloc(rows, cols_in, cols_out, size_out);
                     let mut pmat_test: VmpPMatOwned<BT> = module_test.vmp_pmat_alloc(rows, cols_in, cols_out, size_out);
 
-                    module_ref.vmp_prepare(&mut pmat_ref.to_backend_mut(), &mat, &mut scratch_ref.arena());
-                    module_test.vmp_prepare(&mut pmat_test.to_backend_mut(), &mat, &mut scratch_test.arena());
+                    module_ref.vmp_prepare(
+                        &mut pmat_ref.to_backend_mut(),
+                        &<MatZnx<Vec<u8>> as MatZnxToBackendRef<BR>>::to_backend_ref(&mat),
+                        &mut scratch_ref.arena(),
+                    );
+                    module_test.vmp_prepare(
+                        &mut pmat_test.to_backend_mut(),
+                        &<MatZnx<Vec<u8>> as MatZnxToBackendRef<BT>>::to_backend_ref(&mat),
+                        &mut scratch_test.arena(),
+                    );
 
                     assert_eq!(mat.digest_u64(), mat_digest);
 

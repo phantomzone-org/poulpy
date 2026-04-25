@@ -29,9 +29,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, HostDataMut, HostDataRef, MatZnxToRef, Module, ScratchArena, VecZnxDft, VecZnxDftBackendMut,
-        VecZnxDftBackendRef, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToRef,
-        ZnxInfos,
+        Backend, HostDataMut, HostDataRef, MatZnxBackendRef, Module, ScratchArena, VecZnxDft, VecZnxDftBackendMut,
+        VecZnxDftBackendRef, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToRef, ZnxInfos,
     },
 };
 
@@ -66,10 +65,10 @@ where
         fft64_vmp_prepare_tmp_bytes(module.n())
     }
 
-    fn vmp_prepare_default<'s, A>(
+    fn vmp_prepare_default<'s>(
         module: &Module<BE>,
         res: &mut VmpPMatBackendMut<'_, BE>,
-        a: &A,
+        a: &MatZnxBackendRef<'_, BE>,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         Module<BE>: FFTModuleHandle<f64>,
@@ -78,7 +77,6 @@ where
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
         BE::BufMut<'s>: HostBufMut<'s>,
-        A: MatZnxToRef,
     {
         let bytes = fft64_vmp_prepare_tmp_bytes(module.n());
         let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
@@ -170,22 +168,22 @@ where
         ntt120_vmp_prepare_tmp_bytes(module.n())
     }
 
-    fn vmp_prepare_default<'s, A>(
+    fn vmp_prepare_default<'s>(
         module: &Module<BE>,
         res: &mut VmpPMatBackendMut<'_, BE>,
-        a: &A,
+        a: &MatZnxBackendRef<'_, BE>,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         Module<BE>: NttModuleHandle,
         BE: 's,
         BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
         BE::BufMut<'s>: HostBufMut<'s>,
-        A: MatZnxToRef,
     {
         let bytes = ntt120_vmp_prepare_tmp_bytes(module.n());
         let (tmp, _) = take_host_typed::<BE, u64>(scratch.borrow(), bytes / size_of::<u64>());
-        ntt120_vmp_prepare::<VmpPMatBackendMut<'_, BE>, A, BE>(module, res, a, tmp);
+        ntt120_vmp_prepare::<BE>(module, res, a, tmp);
     }
 
     fn vmp_apply_dft_to_dft_tmp_bytes_default(

@@ -26,7 +26,7 @@ use poulpy_core::{
 
 use poulpy_hal::layouts::NoiseInfos;
 use poulpy_hal::{
-    layouts::{Backend, Data, HostBackend, HostDataRef, Module, ReaderFrom, ScratchArena, WriterTo},
+    layouts::{Backend, Data, HostBackend, Module, ReaderFrom, ScratchArena, WriterTo},
     source::Source,
 };
 
@@ -420,13 +420,12 @@ where
             .max(self.glwe_to_lwe_key_prepare_tmp_bytes(&infos.ks_lwe_infos()))
     }
 
-    fn prepare_bdd_key<'s, DR>(
+    fn prepare_bdd_key<'s>(
         &self,
         res: &mut BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
-        other: &BDDKey<DR, BRA>,
+        other: &BDDKey<BE::OwnedBuf, BRA>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        DR: HostDataRef,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
     {

@@ -1,5 +1,5 @@
 use crate::layouts::{
-    Backend, MatZnxToRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
+    Backend, MatZnxBackendRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
     VecZnxDftToRef, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
 };
 
@@ -21,9 +21,7 @@ pub trait VmpPrepareTmpBytes {
 /// Prepares a coefficient-domain [`MatZnx`](crate::layouts::MatZnx) into a
 /// DFT-domain [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPrepare<B: Backend> {
-    fn vmp_prepare<'s, A>(&self, pmat: &mut VmpPMatBackendMut<'_, B>, mat: &A, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: MatZnxToRef;
+    fn vmp_prepare<'s>(&self, pmat: &mut VmpPMatBackendMut<'_, B>, mat: &MatZnxBackendRef<'_, B>, scratch: &mut ScratchArena<'s, B>);
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef,
-    GGLWEToGGSWKey, GGLWEToGGSWKeyToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    GGLWEToGGSWKeyToBackendRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of [`GGLWEToGGSWKey`].
@@ -102,7 +102,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
     fn gglwe_to_ggsw_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToGGSWKeyPreparedToMut<BE> + GGLWEToGGSWKeyPreparedToBackendMut<BE>,
-        O: GGLWEToGGSWKeyToRef,
+        O: GGLWEToGGSWKeyToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchAvailable;
 }
 
@@ -164,7 +164,7 @@ where
     fn gglwe_to_ggsw_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToGGSWKeyPreparedToMut<BE> + GGLWEToGGSWKeyPreparedToBackendMut<BE>,
-        O: GGLWEToGGSWKeyToRef,
+        O: GGLWEToGGSWKeyToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchAvailable,
     {
         let res_infos = res.to_mut();
@@ -176,7 +176,7 @@ where
         );
 
         let mut res = res.to_backend_mut();
-        let other: &GGLWEToGGSWKey<&[u8]> = &other.to_ref();
+        let other = other.to_backend_ref();
 
         assert_eq!(res.keys.len(), other.keys.len());
         for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {

@@ -1,52 +1,48 @@
 use crate::{
     cast_mut,
-    layouts::{DataViewMut, MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
+    layouts::{Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnx, VecZnxToRef, VmpPMatBackendMut, VmpPMatToMut, ZnxView, ZnxViewMut},
     reference::fft64::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
         reim4::Reim4BlkMatVec,
         vec_znx_dft::vec_znx_dft_apply,
     },
 };
-
-use crate::layouts::{Backend, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToRef, ZnxInfos};
+use crate::layouts::{VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToRef, ZnxInfos};
 
 pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vmp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, pmat: &mut R, mat: &A, tmp: &mut [f64])
+pub fn vmp_prepare<BE>(table: &ReimFFTTable<f64>, pmat: &mut VmpPMatBackendMut<'_, BE>, mat: &MatZnxBackendRef<'_, BE>, tmp: &mut [f64])
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
-    R: VmpPMatToMut<BE>,
-    A: MatZnxToRef,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
 {
-    let mut res: crate::layouts::VmpPMat<&mut [u8], BE> = pmat.to_mut();
-    let a: MatZnx<&[u8]> = mat.to_ref();
-
     #[cfg(debug_assertions)]
     {
-        assert_eq!(a.n(), res.n());
+        assert_eq!(mat.n(), pmat.n());
         assert_eq!(
-            res.cols_in(),
-            a.cols_in(),
-            "res.cols_in: {} != a.cols_in: {}",
-            res.cols_in(),
-            a.cols_in()
+            pmat.cols_in(),
+            mat.cols_in(),
+            "pmat.cols_in: {} != mat.cols_in: {}",
+            pmat.cols_in(),
+            mat.cols_in()
         );
-        assert_eq!(res.rows(), a.rows(), "res.rows: {} != a.rows: {}", res.rows(), a.rows());
+        assert_eq!(pmat.rows(), mat.rows(), "pmat.rows: {} != mat.rows: {}", pmat.rows(), mat.rows());
         assert_eq!(
-            res.cols_out(),
-            a.cols_out(),
-            "res.cols_out: {} != a.cols_out: {}",
-            res.cols_out(),
-            a.cols_out()
+            pmat.cols_out(),
+            mat.cols_out(),
+            "pmat.cols_out: {} != mat.cols_out: {}",
+            pmat.cols_out(),
+            mat.cols_out()
         );
-        assert_eq!(res.size(), a.size(), "res.size: {} != a.size: {}", res.size(), a.size());
+        assert_eq!(pmat.size(), mat.size(), "pmat.size: {} != mat.size: {}", pmat.size(), mat.size());
     }
 
-    let nrows: usize = a.cols_in() * a.rows();
-    let ncols: usize = a.cols_out() * a.size();
-    vmp_prepare_core::<BE>(table, res.raw_mut(), a.raw(), nrows, ncols, tmp);
+    let nrows: usize = mat.cols_in() * mat.rows();
+    let ncols: usize = mat.cols_out() * mat.size();
+    vmp_prepare_core::<BE>(table, pmat.raw_mut(), mat.raw(), nrows, ncols, tmp);
 }
 
 pub(crate) fn vmp_prepare_core<REIM>(

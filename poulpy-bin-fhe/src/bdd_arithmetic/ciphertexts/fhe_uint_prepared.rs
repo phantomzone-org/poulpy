@@ -307,9 +307,8 @@ impl<D: HostDataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintPrepar
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> BDDKeyPrepared<BE::OwnedBuf, BRA, BE> {
-    pub fn prepare<'s, DR, M>(&mut self, module: &M, other: &BDDKey<DR, BRA>, scratch: &mut ScratchArena<'s, BE>)
+    pub fn prepare<'s, M>(&mut self, module: &M, other: &BDDKey<BE::OwnedBuf, BRA>, scratch: &mut ScratchArena<'s, BE>)
     where
-        DR: HostDataRef,
         M: BDDKeyPreparedFactory<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,

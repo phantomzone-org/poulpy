@@ -4,7 +4,7 @@ use crate::{
         VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
-        Backend, MatZnxToRef, Module, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
+        Backend, MatZnxBackendRef, Module, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
         VecZnxDftToMut, VecZnxDftToRef, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
     },
     oep::HalVmpImpl,
@@ -42,10 +42,7 @@ impl_vmp_delegate!(
 
 impl_vmp_delegate!(
     VmpPrepare<B>,
-    fn vmp_prepare<'s, A>(&self, res: &mut VmpPMatBackendMut<'_, B>, a: &A, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: MatZnxToRef,
-    {
+    fn vmp_prepare<'s>(&self, res: &mut VmpPMatBackendMut<'_, B>, a: &MatZnxBackendRef<'_, B>, scratch: &mut ScratchArena<'s, B>) {
         <B as HalVmpImpl<B>>::vmp_prepare(self, res, a, scratch);
     }
 );

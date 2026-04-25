@@ -8,7 +8,7 @@ use poulpy_hal::{
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWELayout, GGLWEPrepared, GGLWEPreparedBackendMut, GGLWEPreparedBackendRef,
-    GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToRef, GLWEAutomorphismKeyHelper, GLWEInfos,
+    GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos,
     GetGaloisElement, LWEInfos, Rank, SetGaloisElement, TorusPrecision,
 };
 
@@ -146,7 +146,7 @@ where
     fn glwe_automorphism_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
         R: GGLWEPreparedToMut<B> + GGLWEPreparedToBackendMut<B> + SetGaloisElement,
-        O: GGLWEToRef + GetGaloisElement,
+        O: GGLWEToBackendRef<B> + GetGaloisElement,
         ScratchArena<'s, B>: ScratchAvailable,
         B: 's,
     {
