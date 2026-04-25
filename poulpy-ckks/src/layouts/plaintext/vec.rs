@@ -296,7 +296,7 @@ impl<D: Data> CKKSInfos for CKKSPlaintextVecZnx<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::leveled::operations::pt_znx::CKKSPlaintextZnxOps;
+    use crate::leveled::api::CKKSPlaintextZnxOps;
     use poulpy_cpu_ref::NTT120Ref;
     use poulpy_hal::{
         api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeTmpBytes},

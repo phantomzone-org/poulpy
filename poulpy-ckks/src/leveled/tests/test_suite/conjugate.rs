@@ -15,7 +15,7 @@
 //! |----------|----------------|
 //! | [`test_conjugate_inplace`] | in-place conjugation |
 
-use crate::{CKKSInfos, leveled::operations::conjugate::CKKSConjugateOps};
+use crate::{CKKSInfos, leveled::api::CKKSConjugateOps};
 
 use super::helpers::{TestContext, TestRotateBackend as Backend, TestScalar, assert_ct_meta, assert_unary_output_meta};
 use poulpy_hal::api::ScratchOwnedBorrow;

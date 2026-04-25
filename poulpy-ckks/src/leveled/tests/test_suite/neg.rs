@@ -15,7 +15,7 @@
 //! |----------|----------------|
 //! | [`test_neg_inplace`] | in-place negation |
 
-use crate::{CKKSInfos, leveled::operations::neg::CKKSNegOps};
+use crate::{CKKSInfos, leveled::api::CKKSNegOps};
 
 use super::helpers::{TestContext, TestNegBackend as Backend, TestScalar, assert_ct_meta, assert_unary_output_meta};
 use anyhow::Result;

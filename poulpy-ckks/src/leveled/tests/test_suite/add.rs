@@ -38,7 +38,7 @@
 use crate::{
     CKKSCompositionError, CKKSInfos,
     layouts::plaintext::{CKKSConstPlaintextConversion, alloc_pt_znx},
-    leveled::operations::add::CKKSAddOps,
+    leveled::api::CKKSAddOps,
 };
 
 use super::helpers::{

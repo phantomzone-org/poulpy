@@ -62,7 +62,7 @@ use crate::{
     CKKSCompositionError, CKKSInfos,
     layouts::plaintext::CKKSConstPlaintextConversion,
     leveled::{
-        operations::mul::CKKSMulOps,
+        api::CKKSMulOps,
         tests::test_suite::helpers::{
             TestContext, TestMulBackend as Backend, TestScalar, TestVector, assert_ckks_error, assert_mul_ct_output_meta,
             assert_mul_pt_output_meta,
