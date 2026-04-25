@@ -187,6 +187,44 @@ macro_rules! hal_impl_vec_znx_big_ntt120 {
             )
         }
 
+        fn vec_znx_big_normalize_add_assign<R, A>(
+            module: &Module<Self>,
+            res: &mut R,
+            res_base2k: usize,
+            res_offset: i64,
+            res_col: usize,
+            a: &A,
+            a_base2k: usize,
+            a_col: usize,
+            scratch: &mut Scratch<Self>,
+        ) where
+            R: VecZnxToMut,
+            A: VecZnxBigToRef<Self>,
+        {
+            <Self as NTT120VecZnxBigDefaults<Self>>::vec_znx_big_normalize_add_assign_default(
+                module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+            )
+        }
+
+        fn vec_znx_big_normalize_sub_assign<R, A>(
+            module: &Module<Self>,
+            res: &mut R,
+            res_base2k: usize,
+            res_offset: i64,
+            res_col: usize,
+            a: &A,
+            a_base2k: usize,
+            a_col: usize,
+            scratch: &mut Scratch<Self>,
+        ) where
+            R: VecZnxToMut,
+            A: VecZnxBigToRef<Self>,
+        {
+            <Self as NTT120VecZnxBigDefaults<Self>>::vec_znx_big_normalize_sub_assign_default(
+                module, res, res_base2k, res_offset, res_col, a, a_base2k, a_col, scratch,
+            )
+        }
+
         fn vec_znx_big_automorphism<R, A>(module: &Module<Self>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
         where
             R: VecZnxBigToMut<Self>,

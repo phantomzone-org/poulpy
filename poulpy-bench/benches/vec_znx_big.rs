@@ -27,6 +27,18 @@ fn bench_vec_znx_big_negate_inplace(c: &mut Criterion) {
 fn bench_vec_znx_normalize(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_normalize, &poulpy_bench::params::BenchParams::get().hal; c);
 }
+fn bench_vec_znx_normalize_add_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_normalize_add_assign, &poulpy_bench::params::BenchParams::get().hal; c);
+}
+fn bench_vec_znx_normalize_sub_assign(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_normalize_sub_assign, &poulpy_bench::params::BenchParams::get().hal; c);
+}
+fn bench_vec_znx_normalize_add_assign_compare(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_normalize_add_assign_compare, &poulpy_bench::params::BenchParams::get().hal; c);
+}
+fn bench_vec_znx_normalize_sub_assign_compare(c: &mut Criterion) {
+    poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_normalize_sub_assign_compare, &poulpy_bench::params::BenchParams::get().hal; c);
+}
 fn bench_vec_znx_big_sub(c: &mut Criterion) {
     poulpy_bench::for_each_backend!(poulpy_bench::bench_suite::hal::vec_znx_big::bench_vec_znx_big_sub, &poulpy_bench::params::BenchParams::get().hal; c);
 }
@@ -55,6 +67,10 @@ criterion_group! {
     bench_vec_znx_big_negate,
     bench_vec_znx_big_negate_inplace,
     bench_vec_znx_normalize,
+    bench_vec_znx_normalize_add_assign,
+    bench_vec_znx_normalize_sub_assign,
+    bench_vec_znx_normalize_add_assign_compare,
+    bench_vec_znx_normalize_sub_assign_compare,
     bench_vec_znx_big_sub,
     bench_vec_znx_big_sub_inplace,
     bench_vec_znx_big_sub_negate_inplace,
