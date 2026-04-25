@@ -1,9 +1,10 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssign, VecZnxNormalizeInplace},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplace},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, VecZnxReborrowBackendRef, ZnxInfos, ZnxZero,
+        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        ZnxZero,
     },
     source::Source,
 };
@@ -35,7 +36,7 @@ pub trait GGSWCompressedEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -48,7 +49,7 @@ where
         + GLWEEncryptSkInternal<BE>
         + GGSWEncryptSk<BE>
         + GGSWNoise<BE>
-        + VecZnxAddScalarAssign
+        + VecZnxAddScalarAssignBackend<BE>
         + VecZnxNormalizeInplace<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -71,7 +72,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -83,10 +84,10 @@ where
         let dsize: usize = res.dsize().into();
 
         let sk_ref = sk.to_backend_ref();
-        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let pt_backend = pt.to_backend_ref();
 
         assert_eq!(res.rank(), sk_ref.rank());
-        assert_eq!(pt.n(), self.n());
+        assert_eq!(pt_backend.n, self.n());
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk_ref.n(), self.n() as u32);
         assert!(
@@ -111,7 +112,13 @@ where
                 tmp_pt.data.zero();
 
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-                self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+                {
+                    let mut tmp_pt_data =
+                        <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
+                            &mut tmp_pt.data,
+                        );
+                    self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_data, 0, (dsize - 1) + row_i * dsize, &pt_backend, 0);
+                }
                 scratch_1 = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch));
 
                 for col_j in 0..rank + 1 {

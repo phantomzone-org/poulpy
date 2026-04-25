@@ -166,7 +166,14 @@ where
                         for col in 0..gglwe_s0s2.rank_in().as_usize() {
                             let noise_have: f64 = gglwe_s0s2
                                 .key
-                                .noise(module, row, col, &sk0.data, &sk2_prepared, &mut scratch_apply.borrow())
+                                .noise(
+                                    module,
+                                    row,
+                                    col,
+                                    &sk0.data.to_ref(),
+                                    &sk2_prepared,
+                                    &mut scratch_apply.borrow(),
+                                )
                                 .std()
                                 .log2();
                             assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
@@ -334,7 +341,14 @@ where
                     for col in 0..gglwe_s0s2.rank_in().as_usize() {
                         let noise_have = gglwe_s0s2
                             .key
-                            .noise(module, row, col, &sk0.data, &sk2_prepared, &mut scratch_apply.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk0.data.to_ref(),
+                                &sk2_prepared,
+                                &mut scratch_apply.borrow(),
+                            )
                             .std()
                             .log2();
                         assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")

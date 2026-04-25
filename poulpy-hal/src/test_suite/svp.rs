@@ -7,8 +7,8 @@ use crate::{
         VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
     },
     layouts::{
-        Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, SvpPPolOwned, SvpPPolToBackendMut,
-        SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
+        Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, SvpPPolOwned,
+        SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
     },
     source::Source,
 };
@@ -58,10 +58,22 @@ pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
 
     let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
+    let scalar_ref_backend = ScalarZnx::from_data(BR::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
+    let scalar_test_backend = ScalarZnx::from_data(BT::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
+        module_ref.svp_prepare(
+            &mut svp_ref.to_backend_mut(),
+            j,
+            &<ScalarZnx<BR::OwnedBuf> as ScalarZnxToBackendRef<BR>>::to_backend_ref(&scalar_ref_backend),
+            j,
+        );
+        module_test.svp_prepare(
+            &mut svp_test.to_backend_mut(),
+            j,
+            &<ScalarZnx<BT::OwnedBuf> as ScalarZnxToBackendRef<BT>>::to_backend_ref(&scalar_test_backend),
+            j,
+        );
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);
@@ -173,10 +185,22 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
 
     let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
+    let scalar_ref_backend = ScalarZnx::from_data(BR::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
+    let scalar_test_backend = ScalarZnx::from_data(BT::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
+        module_ref.svp_prepare(
+            &mut svp_ref.to_backend_mut(),
+            j,
+            &<ScalarZnx<BR::OwnedBuf> as ScalarZnxToBackendRef<BR>>::to_backend_ref(&scalar_ref_backend),
+            j,
+        );
+        module_test.svp_prepare(
+            &mut svp_test.to_backend_mut(),
+            j,
+            &<ScalarZnx<BT::OwnedBuf> as ScalarZnxToBackendRef<BT>>::to_backend_ref(&scalar_test_backend),
+            j,
+        );
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);
@@ -303,10 +327,22 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT:
 
     let mut svp_ref: SvpPPolOwned<BR> = module_ref.svp_ppol_alloc(cols);
     let mut svp_test: SvpPPolOwned<BT> = module_test.svp_ppol_alloc(cols);
+    let scalar_ref_backend = ScalarZnx::from_data(BR::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
+    let scalar_test_backend = ScalarZnx::from_data(BT::from_host_bytes(scalar.to_ref().data), scalar.n, scalar.cols);
 
     for j in 0..cols {
-        module_ref.svp_prepare(&mut svp_ref.to_backend_mut(), j, &scalar, j);
-        module_test.svp_prepare(&mut svp_test.to_backend_mut(), j, &scalar, j);
+        module_ref.svp_prepare(
+            &mut svp_ref.to_backend_mut(),
+            j,
+            &<ScalarZnx<BR::OwnedBuf> as ScalarZnxToBackendRef<BR>>::to_backend_ref(&scalar_ref_backend),
+            j,
+        );
+        module_test.svp_prepare(
+            &mut svp_test.to_backend_mut(),
+            j,
+            &<ScalarZnx<BT::OwnedBuf> as ScalarZnxToBackendRef<BT>>::to_backend_ref(&scalar_test_backend),
+            j,
+        );
     }
 
     assert_eq!(scalar.digest_u64(), scalar_digest);

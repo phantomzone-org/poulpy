@@ -10,7 +10,7 @@ use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGL
 
 use poulpy_core::{GGSWEncryptSk, ScratchArenaTakeCore, layouts::GLWESecretPreparedToBackendRef};
 use poulpy_hal::api::{ModuleLogN, ScratchArenaTakeBasic};
-use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, Module};
+use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx};
 
 use poulpy_hal::{api::ModuleN, layouts::ScratchArena, source::Source};
 
@@ -213,8 +213,18 @@ where
         for i in 0..T::BITS as usize {
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
+            let pt_ref = pt.to_ref();
+            let pt_backend = ScalarZnx::from_data(BE::from_host_bytes(pt_ref.data), pt_ref.n, pt_ref.cols);
             let mut scratch_bit = scratch_1.borrow();
-            self.ggsw_encrypt_sk(&mut tmp_ggsw, &pt, sk, enc_infos, source_xe, source_xa, &mut scratch_bit);
+            self.ggsw_encrypt_sk(
+                &mut tmp_ggsw,
+                &pt_backend,
+                sk,
+                enc_infos,
+                source_xe,
+                source_xa,
+                &mut scratch_bit,
+            );
             self.ggsw_prepare(&mut res.bits[i], &tmp_ggsw, &mut scratch_bit);
         }
     }

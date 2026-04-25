@@ -173,7 +173,14 @@ where
                     for col in 0..ct_gglwe_out.rank_in().as_usize() {
                         let noise_have: f64 = ct_gglwe_out
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data.to_ref(),
+                                &sk_out_prepared,
+                                &mut scratch.borrow(),
+                            )
                             .std()
                             .log2();
                         assert!(noise_have <= max_noise, "noise_have:{noise_have} > noise_max:{max_noise}")
@@ -331,7 +338,14 @@ pub fn test_gglwe_switching_key_external_product_assign<BE: crate::test_suite::T
                     for col in 0..ct_gglwe.rank_in().as_usize() {
                         let noise_have: f64 = ct_gglwe
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data.to_ref(),
+                                &sk_out_prepared,
+                                &mut scratch.borrow(),
+                            )
                             .std()
                             .log2();
                         assert!(noise_have <= max_noise, "noise_have:{noise_have} > noise_max:{max_noise}")

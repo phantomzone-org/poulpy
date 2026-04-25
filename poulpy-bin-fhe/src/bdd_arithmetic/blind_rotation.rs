@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{VecZnxAddScalarAssign, VecZnxNormalizeInplace},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxZero},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ZnxZero},
 };
 
 use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
@@ -130,10 +130,10 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn scalar_to_ggsw_blind_rotation<R, S, K>(
+    fn scalar_to_ggsw_blind_rotation<R, K>(
         &self,
         res: &mut R,
-        test_vector: &S,
+        test_vector: &ScalarZnx<&[u8]>,
         fhe_uint: &K,
         sign: bool,
         bit_rsh: usize,
@@ -142,7 +142,6 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: GGSWToMut,
-        S: ScalarZnxToRef,
         K: GetGGSWBit<BE>,
         BE: Backend<OwnedBuf = Vec<u8>>,
         BE: 'static,
@@ -151,7 +150,6 @@ where
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let test_vector: &ScalarZnx<&[u8]> = &test_vector.to_ref();
 
         let base2k: usize = res.base2k().into();
         let dsize: usize = res.dsize().into();

@@ -122,7 +122,7 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
 
             module.scalar_to_ggsw_blind_rotation(
                 &mut res,
-                &scalar,
+                &scalar.to_ref(),
                 &k_enc_prep,
                 false,
                 bit_start,
@@ -147,7 +147,7 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
             for row in 0..res.dnum().as_usize() {
                 for col in 0..res.rank().as_usize() + 1 {
                     assert!(
-                        res.noise(module, row, col, &scalar_want, sk_glwe_prep, &mut scratch.borrow())
+                        res.noise(module, row, col, &scalar_want.to_ref(), sk_glwe_prep, &mut scratch.borrow())
                             .std()
                             .log2()
                             <= max_noise(col)

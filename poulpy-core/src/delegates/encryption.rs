@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena},
     source::Source,
 };
 
@@ -206,7 +206,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -236,7 +236,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -526,7 +526,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -558,7 +558,7 @@ impl_encryption_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,

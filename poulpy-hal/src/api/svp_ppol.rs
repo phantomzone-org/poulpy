@@ -1,5 +1,5 @@
 use crate::layouts::{
-    Backend, ScalarZnxToRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+    Backend, ScalarZnxBackendRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
 };
 
 /// Allocates as [crate::layouts::SvpPPol].
@@ -14,9 +14,7 @@ pub trait SvpPPolBytesOf {
 
 /// Prepare a [crate::layouts::ScalarZnx] into an [crate::layouts::SvpPPol].
 pub trait SvpPrepare<B: Backend> {
-    fn svp_prepare<A>(&self, res: &mut SvpPPolBackendMut<'_, B>, res_col: usize, a: &A, a_col: usize)
-    where
-        A: ScalarZnxToRef;
+    fn svp_prepare(&self, res: &mut SvpPPolBackendMut<'_, B>, res_col: usize, a: &ScalarZnxBackendRef<'_, B>, a_col: usize);
 }
 
 /// Apply a scalar-vector product between `a[a_col]` and `b[b_col]` and stores the result on `res[res_col]`.

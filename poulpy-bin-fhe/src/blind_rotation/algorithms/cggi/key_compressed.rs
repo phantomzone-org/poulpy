@@ -5,7 +5,7 @@ use poulpy_core::{
     layouts::{GGSWCompressed, GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret, LWESecretToRef},
 };
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -83,10 +83,12 @@ where
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
+                let pt_ref = pt.to_ref();
+                let pt_backend = ScalarZnx::from_data(BE::from_host_bytes(pt_ref.data), pt_ref.n, pt_ref.cols);
                 let mut scratch_iter = scratch.borrow();
                 self.ggsw_compressed_encrypt_sk(
                     ggsw,
-                    &pt,
+                    &pt_backend,
                     sk_glwe,
                     source_xa.new_seed(),
                     enc_infos,

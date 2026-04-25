@@ -1,7 +1,7 @@
 use poulpy_hal::{
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
-        ScalarZnxToRef, TransferFrom, ZnxInfos, ZnxZero,
+        TransferFrom, ZnxInfos, ZnxZero,
     },
     source::Source,
 };

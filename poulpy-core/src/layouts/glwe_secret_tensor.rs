@@ -4,9 +4,10 @@ use poulpy_hal::{
         VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxAsVecZnxBackendRef, ScalarZnxToMut, ScalarZnxToRef,
-        ScratchArena, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
-        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxAsVecZnxBackendRef, ScalarZnxToBackendRef,
+        ScalarZnxToMut, ScratchArena, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBig,
+        VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, ZnxInfos, ZnxView,
+        ZnxViewMut,
     },
 };
 
@@ -189,9 +190,11 @@ where
 
         let mut a_prepared = self.glwe_secret_prepared_alloc(rank.into());
         {
+            let a_backend = ScalarZnx::from_data(BE::from_host_bytes(a.data.data), a.data.n, a.data.cols);
+            let a_backend_ref = <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&a_backend);
             let mut a_prepared_data = a_prepared.data.to_backend_mut();
             for i in 0..rank {
-                self.svp_prepare(&mut a_prepared_data, i, &a.data, i);
+                self.svp_prepare(&mut a_prepared_data, i, &a_backend_ref, i);
             }
         }
         a_prepared.dist = *a.dist();

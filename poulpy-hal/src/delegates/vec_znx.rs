@@ -1,17 +1,20 @@
 use crate::{
     api::{
         VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddNormalBackend, VecZnxAddScalarAssign,
-        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend,
-        VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshAddInto,
-        VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne,
+        VecZnxAddScalarAssignBackend, VecZnxAddScalarInto, VecZnxAddScalarIntoBackend, VecZnxAutomorphism,
+        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormal,
+        VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace,
+        VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne,
         VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshInplace, VecZnxRshSub,
         VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxSubScalar, VecZnxSubScalarBackend, VecZnxSubScalarInplace,
+        VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToMut, VecZnxToRef,
     },
     oep::HalVecZnxImpl,
     source::Source,
@@ -113,18 +116,17 @@ impl_vec_znx_delegate!(
 
 impl_vec_znx_delegate!(
     VecZnxAddScalarInto,
-    fn vec_znx_add_scalar_into<R, A, D>(
+    fn vec_znx_add_scalar_into<R, D>(
         &self,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &D,
         b_col: usize,
         b_limb: usize,
     ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         D: VecZnxToRef,
     {
         B::vec_znx_add_scalar_into(self, res, res_col, a, a_col, b, b_col, b_limb)
@@ -132,13 +134,42 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
+    VecZnxAddScalarIntoBackend<B>,
+    fn vec_znx_add_scalar_into_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+        b_limb: usize,
+    ) {
+        B::vec_znx_add_scalar_into_backend(self, res, res_col, a, a_col, b, b_col, b_limb)
+    }
+);
+
+impl_vec_znx_delegate!(
     VecZnxAddScalarAssign,
-    fn vec_znx_add_scalar_assign<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_add_scalar_assign<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
     where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
     {
         B::vec_znx_add_scalar_assign(self, res, res_col, res_limb, a, a_col)
+    }
+);
+
+impl_vec_znx_delegate!(
+    VecZnxAddScalarAssignBackend<B>,
+    fn vec_znx_add_scalar_assign_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+    ) {
+        B::vec_znx_add_scalar_assign_backend(self, res, res_col, res_limb, a, a_col)
     }
 );
 
@@ -185,10 +216,17 @@ impl_vec_znx_delegate!(
 
 impl_vec_znx_delegate!(
     VecZnxSubScalar,
-    fn vec_znx_sub_scalar<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize, b_limb: usize)
-    where
+    fn vec_znx_sub_scalar<R, D>(
+        &self,
+        res: &mut R,
+        res_col: usize,
+        a: &ScalarZnx<&[u8]>,
+        a_col: usize,
+        b: &D,
+        b_col: usize,
+        b_limb: usize,
+    ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         D: VecZnxToRef,
     {
         B::vec_znx_sub_scalar(self, res, res_col, a, a_col, b, b_col, b_limb)
@@ -196,13 +234,42 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
+    VecZnxSubScalarBackend<B>,
+    fn vec_znx_sub_scalar_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+        b_limb: usize,
+    ) {
+        B::vec_znx_sub_scalar_backend(self, res, res_col, a, a_col, b, b_col, b_limb)
+    }
+);
+
+impl_vec_znx_delegate!(
     VecZnxSubScalarInplace,
-    fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_scalar_inplace<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
     where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
     {
         B::vec_znx_sub_scalar_assign(self, res, res_col, res_limb, a, a_col)
+    }
+);
+
+impl_vec_znx_delegate!(
+    VecZnxSubScalarInplaceBackend<B>,
+    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+    ) {
+        B::vec_znx_sub_scalar_inplace_backend(self, res, res_col, res_limb, a, a_col)
     }
 );
 

@@ -6,8 +6,9 @@ use poulpy_hal::{
         VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
     },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScratchArena, SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendRef,
-        VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, VecZnxToMut, ZnxInfos, ZnxZero,
+        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, SvpPPolReborrowBackendRef, VecZnx,
+        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        VecZnxToMut, ZnxInfos, ZnxZero,
     },
     source::Source,
 };
@@ -394,7 +395,14 @@ where
                 Distribution::ZERO => {}
             }
 
-            self.svp_prepare(&mut u_dft, 0, &u, 0);
+            let u_ref = u.to_ref();
+            let u_backend = ScalarZnx::from_data(BE::from_host_bytes(u_ref.data), u_ref.n, u_ref.cols);
+            self.svp_prepare(
+                &mut u_dft,
+                0,
+                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&u_backend),
+                0,
+            );
             scratch_1 = scratch_2;
         }
 

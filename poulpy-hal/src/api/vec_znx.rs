@@ -1,5 +1,8 @@
 use crate::{
-    layouts::{Backend, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef},
+    layouts::{
+        Backend, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
+        VecZnxToRef,
+    },
     source::Source,
 };
 
@@ -71,27 +74,50 @@ pub trait VecZnxAddAssignBackend<B: Backend> {
 pub trait VecZnxAddScalarInto {
     /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into<R, A, B>(
+    fn vec_znx_add_scalar_into<R, B>(
         &self,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &B,
         b_col: usize,
         b_limb: usize,
     ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef;
+}
+
+pub trait VecZnxAddScalarIntoBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_scalar_into_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+        b_limb: usize,
+    );
 }
 
 pub trait VecZnxAddScalarAssign {
     /// Adds the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_add_scalar_assign<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_add_scalar_assign<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
     where
-        R: VecZnxToMut,
-        A: ScalarZnxToRef;
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxAddScalarAssignBackend<B: Backend> {
+    fn vec_znx_add_scalar_assign_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxSubBackend<B: Backend> {
@@ -129,19 +155,50 @@ pub trait VecZnxSubNegateInplaceBackend<B: Backend> {
 pub trait VecZnxSubScalar {
     /// Subtracts the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
-    where
+    fn vec_znx_sub_scalar<R, B>(
+        &self,
+        res: &mut R,
+        res_col: usize,
+        a: &ScalarZnx<&[u8]>,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef;
 }
 
-pub trait VecZnxSubScalarAssign {
+pub trait VecZnxSubScalarBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_scalar_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, B>,
+        b_col: usize,
+        b_limb: usize,
+    );
+}
+
+pub trait VecZnxSubScalarInplace {
     /// Subtracts the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_sub_scalar_assign<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_scalar_inplace<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
     where
-        R: VecZnxToMut,
-        A: ScalarZnxToRef;
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxSubScalarInplaceBackend<B: Backend> {
+    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxNegateBackend<B: Backend> {

@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolReborrowBackendRef, SvpPPolToBackendMut,
-        SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef, ZnxInfos,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, SvpPPol, SvpPPolReborrowBackendRef,
+        SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef, ZnxInfos,
     },
 };
 
@@ -102,8 +102,10 @@ where
         {
             let mut res = res.to_backend_mut();
             let other: GLWESecret<&[u8]> = other.to_ref();
+            let other_backend = ScalarZnx::from_data(B::from_host_bytes(other.data.data), other.data.n, other.data.cols);
+            let other_backend_ref = <ScalarZnx<B::OwnedBuf> as ScalarZnxToBackendRef<B>>::to_backend_ref(&other_backend);
             for i in 0..res.rank().into() {
-                self.svp_prepare(&mut res.data, i, &other.data, i);
+                self.svp_prepare(&mut res.data, i, &other_backend_ref, i);
             }
         }
 

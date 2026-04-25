@@ -87,7 +87,14 @@ where
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data.to_ref(),
+                                &sk_out_prepared,
+                                &mut scratch.borrow(),
+                            )
                             .std()
                             .log2();
 
@@ -180,7 +187,14 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
                             .key
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data.to_ref(),
+                                &sk_out_prepared,
+                                &mut scratch.borrow(),
+                            )
                             .std()
                             .log2();
 
@@ -269,7 +283,14 @@ where
                 for row in 0..ksk.dnum().as_usize() {
                     for col in 0..ksk.rank_in().as_usize() {
                         let noise_have = ksk
-                            .noise(module, row, col, &sk_in.data, &sk_out_prepared, &mut scratch.borrow())
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data.to_ref(),
+                                &sk_out_prepared,
+                                &mut scratch.borrow(),
+                            )
                             .std()
                             .log2();
 

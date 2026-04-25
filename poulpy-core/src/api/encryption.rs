@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToRef, ScratchArena},
+    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToBackendRef, ScratchArena},
     source::Source,
 };
 
@@ -154,7 +154,7 @@ pub trait GGLWEEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -177,7 +177,7 @@ pub trait GGSWEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -378,7 +378,7 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -401,7 +401,7 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,

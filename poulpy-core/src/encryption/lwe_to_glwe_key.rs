@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphism},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
@@ -100,7 +100,11 @@ where
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
         self.gglwe_encrypt_sk(
             res,
-            &sk_lwe_as_glwe.data,
+            &ScalarZnx::from_data(
+                BE::from_host_bytes(sk_lwe_as_glwe.data.to_ref().data),
+                sk_lwe_as_glwe.data.n,
+                sk_lwe_as_glwe.data.cols,
+            ),
             sk_glwe,
             enc_infos,
             source_xe,

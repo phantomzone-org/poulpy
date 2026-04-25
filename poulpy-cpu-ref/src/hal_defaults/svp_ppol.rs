@@ -22,7 +22,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::VecZnxDftApply,
     layouts::{
-        Backend, Module, ScalarZnxToRef, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos,
+        Backend, HostDataRef, Module, ScalarZnxBackendRef, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef,
+        VecZnxToRef, ZnxInfos,
     },
 };
 
@@ -31,14 +32,14 @@ pub trait FFT64SvpDefaults<BE: Backend>: Backend
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
-    fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn svp_prepare_default<R>(module: &Module<BE>, res: &mut R, res_col: usize, a: &ScalarZnxBackendRef<'_, BE>, a_col: usize)
     where
         Module<BE>: FFTModuleHandle<f64>,
         BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         R: SvpPPolToMut<BE>,
-        A: ScalarZnxToRef,
     {
-        fft64_svp_prepare::<R, A, BE>(module.get_fft_table(), res, res_col, a, a_col);
+        fft64_svp_prepare::<R, BE>(module.get_fft_table(), res, res_col, a, a_col);
     }
 
     fn svp_apply_dft_default<R, A, C>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
@@ -86,14 +87,14 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
 {
-    fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn svp_prepare_default<R>(module: &Module<BE>, res: &mut R, res_col: usize, a: &ScalarZnxBackendRef<'_, BE>, a_col: usize)
     where
         Module<BE>: NttModuleHandle,
         BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         R: SvpPPolToMut<BE>,
-        A: ScalarZnxToRef,
     {
-        ntt120_svp_prepare::<R, A, BE>(module, res, res_col, a, a_col);
+        ntt120_svp_prepare::<R, BE>(module, res, res_col, a, a_col);
     }
 
     fn svp_apply_dft_default<R, A, C>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)

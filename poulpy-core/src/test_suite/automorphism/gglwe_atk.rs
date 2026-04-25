@@ -177,7 +177,7 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
                 for col in 0..auto_key_out.rank().as_usize() {
                     let noise_have = auto_key_out
                         .key
-                        .noise(module, row, col, &sk.data, &sk_auto_dft, &mut scratch.borrow())
+                        .noise(module, row, col, &sk.data.to_ref(), &sk_auto_dft, &mut scratch.borrow())
                         .std()
                         .log2();
 
@@ -327,7 +327,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
                 for col in 0..auto_key.rank().as_usize() {
                     let noise_have = auto_key
                         .key
-                        .noise(module, row, col, &sk.data, &sk_auto_dft, &mut scratch.borrow())
+                        .noise(module, row, col, &sk.data.to_ref(), &sk_auto_dft, &mut scratch.borrow())
                         .std()
                         .log2();
 

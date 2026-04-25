@@ -1,17 +1,22 @@
-use crate::layouts::{ScalarZnxToRef, VecZnxToMut, VecZnxToRef};
+use crate::layouts::{VecZnxToMut, VecZnxToRef};
 use crate::{
     layouts::{ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{ZnxSub, ZnxSubAssign, ZnxZero},
 };
 
-pub fn vec_znx_sub_scalar<R, A, B, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
-where
+pub fn vec_znx_sub_scalar<R, B, ZNXARI>(
+    res: &mut R,
+    res_col: usize,
+    a: &ScalarZnx<&[u8]>,
+    a_col: usize,
+    b: &B,
+    b_col: usize,
+    b_limb: usize,
+) where
     R: VecZnxToMut,
-    A: ScalarZnxToRef,
     B: VecZnxToRef,
     ZNXARI: ZnxSub + ZnxZero,
 {
-    let a: ScalarZnx<&[u8]> = a.to_ref();
     let b: VecZnx<&[u8]> = b.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -35,13 +40,11 @@ where
     }
 }
 
-pub fn vec_znx_sub_scalar_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+pub fn vec_znx_sub_scalar_inplace<R, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
 where
     R: VecZnxToMut,
-    A: ScalarZnxToRef,
-    ZNXARI: ZnxSubAssign,
+    ZNXARI: ZnxSubInplace,
 {
-    let a: ScalarZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
     #[cfg(debug_assertions)]

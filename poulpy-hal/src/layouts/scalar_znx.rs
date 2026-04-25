@@ -262,13 +262,9 @@ impl<B: Backend> ScalarZnxToBackendMut<B> for ScalarZnx<B::OwnedBuf> {
     }
 }
 
-/// Borrow a `ScalarZnx` as a shared reference view.
-pub trait ScalarZnxToRef {
-    fn to_ref(&self) -> ScalarZnx<&[u8]>;
-}
-
-impl<D: HostDataRef> ScalarZnxToRef for ScalarZnx<D> {
-    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+impl<D: HostDataRef> ScalarZnx<D> {
+    /// Borrow a host-visible `ScalarZnx` as a shared byte-slice view.
+    pub fn to_ref(&self) -> ScalarZnx<&[u8]> {
         ScalarZnx {
             data: self.data.as_ref(),
             n: self.n,

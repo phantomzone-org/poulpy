@@ -84,35 +84,59 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_add_assign_backend_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_add_scalar_into<R, A, B>(
+        fn vec_znx_add_scalar_into<R, B>(
             module: &Module<Self>,
             res: &mut R,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::ScalarZnx<&[u8]>,
             a_col: usize,
             b: &B,
             b_col: usize,
             b_limb: usize,
         ) where
             R: VecZnxToMut,
-            A: ScalarZnxToRef,
             B: VecZnxToRef,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_add_scalar_into_default(module, res, res_col, a, a_col, b, b_col, b_limb)
         }
 
-        fn vec_znx_add_scalar_assign<R, A>(
+        fn vec_znx_add_scalar_into_backend<'r, 'a>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            a: &poulpy_hal::layouts::ScalarZnxBackendRef<'a, Self>,
+            a_col: usize,
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'a, Self>,
+            b_col: usize,
+            b_limb: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_add_scalar_into_backend_default(
+                module, res, res_col, a, a_col, b, b_col, b_limb,
+            )
+        }
+
+        fn vec_znx_add_scalar_assign<R>(
             module: &Module<Self>,
             res: &mut R,
             res_col: usize,
             res_limb: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::ScalarZnx<&[u8]>,
             a_col: usize,
         ) where
             R: VecZnxToMut,
-            A: ScalarZnxToRef,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_add_scalar_assign_default(module, res, res_col, res_limb, a, a_col)
+        }
+
+        fn vec_znx_add_scalar_assign_backend<'r, 'a>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            res_limb: usize,
+            a: &poulpy_hal::layouts::ScalarZnxBackendRef<'a, Self>,
+            a_col: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_add_scalar_assign_backend_default(module, res, res_col, res_limb, a, a_col)
         }
 
         fn vec_znx_sub_backend<'r, 'a>(
@@ -147,35 +171,61 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_negate_inplace_backend_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_sub_scalar<R, A, B>(
+        fn vec_znx_sub_scalar<R, B>(
             module: &Module<Self>,
             res: &mut R,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::ScalarZnx<&[u8]>,
             a_col: usize,
             b: &B,
             b_col: usize,
             b_limb: usize,
         ) where
             R: VecZnxToMut,
-            A: ScalarZnxToRef,
             B: VecZnxToRef,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_default(module, res, res_col, a, a_col, b, b_col, b_limb)
         }
 
-        fn vec_znx_sub_scalar_assign<R, A>(
+        fn vec_znx_sub_scalar_backend<'r, 'a>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            a: &poulpy_hal::layouts::ScalarZnxBackendRef<'a, Self>,
+            a_col: usize,
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'a, Self>,
+            b_col: usize,
+            b_limb: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_backend_default(
+                module, res, res_col, a, a_col, b, b_col, b_limb,
+            )
+        }
+
+        fn vec_znx_sub_scalar_inplace<R>(
             module: &Module<Self>,
             res: &mut R,
             res_col: usize,
             res_limb: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::ScalarZnx<&[u8]>,
             a_col: usize,
         ) where
             R: VecZnxToMut,
-            A: ScalarZnxToRef,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_assign_default(module, res, res_col, res_limb, a, a_col)
+        }
+
+        fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            res_limb: usize,
+            a: &poulpy_hal::layouts::ScalarZnxBackendRef<'a, Self>,
+            a_col: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_inplace_backend_default(
+                module, res, res_col, res_limb, a, a_col,
+            )
         }
 
         fn vec_znx_negate_backend(

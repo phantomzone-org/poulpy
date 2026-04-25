@@ -1,6 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, SvpPrepare, VecZnxAutomorphism},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{
+        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned, ZnxView, ZnxViewMut, ZnxZero,
+    },
     source::Source,
 };
 
@@ -104,9 +106,11 @@ where
         }
         {
             let sk_ref = sk_lwe_as_glwe.to_ref();
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ref.data.data), sk_ref.data.n, sk_ref.data.cols);
+            let sk_backend_ref = <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&sk_backend);
             let mut sk_lwe_as_glwe_prep_backend = sk_lwe_as_glwe_prep.to_backend_mut();
             for i in 0..sk_ref.rank().into() {
-                self.svp_prepare(&mut sk_lwe_as_glwe_prep_backend.data, i, &sk_ref.data, i);
+                self.svp_prepare(&mut sk_lwe_as_glwe_prep_backend.data, i, &sk_backend_ref, i);
             }
         }
         sk_lwe_as_glwe_prep.dist = sk_lwe_as_glwe.dist;
@@ -114,7 +118,7 @@ where
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
         self.gglwe_encrypt_sk(
             res,
-            &sk_glwe.data,
+            &ScalarZnx::from_data(BE::from_host_bytes(sk_glwe.data.data), sk_glwe.data.n, sk_glwe.data.cols),
             &sk_lwe_as_glwe_prep,
             enc_infos,
             source_xe,

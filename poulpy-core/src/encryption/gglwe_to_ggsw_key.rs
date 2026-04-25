@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, SvpPrepare},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
     source::Source,
 };
 
@@ -88,9 +88,11 @@ where
         let mut sk_tensor = GLWESecretTensor::alloc(self.n().into(), res.rank());
         {
             let sk_ref = sk.to_ref();
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ref.data.data), sk_ref.data.n, sk_ref.data.cols);
+            let sk_backend_ref = <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&sk_backend);
             let mut sk_prepared_data = sk_prepared.data.to_backend_mut();
             for i in 0..sk_ref.rank().into() {
-                self.svp_prepare(&mut sk_prepared_data, i, &sk_ref.data, i);
+                self.svp_prepare(&mut sk_prepared_data, i, &sk_backend_ref, i);
             }
             sk_prepared.dist = *sk.dist();
         }
@@ -103,10 +105,12 @@ where
             for j in 0..rank {
                 vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
             }
+            let sk_ij_ref = sk_ij.to_ref();
+            let sk_ij_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ij_ref.data), sk_ij_ref.n, sk_ij_ref.cols);
 
             self.gglwe_encrypt_sk(
                 res.at_mut(i),
-                &sk_ij,
+                &sk_ij_backend,
                 &sk_prepared,
                 enc_infos,
                 source_xe,

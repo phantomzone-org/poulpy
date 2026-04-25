@@ -6,8 +6,8 @@ use rand::Rng;
 use poulpy_hal::{
     api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
     layouts::{
-        Backend, DataViewMut, FillUniform, Module, ScalarZnx, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx,
-        VecZnxDft,
+        Backend, DataViewMut, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, SvpPPol, SvpPPolToBackendMut,
+        SvpPPolToBackendRef, VecZnx, VecZnxDft,
     },
     source::Source,
 };
@@ -36,9 +36,15 @@ where
         let mut a: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), cols);
         let mut source = Source::new([0u8; 32]);
         a.fill_uniform(50, &mut source);
+        let a_backend = ScalarZnx::from_data(B::from_host_bytes(a.to_ref().data), a.n, a.cols);
 
         move || {
-            module.svp_prepare(&mut svp.to_backend_mut(), 0, &a, 0);
+            module.svp_prepare(
+                &mut svp.to_backend_mut(),
+                0,
+                &<ScalarZnx<B::OwnedBuf> as ScalarZnxToBackendRef<B>>::to_backend_ref(&a_backend),
+                0,
+            );
             black_box(());
         }
     }

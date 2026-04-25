@@ -1,23 +1,21 @@
 use crate::{
-    layouts::{ScalarZnx, ScalarZnxToRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxAdd, ZnxAddAssign, ZnxCopy, ZnxZero},
+    layouts::{ScalarZnx, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{ZnxAdd, ZnxAddInplace, ZnxCopy, ZnxZero},
 };
 
-pub fn vec_znx_add_scalar_into<R, A, B, ZNXARI>(
+pub fn vec_znx_add_scalar_into<R, B, ZNXARI>(
     res: &mut R,
     res_col: usize,
-    a: &A,
+    a: &ScalarZnx<&[u8]>,
     a_col: usize,
     b: &B,
     b_col: usize,
     b_limb: usize,
 ) where
     R: VecZnxToMut,
-    A: ScalarZnxToRef,
     B: VecZnxToRef,
     ZNXARI: ZnxAdd + ZnxCopy + ZnxZero,
 {
-    let a: ScalarZnx<&[u8]> = a.to_ref();
     let b: VecZnx<&[u8]> = b.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -41,13 +39,11 @@ pub fn vec_znx_add_scalar_into<R, A, B, ZNXARI>(
     }
 }
 
-pub fn vec_znx_add_scalar_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+pub fn vec_znx_add_scalar_assign<R, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
 where
     R: VecZnxToMut,
-    A: ScalarZnxToRef,
-    ZNXARI: ZnxAddAssign,
+    ZNXARI: ZnxAddInplace,
 {
-    let a: ScalarZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
     #[cfg(debug_assertions)]

@@ -75,7 +75,14 @@ where
             for col in 0..tensor_key.rank_in().as_usize() {
                 let noise_have = tensor_key
                     .0
-                    .noise(module, row, col, &sk_tensor.data, &sk_prepared, &mut scratch.borrow())
+                    .noise(
+                        module,
+                        row,
+                        col,
+                        &sk_tensor.data.to_ref(),
+                        &sk_prepared,
+                        &mut scratch.borrow(),
+                    )
                     .std()
                     .log2();
                 assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
@@ -152,7 +159,14 @@ where
             for col in 0..tensor_key.rank_in().as_usize() {
                 let noise_have = tensor_key
                     .0
-                    .noise(module, row, col, &sk_tensor.data, &sk_prepared, &mut scratch.borrow())
+                    .noise(
+                        module,
+                        row,
+                        col,
+                        &sk_tensor.data.to_ref(),
+                        &sk_prepared,
+                        &mut scratch.borrow(),
+                    )
                     .std()
                     .log2();
                 assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")

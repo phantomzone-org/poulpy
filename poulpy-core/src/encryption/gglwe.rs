@@ -1,7 +1,8 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToRef, ScratchArena, VecZnxReborrowBackendRef, ZnxInfos, ZnxZero,
+        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        ZnxZero,
     },
     source::Source,
 };
@@ -32,7 +33,7 @@ pub trait GGLWEEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -46,7 +47,7 @@ where
         + GLWEEncryptSk<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
-        + VecZnxAddScalarAssign
+        + VecZnxAddScalarAssignBackend<BE>
         + VecZnxNormalizeInplaceBackend<BE>,
 {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -73,22 +74,22 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let pt_backend = pt.to_backend_ref();
         let sk_ref = sk.to_backend_ref();
 
         assert_eq!(
             res.rank_in(),
-            pt.cols() as u32,
+            pt_backend.cols as u32,
             "res.rank_in(): {} != pt.cols(): {}",
             res.rank_in(),
-            pt.cols()
+            pt_backend.cols
         );
         assert_eq!(
             res.rank_out(),
@@ -98,7 +99,7 @@ where
             sk_ref.rank()
         );
         assert_eq!(res.n(), sk_ref.n());
-        assert_eq!(pt.n() as u32, sk_ref.n());
+        assert_eq!(pt_backend.n as u32, sk_ref.n());
         assert!(
             scratch.available() >= <Module<BE> as GGLWEEncryptSkDefault<BE>>::gglwe_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < GGLWEEncryptSk::gglwe_encrypt_sk_tmp_bytes: {}",
@@ -138,7 +139,13 @@ where
             for row_i in 0..dnum {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
-                self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
+                {
+                    let mut tmp_pt_data =
+                        <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
+                            &mut tmp_pt.data,
+                        );
+                    self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_data, 0, (dsize - 1) + row_i * dsize, &pt_backend, col_i);
+                }
                 scratch_1.scope(|mut scratch| {
                     normalize_scratch_vec_znx(self, base2k, &mut tmp_pt.data, &mut scratch);
                 });

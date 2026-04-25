@@ -1,17 +1,17 @@
-use super::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref};
+use super::{TestParams, scalar_znx_backend_ref, vec_znx_backend_mut, vec_znx_backend_ref};
 use std::f64::consts::SQRT_2;
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddScalarAssign,
-        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend,
-        VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshInplace,
-        VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace,
-        VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend,
-        VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRingBackend,
-        VecZnxZeroBackend,
+        ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal,
+        VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform,
+        VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
+        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing,
+        VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
+        VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
     layouts::{DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     source::Source,
@@ -78,8 +78,8 @@ pub fn test_vec_znx_add_scalar_into<BR: crate::test_suite::TestBackend, BT: crat
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxAddScalarInto,
-    Module<BT>: VecZnxAddScalarInto,
+    Module<BR>: VecZnxAddScalarIntoBackend<BR>,
+    Module<BT>: VecZnxAddScalarIntoBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -108,8 +108,24 @@ pub fn test_vec_znx_add_scalar_into<BR: crate::test_suite::TestBackend, BT: crat
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_add_scalar_into(&mut rest_ref, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
-                module_test.vec_znx_add_scalar_into(&mut res_test, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                module_ref.vec_znx_add_scalar_into_backend(
+                    &mut vec_znx_backend_mut::<BR>(&mut rest_ref),
+                    i,
+                    &scalar_znx_backend_ref::<BR>(&a),
+                    i,
+                    &vec_znx_backend_ref::<BR>(&b),
+                    i,
+                    (res_size.min(a_size)) - 1,
+                );
+                module_test.vec_znx_add_scalar_into_backend(
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    i,
+                    &scalar_znx_backend_ref::<BT>(&a),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&b),
+                    i,
+                    (res_size.min(a_size)) - 1,
+                );
             }
 
             assert_eq!(b.digest_u64(), b_digest);
@@ -126,8 +142,8 @@ pub fn test_vec_znx_add_scalar_assign<BR: crate::test_suite::TestBackend, BT: cr
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxAddScalarAssign,
-    Module<BT>: VecZnxAddScalarAssign,
+    Module<BR>: VecZnxAddScalarAssignBackend<BR>,
+    Module<BT>: VecZnxAddScalarAssignBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -149,8 +165,20 @@ pub fn test_vec_znx_add_scalar_assign<BR: crate::test_suite::TestBackend, BT: cr
         res_test.raw_mut().copy_from_slice(rest_ref.raw());
 
         for i in 0..cols {
-            module_ref.vec_znx_add_scalar_assign(&mut rest_ref, i, res_size - 1, &b, i);
-            module_test.vec_znx_add_scalar_assign(&mut res_test, i, res_size - 1, &b, i);
+            module_ref.vec_znx_add_scalar_assign_backend(
+                &mut vec_znx_backend_mut::<BR>(&mut rest_ref),
+                i,
+                res_size - 1,
+                &scalar_znx_backend_ref::<BR>(&b),
+                i,
+            );
+            module_test.vec_znx_add_scalar_assign_backend(
+                &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                i,
+                res_size - 1,
+                &scalar_znx_backend_ref::<BT>(&b),
+                i,
+            );
         }
 
         assert_eq!(b.digest_u64(), b_digest);
@@ -1432,8 +1460,8 @@ pub fn test_vec_znx_sub_scalar<BR: crate::test_suite::TestBackend, BT: crate::te
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxSubScalar,
-    Module<BT>: VecZnxSubScalar,
+    Module<BR>: VecZnxSubScalarBackend<BR>,
+    Module<BT>: VecZnxSubScalarBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1461,8 +1489,24 @@ pub fn test_vec_znx_sub_scalar<BR: crate::test_suite::TestBackend, BT: crate::te
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_sub_scalar(&mut res_0, i, &a, i, &b, i, (res_size.min(b_size)) - 1);
-                module_test.vec_znx_sub_scalar(&mut res_1, i, &a, i, &b, i, (res_size.min(b_size)) - 1);
+                module_ref.vec_znx_sub_scalar_backend(
+                    &mut vec_znx_backend_mut::<BR>(&mut res_0),
+                    i,
+                    &scalar_znx_backend_ref::<BR>(&a),
+                    i,
+                    &vec_znx_backend_ref::<BR>(&b),
+                    i,
+                    (res_size.min(b_size)) - 1,
+                );
+                module_test.vec_znx_sub_scalar_backend(
+                    &mut vec_znx_backend_mut::<BT>(&mut res_1),
+                    i,
+                    &scalar_znx_backend_ref::<BT>(&a),
+                    i,
+                    &vec_znx_backend_ref::<BT>(&b),
+                    i,
+                    (res_size.min(b_size)) - 1,
+                );
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1479,8 +1523,8 @@ pub fn test_vec_znx_sub_scalar_inplace<BR: crate::test_suite::TestBackend, BT: c
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxSubScalarInplace,
-    Module<BT>: VecZnxSubScalarInplace,
+    Module<BR>: VecZnxSubScalarInplaceBackend<BR>,
+    Module<BT>: VecZnxSubScalarInplaceBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1501,8 +1545,20 @@ pub fn test_vec_znx_sub_scalar_inplace<BR: crate::test_suite::TestBackend, BT: c
         res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
-            module_ref.vec_znx_sub_scalar_assign(&mut res_0, i, res_size - 1, &a, i);
-            module_test.vec_znx_sub_scalar_assign(&mut res_1, i, res_size - 1, &a, i);
+            module_ref.vec_znx_sub_scalar_inplace_backend(
+                &mut vec_znx_backend_mut::<BR>(&mut res_0),
+                i,
+                res_size - 1,
+                &scalar_znx_backend_ref::<BR>(&a),
+                i,
+            );
+            module_test.vec_znx_sub_scalar_inplace_backend(
+                &mut vec_znx_backend_mut::<BT>(&mut res_1),
+                i,
+                res_size - 1,
+                &scalar_znx_backend_ref::<BT>(&a),
+                i,
+            );
         }
 
         assert_eq!(a.digest_u64(), a_digest);

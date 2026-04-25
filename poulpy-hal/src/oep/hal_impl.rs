@@ -2,7 +2,8 @@
 
 use crate::{
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToMut, VecZnxToRef,
     },
     source::Source,
 };
@@ -76,24 +77,49 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     );
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into<R, A, B>(
+    fn vec_znx_add_scalar_into<R, B>(
         module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &B,
         b_col: usize,
         b_limb: usize,
     ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef;
 
-    fn vec_znx_add_scalar_assign<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: ScalarZnxToRef;
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_scalar_into_backend<'r, 'a>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, BE>,
+        b_col: usize,
+        b_limb: usize,
+    );
+
+    fn vec_znx_add_scalar_assign<R>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnx<&[u8]>,
+        a_col: usize,
+    ) where
+        R: VecZnxToMut;
+
+    fn vec_znx_add_scalar_assign_backend<'r, 'a>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+    );
 
     fn vec_znx_sub_backend<'r, 'a>(
         module: &Module<BE>,
@@ -122,24 +148,49 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     );
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar<R, A, B>(
+    fn vec_znx_sub_scalar<R, B>(
         module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &B,
         b_col: usize,
         b_limb: usize,
     ) where
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef;
 
-    fn vec_znx_sub_scalar_assign<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: ScalarZnxToRef;
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_scalar_backend<'r, 'a>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, BE>,
+        b_col: usize,
+        b_limb: usize,
+    );
+
+    fn vec_znx_sub_scalar_inplace<R>(
+        module: &Module<BE>,
+        res: &mut R,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnx<&[u8]>,
+        a_col: usize,
+    ) where
+        R: VecZnxToMut;
+
+    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+    );
 
     fn vec_znx_negate_backend(
         module: &Module<BE>,
@@ -719,14 +770,13 @@ pub unsafe trait HalVecZnxDftImpl<BE: Backend>: Backend {
 /// Implementations must uphold the backend safety contract for prepared
 /// polynomial layouts and arithmetic correctness.
 pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
-    fn svp_prepare<A>(
+    fn svp_prepare(
         module: &Module<BE>,
         res: &mut crate::layouts::SvpPPolBackendMut<'_, BE>,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnxBackendRef<'_, BE>,
         a_col: usize,
-    ) where
-        A: ScalarZnxToRef;
+    );
 
     fn svp_apply_dft<R, C>(
         module: &Module<BE>,

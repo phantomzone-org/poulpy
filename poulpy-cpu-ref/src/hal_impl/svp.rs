@@ -1,15 +1,13 @@
 #[macro_export]
 macro_rules! hal_impl_svp {
     ($defaults:ident) => {
-        fn svp_prepare<A>(
+        fn svp_prepare(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::SvpPPolBackendMut<'_, Self>,
             res_col: usize,
-            a: &A,
+            a: &poulpy_hal::layouts::ScalarZnxBackendRef<'_, Self>,
             a_col: usize,
-        ) where
-            A: ScalarZnxToRef,
-        {
+        ) {
             <Self as $defaults<Self>>::svp_prepare_default(module, res, res_col, a, a_col)
         }
 

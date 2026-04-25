@@ -1,19 +1,19 @@
 use crate::{
     layouts::{
-        Backend, ScalarZnx, ScalarZnxToRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut,
+        Backend, HostDataRef, ScalarZnxBackendRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut,
         VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
 };
 
-pub fn svp_prepare<R, A, BE>(table: &ReimFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn svp_prepare<R, BE>(table: &ReimFFTTable<f64>, res: &mut R, res_col: usize, a: &ScalarZnxBackendRef<'_, BE>, a_col: usize)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith + ReimFFTExecute<ReimFFTTable<f64>, f64>,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     R: SvpPPolToMut<BE>,
-    A: ScalarZnxToRef,
 {
     let mut res: SvpPPol<&mut [u8], BE> = res.to_mut();
-    let a: ScalarZnx<&[u8]> = a.to_ref();
+    let a = a.to_ref();
     BE::reim_from_znx(res.at_mut(res_col, 0), a.at(a_col, 0));
     BE::reim_dft_execute(table, res.at_mut(res_col, 0));
 }

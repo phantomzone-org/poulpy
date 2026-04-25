@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToRef, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena},
     source::Source,
 };
 
@@ -151,7 +151,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -172,7 +172,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -351,7 +351,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -372,7 +372,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -631,7 +631,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWEToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -658,7 +658,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWToMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -913,7 +913,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGLWECompressedToMut + GGLWECompressedSeedMut,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -942,7 +942,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
-        P: ScalarZnxToRef,
+        P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

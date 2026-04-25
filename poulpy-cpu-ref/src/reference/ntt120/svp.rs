@@ -26,8 +26,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, ScalarZnx, ScalarZnxToRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, HostDataRef, ScalarZnxBackendRef, SvpPPol, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
+        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero, ntt::NttTable, primes::Primes30, types::Q120bScalar,
@@ -49,14 +49,19 @@ use crate::{
 /// `res` must be a [`SvpPPol`] with `ScalarPrep = Q120bScalar`.
 /// A temporary heap buffer of `4 * n` u64 values is allocated internally
 /// (this is a setup/key-preparation function, not a hot path).
-pub fn ntt120_svp_prepare<R, A, BE>(module: &impl NttModuleHandle, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
+pub fn ntt120_svp_prepare<R, BE>(
+    module: &impl NttModuleHandle,
+    res: &mut R,
+    res_col: usize,
+    a: &ScalarZnxBackendRef<'_, BE>,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     R: SvpPPolToMut<BE>,
-    A: ScalarZnxToRef,
 {
     let mut res: SvpPPol<&mut [u8], BE> = res.to_mut();
-    let a: ScalarZnx<&[u8]> = a.to_ref();
+    let a = a.to_ref();
     let n = res.n();
 
     // Temporary q120b working buffer (heap-allocated; prepare is not hot).

@@ -23,8 +23,8 @@ use crate::reference::znx::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxToRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
-        VecZnxToRef, ZnxView, ZnxViewMut,
+        Backend, HostDataMut, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut,
+        VecZnxBackendRef, VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -195,11 +195,11 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into_default<R, A, B>(
+    fn vec_znx_add_scalar_into_default<R, B>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &B,
         b_col: usize,
@@ -207,25 +207,60 @@ where
     ) where
         BE: ZnxAdd + ZnxCopy + ZnxZero,
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef,
     {
-        vec_znx_add_scalar_into::<R, A, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
+        vec_znx_add_scalar_into::<R, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
     }
 
-    fn vec_znx_add_scalar_assign_default<R, A>(
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_scalar_into_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, BE>,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        BE: ZnxAdd + ZnxCopy + ZnxZero,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        let a_ref = a.to_ref();
+        vec_znx_add_scalar_into::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
+            res, res_col, &a_ref, a_col, b, b_col, b_limb,
+        );
+    }
+
+    fn vec_znx_add_scalar_assign_default<R>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         res_limb: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
     ) where
         BE: ZnxAddAssign,
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
     {
-        vec_znx_add_scalar_assign::<R, A, BE>(res, res_col, res_limb, a, a_col);
+        vec_znx_add_scalar_assign::<R, BE>(res, res_col, res_limb, a, a_col);
+    }
+
+    fn vec_znx_add_scalar_assign_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+    ) where
+        BE: ZnxAddInplace,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        let a_ref = a.to_ref();
+        vec_znx_add_scalar_assign::<VecZnxBackendMut<'r, BE>, BE>(res, res_col, res_limb, &a_ref, a_col);
     }
 
     fn vec_znx_sub_backend_default<'r, 'a>(
@@ -275,11 +310,11 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar_default<R, A, B>(
+    fn vec_znx_sub_scalar_default<R, B>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
         b: &B,
         b_col: usize,
@@ -287,25 +322,60 @@ where
     ) where
         BE: ZnxSub + ZnxZero,
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
         B: VecZnxToRef,
     {
-        vec_znx_sub_scalar::<R, A, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
+        vec_znx_sub_scalar::<R, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
     }
 
-    fn vec_znx_sub_scalar_assign_default<R, A>(
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_scalar_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+        b: &VecZnxBackendRef<'a, BE>,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        BE: ZnxSub + ZnxZero,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        let a_ref = a.to_ref();
+        vec_znx_sub_scalar::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
+            res, res_col, &a_ref, a_col, b, b_col, b_limb,
+        );
+    }
+
+    fn vec_znx_sub_scalar_inplace_default<R>(
         _module: &Module<BE>,
         res: &mut R,
         res_col: usize,
         res_limb: usize,
-        a: &A,
+        a: &ScalarZnx<&[u8]>,
         a_col: usize,
     ) where
         BE: ZnxSubAssign,
         R: VecZnxToMut,
-        A: ScalarZnxToRef,
     {
-        vec_znx_sub_scalar_assign::<R, A, BE>(res, res_col, res_limb, a, a_col);
+        vec_znx_sub_scalar_inplace::<R, BE>(res, res_col, res_limb, a, a_col);
+    }
+
+    fn vec_znx_sub_scalar_inplace_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        a: &ScalarZnxBackendRef<'a, BE>,
+        a_col: usize,
+    ) where
+        BE: ZnxSubInplace,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        let a_ref = a.to_ref();
+        vec_znx_sub_scalar_inplace::<VecZnxBackendMut<'r, BE>, BE>(res, res_col, res_limb, &a_ref, a_col);
     }
 
     fn vec_znx_negate_backend_default<'r, 'a>(

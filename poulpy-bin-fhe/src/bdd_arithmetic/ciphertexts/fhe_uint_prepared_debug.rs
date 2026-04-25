@@ -117,7 +117,7 @@ impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
             pt_want.zero();
             pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
             let mut scratch_bit = scratch.borrow();
-            stats.push(ggsw.noise(module, row, col, &pt_want, sk, &mut scratch_bit));
+            stats.push(ggsw.noise(module, row, col, &pt_want.to_ref(), sk, &mut scratch_bit));
         }
         stats
     }

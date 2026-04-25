@@ -5,7 +5,10 @@
 //! [`cross_backend_test_suite!`](crate::cross_backend_test_suite) macros.
 //! Tests validate correctness against the [`crate::reference`] implementation.
 
-use crate::layouts::{Backend, HostDataMut, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut, VecZnxToBackendRef};
+use crate::layouts::{
+    Backend, HostDataMut, ScalarZnx, ScalarZnxBackendRef, ScalarZnxToBackendRef, VecZnx, VecZnxBackendMut, VecZnxBackendRef,
+    VecZnxToBackendMut, VecZnxToBackendRef,
+};
 
 pub mod convolution;
 pub mod serialization;
@@ -57,6 +60,12 @@ pub fn vec_znx_backend_ref<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a VecZnx<
 
 pub fn vec_znx_backend_mut<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a mut VecZnx<BE::OwnedBuf>) -> VecZnxBackendMut<'a, BE> {
     <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(vec)
+}
+
+pub fn scalar_znx_backend_ref<'a, BE: Backend<OwnedBuf = Vec<u8>>>(
+    scalar: &'a ScalarZnx<BE::OwnedBuf>,
+) -> ScalarZnxBackendRef<'a, BE> {
+    <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(scalar)
 }
 
 #[macro_export]

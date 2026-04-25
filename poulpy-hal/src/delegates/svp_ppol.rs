@@ -1,7 +1,7 @@
 use crate::{
     api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Module, ScalarZnxToRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxDftToMut, VecZnxDftToRef,
+        Backend, Module, ScalarZnxBackendRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
     oep::HalSvpImpl,
@@ -32,10 +32,7 @@ impl<B: Backend> SvpPPolBytesOf for Module<B> {
 
 impl_svp_delegate!(
     SvpPrepare<B>,
-    fn svp_prepare<A>(&self, res: &mut SvpPPolBackendMut<'_, B>, res_col: usize, a: &A, a_col: usize)
-    where
-        A: ScalarZnxToRef,
-    {
+    fn svp_prepare(&self, res: &mut SvpPPolBackendMut<'_, B>, res_col: usize, a: &ScalarZnxBackendRef<'_, B>, a_col: usize) {
         <B as HalSvpImpl<B>>::svp_prepare(self, res, res_col, a, a_col);
     }
 );
