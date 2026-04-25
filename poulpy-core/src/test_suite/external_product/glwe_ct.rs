@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend, VecZnxRotateInplaceBackend},
     layouts::{Module, ScalarZnx, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
@@ -23,7 +23,7 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWEExternalProduct<BE>
         + GLWEEncryptSk<BE>
         + GLWENoise<BE>
@@ -84,7 +84,12 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             // Random input plaintext
-            module.vec_znx_fill_uniform(in_base2k, &mut pt_in.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform_source_backend(
+                in_base2k,
+                &mut vec_znx_backend_mut::<BE>(&mut pt_in.data),
+                0,
+                &mut source_xa,
+            );
 
             pt_in.data.at_mut(0, 0)[1] = 1;
 
@@ -188,7 +193,7 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWEExternalProduct<BE>
         + GLWEEncryptSk<BE>
         + GLWENoise<BE>
@@ -238,7 +243,12 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             // Random input plaintext
-            module.vec_znx_fill_uniform(out_base2k, &mut pt_want.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform_source_backend(
+                out_base2k,
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
+                0,
+                &mut source_xa,
+            );
 
             pt_want.data.at_mut(0, 0)[1] = 1;
 

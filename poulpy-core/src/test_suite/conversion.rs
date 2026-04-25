@@ -1,6 +1,6 @@
 use dashu_float::{FBig, round::mode::HalfEven};
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
     layouts::{FillUniform, Module, ScratchOwned, ZnxView},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref},
@@ -24,7 +24,6 @@ where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + GLWENormalize<BE>
-        + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

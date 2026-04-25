@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, LWESecret, LWESecretToRef, Rank,
+        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, LWESecret, LWESecretToRef, Rank,
         prepared::{GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut},
     },
 };
@@ -34,7 +34,7 @@ pub trait GLWEToLWESwitchingKeyEncryptSkDefault<BE: Backend> {
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
         E: EncryptionInfos,
-        R: GGLWEToMut + GGLWEInfos;
+        R: GGLWEToBackendMut<BE> + GGLWEInfos;
 }
 
 impl<BE: Backend> GLWEToLWESwitchingKeyEncryptSkDefault<BE> for Module<BE>
@@ -71,7 +71,7 @@ where
         S1: LWESecretToRef,
         S2: GLWESecretToRef,
         E: EncryptionInfos,
-        R: GGLWEToMut + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
     {
         let sk_lwe: &LWESecret<&[u8]> = &sk_lwe.to_ref();
         let sk_glwe: &GLWESecret<&[u8]> = &sk_glwe.to_ref();

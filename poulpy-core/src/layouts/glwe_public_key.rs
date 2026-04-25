@@ -1,9 +1,9 @@
-use poulpy_hal::layouts::{Data, HostDataMut, HostDataRef, ReaderFrom, VecZnx, WriterTo};
+use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, ReaderFrom, VecZnx, WriterTo};
 
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq)]
@@ -122,8 +122,20 @@ impl<D: HostDataRef> GLWEToRef for GLWEPublicKey<D> {
     }
 }
 
+impl<BE: Backend> GLWEToBackendRef<BE> for GLWEPublicKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
+        <GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&self.key)
+    }
+}
+
 impl<D: HostDataMut> GLWEToMut for GLWEPublicKey<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         self.key.to_mut()
+    }
+}
+
+impl<BE: Backend> GLWEToBackendMut<BE> for GLWEPublicKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
+        <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut self.key)
     }
 }

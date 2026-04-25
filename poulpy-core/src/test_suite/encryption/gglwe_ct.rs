@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend},
     layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -28,7 +28,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -124,7 +124,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
         + GGLWENoise<BE>
-        + VecZnxFillUniform,
+        + VecZnxFillUniformSourceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -222,7 +222,7 @@ where
         + GGLWECompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
         + GGLWENoise<BE>
-        + VecZnxFillUniform,
+        + VecZnxFillUniformSourceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {

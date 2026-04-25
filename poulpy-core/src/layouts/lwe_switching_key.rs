@@ -1,15 +1,16 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey,
-        GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut,
+        GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees,
+        GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     },
 };
 
@@ -175,6 +176,18 @@ impl<D: HostDataRef> GGLWEToRef for LWESwitchingKey<D> {
 impl<D: HostDataMut> GGLWEToMut for LWESwitchingKey<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.0.to_mut()
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendRef<BE> for LWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.0)
+    }
+}
+
+impl<BE: Backend> GGLWEToBackendMut<BE> for LWESwitchingKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.0)
     }
 }
 

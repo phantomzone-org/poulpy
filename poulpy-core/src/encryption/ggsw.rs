@@ -11,8 +11,8 @@ use crate::{
     EncryptionInfos, GGSWNoise, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
-        GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        prepared::GLWESecretPreparedToBackendRef,
+        GGSW, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
+        ggsw_at_backend_mut_from_mut, prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -32,7 +32,7 @@ pub trait GGSWEncryptSkDefault<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut,
+        R: GGSWToBackendMut<BE>,
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
@@ -73,14 +73,14 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut,
+        R: GGSWToBackendMut<BE>,
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let res = &mut res.to_backend_mut();
         let pt_backend = pt.to_backend_ref();
         let sk_ref = sk.to_backend_ref();
 
@@ -125,10 +125,11 @@ where
                         ),
                         base2k: tmp_pt.base2k,
                     };
+                    let mut ct = ggsw_at_backend_mut_from_mut::<BE>(res, row_i, col_j);
                     <Module<BE> as GLWEEncryptSkInternal<BE>>::glwe_encrypt_sk_internal(
                         self,
                         base2k,
-                        res.at_mut(row_i, col_j).data_mut(),
+                        &mut ct.data,
                         cols,
                         false,
                         Some((tmp_pt_ref, tmp_pt_backend, col_j)),

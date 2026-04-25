@@ -1,14 +1,15 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo,
-        ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxToBackendMut, MatZnxToBackendRef,
+        MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos, mat_znx_at_backend_mut_from_mut, mat_znx_backend_mut_from_mut,
+        mat_znx_backend_ref_from_mut,
     },
     source::Source,
 };
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{GLWECompressed, GLWEDecompress},
+    compressed::{GLWECompressed, GLWECompressedBackendMut, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -27,6 +28,9 @@ pub struct GGSWCompressed<D: Data> {
     pub(crate) rank: Rank,
     pub(crate) seed: Vec<[u8; 32]>,
 }
+
+pub type GGSWCompressedBackendRef<'a, BE> = GGSWCompressed<<BE as Backend>::BufRef<'a>>;
+pub type GGSWCompressedBackendMut<'a, BE> = GGSWCompressed<<BE as Backend>::BufMut<'a>>;
 
 /// Provides mutable access to the PRNG seeds of a compressed GGSW.
 pub trait GGSWCompressedSeedMut {
@@ -246,11 +250,11 @@ where
     /// Decompresses `other` into `res`.
     fn decompress_ggsw<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGSWToMut,
-        O: GGSWCompressedToRef,
+        R: crate::layouts::GGSWToBackendMut<Self::Backend>,
+        O: GGSWCompressedToBackendRef<Self::Backend>,
     {
-        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let other: &GGSWCompressed<&[u8]> = &other.to_ref();
+        let res = &mut res.to_backend_mut();
+        let other = &other.to_backend_ref();
 
         assert_eq!(res.rank(), other.rank());
         let dnum: usize = res.dnum().into();
@@ -258,7 +262,12 @@ where
 
         for row_i in 0..dnum {
             for col_j in 0..rank + 1 {
-                self.decompress_glwe(&mut res.at_mut(row_i, col_j), &other.at(row_i, col_j));
+                let mut src =
+                    <&mut GGSWCompressedBackendRef<'_, Self::Backend> as GGSWCompressedAtBackendMut<Self::Backend>>::at_backend_mut(
+                        &mut other.clone(), row_i, col_j,
+                    );
+                let mut dst = crate::layouts::ggsw_at_backend_mut_from_mut::<Self::Backend>(res, row_i, col_j);
+                self.decompress_glwe(&mut dst, &mut src);
             }
         }
     }
@@ -283,6 +292,94 @@ impl<D: HostDataMut> GGSWCompressedToMut for GGSWCompressed<D> {
             rank: self.rank(),
             seed: self.seed.clone(),
             data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GGSWCompressedToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GGSWCompressedBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GGSWCompressedToBackendRef<BE> for GGSWCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGSWCompressedBackendRef<'_, BE> {
+        GGSWCompressed {
+            k: self.max_k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGSWCompressedToBackendRef<BE> for &mut GGSWCompressed<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GGSWCompressedBackendRef<'_, BE> {
+        GGSWCompressed {
+            k: self.max_k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: mat_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
+pub trait GGSWCompressedToBackendMut<BE: Backend>: GGSWCompressedToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GGSWCompressedBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGSWCompressedToBackendMut<BE> for GGSWCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGSWCompressedBackendMut<'_, BE> {
+        GGSWCompressed {
+            k: self.max_k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGSWCompressedToBackendMut<BE> for &mut GGSWCompressed<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GGSWCompressedBackendMut<'_, BE> {
+        GGSWCompressed {
+            k: self.max_k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: mat_znx_backend_mut_from_mut::<BE>(&mut self.data),
+        }
+    }
+}
+
+pub trait GGSWCompressedAtBackendMut<BE: Backend> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWECompressedBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGSWCompressedAtBackendMut<BE> for GGSWCompressed<BE::OwnedBuf> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWECompressedBackendMut<'_, BE> {
+        let rank: usize = self.rank().into();
+        GLWECompressed {
+            data: self.data.at_backend_mut(row, col),
+            base2k: self.base2k,
+            rank: self.rank,
+            seed: self.seed[row * (rank + 1) + col],
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGSWCompressedAtBackendMut<BE> for &mut GGSWCompressed<BE::BufMut<'b>> {
+    fn at_backend_mut(&mut self, row: usize, col: usize) -> GLWECompressedBackendMut<'_, BE> {
+        let rank: usize = self.rank().into();
+        GLWECompressed {
+            data: mat_znx_at_backend_mut_from_mut::<BE>(&mut self.data, row, col),
+            base2k: self.base2k,
+            rank: self.rank,
+            seed: self.seed[row * (rank + 1) + col],
         }
     }
 }

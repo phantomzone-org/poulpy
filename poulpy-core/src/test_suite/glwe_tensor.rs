@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplaceBackend},
     layouts::{FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::convolution::bivariate_convolution_naive,
@@ -25,7 +25,6 @@ where
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
         + VecZnxNormalizeInplaceBackend<BE>
@@ -293,7 +292,6 @@ where
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
         + VecZnxNormalizeInplaceBackend<BE>
@@ -457,7 +455,6 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
         + VecZnxNormalizeInplaceBackend<BE>
@@ -589,7 +586,6 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
         + VecZnxNormalizeInplaceBackend<BE>

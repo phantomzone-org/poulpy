@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
-    compressed::{GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
+    compressed::{GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -189,6 +189,18 @@ impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecom
 impl<D: HostDataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         self.key.to_mut()
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWESwitchingKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendRef<BE>>::to_backend_ref(&self.key)
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendMut<BE> for GLWESwitchingKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> crate::layouts::compressed::GGLWECompressedBackendMut<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.key)
     }
 }
 

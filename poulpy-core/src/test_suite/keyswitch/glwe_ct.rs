@@ -1,8 +1,8 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend},
     layouts::{Module, ScratchOwned},
     source::Source,
-    test_suite::TestParams,
+    test_suite::{TestParams, vec_znx_backend_mut},
 };
 
 use crate::{
@@ -21,7 +21,7 @@ pub fn test_glwe_keyswitch<BE: crate::test_suite::TestBackend>(params: &TestPara
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: VecZnxFillUniform
+    Module<BE>: VecZnxFillUniformSourceBackend<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
         + GLWEKeyswitch<BE>
@@ -84,7 +84,12 @@ where
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                module.vec_znx_fill_uniform(pt_in.base2k().into(), &mut pt_in.data, 0, &mut source_xa);
+                module.vec_znx_fill_uniform_source_backend(
+                    pt_in.base2k().into(),
+                    &mut vec_znx_backend_mut::<BE>(&mut pt_in.data),
+                    0,
+                    &mut source_xa,
+                );
 
                 let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                     (module).glwe_switching_key_encrypt_sk_tmp_bytes(&ksk_infos)
@@ -173,7 +178,7 @@ pub fn test_glwe_keyswitch_assign<BE: crate::test_suite::TestBackend>(params: &T
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: VecZnxFillUniform
+    Module<BE>: VecZnxFillUniformSourceBackend<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
         + GLWEKeyswitch<BE>
@@ -222,7 +227,12 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(pt_want.base2k().into(), &mut pt_want.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform_source_backend(
+                pt_want.base2k().into(),
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
+                0,
+                &mut source_xa,
+            );
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module).glwe_switching_key_encrypt_sk_tmp_bytes(&ksk_infos)

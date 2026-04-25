@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWECompressedToRef,
-    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef,
+    GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use std::fmt;
 
@@ -165,5 +165,17 @@ where
 {
     fn to_ref(&self) -> GGLWECompressed<&[u8]> {
         self.0.to_ref()
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWETensorKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendRef<BE>>::to_backend_ref(&self.0)
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendMut<BE> for GLWETensorKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> crate::layouts::compressed::GGLWECompressedBackendMut<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.0)
     }
 }

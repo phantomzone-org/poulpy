@@ -1,8 +1,8 @@
 use poulpy_hal::{
-    api::VecZnxFillUniform,
+    api::{VecZnxCopyBackend, VecZnxFillUniformSourceBackend},
     layouts::{
-        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo,
-        ZnxInfos,
+        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef,
+        VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, vec_znx_backend_mut_from_mut, vec_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -27,6 +27,9 @@ pub struct GLWECompressed<D: Data> {
     pub(crate) rank: Rank,
     pub(crate) seed: [u8; 32],
 }
+
+pub type GLWECompressedBackendRef<'a, BE> = GLWECompressed<<BE as Backend>::BufRef<'a>>;
+pub type GLWECompressedBackendMut<'a, BE> = GLWECompressed<<BE as Backend>::BufMut<'a>>;
 
 /// Provides mutable access to the PRNG seed of a compressed GLWE.
 pub trait GLWECompressedSeedMut {
@@ -159,17 +162,19 @@ impl<D: HostDataRef> WriterTo for GLWECompressed<D> {
 /// the mask polynomials from the stored PRNG seed.
 pub trait GLWEDecompress
 where
-    Self: GetDegree + VecZnxFillUniform,
+    Self: GetDegree + VecZnxFillUniformSourceBackend<Self::Backend> + VecZnxCopyBackend<Self::Backend>,
 {
+    type Backend: Backend;
+
     /// Decompresses `other` into `res` by copying the body and regenerating the mask.
     fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEToMut + SetLWEInfos,
-        O: GLWECompressedToRef + GLWEInfos,
+        R: crate::layouts::GLWEToBackendMut<Self::Backend> + SetLWEInfos,
+        O: GLWECompressedToBackendRef<Self::Backend> + GLWEInfos,
     {
         {
-            let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-            let other: &GLWECompressed<&[u8]> = &other.to_ref();
+            let res = &mut res.to_backend_mut();
+            let other = &other.to_backend_ref();
             assert_eq!(
                 res.n(),
                 self.ring_degree(),
@@ -182,9 +187,9 @@ where
 
             let mut source: Source = Source::new(other.seed);
 
-            vec_znx_copy(&mut res.data, 0, &other.data, 0);
+            self.vec_znx_copy_backend(&mut res.data, 0, &other.data, 0);
             (1..(other.rank() + 1).into()).for_each(|i| {
-                self.vec_znx_fill_uniform(other.base2k.into(), &mut res.data, i, &mut source);
+                self.vec_znx_fill_uniform_source_backend(other.base2k.into(), &mut res.data, i, &mut source);
             });
         }
 
@@ -192,7 +197,12 @@ where
     }
 }
 
-impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform {}
+impl<B: Backend> GLWEDecompress for Module<B>
+where
+    Self: GetDegree + VecZnxFillUniformSourceBackend<B> + VecZnxCopyBackend<B>,
+{
+    type Backend = B;
+}
 
 // module-only API: decompression is provided by `GLWEDecompress` on `Module`.
 
@@ -226,6 +236,58 @@ impl<D: HostDataMut> GLWECompressedToMut for GLWECompressed<D> {
             base2k: self.base2k,
             rank: self.rank,
             data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWECompressedToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GLWECompressedToBackendRef<BE> for GLWECompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE> {
+        GLWECompressed {
+            seed: self.seed,
+            base2k: self.base2k,
+            rank: self.rank,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWECompressedToBackendRef<BE> for &mut GLWECompressed<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE> {
+        GLWECompressed {
+            seed: self.seed,
+            base2k: self.base2k,
+            rank: self.rank,
+            data: vec_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
+pub trait GLWECompressedToBackendMut<BE: Backend>: GLWECompressedToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GLWECompressedBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GLWECompressedToBackendMut<BE> for GLWECompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GLWECompressedBackendMut<'_, BE> {
+        GLWECompressed {
+            seed: self.seed,
+            base2k: self.base2k,
+            rank: self.rank,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWECompressedToBackendMut<BE> for &mut GLWECompressed<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GLWECompressedBackendMut<'_, BE> {
+        GLWECompressed {
+            seed: self.seed,
+            base2k: self.base2k,
+            rank: self.rank,
+            data: vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
         }
     }
 }

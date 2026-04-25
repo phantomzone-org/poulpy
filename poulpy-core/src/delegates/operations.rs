@@ -252,14 +252,14 @@ impl_operations_delegate!(
     GLWEMulXpMinusOneDefault<BE>,
     fn glwe_mul_xp_minus_one<R, A>(&self, k: i64, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: crate::layouts::GLWEToBackendMut<BE>,
+        A: crate::layouts::GLWEToBackendRef<BE>,
     {
         BE::glwe_mul_xp_minus_one(self, k, res, a)
     },
     fn glwe_mul_xp_minus_one_inplace<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
     {
         BE::glwe_mul_xp_minus_one_assign(self, k, res, scratch)
     }
@@ -288,24 +288,24 @@ impl_operations_delegate!(
     },
     fn glwe_lsh<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: crate::layouts::GLWEToBackendMut<BE>,
+        A: crate::layouts::GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
         BE::glwe_lsh(self, res, a, k, scratch)
     },
     fn glwe_lsh_add<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: crate::layouts::GLWEToBackendMut<BE>,
+        A: crate::layouts::GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
         BE::glwe_lsh_add(self, res, a, k, scratch)
     },
     fn glwe_lsh_sub<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: crate::layouts::GLWEToBackendMut<BE>,
+        A: crate::layouts::GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
         BE::glwe_lsh_sub(self, res, a, k, scratch)

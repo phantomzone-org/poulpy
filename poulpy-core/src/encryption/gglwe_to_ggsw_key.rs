@@ -7,8 +7,8 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyToMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWESecretToRef, prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyAtBackendMut, GGLWEToGGSWKeyToBackendMut, GLWEInfos, GLWESecret,
+        GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToRef, prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_copy,
 };
@@ -28,7 +28,7 @@ pub trait GGLWEToGGSWKeyEncryptSkDefault<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToGGSWKeyToMut,
+        R: GGLWEToGGSWKeyToBackendMut<BE>,
         E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
@@ -69,11 +69,11 @@ where
 
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToGGSWKeyToMut,
+        R: GGLWEToGGSWKeyToBackendMut<BE>,
         E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
-        let res: &mut GGLWEToGGSWKey<&mut [u8]> = &mut res.to_mut();
+        let mut res = &mut res.to_backend_mut();
 
         let rank: usize = res.rank_out().as_usize();
         assert!(
@@ -108,8 +108,14 @@ where
             let sk_ij_ref = sk_ij.to_ref();
             let sk_ij_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ij_ref.data), sk_ij_ref.n, sk_ij_ref.cols);
 
+            let mut ct =
+                <&mut crate::layouts::GGLWEToGGSWKeyBackendMut<'_, BE> as GGLWEToGGSWKeyAtBackendMut<BE>>::at_backend_mut(
+                    &mut res, i,
+                );
+            let mut ct_ref = &mut ct;
+
             self.gglwe_encrypt_sk(
-                res.at_mut(i),
+                &mut ct_ref,
                 &sk_ij_backend,
                 &sk_prepared,
                 enc_infos,

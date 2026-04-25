@@ -3,8 +3,7 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-        ZnxZero,
+        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
     },
     source::Source,
 };
@@ -14,7 +13,7 @@ use crate::{
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GGLWECompressed, GGLWECompressedToMut},
+        compressed::{GGLWECompressed, GGLWECompressedAtBackendMut, GGLWECompressedToBackendMut, GGLWECompressedToMut},
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -35,7 +34,7 @@ pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWECompressedToMut + GGLWECompressedSeedMut,
+        R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut,
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
@@ -76,7 +75,7 @@ where
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWECompressedToMut + GGLWECompressedSeedMut,
+        R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut,
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
@@ -86,7 +85,7 @@ where
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
 
         {
-            let res: &mut GGLWECompressed<&mut [u8]> = &mut res.to_mut();
+        let mut res: &mut crate::layouts::GGLWECompressedBackendMut<'_, BE> = &mut res.to_backend_mut();
             let pt_backend = pt.to_backend_ref();
             let sk_ref = sk.to_backend_ref();
 
@@ -169,9 +168,13 @@ where
                         ),
                         base2k: tmp_pt.base2k,
                     };
+                    let mut ct =
+                        <&mut crate::layouts::GGLWECompressedBackendMut<'_, BE> as GGLWECompressedAtBackendMut<BE>>::at_backend_mut(
+                            &mut res, row_i, col_j,
+                        );
                     self.glwe_encrypt_sk_internal(
                         res.base2k().into(),
-                        &mut res.at_mut(row_i, col_j).data,
+                        &mut ct.data,
                         cols,
                         true,
                         Some((tmp_pt_ref, tmp_pt_backend, 0)),

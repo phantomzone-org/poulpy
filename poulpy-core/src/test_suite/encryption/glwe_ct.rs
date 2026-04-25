@@ -1,8 +1,8 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend},
     layouts::{Module, ScratchOwned},
     source::Source,
-    test_suite::TestParams,
+    test_suite::{TestParams, vec_znx_backend_mut},
 };
 
 use crate::{
@@ -21,7 +21,7 @@ pub fn test_glwe_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestPar
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub<BE>,
+    Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniformSourceBackend<BE> + GLWESub<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -65,7 +65,7 @@ where
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-        module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform_source_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut source_xa);
 
         module.glwe_encrypt_sk(
             &mut ct,
@@ -94,7 +94,11 @@ pub fn test_glwe_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(param
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: GLWECompressedEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub<BE>,
+    Module<BE>: GLWECompressedEncryptSk<BE>
+        + GLWENoise<BE>
+        + GLWESecretPreparedFactory<BE>
+        + VecZnxFillUniformSourceBackend<BE>
+        + GLWESub<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -139,7 +143,7 @@ where
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-        module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform_source_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut source_xa);
 
         let seed_xa: [u8; 32] = [1u8; 32];
 
@@ -172,7 +176,7 @@ pub fn test_glwe_encrypt_zero_sk<BE: crate::test_suite::TestBackend>(params: &Te
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
-    Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniform + GLWESub<BE>,
+    Module<BE>: GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniformSourceBackend<BE> + GLWESub<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -237,7 +241,7 @@ where
         + GLWEPublicKeyGenerate<BE>
         + GLWENoise<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWESub<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -279,7 +283,7 @@ where
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(&glwe_infos);
         module.glwe_public_key_generate(&mut pk, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
 
-        module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform_source_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut source_xa);
 
         let mut pk_prepared: GLWEPublicKeyPrepared<BE::OwnedBuf, BE> =
             module.glwe_public_key_prepared_alloc_from_infos(&glwe_infos);

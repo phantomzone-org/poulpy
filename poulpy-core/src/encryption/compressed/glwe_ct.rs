@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScratchArena},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnxToBackendMut},
     source::Source,
 };
 
@@ -10,7 +10,7 @@ use crate::{
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GLWECompressed, GLWECompressedToMut},
+        compressed::{GLWECompressed, GLWECompressedToBackendMut, GLWECompressedToMut},
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -31,7 +31,7 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWECompressedToMut + GLWECompressedSeedMut,
+        R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
@@ -64,7 +64,7 @@ where
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWECompressedToMut + GLWECompressedSeedMut,
+        R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
@@ -73,7 +73,7 @@ where
         BE::BufMut<'s>: HostDataMut,
     {
         {
-            let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
+            let res = &mut res.to_backend_mut();
             let mut source_xa: Source = Source::new(seed_xa);
             let cols: usize = (res.rank() + 1).into();
             assert!(

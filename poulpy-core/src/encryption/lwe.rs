@@ -1,12 +1,15 @@
 use poulpy_hal::{
-    api::{ScratchArenaTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, ZnxZero},
+    api::{
+        ScratchArenaTakeBasic, VecZnxAddNormalSourceBackend, VecZnxFillUniformSourceBackend, VecZnxNormalizeInplaceBackend,
+        VecZnxNormalizeTmpBytes,
+    },
+    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
 
 use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
-    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
+    layouts::{LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToBackendMut},
 };
 
 #[doc(hidden)]
@@ -25,7 +28,7 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: LWEToMut,
+        R: LWEToBackendMut<BE>,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
         E: EncryptionInfos,
@@ -35,7 +38,11 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
 where
-    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes,
+    Self: Sized
+        + VecZnxFillUniformSourceBackend<BE>
+        + VecZnxAddNormalSourceBackend<BE>
+        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeTmpBytes,
 {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -60,14 +67,14 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: LWEToMut,
+        R: LWEToBackendMut<BE>,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
+        let res = &mut res.to_backend_mut();
         let pt: &LWEPlaintext<&[u8]> = &pt.to_ref();
         let sk: &LWESecret<&[u8]> = &sk.to_ref();
 
@@ -85,7 +92,7 @@ where
 
         let base2k: usize = res.base2k().into();
 
-        self.vec_znx_fill_uniform(base2k, &mut res.data, 0, source_xa);
+        self.vec_znx_fill_uniform_source_backend(base2k, &mut res.data, 0, source_xa);
 
         let scratch = scratch.borrow();
         let (mut tmp_znx, scratch_1) = scratch.take_vec_znx(1, 1, res.size());
@@ -110,7 +117,10 @@ where
                 .sum::<i64>();
         });
 
-        self.vec_znx_add_normal(base2k, &mut tmp_znx, 0, enc_infos.noise_infos(), source_xe);
+        {
+            let mut tmp_znx_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp_znx);
+            self.vec_znx_add_normal_source_backend(base2k, &mut tmp_znx_mut, 0, enc_infos.noise_infos(), source_xe);
+        }
 
         let _ = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_znx, 0, scratch));
 

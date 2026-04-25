@@ -6,7 +6,7 @@ use poulpy_hal::{
 
 use crate::{
     Distribution, EncryptionInfos, GLWEEncryptSk, GetDistribution, GetDistributionMut, ScratchArenaTakeCore,
-    layouts::{GLWEInfos, GLWEToMut, prepared::GLWESecretPreparedToBackendRef},
+    layouts::{GLWEInfos, GLWEToBackendMut, prepared::GLWESecretPreparedToBackendRef},
 };
 
 #[doc(hidden)]
@@ -19,7 +19,7 @@ pub trait GLWEPublicKeyGenerateDefault<BE: Backend> {
         source_xe: &mut Source,
         source_xa: &mut Source,
     ) where
-        R: GLWEToMut + GetDistributionMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GetDistributionMut + GLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GetDistribution;
 }
@@ -39,7 +39,7 @@ where
         source_xe: &mut Source,
         source_xa: &mut Source,
     ) where
-        R: GLWEToMut + GetDistributionMut + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GetDistributionMut + GLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GetDistribution,
     {
@@ -56,8 +56,7 @@ where
             // Its ok to allocate scratch space here since pk is usually generated only once.
             let mut scratch: ScratchOwned<BE> =
                 ScratchOwned::alloc(<Module<BE> as GLWEEncryptSk<BE>>::glwe_encrypt_sk_tmp_bytes(self, res));
-            let mut res_glwe = res.to_mut();
-            self.glwe_encrypt_zero_sk(&mut res_glwe, sk, enc_infos, source_xe, source_xa, &mut scratch.borrow());
+            self.glwe_encrypt_zero_sk(res, sk, enc_infos, source_xe, source_xa, &mut scratch.borrow());
         }
         *res.dist_mut() = *sk.dist();
     }

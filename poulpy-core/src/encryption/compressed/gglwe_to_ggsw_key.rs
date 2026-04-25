@@ -7,8 +7,9 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedToMut, GLWEInfos, GLWESecret, GLWESecretTensor,
-        GLWESecretTensorFactory, GLWESecretToRef, prepared::GLWESecretPreparedFactory,
+        GGLWEInfos, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyCompressedAtBackendMut,
+        GGLWEToGGSWKeyCompressedToBackendMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
+        GLWESecretToRef, prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_copy,
 };
@@ -28,7 +29,7 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSkDefault<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
+        R: GGLWEToGGSWKeyCompressedToBackendMut<BE> + GGLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
@@ -68,7 +69,7 @@ where
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToGGSWKeyCompressedToMut + GGLWEInfos,
+        R: GGLWEToGGSWKeyCompressedToBackendMut<BE> + GGLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
@@ -84,7 +85,7 @@ where
             <Module<BE> as GGLWEToGGSWKeyCompressedEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let res: &mut GGLWEToGGSWKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let mut res = &mut res.to_backend_mut();
         let rank: usize = res.rank_out().as_usize();
 
         let mut sk_prepared = self.glwe_secret_prepared_alloc(res.rank());
@@ -115,8 +116,13 @@ where
 
             let (seed_xa_tmp, _) = source_xa.branch();
 
+            let mut ct = <&mut crate::layouts::GGLWEToGGSWKeyCompressedBackendMut<'_, BE> as GGLWEToGGSWKeyCompressedAtBackendMut<
+                BE,
+            >>::at_backend_mut(&mut res, i);
+            let mut ct_ref = &mut ct;
+
             self.gglwe_compressed_encrypt_sk(
-                res.at_mut(i),
+                &mut ct_ref,
                 &sk_ij_backend,
                 &sk_prepared,
                 seed_xa_tmp,

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniformSourceBackend},
     layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -24,7 +24,7 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
@@ -85,7 +85,12 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(in_base2k, &mut pt_in.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform_source_backend(
+                in_base2k,
+                &mut vec_znx_backend_mut::<BE>(&mut pt_in.data),
+                0,
+                &mut source_xa,
+            );
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&autokey)
@@ -171,7 +176,7 @@ where
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
@@ -221,7 +226,12 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            module.vec_znx_fill_uniform(out_base2k, &mut pt_want.data, 0, &mut source_xa);
+            module.vec_znx_fill_uniform_source_backend(
+                out_base2k,
+                &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
+                0,
+                &mut source_xa,
+            );
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module).glwe_automorphism_key_encrypt_sk_tmp_bytes(&autokey)

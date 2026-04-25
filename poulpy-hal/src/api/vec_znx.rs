@@ -1,6 +1,6 @@
 use crate::{
     layouts::{
-        Backend, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef,
+        Backend, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
     },
     source::Source,
 };
@@ -164,38 +164,34 @@ pub trait VecZnxLshTmpBytes {
     fn vec_znx_lsh_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxLsh<B: Backend> {
+pub trait VecZnxLshBackend<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh<'s, R, A>(
+    fn vec_znx_lsh_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
-pub trait VecZnxLshAddInto<B: Backend> {
+pub trait VecZnxLshAddIntoBackend<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_add_into<'s, R, A>(
+    fn vec_znx_lsh_add_into_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
 /// Returns scratch bytes required for right-shift operations.
@@ -203,72 +199,64 @@ pub trait VecZnxRshTmpBytes {
     fn vec_znx_rsh_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxRsh<B: Backend> {
+pub trait VecZnxRshBackend<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh<'s, R, A>(
+    fn vec_znx_rsh_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
-pub trait VecZnxRshAddInto<B: Backend> {
+pub trait VecZnxRshAddIntoBackend<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_add_into<'s, R, A>(
+    fn vec_znx_rsh_add_into_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
-pub trait VecZnxLshSub<B: Backend> {
+pub trait VecZnxLshSubBackend<B: Backend> {
     /// Left shift by k bits and subtract from destination.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh_sub<'s, R, A>(
+    fn vec_znx_lsh_sub_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
-pub trait VecZnxRshSub<B: Backend> {
+pub trait VecZnxRshSubBackend<B: Backend> {
     /// Right shift by k bits and subtract from destination.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh_sub<'s, R, A>(
+    fn vec_znx_rsh_sub_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        r: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
 pub trait VecZnxLshInplaceBackend<B: Backend> {
@@ -350,61 +338,71 @@ pub trait VecZnxAutomorphismAssign<B: Backend> {
 }
 
 /// Multiplies the selected column by `(X^p - 1)` in `Z[X]/(X^N + 1)`.
-pub trait VecZnxMulXpMinusOne {
-    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+pub trait VecZnxMulXpMinusOneBackend<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_backend(
+        &self,
+        p: i64,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    );
 }
 
 pub trait VecZnxMulXpMinusOneAssignTmpBytes {
     fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxMulXpMinusOneInplace<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace<'s, R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        R: VecZnxToMut;
+pub trait VecZnxMulXpMinusOneInplaceBackend<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
+        &self,
+        p: i64,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 pub trait VecZnxSplitRingTmpBytes {
     fn vec_znx_split_ring_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxSplitRing<B: Backend> {
+pub trait VecZnxSplitRingBackend<B: Backend> {
     /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split_ring<'s, R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    fn vec_znx_split_ring_backend<'s>(
+        &self,
+        res: &mut [VecZnxBackendMut<'_, B>],
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 pub trait VecZnxMergeRingsTmpBytes {
     fn vec_znx_merge_rings_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxMergeRings<B: Backend> {
+pub trait VecZnxMergeRingsBackend<B: Backend> {
     /// Merges the subrings of the selected column of `a` into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge_rings<'s, R, A>(
+    fn vec_znx_merge_rings_backend<'s>(
         &self,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'_, B>,
         res_col: usize,
-        a: &[A],
+        a: &[VecZnxBackendRef<'_, B>],
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 }
 
 /// Switches ring degree between `a` and `res` by truncation or zero-padding.
@@ -422,11 +420,15 @@ pub trait VecZnxCopyBackend<B: Backend> {
     fn vec_znx_copy_backend(&self, res: &mut VecZnxBackendMut<'_, B>, res_col: usize, a: &VecZnxBackendRef<'_, B>, a_col: usize);
 }
 
-pub trait VecZnxFillUniform {
+pub trait VecZnxFillUniformSourceBackend<B: Backend> {
     /// Fills the first `size` size with uniform values in \[-2^{base2k-1}, 2^{base2k-1}\]
-    fn vec_znx_fill_uniform<R>(&self, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
-    where
-        R: VecZnxToMut;
+    fn vec_znx_fill_uniform_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        source: &mut Source,
+    );
 }
 
 pub trait VecZnxFillUniformBackend<B: Backend> {
@@ -437,10 +439,15 @@ pub trait VecZnxFillUniformBackend<B: Backend> {
 #[allow(clippy::too_many_arguments)]
 /// Fills the selected column with a discrete Gaussian noise vector
 /// scaled by `2^{-k}` with standard deviation `sigma`, bounded to `[-bound, bound]`.
-pub trait VecZnxFillNormal {
-    fn vec_znx_fill_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
-    where
-        R: VecZnxToMut;
+pub trait VecZnxFillNormalSourceBackend<B: Backend> {
+    fn vec_znx_fill_normal_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -457,11 +464,16 @@ pub trait VecZnxFillNormalBackend<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub trait VecZnxAddNormal {
+pub trait VecZnxAddNormalSourceBackend<B: Backend> {
     /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
-    fn vec_znx_add_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
-    where
-        R: VecZnxToMut;
+    fn vec_znx_add_normal_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]

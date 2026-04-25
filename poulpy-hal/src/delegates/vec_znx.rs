@@ -1,19 +1,19 @@
 use crate::{
     api::{
-        VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddNormalBackend, VecZnxAddScalarAssignBackend,
+        VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalBackend, VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend,
         VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
-        VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh,
-        VecZnxLshAddInto, VecZnxLshInplaceBackend, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
+        VecZnxCopyBackend, VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend,
+        VecZnxFillUniformSourceBackend, VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshSubBackend,
+        VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneBackend,
+        VecZnxMulXpMinusOneInplaceBackend, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
         VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
-        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshInplaceBackend,
-        VecZnxRshSub, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend,
+        VecZnxRshInplaceBackend, VecZnxRshSubBackend, VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes,
+        VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
         VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
-        VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
     },
     oep::HalVecZnxImpl,
     source::Source,
@@ -239,116 +239,98 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxLsh<B>,
-    fn vec_znx_lsh<'s, R, A>(
+    VecZnxLshBackend<B>,
+    fn vec_znx_lsh_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_lsh(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_lsh_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxLshAddInto<B>,
-    fn vec_znx_lsh_add_into<'s, R, A>(
+    VecZnxLshAddIntoBackend<B>,
+    fn vec_znx_lsh_add_into_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_lsh_add_into(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_lsh_add_into_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRsh<B>,
-    fn vec_znx_rsh<'s, R, A>(
+    VecZnxRshBackend<B>,
+    fn vec_znx_rsh_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_rsh(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_rsh_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRshAddInto<B>,
-    fn vec_znx_rsh_add_into<'s, R, A>(
+    VecZnxRshAddIntoBackend<B>,
+    fn vec_znx_rsh_add_into_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_rsh_add_into(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_rsh_add_into_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxLshSub<B>,
-    fn vec_znx_lsh_sub<'s, R, A>(
+    VecZnxLshSubBackend<B>,
+    fn vec_znx_lsh_sub_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_lsh_sub(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_lsh_sub_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRshSub<B>,
-    fn vec_znx_rsh_sub<'s, R, A>(
+    VecZnxRshSubBackend<B>,
+    fn vec_znx_rsh_sub_backend<'s, 'r, 'a>(
         &self,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_rsh_sub(self, base2k, k, res, res_col, a, a_col, scratch)
+    ) {
+        B::vec_znx_rsh_sub_backend(self, base2k, k, res, res_col, a, a_col, scratch)
     }
 );
 
@@ -449,13 +431,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxMulXpMinusOne,
-    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_mul_xp_minus_one(self, p, res, res_col, a, a_col);
+    VecZnxMulXpMinusOneBackend<B>,
+    fn vec_znx_mul_xp_minus_one_backend(
+        &self,
+        p: i64,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+    ) {
+        B::vec_znx_mul_xp_minus_one_backend(self, p, res, res_col, a, a_col);
     }
 );
 
@@ -467,12 +452,15 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxMulXpMinusOneInplace<B>,
-    fn vec_znx_mul_xp_minus_one_inplace<'s, R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_mul_xp_minus_one_inplace(self, p, res, res_col, scratch)
+    VecZnxMulXpMinusOneInplaceBackend<B>,
+    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
+        &self,
+        p: i64,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
+        B::vec_znx_mul_xp_minus_one_inplace_backend(self, p, res, res_col, scratch)
     }
 );
 
@@ -484,13 +472,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxSplitRing<B>,
-    fn vec_znx_split_ring<'s, R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_split_ring(self, res, res_col, a, a_col, scratch)
+    VecZnxSplitRingBackend<B>,
+    fn vec_znx_split_ring_backend<'s>(
+        &self,
+        res: &mut [VecZnxBackendMut<'_, B>],
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
+        B::vec_znx_split_ring_backend(self, res, res_col, a, a_col, scratch)
     }
 );
 
@@ -502,13 +493,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxMergeRings<B>,
-    fn vec_znx_merge_rings<'s, R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef,
-    {
-        B::vec_znx_merge_rings(self, res, res_col, a, a_col, scratch)
+    VecZnxMergeRingsBackend<B>,
+    fn vec_znx_merge_rings_backend<'s>(
+        &self,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        a: &[VecZnxBackendRef<'_, B>],
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
+        B::vec_znx_merge_rings_backend(self, res, res_col, a, a_col, scratch)
     }
 );
 
@@ -533,12 +527,15 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxFillUniform,
-    fn vec_znx_fill_uniform<R>(&self, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_fill_uniform_seed(self, base2k, res, res_col, source.new_seed());
+    VecZnxFillUniformSourceBackend<B>,
+    fn vec_znx_fill_uniform_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        source: &mut Source,
+    ) {
+        B::vec_znx_fill_uniform_backend(self, base2k, res, res_col, source.new_seed());
     }
 );
 
@@ -550,12 +547,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxFillNormal,
-    fn vec_znx_fill_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_fill_normal_seed(self, base2k, res, res_col, noise_infos, source_xe.new_seed());
+    VecZnxFillNormalSourceBackend<B>,
+    fn vec_znx_fill_normal_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
+    ) {
+        B::vec_znx_fill_normal_backend(self, base2k, res, res_col, noise_infos, source_xe.new_seed());
     }
 );
 
@@ -574,12 +575,16 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxAddNormal,
-    fn vec_znx_add_normal<R>(&self, base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source_xe: &mut Source)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_add_normal_seed(self, base2k, res, res_col, noise_infos, source_xe.new_seed());
+    VecZnxAddNormalSourceBackend<B>,
+    fn vec_znx_add_normal_source_backend(
+        &self,
+        base2k: usize,
+        res: &mut VecZnxBackendMut<'_, B>,
+        res_col: usize,
+        noise_infos: NoiseInfos,
+        source_xe: &mut Source,
+    ) {
+        B::vec_znx_add_normal_backend(self, base2k, res, res_col, noise_infos, source_xe.new_seed());
     }
 );
 

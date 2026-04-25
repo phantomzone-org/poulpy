@@ -2,8 +2,7 @@
 
 use crate::{
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
-        VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToRef,
     },
     source::Source,
 };
@@ -147,85 +146,73 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 
     fn vec_znx_rsh_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_rsh<'s, R, A>(
+    fn vec_znx_rsh_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
-    fn vec_znx_rsh_add_into<'s, R, A>(
+    fn vec_znx_rsh_add_into_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
     fn vec_znx_lsh_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_lsh<'s, R, A>(
+    fn vec_znx_lsh_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
-    fn vec_znx_lsh_add_into<'s, R, A>(
+    fn vec_znx_lsh_add_into_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
-    fn vec_znx_lsh_sub<'s, R, A>(
+    fn vec_znx_lsh_sub_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
-    fn vec_znx_rsh_sub<'s, R, A>(
+    fn vec_znx_rsh_sub_backend<'s, 'r, 'a>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'a, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
     fn vec_znx_rsh_inplace_backend<'s, 'r>(
         module: &Module<BE>,
@@ -283,47 +270,46 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_mul_xp_minus_one<R, A>(module: &Module<BE>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    fn vec_znx_mul_xp_minus_one_backend(
+        module: &Module<BE>,
+        k: i64,
+        res: &mut VecZnxBackendMut<'_, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+    );
 
     fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_mul_xp_minus_one_inplace<'s, R>(
+    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
         module: &Module<BE>,
         k: i64,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'_, BE>,
         res_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut;
+    );
 
     fn vec_znx_split_ring_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_split_ring<'s, R, A>(
+    fn vec_znx_split_ring_backend<'s>(
         module: &Module<BE>,
-        res: &mut [R],
+        res: &mut [VecZnxBackendMut<'_, BE>],
         res_col: usize,
-        a: &A,
+        a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
     fn vec_znx_merge_rings_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_merge_rings<'s, R, A>(
+    fn vec_znx_merge_rings_backend<'s>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'_, BE>,
         res_col: usize,
-        a: &[A],
+        a: &[VecZnxBackendRef<'_, BE>],
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut,
-        A: VecZnxToRef;
+    );
 
     fn vec_znx_switch_ring_backend(
         module: &Module<BE>,
@@ -349,17 +335,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         seed: [u8; 32],
     );
 
-    fn vec_znx_fill_uniform_seed<R>(module: &Module<BE>, base2k: usize, res: &mut R, res_col: usize, seed: [u8; 32])
-    where
-        R: VecZnxToMut;
-
-    fn vec_znx_fill_uniform<R>(module: &Module<BE>, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
-    where
-        R: VecZnxToMut,
-    {
-        Self::vec_znx_fill_uniform_seed(module, base2k, res, res_col, source.new_seed());
-    }
-
     fn vec_znx_fill_normal_backend(
         module: &Module<BE>,
         res_base2k: usize,
@@ -368,29 +343,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         noise_infos: NoiseInfos,
         seed: [u8; 32],
     );
-
-    fn vec_znx_fill_normal_seed<R>(
-        module: &Module<BE>,
-        res_base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        noise_infos: NoiseInfos,
-        seed: [u8; 32],
-    ) where
-        R: VecZnxToMut;
-
-    fn vec_znx_fill_normal<R>(
-        module: &Module<BE>,
-        res_base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        noise_infos: NoiseInfos,
-        source: &mut Source,
-    ) where
-        R: VecZnxToMut,
-    {
-        Self::vec_znx_fill_normal_seed(module, res_base2k, res, res_col, noise_infos, source.new_seed());
-    }
 
     fn vec_znx_add_normal_backend(
         module: &Module<BE>,
@@ -401,28 +353,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         seed: [u8; 32],
     );
 
-    fn vec_znx_add_normal_seed<R>(
-        module: &Module<BE>,
-        res_base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        noise_infos: NoiseInfos,
-        seed: [u8; 32],
-    ) where
-        R: VecZnxToMut;
-
-    fn vec_znx_add_normal<R>(
-        module: &Module<BE>,
-        res_base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        noise_infos: NoiseInfos,
-        source: &mut Source,
-    ) where
-        R: VecZnxToMut,
-    {
-        Self::vec_znx_add_normal_seed(module, res_base2k, res, res_col, noise_infos, source.new_seed());
-    }
 }
 
 /// Big-coefficient `VecZnxBig` extension point.

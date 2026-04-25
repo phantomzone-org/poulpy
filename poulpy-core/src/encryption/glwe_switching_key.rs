@@ -9,7 +9,7 @@ use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
     encryption::gglwe::GGLWEEncryptSk,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKeyDegreesMut, LWEInfos,
+        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKeyDegreesMut, LWEInfos,
         prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_switch_ring,
@@ -31,7 +31,7 @@ pub trait GLWESwitchingKeyEncryptSkDefault<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
@@ -68,7 +68,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,

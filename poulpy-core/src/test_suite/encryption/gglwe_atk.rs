@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend, VecZnxFillUniform},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend, VecZnxFillUniformSourceBackend},
     layouts::{
         Backend, GaloisElement, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchOwned,
     },
@@ -32,7 +32,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
         + GGLWENoise<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + VecZnxAutomorphismBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -133,7 +133,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWEAutomorphismKeyDecompress
         + VecZnxAutomorphismBackend<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

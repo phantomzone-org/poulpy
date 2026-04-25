@@ -1,10 +1,10 @@
 use std::fmt;
 
 use poulpy_hal::{
-    api::VecZnxFillUniform,
+    api::VecZnxFillUniformSourceBackend,
     layouts::{
-        Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, DataView, DataViewMut, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToBackendMut,
+        VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -119,8 +119,10 @@ impl<D: HostDataRef> WriterTo for LWECompressed<D> {
 
 pub trait LWEDecompress
 where
-    Self: VecZnxFillUniform,
+    Self: VecZnxFillUniformSourceBackend<Self::Backend>,
 {
+    type Backend: Backend;
+
     fn decompress_lwe<R, O>(&self, res: &mut R, other: &O)
     where
         R: LWEToMut,
@@ -132,14 +134,31 @@ where
         assert_eq!(res.lwe_layout(), other.lwe_layout());
 
         let mut source: Source = Source::new(other.seed);
-        self.vec_znx_fill_uniform(other.base2k().into(), &mut res.data, 0, &mut source);
+        let mut res_backend = VecZnx::from_data(
+            <Self::Backend as Backend>::from_host_bytes(res.data.data().as_ref()),
+            res.data.n(),
+            res.data.cols(),
+            res.data.size(),
+        );
+        {
+            let mut res_backend_mut = <VecZnx<<Self::Backend as Backend>::OwnedBuf> as VecZnxToBackendMut<Self::Backend>>::to_backend_mut(
+                &mut res_backend,
+            );
+            self.vec_znx_fill_uniform_source_backend(other.base2k().into(), &mut res_backend_mut, 0, &mut source);
+        }
+        <Self::Backend as Backend>::copy_to_host(res_backend.data(), res.data.data_mut().as_mut());
         for i in 0..res.size() {
             res.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         }
     }
 }
 
-impl<B: Backend> LWEDecompress for Module<B> where Self: VecZnxFillUniform {}
+impl<B: Backend> LWEDecompress for Module<B>
+where
+    Self: VecZnxFillUniformSourceBackend<B>,
+{
+    type Backend = B;
+}
 
 // module-only API: decompression is provided by `LWEDecompress` on `Module`.
 

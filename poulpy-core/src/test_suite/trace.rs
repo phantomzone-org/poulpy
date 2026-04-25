@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend, VecZnxNormalizeInplaceBackend},
     layouts::{Module, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
@@ -29,7 +29,7 @@ where
         + GLWEDecrypt<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
-        + VecZnxFillUniform
+        + VecZnxFillUniformSourceBackend<BE>
         + GLWESecretPreparedFactory<BE>
         + VecZnxNormalizeInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -90,7 +90,12 @@ where
 
         data_want.iter_mut().for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-        module.vec_znx_fill_uniform(out_base2k, &mut pt_have.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform_source_backend(
+            out_base2k,
+            &mut vec_znx_backend_mut::<BE>(&mut pt_have.data),
+            0,
+            &mut source_xa,
+        );
 
         module.glwe_encrypt_sk(
             &mut glwe_out,

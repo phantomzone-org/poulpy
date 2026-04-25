@@ -4,9 +4,9 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWECompressedToRef,
-    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank, SetGaloisElement,
-    TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef,
+    GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEDecompress, GLWEInfos,
+    GetGaloisElement, LWEInfos, Rank, SetGaloisElement, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -165,6 +165,18 @@ impl<D: HostDataRef> GGLWECompressedToRef for GLWEAutomorphismKeyCompressed<D> {
 impl<D: HostDataMut> GGLWECompressedToMut for GLWEAutomorphismKeyCompressed<D> {
     fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
         self.key.to_mut()
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWEAutomorphismKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendRef<BE>>::to_backend_ref(&self.key)
+    }
+}
+
+impl<BE: Backend> GGLWECompressedToBackendMut<BE> for GLWEAutomorphismKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> crate::layouts::compressed::GGLWECompressedBackendMut<'_, BE> {
+        <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.key)
     }
 }
 

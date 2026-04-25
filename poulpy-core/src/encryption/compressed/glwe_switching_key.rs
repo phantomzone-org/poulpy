@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWECompressedEncryptSk, ScratchArenaTakeCore,
     layouts::{
-        GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
+        GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
         GLWESwitchingKeyDegreesMut, LWEInfos, prepared::GLWESecretPreparedFactory,
     },
     vec_znx_host_ops::vec_znx_switch_ring,
@@ -29,7 +29,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSkDefault<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
@@ -66,7 +66,7 @@ where
         source_xe: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
+        R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,

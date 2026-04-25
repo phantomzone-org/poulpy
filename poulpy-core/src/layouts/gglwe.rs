@@ -393,6 +393,16 @@ impl<BE: Backend> GGLWEToBackendMut<BE> for GGLWE<BE::OwnedBuf> {
     }
 }
 
+impl<'b, BE: Backend + 'b> GGLWEToBackendMut<BE> for &mut GGLWE<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
+        GGLWE {
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: poulpy_hal::layouts::mat_znx_backend_mut_from_mut::<BE>(&mut self.data),
+        }
+    }
+}
+
 impl<D: HostDataMut> GGLWEToMut for GGLWE<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         GGLWE {
@@ -417,6 +427,16 @@ impl<BE: Backend> GGLWEToBackendRef<BE> for GGLWE<BE::OwnedBuf> {
             base2k: self.base2k(),
             dsize: self.dsize(),
             data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGLWEToBackendRef<BE> for &mut GGLWE<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
+        GGLWE {
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: poulpy_hal::layouts::mat_znx_backend_ref_from_mut::<BE>(&self.data),
         }
     }
 }

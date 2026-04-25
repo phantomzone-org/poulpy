@@ -10,7 +10,8 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos,
+        SetGaloisElement,
     },
 };
 
@@ -30,7 +31,7 @@ pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretToRef;
 }
@@ -73,7 +74,7 @@ where
 
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
         S: GLWESecretToRef,
     {

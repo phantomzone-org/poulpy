@@ -1,12 +1,13 @@
 use poulpy_hal::{
-    layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef,
+        GLWEInfos, LWEInfos, Rank, TorusPrecision,
     },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -33,6 +34,9 @@ impl DeclaredK for GGLWEToGGSWKeyLayout {
 pub struct GGLWEToGGSWKey<D: Data> {
     pub(crate) keys: Vec<GGLWE<D>>,
 }
+
+pub type GGLWEToGGSWKeyBackendRef<'a, BE> = GGLWEToGGSWKey<<BE as Backend>::BufRef<'a>>;
+pub type GGLWEToGGSWKeyBackendMut<'a, BE> = GGLWEToGGSWKey<<BE as Backend>::BufMut<'a>>;
 
 impl<D: Data> LWEInfos for GGLWEToGGSWKey<D> {
     fn n(&self) -> Degree {
@@ -255,5 +259,71 @@ where
         GGLWEToGGSWKey {
             keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
         }
+    }
+}
+
+pub trait GGLWEToGGSWKeyToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GGLWEToGGSWKeyBackendRef<'_, BE>;
+}
+
+impl<BE: Backend> GGLWEToGGSWKeyToBackendRef<BE> for GGLWEToGGSWKey<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEToGGSWKeyBackendRef<'_, BE> {
+        GGLWEToGGSWKey {
+            keys: self.keys.iter().map(GGLWEToBackendRef::<BE>::to_backend_ref).collect(),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyToBackendRef<BE> for &mut GGLWEToGGSWKey<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GGLWEToGGSWKeyBackendRef<'_, BE> {
+        GGLWEToGGSWKey {
+            keys: self
+                .keys
+                .iter_mut()
+                .map(|c| GGLWEToBackendRef::<BE>::to_backend_ref(&mut *c))
+                .collect(),
+        }
+    }
+}
+
+pub trait GGLWEToGGSWKeyToBackendMut<BE: Backend>: GGLWEToGGSWKeyToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGLWEToGGSWKeyToBackendMut<BE> for GGLWEToGGSWKey<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyBackendMut<'_, BE> {
+        GGLWEToGGSWKey {
+            keys: self.keys.iter_mut().map(GGLWEToBackendMut::<BE>::to_backend_mut).collect(),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyToBackendMut<BE> for &mut GGLWEToGGSWKey<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyBackendMut<'_, BE> {
+        GGLWEToGGSWKey {
+            keys: self
+                .keys
+                .iter_mut()
+                .map(|c| GGLWEToBackendMut::<BE>::to_backend_mut(&mut *c))
+                .collect(),
+        }
+    }
+}
+
+pub trait GGLWEToGGSWKeyAtBackendMut<BE: Backend> {
+    fn at_backend_mut(&mut self, i: usize) -> GGLWE<BE::BufMut<'_>>;
+}
+
+impl<BE: Backend> GGLWEToGGSWKeyAtBackendMut<BE> for GGLWEToGGSWKey<BE::OwnedBuf> {
+    fn at_backend_mut(&mut self, i: usize) -> GGLWE<BE::BufMut<'_>> {
+        assert!((i as u32) < self.rank());
+        self.keys[i].to_backend_mut()
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGLWEToGGSWKeyAtBackendMut<BE> for &mut GGLWEToGGSWKey<BE::BufMut<'b>> {
+    fn at_backend_mut(&mut self, i: usize) -> GGLWE<BE::BufMut<'_>> {
+        assert!((i as u32) < self.rank());
+        GGLWEToBackendMut::<BE>::to_backend_mut(&mut self.keys[i])
     }
 }

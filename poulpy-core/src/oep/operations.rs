@@ -9,7 +9,8 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToMut, GLWEToRef, GetGaloisElement,
+        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
+        GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     operations::{
@@ -231,12 +232,12 @@ pub unsafe trait GGSWRotateImpl<BE: Backend>: Backend {
 pub unsafe trait GLWEMulXpMinusOneImpl<BE: Backend>: Backend {
     fn glwe_mul_xp_minus_one<R, A>(module: &Module<BE>, k: i64, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef;
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
 
     fn glwe_mul_xp_minus_one_inplace<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut;
+        R: GLWEToBackendMut<BE>;
 }
 
 /// Backend-provided GLWE shift operations.
@@ -258,20 +259,20 @@ pub unsafe trait GLWEShiftImpl<BE: Backend>: Backend {
 
     fn glwe_lsh<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
     fn glwe_lsh_add<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
     fn glwe_lsh_sub<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 }
 
@@ -554,12 +555,12 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn glwe_mul_xp_minus_one_default<R, A>(module: &Module<BE>, k: i64, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef;
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
 
     fn glwe_mul_xp_minus_one_inplace_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut;
+        R: GLWEToBackendMut<BE>;
 
     fn glwe_shift_tmp_bytes_default(module: &Module<BE>) -> usize;
 
@@ -573,18 +574,18 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn glwe_lsh_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef;
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
 
     fn glwe_lsh_add_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef;
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
 
     fn glwe_lsh_sub_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef;
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
 
     fn glwe_normalize_tmp_bytes_default(module: &Module<BE>) -> usize;
 
@@ -929,15 +930,15 @@ where
 
     fn glwe_mul_xp_minus_one_default<R, A>(module: &Module<BE>, k: i64, res: &mut R, a: &A)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulXpMinusOneDefault<BE>>::glwe_mul_xp_minus_one(module, k, res, a)
     }
 
     fn glwe_mul_xp_minus_one_inplace_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEMulXpMinusOneDefault<BE>>::glwe_mul_xp_minus_one_assign(module, k, res, scratch)
     }
@@ -962,24 +963,24 @@ where
 
     fn glwe_lsh_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_lsh(module, res, a, k, scratch)
     }
 
     fn glwe_lsh_add_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_lsh_add(module, res, a, k, scratch)
     }
 
     fn glwe_lsh_sub_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_lsh_sub(module, res, a, k, scratch)
     }
