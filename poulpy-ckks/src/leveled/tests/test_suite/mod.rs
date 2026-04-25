@@ -524,31 +524,31 @@ macro_rules! ckks_backend_test_suite {
             );
             run_test!(
                 mul_pow2_aligned,
-                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_aligned
+                $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_aligned
             );
             run_test!(
                 mul_pow2_smaller_output,
-                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_smaller_output
+                $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_smaller_output
             );
             run_test!(
                 mul_pow2_inplace,
-                $crate::leveled::tests::test_suite::pow2::test_mul_pow2_inplace
+                $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_inplace
             );
             run_test!(
                 div_pow2_aligned,
-                $crate::leveled::tests::test_suite::pow2::test_div_pow2_aligned
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_aligned
             );
             run_test!(
                 div_pow2_smaller_output,
-                $crate::leveled::tests::test_suite::pow2::test_div_pow2_smaller_output
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_smaller_output
             );
             run_test!(
                 div_pow2_inplace,
-                $crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_inplace
             );
             run_test!(
                 div_pow2_inplace_explicit_error,
-                $crate::leveled::tests::test_suite::pow2::test_div_pow2_inplace_explicit_error
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_inplace_explicit_error
             );
             run_test!(
                 composition_linear_sum,
@@ -738,7 +738,7 @@ pub mod mul_add;
 pub mod mul_many;
 pub mod mul_sub;
 pub mod neg;
-pub mod pow2;
+pub mod mul_pow2;
 pub mod rotate;
 pub mod sub;
 pub mod sub_without_normalization;

@@ -258,7 +258,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     pub fn precision_at(&self, log_decimal: usize) -> CKKSMeta {
         CKKSMeta {
             log_decimal,
-            log_hom_rem: 0,
+            log_hom_rem: self.params.prec.log_hom_rem(),
         }
     }
 
@@ -458,6 +458,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         let pt_znx = self
             .decrypt_with_prec(ct, self.precision_at(ct.log_decimal()), scratch)
             .unwrap();
+
         self.decode_pt_znx(&pt_znx)
     }
 
