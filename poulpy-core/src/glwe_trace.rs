@@ -110,7 +110,8 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
 
     for i in skip..log_n {
         let p: i64 = if i == 0 { -1 } else { module.galois_element(1 << (i - 1)) };
-        module.glwe_rsh(1, res, scratch);
+        let mut res_backend = &mut *res;
+        module.glwe_rsh(1, &mut res_backend, scratch);
         if let Some(key) = keys.get_automorphism_key(p) {
             module.glwe_automorphism_add_inplace(res, key, scratch);
         } else {

@@ -1491,14 +1491,14 @@ macro_rules! impl_operations_via_defaults {
             }
             fn glwe_rsh<'s, R>(module: &Module<Self>, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToMut,
+                R: GLWEToBackendMut<Self>,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_rsh_default(module, k, res, scratch)
             }
             fn glwe_lsh_inplace<'s, R>(module: &Module<Self>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
-                R: GLWEToMut,
+                R: GLWEToBackendMut<Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_lsh_inplace_default(module, res, k, scratch)
             }

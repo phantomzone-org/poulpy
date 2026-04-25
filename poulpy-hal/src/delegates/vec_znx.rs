@@ -1,20 +1,19 @@
 use crate::{
     api::{
-        VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddNormalBackend, VecZnxAddScalarAssign,
-        VecZnxAddScalarAssignBackend, VecZnxAddScalarInto, VecZnxAddScalarIntoBackend, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormal,
-        VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace,
-        VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne,
-        VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshInplace, VecZnxRshSub,
-        VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalar, VecZnxSubScalarBackend, VecZnxSubScalarInplace,
-        VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal, VecZnxAddNormalBackend, VecZnxAddScalarAssignBackend,
+        VecZnxAddScalarIntoBackend, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
+        VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform, VecZnxFillUniformBackend, VecZnxLsh,
+        VecZnxLshAddInto, VecZnxLshInplaceBackend, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
+        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
+        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshInplaceBackend,
+        VecZnxRshSub, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
-        VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
+        VecZnxToRef,
     },
     oep::HalVecZnxImpl,
     source::Source,
@@ -64,16 +63,6 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxNormalizeInplace<B>,
-    fn vec_znx_normalize_inplace<'s, A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut,
-    {
-        B::vec_znx_normalize_assign(self, base2k, a, a_col, scratch)
-    }
-);
-
-impl_vec_znx_delegate!(
     VecZnxNormalizeInplaceBackend<B>,
     fn vec_znx_normalize_inplace_backend<'s, 'r>(
         &self,
@@ -115,25 +104,6 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxAddScalarInto,
-    fn vec_znx_add_scalar_into<R, D>(
-        &self,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &D,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        D: VecZnxToRef,
-    {
-        B::vec_znx_add_scalar_into(self, res, res_col, a, a_col, b, b_col, b_limb)
-    }
-);
-
-impl_vec_znx_delegate!(
     VecZnxAddScalarIntoBackend<B>,
     fn vec_znx_add_scalar_into_backend<'r, 'a>(
         &self,
@@ -146,16 +116,6 @@ impl_vec_znx_delegate!(
         b_limb: usize,
     ) {
         B::vec_znx_add_scalar_into_backend(self, res, res_col, a, a_col, b, b_col, b_limb)
-    }
-);
-
-impl_vec_znx_delegate!(
-    VecZnxAddScalarAssign,
-    fn vec_znx_add_scalar_assign<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_add_scalar_assign(self, res, res_col, res_limb, a, a_col)
     }
 );
 
@@ -215,25 +175,6 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxSubScalar,
-    fn vec_znx_sub_scalar<R, D>(
-        &self,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &D,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        D: VecZnxToRef,
-    {
-        B::vec_znx_sub_scalar(self, res, res_col, a, a_col, b, b_col, b_limb)
-    }
-);
-
-impl_vec_znx_delegate!(
     VecZnxSubScalarBackend<B>,
     fn vec_znx_sub_scalar_backend<'r, 'a>(
         &self,
@@ -246,16 +187,6 @@ impl_vec_znx_delegate!(
         b_limb: usize,
     ) {
         B::vec_znx_sub_scalar_backend(self, res, res_col, a, a_col, b, b_col, b_limb)
-    }
-);
-
-impl_vec_znx_delegate!(
-    VecZnxSubScalarInplace,
-    fn vec_znx_sub_scalar_inplace<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
-    where
-        R: VecZnxToMut,
-    {
-        B::vec_znx_sub_scalar_assign(self, res, res_col, res_limb, a, a_col)
     }
 );
 
@@ -422,28 +353,36 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxLshInplace<B>,
-    fn vec_znx_lsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut,
-    {
-        B::vec_znx_lsh_assign(self, base2k, k, a, a_col, scratch)
+    VecZnxLshInplaceBackend<B>,
+    fn vec_znx_lsh_inplace_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
+        B::vec_znx_lsh_inplace_backend(self, base2k, k, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRshInplace<B>,
-    fn vec_znx_rsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut,
-    {
-        B::vec_znx_rsh_assign(self, base2k, k, a, a_col, scratch)
+    VecZnxRshInplaceBackend<B>,
+    fn vec_znx_rsh_inplace_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
+        B::vec_znx_rsh_inplace_backend(self, base2k, k, a, a_col, scratch)
     }
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRotate<B>,
-    fn vec_znx_rotate<'r, 'a>(
+    VecZnxRotateBackend<B>,
+    fn vec_znx_rotate_backend<'r, 'a>(
         &self,
         k: i64,
         res: &mut VecZnxBackendMut<'r, B>,
@@ -451,7 +390,7 @@ impl_vec_znx_delegate!(
         a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
     ) {
-        B::vec_znx_rotate(self, k, res, res_col, a, a_col)
+        B::vec_znx_rotate_backend(self, k, res, res_col, a, a_col)
     }
 );
 
@@ -463,15 +402,15 @@ impl_vec_znx_delegate!(
 );
 
 impl_vec_znx_delegate!(
-    VecZnxRotateInplace<B>,
-    fn vec_znx_rotate_inplace<'s, 'r>(
+    VecZnxRotateInplaceBackend<B>,
+    fn vec_znx_rotate_inplace_backend<'s, 'r>(
         &self,
         k: i64,
         a: &mut VecZnxBackendMut<'r, B>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
     ) {
-        B::vec_znx_rotate_inplace(self, k, a, a_col, scratch)
+        B::vec_znx_rotate_inplace_backend(self, k, a, a_col, scratch)
     }
 );
 

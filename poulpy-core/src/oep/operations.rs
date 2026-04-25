@@ -249,12 +249,12 @@ pub unsafe trait GLWEShiftImpl<BE: Backend>: Backend {
 
     fn glwe_rsh<'s, R>(module: &Module<BE>, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
     fn glwe_lsh_inplace<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut;
+        R: crate::layouts::GLWEToBackendMut<BE>;
 
     fn glwe_lsh<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
@@ -565,11 +565,11 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn glwe_rsh_default<'s, R>(module: &Module<BE>, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut;
+        R: crate::layouts::GLWEToBackendMut<BE>;
 
     fn glwe_lsh_inplace_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut;
+        R: crate::layouts::GLWEToBackendMut<BE>;
 
     fn glwe_lsh_default<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
@@ -948,14 +948,14 @@ where
 
     fn glwe_rsh_default<'s, R>(module: &Module<BE>, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_rsh(module, k, res, scratch)
     }
 
     fn glwe_lsh_inplace_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
     {
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_lsh_assign(module, res, k, scratch)
     }

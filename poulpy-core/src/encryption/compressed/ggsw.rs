@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplace},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend},
     layouts::{
         Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
         ZnxZero,
@@ -50,7 +50,7 @@ where
         + GGSWEncryptSk<BE>
         + GGSWNoise<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeInplace<BE>,
+        + VecZnxNormalizeInplaceBackend<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -119,7 +119,13 @@ where
                         );
                     self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_data, 0, (dsize - 1) + row_i * dsize, &pt_backend, 0);
                 }
-                scratch_1 = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch));
+                scratch_1 = scratch_1.apply_mut(|scratch| {
+                    let mut tmp_pt_data =
+                        <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
+                            &mut tmp_pt.data,
+                        );
+                    self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_pt_data, 0, scratch)
+                });
 
                 for col_j in 0..rank + 1 {
                     // rlwe encrypt of vec_znx_pt into vec_znx_ct

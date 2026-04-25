@@ -6,12 +6,13 @@ use crate::{
         ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormal,
         VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormal, VecZnxFillNormalBackend, VecZnxFillUniform,
-        VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
-        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing,
-        VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
-        VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxFillUniformBackend, VecZnxLsh, VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRings,
+        VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
+        VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        VecZnxRotateBackend, VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplaceBackend,
+        VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxZeroBackend,
     },
     layouts::{DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     source::Source,
@@ -930,9 +931,9 @@ pub fn test_vec_znx_normalize_inplace<BR: crate::test_suite::TestBackend, BT: cr
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxNormalizeInplace<BR> + VecZnxNormalizeTmpBytes,
+    Module<BR>: VecZnxNormalizeInplaceBackend<BR> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxNormalizeInplace<BT> + VecZnxNormalizeTmpBytes,
+    Module<BT>: VecZnxNormalizeInplaceBackend<BT> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -954,8 +955,18 @@ pub fn test_vec_znx_normalize_inplace<BR: crate::test_suite::TestBackend, BT: cr
 
         // Reference
         for i in 0..cols {
-            module_ref.vec_znx_normalize_inplace(base2k, &mut res_ref, i, &mut scratch_ref.arena());
-            module_test.vec_znx_normalize_inplace(base2k, &mut res_test, i, &mut scratch_test.arena());
+            module_ref.vec_znx_normalize_inplace_backend(
+                base2k,
+                &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                i,
+                &mut scratch_ref.arena(),
+            );
+            module_test.vec_znx_normalize_inplace_backend(
+                base2k,
+                &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                i,
+                &mut scratch_test.arena(),
+            );
         }
 
         assert_eq!(res_ref, res_test);
@@ -969,8 +980,8 @@ pub fn test_vec_znx_rotate<BR: crate::test_suite::TestBackend, BT: crate::test_s
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxRotate<BR>,
-    Module<BT>: VecZnxRotate<BT>,
+    Module<BR>: VecZnxRotateBackend<BR>,
+    Module<BT>: VecZnxRotateBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -992,14 +1003,14 @@ pub fn test_vec_znx_rotate<BR: crate::test_suite::TestBackend, BT: crate::test_s
 
             // Normalize on c
             for i in 0..cols {
-                module_ref.vec_znx_rotate(
+                module_ref.vec_znx_rotate_backend(
                     p,
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref),
                     i,
                     &vec_znx_backend_ref::<BR>(&a),
                     i,
                 );
-                module_test.vec_znx_rotate(
+                module_test.vec_znx_rotate_backend(
                     p,
                     &mut vec_znx_backend_mut::<BT>(&mut res_test),
                     i,
@@ -1015,14 +1026,14 @@ pub fn test_vec_znx_rotate<BR: crate::test_suite::TestBackend, BT: crate::test_s
 
             // Normalize on c
             for i in 0..cols {
-                module_ref.vec_znx_rotate(
+                module_ref.vec_znx_rotate_backend(
                     p,
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref),
                     i,
                     &vec_znx_backend_ref::<BR>(&a),
                     i,
                 );
-                module_test.vec_znx_rotate(
+                module_test.vec_znx_rotate_backend(
                     p,
                     &mut vec_znx_backend_mut::<BT>(&mut res_test),
                     i,
@@ -1044,9 +1055,9 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend, BT: crate
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxRotateInplace<BR> + VecZnxRotateInplaceTmpBytes,
+    Module<BR>: VecZnxRotateInplaceBackend<BR> + VecZnxRotateInplaceTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxRotateInplace<BT> + VecZnxRotateInplaceTmpBytes,
+    Module<BT>: VecZnxRotateInplaceBackend<BT> + VecZnxRotateInplaceTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1071,8 +1082,18 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend, BT: crate
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_rotate_inplace(p, &mut vec_znx_backend_mut::<BR>(&mut res_ref), i, &mut scratch_ref.arena());
-            module_test.vec_znx_rotate_inplace(p, &mut vec_znx_backend_mut::<BT>(&mut res_test), i, &mut scratch_test.arena());
+            module_ref.vec_znx_rotate_inplace_backend(
+                p,
+                &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                i,
+                &mut scratch_ref.arena(),
+            );
+            module_test.vec_znx_rotate_inplace_backend(
+                p,
+                &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                i,
+                &mut scratch_test.arena(),
+            );
         }
 
         assert_eq!(res_ref, res_test);
@@ -1081,8 +1102,18 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend, BT: crate
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_rotate_inplace(p, &mut vec_znx_backend_mut::<BR>(&mut res_ref), i, &mut scratch_ref.arena());
-            module_test.vec_znx_rotate_inplace(p, &mut vec_znx_backend_mut::<BT>(&mut res_test), i, &mut scratch_test.arena());
+            module_ref.vec_znx_rotate_inplace_backend(
+                p,
+                &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                i,
+                &mut scratch_ref.arena(),
+            );
+            module_test.vec_znx_rotate_inplace_backend(
+                p,
+                &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                i,
+                &mut scratch_test.arena(),
+            );
         }
 
         assert_eq!(res_ref, res_test);
@@ -1278,9 +1309,9 @@ pub fn test_vec_znx_lsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxLshInplace<BR> + VecZnxLshTmpBytes,
+    Module<BR>: VecZnxLshInplaceBackend<BR> + VecZnxLshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxLshInplace<BT> + VecZnxLshTmpBytes,
+    Module<BT>: VecZnxLshInplaceBackend<BT> + VecZnxLshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1302,8 +1333,20 @@ pub fn test_vec_znx_lsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_ref.vec_znx_lsh_inplace(base2k, k, &mut res_ref, i, &mut scratch_ref.arena());
-                module_test.vec_znx_lsh_inplace(base2k, k, &mut res_test, i, &mut scratch_test.arena());
+                module_ref.vec_znx_lsh_inplace_backend(
+                    base2k,
+                    k,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    i,
+                    &mut scratch_ref.arena(),
+                );
+                module_test.vec_znx_lsh_inplace_backend(
+                    base2k,
+                    k,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    i,
+                    &mut scratch_test.arena(),
+                );
             }
 
             assert_eq!(res_ref, res_test);
@@ -1366,9 +1409,9 @@ pub fn test_vec_znx_rsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
 ) where
     BR::OwnedBuf: crate::layouts::HostDataMut,
     BT::OwnedBuf: crate::layouts::HostDataMut,
-    Module<BR>: VecZnxRshInplace<BR> + VecZnxRshTmpBytes,
+    Module<BR>: VecZnxRshInplaceBackend<BR> + VecZnxRshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxRshInplace<BT> + VecZnxRshTmpBytes,
+    Module<BT>: VecZnxRshInplaceBackend<BT> + VecZnxRshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1389,8 +1432,20 @@ pub fn test_vec_znx_rsh_inplace<BR: crate::test_suite::TestBackend, BT: crate::t
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_ref.vec_znx_rsh_inplace(base2k, k, &mut res_ref, i, &mut scratch_ref.arena());
-                module_test.vec_znx_rsh_inplace(base2k, k, &mut res_test, i, &mut scratch_test.arena());
+                module_ref.vec_znx_rsh_inplace_backend(
+                    base2k,
+                    k,
+                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                    i,
+                    &mut scratch_ref.arena(),
+                );
+                module_test.vec_znx_rsh_inplace_backend(
+                    base2k,
+                    k,
+                    &mut vec_znx_backend_mut::<BT>(&mut res_test),
+                    i,
+                    &mut scratch_test.arena(),
+                );
             }
 
             assert_eq!(res_ref, res_test);

@@ -1,6 +1,9 @@
 use poulpy_hal::{
-    api::VecZnxAddScalarAssign,
-    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, Stats, ZnxZero},
+    api::VecZnxAddScalarAssignBackend,
+    layouts::{
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
+        VecZnxReborrowBackendMut, ZnxZero,
+    },
 };
 
 use crate::noise::glwe::glwe_noise_backend_inner;
@@ -39,7 +42,7 @@ impl<D: HostDataRef> GGLWE<D> {
 
 impl<BE: Backend + HostBackend> GGLWENoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarAssign + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWENormalize<BE>,
+    Module<BE>: VecZnxAddScalarAssignBackend<BE> + GLWENoise<BE> + GLWEDecrypt<BE> + GLWEDecryptDefault<BE> + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn gglwe_noise_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -80,7 +83,19 @@ where
         let dsize: usize = res_ref.dsize().into();
         let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_ref);
         pt.data_mut().zero();
-        self.vec_znx_add_scalar_assign(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, res_col);
+        let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
+            ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n, pt_want.cols);
+        {
+            let mut pt_data =
+                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut pt.data);
+            self.vec_znx_add_scalar_assign_backend(
+                &mut pt_data,
+                0,
+                (dsize - 1) + res_row * dsize,
+                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&pt_want_backend),
+                res_col,
+            );
+        }
         let res_at_ref = res_ref.at(res_row, res_col);
         let res_at_backend = gglwe_at_backend_ref_from_ref::<BE>(&res_backend, res_row, res_col);
         glwe_noise_backend_inner(self, &res_at_ref, &res_at_backend, &pt, &sk_backend, &mut scratch_1)

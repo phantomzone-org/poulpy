@@ -6,7 +6,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{
         Backend, HostBackend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, VecZnx, VecZnxToBackendMut, ZnxView,
         ZnxViewMut,
@@ -34,7 +34,7 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
         + GGSWNoise<BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateInplace<BE>,
+        + VecZnxRotateInplaceBackend<BE>,
     BE: HostBackend,
     BE: 'static,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -140,7 +140,7 @@ pub fn test_scalar_to_ggsw_blind_rotation<BRA: BlindRotationAlgo, BE: Backend<Ow
             scalar_want_vec.raw_mut().copy_from_slice(scalar_want.raw());
             {
                 let mut scalar_want_backend = <VecZnx<Vec<u8>> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut scalar_want_vec);
-                module.vec_znx_rotate_inplace(-rot, &mut scalar_want_backend, 0, &mut scratch.borrow());
+                module.vec_znx_rotate_inplace_backend(-rot, &mut scalar_want_backend, 0, &mut scratch.borrow());
             }
             scalar_want.raw_mut().copy_from_slice(scalar_want_vec.raw());
 

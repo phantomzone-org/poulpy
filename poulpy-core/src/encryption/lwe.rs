@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchArenaTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ScratchArenaTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
     layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
@@ -35,7 +35,7 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
 where
-    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
+    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes,
 {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -112,7 +112,7 @@ where
 
         self.vec_znx_add_normal(base2k, &mut tmp_znx, 0, enc_infos.noise_infos(), source_xe);
 
-        let _ = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace(base2k, &mut tmp_znx, 0, scratch));
+        let _ = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_znx, 0, scratch));
 
         (0..res.size()).for_each(|i| {
             res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];

@@ -273,6 +273,12 @@ impl<BE: Backend> GLWEToBackendRef<BE> for GLWE<BE::OwnedBuf> {
     }
 }
 
+impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &mut GLWE<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        glwe_backend_ref_from_mut::<BE>(self)
+    }
+}
+
 pub fn glwe_backend_ref_from_ref<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufRef<'b>>) -> GLWEBackendRef<'a, BE> {
     GLWE {
         base2k: glwe.base2k,
@@ -312,6 +318,12 @@ impl<BE: Backend> GLWEToBackendMut<BE> for GLWE<BE::OwnedBuf> {
             base2k: self.base2k,
             data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
         }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWEToBackendMut<BE> for &mut GLWE<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE> {
+        glwe_backend_mut_from_mut::<BE>(self)
     }
 }
 

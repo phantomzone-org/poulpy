@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
@@ -24,7 +24,7 @@ where
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxRotateAssign<BE>
+        + VecZnxRotateInplaceBackend<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -129,7 +129,7 @@ where
 
             module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_inplace(
+            module.vec_znx_rotate_inplace_backend(
                 k as i64,
                 &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
                 0,
@@ -182,7 +182,7 @@ where
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxRotateAssign<BE>
+        + VecZnxRotateInplaceBackend<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -275,7 +275,7 @@ where
 
             module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_inplace(
+            module.vec_znx_rotate_inplace_backend(
                 k as i64,
                 &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
                 0,

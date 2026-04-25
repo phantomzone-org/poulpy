@@ -5,12 +5,12 @@ use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, VecZnxAddIntoBackend, VecZnxBigAlloc, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeInplace,
+        VecZnxNormalizeInplaceBackend,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecR, FillUniform, ScratchArena, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
-        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
-        ZnxZero,
+        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView,
+        ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -27,7 +27,7 @@ where
         + Convolution<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeAssign<BE>
+        + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxBigAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
@@ -104,7 +104,7 @@ where
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeAssign<BE>
+        + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxBigAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
@@ -197,7 +197,7 @@ where
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeAssign<BE>
+        + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxBigAlloc<BE>
         + VecZnxAddIntoBackend<BE>
         + VecZnxCopyBackend<BE>,
@@ -331,39 +331,42 @@ pub fn bivariate_convolution_naive<'s, R, A, B, M, BE: crate::test_suite::TestBa
     R: VecZnxToMut,
     A: VecZnxToRef,
     B: VecZnxToRef,
-    M: VecZnxNormalizeInplace<BE>,
+    R: VecZnxToBackendMut<BE>,
+    M: VecZnxNormalizeInplaceBackend<BE>,
 {
-    let res: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
-    let a: &VecZnx<&[u8]> = &a.to_ref();
-    let b: &VecZnx<&[u8]> = &b.to_ref();
+    {
+        let res: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
+        let a: &VecZnx<&[u8]> = &a.to_ref();
+        let b: &VecZnx<&[u8]> = &b.to_ref();
 
-    for j in 0..res.size() {
-        res.zero_at(res_col, j);
-    }
+        for j in 0..res.size() {
+            res.zero_at(res_col, j);
+        }
 
-    for a_limb in 0..a.size() {
-        for b_limb in 0..b.size() {
-            let res_scale_abs = k.unsigned_abs() as usize;
+        for a_limb in 0..a.size() {
+            for b_limb in 0..b.size() {
+                let res_scale_abs = k.unsigned_abs() as usize;
 
-            let mut res_limb: usize = a_limb + b_limb + 1;
+                let mut res_limb: usize = a_limb + b_limb + 1;
 
-            if k <= 0 {
-                res_limb += res_scale_abs;
+                if k <= 0 {
+                    res_limb += res_scale_abs;
 
-                if res_limb < res.size() {
-                    negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
-                }
-            } else if res_limb >= res_scale_abs {
-                res_limb -= res_scale_abs;
+                    if res_limb < res.size() {
+                        negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
+                    }
+                } else if res_limb >= res_scale_abs {
+                    res_limb -= res_scale_abs;
 
-                if res_limb < res.size() {
-                    negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
+                    if res_limb < res.size() {
+                        negacyclic_convolution_naive_add(res.at_mut(res_col, res_limb), a.at(a_col, a_limb), b.at(b_col, b_limb));
+                    }
                 }
             }
         }
     }
 
-    module.vec_znx_normalize_assign(base2k, res, res_col, scratch);
+    module.vec_znx_normalize_inplace_backend(base2k, &mut res.to_backend_mut(), res_col, scratch);
 }
 
 fn bivariate_tensoring_naive<'s, R, A, B, M, BE: crate::test_suite::TestBackend>(
@@ -379,52 +382,57 @@ fn bivariate_tensoring_naive<'s, R, A, B, M, BE: crate::test_suite::TestBackend>
     R: VecZnxToMut,
     A: VecZnxToRef,
     B: VecZnxToRef,
-    M: VecZnxNormalizeInplace<BE>,
+    R: VecZnxToBackendMut<BE>,
+    M: VecZnxNormalizeInplaceBackend<BE>,
 {
-    let res: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
-    let a: &VecZnx<&[u8]> = &a.to_ref();
-    let b: &VecZnx<&[u8]> = &b.to_ref();
+    let cols = {
+        let res: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
+        let a: &VecZnx<&[u8]> = &a.to_ref();
+        let b: &VecZnx<&[u8]> = &b.to_ref();
+        let cols = res.cols();
 
-    assert!(res.cols() >= a.cols() + b.cols() - 1);
+        assert!(res.cols() >= a.cols() + b.cols() - 1);
 
-    res.zero();
+        res.zero();
 
-    for a_col in 0..a.cols() {
-        for a_limb in 0..a.size() {
-            for b_col in 0..b.cols() {
-                for b_limb in 0..b.size() {
-                    let res_scale_abs = k.unsigned_abs() as usize;
+        for a_col in 0..a.cols() {
+            for a_limb in 0..a.size() {
+                for b_col in 0..b.cols() {
+                    for b_limb in 0..b.size() {
+                        let res_scale_abs = k.unsigned_abs() as usize;
 
-                    let mut res_limb: usize = a_limb + b_limb + 1;
+                        let mut res_limb: usize = a_limb + b_limb + 1;
 
-                    if k <= 0 {
-                        res_limb += res_scale_abs;
+                        if k <= 0 {
+                            res_limb += res_scale_abs;
 
-                        if res_limb < res.size() {
-                            negacyclic_convolution_naive_add(
-                                res.at_mut(a_col + b_col, res_limb),
-                                a.at(a_col, a_limb),
-                                b.at(b_col, b_limb),
-                            );
-                        }
-                    } else if res_limb >= res_scale_abs {
-                        res_limb -= res_scale_abs;
+                            if res_limb < res.size() {
+                                negacyclic_convolution_naive_add(
+                                    res.at_mut(a_col + b_col, res_limb),
+                                    a.at(a_col, a_limb),
+                                    b.at(b_col, b_limb),
+                                );
+                            }
+                        } else if res_limb >= res_scale_abs {
+                            res_limb -= res_scale_abs;
 
-                        if res_limb < res.size() {
-                            negacyclic_convolution_naive_add(
-                                res.at_mut(a_col + b_col, res_limb),
-                                a.at(a_col, a_limb),
-                                b.at(b_col, b_limb),
-                            );
+                            if res_limb < res.size() {
+                                negacyclic_convolution_naive_add(
+                                    res.at_mut(a_col + b_col, res_limb),
+                                    a.at(a_col, a_limb),
+                                    b.at(b_col, b_limb),
+                                );
+                            }
                         }
                     }
                 }
             }
         }
-    }
+        cols
+    };
 
-    for i in 0..res.cols() {
-        module.vec_znx_normalize_assign(base2k, res, i, scratch);
+    for i in 0..cols {
+        module.vec_znx_normalize_inplace_backend(base2k, &mut res.to_backend_mut(), i, scratch);
     }
 }
 

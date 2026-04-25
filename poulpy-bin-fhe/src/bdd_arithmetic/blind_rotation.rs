@@ -6,15 +6,15 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{VecZnxAddScalarAssign, VecZnxNormalizeInplace},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScratchArena, ZnxZero},
+    api::{VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend},
+    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, VecZnxToBackendMut, ZnxZero},
 };
 
 use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssignBackend<BE> + VecZnxNormalizeInplaceBackend<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
@@ -32,7 +32,7 @@ where
 ///   the scalar test-vector into each row of a temporary GLWE and then rotating.
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssignBackend<BE> + VecZnxNormalizeInplaceBackend<BE>,
 {
     /// Returns the minimum scratch-space size in bytes required by
     /// [`ggsw_blind_rotation`][Self::ggsw_blind_rotation].
@@ -158,12 +158,24 @@ where
         // calling backend-generic blind rotation.
         let mut tmp_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&*res);
         let mut scratch_1 = scratch.borrow();
+        let test_vector_backend: ScalarZnx<BE::OwnedBuf> =
+            ScalarZnx::from_data(BE::from_host_bytes(test_vector.data), test_vector.n, test_vector.cols);
 
         for col in 0..(res.rank() + 1).into() {
             for row in 0..res.dnum().into() {
                 tmp_glwe.data_mut().zero();
-                self.vec_znx_add_scalar_assign(tmp_glwe.data_mut(), col, (dsize - 1) + row * dsize, test_vector, 0);
-                self.vec_znx_normalize_inplace(base2k, tmp_glwe.data_mut(), col, &mut scratch_1.borrow());
+                {
+                    let mut tmp_glwe_data =
+                        <poulpy_hal::layouts::VecZnx<Vec<u8>> as VecZnxToBackendMut<BE>>::to_backend_mut(tmp_glwe.data_mut());
+                    self.vec_znx_add_scalar_assign_backend(
+                        &mut tmp_glwe_data,
+                        col,
+                        (dsize - 1) + row * dsize,
+                        &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&test_vector_backend),
+                        0,
+                    );
+                    self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_glwe_data, col, &mut scratch_1.borrow());
+                }
 
                 let mut res_at = res.at_mut(row, col);
                 self.glwe_blind_rotation(

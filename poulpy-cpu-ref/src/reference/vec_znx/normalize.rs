@@ -5,7 +5,13 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+    },
+    layouts::{
+        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView,
+        ZnxViewMut,
+    },
     reference::znx::{
         ZnxAddAssign, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
         ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly,
@@ -691,18 +697,18 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_normalize_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_normalize_inplace<B: Backend<OwnedBuf = Vec<u8>>>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_normalize_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
-    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -724,7 +730,12 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize_inplace(base2k, &mut a, i, &mut scratch.borrow());
+                module.vec_znx_normalize_inplace_backend(
+                    base2k,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut a),
+                    i,
+                    &mut scratch.borrow(),
+                );
             }
             black_box(());
         }

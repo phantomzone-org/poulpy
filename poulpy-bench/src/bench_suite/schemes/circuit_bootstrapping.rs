@@ -9,7 +9,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{Backend, HostBackend, Module, ScratchOwned},
     source::Source,
 };
@@ -39,7 +39,7 @@ pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateAssign<BE>,
+        + VecZnxRotateInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     let group_name: String = format!("circuit_bootstrapping::{label}");

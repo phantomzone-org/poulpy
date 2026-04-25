@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplaceBackend},
     layouts::{Module, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
-    test_suite::TestParams,
+    test_suite::{TestParams, vec_znx_backend_mut},
 };
 
 use crate::{
@@ -31,7 +31,7 @@ where
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalizeInplace<BE>,
+        + VecZnxNormalizeInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -128,7 +128,12 @@ where
         module.glwe_decrypt(&glwe_out, &mut pt_have, &sk_dft, &mut scratch.borrow());
 
         vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
-        module.vec_znx_normalize_inplace(pt_want.base2k().as_usize(), &mut pt_want.data, 0, &mut scratch.borrow());
+        module.vec_znx_normalize_inplace_backend(
+            pt_want.base2k().as_usize(),
+            &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
+            0,
+            &mut scratch.borrow(),
+        );
 
         let noise_have: f64 = pt_want.stats().std().log2();
 

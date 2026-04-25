@@ -3,7 +3,8 @@ use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace, VecZnxDftZero,
-        VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotate, VecZnxZeroBackend, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
+        VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotateBackend, VecZnxZeroBackend, VmpApplyDftToDft,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, SvpPPolOwned, SvpPPolToBackendRef, VecZnx,
@@ -50,7 +51,7 @@ where
         + VecZnxIdftApplyTmpBytes
         + GLWEExternalProduct<BE>
         + ModuleN
-        + VecZnxRotate<BE>
+        + VecZnxRotateBackend<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftZero<BE>
         + VmpApplyDftToDft<BE>
@@ -167,7 +168,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     LWE<DataIn>: LWEToRef,
     M: VecZnxDftBytesOf
         + ModuleN
-        + VecZnxRotate<BE>
+        + VecZnxRotateBackend<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftZero<BE>
         + VmpApplyDftToDft<BE>
@@ -226,12 +227,12 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     for (i, j) in (0..b_lo).zip(extension_factor - b_lo..extension_factor) {
         let lut_ref: poulpy_hal::layouts::VecZnxBackendRef<'_, BE> =
             <poulpy_hal::layouts::VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(lut.data[j].data());
-        module.vec_znx_rotate(b_hi as i64 + 1, &mut acc[i], 0, &lut_ref, 0);
+        module.vec_znx_rotate_backend(b_hi as i64 + 1, &mut acc[i], 0, &lut_ref, 0);
     }
     for (i, j) in (b_lo..extension_factor).zip(0..extension_factor - b_lo) {
         let lut_ref: poulpy_hal::layouts::VecZnxBackendRef<'_, BE> =
             <poulpy_hal::layouts::VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(lut.data[j].data());
-        module.vec_znx_rotate(b_hi as i64, &mut acc[i], 0, &lut_ref, 0);
+        module.vec_znx_rotate_backend(b_hi as i64, &mut acc[i], 0, &lut_ref, 0);
     }
 
     let block_size: usize = brk.block_size();
@@ -349,7 +350,7 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     LWE<DataIn>: LWEToRef,
     M: VecZnxDftBytesOf
         + ModuleN
-        + VecZnxRotate<BE>
+        + VecZnxRotateBackend<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftZero<BE>
         + VmpApplyDftToDft<BE>
@@ -389,7 +390,7 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         <poulpy_hal::layouts::VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(lut.data[0].data());
     {
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
-        module.vec_znx_rotate(b, out_backend.data_mut(), 0, &lut_ref, 0);
+        module.vec_znx_rotate_backend(b, out_backend.data_mut(), 0, &lut_ref, 0);
     }
 
     let block_size: usize = brk.block_size();
@@ -479,7 +480,7 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
     DataIn: Data,
     LWE<DataIn>: LWEToRef,
-    M: VecZnxRotate<BE> + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd<BE> + GLWENormalize<BE> + GLWECopy<BE>,
+    M: VecZnxRotateBackend<BE> + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd<BE> + GLWENormalize<BE> + GLWECopy<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     // TODO(device): the standard CGGI path still uses host-visible
     // coefficient staging for the accumulator.
@@ -532,7 +533,7 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         <poulpy_hal::layouts::VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(lut.data[0].data());
     {
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
-        module.vec_znx_rotate(b, out_backend.data_mut(), 0, &lut_ref, 0);
+        module.vec_znx_rotate_backend(b, out_backend.data_mut(), 0, &lut_ref, 0);
     }
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]

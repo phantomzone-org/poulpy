@@ -23,8 +23,8 @@ use crate::reference::znx::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, HostDataMut, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut,
-        VecZnxBackendRef, VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut,
+        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -107,29 +107,6 @@ where
         );
     }
 
-    fn vec_znx_normalize_inplace_default<'s, R>(
-        module: &Module<BE>,
-        base2k: usize,
-        res: &mut R,
-        res_col: usize,
-        scratch: &'s mut ScratchArena<'s, BE>,
-    ) where
-        BE: 's,
-        BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
-        R: VecZnxToMut,
-        BE::BufMut<'s>: HostBufMut<'s>,
-    {
-        let byte_count = vec_znx_normalize_tmp_bytes(module.n());
-        assert!(
-            byte_count.is_multiple_of(size_of::<i64>()),
-            "Scratch buffer size {} must be divisible by {}",
-            byte_count,
-            size_of::<i64>()
-        );
-        let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), byte_count / size_of::<i64>());
-        vec_znx_normalize_inplace::<R, BE>(base2k, res, res_col, carry);
-    }
-
     fn vec_znx_normalize_inplace_backend_default<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
@@ -195,24 +172,6 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into_default<R, B>(
-        _module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        BE: ZnxAdd + ZnxCopy + ZnxZero,
-        R: VecZnxToMut,
-        B: VecZnxToRef,
-    {
-        vec_znx_add_scalar_into::<R, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
-    }
-
-    #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_into_backend_default<'r, 'a>(
         _module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -231,20 +190,6 @@ where
         vec_znx_add_scalar_into::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
             res, res_col, &a_ref, a_col, b, b_col, b_limb,
         );
-    }
-
-    fn vec_znx_add_scalar_assign_default<R>(
-        _module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        res_limb: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-    ) where
-        BE: ZnxAddAssign,
-        R: VecZnxToMut,
-    {
-        vec_znx_add_scalar_assign::<R, BE>(res, res_col, res_limb, a, a_col);
     }
 
     fn vec_znx_add_scalar_assign_backend_default<'r, 'a>(
@@ -310,24 +255,6 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar_default<R, B>(
-        _module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        BE: ZnxSub + ZnxZero,
-        R: VecZnxToMut,
-        B: VecZnxToRef,
-    {
-        vec_znx_sub_scalar::<R, B, BE>(res, res_col, a, a_col, b, b_col, b_limb);
-    }
-
-    #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_scalar_backend_default<'r, 'a>(
         _module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -346,20 +273,6 @@ where
         vec_znx_sub_scalar::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
             res, res_col, &a_ref, a_col, b, b_col, b_limb,
         );
-    }
-
-    fn vec_znx_sub_scalar_inplace_default<R>(
-        _module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        res_limb: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-    ) where
-        BE: ZnxSubAssign,
-        R: VecZnxToMut,
-    {
-        vec_znx_sub_scalar_inplace::<R, BE>(res, res_col, res_limb, a, a_col);
     }
 
     fn vec_znx_sub_scalar_inplace_backend_default<'r, 'a>(
@@ -573,11 +486,11 @@ where
         vec_znx_rsh_sub::<R, A, BE>(base2k, k, res, res_col, a, a_col, carry);
     }
 
-    fn vec_znx_rsh_inplace_default<'s, R>(
+    fn vec_znx_rsh_inplace_backend_default<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
@@ -587,34 +500,34 @@ where
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeMiddleStep
-            + ZnxNormalizeMiddleStepAssign
-            + ZnxNormalizeFirstStepAssign
-            + ZnxNormalizeFinalStepAssign,
-        R: VecZnxToMut,
+            + ZnxNormalizeMiddleStepInplace
+            + ZnxNormalizeFirstStepInplace
+            + ZnxNormalizeFinalStepInplace,
+        BE::BufMut<'r>: HostDataMut,
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_rsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_rsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
+        vec_znx_rsh_inplace::<VecZnxBackendMut<'r, BE>, BE>(base2k, k, res, res_col, carry);
     }
 
-    fn vec_znx_lsh_inplace_default<'s, R>(
+    fn vec_znx_lsh_inplace_backend_default<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        res: &mut R,
+        res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: 's,
         BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
-        R: VecZnxToMut,
+        BE::BufMut<'r>: HostDataMut,
         BE::BufMut<'s>: HostBufMut<'s>,
     {
         let (carry, _) = take_host_typed::<BE, i64>(scratch.borrow(), vec_znx_lsh_tmp_bytes(module.n()) / size_of::<i64>());
-        vec_znx_lsh_inplace::<R, BE>(base2k, k, res, res_col, carry);
+        vec_znx_lsh_inplace::<VecZnxBackendMut<'r, BE>, BE>(base2k, k, res, res_col, carry);
     }
 
-    fn vec_znx_rotate_default<'r, 'a>(
+    fn vec_znx_rotate_backend_default<'r, 'a>(
         _module: &Module<BE>,
         p: i64,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -633,7 +546,7 @@ where
         vec_znx_rotate_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_rotate_inplace_default<'s, 'r>(
+    fn vec_znx_rotate_inplace_backend_default<'s, 'r>(
         module: &Module<BE>,
         p: i64,
         res: &mut VecZnxBackendMut<'r, BE>,

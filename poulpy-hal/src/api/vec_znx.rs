@@ -1,7 +1,6 @@
 use crate::{
     layouts::{
-        Backend, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
-        VecZnxToRef,
+        Backend, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut, VecZnxToRef,
     },
     source::Source,
 };
@@ -29,13 +28,6 @@ pub trait VecZnxNormalize<B: Backend> {
         a_col: usize,
         scratch: &mut ScratchArena<'s, B>,
     );
-}
-
-pub trait VecZnxNormalizeAssign<B: Backend> {
-    /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_inplace<'s, A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut;
 }
 
 pub trait VecZnxNormalizeInplaceBackend<B: Backend> {
@@ -71,23 +63,6 @@ pub trait VecZnxAddAssignBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxAddScalarInto {
-    /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
-    #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into<R, B>(
-        &self,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        B: VecZnxToRef;
-}
-
 pub trait VecZnxAddScalarIntoBackend<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_into_backend<'r, 'a>(
@@ -100,13 +75,6 @@ pub trait VecZnxAddScalarIntoBackend<B: Backend> {
         b_col: usize,
         b_limb: usize,
     );
-}
-
-pub trait VecZnxAddScalarAssign {
-    /// Adds the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_add_scalar_assign<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
-    where
-        R: VecZnxToMut;
 }
 
 pub trait VecZnxAddScalarAssignBackend<B: Backend> {
@@ -152,23 +120,6 @@ pub trait VecZnxSubNegateInplaceBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxSubScalar {
-    /// Subtracts the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
-    #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar<R, B>(
-        &self,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        B: VecZnxToRef;
-}
-
 pub trait VecZnxSubScalarBackend<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_scalar_backend<'r, 'a>(
@@ -181,13 +132,6 @@ pub trait VecZnxSubScalarBackend<B: Backend> {
         b_col: usize,
         b_limb: usize,
     );
-}
-
-pub trait VecZnxSubScalarInplace {
-    /// Subtracts the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_sub_scalar_inplace<R>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
-    where
-        R: VecZnxToMut;
 }
 
 pub trait VecZnxSubScalarInplaceBackend<B: Backend> {
@@ -327,23 +271,33 @@ pub trait VecZnxRshSub<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxLshAssign<B: Backend> {
+pub trait VecZnxLshInplaceBackend<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_lsh_inplace_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
-pub trait VecZnxRshAssign<B: Backend> {
+pub trait VecZnxRshInplaceBackend<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace<'s, A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut ScratchArena<'s, B>)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_rsh_inplace_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
-pub trait VecZnxRotate<B: Backend> {
+pub trait VecZnxRotateBackend<B: Backend> {
     /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
-    fn vec_znx_rotate<'r, 'a>(
+    fn vec_znx_rotate_backend<'r, 'a>(
         &self,
         p: i64,
         res: &mut VecZnxBackendMut<'r, B>,
@@ -357,9 +311,9 @@ pub trait VecZnxRotateAssignTmpBytes {
     fn vec_znx_rotate_assign_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxRotateAssign<B: Backend> {
+pub trait VecZnxRotateInplaceBackend<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace<'s, 'r>(
+    fn vec_znx_rotate_inplace_backend<'s, 'r>(
         &self,
         p: i64,
         a: &mut VecZnxBackendMut<'r, B>,

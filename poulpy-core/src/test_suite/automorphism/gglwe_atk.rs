@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxSubScalarInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism},
     layouts::{Backend, GaloisElement, Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -28,7 +28,6 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
         + GLWEAutomorphismKeyAutomorphism<BE>
         + VecZnxAutomorphism
         + GaloisElement
-        + VecZnxSubScalarAssign
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -200,7 +199,6 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
         + GLWEAutomorphismKeyAutomorphism<BE>
         + VecZnxAutomorphism
         + GaloisElement
-        + VecZnxSubScalarAssign
         + GLWESecretPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

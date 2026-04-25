@@ -2,8 +2,8 @@
 
 use crate::{
     layouts::{
-        Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
-        VecZnxToMut, VecZnxToRef,
+        Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, VecZnxToMut,
+        VecZnxToRef,
     },
     source::Source,
 };
@@ -41,15 +41,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_normalize_inplace<'s, A>(
-        module: &Module<BE>,
-        base2k: usize,
-        a: &mut A,
-        a_col: usize,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: VecZnxToMut;
-
     fn vec_znx_normalize_inplace_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
@@ -77,20 +68,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     );
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_scalar_into<R, B>(
-        module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        B: VecZnxToRef;
-
-    #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_into_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -101,16 +78,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         b_col: usize,
         b_limb: usize,
     );
-
-    fn vec_znx_add_scalar_assign<R>(
-        module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        res_limb: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-    ) where
-        R: VecZnxToMut;
 
     fn vec_znx_add_scalar_assign_backend<'r, 'a>(
         module: &Module<BE>,
@@ -148,20 +115,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     );
 
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_sub_scalar<R, B>(
-        module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-        b: &B,
-        b_col: usize,
-        b_limb: usize,
-    ) where
-        R: VecZnxToMut,
-        B: VecZnxToRef;
-
-    #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_scalar_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -172,16 +125,6 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         b_col: usize,
         b_limb: usize,
     );
-
-    fn vec_znx_sub_scalar_inplace<R>(
-        module: &Module<BE>,
-        res: &mut R,
-        res_col: usize,
-        res_limb: usize,
-        a: &ScalarZnx<&[u8]>,
-        a_col: usize,
-    ) where
-        R: VecZnxToMut;
 
     fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
         module: &Module<BE>,
@@ -284,27 +227,25 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         R: VecZnxToMut,
         A: VecZnxToRef;
 
-    fn vec_znx_rsh_inplace<'s, R>(
+    fn vec_znx_rsh_inplace_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        a: &mut R,
+        a: &mut VecZnxBackendMut<'r, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut;
+    );
 
-    fn vec_znx_lsh_inplace<'s, R>(
+    fn vec_znx_lsh_inplace_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
-        a: &mut R,
+        a: &mut VecZnxBackendMut<'r, BE>,
         a_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: VecZnxToMut;
+    );
 
-    fn vec_znx_rotate<'r, 'a>(
+    fn vec_znx_rotate_backend<'r, 'a>(
         module: &Module<BE>,
         k: i64,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -315,7 +256,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 
     fn vec_znx_rotate_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_rotate_inplace<'s, 'r>(
+    fn vec_znx_rotate_inplace_backend<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         a: &mut VecZnxBackendMut<'r, BE>,

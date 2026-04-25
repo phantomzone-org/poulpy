@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{
-        ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssign, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssignBackend, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{
-        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, Stats, VecZnxBigReborrowBackendRef,
-        VecZnxReborrowBackendRef, ZnxZero,
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
+        VecZnxBigReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
     },
 };
 
@@ -43,7 +43,7 @@ impl<D: HostDataRef> GGSW<D> {
 
 impl<BE: Backend + HostBackend> GGSWNoise<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarAssign
+    Module<BE>: VecZnxAddScalarAssignBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftAssign<BE>
         + VecZnxIdftApplyConsume<BE>
@@ -100,7 +100,19 @@ where
 
         let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_ref);
         pt.data_mut().zero();
-        self.vec_znx_add_scalar_assign(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, 0);
+        let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
+            ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n, pt_want.cols);
+        {
+            let mut pt_data =
+                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut pt.data);
+            self.vec_znx_add_scalar_assign_backend(
+                &mut pt_data,
+                0,
+                (dsize - 1) + res_row * dsize,
+                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&pt_want_backend),
+                0,
+            );
+        }
 
         // mul with sk[col_j-1]
         if res_col > 0 {

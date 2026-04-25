@@ -274,14 +274,14 @@ impl_operations_delegate!(
     },
     fn glwe_rsh<'s, R>(&self, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
         BE::glwe_rsh(self, k, res, scratch)
     },
     fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: crate::layouts::GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
         BE::glwe_lsh_inplace(self, res, k, scratch)

@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
     layouts::{
         Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
         ZnxZero,
@@ -49,7 +49,7 @@ where
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
         + VecZnxNormalizeTmpBytes,
 {
@@ -151,8 +151,13 @@ where
                             col_j,
                         );
                     }
-                    scratch_1 =
-                        scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch));
+                    scratch_1 = scratch_1.apply_mut(|scratch| {
+                        let mut tmp_pt_data =
+                            <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
+                                &mut tmp_pt.data,
+                            );
+                        self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_pt_data, 0, scratch)
+                    });
 
                     let (seed, mut source_xa_tmp) = source_xa.branch();
                     seeds[row_i * rank_in + col_j] = seed;

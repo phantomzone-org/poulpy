@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
@@ -25,7 +25,7 @@ where
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxRotateAssign<BE>
+        + VecZnxRotateInplaceBackend<BE>
         + GGSWPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -140,7 +140,7 @@ where
                 module.gglwe_external_product(&mut ct_gglwe_out, &ct_gglwe_in, &ct_rgsw_prepared, &mut scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
-                    module.vec_znx_rotate_inplace(
+                    module.vec_znx_rotate_inplace_backend(
                         r as i64,
                         &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut sk_in.data),
                         i,
@@ -202,7 +202,7 @@ pub fn test_gglwe_switching_key_external_product_assign<BE: crate::test_suite::T
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxRotateAssign<BE>
+        + VecZnxRotateInplaceBackend<BE>
         + GGSWPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -305,7 +305,7 @@ pub fn test_gglwe_switching_key_external_product_assign<BE: crate::test_suite::T
                 module.gglwe_external_product_inplace(&mut ct_gglwe, &ct_rgsw_prepared, &mut scratch.borrow());
 
                 (0..rank_in).for_each(|i| {
-                    module.vec_znx_rotate_inplace(
+                    module.vec_znx_rotate_inplace_backend(
                         r as i64,
                         &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut sk_in.data),
                         i,

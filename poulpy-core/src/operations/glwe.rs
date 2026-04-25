@@ -2,11 +2,11 @@ use poulpy_hal::{
     api::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchArenaTakeBasic, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
         VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub,
-        VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
-        VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshInplaceBackend,
+        VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateBackend,
+        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
+        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend,
+        VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnx, VecZnxBigReborrowBackendRef,
@@ -1155,14 +1155,16 @@ impl<BE: Backend> GLWESub<BE> for Module<BE> where
 impl<BE: Backend> GLWENegate<BE> for Module<BE> where Self: VecZnxNegateBackend<BE> + VecZnxNegateInplaceBackend<BE> + ModuleN {}
 
 impl<BE: Backend> GLWERotateDefault<BE> for Module<BE> where
-    Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>
+    Self:
+        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateInplaceBackend<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>
 {
 }
 
 #[doc(hidden)]
 pub trait GLWERotateDefault<BE: Backend>
 where
-    Self: ModuleN + VecZnxRotate<BE> + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>,
+    Self:
+        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateInplaceBackend<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()
@@ -1177,7 +1179,7 @@ where
         let a_cols = (a.rank() + 1).into();
 
         for i in 0..a_cols {
-            self.vec_znx_rotate(k, &mut res.data, i, &a.data, i);
+            self.vec_znx_rotate_backend(k, &mut res.data, i, &a.data, i);
         }
         for i in a_cols..res_cols {
             self.vec_znx_zero_backend(&mut res.data, i);
@@ -1197,7 +1199,7 @@ where
 
         for i in 0..(res.rank() + 1).into() {
             let mut scratch_iter = scratch.borrow();
-            self.vec_znx_rotate_inplace(k, &mut res.data, i, &mut scratch_iter);
+            self.vec_znx_rotate_inplace_backend(k, &mut res.data, i, &mut scratch_iter);
         }
     }
 }
@@ -1248,12 +1250,12 @@ impl<BE: Backend> GLWECopy<BE> for Module<BE> where Self: ModuleN + VecZnxCopyBa
 
 impl<BE: Backend> GLWEShiftDefault<BE> for Module<BE> where
     Self: ModuleN
-        + VecZnxRshAssign<BE>
+        + VecZnxRshInplaceBackend<BE>
         + VecZnxLshAddInto<BE>
         + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
-        + VecZnxLshAssign<BE>
+        + VecZnxLshInplaceBackend<BE>
         + VecZnxLsh<BE>
 {
 }
@@ -1262,12 +1264,12 @@ impl<BE: Backend> GLWEShiftDefault<BE> for Module<BE> where
 pub trait GLWEShiftDefault<BE: Backend>
 where
     Self: ModuleN
-        + VecZnxRshAssign<BE>
+        + VecZnxRshInplaceBackend<BE>
         + VecZnxLshAddInto<BE>
         + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
-        + VecZnxLshAssign<BE>
+        + VecZnxLshInplaceBackend<BE>
         + VecZnxLsh<BE>,
 {
     fn glwe_shift_tmp_bytes(&self) -> usize {
@@ -1277,10 +1279,10 @@ where
 
     fn glwe_rsh<'s, R>(&self, k: usize, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res = &mut res.to_mut();
+        let res = &mut res.to_backend_mut();
         assert!(
             scratch.available() >= self.glwe_shift_tmp_bytes(),
             "scratch.available(): {} < GLWEShift::glwe_shift_tmp_bytes: {}",
@@ -1290,16 +1292,16 @@ where
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
             let mut scratch_iter = scratch.borrow();
-            self.vec_znx_rsh_inplace(base2k, k, res.data_mut(), i, &mut scratch_iter);
+            self.vec_znx_rsh_inplace_backend(base2k, k, &mut res.data, i, &mut scratch_iter);
         }
     }
 
     fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut,
+        R: GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
-        let res = &mut res.to_mut();
+        let res = &mut res.to_backend_mut();
 
         assert!(
             scratch.available() >= self.glwe_shift_tmp_bytes(),
@@ -1311,7 +1313,7 @@ where
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
             let mut scratch_iter = scratch.borrow();
-            self.vec_znx_lsh_inplace(base2k, k, res.data_mut(), i, &mut scratch_iter);
+            self.vec_znx_lsh_inplace_backend(base2k, k, &mut res.data, i, &mut scratch_iter);
         }
     }
 

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{Backend, HostBackend, HostDataMut, HostDataRef, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
@@ -42,7 +42,7 @@ pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + 
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateAssign<BE>,
+        + VecZnxRotateInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
@@ -246,7 +246,7 @@ pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + 
         + GGSWPreparedFactory<BE>
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
-        + VecZnxRotateAssign<BE>,
+        + VecZnxRotateInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
