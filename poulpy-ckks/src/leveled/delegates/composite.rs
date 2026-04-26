@@ -22,7 +22,7 @@ use crate::{
         },
     },
     leveled::api::{
-        CKKSAddManyOps, CKKSAddOps, CKKSAddOpsWithoutNormalization, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulOps,
+        CKKSAddManyOps, CKKSAddOps, CKKSAddOpsUnsafe, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulOps,
         CKKSMulSubOps, CKKSRescaleOps, CKKSSubOps,
     },
     oep::CKKSImpl,
@@ -67,7 +67,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddManyOps<BE> for Module<BE> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsWithoutNormalization<BE>,
+        Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsUnsafe<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         match inputs.len() {
@@ -81,9 +81,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddManyOps<BE> for Module<BE> {
             _ => {
                 ensure_accumulation_fits("ckks_add_many", dst, inputs.len())?;
                 unsafe {
-                    self.ckks_add_without_normalization(dst, inputs[0], inputs[1], scratch)?;
+                    self.ckks_add_unsafe(dst, inputs[0], inputs[1], scratch)?;
                     for ct in &inputs[2..] {
-                        self.ckks_add_inplace_without_normalization(dst, ct, scratch)?;
+                        self.ckks_add_inplace_unsafe(dst, ct, scratch)?;
                     }
                 }
                 self.glwe_normalize_inplace(dst, scratch);
@@ -221,13 +221,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_vec_rnx_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
     }
 
-    fn ckks_mul_add_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_add_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
     {
-        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_const_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
+        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_const_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
     }
 
     fn ckks_mul_add_ct(
@@ -281,7 +281,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_inplace(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_const_znx(
+    fn ckks_mul_add_pt_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -301,7 +301,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_inplace(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_const_rnx<F>(
+    fn ckks_mul_add_pt_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -354,13 +354,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_vec_rnx_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }
 
-    fn ckks_mul_sub_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_sub_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
     {
-        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_const_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
+        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_const_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }
 
     fn ckks_mul_sub_ct(
@@ -414,7 +414,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_inplace(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_const_znx(
+    fn ckks_mul_sub_pt_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -434,7 +434,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_inplace(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_const_rnx<F>(
+    fn ckks_mul_sub_pt_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -479,7 +479,7 @@ fn accumulate_unnormalized<BE, D, F>(
 where
     BE: Backend + CKKSImpl<BE>,
     D: DataMut,
-    Module<BE>: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsWithoutNormalization<BE>,
+    Module<BE>: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsUnsafe<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     F: FnMut(&mut CKKSCiphertext<&mut [u8]>, usize, &mut Scratch<BE>) -> Result<()>,
 {
@@ -492,7 +492,7 @@ where
     for i in 1..n {
         mul_term_into_tmp(&mut tmp, i, scratch_r)?;
         unsafe {
-            module.ckks_add_inplace_without_normalization(dst, &tmp, scratch_r)?;
+            module.ckks_add_inplace_unsafe(dst, &tmp, scratch_r)?;
         }
     }
     module.glwe_normalize_inplace(dst, scratch_r);
@@ -545,13 +545,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_vec_rnx_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
     }
 
-    fn ckks_dot_product_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_dot_product_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
     {
-        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_const_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
+        GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_const_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
     }
 
     fn ckks_dot_product_ct<D: DataRef, E: DataRef>(
@@ -568,7 +568,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWENormalize<BE>
             + GLWETensoring<BE>
             + VecZnxAddAssign
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
@@ -709,7 +709,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWEShift<BE>
             + GLWENormalize<BE>
             + VecZnxRshAddInto<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
@@ -737,7 +737,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWEShift<BE>
             + GLWENormalize<BE>
             + VecZnxRshAddInto<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
@@ -751,7 +751,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         })
     }
 
-    fn ckks_dot_product_const_znx<D: DataRef>(
+    fn ckks_dot_product_pt_const_znx<D: DataRef>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &[&CKKSCiphertext<D>],
@@ -764,20 +764,20 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWERotate<BE>
             + GLWEShift<BE>
             + GLWENormalize<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        check_lengths("ckks_dot_product_const_znx", a.len(), b.len())?;
+        check_lengths("ckks_dot_product_pt_const_znx", a.len(), b.len())?;
         let n: usize = a.len();
-        ensure_accumulation_fits("ckks_dot_product_const_znx", dst, n)?;
+        ensure_accumulation_fits("ckks_dot_product_pt_const_znx", dst, n)?;
         self.ckks_mul_pt_const_znx(dst, a[0], b[0], scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_const_znx(tmp, a[i], b[i], s)
         })
     }
 
-    fn ckks_dot_product_const_rnx<D: DataRef, F>(
+    fn ckks_dot_product_pt_const_rnx<D: DataRef, F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &[&CKKSCiphertext<D>],
@@ -791,14 +791,14 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             + GLWERotate<BE>
             + GLWEShift<BE>
             + GLWENormalize<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        check_lengths("ckks_dot_product_const_rnx", a.len(), b.len())?;
+        check_lengths("ckks_dot_product_pt_const_rnx", a.len(), b.len())?;
         let n: usize = a.len();
-        ensure_accumulation_fits("ckks_dot_product_const_rnx", dst, n)?;
+        ensure_accumulation_fits("ckks_dot_product_pt_const_rnx", dst, n)?;
         self.ckks_mul_pt_const_rnx(dst, a[0], b[0], prec, scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
             self.ckks_mul_pt_const_rnx(tmp, a[i], b[i], prec, s)

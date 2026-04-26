@@ -99,7 +99,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_sub_const_tmp_bytes(&self) -> usize
+    fn ckks_sub_pt_const_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>;
 
@@ -257,11 +257,11 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         BE::ckks_sub_pt_vec_rnx_inplace(self, dst, pt_rnx, prec, scratch)
     }
 
-    fn ckks_sub_const_tmp_bytes(&self) -> usize
+    fn ckks_sub_pt_const_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>,
     {
-        BE::ckks_sub_const_tmp_bytes(self)
+        BE::ckks_sub_pt_const_tmp_bytes(self)
     }
 
     fn ckks_sub_pt_const_znx(

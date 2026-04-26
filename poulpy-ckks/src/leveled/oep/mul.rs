@@ -45,7 +45,7 @@ pub(crate) trait CKKSMulOep<BE: Backend + CKKSImpl<BE>> {
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE>;
 
-    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -225,13 +225,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulOep<BE> for Module<BE> {
         BE::ckks_mul_pt_vec_rnx_tmp_bytes(self, res, a, b)
     }
 
-    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE>,
     {
-        BE::ckks_mul_const_tmp_bytes(self, res, a, b)
+        BE::ckks_mul_pt_const_tmp_bytes(self, res, a, b)
     }
 
     fn ckks_mul(

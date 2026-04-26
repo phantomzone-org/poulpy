@@ -24,8 +24,8 @@ where
 {
     let ct_infos = ctx.params.glwe_layout();
     let prec = ctx.meta();
-    let mul_pt_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
-    ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_rnx))
+    let mul_pt_vec_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
+    ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_vec_rnx))
 }
 
 fn poly2_expected<BE: super::helpers::TestBackend, F: TestScalar>(
@@ -177,7 +177,7 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend, F: TestScalar>(ctx:
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
     ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
-    // `mul_pt_rnx` again allocates by post-op effective width; using
+    // `mul_pt_vec_rnx` again allocates by post-op effective width; using
     // `log_hom_rem()` is a numeric shortcut that holds for this fixture.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());

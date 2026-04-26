@@ -46,7 +46,7 @@ pub fn test_compact_limbs_copy<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
     ctx.assert_decrypt_precision("compact_limbs_copy", &compact, &ctx.re1, &ctx.im1, scratch.borrow());
 }
 
-pub fn test_add_pt_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     ct.meta.log_hom_rem = 0;
@@ -56,7 +56,7 @@ pub fn test_add_pt_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestCon
         .ckks_add_pt_vec_znx_inplace(&mut ct, &pt_znx, scratch.borrow())
         .unwrap_err();
     assert_ckks_error(
-        "add_pt_znx_alignment",
+        "add_pt_vec_znx_alignment",
         &err,
         CKKSCompositionError::PlaintextAlignmentImpossible {
             op: "ckks_add_pt_vec_znx",

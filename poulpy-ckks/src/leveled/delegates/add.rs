@@ -128,11 +128,11 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddOps<BE> for Module<BE> {
         CKKSAddOep::ckks_add_pt_vec_rnx_inplace(self, dst, pt_rnx, prec, scratch)
     }
 
-    fn ckks_add_const_tmp_bytes(&self) -> usize
+    fn ckks_add_pt_const_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>,
     {
-        CKKSAddOep::ckks_add_const_tmp_bytes(self)
+        CKKSAddOep::ckks_add_pt_const_tmp_bytes(self)
     }
 
     fn ckks_add_pt_const_znx(
@@ -192,14 +192,14 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddOps<BE> for Module<BE> {
     }
 }
 
-use crate::leveled::api::CKKSAddOpsWithoutNormalization;
+use crate::leveled::api::CKKSAddOpsUnsafe;
 use crate::leveled::default::CKKSAddDefault;
 
-unsafe impl<BE: Backend> CKKSAddOpsWithoutNormalization<BE> for Module<BE>
+unsafe impl<BE: Backend> CKKSAddOpsUnsafe<BE> for Module<BE>
 where
     Module<BE>: CKKSAddDefault<BE>,
 {
-    unsafe fn ckks_add_without_normalization(
+    unsafe fn ckks_add_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -210,10 +210,10 @@ where
         Self: GLWEAdd + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_without_normalization_default(dst, a, b, scratch)
+        self.ckks_add_unsafe_default(dst, a, b, scratch)
     }
 
-    unsafe fn ckks_add_inplace_without_normalization(
+    unsafe fn ckks_add_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -223,10 +223,10 @@ where
         Self: GLWEAdd + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_inplace_without_normalization_default(dst, a, scratch)
+        self.ckks_add_inplace_unsafe_default(dst, a, scratch)
     }
 
-    unsafe fn ckks_add_pt_vec_znx_without_normalization(
+    unsafe fn ckks_add_pt_vec_znx_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -237,10 +237,10 @@ where
         Self: VecZnxRshAddInto<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_pt_vec_znx_without_normalization_default(dst, a, pt_znx, scratch)
+        self.ckks_add_pt_vec_znx_unsafe_default(dst, a, pt_znx, scratch)
     }
 
-    unsafe fn ckks_add_pt_vec_znx_inplace_without_normalization(
+    unsafe fn ckks_add_pt_vec_znx_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -250,10 +250,10 @@ where
         Self: VecZnxRshAddInto<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_pt_vec_znx_inplace_without_normalization_default(dst, pt_znx, scratch)
+        self.ckks_add_pt_vec_znx_inplace_unsafe_default(dst, pt_znx, scratch)
     }
 
-    unsafe fn ckks_add_pt_vec_rnx_without_normalization<F>(
+    unsafe fn ckks_add_pt_vec_rnx_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -266,10 +266,10 @@ where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        self.ckks_add_pt_vec_rnx_without_normalization_default(dst, a, pt_rnx, prec, scratch)
+        self.ckks_add_pt_vec_rnx_unsafe_default(dst, a, pt_rnx, prec, scratch)
     }
 
-    unsafe fn ckks_add_pt_vec_rnx_inplace_without_normalization<F>(
+    unsafe fn ckks_add_pt_vec_rnx_inplace_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -281,10 +281,10 @@ where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        self.ckks_add_pt_vec_rnx_inplace_without_normalization_default(dst, pt_rnx, prec, scratch)
+        self.ckks_add_pt_vec_rnx_inplace_unsafe_default(dst, pt_rnx, prec, scratch)
     }
 
-    unsafe fn ckks_add_pt_const_znx_without_normalization(
+    unsafe fn ckks_add_pt_const_znx_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -295,10 +295,10 @@ where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_const_znx_without_normalization_default(dst, a, cst_znx, scratch)
+        self.ckks_add_pt_const_znx_unsafe_default(dst, a, cst_znx, scratch)
     }
 
-    unsafe fn ckks_add_pt_const_znx_inplace_without_normalization(
+    unsafe fn ckks_add_pt_const_znx_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -307,10 +307,10 @@ where
     where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_const_znx_inplace_without_normalization_default(dst, cst_znx, scratch)
+        self.ckks_add_pt_const_znx_inplace_unsafe_default(dst, cst_znx, scratch)
     }
 
-    unsafe fn ckks_add_pt_const_rnx_without_normalization<F>(
+    unsafe fn ckks_add_pt_const_rnx_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -323,10 +323,10 @@ where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        self.ckks_add_const_rnx_without_normalization_default(dst, a, cst_rnx, prec, scratch)
+        self.ckks_add_pt_const_rnx_unsafe_default(dst, a, cst_rnx, prec, scratch)
     }
 
-    unsafe fn ckks_add_pt_const_rnx_inplace_without_normalization<F>(
+    unsafe fn ckks_add_pt_const_rnx_inplace_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -337,6 +337,6 @@ where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        self.ckks_add_const_rnx_inplace_without_normalization_default(dst, cst_rnx, prec, scratch)
+        self.ckks_add_pt_const_rnx_inplace_unsafe_default(dst, cst_rnx, prec, scratch)
     }
 }

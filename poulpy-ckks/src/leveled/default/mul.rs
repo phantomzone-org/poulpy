@@ -228,7 +228,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&b_infos) + self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -340,7 +340,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         self.ckks_mul_pt_vec_znx_inplace_default(dst, &pt_znx, scratch_1)
     }
 
-    fn ckks_mul_const_znx_default(
+    fn ckks_mul_pt_const_znx_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -374,7 +374,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_const_znx_inplace_default(
+    fn ckks_mul_pt_const_znx_inplace_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -407,7 +407,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_const_rnx_default<F>(
+    fn ckks_mul_pt_const_rnx_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -429,10 +429,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         }
 
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
-        self.ckks_mul_const_znx_default(dst, a, &cst_znx, scratch)
+        self.ckks_mul_pt_const_znx_default(dst, a, &cst_znx, scratch)
     }
 
-    fn ckks_mul_const_rnx_inplace_default<F>(
+    fn ckks_mul_pt_const_rnx_inplace_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -453,7 +453,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         }
 
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
-        self.ckks_mul_const_znx_inplace_default(dst, &cst_znx, scratch)
+        self.ckks_mul_pt_const_znx_inplace_default(dst, &cst_znx, scratch)
     }
 }
 

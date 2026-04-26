@@ -59,13 +59,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulOps<BE> for Module<BE> {
         CKKSMulOep::ckks_mul_pt_vec_rnx_tmp_bytes(self, res, a, b)
     }
 
-    fn ckks_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         Self: GLWEMulConst<BE> + GLWERotate<BE>,
     {
-        CKKSMulOep::ckks_mul_const_tmp_bytes(self, res, a, b)
+        CKKSMulOep::ckks_mul_pt_const_tmp_bytes(self, res, a, b)
     }
 
     fn ckks_mul(

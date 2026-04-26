@@ -160,7 +160,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_add_const_tmp_bytes(module: &Module<BE>) -> usize
+    fn ckks_add_pt_const_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
@@ -287,7 +287,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_sub_const_tmp_bytes(module: &Module<BE>) -> usize
+    fn ckks_sub_pt_const_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
@@ -349,7 +349,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
         Module<BE>: GLWENegate + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_neg_inplace(module: &Module<BE>, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace(module: &Module<BE>, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Module<BE>: GLWENegate;
 
@@ -446,7 +446,8 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Module<BE>: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
@@ -466,7 +467,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     where
         Module<BE>: ModuleN + GLWEMulPlain<BE>;
 
-    fn ckks_mul_const_tmp_bytes<R: GLWEInfos, A: GLWEInfos>(module: &Module<BE>, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes<R: GLWEInfos, A: GLWEInfos>(module: &Module<BE>, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         Module<BE>: GLWEMulConst<BE> + GLWERotate<BE>;
 

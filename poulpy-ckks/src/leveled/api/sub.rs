@@ -99,7 +99,7 @@ pub trait CKKSSubOps<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_sub_const_tmp_bytes(&self) -> usize
+    fn ckks_sub_pt_const_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>;
 
@@ -146,67 +146,11 @@ pub trait CKKSSubOps<BE: Backend + CKKSImpl<BE>> {
     where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
-
-    fn ckks_sub_const_znx(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-    {
-        self.ckks_sub_pt_const_znx(dst, a, cst_znx, scratch)
-    }
-
-    fn ckks_sub_const_znx_inplace(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-    {
-        self.ckks_sub_pt_const_znx_inplace(dst, cst_znx, scratch)
-    }
-
-    fn ckks_sub_const_rnx<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        self.ckks_sub_pt_const_rnx(dst, a, cst_rnx, prec, scratch)
-    }
-
-    fn ckks_sub_const_rnx_inplace<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        self.ckks_sub_pt_const_rnx_inplace(dst, cst_rnx, prec, scratch)
-    }
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
-    unsafe fn ckks_sub_without_normalization(
+pub unsafe trait CKKSSubOpsUnsafe<BE: Backend> {
+    unsafe fn ckks_sub_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -217,7 +161,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_inplace_without_normalization(
+    unsafe fn ckks_sub_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -227,7 +171,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_pt_vec_znx_without_normalization(
+    unsafe fn ckks_sub_pt_vec_znx_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -238,7 +182,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Self: VecZnxRshSub<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_pt_vec_znx_inplace_without_normalization(
+    unsafe fn ckks_sub_pt_vec_znx_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -248,7 +192,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Self: VecZnxRshSub<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_pt_vec_rnx_without_normalization<F>(
+    unsafe fn ckks_sub_pt_vec_rnx_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -261,7 +205,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    unsafe fn ckks_sub_pt_vec_rnx_inplace_without_normalization<F>(
+    unsafe fn ckks_sub_pt_vec_rnx_inplace_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -273,7 +217,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    unsafe fn ckks_sub_pt_const_znx_without_normalization(
+    unsafe fn ckks_sub_pt_const_znx_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -284,7 +228,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_pt_const_znx_inplace_without_normalization(
+    unsafe fn ckks_sub_pt_const_znx_inplace_unsafe(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -293,7 +237,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
     where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    unsafe fn ckks_sub_pt_const_rnx_without_normalization<F>(
+    unsafe fn ckks_sub_pt_const_rnx_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -306,7 +250,7 @@ pub unsafe trait CKKSSubOpsWithoutNormalization<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
-    unsafe fn ckks_sub_pt_const_rnx_inplace_without_normalization<F>(
+    unsafe fn ckks_sub_pt_const_rnx_inplace_unsafe<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,

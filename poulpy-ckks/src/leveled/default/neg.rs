@@ -41,11 +41,12 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_neg_inplace_default(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace_default(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate,
     {
         self.glwe_negate_inplace(dst);
+        Ok(())
     }
 }
 

@@ -22,7 +22,7 @@ pub trait CKKSNegOps<BE: Backend + CKKSImpl<BE>> {
         Self: GLWENegate + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate;
 }

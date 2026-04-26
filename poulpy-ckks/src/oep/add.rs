@@ -112,11 +112,11 @@ macro_rules! impl_ckks_add_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_vec_rnx_inplace_default(module, dst, pt_rnx, prec, scratch)
         }
 
-        fn ckks_add_const_tmp_bytes(module: &poulpy_hal::layouts::Module<$backend>) -> usize
+        fn ckks_add_pt_const_tmp_bytes(module: &poulpy_hal::layouts::Module<$backend>) -> usize
         where
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEShift<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_const_tmp_bytes_default(module)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_const_tmp_bytes_default(module)
         }
 
         fn ckks_add_pt_const_znx(
@@ -130,7 +130,7 @@ macro_rules! impl_ckks_add_default_methods {
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEShift<$backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_const_znx_default(module, dst, a, cst_znx, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_const_znx_default(module, dst, a, cst_znx, scratch)
         }
 
         fn ckks_add_pt_const_znx_inplace(
@@ -142,7 +142,7 @@ macro_rules! impl_ckks_add_default_methods {
         where
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_const_znx_inplace_default(module, dst, cst_znx, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_const_znx_inplace_default(module, dst, cst_znx, scratch)
         }
 
         fn ckks_add_pt_const_rnx<F>(
@@ -158,7 +158,7 @@ macro_rules! impl_ckks_add_default_methods {
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
             $crate::layouts::plaintext::CKKSPlaintextCstRnx<F>: $crate::layouts::plaintext::CKKSConstPlaintextConversion,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_const_rnx_default(module, dst, a, cst_rnx, prec, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_const_rnx_default(module, dst, a, cst_rnx, prec, scratch)
         }
 
         fn ckks_add_pt_const_rnx_inplace<F>(
@@ -172,7 +172,7 @@ macro_rules! impl_ckks_add_default_methods {
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
             $crate::layouts::plaintext::CKKSPlaintextCstRnx<F>: $crate::layouts::plaintext::CKKSConstPlaintextConversion,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_const_rnx_inplace_default(module, dst, cst_rnx, prec, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::add::CKKSAddDefault<$backend>>::ckks_add_pt_const_rnx_inplace_default(module, dst, cst_rnx, prec, scratch)
         }
     };
 }

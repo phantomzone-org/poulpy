@@ -31,7 +31,8 @@ macro_rules! impl_ckks_conjugate_default_methods {
             dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
             key: &poulpy_core::layouts::GLWEAutomorphismKeyPrepared<impl poulpy_hal::layouts::DataRef, $backend>,
             scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
-        ) where
+        ) -> anyhow::Result<()>
+        where
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
         {

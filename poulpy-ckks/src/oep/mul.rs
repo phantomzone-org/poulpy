@@ -47,7 +47,7 @@ macro_rules! impl_ckks_mul_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_vec_rnx_tmp_bytes_default(module, res, a, b)
         }
 
-        fn ckks_mul_const_tmp_bytes<R: poulpy_core::layouts::GLWEInfos, A: poulpy_core::layouts::GLWEInfos>(
+        fn ckks_mul_pt_const_tmp_bytes<R: poulpy_core::layouts::GLWEInfos, A: poulpy_core::layouts::GLWEInfos>(
             module: &poulpy_hal::layouts::Module<$backend>,
             res: &R,
             a: &A,
@@ -56,7 +56,7 @@ macro_rules! impl_ckks_mul_default_methods {
         where
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEMulConst<$backend> + poulpy_core::GLWERotate<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_const_tmp_bytes_default(module, res, a, b)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_const_tmp_bytes_default(module, res, a, b)
         }
 
         fn ckks_mul(
@@ -184,7 +184,7 @@ macro_rules! impl_ckks_mul_default_methods {
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAdd + poulpy_core::GLWEMulConst<$backend> + poulpy_core::GLWERotate<$backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_const_znx_default(module, dst, a, cst_znx, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_const_znx_default(module, dst, a, cst_znx, scratch)
         }
 
         fn ckks_mul_pt_const_znx_inplace(
@@ -197,7 +197,7 @@ macro_rules! impl_ckks_mul_default_methods {
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAdd + poulpy_core::GLWEMulConst<$backend> + poulpy_core::GLWERotate<$backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_const_znx_inplace_default(module, dst, cst_znx, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_const_znx_inplace_default(module, dst, cst_znx, scratch)
         }
 
         fn ckks_mul_pt_const_rnx<F>(
@@ -213,7 +213,7 @@ macro_rules! impl_ckks_mul_default_methods {
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
             $crate::layouts::plaintext::CKKSPlaintextCstRnx<F>: $crate::layouts::plaintext::CKKSConstPlaintextConversion,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_const_rnx_default(module, dst, a, cst_rnx, prec, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_const_rnx_default(module, dst, a, cst_rnx, prec, scratch)
         }
 
         fn ckks_mul_pt_const_rnx_inplace<F>(
@@ -228,7 +228,7 @@ macro_rules! impl_ckks_mul_default_methods {
             poulpy_hal::layouts::Scratch<$backend>: poulpy_hal::api::ScratchAvailable + poulpy_core::ScratchTakeCore<$backend>,
             $crate::layouts::plaintext::CKKSPlaintextCstRnx<F>: $crate::layouts::plaintext::CKKSConstPlaintextConversion,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_const_rnx_inplace_default(module, dst, cst_rnx, prec, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::mul::CKKSMulDefault<$backend>>::ckks_mul_pt_const_rnx_inplace_default(module, dst, cst_rnx, prec, scratch)
         }
     };
 }

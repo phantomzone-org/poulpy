@@ -37,7 +37,7 @@ fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Scratc
     let pt_rnx_bytes = ctx
         .module
         .ckks_mul_add_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let const_bytes = ctx.module.ckks_mul_add_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+    let const_bytes = ctx.module.ckks_mul_add_pt_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let bytes = ct_bytes.max(pt_znx_bytes).max(pt_rnx_bytes).max(const_bytes);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
 }
@@ -215,7 +215,7 @@ pub fn test_mul_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
     let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.meta()).unwrap();
     ctx.module
-        .ckks_mul_add_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .ckks_mul_add_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_const_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -237,7 +237,7 @@ pub fn test_mul_add_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_mul_add_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
+        .ckks_mul_add_pt_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_const_rnx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -258,7 +258,7 @@ pub fn test_mul_add_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
         .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL))
         .unwrap();
     ctx.module
-        .ckks_mul_add_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .ckks_mul_add_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
 
     assert_ct_meta("mul_add_const_znx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);
@@ -278,7 +278,7 @@ pub fn test_mul_add_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
     let dst_meta = dst.meta();
     let cst = ctx.const_rnx(None, None);
     ctx.module
-        .ckks_mul_add_const_rnx(
+        .ckks_mul_add_pt_const_rnx(
             &mut dst,
             &a,
             &cst,

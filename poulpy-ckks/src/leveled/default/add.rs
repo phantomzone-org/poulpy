@@ -52,7 +52,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&b_infos) + self.ckks_add_pt_vec_znx_tmp_bytes_default()
     }
 
-    fn ckks_add_const_tmp_bytes_default(&self) -> usize
+    fn ckks_add_pt_const_tmp_bytes_default(&self) -> usize
     where
         Self: GLWEShift<BE> + GLWENormalize<BE>,
     {
@@ -70,12 +70,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_without_normalization_default(dst, a, b, scratch)?;
+        self.ckks_add_unsafe_default(dst, a, b, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_without_normalization_default(
+    fn ckks_add_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -114,12 +114,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_inplace_without_normalization_default(dst, a, scratch)?;
+        self.ckks_add_inplace_unsafe_default(dst, a, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_inplace_without_normalization_default(
+    fn ckks_add_inplace_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -155,12 +155,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: VecZnxRshAddInto<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_pt_vec_znx_without_normalization_default(dst, a, pt_znx, scratch)?;
+        self.ckks_add_pt_vec_znx_unsafe_default(dst, a, pt_znx, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_pt_vec_znx_without_normalization_default(
+    fn ckks_add_pt_vec_znx_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -174,8 +174,8 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         let offset = dst.offset_unary(a);
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("add_pt_znx", a.log_hom_rem(), offset)?;
-        self.ckks_add_pt_vec_znx_inplace_without_normalization_default(dst, pt_znx, scratch)?;
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("add_pt_vec_znx", a.log_hom_rem(), offset)?;
+        self.ckks_add_pt_vec_znx_inplace_unsafe_default(dst, pt_znx, scratch)?;
         Ok(())
     }
 
@@ -189,12 +189,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: VecZnxRshAddInto<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_pt_vec_znx_inplace_without_normalization_default(dst, pt_znx, scratch)?;
+        self.ckks_add_pt_vec_znx_inplace_unsafe_default(dst, pt_znx, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_pt_vec_znx_inplace_without_normalization_default(
+    fn ckks_add_pt_vec_znx_inplace_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -221,12 +221,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        self.ckks_add_pt_vec_rnx_without_normalization_default(dst, a, pt_rnx, prec, scratch)?;
+        self.ckks_add_pt_vec_rnx_unsafe_default(dst, a, pt_rnx, prec, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_pt_vec_rnx_without_normalization_default<F>(
+    fn ckks_add_pt_vec_rnx_unsafe_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -246,7 +246,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         });
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        CKKSAddDefault::ckks_add_pt_vec_znx_without_normalization_default(self, dst, a, &pt_znx, scratch_1)?;
+        CKKSAddDefault::ckks_add_pt_vec_znx_unsafe_default(self, dst, a, &pt_znx, scratch_1)?;
         Ok(())
     }
 
@@ -262,12 +262,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        self.ckks_add_pt_vec_rnx_inplace_without_normalization_default(dst, pt_rnx, prec, scratch)?;
+        self.ckks_add_pt_vec_rnx_inplace_unsafe_default(dst, pt_rnx, prec, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_pt_vec_rnx_inplace_without_normalization_default<F>(
+    fn ckks_add_pt_vec_rnx_inplace_unsafe_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -286,11 +286,11 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         });
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        self.ckks_add_pt_vec_znx_inplace_without_normalization_default(dst, &pt_znx, scratch_1)?;
+        self.ckks_add_pt_vec_znx_inplace_unsafe_default(dst, &pt_znx, scratch_1)?;
         Ok(())
     }
 
-    fn ckks_add_const_znx_default(
+    fn ckks_add_pt_const_znx_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -301,12 +301,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: GLWEShift<BE> + GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_const_znx_without_normalization_default(dst, a, cst_znx, scratch)?;
+        self.ckks_add_pt_const_znx_unsafe_default(dst, a, cst_znx, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_const_znx_without_normalization_default(
+    fn ckks_add_pt_const_znx_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -321,10 +321,10 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
         dst.meta.log_hom_rem = checked_log_hom_rem_sub("add_const_znx", a.log_hom_rem(), offset)?;
-        self.ckks_add_const_znx_inplace_without_normalization_default(dst, cst_znx, scratch)
+        self.ckks_add_pt_const_znx_inplace_unsafe_default(dst, cst_znx, scratch)
     }
 
-    fn ckks_add_const_znx_inplace_default(
+    fn ckks_add_pt_const_znx_inplace_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -334,12 +334,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Self: GLWENormalize<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        self.ckks_add_const_znx_inplace_without_normalization_default(dst, cst_znx, scratch)?;
+        self.ckks_add_pt_const_znx_inplace_unsafe_default(dst, cst_znx, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_const_znx_inplace_without_normalization_default(
+    fn ckks_add_pt_const_znx_inplace_unsafe_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -353,7 +353,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         }
 
         let _offset = ensure_plaintext_alignment(
-            "ckks_add_const_znx",
+            "ckks_add_pt_const_znx",
             dst.log_hom_rem(),
             cst_znx.log_decimal(),
             cst_znx.effective_k(),
@@ -372,7 +372,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_add_const_rnx_default<F>(
+    fn ckks_add_pt_const_rnx_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -385,12 +385,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        self.ckks_add_const_rnx_without_normalization_default(dst, a, cst_rnx, prec, scratch)?;
+        self.ckks_add_pt_const_rnx_unsafe_default(dst, a, cst_rnx, prec, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_const_rnx_without_normalization_default<F>(
+    fn ckks_add_pt_const_rnx_unsafe_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -419,10 +419,10 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
                 .expect("aligned precision overflow"),
             prec.log_decimal,
         )?;
-        self.ckks_add_const_znx_without_normalization_default(dst, a, &cst_znx, scratch)
+        self.ckks_add_pt_const_znx_unsafe_default(dst, a, &cst_znx, scratch)
     }
 
-    fn ckks_add_const_rnx_inplace_default<F>(
+    fn ckks_add_pt_const_rnx_inplace_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -434,12 +434,12 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        self.ckks_add_const_rnx_inplace_without_normalization_default(dst, cst_rnx, prec, scratch)?;
+        self.ckks_add_pt_const_rnx_inplace_unsafe_default(dst, cst_rnx, prec, scratch)?;
         self.glwe_normalize_inplace(dst, scratch);
         Ok(())
     }
 
-    fn ckks_add_const_rnx_inplace_without_normalization_default<F>(
+    fn ckks_add_pt_const_rnx_inplace_unsafe_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -461,7 +461,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
                 .expect("aligned precision overflow"),
             prec.log_decimal,
         )?;
-        self.ckks_add_const_znx_inplace_without_normalization_default(dst, &cst_znx, scratch)
+        self.ckks_add_pt_const_znx_inplace_unsafe_default(dst, &cst_znx, scratch)
     }
 }
 

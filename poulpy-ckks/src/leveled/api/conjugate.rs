@@ -30,7 +30,8 @@ pub trait CKKSConjugateOps<BE: Backend + CKKSImpl<BE>> {
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 }

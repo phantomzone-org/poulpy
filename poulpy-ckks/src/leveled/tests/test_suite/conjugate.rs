@@ -60,7 +60,7 @@ pub fn test_conjugate_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, 
     let conj_key = ctx.atk(-1);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    ctx.module.ckks_conjugate_inplace(&mut ct, conj_key, scratch.borrow());
+    ctx.module.ckks_conjugate_inplace(&mut ct, conj_key, scratch.borrow()).unwrap();
     assert_ct_meta("conjugate_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("conjugate_inplace", &ct, &want_re, &want_im, scratch.borrow());
 }

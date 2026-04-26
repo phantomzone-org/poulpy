@@ -24,7 +24,8 @@ macro_rules! impl_ckks_neg_default_methods {
         fn ckks_neg_inplace(
             module: &poulpy_hal::layouts::Module<$backend>,
             dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
-        ) where
+        ) -> anyhow::Result<()>
+        where
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWENegate,
         {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::neg::CKKSNegDefault<$backend>>::ckks_neg_inplace_default(module, dst)

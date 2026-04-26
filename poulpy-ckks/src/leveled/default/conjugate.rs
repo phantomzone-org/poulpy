@@ -49,11 +49,13 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_automorphism_inplace(dst, key, scratch);
+        Ok(())
     }
 }
 

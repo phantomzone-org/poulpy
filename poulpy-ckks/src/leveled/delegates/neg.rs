@@ -30,7 +30,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSNegOps<BE> for Module<BE> {
         CKKSNegOep::ckks_neg(self, dst, src, scratch)
     }
 
-    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate,
     {

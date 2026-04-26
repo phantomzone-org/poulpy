@@ -22,7 +22,7 @@ pub(crate) trait CKKSNegOep<BE: Backend + CKKSImpl<BE>> {
         Self: GLWENegate + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate;
 }
@@ -48,7 +48,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSNegOep<BE> for Module<BE> {
         BE::ckks_neg(self, dst, src, scratch)
     }
 
-    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate,
     {

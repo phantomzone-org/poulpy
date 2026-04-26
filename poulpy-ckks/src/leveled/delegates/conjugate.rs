@@ -38,7 +38,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOps<BE> for Module<BE> {
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

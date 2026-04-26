@@ -455,9 +455,11 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let pt_znx = self
-            .decrypt_with_prec(ct, self.precision_at(ct.log_decimal()), scratch)
-            .unwrap();
+        let prec = CKKSMeta {
+            log_decimal: ct.log_decimal(),
+            log_hom_rem: ct.log_hom_rem().min(self.params.prec.log_hom_rem()),
+        };
+        let pt_znx = self.decrypt_with_prec(ct, prec, scratch).unwrap();
 
         self.decode_pt_znx(&pt_znx)
     }

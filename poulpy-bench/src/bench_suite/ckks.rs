@@ -182,13 +182,13 @@ fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
         .max(module.ckks_sub_pt_vec_znx_tmp_bytes())
         .max(module.ckks_add_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_sub_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
-        .max(module.ckks_add_const_tmp_bytes())
-        .max(module.ckks_sub_const_tmp_bytes())
+        .max(module.ckks_add_pt_const_tmp_bytes())
+        .max(module.ckks_sub_pt_const_tmp_bytes())
         .max(module.ckks_mul_tmp_bytes(&ct_layout, &tsk_layout))
         .max(module.ckks_square_tmp_bytes(&ct_layout, &tsk_layout))
         .max(module.ckks_mul_pt_vec_znx_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
-        .max(module.ckks_mul_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
+        .max(module.ckks_mul_pt_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_rotate_tmp_bytes(&ct_layout, &atk_layout))
         .max(module.ckks_conjugate_tmp_bytes(&ct_layout, &atk_layout))
         .max(module.ckks_add_many_tmp_bytes())
@@ -199,12 +199,12 @@ fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
         .max(module.ckks_mul_sub_pt_vec_znx_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_mul_add_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_mul_sub_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
-        .max(module.ckks_mul_add_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
-        .max(module.ckks_mul_sub_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
+        .max(module.ckks_mul_add_pt_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
+        .max(module.ckks_mul_sub_pt_const_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_dot_product_ct_tmp_bytes(MANY_TERMS, &ct_layout, &tsk_layout))
         .max(module.ckks_dot_product_pt_vec_znx_tmp_bytes(&ct_layout, &ct_layout, &meta))
         .max(module.ckks_dot_product_pt_vec_rnx_tmp_bytes(&ct_layout, &ct_layout, &meta))
-        .max(module.ckks_dot_product_const_tmp_bytes(&ct_layout, &ct_layout, &meta));
+        .max(module.ckks_dot_product_pt_const_tmp_bytes(&ct_layout, &ct_layout, &meta));
 
     CkksBenchSetup {
         module,
@@ -266,7 +266,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_add_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -274,7 +274,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_const_rnx(
+                .ckks_add_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -328,19 +328,19 @@ pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
                 .unwrap();
         })
     });
-    group.bench_function("sub_const_znx", |b| {
+    group.bench_function("sub_pt_const_znx", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_sub_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("sub_const_rnx", |b| {
+    group.bench_function("sub_pt_const_rnx", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_const_rnx(
+                .ckks_sub_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -468,7 +468,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -476,7 +476,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_const_rnx(
+                .ckks_mul_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -638,15 +638,15 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_add_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("mul_sub_const_znx", |b| {
+    group.bench_function("mul_sub_pt_const_znx", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_sub_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -654,7 +654,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_const_rnx(
+                .ckks_mul_add_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -664,11 +664,11 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
                 .unwrap();
         })
     });
-    group.bench_function("mul_sub_const_rnx", |b| {
+    group.bench_function("mul_sub_pt_const_rnx", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_const_rnx(
+                .ckks_mul_sub_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -723,7 +723,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_dot_product_const_znx(
+                .ckks_dot_product_pt_const_znx(
                     &mut s.ct_dst,
                     black_box(many_a.as_slice()),
                     black_box(cst_znxs.as_slice()),
@@ -736,7 +736,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_dot_product_const_rnx(
+                .ckks_dot_product_pt_const_rnx(
                     &mut s.ct_dst,
                     black_box(many_a.as_slice()),
                     black_box(cst_rnxs.as_slice()),
