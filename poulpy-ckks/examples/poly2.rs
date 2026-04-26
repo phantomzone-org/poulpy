@@ -24,7 +24,7 @@ use poulpy_ckks::{
     layouts::{
         CKKSCiphertext, CKKSMaintainOps, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx, CKKSPlaintextVecZnx,
     },
-    leveled::api::{CKKSAddOps, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulOps},
+    leveled::api::{CKKSAddOpsUnsafe, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulAddOps, CKKSMulOps},
 };
 use poulpy_core::{
     EncryptionLayout, GLWENormalize, GLWETensorKeyEncryptSk,
@@ -336,13 +336,12 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 /// The metadata prints are the main thing to watch:
 /// - `x^2` consumes one `log_decimal` chunk of homomorphic capacity
 /// - `ckks_compact_limbs` trims storage after each non-linear step
-/// - forming each linear branch with a plaintext constant preserves the branch
-///   structure explicitly
-/// - `glwe_normalize` is applied before ct-ct multiplication when a branch has
-///   gone through linear ops
-/// - multiplying `(c + d*x)` by `x^2` performs the cubic step as a ct-ct
-///   multiply
-/// - the final add preserves the minimum remaining capacity across branches
+/// - unsafe (without-normalization) add ops are used for intermediate linear
+///   steps; limbs are only K-normalized at the final step or just before a
+///   ct-ct multiply that requires normalized inputs
+/// - `glwe_normalize` is applied before ct-ct multiplication
+/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_rnx`, which
+///   normalizes the output as the last operation
 fn evaluation(
     setup: &mut SetupArtifacts,
     encoding: &EncodingArtifacts,
@@ -355,7 +354,7 @@ fn evaluation(
     let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_hom_rem().into(), BASE2K.into());
     setup
         .module
-        .ckks_square(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
+        .ckks_square_into(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
     print_ct_meta("x^2", &ct_x2);
     println!("  -> compact limbs after square");
     setup.module.ckks_compact_limbs(&mut ct_x2)?;
@@ -363,24 +362,9 @@ fn evaluation(
 
     let linear_k = encryption.ct_x.effective_k() - PREC_PT.log_decimal;
 
-    println!("  -> build left branch: a + b*x");
-    let mut left_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
-    setup.module.ckks_mul_pt_const_rnx(
-        &mut left_linear,
-        &encryption.ct_x,
-        &encoding.cst_b,
-        PREC_PT,
-        setup.scratch.borrow(),
-    )?;
-    print_ct_meta("b * x", &left_linear);
-    setup
-        .module
-        .ckks_add_pt_const_rnx_inplace(&mut left_linear, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
-    print_ct_meta("a + b * x", &left_linear);
-
-    println!("  -> build right branch: c + d*x");
+    println!("  -> build right branch: c + d*x (unsafe add, normalize before ct-ct mul)");
     let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
-    setup.module.ckks_mul_pt_const_rnx(
+    setup.module.ckks_mul_pt_const_rnx_into(
         &mut right_linear,
         &encryption.ct_x,
         &encoding.cst_d,
@@ -388,19 +372,21 @@ fn evaluation(
         setup.scratch.borrow(),
     )?;
     print_ct_meta("d * x", &right_linear);
-    setup
-        .module
-        .ckks_add_pt_const_rnx_inplace(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
-    print_ct_meta("c + d * x", &right_linear);
+    unsafe {
+        setup
+            .module
+            .ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
+    }
+    print_ct_meta("c + d * x (not normalized)", &right_linear);
 
     println!("  -> normalize right branch before ct-ct multiply");
-    setup.module.glwe_normalize_inplace(&mut right_linear, setup.scratch.borrow());
+    setup.module.glwe_normalize_assign(&mut right_linear, setup.scratch.borrow());
     print_ct_meta("c + d * x normalized", &right_linear);
 
     println!("  -> multiply right branch by x^2");
     let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
     let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
-    setup.module.ckks_mul(
+    setup.module.ckks_mul_into(
         &mut right_branch,
         &right_linear,
         &ct_x2,
@@ -412,11 +398,17 @@ fn evaluation(
     setup.module.ckks_compact_limbs(&mut right_branch)?;
     print_ct_meta("(c + d * x) * x^2 compacted", &right_branch);
 
-    println!("  -> add left and right branches");
+    println!("  -> final assembly: right_branch + a (unsafe), then += b*x (normalizing)");
     let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
+    unsafe {
+        setup
+            .module
+            .ckks_add_pt_const_rnx_into_unsafe(&mut poly, &right_branch, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
+    }
+    print_ct_meta("right_branch + a (not normalized)", &poly);
     setup
         .module
-        .ckks_add(&mut poly, &left_linear, &right_branch, setup.scratch.borrow())?;
+        .ckks_mul_add_pt_const_rnx(&mut poly, &encryption.ct_x, &encoding.cst_b, PREC_PT, setup.scratch.borrow())?;
     print_ct_meta("final polynomial", &poly);
 
     Ok(EvaluationArtifacts { poly })

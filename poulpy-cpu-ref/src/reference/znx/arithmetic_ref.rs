@@ -4,20 +4,20 @@ use crate::reference::znx::{
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
     ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxRotate,
     ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
-    add::{znx_add_inplace_ref, znx_add_ref},
+    add::{znx_add_assign_ref, znx_add_ref},
     automorphism::znx_automorphism_ref,
     copy::znx_copy_ref,
-    neg::{znx_negate_inplace_ref, znx_negate_ref},
+    neg::{znx_negate_assign_ref, znx_negate_ref},
     normalization::{
-        znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
-        znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref,
-        znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
+        znx_normalize_final_step_assign_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
+        znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
+        znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
         znx_normalize_middle_step_sub_ref,
     },
-    sub::{znx_sub_inplace_ref, znx_sub_negate_inplace_ref, znx_sub_ref},
+    sub::{znx_sub_assign_ref, znx_sub_negate_assign_ref, znx_sub_ref},
     switch_ring::znx_switch_ring_ref,
     zero::znx_zero_ref,
-    znx_extract_digit_addmul_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
+    znx_extract_digit_addmul_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_assign_ref, znx_mul_power_of_two_ref,
     znx_normalize_digit_ref, znx_rotate,
 };
 
@@ -39,8 +39,8 @@ impl ZnxRotate for ZnxRef {
 
 impl ZnxAddInplace for ZnxRef {
     #[inline(always)]
-    fn znx_add_inplace(res: &mut [i64], a: &[i64]) {
-        znx_add_inplace_ref(res, a);
+    fn znx_add_assign(res: &mut [i64], a: &[i64]) {
+        znx_add_assign_ref(res, a);
     }
 }
 
@@ -53,15 +53,15 @@ impl ZnxSub for ZnxRef {
 
 impl ZnxSubInplace for ZnxRef {
     #[inline(always)]
-    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_inplace_ref(res, a);
+    fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
+        znx_sub_assign_ref(res, a);
     }
 }
 
 impl ZnxSubNegateInplace for ZnxRef {
     #[inline(always)]
-    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_negate_inplace_ref(res, a);
+    fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
+        znx_sub_negate_assign_ref(res, a);
     }
 }
 
@@ -88,8 +88,8 @@ impl ZnxMulAddPowerOfTwo for ZnxRef {
 
 impl ZnxMulPowerOfTwoInplace for ZnxRef {
     #[inline(always)]
-    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
-        znx_mul_power_of_two_inplace_ref(k, res);
+    fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
+        znx_mul_power_of_two_assign_ref(k, res);
     }
 }
 
@@ -109,8 +109,8 @@ impl ZnxNegate for ZnxRef {
 
 impl ZnxNegateInplace for ZnxRef {
     #[inline(always)]
-    fn znx_negate_inplace(res: &mut [i64]) {
-        znx_negate_inplace_ref(res);
+    fn znx_negate_assign(res: &mut [i64]) {
+        znx_negate_assign_ref(res);
     }
 }
 
@@ -165,8 +165,8 @@ impl ZnxNormalizeFinalStepSub for ZnxRef {
 
 impl ZnxNormalizeFinalStepInplace for ZnxRef {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_final_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_final_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 
@@ -179,8 +179,8 @@ impl ZnxNormalizeFirstStepCarryOnly for ZnxRef {
 
 impl ZnxNormalizeFirstStepInplace for ZnxRef {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_first_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_first_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 
@@ -193,8 +193,8 @@ impl ZnxNormalizeMiddleStepCarryOnly for ZnxRef {
 
 impl ZnxNormalizeMiddleStepInplace for ZnxRef {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_middle_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_middle_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 

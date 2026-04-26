@@ -98,7 +98,7 @@ pub trait VecZnxBigSub<B: Backend> {
 
 pub trait VecZnxBigSubInplace<B: Backend> {
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
@@ -106,7 +106,7 @@ pub trait VecZnxBigSubInplace<B: Backend> {
 
 pub trait VecZnxBigSubNegateInplace<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
@@ -123,7 +123,7 @@ pub trait VecZnxBigSubSmallA<B: Backend> {
 
 pub trait VecZnxBigSubSmallInplace<B: Backend> {
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
@@ -140,7 +140,7 @@ pub trait VecZnxBigSubSmallB<B: Backend> {
 
 pub trait VecZnxBigSubSmallNegateInplace<B: Backend> {
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
@@ -156,7 +156,7 @@ pub trait VecZnxBigNegate<B: Backend> {
 
 /// Negates the selected column of `res` in-place.
 pub trait VecZnxBigNegateInplace<B: Backend> {
-    fn vec_znx_big_negate_inplace<R>(&self, res: &mut R, res_col: usize)
+    fn vec_znx_big_negate_assign<R>(&self, res: &mut R, res_col: usize)
     where
         R: VecZnxBigToMut<B>;
 }
@@ -293,7 +293,7 @@ pub trait VecZnxBigNormalize<B: Backend> {
 
 /// Returns scratch bytes required for in-place automorphism on [`VecZnxBig`](crate::layouts::VecZnxBig).
 pub trait VecZnxBigAutomorphismInplaceTmpBytes {
-    fn vec_znx_big_automorphism_inplace_tmp_bytes(&self) -> usize;
+    fn vec_znx_big_automorphism_assign_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxBigAutomorphism<B: Backend> {
@@ -306,7 +306,7 @@ pub trait VecZnxBigAutomorphism<B: Backend> {
 
 pub trait VecZnxBigAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_big_automorphism_assign<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxBigToMut<B>;
 }

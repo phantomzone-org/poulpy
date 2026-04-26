@@ -20,7 +20,7 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
         self.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
     }
 
-    fn ckks_conjugate_default(
+    fn ckks_conjugate_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -34,7 +34,7 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
         let offset = dst.offset_unary(src);
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
-            self.glwe_automorphism_inplace(dst, key, scratch);
+            self.glwe_automorphism_assign(dst, key, scratch);
         } else {
             self.glwe_automorphism(dst, src, key, scratch);
         }
@@ -44,16 +44,18 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_conjugate_inplace_default(
+    fn ckks_conjugate_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
         scratch: &mut Scratch<BE>,
-    ) where
+    ) -> Result<()>
+    where
         Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.glwe_automorphism_inplace(dst, key, scratch);
+        self.glwe_automorphism_assign(dst, key, scratch);
+        Ok(())
     }
 }
 

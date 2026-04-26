@@ -92,7 +92,7 @@ impl NttIfmaAdd for NTTIfmaRef {
 
 impl NttIfmaAddInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_add_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -120,7 +120,7 @@ impl NttIfmaSub for NTTIfmaRef {
 
 impl NttIfmaSubInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_sub_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -133,7 +133,7 @@ impl NttIfmaSubInplace for NTTIfmaRef {
 
 impl NttIfmaSubNegateInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -161,7 +161,7 @@ impl NttIfmaNegate for NTTIfmaRef {
 
 impl NttIfmaNegateInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_negate_inplace(res: &mut [u64]) {
+    fn ntt_ifma_negate_assign(res: &mut [u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -258,7 +258,7 @@ impl NttAdd for NTTIfmaRef {
 
 impl NttAddInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_add_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -285,7 +285,7 @@ impl NttSub for NTTIfmaRef {
 
 impl NttSubInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_sub_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -298,7 +298,7 @@ impl NttSubInplace for NTTIfmaRef {
 
 impl NttSubNegateInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {
@@ -325,7 +325,7 @@ impl NttNegate for NTTIfmaRef {
 
 impl NttNegateInplace for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_negate_inplace(res: &mut [u64]) {
+    fn ntt_negate_assign(res: &mut [u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q2) in Q_SHIFTED_IFMA.iter().enumerate().take(3) {

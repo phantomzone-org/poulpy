@@ -35,7 +35,7 @@ where
     }
 }
 
-pub fn vec_znx_sub_scalar_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+pub fn vec_znx_sub_scalar_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: ScalarZnxToRef,
@@ -49,5 +49,5 @@ where
         assert!(res_limb < res.size());
     }
 
-    ZNXARI::znx_sub_inplace(res.at_mut(res_col, res_limb), a.at(a_col, 0));
+    ZNXARI::znx_sub_assign(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }

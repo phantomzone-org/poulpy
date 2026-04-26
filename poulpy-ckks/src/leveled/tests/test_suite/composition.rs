@@ -24,8 +24,8 @@ where
 {
     let ct_infos = ctx.params.glwe_layout();
     let prec = ctx.meta();
-    let mul_pt_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
-    ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_rnx))
+    let mul_pt_vec_rnx = ctx.module.ckks_mul_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &prec);
+    ScratchOwned::<BE>::alloc(ctx.scratch_size.max(mul_pt_vec_rnx))
 }
 
 fn poly2_expected<BE: super::helpers::TestBackend, F: TestScalar>(
@@ -106,10 +106,10 @@ pub fn test_linear_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestCont
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term2, &x, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term2, &x, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
 
     assert_eq!(
@@ -117,7 +117,7 @@ pub fn test_linear_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestCont
         term2.log_hom_rem(),
         "linear branches should remain aligned"
     );
-    ctx.module.ckks_add_inplace(&mut term1, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_assign(&mut term1, &term2, scratch.borrow()).unwrap();
 
     ctx.assert_decrypt_precision("linear_sum", &term1, &want_re, &want_im, scratch.borrow());
 }
@@ -136,17 +136,17 @@ pub fn test_poly2_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
     // Likewise, `square` consumes one `log_decimal` chunk, so the post-square
     // effective width is `x.effective_k() - log_decimal == x.log_hom_rem()`.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // These allocations still mean "result effective_k", not "headroom only".
     // The equality with `log_hom_rem()` is specific to these operation chains.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
 
     assert!(
@@ -154,7 +154,7 @@ pub fn test_poly2_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
         "x^2 branch should consume more precision"
     );
     let mut sum = ctx.alloc_ct(term2.effective_k());
-    ctx.module.ckks_add(&mut sum, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut sum, &term1, &term2, scratch.borrow()).unwrap();
 
     ctx.assert_decrypt_precision("poly2_sum", &sum, &want_re, &want_im, scratch.borrow());
 }
@@ -175,22 +175,22 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend, F: TestScalar>(ctx:
     // `square` output width matches `x.log_hom_rem()` here only because
     // squaring drops one `log_decimal` chunk from `x.effective_k()`.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
-    // `mul_pt_rnx` again allocates by post-op effective width; using
+    // `mul_pt_vec_rnx` again allocates by post-op effective width; using
     // `log_hom_rem()` is a numeric shortcut that holds for this fixture.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
-    ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
     ctx.module
-        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_assign(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
     ctx.assert_decrypt_precision("poly2_sum_with_const", &poly, &want_re, &want_im, scratch.borrow());
@@ -213,26 +213,26 @@ pub fn test_poly2_mul<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
     // Here too, the allocated `k` is the post-square effective width, which
     // happens to equal `x.log_hom_rem()` for CKKS square in this setup.
     let mut x2 = ctx.alloc_ct(x.log_hom_rem());
-    ctx.module.ckks_square(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // The same caution applies below: `log_hom_rem()` is not semantically the
     // ciphertext width, it just matches the required post-op width here.
     let mut term1 = ctx.alloc_ct(x.log_hom_rem());
     let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.module
-        .ckks_mul_pt_vec_rnx(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
+        .ckks_mul_pt_vec_rnx_into(&mut term2, &x2, &pt2, ctx.meta(), scratch.borrow())
         .unwrap();
     let mut poly = ctx.alloc_ct(term2.effective_k());
-    ctx.module.ckks_add(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut poly, &term1, &term2, scratch.borrow()).unwrap();
     ctx.module
-        .ckks_add_pt_vec_rnx_inplace(&mut poly, &pt0, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_assign(&mut poly, &pt0, ctx.meta(), scratch.borrow())
         .unwrap();
 
     let mut res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_mul(&mut res, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module.ckks_mul_into(&mut res, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
 
     ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, scratch.borrow());
 }
@@ -248,7 +248,7 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
         let prev_log_decimal = ct.log_decimal();
         let next_k = ct.effective_k() - ct.log_decimal();
         let mut next = ctx.alloc_ct(next_k);
-        ctx.module.ckks_square(&mut next, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+        ctx.module.ckks_square_into(&mut next, &ct, ctx.tsk(), scratch.borrow()).unwrap();
         assert_eq!(
             next.log_decimal(),
             prev_log_decimal,
@@ -284,7 +284,7 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
     let mut no_capacity = ctx.alloc_ct(ctx.max_k());
     let err = ctx
         .module
-        .ckks_square(&mut no_capacity, &ct, ctx.tsk(), scratch.borrow())
+        .ckks_square_into(&mut no_capacity, &ct, ctx.tsk(), scratch.borrow())
         .unwrap_err();
     assert_ckks_error(
         "repeated_square_exhausts_capacity",

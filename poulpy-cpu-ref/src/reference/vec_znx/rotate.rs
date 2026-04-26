@@ -9,7 +9,7 @@ use crate::{
     source::Source,
 };
 
-pub fn vec_znx_rotate_inplace_tmp_bytes(n: usize) -> usize {
+pub fn vec_znx_rotate_assign_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
@@ -41,7 +41,7 @@ where
     }
 }
 
-pub fn vec_znx_rotate_inplace<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_rotate_assign<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
     ZNXARI: ZnxRotate + ZnxCopy,
@@ -101,12 +101,12 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rotate_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rotate_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxRotateInplace<B> + VecZnxRotateInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_rotate_inplace::{label}");
+    let group_name: String = format!("vec_znx_rotate_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -125,14 +125,14 @@ where
 
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch = ScratchOwned::alloc(module.vec_znx_rotate_inplace_tmp_bytes());
+        let mut scratch = ScratchOwned::alloc(module.vec_znx_rotate_assign_tmp_bytes());
 
         // Fill a with random i64
         res.fill_uniform(50, &mut source);
 
         move || {
             for i in 0..cols {
-                module.vec_znx_rotate_inplace(-7, &mut res, i, scratch.borrow());
+                module.vec_znx_rotate_assign(-7, &mut res, i, scratch.borrow());
             }
             black_box(());
         }

@@ -18,7 +18,7 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
         self.glwe_shift_tmp_bytes()
     }
 
-    fn ckks_neg_default(
+    fn ckks_neg_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -33,7 +33,7 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
             self.glwe_lsh(dst, src, offset, scratch);
             dst.meta = src.meta();
             dst.meta.log_hom_rem = checked_log_hom_rem_sub("neg", src.log_hom_rem(), offset)?;
-            self.glwe_negate_inplace(dst);
+            self.glwe_negate_assign(dst);
         } else {
             self.glwe_negate(dst, src);
             dst.meta = src.meta();
@@ -41,11 +41,12 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_neg_inplace_default(&self, dst: &mut CKKSCiphertext<impl DataMut>)
+    fn ckks_neg_assign_default(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
     where
         Self: GLWENegate,
     {
-        self.glwe_negate_inplace(dst);
+        self.glwe_negate_assign(dst);
+        Ok(())
     }
 }
 

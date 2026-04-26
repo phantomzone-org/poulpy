@@ -110,14 +110,13 @@ use poulpy_ckks::{
     encoding::Encoder,
     layouts::CKKSPlaintextVecRnx,
 };
-use poulpy_cpu_ref::FFT64Ref;
 
 fn main() -> Result<()> {
     let m = 8;
     let re = vec![0.0; m];
     let im = vec![1.0; m];
 
-    let encoder = Encoder::<FFT64Ref>::new(m)?;
+    let encoder = Encoder::<f64>::new(m)?;
     let mut pt = CKKSPlaintextVecRnx::<f64>::alloc(2 * m)?;
 
     encoder.encode_reim(&mut pt, &re, &im)?;
@@ -130,36 +129,49 @@ fn main() -> Result<()> {
 }
 ```
 
-## End-to-End Example: Evaluate `a + bx + cx^2`
+## End-to-End Example: Evaluate `(a + b*x) + (c + d*x) * x^2`
 
 The crate includes a runnable example at
 [`examples/poly2.rs`](./examples/poly2.rs) that:
 
 1. encodes complex slots into a CKKS plaintext
 2. encrypts `x`
-3. evaluates `a + bx + cx^2`
+3. evaluates `(a + b*x) + (c + d*x) * x^2`
 4. decrypts and decodes the result
 
-The evaluation core looks like this:
+The evaluation phase follows the same operation order as the runnable example:
 
 ```rust,ignore
-let pt_x = encode_pt_znx::<NTT120Ref>(&encoder, &x_re, &x_im, prec)?;
-let ct_x = encrypt(&module, &sk, &pt_x, scratch.borrow())?;
+use poulpy_ckks::{
+    CKKSInfos,
+    layouts::{CKKSCiphertext, CKKSMaintainOps},
+    leveled::{CKKSAddOpsUnsafe, CKKSMulAddOps, CKKSMulOps},
+};
+use poulpy_core::GLWENormalize;
 
-let mut ct_x2 = CKKSCiphertext::alloc(n.into(), ct_x.log_hom_rem().into(), base2k.into());
+let mut ct_x2 = CKKSCiphertext::alloc(N.into(), ct_x.log_hom_rem().into(), BASE2K.into());
 module.ckks_square(&mut ct_x2, &ct_x, &tsk_prepared, scratch.borrow())?;
+module.ckks_compact_limbs(&mut ct_x2)?;
 
-let mut term_bx = CKKSCiphertext::alloc(n.into(), ct_x.log_hom_rem().into(), base2k.into());
-module.ckks_mul_pt_vec_rnx(&mut term_bx, &ct_x, &pt_b, prec, scratch.borrow())?;
+let linear_k = ct_x.effective_k() - PREC_PT.log_decimal;
 
-let mut term_cx2 = CKKSCiphertext::alloc(n.into(), ct_x2.log_hom_rem().into(), base2k.into());
-module.ckks_mul_pt_vec_rnx(&mut term_cx2, &ct_x2, &pt_c, prec, scratch.borrow())?;
+let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
+module.ckks_mul_pt_const_rnx(&mut right_linear, &ct_x, &cst_d, PREC_PT, scratch.borrow())?;
+unsafe {
+    module.ckks_add_pt_const_rnx_inplace_unsafe(&mut right_linear, &cst_c, PREC_PT, scratch.borrow())?;
+}
+module.glwe_normalize_inplace(&mut right_linear, scratch.borrow());
 
-let mut poly = CKKSCiphertext::alloc(n.into(), term_cx2.effective_k().into(), base2k.into());
-module.ckks_add(&mut poly, &term_bx, &term_cx2, scratch.borrow())?;
-module.ckks_add_pt_vec_rnx_inplace(&mut poly, &pt_a, prec, scratch.borrow())?;
+let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
+let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
+module.ckks_mul(&mut right_branch, &right_linear, &ct_x2, &tsk_prepared, scratch.borrow())?;
+module.ckks_compact_limbs(&mut right_branch)?;
 
-let (have_re, have_im) = decrypt_decode(&module, &encoder, &sk, &poly, scratch.borrow())?;
+let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
+unsafe {
+    module.ckks_add_pt_const_rnx_unsafe(&mut poly, &right_branch, &cst_a, PREC_PT, scratch.borrow())?;
+}
+module.ckks_mul_add_pt_const_rnx(&mut poly, &ct_x, &cst_b, PREC_PT, scratch.borrow())?;
 ```
 
 That example is meant to showcase the intended user workflow end to end:
@@ -176,7 +188,7 @@ module:
 ```rust,ignore
 use poulpy_ckks::{
     layouts::CKKSCiphertext,
-    leveled::operations::add::CKKSAddOps,
+    leveled::CKKSAddOps,
 };
 
 module.ckks_add(&mut dst, &lhs, &rhs, scratch)?;

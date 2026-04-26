@@ -767,7 +767,7 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_dft_sub_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -831,8 +831,8 @@ pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
-                module_test.vec_znx_dft_sub_inplace(&mut res_dft_test, i, &a_dft_test, i);
+                module_ref.vec_znx_dft_sub_assign(&mut res_dft_ref, i, &a_dft_ref, i);
+                module_test.vec_znx_dft_sub_assign(&mut res_dft_test, i, &a_dft_test, i);
             }
 
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
@@ -878,7 +878,7 @@ pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_dft_sub_negate_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -942,8 +942,8 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_negate_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
-                module_test.vec_znx_dft_sub_negate_inplace(&mut res_dft_test, i, &a_dft_test, i);
+                module_ref.vec_znx_dft_sub_negate_assign(&mut res_dft_ref, i, &a_dft_ref, i);
+                module_test.vec_znx_dft_sub_negate_assign(&mut res_dft_test, i, &a_dft_test, i);
             }
 
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);

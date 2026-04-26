@@ -292,7 +292,7 @@ pub fn bivariate_convolution_naive<R, A, B, M, BE: Backend>(
         }
     }
 
-    module.vec_znx_normalize_inplace(base2k, res, res_col, scratch);
+    module.vec_znx_normalize_assign(base2k, res, res_col, scratch);
 }
 
 fn bivariate_tensoring_naive<R, A, B, M, BE: Backend>(
@@ -353,7 +353,7 @@ fn bivariate_tensoring_naive<R, A, B, M, BE: Backend>(
     }
 
     for i in 0..res.cols() {
-        module.vec_znx_normalize_inplace(base2k, res, i, scratch);
+        module.vec_znx_normalize_assign(base2k, res, i, scratch);
     }
 }
 

@@ -14,7 +14,7 @@ pub trait CKKSRotateOps<BE: Backend + CKKSImpl<BE>> {
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
-    fn ckks_rotate<H, K>(
+    fn ckks_rotate_into<H, K>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -28,7 +28,7 @@ pub trait CKKSRotateOps<BE: Backend + CKKSImpl<BE>> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn ckks_rotate_inplace<H, K>(
+    fn ckks_rotate_assign<H, K>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         k: i64,

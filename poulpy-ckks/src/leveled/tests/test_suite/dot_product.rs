@@ -41,7 +41,9 @@ fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Scratc
     let pt_rnx_bytes = ctx
         .module
         .ckks_dot_product_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let const_bytes = ctx.module.ckks_dot_product_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+    let const_bytes = ctx
+        .module
+        .ckks_dot_product_pt_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let bytes = ct_bytes.max(pt_znx_bytes).max(pt_rnx_bytes).max(const_bytes);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
 }
@@ -417,7 +419,7 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_const_znx(&mut ct_res, &a_refs, &cst_refs, scratch.borrow())
+        .ckks_dot_product_pt_const_znx(&mut ct_res, &a_refs, &cst_refs, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("dot_product_const_znx_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -457,7 +459,7 @@ pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_const_rnx(&mut ct_res, &a_refs, &cst_refs, ctx.meta(), scratch.borrow())
+        .ckks_dot_product_pt_const_rnx(&mut ct_res, &a_refs, &cst_refs, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("dot_product_const_rnx_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }

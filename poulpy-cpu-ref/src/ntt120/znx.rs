@@ -9,13 +9,13 @@ use crate::reference::znx::{
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
     ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxRotate,
-    ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref, znx_automorphism_ref,
-    znx_copy_ref, znx_extract_digit_addmul_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref,
-    znx_mul_power_of_two_ref, znx_negate_inplace_ref, znx_negate_ref, znx_normalize_digit_ref,
-    znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
-    znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref,
-    znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
-    znx_normalize_middle_step_sub_ref, znx_rotate, znx_sub_inplace_ref, znx_sub_negate_inplace_ref, znx_sub_ref,
+    ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_add_assign_ref, znx_add_ref, znx_automorphism_ref,
+    znx_copy_ref, znx_extract_digit_addmul_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_assign_ref,
+    znx_mul_power_of_two_ref, znx_negate_assign_ref, znx_negate_ref, znx_normalize_digit_ref,
+    znx_normalize_final_step_assign_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
+    znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
+    znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
+    znx_normalize_middle_step_sub_ref, znx_rotate, znx_sub_assign_ref, znx_sub_negate_assign_ref, znx_sub_ref,
     znx_switch_ring_ref, znx_zero_ref,
 };
 
@@ -30,8 +30,8 @@ impl ZnxAdd for NTT120Ref {
 
 impl ZnxAddInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_add_inplace(res: &mut [i64], a: &[i64]) {
-        znx_add_inplace_ref(res, a);
+    fn znx_add_assign(res: &mut [i64], a: &[i64]) {
+        znx_add_assign_ref(res, a);
     }
 }
 
@@ -44,15 +44,15 @@ impl ZnxSub for NTT120Ref {
 
 impl ZnxSubInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_inplace_ref(res, a);
+    fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
+        znx_sub_assign_ref(res, a);
     }
 }
 
 impl ZnxSubNegateInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_negate_inplace_ref(res, a);
+    fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
+        znx_sub_negate_assign_ref(res, a);
     }
 }
 
@@ -72,8 +72,8 @@ impl ZnxMulPowerOfTwo for NTT120Ref {
 
 impl ZnxMulPowerOfTwoInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
-        znx_mul_power_of_two_inplace_ref(k, res);
+    fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
+        znx_mul_power_of_two_assign_ref(k, res);
     }
 }
 
@@ -100,8 +100,8 @@ impl ZnxNegate for NTT120Ref {
 
 impl ZnxNegateInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_negate_inplace(res: &mut [i64]) {
-        znx_negate_inplace_ref(res);
+    fn znx_negate_assign(res: &mut [i64]) {
+        znx_negate_assign_ref(res);
     }
 }
 
@@ -163,8 +163,8 @@ impl ZnxNormalizeFinalStepSub for NTT120Ref {
 
 impl ZnxNormalizeFinalStepInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_final_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_final_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 
@@ -177,8 +177,8 @@ impl ZnxNormalizeFirstStepCarryOnly for NTT120Ref {
 
 impl ZnxNormalizeFirstStepInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_first_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_first_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 
@@ -191,8 +191,8 @@ impl ZnxNormalizeMiddleStepCarryOnly for NTT120Ref {
 
 impl ZnxNormalizeMiddleStepInplace for NTT120Ref {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_middle_step_inplace_ref(base2k, lsh, x, carry);
+    fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_middle_step_assign_ref(base2k, lsh, x, carry);
     }
 }
 

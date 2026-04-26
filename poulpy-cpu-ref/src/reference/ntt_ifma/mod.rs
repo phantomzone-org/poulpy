@@ -119,7 +119,7 @@ pub trait NttIfmaAdd {
 
 /// In-place component-wise addition.
 pub trait NttIfmaAddInplace {
-    fn ntt_ifma_add_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// Component-wise subtraction.
@@ -129,12 +129,12 @@ pub trait NttIfmaSub {
 
 /// In-place component-wise subtraction.
 pub trait NttIfmaSubInplace {
-    fn ntt_ifma_sub_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// In-place swap-subtract: `res = a - res`.
 pub trait NttIfmaSubNegateInplace {
-    fn ntt_ifma_sub_negate_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// Component-wise negation.
@@ -144,7 +144,7 @@ pub trait NttIfmaNegate {
 
 /// In-place negation.
 pub trait NttIfmaNegateInplace {
-    fn ntt_ifma_negate_inplace(res: &mut [u64]);
+    fn ntt_ifma_negate_assign(res: &mut [u64]);
 }
 
 /// Zero a CRT vector.

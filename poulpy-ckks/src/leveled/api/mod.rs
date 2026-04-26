@@ -11,7 +11,7 @@ mod rotate;
 mod sub;
 mod tmp_bytes;
 
-pub use add::{CKKSAddOps, CKKSAddOpsWithoutNormalization};
+pub use add::{CKKSAddOps, CKKSAddOpsUnsafe};
 pub use composite::{CKKSAddManyOps, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulSubOps};
 pub use conjugate::CKKSConjugateOps;
 pub use encryption::{CKKSDecrypt, CKKSEncrypt};
@@ -21,5 +21,5 @@ pub use pow2::CKKSPow2Ops;
 pub use pt_znx::CKKSPlaintextZnxOps;
 pub use rescale::CKKSRescaleOps;
 pub use rotate::CKKSRotateOps;
-pub use sub::{CKKSSubOps, CKKSSubOpsWithoutNormalization};
+pub use sub::{CKKSSubOps, CKKSSubOpsUnsafe};
 pub use tmp_bytes::CKKSAllOpsTmpBytes;

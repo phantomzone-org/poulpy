@@ -284,8 +284,8 @@ where
             let res_big = module.vec_znx_idft_apply_consume(res_dft);
             let (mut tmp, scratch) = scratch.take_vec_znx(n, 1, tensor.size());
             module.vec_znx_big_normalize(&mut tmp, base2k, cnv_offset_lo, 0, &res_big, base2k, 0, scratch);
-            module.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 0);
-            module.vec_znx_sub_inplace(&mut tmp, 0, &diag_terms, 1);
+            module.vec_znx_sub_assign(&mut tmp, 0, &diag_terms, 0);
+            module.vec_znx_sub_assign(&mut tmp, 0, &diag_terms, 1);
             black_box(());
         })
     });

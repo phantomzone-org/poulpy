@@ -1,59 +1,15 @@
 use anyhow::Result;
 use poulpy_core::{ScratchTakeCore, layouts::GLWEPlaintext};
 use poulpy_hal::{
-    api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshSub, VecZnxRshTmpBytes},
+    api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    CKKSInfos,
-    layouts::{CKKSCiphertext, CKKSPlaintextVecZnx},
-    oep::CKKSImpl,
-};
+use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
 
 use crate::leveled::{api::CKKSPlaintextZnxOps, oep::CKKSPlaintextZnxOep};
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSPlaintextZnxOps<BE> for Module<BE> {
-    fn ckks_add_pt_znx_tmp_bytes(&self) -> usize
-    where
-        Self: VecZnxRshTmpBytes,
-    {
-        CKKSPlaintextZnxOep::ckks_add_pt_znx_tmp_bytes(self)
-    }
-
-    fn ckks_add_pt_vec_znx(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxRshAddInto<BE>,
-    {
-        CKKSPlaintextZnxOep::ckks_add_pt_vec_znx(self, dst, src, scratch)
-    }
-
-    fn ckks_sub_pt_znx_tmp_bytes(&self) -> usize
-    where
-        Self: VecZnxRshTmpBytes,
-    {
-        CKKSPlaintextZnxOep::ckks_sub_pt_znx_tmp_bytes(self)
-    }
-
-    fn ckks_sub_pt_vec_znx(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxRshSub<BE>,
-    {
-        CKKSPlaintextZnxOep::ckks_sub_pt_vec_znx(self, dst, src, scratch)
-    }
-
     fn ckks_extract_pt_znx_tmp_bytes(&self) -> usize
     where
         Self: VecZnxLshTmpBytes + VecZnxRshTmpBytes,

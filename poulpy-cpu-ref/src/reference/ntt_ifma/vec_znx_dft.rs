@@ -306,7 +306,7 @@ where
 
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_ifma_add_inplace(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_ifma_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
     }
 }
 
@@ -327,18 +327,18 @@ where
         let shift = (a_scale as usize).min(a_size);
         let sum_size = a_size.min(res_size).saturating_sub(shift);
         for j in 0..sum_size {
-            BE::ntt_ifma_add_inplace(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j + shift));
+            BE::ntt_ifma_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j + shift));
         }
     } else if a_scale < 0 {
         let shift = (a_scale.unsigned_abs() as usize).min(res_size);
         let sum_size = a_size.min(res_size.saturating_sub(shift));
         for j in 0..sum_size {
-            BE::ntt_ifma_add_inplace(limb_u64_mut(&mut res, res_col, j + shift), limb_u64(&a, a_col, j));
+            BE::ntt_ifma_add_assign(limb_u64_mut(&mut res, res_col, j + shift), limb_u64(&a, a_col, j));
         }
     } else {
         let sum_size = a_size.min(res_size);
         for j in 0..sum_size {
-            BE::ntt_ifma_add_inplace(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+            BE::ntt_ifma_add_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
         }
     }
 }
@@ -395,7 +395,7 @@ where
 }
 
 /// DFT-domain in-place sub: `res[res_col] -= a[a_col]`.
-pub fn ntt_ifma_vec_znx_dft_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt_ifma_vec_znx_dft_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubInplace,
     R: VecZnxDftToMut<BE>,
@@ -406,12 +406,12 @@ where
 
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::ntt_ifma_sub_inplace(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_ifma_sub_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
     }
 }
 
 /// DFT-domain in-place swap-sub: `res[res_col] = a[a_col] - res[res_col]`.
-pub fn ntt_ifma_vec_znx_dft_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt_ifma_vec_znx_dft_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubNegateInplace + NttIfmaNegateInplace,
     R: VecZnxDftToMut<BE>,
@@ -423,10 +423,10 @@ where
     let res_size = res.size();
     let sum_size = res_size.min(a.size());
     for j in 0..sum_size {
-        BE::ntt_ifma_sub_negate_inplace(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
+        BE::ntt_ifma_sub_negate_assign(limb_u64_mut(&mut res, res_col, j), limb_u64(&a, a_col, j));
     }
     for j in sum_size..res_size {
-        BE::ntt_ifma_negate_inplace(limb_u64_mut(&mut res, res_col, j));
+        BE::ntt_ifma_negate_assign(limb_u64_mut(&mut res, res_col, j));
     }
 }
 

@@ -10,9 +10,9 @@ use crate::{
     },
     reference::{
         vec_znx::{
-            vec_znx_add_assign, vec_znx_add_into, vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_negate,
-            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_normalize_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace,
-            vec_znx_sub_negate_inplace,
+            vec_znx_add_assign, vec_znx_add_into, vec_znx_automorphism, vec_znx_automorphism_assign, vec_znx_negate,
+            vec_znx_negate_assign, vec_znx_normalize, vec_znx_normalize_tmp_bytes, vec_znx_sub, vec_znx_sub_assign,
+            vec_znx_sub_negate_assign,
         },
         znx::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
@@ -137,7 +137,7 @@ where
     vec_znx_add_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
 }
 
-pub fn vec_znx_big_automorphism_inplace_tmp_bytes(n: usize) -> usize {
+pub fn vec_znx_big_automorphism_assign_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
@@ -169,7 +169,7 @@ where
     vec_znx_automorphism::<_, _, BE>(p, &mut res_vznx, res_col, &a_vznx, a_col);
 }
 
-pub fn vec_znx_big_automorphism_inplace<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_big_automorphism_assign<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     BE: Backend<ScalarBig = i64> + ZnxAutomorphism + ZnxCopy,
     R: VecZnxBigToMut<BE>,
@@ -184,7 +184,7 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_automorphism_inplace::<_, BE>(p, &mut res_vznx, res_col, tmp);
+    vec_znx_automorphism_assign::<_, BE>(p, &mut res_vznx, res_col, tmp);
 }
 
 pub fn vec_znx_big_negate<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -215,7 +215,7 @@ where
     vec_znx_negate::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
-pub fn vec_znx_big_negate_inplace<R, BE>(res: &mut R, res_col: usize)
+pub fn vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxNegateInplace,
     R: VecZnxBigToMut<BE>,
@@ -230,7 +230,7 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_negate_inplace::<_, BE>(&mut res_vznx, res_col);
+    vec_znx_negate_assign::<_, BE>(&mut res_vznx, res_col);
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
@@ -378,7 +378,7 @@ where
 }
 
 /// R <- A - B
-pub fn vec_znx_big_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSubInplace,
     R: VecZnxBigToMut<BE>,
@@ -403,11 +403,11 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_assign::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- B - A
-pub fn vec_znx_big_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
     R: VecZnxBigToMut<BE>,
@@ -432,7 +432,7 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_negate_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_negate_assign::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- A - B
@@ -496,7 +496,7 @@ where
 }
 
 ///  R <- R - A
-pub fn vec_znx_big_sub_small_a_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_small_a_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSubInplace,
     R: VecZnxBigToMut<BE>,
@@ -512,11 +512,11 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
 }
 
 /// R <- A - R
-pub fn vec_znx_big_sub_small_b_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_small_b_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
     R: VecZnxBigToMut<BE>,
@@ -532,5 +532,5 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_negate_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_negate_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
 }

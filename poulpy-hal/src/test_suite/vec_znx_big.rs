@@ -522,7 +522,7 @@ pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -550,10 +550,10 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
     let cols: usize = 2;
 
     let mut scratch_ref: ScratchOwned<BR> = ScratchOwned::alloc(
-        module_ref.vec_znx_big_automorphism_inplace_tmp_bytes() | module_ref.vec_znx_big_normalize_tmp_bytes(),
+        module_ref.vec_znx_big_automorphism_assign_tmp_bytes() | module_ref.vec_znx_big_normalize_tmp_bytes(),
     );
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(
-        module_test.vec_znx_big_automorphism_inplace_tmp_bytes() | module_test.vec_znx_big_normalize_tmp_bytes(),
+        module_test.vec_znx_big_automorphism_assign_tmp_bytes() | module_test.vec_znx_big_normalize_tmp_bytes(),
     );
 
     for res_size in [1, 2, 3, 4] {
@@ -570,8 +570,8 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_automorphism_inplace(p, &mut res_big_ref, i, scratch_ref.borrow());
-                module_test.vec_znx_big_automorphism_inplace(p, &mut res_big_test, i, scratch_test.borrow());
+                module_ref.vec_znx_big_automorphism_assign(p, &mut res_big_ref, i, scratch_ref.borrow());
+                module_test.vec_znx_big_automorphism_assign(p, &mut res_big_test, i, scratch_test.borrow());
             }
 
             let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -699,7 +699,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_negate_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -742,8 +742,8 @@ pub fn test_vec_znx_big_negate_inplace<BR: Backend, BT: Backend>(
         }
 
         for i in 0..cols {
-            module_ref.vec_znx_big_negate_inplace(&mut res_big_ref, i);
-            module_test.vec_znx_big_negate_inplace(&mut res_big_test, i);
+            module_ref.vec_znx_big_negate_assign(&mut res_big_ref, i);
+            module_test.vec_znx_big_negate_assign(&mut res_big_test, i);
         }
 
         let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -808,10 +808,10 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
     let cols: usize = 2;
 
     let mut scratch_ref: ScratchOwned<BR> = ScratchOwned::alloc(
-        module_ref.vec_znx_big_automorphism_inplace_tmp_bytes() | module_ref.vec_znx_big_normalize_tmp_bytes(),
+        module_ref.vec_znx_big_automorphism_assign_tmp_bytes() | module_ref.vec_znx_big_normalize_tmp_bytes(),
     );
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(
-        module_test.vec_znx_big_automorphism_inplace_tmp_bytes() | module_test.vec_znx_big_normalize_tmp_bytes(),
+        module_test.vec_znx_big_automorphism_assign_tmp_bytes() | module_test.vec_znx_big_normalize_tmp_bytes(),
     );
 
     for a_size in [1, 2, 3, 4] {
@@ -1133,7 +1133,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -1189,8 +1189,8 @@ pub fn test_vec_znx_big_sub_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_assign(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_assign(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1233,7 +1233,7 @@ pub fn test_vec_znx_big_sub_inplace<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_negate_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -1289,8 +1289,8 @@ pub fn test_vec_znx_big_sub_negate_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_negate_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_negate_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_negate_assign(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_negate_assign(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1541,7 +1541,7 @@ pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -1588,8 +1588,8 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_inplace(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_assign(&mut res_big_ref, i, &a, i);
+                module_test.vec_znx_big_sub_small_assign(&mut res_big_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1631,7 +1631,7 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
+pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -1679,8 +1679,8 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
                 }
 
                 for i in 0..cols {
-                    module_ref.vec_znx_big_sub_small_negate_inplace(&mut res_big_ref, i, &a, i);
-                    module_test.vec_znx_big_sub_small_negate_inplace(&mut res_big_test, i, &a, i);
+                    module_ref.vec_znx_big_sub_small_negate_assign(&mut res_big_ref, i, &a, i);
+                    module_test.vec_znx_big_sub_small_negate_assign(&mut res_big_test, i, &a, i);
                 }
 
                 assert_eq!(a.digest_u64(), a_digest);

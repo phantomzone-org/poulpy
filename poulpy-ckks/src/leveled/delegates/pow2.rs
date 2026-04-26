@@ -14,7 +14,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE> {
         CKKSPow2Oep::ckks_mul_pow2_tmp_bytes(self)
     }
 
-    fn ckks_mul_pow2(
+    fn ckks_mul_pow2_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -25,15 +25,15 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        CKKSPow2Oep::ckks_mul_pow2(self, dst, src, bits, scratch)
+        CKKSPow2Oep::ckks_mul_pow2_into(self, dst, src, bits, scratch)
     }
 
-    fn ckks_mul_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_mul_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        CKKSPow2Oep::ckks_mul_pow2_inplace(self, dst, bits, scratch)
+        CKKSPow2Oep::ckks_mul_pow2_assign(self, dst, bits, scratch)
     }
 
     fn ckks_div_pow2_tmp_bytes(&self) -> usize
@@ -43,7 +43,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE> {
         CKKSPow2Oep::ckks_div_pow2_tmp_bytes(self)
     }
 
-    fn ckks_div_pow2(
+    fn ckks_div_pow2_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -54,10 +54,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE> {
         Self: GLWEShift<BE> + GLWECopy,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        CKKSPow2Oep::ckks_div_pow2(self, dst, src, bits, scratch)
+        CKKSPow2Oep::ckks_div_pow2_into(self, dst, src, bits, scratch)
     }
 
-    fn ckks_div_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
-        CKKSPow2Oep::ckks_div_pow2_inplace(self, dst, bits)
+    fn ckks_div_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
+        CKKSPow2Oep::ckks_div_pow2_assign(self, dst, bits)
     }
 }

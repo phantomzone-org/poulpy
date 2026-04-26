@@ -63,7 +63,7 @@ where
     }
 }
 
-pub fn vec_znx_sub_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_sub_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
@@ -83,11 +83,11 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        ZNXARI::znx_sub_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_sub_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
-pub fn vec_znx_sub_negate_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_sub_negate_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
@@ -107,11 +107,11 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        ZNXARI::znx_sub_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_sub_negate_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in sum_size..res_size {
-        ZNXARI::znx_negate_inplace(res.at_mut(res_col, j));
+        ZNXARI::znx_negate_assign(res.at_mut(res_col, j));
     }
 }
 
@@ -161,12 +161,12 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_sub_inplace<B>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_sub_assign<B>(c: &mut Criterion, label: &str)
 where
     B: Backend,
     Module<B>: VecZnxSubInplace + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_sub_inplace::{label}");
+    let group_name: String = format!("vec_znx_sub_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -191,7 +191,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_inplace(&mut b, i, &a, i);
+                module.vec_znx_sub_assign(&mut b, i, &a, i);
             }
             black_box(());
         }
@@ -206,12 +206,12 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_sub_negate_inplace<B>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_sub_negate_assign<B>(c: &mut Criterion, label: &str)
 where
     B: Backend,
     Module<B>: VecZnxSubNegateInplace + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_sub_negate_inplace::{label}");
+    let group_name: String = format!("vec_znx_sub_negate_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -236,7 +236,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_negate_inplace(&mut b, i, &a, i);
+                module.vec_znx_sub_negate_assign(&mut b, i, &a, i);
             }
             black_box(());
         }

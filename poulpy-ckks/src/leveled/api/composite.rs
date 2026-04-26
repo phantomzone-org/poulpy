@@ -18,7 +18,7 @@ use crate::{
         },
     },
     leveled::api::{
-        add::{CKKSAddOps, CKKSAddOpsWithoutNormalization},
+        add::{CKKSAddOps, CKKSAddOpsUnsafe},
         mul::CKKSMulOps,
         sub::CKKSSubOps,
     },
@@ -37,7 +37,7 @@ pub trait CKKSAddManyOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut Scratch<BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsWithoutNormalization<BE>,
+        Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsUnsafe<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
@@ -79,7 +79,7 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
 
-    fn ckks_mul_add_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_add_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -121,7 +121,7 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_mul_add_const_znx(
+    fn ckks_mul_add_pt_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -132,7 +132,7 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_add_const_rnx<F>(
+    fn ckks_mul_add_pt_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -165,7 +165,7 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
 
-    fn ckks_mul_sub_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_sub_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -207,7 +207,7 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_mul_sub_const_znx(
+    fn ckks_mul_sub_pt_const_znx(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -218,7 +218,7 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEAdd + GLWESub + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_mul_sub_const_rnx<F>(
+    fn ckks_mul_sub_pt_const_rnx<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -251,7 +251,7 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
         A: GLWEInfos,
         Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
 
-    fn ckks_dot_product_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_dot_product_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -271,7 +271,7 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWENormalize<BE>
             + GLWETensoring<BE>
             + VecZnxAddAssign
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
@@ -288,7 +288,7 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWEShift<BE>
             + GLWENormalize<BE>
             + VecZnxRshAddInto<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
@@ -307,12 +307,12 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWEShift<BE>
             + GLWENormalize<BE>
             + VecZnxRshAddInto<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_dot_product_const_znx<D: DataRef>(
+    fn ckks_dot_product_pt_const_znx<D: DataRef>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &[&CKKSCiphertext<D>],
@@ -325,11 +325,11 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWERotate<BE>
             + GLWEShift<BE>
             + GLWENormalize<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_dot_product_const_rnx<D: DataRef, F>(
+    fn ckks_dot_product_pt_const_rnx<D: DataRef, F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &[&CKKSCiphertext<D>],
@@ -343,7 +343,7 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
             + GLWERotate<BE>
             + GLWEShift<BE>
             + GLWENormalize<BE>
-            + CKKSAddOpsWithoutNormalization<BE>
+            + CKKSAddOpsUnsafe<BE>
             + CKKSMulOps<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;

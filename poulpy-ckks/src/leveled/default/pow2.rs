@@ -22,7 +22,7 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
         self.glwe_shift_tmp_bytes()
     }
 
-    fn ckks_mul_pow2_default(
+    fn ckks_mul_pow2_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -40,7 +40,7 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pow2_inplace_default(
+    fn ckks_mul_pow2_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         bits: usize,
@@ -50,11 +50,11 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.glwe_lsh_inplace(dst, bits, scratch);
+        self.glwe_lsh_assign(dst, bits, scratch);
         Ok(())
     }
 
-    fn ckks_div_pow2_default(
+    fn ckks_div_pow2_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -72,8 +72,8 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_div_pow2_inplace_default(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("div_pow2_inplace", dst.log_hom_rem(), bits)?;
+    fn ckks_div_pow2_assign_default(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
+        dst.meta.log_hom_rem = checked_log_hom_rem_sub("div_pow2_assign", dst.log_hom_rem(), bits)?;
         Ok(())
     }
 }

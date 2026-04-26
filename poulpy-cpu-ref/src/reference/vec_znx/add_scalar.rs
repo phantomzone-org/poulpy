@@ -55,5 +55,5 @@ where
         assert!(res_limb < res.size());
     }
 
-    ZNXARI::znx_add_inplace(res.at_mut(res_col, res_limb), a.at(a_col, 0));
+    ZNXARI::znx_add_assign(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }

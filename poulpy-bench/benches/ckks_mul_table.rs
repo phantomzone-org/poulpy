@@ -280,12 +280,12 @@ where
     // ── rescale ──
     let rescale_ms = {
         for _ in 0..WARMUP {
-            module.glwe_lsh_inplace(&mut res, base2k, scratch.borrow());
+            module.glwe_lsh_assign(&mut res, base2k, scratch.borrow());
             black_box(());
         }
         let start = Instant::now();
         for _ in 0..ITERATIONS {
-            module.glwe_lsh_inplace(&mut res, base2k, scratch.borrow());
+            module.glwe_lsh_assign(&mut res, base2k, scratch.borrow());
             black_box(());
         }
         start.elapsed().as_secs_f64() * 1000.0 / ITERATIONS as f64
@@ -298,7 +298,7 @@ where
             let (mut t, sr) = s.take_glwe_tensor(&tensor_layout);
             module.glwe_tensor_apply(0, &mut t, &a, a.max_k().as_usize(), &b, b.max_k().as_usize(), sr);
             module.glwe_tensor_relinearize(&mut res, &t, &tsk_prepared, tsk_size, sr);
-            module.glwe_lsh_inplace(&mut res, base2k, sr);
+            module.glwe_lsh_assign(&mut res, base2k, sr);
             black_box(());
         }
         let start = Instant::now();
@@ -307,7 +307,7 @@ where
             let (mut t, sr) = s.take_glwe_tensor(&tensor_layout);
             module.glwe_tensor_apply(0, &mut t, &a, a.max_k().as_usize(), &b, b.max_k().as_usize(), sr);
             module.glwe_tensor_relinearize(&mut res, &t, &tsk_prepared, tsk_size, sr);
-            module.glwe_lsh_inplace(&mut res, base2k, sr);
+            module.glwe_lsh_assign(&mut res, base2k, sr);
             black_box(());
         }
         start.elapsed().as_secs_f64() * 1000.0 / ITERATIONS as f64

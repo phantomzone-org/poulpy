@@ -18,15 +18,15 @@ where
         self.ckks_rescale_tmp_bytes_default()
     }
 
-    fn ckks_rescale_inplace(&self, ct: &mut CKKSCiphertext<impl DataMut>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertext<impl DataMut>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.ckks_rescale_inplace_default(ct, k, scratch)
+        self.ckks_rescale_assign_default(ct, k, scratch)
     }
 
-    fn ckks_rescale(
+    fn ckks_rescale_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         k: usize,
@@ -37,10 +37,10 @@ where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.ckks_rescale_default(dst, k, src, scratch)
+        self.ckks_rescale_into_default(dst, k, src, scratch)
     }
 
-    fn ckks_align_inplace(
+    fn ckks_align_assign(
         &self,
         a: &mut CKKSCiphertext<impl DataMut>,
         b: &mut CKKSCiphertext<impl DataMut>,
@@ -50,7 +50,7 @@ where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.ckks_align_inplace_default(a, b, scratch)
+        self.ckks_align_assign_default(a, b, scratch)
     }
 
     fn ckks_align_tmp_bytes(&self) -> usize

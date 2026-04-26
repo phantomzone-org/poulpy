@@ -81,7 +81,7 @@ pub fn ntt_ifma_svp_apply_dft_to_dft<R, A, C, BE>(
 }
 
 /// Pointwise DFT-domain multiply in place: `res = a ⊙ res`.
-pub fn ntt_ifma_svp_apply_dft_to_dft_inplace<R, A, BE>(
+pub fn ntt_ifma_svp_apply_dft_to_dft_assign<R, A, BE>(
     module: &impl NttIfmaModuleHandle,
     res: &mut R,
     res_col: usize,

@@ -176,7 +176,7 @@ pub trait NttAdd {
 /// In-place component-wise addition of a q120b vector.
 pub trait NttAddInplace {
     /// `res[i] += a[i]` for each CRT component.
-    fn ntt_add_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_add_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// Zero a q120b vector.
@@ -233,7 +233,7 @@ pub trait NttSub {
 /// In-place component-wise subtraction of a q120b vector.
 pub trait NttSubInplace {
     /// `res[i] -= a[i]` (lazy q120b arithmetic) for each CRT component.
-    fn ntt_sub_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_sub_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// In-place swap-subtract: `res = a - res`.
@@ -241,7 +241,7 @@ pub trait NttSubInplace {
 /// Equivalent to negating `res` then adding `a`, in lazy q120b arithmetic.
 pub trait NttSubNegateInplace {
     /// `res[i] = a[i] - res[i]` (lazy q120b arithmetic).
-    fn ntt_sub_negate_inplace(res: &mut [u64], a: &[u64]);
+    fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// Component-wise negation of a q120b vector.
@@ -253,7 +253,7 @@ pub trait NttNegate {
 /// In-place component-wise negation of a q120b vector.
 pub trait NttNegateInplace {
     /// `res[i] = -res[i]` (lazy q120b arithmetic).
-    fn ntt_negate_inplace(res: &mut [u64]);
+    fn ntt_negate_assign(res: &mut [u64]);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

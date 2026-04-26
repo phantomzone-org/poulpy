@@ -20,7 +20,7 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         self.glwe_shift_tmp_bytes()
     }
 
-    fn ckks_rescale_inplace_default(
+    fn ckks_rescale_assign_default(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
         k: usize,
@@ -30,13 +30,13 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let log_hom_rem = checked_log_hom_rem_sub("rescale_inplace", ct.log_hom_rem(), k)?;
-        self.glwe_lsh_inplace(ct, k, scratch);
+        let log_hom_rem = checked_log_hom_rem_sub("rescale_assign", ct.log_hom_rem(), k)?;
+        self.glwe_lsh_assign(ct, k, scratch);
         ct.meta.log_hom_rem = log_hom_rem;
         Ok(())
     }
 
-    fn ckks_rescale_default(
+    fn ckks_rescale_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         k: usize,
@@ -54,7 +54,7 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_align_inplace_default(
+    fn ckks_align_assign_default(
         &self,
         a: &mut CKKSCiphertext<impl DataMut>,
         b: &mut CKKSCiphertext<impl DataMut>,
@@ -65,9 +65,9 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         if a.log_hom_rem() < b.log_hom_rem() {
-            self.ckks_rescale_inplace_default(b, b.log_hom_rem() - a.log_hom_rem(), scratch)
+            self.ckks_rescale_assign_default(b, b.log_hom_rem() - a.log_hom_rem(), scratch)
         } else {
-            self.ckks_rescale_inplace_default(a, a.log_hom_rem() - b.log_hom_rem(), scratch)
+            self.ckks_rescale_assign_default(a, a.log_hom_rem() - b.log_hom_rem(), scratch)
         }
     }
 }

@@ -94,7 +94,7 @@ where
         if res_col > 0 {
             let (mut pt_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, res.size());
             self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
-            self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, res_col - 1);
+            self.svp_apply_dft_to_dft_assign(&mut pt_dft, 0, &sk_prepared.data, res_col - 1);
             let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
             self.vec_znx_big_normalize(&mut pt.data, base2k, 0, 0, &pt_big, base2k, 0, scratch_2);
         }

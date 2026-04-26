@@ -43,7 +43,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
                 .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk))
     }
 
-    fn ckks_mul_default(
+    fn ckks_mul_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -85,7 +85,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_inplace_default(
+    fn ckks_mul_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -143,7 +143,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         lvl_0 + lvl_1
     }
 
-    fn ckks_square_default(
+    fn ckks_square_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -172,7 +172,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_square_inplace_default(
+    fn ckks_square_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
@@ -227,7 +227,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(&b_infos) + self.glwe_mul_plain_tmp_bytes(res, a, &b_infos)
     }
 
-    fn ckks_mul_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_pt_const_tmp_bytes_default<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -240,7 +240,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
                 .max(self.glwe_rotate_tmp_bytes())
     }
 
-    fn ckks_mul_pt_vec_znx_default(
+    fn ckks_mul_pt_vec_znx_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -266,7 +266,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_vec_znx_inplace_default(
+    fn ckks_mul_pt_vec_znx_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -279,7 +279,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_pt_params(dst, dst, pt_znx)?;
         let dst_effective_k = dst.effective_k();
 
-        self.glwe_mul_plain_inplace(
+        self.glwe_mul_plain_assign(
             cnv_offset,
             &mut dst.to_mut(),
             dst_effective_k,
@@ -292,7 +292,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_pt_vec_rnx_default<F>(
+    fn ckks_mul_pt_vec_rnx_into_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -313,10 +313,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
 
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        self.ckks_mul_pt_vec_znx_default(dst, a, &pt_znx, scratch_1)
+        self.ckks_mul_pt_vec_znx_into_default(dst, a, &pt_znx, scratch_1)
     }
 
-    fn ckks_mul_pt_vec_rnx_inplace_default<F>(
+    fn ckks_mul_pt_vec_rnx_assign_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -336,10 +336,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
 
         let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
         pt_rnx.to_znx(&mut pt_znx)?;
-        self.ckks_mul_pt_vec_znx_inplace_default(dst, &pt_znx, scratch_1)
+        self.ckks_mul_pt_vec_znx_assign_default(dst, &pt_znx, scratch_1)
     }
 
-    fn ckks_mul_const_znx_default(
+    fn ckks_mul_pt_const_znx_into_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -356,14 +356,14 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             (Some(re_const), None) => self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), re_const, scratch),
             (None, Some(im_const)) => {
                 self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), im_const, scratch);
-                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, dst, scratch);
+                self.glwe_rotate_assign((dst.n().as_usize() / 2) as i64, dst, scratch);
             }
             (Some(re_const), Some(im_const)) => {
                 let (mut tmp, scratch_1) = scratch.take_glwe(dst);
 
                 self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), re_const, scratch_1);
                 self.glwe_mul_const(cnv_offset, &mut tmp, &a.to_ref(), im_const, scratch_1);
-                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
+                self.glwe_rotate_assign((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
                 self.glwe_add_assign(dst, &tmp);
             }
         }
@@ -373,7 +373,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_const_znx_inplace_default(
+    fn ckks_mul_pt_const_znx_assign_default(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -386,17 +386,17 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_const_params(dst, dst, cst_znx.meta())?;
         match (cst_znx.re(), cst_znx.im()) {
             (None, None) => dst.data_mut().zero(),
-            (Some(re_const), None) => self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), re_const, scratch),
+            (Some(re_const), None) => self.glwe_mul_const_assign(cnv_offset, &mut dst.to_mut(), re_const, scratch),
             (None, Some(im_const)) => {
-                self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), im_const, scratch);
-                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, dst, scratch);
+                self.glwe_mul_const_assign(cnv_offset, &mut dst.to_mut(), im_const, scratch);
+                self.glwe_rotate_assign((dst.n().as_usize() / 2) as i64, dst, scratch);
             }
             (Some(re_const), Some(im_const)) => {
                 let (mut tmp, scratch_1) = scratch.take_glwe(dst);
 
                 self.glwe_mul_const(cnv_offset, &mut tmp, &dst.to_ref(), im_const, scratch_1);
-                self.glwe_mul_const_inplace(cnv_offset, &mut dst.to_mut(), re_const, scratch_1);
-                self.glwe_rotate_inplace((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
+                self.glwe_mul_const_assign(cnv_offset, &mut dst.to_mut(), re_const, scratch_1);
+                self.glwe_rotate_assign((dst.n().as_usize() / 2) as i64, &mut tmp, scratch_1);
                 self.glwe_add_assign(dst, &tmp);
             }
         }
@@ -406,7 +406,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_mul_const_rnx_default<F>(
+    fn ckks_mul_pt_const_rnx_into_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -428,10 +428,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         }
 
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
-        self.ckks_mul_const_znx_default(dst, a, &cst_znx, scratch)
+        self.ckks_mul_pt_const_znx_into_default(dst, a, &cst_znx, scratch)
     }
 
-    fn ckks_mul_const_rnx_inplace_default<F>(
+    fn ckks_mul_pt_const_rnx_assign_default<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -452,7 +452,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         }
 
         let cst_znx = cst_rnx.to_znx(dst.base2k(), prec)?;
-        self.ckks_mul_const_znx_inplace_default(dst, &cst_znx, scratch)
+        self.ckks_mul_pt_const_znx_assign_default(dst, &cst_znx, scratch)
     }
 }
 

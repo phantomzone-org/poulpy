@@ -34,14 +34,14 @@ where
     }
 }
 
-pub fn vec_znx_negate_inplace<R, ZNXARI>(res: &mut R, res_col: usize)
+pub fn vec_znx_negate_assign<R, ZNXARI>(res: &mut R, res_col: usize)
 where
     R: VecZnxToMut,
     ZNXARI: ZnxNegateInplace,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     for j in 0..res.size() {
-        ZNXARI::znx_negate_inplace(res.at_mut(res_col, j));
+        ZNXARI::znx_negate_assign(res.at_mut(res_col, j));
     }
 }
 
@@ -89,11 +89,11 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_negate_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxNegateInplace + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_negate_inplace::{label}");
+    let group_name: String = format!("vec_znx_negate_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -115,7 +115,7 @@ where
         a.fill_uniform(50, &mut source);
         move || {
             for i in 0..cols {
-                module.vec_znx_negate_inplace(&mut a, i);
+                module.vec_znx_negate_assign(&mut a, i);
             }
             black_box(());
         }

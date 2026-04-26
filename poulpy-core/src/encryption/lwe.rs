@@ -113,7 +113,7 @@ where
 
         self.vec_znx_add_normal(base2k, &mut tmp_znx, 0, enc_infos.noise_infos(), source_xe);
 
-        self.vec_znx_normalize_inplace(base2k, &mut tmp_znx, 0, scratch_1);
+        self.vec_znx_normalize_assign(base2k, &mut tmp_znx, 0, scratch_1);
 
         (0..res.size()).for_each(|i| {
             res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];

@@ -20,7 +20,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         self.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
     }
 
-    fn ckks_rotate_default<H, K>(
+    fn ckks_rotate_into_default<H, K>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -45,7 +45,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
 
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
-            self.glwe_automorphism_inplace(dst, key, scratch);
+            self.glwe_automorphism_assign(dst, key, scratch);
         } else {
             self.glwe_automorphism(dst, src, key, scratch);
         }
@@ -55,7 +55,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_rotate_inplace_default<H, K>(
+    fn ckks_rotate_assign_default<H, K>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         k: i64,
@@ -71,10 +71,10 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         let key = keys
             .get_automorphism_key(k)
             .ok_or(CKKSCompositionError::MissingAutomorphismKey {
-                op: "rotate_inplace",
+                op: "rotate_assign",
                 rotation: k,
             })?;
-        self.glwe_automorphism_inplace(dst, key, scratch);
+        self.glwe_automorphism_assign(dst, key, scratch);
         Ok(())
     }
 }
