@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{ScratchOwnedAlloc, SvpPPolBytesOf, VecZnxAutomorphismBackend},
     layouts::{
         scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, GaloisElement,
-        HostDataMut, Module, ScratchArena, ScratchOwned,
+        Module, ScratchArena, ScratchOwned,
     },
     source::Source,
 };
@@ -41,7 +41,6 @@ where
     Self: GGLWEEncryptSk<BE> + VecZnxAutomorphismBackend<BE> + GaloisElement + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where

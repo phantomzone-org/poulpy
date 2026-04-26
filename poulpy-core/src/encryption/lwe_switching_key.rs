@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{ModuleN, VecZnxAutomorphismBackend, VecZnxCopyRangeBackend, VecZnxZeroBackend},
     layouts::{
         scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut,
-        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, HostDataMut, Module, ScratchArena,
+        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Module, ScratchArena,
     },
     source::Source,
 };
@@ -41,7 +41,6 @@ impl<BE: Backend> LWESwitchingKeyEncryptDefault<BE> for Module<BE>
 where
     Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphismBackend<BE> + VecZnxCopyRangeBackend<BE> + VecZnxZeroBackend<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where

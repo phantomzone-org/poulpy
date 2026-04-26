@@ -1,7 +1,4 @@
-use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena},
-    source::Source,
-};
+use poulpy_hal::{layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena}, source::Source};
 
 use crate::{
     GetDistribution, GetDistributionMut,
@@ -68,7 +65,6 @@ impl_encryption_delegate!(
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as LWEEncryptSkDefault<BE>>::lwe_encrypt_sk(self, res, pt, sk, enc_infos, source_xe, source_xa, scratch)
     }
@@ -495,7 +491,6 @@ impl_encryption_delegate!(
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut,
     {
         <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk(
             self, res, pt, sk, seed_xa, enc_infos, source_xe, scratch,

@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchArenaTakeBasic, VecZnxAddNormalSourceBackend, VecZnxCopyRangeBackend, VecZnxFillUniformSourceBackend,
         VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSubInnerProductAssignBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, vec_znx_backend_ref_from_mut},
+    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, vec_znx_backend_ref_from_mut},
     source::Source,
 };
 
@@ -48,8 +48,7 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
         P: LWEPlaintextToBackendRef<BE>,
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
@@ -91,7 +90,6 @@ where
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res = &mut res.to_backend_mut();
         let pt = pt.to_backend_ref();

@@ -9,10 +9,9 @@ use poulpy_hal::{
         VecZnxZeroBackend,
     },
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, Backend, HostDataMut, Module, ScalarZnx, ScratchArena,
+        scalar_znx_as_vec_znx_backend_mut_from_mut, Backend, Module, ScalarZnx, ScratchArena,
         SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef,
-        VecZnxDftReborrowBackendMut,
-        VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos, ZnxZero,
+        VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
     },
     source::Source,
 };
@@ -235,7 +234,12 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptPkDefault<BE> for Module<BE>
 where
-    Self: GLWEEncryptPkInternal<BE> + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxBigNormalizeTmpBytes,
+    Self: GLWEEncryptPkInternal<BE>
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
+        + VecZnxBigBytesOf
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxZeroBackend<BE>,
 {
     fn glwe_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -494,13 +498,13 @@ where
         + VecZnxFillUniformSourceBackend<BE>
         + VecZnxAddAssignBackend<BE>
         + VecZnxCopyBackend<BE>
+        + VecZnxZeroBackend<BE>
         + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddNormalSourceBackend<BE>
         + VecZnxNormalize<BE>
         + VecZnxSubInplaceBackend<BE>
         + VecZnxSubNegateInplaceBackend<BE>
         + VecZnxBigNormalizeTmpBytes,
-    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn glwe_encrypt_sk_internal<'s, 'pt, R, S, E>(
         &self,
@@ -539,7 +543,7 @@ where
         let (mut c0, scratch_1) = scratch_local.take_vec_znx(self.n(), 1, size);
         let (mut ci, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, size);
         let mut scratch_2 = scratch_2;
-        c0.zero();
+        self.vec_znx_zero_backend(&mut c0, 0);
 
         for i in 1..cols {
             let col_ct: usize = if compressed { 0 } else { i };

@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphismBackend, VecZnxCopyRangeBackend, VecZnxZeroBackend},
     layouts::{
         scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut,
-        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, HostDataMut, Module, ScratchArena, ScratchOwned,
+        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Module, ScratchArena, ScratchOwned,
     },
     source::Source,
 };
@@ -47,7 +47,6 @@ where
         + VecZnxZeroBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_to_lwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where

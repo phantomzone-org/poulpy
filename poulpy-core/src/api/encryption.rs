@@ -1,9 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use poulpy_hal::{
-    layouts::{Backend, HostDataMut, NoiseInfos, ScalarZnxToBackendRef, ScratchArena},
-    source::Source,
-};
+use poulpy_hal::{layouts::{Backend, NoiseInfos, ScalarZnxToBackendRef, ScratchArena}, source::Source};
 
 use crate::{
     GetDistribution, GetDistributionMut,
@@ -45,8 +42,7 @@ pub trait LWEEncryptSk<BE: Backend> {
         P: LWEPlaintextToBackendRef<BE>,
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
-        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait GLWEEncryptSk<BE: Backend> {
@@ -355,8 +351,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut;
+        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>;
 }
 
 pub trait GGLWECompressedEncryptSk<BE: Backend> {

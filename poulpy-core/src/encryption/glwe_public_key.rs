@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 
@@ -29,7 +29,6 @@ where
     Self: GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_public_key_generate<R, S, E>(
         &self,

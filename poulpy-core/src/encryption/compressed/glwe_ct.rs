@@ -1,9 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScratchArena},
-    source::Source,
-};
+use poulpy_hal::{layouts::{Backend, Module, ScratchArena}, source::Source};
 
 use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
@@ -35,8 +32,7 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut;
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 }
 
 impl<BE: Backend> GLWECompressedEncryptSkDefault<BE> for Module<BE>
@@ -69,7 +65,6 @@ where
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut,
     {
         res.seed_mut().copy_from_slice(&seed_xa);
 

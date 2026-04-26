@@ -1,9 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
-use poulpy_hal::{
-    layouts::{Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena},
-    source::Source,
-};
+use poulpy_hal::{layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena}, source::Source};
 
 use crate::{
     EncryptionInfos, GetDistribution, GetDistributionMut, ScratchArenaTakeCore,
@@ -46,8 +43,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         P: LWEPlaintextToBackendRef<BE>,
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -68,8 +64,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_encrypt_zero_sk_default<'s, R, E, S>(
         module: &Module<BE>,
@@ -84,8 +79,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_encrypt_pk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -106,8 +100,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_encrypt_zero_pk_default<'s, R, K, E>(
         module: &Module<BE>,
@@ -122,8 +115,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_public_key_generate_default<R, S, E>(
         module: &Module<BE>,
@@ -332,8 +324,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
-        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE::BufMut<'s>: HostDataMut;
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
     fn gglwe_compressed_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -472,7 +463,6 @@ where
         + GLWESwitchingKeyCompressedEncryptSkDefault<BE>
         + GLWETensorKeyCompressedEncryptSkDefault<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn lwe_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -496,7 +486,6 @@ where
         S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as LWEEncryptSkDefault<BE>>::lwe_encrypt_sk(module, res, pt, sk, enc_infos, source_xe, source_xa, scratch)
     }
@@ -881,7 +870,6 @@ where
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWECompressedEncryptSkDefault<BE>>::glwe_compressed_encrypt_sk(
             module, res, pt, sk, seed_xa, enc_infos, source_xe, scratch,
