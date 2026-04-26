@@ -392,7 +392,7 @@ macro_rules! ckks_backend_test_suite {
                 neg_smaller_output,
                 $crate::leveled::tests::test_suite::neg::test_neg_smaller_output
             );
-            run_test!(neg_assign, $crate::leveled::tests::test_suite::neg::test_neg_assign);
+            run_test_result!(neg_assign, $crate::leveled::tests::test_suite::neg::test_neg_assign);
             run_test!(
                 conjugate_aligned,
                 $crate::leveled::tests::test_suite::conjugate::test_conjugate_aligned
