@@ -13,12 +13,12 @@ use poulpy_cpu_ref::reference::znx::{
 };
 
 use crate::znx_avx::{
-    znx_add_avx, znx_add_assign_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
-    znx_mul_power_of_two_avx, znx_mul_power_of_two_assign_avx, znx_negate_avx, znx_negate_assign_avx, znx_normalize_digit_avx,
-    znx_normalize_final_step_avx, znx_normalize_final_step_assign_avx, znx_normalize_final_step_sub_avx,
-    znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_assign_avx,
-    znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_assign_avx,
-    znx_normalize_middle_step_sub_avx, znx_sub_avx, znx_sub_assign_avx, znx_sub_negate_assign_avx, znx_switch_ring_avx,
+    znx_add_assign_avx, znx_add_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
+    znx_mul_power_of_two_assign_avx, znx_mul_power_of_two_avx, znx_negate_assign_avx, znx_negate_avx, znx_normalize_digit_avx,
+    znx_normalize_final_step_assign_avx, znx_normalize_final_step_avx, znx_normalize_final_step_sub_avx,
+    znx_normalize_first_step_assign_avx, znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx,
+    znx_normalize_middle_step_assign_avx, znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx,
+    znx_normalize_middle_step_sub_avx, znx_sub_assign_avx, znx_sub_avx, znx_sub_negate_assign_avx, znx_switch_ring_avx,
 };
 
 use super::NTT120Avx;

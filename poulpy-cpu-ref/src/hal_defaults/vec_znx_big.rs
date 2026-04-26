@@ -1,4 +1,4 @@
-//! Backend extension points for extended-precision [`VecZnxBig`](poulpy_hal::layouts::VecZnxBig) operations.
+//! Backend extension points for extended-precision [`poulpy_hal::layouts::VecZnxBig`] operations.
 
 #![allow(clippy::too_many_arguments)]
 
@@ -31,7 +31,7 @@ use crate::reference::{
         ntt120_vec_znx_big_negate_assign, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_add_assign,
         ntt120_vec_znx_big_normalize_sub_assign, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
         ntt120_vec_znx_big_sub_assign, ntt120_vec_znx_big_sub_negate_assign, ntt120_vec_znx_big_sub_small_a,
-        ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_negate_assign,
+        ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_negate_assign,
     },
     znx::{
         ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,

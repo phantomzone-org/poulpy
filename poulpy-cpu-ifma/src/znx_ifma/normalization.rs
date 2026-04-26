@@ -169,7 +169,7 @@ pub unsafe fn znx_normalize_first_step_carry_only_ifma(base2k: usize, lsh: usize
 
 /// `x = digit(x) << lsh;  carry = carry(x)`
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_normalize_first_step_inplace_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub unsafe fn znx_normalize_first_step_assign_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     debug_assert!(x.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -216,9 +216,9 @@ pub unsafe fn znx_normalize_first_step_inplace_ifma(base2k: usize, lsh: usize, x
 
     // tail
     if !x.len().is_multiple_of(8) {
-        use poulpy_cpu_ref::reference::znx::znx_normalize_first_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_first_step_assign_ref;
 
-        znx_normalize_first_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
+        znx_normalize_first_step_assign_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
 }
 
@@ -379,7 +379,7 @@ pub unsafe fn znx_normalize_middle_step_carry_only_ifma(base2k: usize, lsh: usiz
 /// Step 2: sum = digit0 (<<lsh if lsh!=0) + carry_in, extract digit1/carry1.
 /// Output: x = digit1, carry_out = carry0 + carry1.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_normalize_middle_step_inplace_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub unsafe fn znx_normalize_middle_step_assign_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     debug_assert!(x.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -441,9 +441,9 @@ pub unsafe fn znx_normalize_middle_step_inplace_ifma(base2k: usize, lsh: usize, 
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_middle_step_assign_ref;
 
-        znx_normalize_middle_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
+        znx_normalize_middle_step_assign_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
 }
 
@@ -622,7 +622,7 @@ pub unsafe fn znx_normalize_middle_step_sub_ifma(base2k: usize, lsh: usize, x: &
 /// `x = digit( (digit(x, base2k_eff) << lsh) + carry )`   where base2k_eff = base2k when lsh==0
 /// or base2k-lsh otherwise.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_normalize_final_step_inplace_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub unsafe fn znx_normalize_final_step_assign_ifma(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     debug_assert!(x.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -674,9 +674,9 @@ pub unsafe fn znx_normalize_final_step_inplace_ifma(base2k: usize, lsh: usize, x
     }
 
     if !x.len().is_multiple_of(8) {
-        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_inplace_ref;
+        use poulpy_cpu_ref::reference::znx::znx_normalize_final_step_assign_ref;
 
-        znx_normalize_final_step_inplace_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
+        znx_normalize_final_step_assign_ref(base2k, lsh, &mut x[span << 3..], &mut carry[span << 3..]);
     }
 }
 
@@ -835,9 +835,9 @@ pub unsafe fn znx_normalize_final_step_sub_ifma(base2k: usize, lsh: usize, x: &m
 #[cfg(test)]
 mod tests {
     use poulpy_cpu_ref::reference::znx::{
-        get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref,
-        znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref, znx_normalize_first_step_inplace_ref,
-        znx_normalize_first_step_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
+        get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref, znx_normalize_final_step_assign_ref,
+        znx_normalize_final_step_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
+        znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
     };
 
     use super::*;
@@ -912,28 +912,28 @@ mod tests {
     }
 
     #[target_feature(enable = "avx512f")]
-    unsafe fn test_znx_normalize_first_step_inplace_ifma_internal() {
+    unsafe fn test_znx_normalize_first_step_assign_ifma_internal() {
         let mut y0: [i64; 8] = X_DATA;
         let mut y1: [i64; 8] = X_DATA;
         let mut c0: [i64; 8] = C_DATA;
         let mut c1: [i64; 8] = C_DATA;
         let base2k = 12;
 
-        znx_normalize_first_step_inplace_ref(base2k, 0, &mut y0, &mut c0);
-        znx_normalize_first_step_inplace_ifma(base2k, 0, &mut y1, &mut c1);
+        znx_normalize_first_step_assign_ref(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_first_step_assign_ifma(base2k, 0, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_first_step_inplace_ref(base2k, base2k - 1, &mut y0, &mut c0);
-        znx_normalize_first_step_inplace_ifma(base2k, base2k - 1, &mut y1, &mut c1);
+        znx_normalize_first_step_assign_ref(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_first_step_assign_ifma(base2k, base2k - 1, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_first_step_inplace_ifma() {
+    fn test_znx_normalize_first_step_assign_ifma() {
         unsafe {
-            test_znx_normalize_first_step_inplace_ifma_internal();
+            test_znx_normalize_first_step_assign_ifma_internal();
         }
     }
 
@@ -987,28 +987,28 @@ mod tests {
     }
 
     #[target_feature(enable = "avx512f")]
-    unsafe fn test_znx_normalize_middle_step_inplace_ifma_internal() {
+    unsafe fn test_znx_normalize_middle_step_assign_ifma_internal() {
         let mut y0: [i64; 8] = X_DATA;
         let mut y1: [i64; 8] = X_DATA;
         let mut c0: [i64; 8] = C_DATA;
         let mut c1: [i64; 8] = C_DATA;
         let base2k = 12;
 
-        znx_normalize_middle_step_inplace_ref(base2k, 0, &mut y0, &mut c0);
-        znx_normalize_middle_step_inplace_ifma(base2k, 0, &mut y1, &mut c1);
+        znx_normalize_middle_step_assign_ref(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_middle_step_assign_ifma(base2k, 0, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_middle_step_inplace_ref(base2k, base2k - 1, &mut y0, &mut c0);
-        znx_normalize_middle_step_inplace_ifma(base2k, base2k - 1, &mut y1, &mut c1);
+        znx_normalize_middle_step_assign_ref(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_middle_step_assign_ifma(base2k, base2k - 1, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_middle_step_inplace_ifma() {
+    fn test_znx_normalize_middle_step_assign_ifma() {
         unsafe {
-            test_znx_normalize_middle_step_inplace_ifma_internal();
+            test_znx_normalize_middle_step_assign_ifma_internal();
         }
     }
 
@@ -1082,28 +1082,28 @@ mod tests {
     }
 
     #[target_feature(enable = "avx512f")]
-    unsafe fn test_znx_normalize_final_step_inplace_ifma_internal() {
+    unsafe fn test_znx_normalize_final_step_assign_ifma_internal() {
         let mut y0: [i64; 8] = X_DATA;
         let mut y1: [i64; 8] = X_DATA;
         let mut c0: [i64; 8] = C_DATA;
         let mut c1: [i64; 8] = C_DATA;
         let base2k = 12;
 
-        znx_normalize_final_step_inplace_ref(base2k, 0, &mut y0, &mut c0);
-        znx_normalize_final_step_inplace_ifma(base2k, 0, &mut y1, &mut c1);
+        znx_normalize_final_step_assign_ref(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_final_step_assign_ifma(base2k, 0, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_final_step_inplace_ref(base2k, base2k - 1, &mut y0, &mut c0);
-        znx_normalize_final_step_inplace_ifma(base2k, base2k - 1, &mut y1, &mut c1);
+        znx_normalize_final_step_assign_ref(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_final_step_assign_ifma(base2k, base2k - 1, &mut y1, &mut c1);
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_final_step_inplace_ifma() {
+    fn test_znx_normalize_final_step_assign_ifma() {
         unsafe {
-            test_znx_normalize_final_step_inplace_ifma_internal();
+            test_znx_normalize_final_step_assign_ifma_internal();
         }
     }
 

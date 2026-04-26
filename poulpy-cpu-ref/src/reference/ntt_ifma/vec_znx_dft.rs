@@ -230,7 +230,7 @@ pub fn ntt_ifma_vec_znx_idft_apply_tmpa<R, A, BE>(
 ///
 /// Implementors must return a fully initialized handle for the requested `n`.
 /// The handle is boxed and stored inside the `Module`, so it must be safe to
-/// drop via [`Backend::destroy`](crate::layouts::Backend::destroy).
+/// drop via [`crate::layouts::Backend::destroy`].
 pub unsafe trait NttIfmaHandleFactory: Sized {
     /// Builds a fully initialized handle for ring dimension `n`.
     fn create_ntt_ifma_handle(n: usize) -> Self;

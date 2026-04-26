@@ -248,9 +248,7 @@ macro_rules! impl_core_external_product_default_methods {
             A: $crate::layouts::GGSWPreparedToRef<$be>,
             poulpy_hal::layouts::Scratch<$be>: $crate::ScratchTakeCore<$be>,
         {
-            <$be as $crate::oep::CoreExternalProductDefaults<$be>>::gglwe_external_product_assign_default(
-                module, res, a, scratch,
-            )
+            <$be as $crate::oep::CoreExternalProductDefaults<$be>>::gglwe_external_product_assign_default(module, res, a, scratch)
         }
 
         fn ggsw_external_product_tmp_bytes<R, A, B>(

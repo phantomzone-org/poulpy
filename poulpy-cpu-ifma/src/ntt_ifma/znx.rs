@@ -13,13 +13,13 @@ use poulpy_cpu_ref::reference::znx::{
 };
 
 use crate::znx_ifma::{
-    znx_add_ifma, znx_add_inplace_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
-    znx_mul_power_of_two_ifma, znx_mul_power_of_two_inplace_ifma, znx_negate_ifma, znx_negate_inplace_ifma,
-    znx_normalize_digit_ifma, znx_normalize_final_step_ifma, znx_normalize_final_step_inplace_ifma,
-    znx_normalize_final_step_sub_ifma, znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma,
-    znx_normalize_first_step_inplace_ifma, znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma,
-    znx_normalize_middle_step_inplace_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_ifma, znx_sub_inplace_ifma,
-    znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
+    znx_add_assign_ifma, znx_add_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
+    znx_mul_power_of_two_assign_ifma, znx_mul_power_of_two_ifma, znx_negate_assign_ifma, znx_negate_ifma,
+    znx_normalize_digit_ifma, znx_normalize_final_step_assign_ifma, znx_normalize_final_step_ifma,
+    znx_normalize_final_step_sub_ifma, znx_normalize_first_step_assign_ifma, znx_normalize_first_step_carry_only_ifma,
+    znx_normalize_first_step_ifma, znx_normalize_middle_step_assign_ifma, znx_normalize_middle_step_carry_only_ifma,
+    znx_normalize_middle_step_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_assign_ifma, znx_sub_ifma,
+    znx_sub_negate_assign_ifma, znx_switch_ring_ifma,
 };
 
 use super::NTTIfma;
@@ -33,8 +33,8 @@ impl ZnxAdd for NTTIfma {
 
 impl ZnxAddInplace for NTTIfma {
     #[inline(always)]
-    fn znx_add_inplace(res: &mut [i64], a: &[i64]) {
-        unsafe { znx_add_inplace_ifma(res, a) }
+    fn znx_add_assign(res: &mut [i64], a: &[i64]) {
+        unsafe { znx_add_assign_ifma(res, a) }
     }
 }
 
@@ -47,15 +47,15 @@ impl ZnxSub for NTTIfma {
 
 impl ZnxSubInplace for NTTIfma {
     #[inline(always)]
-    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
-        unsafe { znx_sub_inplace_ifma(res, a) }
+    fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
+        unsafe { znx_sub_assign_ifma(res, a) }
     }
 }
 
 impl ZnxSubNegateInplace for NTTIfma {
     #[inline(always)]
-    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
-        unsafe { znx_sub_negate_inplace_ifma(res, a) }
+    fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
+        unsafe { znx_sub_negate_assign_ifma(res, a) }
     }
 }
 
@@ -75,8 +75,8 @@ impl ZnxMulPowerOfTwo for NTTIfma {
 
 impl ZnxMulPowerOfTwoInplace for NTTIfma {
     #[inline(always)]
-    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
-        unsafe { znx_mul_power_of_two_inplace_ifma(k, res) }
+    fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
+        unsafe { znx_mul_power_of_two_assign_ifma(k, res) }
     }
 }
 
@@ -103,8 +103,8 @@ impl ZnxNegate for NTTIfma {
 
 impl ZnxNegateInplace for NTTIfma {
     #[inline(always)]
-    fn znx_negate_inplace(res: &mut [i64]) {
-        unsafe { znx_negate_inplace_ifma(res) }
+    fn znx_negate_assign(res: &mut [i64]) {
+        unsafe { znx_negate_assign_ifma(res) }
     }
 }
 
@@ -145,8 +145,8 @@ impl ZnxNormalizeFinalStepSub for NTTIfma {
 
 impl ZnxNormalizeFinalStepInplace for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_final_step_inplace_ifma(base2k, lsh, x, carry) }
+    fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_final_step_assign_ifma(base2k, lsh, x, carry) }
     }
 }
 
@@ -166,8 +166,8 @@ impl ZnxNormalizeFirstStepCarryOnly for NTTIfma {
 
 impl ZnxNormalizeFirstStepInplace for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_first_step_inplace_ifma(base2k, lsh, x, carry) }
+    fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_first_step_assign_ifma(base2k, lsh, x, carry) }
     }
 }
 
@@ -194,8 +194,8 @@ impl ZnxNormalizeMiddleStepCarryOnly for NTTIfma {
 
 impl ZnxNormalizeMiddleStepInplace for NTTIfma {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        unsafe { znx_normalize_middle_step_inplace_ifma(base2k, lsh, x, carry) }
+    fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe { znx_normalize_middle_step_assign_ifma(base2k, lsh, x, carry) }
     }
 }
 

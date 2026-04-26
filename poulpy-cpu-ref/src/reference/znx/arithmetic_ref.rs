@@ -10,8 +10,8 @@ use crate::reference::znx::{
     neg::{znx_negate_assign_ref, znx_negate_ref},
     normalization::{
         znx_normalize_final_step_assign_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
-        znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
-        znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
+        znx_normalize_first_step_assign_ref, znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_ref,
+        znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_ref,
         znx_normalize_middle_step_sub_ref,
     },
     sub::{znx_sub_assign_ref, znx_sub_negate_assign_ref, znx_sub_ref},

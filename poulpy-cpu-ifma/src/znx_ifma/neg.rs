@@ -28,7 +28,7 @@ pub unsafe fn znx_negate_ifma(res: &mut [i64], src: &[i64]) {
 
 /// AVX-512 vectorised `res[i] = -res[i]`.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_negate_inplace_ifma(res: &mut [i64]) {
+pub unsafe fn znx_negate_assign_ifma(res: &mut [i64]) {
     let n = res.len();
     let span = n >> 3;
 

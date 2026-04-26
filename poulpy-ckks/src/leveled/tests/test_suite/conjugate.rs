@@ -60,9 +60,7 @@ pub fn test_conjugate_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     let conj_key = ctx.atk(-1);
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
-    ctx.module
-        .ckks_conjugate_assign(&mut ct, conj_key, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_conjugate_assign(&mut ct, conj_key, scratch.borrow()).unwrap();
     assert_ct_meta("conjugate_assign", &ct, expected_log_decimal, expected_log_hom_rem);
     ctx.assert_decrypt_precision("conjugate_assign", &ct, &want_re, &want_im, scratch.borrow());
 }

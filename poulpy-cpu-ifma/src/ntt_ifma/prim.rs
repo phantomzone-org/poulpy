@@ -69,7 +69,7 @@ macro_rules! dft_op_512 {
         }
     }};
     // 2-operand inplace: res = f(res, a)
-    (res_inplace=$res:ident, a=$a:ident, op512=$op512:expr, op256=$op256:expr) => {{
+    (res_assign=$res:ident, a=$a:ident, op512=$op512:expr, op256=$op256:expr) => {{
         let n = $res.len() / 4;
         let pairs = n / 2;
         let res_512 = $res.as_mut_ptr() as *mut __m512i;
@@ -91,7 +91,7 @@ macro_rules! dft_op_512 {
         }
     }};
     // 1-operand inplace negate: res = f(res)
-    (negate_inplace=$res:ident, op512=$op512:expr, op256=$op256:expr) => {{
+    (negate_assign=$res:ident, op512=$op512:expr, op256=$op256:expr) => {{
         let n = $res.len() / 4;
         let pairs = n / 2;
         let res_512 = $res.as_mut_ptr() as *mut __m512i;
@@ -124,10 +124,10 @@ unsafe fn simd_add(res: &mut [u64], a: &[u64], b: &[u64]) {
 }
 
 #[target_feature(enable = "avx512f")]
-unsafe fn simd_add_inplace(res: &mut [u64], a: &[u64]) {
+unsafe fn simd_add_assign(res: &mut [u64], a: &[u64]) {
     unsafe {
         dft_op_512!(
-            res_inplace = res,
+            res_assign = res,
             a = a,
             op512 = |rv: __m512i, av: __m512i, q2: __m512i| cond_sub_2q_si512(_mm512_add_epi64(rv, av), q2),
             op256 = |rv: __m256i, av: __m256i, q2: __m256i| cond_sub_2q_si256(_mm256_add_epi64(rv, av), q2)
@@ -149,10 +149,10 @@ unsafe fn simd_sub(res: &mut [u64], a: &[u64], b: &[u64]) {
 }
 
 #[target_feature(enable = "avx512f")]
-unsafe fn simd_sub_inplace(res: &mut [u64], a: &[u64]) {
+unsafe fn simd_sub_assign(res: &mut [u64], a: &[u64]) {
     unsafe {
         dft_op_512!(
-            res_inplace = res,
+            res_assign = res,
             a = a,
             op512 = |rv: __m512i, av: __m512i, q2: __m512i| cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(rv, q2), av), q2),
             op256 = |rv: __m256i, av: __m256i, q2: __m256i| cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(rv, q2), av), q2)
@@ -161,10 +161,10 @@ unsafe fn simd_sub_inplace(res: &mut [u64], a: &[u64]) {
 }
 
 #[target_feature(enable = "avx512f")]
-unsafe fn simd_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
+unsafe fn simd_sub_negate_assign(res: &mut [u64], a: &[u64]) {
     unsafe {
         dft_op_512!(
-            res_inplace = res,
+            res_assign = res,
             a = a,
             op512 = |rv: __m512i, av: __m512i, q2: __m512i| cond_sub_2q_si512(_mm512_sub_epi64(_mm512_add_epi64(av, q2), rv), q2),
             op256 = |rv: __m256i, av: __m256i, q2: __m256i| cond_sub_2q_si256(_mm256_sub_epi64(_mm256_add_epi64(av, q2), rv), q2)
@@ -186,10 +186,10 @@ unsafe fn simd_negate(res: &mut [u64], a: &[u64]) {
 }
 
 #[target_feature(enable = "avx512f")]
-unsafe fn simd_negate_inplace(res: &mut [u64]) {
+unsafe fn simd_negate_assign(res: &mut [u64]) {
     unsafe {
         dft_op_512!(
-            negate_inplace = res,
+            negate_assign = res,
             op512 = |rv: __m512i, q2: __m512i| cond_sub_2q_si512(_mm512_sub_epi64(q2, rv), q2),
             op256 = |rv: __m256i, q2: __m256i| cond_sub_2q_si256(_mm256_sub_epi64(q2, rv), q2)
         );
@@ -364,8 +364,8 @@ impl NttIfmaAdd for NTTIfma {
 
 impl NttIfmaAddInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_ifma_add_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_add_inplace(res, a) };
+    fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_add_assign(res, a) };
     }
 }
 
@@ -378,15 +378,15 @@ impl NttIfmaSub for NTTIfma {
 
 impl NttIfmaSubInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_ifma_sub_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_sub_inplace(res, a) };
+    fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_sub_assign(res, a) };
     }
 }
 
 impl NttIfmaSubNegateInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_ifma_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_sub_negate_inplace(res, a) };
+    fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_sub_negate_assign(res, a) };
     }
 }
 
@@ -399,8 +399,8 @@ impl NttIfmaNegate for NTTIfma {
 
 impl NttIfmaNegateInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_ifma_negate_inplace(res: &mut [u64]) {
-        unsafe { simd_negate_inplace(res) };
+    fn ntt_ifma_negate_assign(res: &mut [u64]) {
+        unsafe { simd_negate_assign(res) };
     }
 }
 
@@ -499,8 +499,8 @@ impl NttAdd for NTTIfma {
 
 impl NttAddInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_add_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_add_inplace(res, a) };
+    fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_add_assign(res, a) };
     }
 }
 
@@ -513,15 +513,15 @@ impl NttSub for NTTIfma {
 
 impl NttSubInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_sub_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_sub_inplace(res, a) };
+    fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_sub_assign(res, a) };
     }
 }
 
 impl NttSubNegateInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
-        unsafe { simd_sub_negate_inplace(res, a) };
+    fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
+        unsafe { simd_sub_negate_assign(res, a) };
     }
 }
 
@@ -534,8 +534,8 @@ impl NttNegate for NTTIfma {
 
 impl NttNegateInplace for NTTIfma {
     #[inline(always)]
-    fn ntt_negate_inplace(res: &mut [u64]) {
-        unsafe { simd_negate_inplace(res) };
+    fn ntt_negate_assign(res: &mut [u64]) {
+        unsafe { simd_negate_assign(res) };
     }
 }
 

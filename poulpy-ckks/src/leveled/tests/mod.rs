@@ -29,6 +29,10 @@ pub mod fft64_avx;
 pub mod ntt120_avx;
 
 #[cfg(test)]
+#[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f"))]
+pub mod fft64_ifma;
+
+#[cfg(test)]
 #[cfg(all(
     feature = "enable-ifma",
     target_arch = "x86_64",

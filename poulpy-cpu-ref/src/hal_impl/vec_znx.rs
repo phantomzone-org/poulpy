@@ -30,13 +30,8 @@ macro_rules! hal_impl_vec_znx {
             )
         }
 
-        fn vec_znx_normalize_assign<A>(
-            module: &Module<Self>,
-            base2k: usize,
-            a: &mut A,
-            a_col: usize,
-            scratch: &mut Scratch<Self>,
-        ) where
+        fn vec_znx_normalize_assign<A>(module: &Module<Self>, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<Self>)
+        where
             A: VecZnxToMut,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_normalize_assign_default(module, base2k, a, a_col, scratch)
@@ -322,13 +317,8 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_automorphism_assign_tmp_bytes_default(module)
         }
 
-        fn vec_znx_automorphism_assign<R>(
-            module: &Module<Self>,
-            k: i64,
-            res: &mut R,
-            res_col: usize,
-            scratch: &mut Scratch<Self>,
-        ) where
+        fn vec_znx_automorphism_assign<R>(module: &Module<Self>, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<Self>)
+        where
             R: VecZnxToMut,
         {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_automorphism_assign_default(module, k, res, res_col, scratch)

@@ -40,7 +40,9 @@ pub fn test_sub_ct_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_sub();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     unsafe {
-        ctx.module.ckks_sub_into_unsafe(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+        ctx.module
+            .ckks_sub_into_unsafe(&mut ct_res, &ct1, &ct2, scratch.borrow())
+            .unwrap();
     }
     assert_binary_output_meta("sub_ct_aligned_unsafe", &ct_res, &ct1, &ct2);
     ctx.module.glwe_normalize_assign(&mut ct_res, scratch.borrow());

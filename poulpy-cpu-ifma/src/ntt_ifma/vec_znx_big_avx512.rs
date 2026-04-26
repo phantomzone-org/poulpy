@@ -103,7 +103,7 @@ pub(super) fn nfc_middle_step_sub_assign_scalar(base2k: usize, lsh: usize, res: 
 }
 
 #[inline(always)]
-pub(super) fn nfc_middle_step_inplace_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) fn nfc_middle_step_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     if lsh == 0 {
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let ri = *r as i128;
@@ -129,7 +129,7 @@ pub(super) fn nfc_middle_step_inplace_scalar(base2k: usize, lsh: usize, res: &mu
 }
 
 #[inline(always)]
-pub(super) fn nfc_final_step_inplace_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) fn nfc_final_step_assign_scalar(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     if lsh == 0 {
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let ri = *r as i128;
@@ -241,7 +241,7 @@ impl NfcShifts512 {
     }
 }
 
-/// Shared inner loop body for `nfc_middle_step_avx512` and `nfc_middle_step_inplace_avx512`.
+/// Shared inner loop body for `nfc_middle_step_avx512` and `nfc_middle_step_assign_avx512`.
 ///
 /// Given deinterleaved split-i128 input `(lo_a, hi_a)` and carry `(lo_c, hi_c)`,
 /// returns `(lo_out, new_lo_c, new_hi_c)`.
@@ -308,7 +308,7 @@ unsafe fn nfc_middle_chunk_512(
     }
 }
 
-/// Inner loop body for `nfc_final_step_inplace_avx512`.
+/// Inner loop body for `nfc_final_step_assign_avx512`.
 ///
 /// Given deinterleaved `lo_a` (sign-extended i64) and carry `lo_c` (low half only),
 /// returns `lo_out`.
@@ -502,7 +502,7 @@ pub(super) unsafe fn nfc_middle_step_sub_assign_avx512(
     }
 }
 
-/// AVX-512 kernel for `nfc_middle_step_inplace` -- in-place update of `i64` `res` with `i128` carry.
+/// AVX-512 kernel for `nfc_middle_step_assign` -- in-place update of `i64` `res` with `i128` carry.
 ///
 /// Like `nfc_middle_step_avx512` but the input `ai = *r as i128` is read from `res` itself.
 /// Handles both `lsh == 0` and `lsh != 0` via `base2k_lsh = base2k - lsh`.
@@ -510,7 +510,7 @@ pub(super) unsafe fn nfc_middle_step_sub_assign_avx512(
 /// # Safety
 /// Requires AVX-512F.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn nfc_middle_step_inplace_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) unsafe fn nfc_middle_step_assign_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
     unsafe {
         let s = NfcShifts512::new(base2k, lsh);
         let c_ptr = carry.as_mut_ptr() as *mut __m512i;
@@ -546,12 +546,12 @@ pub(super) unsafe fn nfc_middle_step_inplace_avx512(base2k: u32, lsh: u32, n: us
 
         let tail = chunks * 8;
         if tail < n {
-            nfc_middle_step_inplace_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
+            nfc_middle_step_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
         }
     }
 }
 
-/// AVX-512 kernel for `nfc_final_step_inplace` -- flush `i128` carry into the last `i64` limb.
+/// AVX-512 kernel for `nfc_final_step_assign` -- flush `i128` carry into the last `i64` limb.
 ///
 /// Computes `*r = get_digit(base2k, (get_digit(base2k_lsh, ri) << lsh) + carry)`.
 /// Handles both `lsh == 0` and `lsh != 0` via `base2k_lsh = base2k - lsh`.
@@ -559,7 +559,7 @@ pub(super) unsafe fn nfc_middle_step_inplace_avx512(base2k: u32, lsh: u32, n: us
 /// # Safety
 /// Requires AVX-512F.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn nfc_final_step_inplace_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
+pub(super) unsafe fn nfc_final_step_assign_avx512(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
     unsafe {
         let s = NfcShifts512::new(base2k, lsh);
         let c_ptr = carry.as_ptr() as *const __m512i;
@@ -581,7 +581,7 @@ pub(super) unsafe fn nfc_final_step_inplace_avx512(base2k: u32, lsh: u32, n: usi
 
         let tail = chunks * 8;
         if tail < n {
-            nfc_final_step_inplace_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
+            nfc_final_step_assign_scalar(base2k as usize, lsh as usize, &mut res[tail..], &mut carry[tail..]);
         }
     }
 }
@@ -780,7 +780,7 @@ pub(super) unsafe fn vi128_add_avx512(n: usize, res: &mut [i128], a: &[i128], b:
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_add_inplace_avx512(n: usize, res: &mut [i128], a: &[i128]) {
+pub(super) unsafe fn vi128_add_assign_avx512(n: usize, res: &mut [i128], a: &[i128]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -838,7 +838,7 @@ pub(super) unsafe fn vi128_add_small_avx512(n: usize, res: &mut [i128], a: &[i12
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_add_small_inplace_avx512(n: usize, res: &mut [i128], a: &[i64]) {
+pub(super) unsafe fn vi128_add_small_assign_avx512(n: usize, res: &mut [i128], a: &[i64]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -896,7 +896,7 @@ pub(super) unsafe fn vi128_sub_avx512(n: usize, res: &mut [i128], a: &[i128], b:
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_sub_inplace_avx512(n: usize, res: &mut [i128], a: &[i128]) {
+pub(super) unsafe fn vi128_sub_assign_avx512(n: usize, res: &mut [i128], a: &[i128]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -924,7 +924,7 @@ pub(super) unsafe fn vi128_sub_inplace_avx512(n: usize, res: &mut [i128], a: &[i
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_sub_negate_inplace_avx512(n: usize, res: &mut [i128], a: &[i128]) {
+pub(super) unsafe fn vi128_sub_negate_assign_avx512(n: usize, res: &mut [i128], a: &[i128]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -1012,7 +1012,7 @@ pub(super) unsafe fn vi128_sub_small_b_avx512(n: usize, res: &mut [i128], a: &[i
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_sub_small_inplace_avx512(n: usize, res: &mut [i128], a: &[i64]) {
+pub(super) unsafe fn vi128_sub_small_assign_avx512(n: usize, res: &mut [i128], a: &[i64]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -1040,7 +1040,7 @@ pub(super) unsafe fn vi128_sub_small_inplace_avx512(n: usize, res: &mut [i128], 
 /// # Safety
 /// Requires AVX-512F.  All slices must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_sub_small_negate_inplace_avx512(n: usize, res: &mut [i128], a: &[i64]) {
+pub(super) unsafe fn vi128_sub_small_negate_assign_avx512(n: usize, res: &mut [i128], a: &[i64]) {
     unsafe {
         let a_ptr = a.as_ptr() as *const __m512i;
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
@@ -1095,7 +1095,7 @@ pub(super) unsafe fn vi128_negate_avx512(n: usize, res: &mut [i128], a: &[i128])
 /// # Safety
 /// Requires AVX-512F.  Slice must have at least `n` elements.
 #[target_feature(enable = "avx512f")]
-pub(super) unsafe fn vi128_negate_inplace_avx512(n: usize, res: &mut [i128]) {
+pub(super) unsafe fn vi128_negate_assign_avx512(n: usize, res: &mut [i128]) {
     unsafe {
         let r_ptr = res.as_mut_ptr() as *mut __m512i;
         let idx_lo = _mm512_loadu_si512(DEINTERLEAVE_LO.as_ptr() as *const __m512i);
@@ -1168,9 +1168,9 @@ pub(super) unsafe fn vi128_neg_from_small_avx512(n: usize, res: &mut [i128], a: 
 #[cfg(all(test, target_feature = "avx512f"))]
 mod tests {
     use super::{
-        nfc_final_step_inplace_avx512, nfc_final_step_inplace_scalar, nfc_middle_step_avx512, nfc_middle_step_inplace_avx512,
-        nfc_middle_step_inplace_scalar, nfc_middle_step_scalar, vi128_add_avx512, vi128_from_small_avx512,
-        vi128_neg_from_small_avx512, vi128_negate_avx512, vi128_sub_avx512,
+        nfc_final_step_assign_avx512, nfc_final_step_assign_scalar, nfc_middle_step_assign_avx512, nfc_middle_step_assign_scalar,
+        nfc_middle_step_avx512, nfc_middle_step_scalar, vi128_add_avx512, vi128_from_small_avx512, vi128_neg_from_small_avx512,
+        vi128_negate_avx512, vi128_sub_avx512,
     };
 
     fn i128_data(n: usize, seed: i128) -> Vec<i128> {
@@ -1259,7 +1259,7 @@ mod tests {
     }
 
     #[test]
-    fn nfc_middle_step_inplace_avx512_vs_scalar() {
+    fn nfc_middle_step_assign_avx512_vs_scalar() {
         let n = 64usize;
         let base2k = 16usize;
         let lsh = 8usize;
@@ -1271,15 +1271,15 @@ mod tests {
         let mut res_ref = init.clone();
         let mut carry_ref = carry_init.clone();
 
-        unsafe { nfc_middle_step_inplace_avx512(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
-        nfc_middle_step_inplace_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
+        unsafe { nfc_middle_step_assign_avx512(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
+        nfc_middle_step_assign_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
 
-        assert_eq!(res_avx, res_ref, "nfc_middle_step_inplace res mismatch");
-        assert_eq!(carry_avx, carry_ref, "nfc_middle_step_inplace carry mismatch");
+        assert_eq!(res_avx, res_ref, "nfc_middle_step_assign res mismatch");
+        assert_eq!(carry_avx, carry_ref, "nfc_middle_step_assign carry mismatch");
     }
 
     #[test]
-    fn nfc_final_step_inplace_avx512_vs_scalar() {
+    fn nfc_final_step_assign_avx512_vs_scalar() {
         let n = 64usize;
         let base2k = 16usize;
         let lsh = 0usize;
@@ -1291,10 +1291,10 @@ mod tests {
         let mut res_ref = init.clone();
         let mut carry_ref = carry_init.clone();
 
-        unsafe { nfc_final_step_inplace_avx512(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
-        nfc_final_step_inplace_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
+        unsafe { nfc_final_step_assign_avx512(base2k as u32, lsh as u32, n, &mut res_avx, &mut carry_avx) };
+        nfc_final_step_assign_scalar(base2k, lsh, &mut res_ref, &mut carry_ref);
 
-        assert_eq!(res_avx, res_ref, "nfc_final_step_inplace res mismatch");
-        assert_eq!(carry_avx, carry_ref, "nfc_final_step_inplace carry mismatch");
+        assert_eq!(res_avx, res_ref, "nfc_final_step_assign res mismatch");
+        assert_eq!(carry_avx, carry_ref, "nfc_final_step_assign carry mismatch");
     }
 }

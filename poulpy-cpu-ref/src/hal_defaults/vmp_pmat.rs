@@ -1,5 +1,5 @@
 //! Backend extension points for vector-matrix product (VMP) operations
-//! on [`VmpPMat`](poulpy_hal::layouts::VmpPMat).
+//! on [`poulpy_hal::layouts::VmpPMat`].
 
 use std::mem::size_of;
 

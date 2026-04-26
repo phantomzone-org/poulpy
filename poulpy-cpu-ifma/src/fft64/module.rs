@@ -26,10 +26,9 @@ use crate::{
             i64_save_1blk_contiguous_ifma,
         },
         reim::{
-            ReimFFTIfma, ReimIFFTIfma, reim_add_avx512, reim_add_inplace_avx512, reim_addmul_avx512, reim_from_znx_i64_bnd50_fma,
-            reim_mul_avx512, reim_mul_inplace_avx512, reim_negate_avx512, reim_negate_inplace_avx512, reim_sub_avx512,
-            reim_sub_inplace_avx512, reim_sub_negate_inplace_avx512, reim_to_znx_i64_bnd63_avx512,
-            reim_to_znx_i64_inplace_bnd63_avx512,
+            ReimFFTIfma, ReimIFFTIfma, reim_add_assign_avx512, reim_add_avx512, reim_addmul_avx512, reim_from_znx_i64_bnd50_fma,
+            reim_mul_assign_avx512, reim_mul_avx512, reim_negate_assign_avx512, reim_negate_avx512, reim_sub_assign_avx512,
+            reim_sub_avx512, reim_sub_negate_assign_avx512, reim_to_znx_i64_assign_bnd63_avx512, reim_to_znx_i64_bnd63_avx512,
         },
         reim4::{
             reim4_convolution_1coeff_ifma, reim4_convolution_2coeffs_ifma, reim4_convolution_by_real_const_1coeff_ifma,
@@ -39,13 +38,13 @@ use crate::{
         },
     },
     znx_ifma::{
-        znx_add_ifma, znx_add_inplace_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
-        znx_mul_power_of_two_ifma, znx_mul_power_of_two_inplace_ifma, znx_negate_ifma, znx_negate_inplace_ifma,
-        znx_normalize_digit_ifma, znx_normalize_final_step_ifma, znx_normalize_final_step_inplace_ifma,
-        znx_normalize_final_step_sub_ifma, znx_normalize_first_step_carry_only_ifma, znx_normalize_first_step_ifma,
-        znx_normalize_first_step_inplace_ifma, znx_normalize_middle_step_carry_only_ifma, znx_normalize_middle_step_ifma,
-        znx_normalize_middle_step_inplace_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_ifma, znx_sub_inplace_ifma,
-        znx_sub_negate_inplace_ifma, znx_switch_ring_ifma,
+        znx_add_assign_ifma, znx_add_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
+        znx_mul_power_of_two_assign_ifma, znx_mul_power_of_two_ifma, znx_negate_assign_ifma, znx_negate_ifma,
+        znx_normalize_digit_ifma, znx_normalize_final_step_assign_ifma, znx_normalize_final_step_ifma,
+        znx_normalize_final_step_sub_ifma, znx_normalize_first_step_assign_ifma, znx_normalize_first_step_carry_only_ifma,
+        znx_normalize_first_step_ifma, znx_normalize_middle_step_assign_ifma, znx_normalize_middle_step_carry_only_ifma,
+        znx_normalize_middle_step_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_assign_ifma, znx_sub_ifma,
+        znx_sub_negate_assign_ifma, znx_switch_ring_ifma,
     },
 };
 
@@ -135,9 +134,9 @@ impl ZnxAdd for FFT64Ifma {
 
 impl ZnxAddInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_add_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_add_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_add_inplace_ifma(res, a);
+            znx_add_assign_ifma(res, a);
         }
     }
 }
@@ -153,18 +152,18 @@ impl ZnxSub for FFT64Ifma {
 
 impl ZnxSubInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_inplace_ifma(res, a);
+            znx_sub_assign_ifma(res, a);
         }
     }
 }
 
 impl ZnxSubNegateInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_negate_inplace_ifma(res, a);
+            znx_sub_negate_assign_ifma(res, a);
         }
     }
 }
@@ -196,9 +195,9 @@ impl ZnxNegate for FFT64Ifma {
 
 impl ZnxNegateInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_negate_inplace(res: &mut [i64]) {
+    fn znx_negate_assign(res: &mut [i64]) {
         unsafe {
-            znx_negate_inplace_ifma(res);
+            znx_negate_assign_ifma(res);
         }
     }
 }
@@ -223,9 +222,9 @@ impl ZnxMulPowerOfTwo for FFT64Ifma {
 
 impl ZnxMulPowerOfTwoInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
+    fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
         unsafe {
-            znx_mul_power_of_two_inplace_ifma(k, res);
+            znx_mul_power_of_two_assign_ifma(k, res);
         }
     }
 }
@@ -273,9 +272,9 @@ impl ZnxNormalizeFinalStepSub for FFT64Ifma {
 
 impl ZnxNormalizeFinalStepInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_inplace_ifma(base2k, lsh, x, carry);
+            znx_normalize_final_step_assign_ifma(base2k, lsh, x, carry);
         }
     }
 }
@@ -300,9 +299,9 @@ impl ZnxNormalizeFirstStepCarryOnly for FFT64Ifma {
 
 impl ZnxNormalizeFirstStepInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_inplace_ifma(base2k, lsh, x, carry);
+            znx_normalize_first_step_assign_ifma(base2k, lsh, x, carry);
         }
     }
 }
@@ -336,9 +335,9 @@ impl ZnxNormalizeMiddleStepCarryOnly for FFT64Ifma {
 
 impl ZnxNormalizeMiddleStepInplace for FFT64Ifma {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_inplace_ifma(base2k, lsh, x, carry);
+            znx_normalize_middle_step_assign_ifma(base2k, lsh, x, carry);
         }
     }
 }
@@ -387,8 +386,8 @@ impl ReimArith for FFT64Ifma {
     }
 
     #[inline(always)]
-    fn reim_to_znx_inplace(res: &mut [f64], divisor: f64) {
-        unsafe { reim_to_znx_i64_inplace_bnd63_avx512(res, divisor) }
+    fn reim_to_znx_assign(res: &mut [f64], divisor: f64) {
+        unsafe { reim_to_znx_i64_assign_bnd63_avx512(res, divisor) }
     }
 
     #[inline(always)]
@@ -397,8 +396,8 @@ impl ReimArith for FFT64Ifma {
     }
 
     #[inline(always)]
-    fn reim_add_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe { reim_add_inplace_avx512(res, a) }
+    fn reim_add_assign(res: &mut [f64], a: &[f64]) {
+        unsafe { reim_add_assign_avx512(res, a) }
     }
 
     #[inline(always)]
@@ -407,13 +406,13 @@ impl ReimArith for FFT64Ifma {
     }
 
     #[inline(always)]
-    fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe { reim_sub_inplace_avx512(res, a) }
+    fn reim_sub_assign(res: &mut [f64], a: &[f64]) {
+        unsafe { reim_sub_assign_avx512(res, a) }
     }
 
     #[inline(always)]
-    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe { reim_sub_negate_inplace_avx512(res, a) }
+    fn reim_sub_negate_assign(res: &mut [f64], a: &[f64]) {
+        unsafe { reim_sub_negate_assign_avx512(res, a) }
     }
 
     #[inline(always)]
@@ -422,8 +421,8 @@ impl ReimArith for FFT64Ifma {
     }
 
     #[inline(always)]
-    fn reim_negate_inplace(res: &mut [f64]) {
-        unsafe { reim_negate_inplace_avx512(res) }
+    fn reim_negate_assign(res: &mut [f64]) {
+        unsafe { reim_negate_assign_avx512(res) }
     }
 
     #[inline(always)]
@@ -432,8 +431,8 @@ impl ReimArith for FFT64Ifma {
     }
 
     #[inline(always)]
-    fn reim_mul_inplace(res: &mut [f64], a: &[f64]) {
-        unsafe { reim_mul_inplace_avx512(res, a) }
+    fn reim_mul_assign(res: &mut [f64], a: &[f64]) {
+        unsafe { reim_mul_assign_avx512(res, a) }
     }
 
     #[inline(always)]

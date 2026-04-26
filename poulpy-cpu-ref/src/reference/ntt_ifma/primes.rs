@@ -20,9 +20,9 @@ pub trait PrimeSetIfma: Sized + Sync + Send + 'static {
 
     /// CRT reconstruction constants (Garner's algorithm).
     ///
-    /// - `CRT_CST[0]` = `inv(Q[0], Q[1])` — inverse of Q[0] modulo Q[1]
-    /// - `CRT_CST[1]` = `inv(Q[0]*Q[1], Q[2])` — inverse of Q[0]*Q[1] modulo Q[2]
-    /// - `CRT_CST[2]` is unused (reserved / zero)
+    /// - `CRT_CST\[0\]` = `inv(Q\[0\], Q\[1\])` — inverse of `Q\[0\]` modulo `Q\[1\]`
+    /// - `CRT_CST\[1\]` = `inv(Q\[0\]*Q\[1\], Q\[2\])` — inverse of `Q\[0\]*Q\[1\]` modulo `Q\[2\]`
+    /// - `CRT_CST\[2\]` is unused (reserved / zero)
     const CRT_CST: [u64; 3];
 
     /// `ceil(log2(Q[0]))`.

@@ -19,7 +19,7 @@ jobs:
     - name: Install pinned Rust nightly
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: nightly-2026-03-21
+        toolchain: nightly-2026-04-25
         components: clippy, rustfmt
 
     - name: Cache cargo deps
@@ -43,25 +43,86 @@ jobs:
           echo "supported=false" >> $GITHUB_OUTPUT
         fi
 
+    # Detect whether runner supports AVX-512F (without requiring IFMA)
+    - name: Detect AVX-512F support
+      id: avx512fcheck
+      run: |
+        if lscpu | grep -qi avx512f; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
+
+    # Detect whether runner supports AVX-512F + AVX-512IFMA + AVX-512VL
+    - name: Detect IFMA support
+      id: ifmacheck
+      run: |
+        if lscpu | grep -qi avx512f && lscpu | grep -qi avx512ifma && lscpu | grep -qi avx512vl; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
+
     # rustfmt always runs — unrelated to AVX support
     - name: rustfmt (check only)
       run: cargo fmt --all --check
 
-    # Build / lint / test WITH AVX
+    # Build / lint / test WITH AVX + IFMA (preferred when available)
+    - name: Build (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
+        cargo build --workspace --all-targets --features enable-avx,enable-ifma
+
+    - name: Clippy (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
+        cargo clippy --workspace --all-targets --features enable-avx,enable-ifma -- -D warnings
+
+    - name: Tests (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      run: |
+        RUSTDOCFLAGS="-C target-feature=+avx2 -C target-feature=+fma -C target-feature=+avx512f -C target-feature=+avx512ifma -C target-feature=+avx512vl" \
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
+        cargo test --workspace --features enable-avx,enable-ifma
+
+    # Build / lint / test WITH AVX-512F only (FFT64Ifma without NTTIfma).
+    # Active when the runner has AVX-512F but not IFMA (e.g. Skylake-X / Cascade Lake / KNL).
+    - name: Build (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f" \
+        cargo build --workspace --all-targets --features enable-avx,enable-avx512f
+
+    - name: Clippy (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f" \
+        cargo clippy --workspace --all-targets --features enable-avx,enable-avx512f -- -D warnings
+
+    - name: Tests (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      run: |
+        RUSTDOCFLAGS="-C target-feature=+avx2 -C target-feature=+fma -C target-feature=+avx512f" \
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f" \
+        cargo test --workspace --features enable-avx,enable-avx512f
+
+    # Build / lint / test WITH AVX (no AVX-512 at all)
     - name: Build (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
       run: |
         RUSTFLAGS="-C target-feature=+avx2,+fma" \
         cargo build --workspace --all-targets --features enable-avx
 
     - name: Clippy (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
       run: |
         RUSTFLAGS="-C target-feature=+avx2,+fma" \
         cargo clippy --workspace --all-targets --features enable-avx -- -D warnings
 
     - name: Tests (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
       run: |
         RUSTDOCFLAGS="-C target-feature=+avx2 -C target-feature=+fma" \
         RUSTFLAGS="-C target-feature=+avx2,+fma" \

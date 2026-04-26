@@ -10,9 +10,9 @@ use crate::reference::vec_znx::{
     vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_assign,
     vec_znx_mul_xp_minus_one_assign_tmp_bytes, vec_znx_negate, vec_znx_negate_assign, vec_znx_normalize,
     vec_znx_normalize_assign, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_assign,
-    vec_znx_rotate_assign_tmp_bytes, vec_znx_rsh, vec_znx_rsh_assign, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes,
-    vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_assign, vec_znx_sub_negate_assign,
-    vec_znx_sub_scalar, vec_znx_sub_scalar_assign, vec_znx_switch_ring, vec_znx_zero,
+    vec_znx_rotate_assign_tmp_bytes, vec_znx_rsh, vec_znx_rsh_assign, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
+    vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_assign, vec_znx_sub_negate_assign, vec_znx_sub_scalar,
+    vec_znx_sub_scalar_assign, vec_znx_switch_ring, vec_znx_zero,
 };
 use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace,
@@ -498,13 +498,8 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         vec_znx_automorphism_assign_tmp_bytes(module.n())
     }
 
-    fn vec_znx_automorphism_assign_default<R>(
-        module: &Module<BE>,
-        p: i64,
-        res: &mut R,
-        res_col: usize,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn vec_znx_automorphism_assign_default<R>(module: &Module<BE>, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<BE>)
+    where
         BE: ZnxAutomorphism + ZnxCopy,
         R: VecZnxToMut,
     {

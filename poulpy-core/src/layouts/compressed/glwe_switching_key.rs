@@ -164,7 +164,8 @@ impl<D: DataRef> WriterTo for GLWESwitchingKeyCompressed<D> {
     }
 }
 
-/// Trait for decompressing a [`GLWESwitchingKeyCompressed`] into a standard [`GLWESwitchingKey`].
+/// Trait for decompressing a [`GLWESwitchingKeyCompressed`] into a standard
+/// [`GLWESwitchingKey`](crate::layouts::GLWESwitchingKey).
 pub trait GLWESwitchingKeyDecompress
 where
     Self: GGLWEDecompress,

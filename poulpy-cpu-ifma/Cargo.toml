@@ -13,7 +13,8 @@ documentation = "https://docs.rs/poulpy"
 doctest = false
 
 [features]
-enable-ifma = []
+enable-avx512f = []
+enable-ifma = ["enable-avx512f"]
 
 [dependencies]
 bytemuck = {workspace = true}

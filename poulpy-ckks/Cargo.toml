@@ -11,7 +11,8 @@ documentation = "https://docs.rs/poulpy-ckks"
 
 [features]
 enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx", "poulpy-cpu-avx/enable-avx"]
-enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-core/enable-ifma", "poulpy-cpu-ifma/enable-ifma"]
+enable-avx512f = ["dep:poulpy-cpu-ifma", "poulpy-core/enable-avx512f", "poulpy-cpu-ifma/enable-avx512f"]
+enable-ifma = ["enable-avx512f", "poulpy-core/enable-ifma", "poulpy-cpu-ifma/enable-ifma"]
 
 [dependencies]
 poulpy-cpu-avx = {workspace = true, optional = true}

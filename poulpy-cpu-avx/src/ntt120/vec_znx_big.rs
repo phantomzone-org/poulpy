@@ -8,10 +8,10 @@ use super::{
     vec_znx_big_avx::{
         nfc_final_step_assign_avx2, nfc_final_step_assign_scalar, nfc_final_step_into_avx2, nfc_final_step_into_scalar,
         nfc_middle_step_assign_avx2, nfc_middle_step_assign_scalar, nfc_middle_step_avx2, nfc_middle_step_into_avx2,
-        nfc_middle_step_into_scalar, nfc_middle_step_scalar, vi128_add_avx2, vi128_add_assign_avx2, vi128_add_small_avx2,
-        vi128_add_small_assign_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2, vi128_negate_avx2,
-        vi128_negate_assign_avx2, vi128_sub_avx2, vi128_sub_assign_avx2, vi128_sub_negate_assign_avx2, vi128_sub_small_a_avx2,
-        vi128_sub_small_b_avx2, vi128_sub_small_assign_avx2, vi128_sub_small_negate_assign_avx2,
+        nfc_middle_step_into_scalar, nfc_middle_step_scalar, vi128_add_assign_avx2, vi128_add_avx2, vi128_add_small_assign_avx2,
+        vi128_add_small_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2, vi128_negate_assign_avx2, vi128_negate_avx2,
+        vi128_sub_assign_avx2, vi128_sub_avx2, vi128_sub_negate_assign_avx2, vi128_sub_small_a_avx2, vi128_sub_small_assign_avx2,
+        vi128_sub_small_b_avx2, vi128_sub_small_negate_assign_avx2,
     },
 };
 use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps, vec_znx_big::AssignOp};

@@ -47,7 +47,7 @@ mod znx;
 ///
 /// # CPU feature requirements
 ///
-/// **Runtime check**: [`Module::new()`](poulpy_hal::layouts::Module::new) verifies that
+/// **Runtime check**: [`Module::new()`](poulpy_hal::api::ModuleNew::new) verifies that
 /// the CPU supports AVX2. If the feature is missing, the constructor panics.
 ///
 /// # Thread safety

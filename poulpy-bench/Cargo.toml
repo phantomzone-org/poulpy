@@ -11,7 +11,8 @@ readme = "README.md"
 
 [features]
 enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-ckks/enable-avx", "poulpy-schemes/enable-avx"]
-enable-ifma = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma", "poulpy-ckks/enable-ifma", "poulpy-schemes/enable-ifma"]
+enable-avx512f = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-avx512f", "poulpy-core/enable-avx512f", "poulpy-ckks/enable-avx512f", "poulpy-schemes/enable-avx512f"]
+enable-ifma = ["enable-avx512f", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma", "poulpy-ckks/enable-ifma", "poulpy-schemes/enable-ifma"]
 # enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
 
 [dependencies]

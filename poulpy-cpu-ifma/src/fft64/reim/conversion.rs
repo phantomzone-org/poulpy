@@ -216,7 +216,7 @@ pub fn reim_to_znx_i64_bnd63_avx512(res: &mut [i64], divisor: f64, a: &[f64]) {
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim_to_znx_i64_inplace_bnd63_avx512(res: &mut [f64], divisor: f64) {
+pub fn reim_to_znx_i64_assign_bnd63_avx512(res: &mut [f64], divisor: f64) {
     let sign_mask: u64 = 0x8000000000000000u64;
     let expo_mask: u64 = 0x7FF0000000000000u64;
     let mantissa_mask: u64 = (i64::MAX as u64) ^ expo_mask;
@@ -231,7 +231,7 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx512(res: &mut [f64], divisor: f64) {
             _mm512_sub_epi64, _mm512_xor_si512,
         };
 
-        use poulpy_cpu_ref::reference::fft64::reim::reim_to_znx_i64_inplace_ref;
+        use poulpy_cpu_ref::reference::fft64::reim::reim_to_znx_i64_assign_ref;
 
         let sign_mask_512: __m512i = _mm512_set1_epi64(sign_mask as i64);
         let expo_mask_512: __m512i = _mm512_set1_epi64(expo_mask as i64);
@@ -286,7 +286,7 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx512(res: &mut [f64], divisor: f64) {
         }
 
         if !res.len().is_multiple_of(8) {
-            reim_to_znx_i64_inplace_ref(&mut res[span << 3..], divisor)
+            reim_to_znx_i64_assign_ref(&mut res[span << 3..], divisor)
         }
     }
 }

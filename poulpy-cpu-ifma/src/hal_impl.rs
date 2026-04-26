@@ -1,8 +1,14 @@
-use crate::{FFT64Ifma, NTTIfma};
+use crate::FFT64Ifma;
+#[cfg(feature = "enable-ifma")]
+use crate::NTTIfma;
 use poulpy_cpu_ref::hal_defaults::{
     FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
-    FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults, NTTIfmaConvolutionDefaults, NTTIfmaModuleDefaults,
-    NTTIfmaSvpDefaults, NTTIfmaVecZnxBigDefaults, NTTIfmaVecZnxDftDefaults, NTTIfmaVmpDefaults,
+    FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults,
+};
+#[cfg(feature = "enable-ifma")]
+use poulpy_cpu_ref::hal_defaults::{
+    NTTIfmaConvolutionDefaults, NTTIfmaModuleDefaults, NTTIfmaSvpDefaults, NTTIfmaVecZnxBigDefaults, NTTIfmaVecZnxDftDefaults,
+    NTTIfmaVmpDefaults,
 };
 use poulpy_hal::{
     api::{ScratchTakeBasic, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
@@ -23,26 +29,32 @@ mod vec_znx;
 mod family_common;
 #[macro_use]
 mod module_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod module_ntt_ifma;
 #[macro_use]
 mod vmp_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod vmp_ntt_ifma;
 #[macro_use]
 mod convolution_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod convolution_ntt_ifma;
 #[macro_use]
 mod vec_znx_big_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod vec_znx_big_ntt_ifma;
 #[macro_use]
 mod svp_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod svp_ntt_ifma;
 #[macro_use]
 mod vec_znx_dft_fft64;
+#[cfg(feature = "enable-ifma")]
 #[macro_use]
 mod vec_znx_dft_ntt_ifma;
 
@@ -58,6 +70,7 @@ unsafe impl HalImpl<FFT64Ifma> for FFT64Ifma {
     hal_impl_vec_znx_dft_fft64!();
 }
 
+#[cfg(feature = "enable-ifma")]
 unsafe impl HalImpl<NTTIfma> for NTTIfma {
     hal_impl_scratch!();
     hal_impl_vec_znx!();

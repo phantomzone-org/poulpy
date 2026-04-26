@@ -503,8 +503,7 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
     group.bench_function("rotate_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            let _ = s
-                .module
+            s.module
                 .ckks_rotate_assign::<_, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>(
                     &mut s.ct_dst,
                     ROTATION,

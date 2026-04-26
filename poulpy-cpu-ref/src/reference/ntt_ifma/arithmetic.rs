@@ -163,7 +163,7 @@ pub fn b_ifma_to_znx128_ref(nn: usize, res: &mut [i128], a: &[u64]) {
 /// Convert `n` coefficients from b format to Harvey-prepared c format.
 ///
 /// The prepared format uses the same `[u64; 4]` layout as Q120bScalar,
-/// but stores **reduced** residues (mod Q[k]) rather than lazy values.
+/// but stores **reduced** residues (mod `Q\[k\]`) rather than lazy values.
 /// The Harvey quotients are computed on-the-fly during multiplication
 /// since they require 52-bit precision that doesn't fit in u32.
 ///

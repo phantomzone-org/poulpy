@@ -11,7 +11,8 @@ documentation = "https://docs.rs/poulpy"
 [features]
 default = []
 enable-avx = []
-enable-ifma = []
+enable-avx512f = []
+enable-ifma = ["enable-avx512f"]
 
 [dependencies]
 dashu-float = {workspace = true}
