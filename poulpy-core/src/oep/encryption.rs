@@ -175,8 +175,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn gglwe_to_ggsw_key_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -374,8 +373,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn gglwe_to_ggsw_key_compressed_encrypt_sk_tmp_bytes_default<A>(module: &Module<BE>, infos: &A) -> usize
     where
@@ -571,7 +569,6 @@ where
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_pk(module, res, pt, pk, enc_infos, source_xu, source_xe, scratch)
     }
@@ -590,7 +587,6 @@ where
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_zero_pk(module, res, pk, enc_infos, source_xu, source_xe, scratch)
     }
@@ -660,7 +656,6 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GGSWEncryptSkDefault<BE>>::ggsw_encrypt_sk(module, res, pt, sk, enc_infos, source_xe, source_xa, scratch)
     }
@@ -943,7 +938,6 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GGSWCompressedEncryptSkDefault<BE>>::ggsw_compressed_encrypt_sk(
             module, res, pt, sk, seed_xa, enc_infos, source_xe, scratch,

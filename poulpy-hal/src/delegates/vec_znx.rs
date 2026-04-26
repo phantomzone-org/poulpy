@@ -1,6 +1,10 @@
 use crate::{
     api::{
-        VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalBackend, VecZnxAddNormalSourceBackend,
+        ScalarZnxFillBinaryBlockBackend, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwBackend,
+        ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbBackend, ScalarZnxFillBinaryProbSourceBackend,
+        ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
+        ScalarZnxFillTernaryProbSourceBackend, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalBackend,
+        VecZnxAddNormalSourceBackend,
         VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
         VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend,
         VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshAddIntoBackend,
@@ -13,7 +17,7 @@ use crate::{
         VecZnxSubInnerProductAssignBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend,
         VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
     oep::HalVecZnxImpl,
     source::Source,
 };
@@ -563,6 +567,136 @@ impl_vec_znx_delegate!(
     VecZnxCopyBackend<B>,
     fn vec_znx_copy_backend(&self, res: &mut VecZnxBackendMut<'_, B>, res_col: usize, a: &VecZnxBackendRef<'_, B>, a_col: usize) {
         B::vec_znx_copy_backend(self, res, res_col, a, a_col);
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillTernaryHwSourceBackend<B>,
+    fn scalar_znx_fill_ternary_hw_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        source: &mut Source,
+    ) {
+        B::scalar_znx_fill_ternary_hw_backend(self, res, res_col, hw, source.new_seed());
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillTernaryHwBackend<B>,
+    fn scalar_znx_fill_ternary_hw_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    ) {
+        B::scalar_znx_fill_ternary_hw_backend(self, res, res_col, hw, seed);
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillTernaryProbSourceBackend<B>,
+    fn scalar_znx_fill_ternary_prob_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        source: &mut Source,
+    ) {
+        B::scalar_znx_fill_ternary_prob_backend(self, res, res_col, prob, source.new_seed());
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillTernaryProbBackend<B>,
+    fn scalar_znx_fill_ternary_prob_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    ) {
+        B::scalar_znx_fill_ternary_prob_backend(self, res, res_col, prob, seed);
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryHwSourceBackend<B>,
+    fn scalar_znx_fill_binary_hw_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        source: &mut Source,
+    ) {
+        B::scalar_znx_fill_binary_hw_backend(self, res, res_col, hw, source.new_seed());
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryHwBackend<B>,
+    fn scalar_znx_fill_binary_hw_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    ) {
+        B::scalar_znx_fill_binary_hw_backend(self, res, res_col, hw, seed);
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryProbSourceBackend<B>,
+    fn scalar_znx_fill_binary_prob_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        source: &mut Source,
+    ) {
+        B::scalar_znx_fill_binary_prob_backend(self, res, res_col, prob, source.new_seed());
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryProbBackend<B>,
+    fn scalar_znx_fill_binary_prob_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    ) {
+        B::scalar_znx_fill_binary_prob_backend(self, res, res_col, prob, seed);
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryBlockSourceBackend<B>,
+    fn scalar_znx_fill_binary_block_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        block_size: usize,
+        source: &mut Source,
+    ) {
+        B::scalar_znx_fill_binary_block_backend(self, res, res_col, block_size, source.new_seed());
+    }
+);
+
+impl_vec_znx_delegate!(
+    ScalarZnxFillBinaryBlockBackend<B>,
+    fn scalar_znx_fill_binary_block_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        block_size: usize,
+        seed: [u8; 32],
+    ) {
+        B::scalar_znx_fill_binary_block_backend(self, res, res_col, block_size, seed);
     }
 );
 

@@ -1,8 +1,10 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        VecZnxZeroBackend,
+    },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-        ZnxZero,
+        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
     },
     source::Source,
 };
@@ -36,8 +38,7 @@ pub trait GGSWEncryptSkDefault<BE: Backend> {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GGSWEncryptSkDefault<BE> for Module<BE>
@@ -49,7 +50,8 @@ where
         + VecZnxDftBytesOf
         + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeTmpBytes
+        + VecZnxZeroBackend<BE>,
 {
     fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -78,7 +80,6 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res = &mut res.to_backend_mut();
         let pt_backend = pt.to_backend_ref();
@@ -103,7 +104,7 @@ where
         let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
 
         for row_i in 0..res.dnum().into() {
-            tmp_pt.data.zero();
+            self.vec_znx_zero_backend(&mut tmp_pt.data, 0);
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             {
                 let mut tmp_pt_data =

@@ -1,10 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend, VecZnxZeroBackend},
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-        ZnxZero,
+        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
     },
     source::Source,
 };
@@ -39,8 +38,7 @@ pub trait GGSWCompressedEncryptSkDefault<BE: Backend> {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GGSWCompressedEncryptSkDefault<BE> for Module<BE>
@@ -50,7 +48,8 @@ where
         + GGSWEncryptSk<BE>
         + GGSWNoise<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeInplaceBackend<BE>,
+        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxZeroBackend<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -76,7 +75,6 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let base2k: usize = res.base2k().into();
         let rank: usize = res.rank().into();
@@ -109,7 +107,7 @@ where
             let mut source = Source::new(seed_xa);
 
             for row_i in 0..res.dnum().into() {
-                tmp_pt.data.zero();
+                self.vec_znx_zero_backend(&mut tmp_pt.data, 0);
 
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 {

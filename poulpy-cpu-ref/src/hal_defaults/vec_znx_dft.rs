@@ -10,10 +10,9 @@ use crate::reference::{
             vec_znx_dft_add_assign as fft64_vec_znx_dft_add_assign, vec_znx_dft_add_into as fft64_vec_znx_dft_add_into,
             vec_znx_dft_add_scaled_assign as fft64_vec_znx_dft_add_scaled_assign, vec_znx_dft_apply as fft64_vec_znx_dft_apply,
             vec_znx_dft_copy as fft64_vec_znx_dft_copy, vec_znx_dft_sub as fft64_vec_znx_dft_sub,
-            vec_znx_dft_sub_assign as fft64_vec_znx_dft_sub_assign,
-            vec_znx_dft_sub_negate_assign as fft64_vec_znx_dft_sub_negate_assign, vec_znx_dft_zero as fft64_vec_znx_dft_zero,
-            vec_znx_idft_apply as fft64_vec_znx_idft_apply, vec_znx_idft_apply_consume as fft64_vec_znx_idft_apply_consume,
-            vec_znx_idft_apply_tmpa as fft64_vec_znx_idft_apply_tmpa,
+            vec_znx_dft_sub_inplace as fft64_vec_znx_dft_sub_inplace,
+            vec_znx_dft_sub_negate_inplace as fft64_vec_znx_dft_sub_negate_inplace, vec_znx_dft_zero as fft64_vec_znx_dft_zero,
+            vec_znx_idft_apply as fft64_vec_znx_idft_apply, vec_znx_idft_apply_tmpa as fft64_vec_znx_idft_apply_tmpa,
         },
     },
     ntt120::{
@@ -32,7 +31,6 @@ use crate::reference::{
             ntt120_vec_znx_dft_sub_negate_assign as ntt120_default_vec_znx_dft_sub_negate_assign,
             ntt120_vec_znx_dft_zero as ntt120_default_vec_znx_dft_zero,
             ntt120_vec_znx_idft_apply as ntt120_default_vec_znx_idft_apply,
-            ntt120_vec_znx_idft_apply_consume as ntt120_default_vec_znx_idft_apply_consume,
             ntt120_vec_znx_idft_apply_tmp_bytes as ntt120_default_vec_znx_idft_apply_tmp_bytes,
             ntt120_vec_znx_idft_apply_tmpa as ntt120_default_vec_znx_idft_apply_tmpa,
         },
@@ -42,8 +40,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut,
-        VecZnxDft, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
+        Backend, HostDataMut, HostDataRef, Module, ScratchArena, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut,
+        VecZnxDftBackendRef,
     },
 };
 
@@ -123,15 +121,6 @@ where
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         fft64_vec_znx_idft_apply_tmpa(module.get_ifft_table(), res, res_col, a, a_col);
-    }
-
-    fn vec_znx_idft_apply_consume_default<D: Data>(module: &Module<BE>, a: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
-    where
-        Module<BE>: FFTModuleHandle<f64>,
-        BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64>,
-        VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
-    {
-        fft64_vec_znx_idft_apply_consume(module.get_ifft_table(), a)
     }
 
     fn vec_znx_dft_add_into_default(
@@ -311,15 +300,6 @@ where
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         ntt120_default_vec_znx_idft_apply_tmpa(module, res, res_col, a, a_col);
-    }
-
-    fn vec_znx_idft_apply_consume_default<D: Data>(module: &Module<BE>, a: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
-    where
-        Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>,
-        VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
-    {
-        ntt120_default_vec_znx_idft_apply_consume(module, a)
     }
 
     fn vec_znx_dft_add_into_default(

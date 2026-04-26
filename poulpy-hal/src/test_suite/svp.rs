@@ -3,19 +3,35 @@ use rand::Rng;
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
+        ScratchOwnedAlloc, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxBigAlloc,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
     },
     layouts::{
         Backend, DataViewMut, DigestU64, FillUniform, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, SvpPPolOwned,
-        SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
-        VecZnxDftToBackendRef,
+        SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft,
+        VecZnxDftToBackendMut, VecZnxDftToBackendRef,
     },
     source::Source,
 };
 
 type VecZnxDftOwned<BE> = VecZnxDft<<BE as Backend>::OwnedBuf, BE>;
 type VecZnxBigOwned<BE> = crate::layouts::VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
+
+fn idft_into_alloc<BE>(module: &Module<BE>, a: &mut VecZnxDftOwned<BE>) -> VecZnxBigOwned<BE>
+where
+    BE: Backend,
+    Module<BE>: VecZnxBigAlloc<BE> + VecZnxIdftApplyTmpA<BE>,
+{
+    let cols = a.cols;
+    let size = a.size;
+    let mut res = module.vec_znx_big_alloc(cols, size);
+    for j in 0..cols {
+        let mut res_backend = res.to_backend_mut();
+        let mut a_backend = a.to_backend_mut();
+        module.vec_znx_idft_apply_tmpa(&mut res_backend, j, &mut a_backend, j);
+    }
+    res
+}
 
 pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
@@ -28,15 +44,17 @@ pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
         + SvpApplyDft<BR>
         + SvpPPolAlloc<BR>
         + VecZnxDftAlloc<BR>
+        + VecZnxBigAlloc<BR>
         + VecZnxBigNormalize<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: SvpPrepare<BT>
         + SvpApplyDft<BT>
         + SvpPPolAlloc<BT>
         + VecZnxDftAlloc<BT>
+        + VecZnxBigAlloc<BT>
         + VecZnxBigNormalize<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
@@ -122,34 +140,34 @@ pub fn test_svp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
             assert_eq!(svp_test.digest_u64(), svp_test_digest);
             assert_eq!(a.digest_u64(), a_digest);
 
-            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+            let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(
-                    &mut vec_znx_backend_mut::<BR>(&mut res_ref),
-                    base2k,
-                    0,
-                    j,
-                    &res_big_ref.to_backend_ref(),
-                    base2k,
-                    j,
-                    &mut scratch_ref.arena(),
-                );
-                module_test.vec_znx_big_normalize(
+                    module_ref.vec_znx_big_normalize(
+                        &mut vec_znx_backend_mut::<BR>(&mut res_ref),
+                        base2k,
+                        0,
+                        j,
+                        &res_big_ref.to_backend_ref(),
+                        base2k,
+                        j,
+                        &mut scratch_ref.arena(),
+                    );
+                    module_test.vec_znx_big_normalize(
                     &mut vec_znx_backend_mut::<BT>(&mut res_test),
-                    base2k,
-                    0,
-                    j,
-                    &res_big_test.to_backend_ref(),
-                    base2k,
-                    j,
-                    &mut scratch_test.arena(),
-                );
-            }
+                        base2k,
+                        0,
+                        j,
+                        &res_big_test.to_backend_ref(),
+                        base2k,
+                        j,
+                        &mut scratch_test.arena(),
+                    );
+                }
 
             assert_eq!(res_ref, res_test);
         }
@@ -167,17 +185,19 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
         + SvpApplyDftToDft<BR>
         + SvpPPolAlloc<BR>
         + VecZnxDftAlloc<BR>
+        + VecZnxBigAlloc<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: SvpPrepare<BT>
         + SvpApplyDftToDft<BT>
         + SvpPPolAlloc<BT>
         + VecZnxDftAlloc<BT>
+        + VecZnxBigAlloc<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
@@ -278,8 +298,8 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
             assert_eq!(svp_test.digest_u64(), svp_test_digest);
             assert_eq!(a.digest_u64(), a_digest);
 
-            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+            let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
@@ -323,17 +343,19 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT:
         + SvpApplyDftToDftAssign<BR>
         + SvpPPolAlloc<BR>
         + VecZnxDftAlloc<BR>
+        + VecZnxBigAlloc<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: SvpPrepare<BT>
         + SvpApplyDftToDftAssign<BT>
         + SvpPPolAlloc<BT>
         + VecZnxDftAlloc<BT>
+        + VecZnxBigAlloc<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
@@ -417,8 +439,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT:
         assert_eq!(svp_ref.digest_u64(), svp_ref_digest);
         assert_eq!(svp_test.digest_u64(), svp_test_digest);
 
-        let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-        let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+        let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+        let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
         let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
         let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);

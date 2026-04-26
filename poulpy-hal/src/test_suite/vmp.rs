@@ -1,14 +1,14 @@
 use super::{TestParams, vec_znx_backend_mut, vec_znx_backend_ref};
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply,
-        VecZnxIdftApplyConsume, VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
-        VmpPrepare, VmpPrepareTmpBytes,
+        ModuleNew, ScratchOwnedAlloc, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc,
+        VecZnxDftApply, VecZnxIdftApplyTmpA, VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
+        VmpPMatAlloc, VmpPrepare, VmpPrepareTmpBytes,
     },
     layouts::{
         Backend, DataViewMut, DigestU64, FillUniform, MatZnx, MatZnxToBackendRef, Module, ScratchOwned, VecZnx, VecZnxBig,
-        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VmpPMat, VmpPMatToBackendMut,
-        VmpPMatToBackendRef,
+        VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VmpPMat,
+        VmpPMatToBackendMut, VmpPMatToBackendRef,
     },
     source::Source,
 };
@@ -17,6 +17,22 @@ use rand::Rng;
 type VecZnxDftOwned<BE> = VecZnxDft<<BE as Backend>::OwnedBuf, BE>;
 type VmpPMatOwned<BE> = VmpPMat<<BE as Backend>::OwnedBuf, BE>;
 type VecZnxBigOwned<BE> = VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
+
+fn idft_into_alloc<BE>(module: &Module<BE>, a: &mut VecZnxDftOwned<BE>) -> VecZnxBigOwned<BE>
+where
+    BE: Backend,
+    Module<BE>: VecZnxBigAlloc<BE> + VecZnxIdftApplyTmpA<BE>,
+{
+    let cols = a.cols;
+    let size = a.size;
+    let mut res = module.vec_znx_big_alloc(cols, size);
+    for j in 0..cols {
+        let mut res_backend = res.to_backend_mut();
+        let mut a_backend = a.to_backend_mut();
+        module.vec_znx_idft_apply_tmpa(&mut res_backend, j, &mut a_backend, j);
+    }
+    res
+}
 
 pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
@@ -32,7 +48,8 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
         + VecZnxDftAlloc<BR>
         + VmpPrepare<BR>
         + VecZnxDftAlloc<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     Module<BT>: ModuleNew<BT>
@@ -42,7 +59,8 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
         + VecZnxDftAlloc<BT>
         + VmpPrepare<BT>
         + VecZnxDftAlloc<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
@@ -110,14 +128,11 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
 
                     assert_eq!(a.digest_u64(), a_digest);
 
-                    let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                    let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                    let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                    let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                     let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);
                     let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);
-
-                    let res_ref_digest: u64 = res_big_ref.digest_u64();
-                    let res_test_digest: u64 = res_big_test.digest_u64();
 
                     for j in 0..cols_out {
                         module_ref.vec_znx_big_normalize(
@@ -142,9 +157,6 @@ pub fn test_vmp_apply_dft<BR: crate::test_suite::TestBackend, BT: crate::test_su
                         );
                     }
 
-                    assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                    assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                     assert_eq!(res_small_ref, res_small_test);
                 }
             }
@@ -165,7 +177,8 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
         + VmpPMatAlloc<BR>
         + VecZnxDftAlloc<BR>
         + VmpPrepare<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxDftApply<BR>
         + VmpPrepareTmpBytes
@@ -177,7 +190,8 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
         + VmpPMatAlloc<BT>
         + VecZnxDftAlloc<BT>
         + VmpPrepare<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxDftApply<BT>
         + VmpPrepareTmpBytes
@@ -274,14 +288,11 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
                         &mut scratch_test.arena(),
                     );
 
-                    let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                    let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                    let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                    let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                     let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);
                     let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);
-
-                    let res_ref_digest: u64 = res_big_ref.digest_u64();
-                    let res_test_digest: u64 = res_big_test.digest_u64();
 
                     for j in 0..cols_out {
                         module_ref.vec_znx_big_normalize(
@@ -306,9 +317,6 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
                         );
                     }
 
-                    assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                    assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                     assert_eq!(res_small_ref, res_small_test);
 
                     // Test non-zero limb_offset: verify ref == test for each offset
@@ -331,8 +339,8 @@ pub fn test_vmp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
                             &mut scratch_test.arena(),
                         );
 
-                        let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                        let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                        let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                        let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                         let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);
                         let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols_out, size_out);

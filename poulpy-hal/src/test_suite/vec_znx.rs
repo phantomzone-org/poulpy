@@ -3,19 +3,24 @@ use std::f64::consts::SQRT_2;
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalSourceBackend,
-        VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
-        VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend,
-        VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshBackend,
-        VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
+        ModuleNew, ScalarZnxFillBinaryBlockBackend, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwBackend,
+        ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbBackend, ScalarZnxFillBinaryProbSourceBackend,
+        ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
+        ScalarZnxFillTernaryProbSourceBackend, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
+        VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend,
+        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
+        VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend,
+        VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
         VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
         VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
         VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshTmpBytes,
-        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
-        VecZnxZeroBackend,
+        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
+        VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
-    layouts::{DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{
+        DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScalarZnxToBackendMut, ScratchOwned, VecZnx, ZnxInfos, ZnxView,
+        ZnxViewMut,
+    },
     source::Source,
 };
 
@@ -1337,6 +1342,154 @@ pub fn test_vec_znx_seed_sampling_matches_source_wrappers<B: crate::test_suite::
         seed,
     );
     assert_eq!(wrapper_normal, backend_normal);
+}
+
+pub fn test_scalar_znx_secret_seed_sampling_matches_source_wrappers<B: crate::test_suite::TestBackend>(
+    _params: &TestParams,
+    module: &Module<B>,
+) where
+    B::OwnedBuf: crate::layouts::HostDataMut,
+    Module<B>: ScalarZnxFillTernaryHwSourceBackend<B>
+        + ScalarZnxFillTernaryHwBackend<B>
+        + ScalarZnxFillTernaryProbSourceBackend<B>
+        + ScalarZnxFillTernaryProbBackend<B>
+        + ScalarZnxFillBinaryHwSourceBackend<B>
+        + ScalarZnxFillBinaryHwBackend<B>
+        + ScalarZnxFillBinaryProbSourceBackend<B>
+        + ScalarZnxFillBinaryProbBackend<B>
+        + ScalarZnxFillBinaryBlockSourceBackend<B>
+        + ScalarZnxFillBinaryBlockBackend<B>,
+{
+    let n: usize = module.n();
+    let cols: usize = 2;
+    let col_i: usize = 1;
+
+    fn check<Fw, Fb>(
+        seed_bytes: [u8; 32],
+        n: usize,
+        cols: usize,
+        mut fill_wrapper: Fw,
+        mut fill_backend: Fb,
+    ) where
+        Fw: FnMut(&mut ScalarZnx<Vec<u8>>, &mut Source),
+        Fb: FnMut(&mut ScalarZnx<Vec<u8>>, [u8; 32]),
+    {
+        let mut seed_source = Source::new(seed_bytes);
+        let seed = seed_source.new_seed();
+        let mut wrapper_source = Source::new(seed_bytes);
+
+        let mut wrapper = ScalarZnx::alloc(n, cols);
+        let mut backend = ScalarZnx::alloc(n, cols);
+        fill_wrapper(&mut wrapper, &mut wrapper_source);
+        fill_backend(&mut backend, seed);
+        assert_eq!(wrapper, backend);
+    }
+
+    check(
+        [2u8; 32],
+        n,
+        cols,
+        move |res, source| {
+            module.scalar_znx_fill_ternary_hw_source_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                n / 8,
+                source,
+            )
+        },
+        move |res, seed| {
+            module.scalar_znx_fill_ternary_hw_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                n / 8,
+                seed,
+            )
+        },
+    );
+    check(
+        [3u8; 32],
+        n,
+        cols,
+        move |res, source| {
+            module.scalar_znx_fill_ternary_prob_source_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                0.5,
+                source,
+            )
+        },
+        move |res, seed| {
+            module.scalar_znx_fill_ternary_prob_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                0.5,
+                seed,
+            )
+        },
+    );
+    check(
+        [4u8; 32],
+        n,
+        cols,
+        move |res, source| {
+            module.scalar_znx_fill_binary_hw_source_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                n / 8,
+                source,
+            )
+        },
+        move |res, seed| {
+            module.scalar_znx_fill_binary_hw_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                n / 8,
+                seed,
+            )
+        },
+    );
+    check(
+        [5u8; 32],
+        n,
+        cols,
+        move |res, source| {
+            module.scalar_znx_fill_binary_prob_source_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                0.5,
+                source,
+            )
+        },
+        move |res, seed| {
+            module.scalar_znx_fill_binary_prob_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                0.5,
+                seed,
+            )
+        },
+    );
+    check(
+        [6u8; 32],
+        n,
+        cols,
+        move |res, source| {
+            module.scalar_znx_fill_binary_block_source_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                8,
+                source,
+            )
+        },
+        move |res, seed| {
+            module.scalar_znx_fill_binary_block_backend(
+                &mut <ScalarZnx<Vec<u8>> as ScalarZnxToBackendMut<B>>::to_backend_mut(res),
+                col_i,
+                8,
+                seed,
+            )
+        },
+    );
 }
 
 pub fn test_vec_znx_fill_normal<B: crate::test_suite::TestBackend>(_params: &TestParams, module: &Module<B>)

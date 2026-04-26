@@ -1,11 +1,12 @@
 use poulpy_hal::{
     api::{
         ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssignBackend, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
         Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
-        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
+        VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut,
+        VecZnxReborrowBackendRef, ZnxZero,
     },
 };
 
@@ -45,8 +46,8 @@ impl<BE: Backend + HostBackend> GGSWNoise<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarAssignBackend<BE>
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftAssign<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
@@ -117,7 +118,7 @@ where
         // mul with sk[col_j-1]
         if res_col > 0 {
             let scratch_mul = scratch_1.borrow();
-            let (mut pt_dft, mut scratch_2) = scratch_mul.take_vec_znx_dft(self, 1, res_ref.size());
+            let (mut pt_dft, scratch_2) = scratch_mul.take_vec_znx_dft(self, 1, res_ref.size());
             self.vec_znx_dft_apply(
                 1,
                 0,
@@ -130,7 +131,12 @@ where
                 let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
                 self.svp_apply_dft_to_dft_inplace(&mut pt_dft_backend, 0, &sk_backend.data, res_col - 1);
             }
-            let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
+            let (mut pt_big, mut scratch_3) = scratch_2.take_vec_znx_big(self, 1, res_ref.size());
+            {
+                let mut pt_big_backend = pt_big.reborrow_backend_mut();
+                let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
+                self.vec_znx_idft_apply_tmpa(&mut pt_big_backend, 0, &mut pt_dft_backend, 0);
+            }
             self.vec_znx_big_normalize(
                 &mut pt.data,
                 base2k,
@@ -141,7 +147,7 @@ where
                 ),
                 base2k,
                 0,
-                &mut scratch_2,
+                &mut scratch_3,
             );
         }
 

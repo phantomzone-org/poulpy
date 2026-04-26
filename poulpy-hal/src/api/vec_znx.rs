@@ -1,5 +1,5 @@
 use crate::{
-    layouts::{Backend, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
+    layouts::{Backend, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
     source::Source,
 };
 
@@ -451,6 +451,106 @@ pub trait VecZnxSwitchRingBackend<B: Backend> {
 
 pub trait VecZnxCopyBackend<B: Backend> {
     fn vec_znx_copy_backend(&self, res: &mut VecZnxBackendMut<'_, B>, res_col: usize, a: &VecZnxBackendRef<'_, B>, a_col: usize);
+}
+
+pub trait ScalarZnxFillTernaryHwSourceBackend<B: Backend> {
+    fn scalar_znx_fill_ternary_hw_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        source: &mut Source,
+    );
+}
+
+pub trait ScalarZnxFillTernaryHwBackend<B: Backend> {
+    fn scalar_znx_fill_ternary_hw_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    );
+}
+
+pub trait ScalarZnxFillTernaryProbSourceBackend<B: Backend> {
+    fn scalar_znx_fill_ternary_prob_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        source: &mut Source,
+    );
+}
+
+pub trait ScalarZnxFillTernaryProbBackend<B: Backend> {
+    fn scalar_znx_fill_ternary_prob_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    );
+}
+
+pub trait ScalarZnxFillBinaryHwSourceBackend<B: Backend> {
+    fn scalar_znx_fill_binary_hw_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        source: &mut Source,
+    );
+}
+
+pub trait ScalarZnxFillBinaryHwBackend<B: Backend> {
+    fn scalar_znx_fill_binary_hw_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    );
+}
+
+pub trait ScalarZnxFillBinaryProbSourceBackend<B: Backend> {
+    fn scalar_znx_fill_binary_prob_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        source: &mut Source,
+    );
+}
+
+pub trait ScalarZnxFillBinaryProbBackend<B: Backend> {
+    fn scalar_znx_fill_binary_prob_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    );
+}
+
+pub trait ScalarZnxFillBinaryBlockSourceBackend<B: Backend> {
+    fn scalar_znx_fill_binary_block_source_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        block_size: usize,
+        source: &mut Source,
+    );
+}
+
+pub trait ScalarZnxFillBinaryBlockBackend<B: Backend> {
+    fn scalar_znx_fill_binary_block_backend(
+        &self,
+        res: &mut ScalarZnxBackendMut<'_, B>,
+        res_col: usize,
+        block_size: usize,
+        seed: [u8; 32],
+    );
 }
 
 pub trait VecZnxFillUniformSourceBackend<B: Backend> {

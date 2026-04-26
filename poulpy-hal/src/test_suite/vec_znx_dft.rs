@@ -5,7 +5,7 @@ use crate::{
     api::{
         ScratchOwnedAlloc, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftAddInto,
         VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace,
-        VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxIdftApply, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
         Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToBackendMut,
@@ -17,6 +17,22 @@ use crate::{
 type VecZnxDftOwned<BE> = VecZnxDft<<BE as Backend>::OwnedBuf, BE>;
 type VecZnxBigOwned<BE> = VecZnxBig<<BE as Backend>::OwnedBuf, BE>;
 
+fn idft_into_alloc<BE>(module: &Module<BE>, a: &mut VecZnxDftOwned<BE>) -> VecZnxBigOwned<BE>
+where
+    BE: Backend,
+    Module<BE>: VecZnxBigAlloc<BE> + VecZnxIdftApplyTmpA<BE>,
+{
+    let cols = a.cols;
+    let size = a.size;
+    let mut res = module.vec_znx_big_alloc(cols, size);
+    for j in 0..cols {
+        let mut res_backend = res.to_backend_mut();
+        let mut a_backend = a.to_backend_mut();
+        module.vec_znx_idft_apply_tmpa(&mut res_backend, j, &mut a_backend, j);
+    }
+    res
+}
+
 pub fn test_vec_znx_dft_add_into<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
@@ -27,13 +43,15 @@ pub fn test_vec_znx_dft_add_into<BR: crate::test_suite::TestBackend, BT: crate::
     Module<BR>: VecZnxDftAddInto<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftAddInto<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -118,14 +136,11 @@ pub fn test_vec_znx_dft_add_into<BR: crate::test_suite::TestBackend, BT: crate::
                 assert_eq!(b_dft_ref.digest_u64(), b_dft_ref_digest);
                 assert_eq!(b_dft_test.digest_u64(), b_dft_test_digest);
 
-                let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
@@ -150,9 +165,6 @@ pub fn test_vec_znx_dft_add_into<BR: crate::test_suite::TestBackend, BT: crate::
                     );
                 }
 
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                 assert_eq!(res_small_ref, res_small_test);
             }
         }
@@ -169,13 +181,15 @@ pub fn test_vec_znx_dft_add_assign<BR: crate::test_suite::TestBackend, BT: crate
     Module<BR>: VecZnxDftAddAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftAddAssign<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -246,14 +260,11 @@ pub fn test_vec_znx_dft_add_assign<BR: crate::test_suite::TestBackend, BT: crate
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
             assert_eq!(a_dft_test.digest_u64(), a_dft_test_digest);
 
-            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+            let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
             let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-            let res_ref_digest: u64 = res_big_ref.digest_u64();
-            let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
@@ -278,9 +289,6 @@ pub fn test_vec_znx_dft_add_assign<BR: crate::test_suite::TestBackend, BT: crate
                 );
             }
 
-            assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-            assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
             assert_eq!(res_small_ref, res_small_test);
         }
     }
@@ -296,13 +304,15 @@ pub fn test_vec_znx_copy<BR: crate::test_suite::TestBackend, BT: crate::test_sui
     Module<BR>: VecZnxDftCopy<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftCopy<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -373,14 +383,11 @@ pub fn test_vec_znx_copy<BR: crate::test_suite::TestBackend, BT: crate::test_sui
                 assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
                 assert_eq!(a_dft_test.digest_u64(), a_dft_test_digest);
 
-                let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
@@ -404,9 +411,6 @@ pub fn test_vec_znx_copy<BR: crate::test_suite::TestBackend, BT: crate::test_sui
                         &mut scratch_test.arena(),
                     );
                 }
-
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
 
                 assert_eq!(res_small_ref, res_small_test);
             }
@@ -508,9 +512,6 @@ pub fn test_vec_znx_idft_apply<BR: crate::test_suite::TestBackend, BT: crate::te
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
-
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
                         &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
@@ -533,9 +534,6 @@ pub fn test_vec_znx_idft_apply<BR: crate::test_suite::TestBackend, BT: crate::te
                         &mut scratch_test.arena(),
                     );
                 }
-
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
 
                 assert_eq!(res_small_ref, res_small_test);
             }
@@ -630,9 +628,6 @@ pub fn test_vec_znx_idft_apply_tmpa<BR: crate::test_suite::TestBackend, BT: crat
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
-
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
                         &mut vec_znx_backend_mut::<BR>(&mut res_small_ref),
@@ -656,16 +651,13 @@ pub fn test_vec_znx_idft_apply_tmpa<BR: crate::test_suite::TestBackend, BT: crat
                     );
                 }
 
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                 assert_eq!(res_small_ref, res_small_test);
             }
         }
     }
 }
 
-pub fn test_vec_znx_idft_apply_consume<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_idft_apply_alloc<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
@@ -677,13 +669,15 @@ pub fn test_vec_znx_idft_apply_consume<BR: crate::test_suite::TestBackend, BT: c
         + VecZnxDftAlloc<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyConsume<BR>,
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>,
     Module<BT>: VecZnxDftApply<BT>
         + VecZnxIdftApplyTmpBytes
         + VecZnxDftAlloc<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyConsume<BT>,
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
@@ -733,14 +727,11 @@ pub fn test_vec_znx_idft_apply_consume<BR: crate::test_suite::TestBackend, BT: c
 
                 assert_eq!(a.digest_u64(), a_digest);
 
-                let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
@@ -765,9 +756,6 @@ pub fn test_vec_znx_idft_apply_consume<BR: crate::test_suite::TestBackend, BT: c
                     );
                 }
 
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                 assert_eq!(res_small_ref, res_small_test);
             }
         }
@@ -784,13 +772,15 @@ pub fn test_vec_znx_dft_sub<BR: crate::test_suite::TestBackend, BT: crate::test_
     Module<BR>: VecZnxDftSub<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftSub<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -875,14 +865,11 @@ pub fn test_vec_znx_dft_sub<BR: crate::test_suite::TestBackend, BT: crate::test_
                 assert_eq!(b_dft_ref.digest_u64(), b_dft_ref_digest);
                 assert_eq!(b_dft_test.digest_u64(), b_dft_test_digest);
 
-                let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-                let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+                let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+                let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
                 let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
                 let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-                let res_ref_digest: u64 = res_big_ref.digest_u64();
-                let res_test_digest: u64 = res_big_test.digest_u64();
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
@@ -907,9 +894,6 @@ pub fn test_vec_znx_dft_sub<BR: crate::test_suite::TestBackend, BT: crate::test_
                     );
                 }
 
-                assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-                assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
                 assert_eq!(res_small_ref, res_small_test);
             }
         }
@@ -926,13 +910,15 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend, BT: crat
     Module<BR>: VecZnxDftSubInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftSubAssign<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -1003,14 +989,11 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend, BT: crat
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
             assert_eq!(a_dft_test.digest_u64(), a_dft_test_digest);
 
-            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+            let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
             let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-            let res_ref_digest: u64 = res_big_ref.digest_u64();
-            let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
@@ -1035,9 +1018,6 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend, BT: crat
                 );
             }
 
-            assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-            assert_eq!(res_big_test.digest_u64(), res_test_digest);
-
             assert_eq!(res_small_ref, res_small_test);
         }
     }
@@ -1053,13 +1033,15 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: crate::test_suite::TestBackend, B
     Module<BR>: VecZnxDftSubNegateInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
-        + VecZnxIdftApplyConsume<BR>
+        + VecZnxBigAlloc<BR>
+        + VecZnxIdftApplyTmpA<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxDftSubNegateAssign<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
-        + VecZnxIdftApplyConsume<BT>
+        + VecZnxBigAlloc<BT>
+        + VecZnxIdftApplyTmpA<BT>
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
@@ -1135,14 +1117,11 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: crate::test_suite::TestBackend, B
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
             assert_eq!(a_dft_test.digest_u64(), a_dft_test_digest);
 
-            let res_big_ref: VecZnxBigOwned<BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
-            let res_big_test: VecZnxBigOwned<BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+            let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);
+            let res_big_test = idft_into_alloc(module_test, &mut res_dft_test);
 
             let mut res_small_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_small_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-
-            let res_ref_digest: u64 = res_big_ref.digest_u64();
-            let res_test_digest: u64 = res_big_test.digest_u64();
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
@@ -1166,9 +1145,6 @@ pub fn test_vec_znx_dft_sub_negate_inplace<BR: crate::test_suite::TestBackend, B
                     &mut scratch_test.arena(),
                 );
             }
-
-            assert_eq!(res_big_ref.digest_u64(), res_ref_digest);
-            assert_eq!(res_big_test.digest_u64(), res_test_digest);
 
             assert_eq!(res_small_ref, res_small_test);
         }

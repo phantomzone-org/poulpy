@@ -120,11 +120,5 @@ macro_rules! hal_impl_vec_znx_dft {
             <Self as $defaults<Self>>::vec_znx_dft_zero_default(module, res, res_col)
         }
 
-        fn vec_znx_idft_apply_consume<D: Data>(module: &Module<Self>, a: VecZnxDft<D, Self>) -> VecZnxBig<D, Self>
-        where
-            VecZnxDft<D, Self>: VecZnxDftToMut<Self>,
-        {
-            <Self as $defaults<Self>>::vec_znx_idft_apply_consume_default(module, a)
-        }
     };
 }

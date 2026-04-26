@@ -26,8 +26,8 @@ use bytemuck::{cast_slice, cast_slice_mut};
 
 use crate::{
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft,
-        VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, HostDataMut, HostDataRef, Module, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDft, VecZnxDftBackendMut,
+        VecZnxDftBackendRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
@@ -291,6 +291,37 @@ pub fn ntt120_vec_znx_idft_apply_tmpa<BE>(
     }
 }
 
+// Kept as dormant internal helpers for the removed consume path.
+// They are intentionally retained because the in-place q120b -> big compaction
+// logic may still be useful as a future optimization, even though the current
+// public API now applies IDFT into a separately allocated VecZnxBig.
+#[allow(dead_code)]
+pub fn ntt120_vec_znx_idft_apply_consume<'a, BE>(
+    module: &impl NttModuleHandle,
+    mut a: VecZnxDftBackendMut<'a, BE>,
+) -> VecZnxBigBackendMut<'a, BE>
+where
+    BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+{
+    let table = module.get_intt_table();
+
+    let (n, n_blocks, u64_ptr) = {
+        let n = a.n();
+        let n_blocks = a.cols() * a.size();
+        let ptr: *mut u64 = {
+            let s = a.raw_mut();
+            cast_slice_mut::<_, u64>(s).as_mut_ptr()
+        };
+        (n, n_blocks, ptr)
+    };
+
+    unsafe { compact_all_blocks_scalar(n, n_blocks, u64_ptr, table) };
+
+    a.into_big()
+}
+
+#[allow(dead_code)]
 #[inline(always)]
 fn barrett_u61(x: u64, q: u64, mu: u64) -> u64 {
     let q_approx = ((x as u128 * mu as u128) >> 61) as u64;
@@ -299,6 +330,7 @@ fn barrett_u61(x: u64, q: u64, mu: u64) -> u64 {
     if r >= q { r - q } else { r }
 }
 
+#[allow(dead_code)]
 #[inline(always)]
 fn reduce_q120b_crt(x: u64, q: u64, mu: u64, pow32_crt: u64, pow16_crt: u64, crt: u64) -> u64 {
     let x_hi = x >> 32;
@@ -313,6 +345,7 @@ fn reduce_q120b_crt(x: u64, q: u64, mu: u64, pow32_crt: u64, pow16_crt: u64, crt
     barrett_u61(tmp, q, mu)
 }
 
+#[allow(dead_code)]
 unsafe fn compact_all_blocks_scalar(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
     let q_u64: [u64; 4] = Primes30::Q.map(|qi| qi as u64);
     let mu: [u64; 4] = q_u64.map(|qi| (1u64 << 61) / qi);
@@ -367,34 +400,6 @@ unsafe fn compact_all_blocks_scalar(n: usize, n_blocks: usize, u64_ptr: *mut u64
             unsafe { (u64_ptr.add(dst_start + 2 * c) as *mut i128).write_unaligned(val) };
         }
     }
-}
-
-/// Inverse NTT consuming the input and compacting the q120b layout in place.
-///
-/// This applies the inverse NTT block by block, then CRT-compacts the owned
-/// `VecZnxDft` buffer from q120b (32 bytes/coeff) to the `VecZnxBig<i128>`
-/// layout (16 bytes/coeff) without allocating a new buffer.
-pub fn ntt120_vec_znx_idft_apply_consume<D: Data, BE>(module: &impl NttModuleHandle, mut a: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
-where
-    BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>,
-    VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
-{
-    let table = module.get_intt_table();
-
-    let (n, n_blocks, u64_ptr) = {
-        let mut a_mut: VecZnxDft<&mut [u8], BE> = a.to_mut();
-        let n = a_mut.n();
-        let n_blocks = a_mut.cols() * a_mut.size();
-        let ptr: *mut u64 = {
-            let s = a_mut.raw_mut();
-            cast_slice_mut::<_, u64>(s).as_mut_ptr()
-        };
-        (n, n_blocks, ptr)
-    };
-
-    unsafe { compact_all_blocks_scalar(n, n_blocks, u64_ptr, table) };
-
-    a.into_big()
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

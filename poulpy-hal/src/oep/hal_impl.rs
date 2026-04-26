@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
+    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
     source::Source,
 };
 
@@ -22,6 +22,46 @@ pub unsafe trait HalModuleImpl<BE: Backend>: Backend {
 /// aliasing, scratch usage, and arithmetic correctness.
 pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     fn vec_znx_zero_backend<'r>(module: &Module<BE>, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize);
+
+    fn scalar_znx_fill_ternary_hw_backend(
+        module: &Module<BE>,
+        res: &mut ScalarZnxBackendMut<'_, BE>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    );
+
+    fn scalar_znx_fill_ternary_prob_backend(
+        module: &Module<BE>,
+        res: &mut ScalarZnxBackendMut<'_, BE>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    );
+
+    fn scalar_znx_fill_binary_hw_backend(
+        module: &Module<BE>,
+        res: &mut ScalarZnxBackendMut<'_, BE>,
+        res_col: usize,
+        hw: usize,
+        seed: [u8; 32],
+    );
+
+    fn scalar_znx_fill_binary_prob_backend(
+        module: &Module<BE>,
+        res: &mut ScalarZnxBackendMut<'_, BE>,
+        res_col: usize,
+        prob: f64,
+        seed: [u8; 32],
+    );
+
+    fn scalar_znx_fill_binary_block_backend(
+        module: &Module<BE>,
+        res: &mut ScalarZnxBackendMut<'_, BE>,
+        res_col: usize,
+        block_size: usize,
+        seed: [u8; 32],
+    );
 
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
@@ -592,13 +632,6 @@ pub unsafe trait HalVecZnxDftImpl<BE: Backend>: Backend {
         a: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         a_col: usize,
     );
-
-    fn vec_znx_idft_apply_consume<D: crate::layouts::Data>(
-        module: &Module<BE>,
-        a: crate::layouts::VecZnxDft<D, BE>,
-    ) -> crate::layouts::VecZnxBig<D, BE>
-    where
-        crate::layouts::VecZnxDft<D, BE>: crate::layouts::VecZnxDftToMut<BE>;
 
     fn vec_znx_dft_add_into(
         module: &Module<BE>,

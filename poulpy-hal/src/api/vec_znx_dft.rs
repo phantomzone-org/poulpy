@@ -1,6 +1,5 @@
 use crate::layouts::{
-    Backend, Data, ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft, VecZnxDftBackendMut,
-    VecZnxDftBackendRef, VecZnxDftOwned, VecZnxDftToMut,
+    Backend, ScratchArena, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftOwned,
 };
 
 /// Allocates a [`VecZnxDft`](crate::layouts::VecZnxDft).
@@ -62,14 +61,6 @@ pub trait VecZnxIdftApplyTmpA<B: Backend> {
         a: &mut VecZnxDftBackendMut<'_, B>,
         a_col: usize,
     );
-}
-
-/// Inverse DFT consuming the input DFT vector and reinterpreting its
-/// buffer as a [`VecZnxBig`](crate::layouts::VecZnxBig).
-pub trait VecZnxIdftApplyConsume<B: Backend> {
-    fn vec_znx_idft_apply_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
-    where
-        VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }
 
 /// Element-wise addition of two [`VecZnxDft`](crate::layouts::VecZnxDft) vectors.

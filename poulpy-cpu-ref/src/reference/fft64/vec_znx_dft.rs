@@ -2,8 +2,8 @@ use bytemuck::cast_slice_mut;
 
 use crate::{
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft,
-        VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, HostDataMut, HostDataRef, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut, VecZnxDftBackendRef,
+        ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::{
         fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},
@@ -267,26 +267,30 @@ pub fn vec_znx_idft_apply_tmpa<BE>(
     }
 }
 
-pub fn vec_znx_idft_apply_consume<D: Data, BE>(table: &ReimIFFTTable<f64>, mut res: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
+// Kept as dormant internal code for the removed consume path.
+// It is intentionally retained because the in-place DFT -> big conversion
+// may still be useful as a future optimization, even though the current
+// public API now applies IDFT into a separately allocated VecZnxBig.
+#[allow(dead_code)]
+pub fn vec_znx_idft_apply_consume<'a, BE>(
+    table: &ReimIFFTTable<f64>,
+    mut res: VecZnxDftBackendMut<'a, BE>,
+) -> VecZnxBigBackendMut<'a, BE>
 where
     BE: Backend<ScalarPrep = f64, ScalarBig = i64> + ReimArith + ReimFFTExecute<ReimIFFTTable<f64>, f64>,
-    VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
+    for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
 {
+    #[cfg(debug_assertions)]
     {
-        let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        assert_eq!(table.m() << 1, res.n());
+    }
 
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(table.m() << 1, res.n());
-        }
+    let divisor: f64 = table.m() as f64;
 
-        let divisor: f64 = table.m() as f64;
-
-        for i in 0..res.cols() {
-            for j in 0..res.size() {
-                BE::reim_dft_execute(table, res.at_mut(i, j));
-                BE::reim_to_znx_assign(res.at_mut(i, j), divisor);
-            }
+    for i in 0..res.cols() {
+        for j in 0..res.size() {
+            BE::reim_dft_execute(table, res.at_mut(i, j));
+            BE::reim_to_znx_inplace(res.at_mut(i, j), divisor);
         }
     }
 

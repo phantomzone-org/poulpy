@@ -1,12 +1,12 @@
 use crate::{
     api::{
         VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAddScaledAssign, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubAssign, VecZnxDftSubNegateAssign, VecZnxDftZero,
-        VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero,
+        VecZnxIdftApply, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
-        Backend, Data, Module, ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigBackendMut, VecZnxDft, VecZnxDftBackendMut,
-        VecZnxDftBackendRef, VecZnxDftOwned, VecZnxDftToMut,
+        Backend, Module, ScratchArena, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDft, VecZnxDftBackendMut,
+        VecZnxDftBackendRef, VecZnxDftOwned,
     },
     oep::HalVecZnxDftImpl,
 };
@@ -71,16 +71,6 @@ impl_vec_znx_dft_delegate!(
         a_col: usize,
     ) {
         <B as HalVecZnxDftImpl<B>>::vec_znx_idft_apply_tmpa(self, res, res_col, a, a_col);
-    }
-);
-
-impl_vec_znx_dft_delegate!(
-    VecZnxIdftApplyConsume<B>,
-    fn vec_znx_idft_apply_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
-    where
-        VecZnxDft<D, B>: VecZnxDftToMut<B>,
-    {
-        <B as HalVecZnxDftImpl<B>>::vec_znx_idft_apply_consume(self, a)
     }
 );
 

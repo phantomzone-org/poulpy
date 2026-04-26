@@ -1,9 +1,12 @@
 use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmallBackend,
-        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut},
+    layouts::{
+        Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxBigReborrowBackendMut,
+        VecZnxDftReborrowBackendMut,
+    },
 };
 
 pub use crate::api::GLWEDecrypt;
@@ -23,8 +26,8 @@ pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     + VecZnxBigBytesOf
     + VecZnxBigFromSmallBackend<BE>
     + VecZnxDftApply<BE>
-    + SvpApplyDftToDftAssign<BE>
-    + VecZnxIdftApplyConsume<BE>
+    + SvpApplyDftToDftInplace<BE>
+    + VecZnxIdftApplyTmpA<BE>
     + VecZnxBigAddAssign<BE>
     + VecZnxBigNormalize<BE>
 where
@@ -68,8 +71,8 @@ where
         + VecZnxBigBytesOf
         + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftAssign<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigAddAssign<BE>
         + VecZnxBigNormalize<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -91,7 +94,7 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
         + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigAddAssign<BE>
         + VecZnxBigNormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -115,13 +118,18 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
     module.vec_znx_big_from_small_backend(&mut c0_big, 0, &res.data, 0);
 
     for i in 1..cols {
-        let (mut ci_dft, _) = scratch_1.borrow().take_vec_znx_dft(module, 1, res.size());
+        let (mut ci_dft, scratch_2) = scratch_1.borrow().take_vec_znx_dft(module, 1, res.size());
         module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
         {
             let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
             module.svp_apply_dft_to_dft_inplace(&mut ci_dft_backend, 0, &sk.data, i - 1);
         }
-        let ci_big = module.vec_znx_idft_apply_consume(ci_dft);
+        let (mut ci_big, _) = scratch_2.take_vec_znx_big(module, 1, res.size());
+        {
+            let mut ci_big_backend = ci_big.reborrow_backend_mut();
+            let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+            module.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
+        }
         let ci_big_ref = ci_big.reborrow_backend_ref();
         module.vec_znx_big_add_assign(&mut c0_big, 0, &ci_big_ref, 0);
     }

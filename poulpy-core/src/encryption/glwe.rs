@@ -1,15 +1,18 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddAssignBackend, VecZnxAddNormalSourceBackend, VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniformSourceBackend,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend,
+        ModuleN, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbSourceBackend,
+        ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbSourceBackend, ScratchArenaTakeBasic, SvpApplyDftToDft,
+        SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddAssignBackend, VecZnxAddNormalSourceBackend,
+        VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalize,
+        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
+        VecZnxZeroBackend,
     },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, SvpPPolReborrowBackendRef, VecZnx,
-        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
-        ZnxZero,
+        scalar_znx_as_vec_znx_backend_mut_from_mut, Backend, HostDataMut, Module, ScalarZnx, ScratchArena,
+        SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef,
+        VecZnxDftReborrowBackendMut,
+        VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos, ZnxZero,
     },
     source::Source,
 };
@@ -213,8 +216,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
         P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn glwe_encrypt_zero_pk<'s, R, K, E>(
         &self,
@@ -228,8 +230,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GLWEEncryptPkDefault<BE> for Module<BE>
@@ -267,7 +268,6 @@ where
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(
             scratch.available() >= <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_pk_tmp_bytes(self, res),
@@ -299,7 +299,6 @@ where
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(
             scratch.available() >= <Module<BE> as GLWEEncryptPkDefault<BE>>::glwe_encrypt_pk_tmp_bytes(self, res),
@@ -326,19 +325,24 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
         R: GLWEToBackendMut<BE>,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GLWEEncryptPkInternal<BE> for Module<BE>
 where
     Self: SvpPrepare<BE>
         + SvpApplyDftToDft<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigAddNormal<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxAddAssignBackend<BE>
         + VecZnxCopyBackend<BE>
+        + VecZnxZeroBackend<BE>
+        + ScalarZnxFillTernaryHwSourceBackend<BE>
+        + ScalarZnxFillTernaryProbSourceBackend<BE>
+        + ScalarZnxFillBinaryHwSourceBackend<BE>
+        + ScalarZnxFillBinaryProbSourceBackend<BE>
+        + ScalarZnxFillBinaryBlockSourceBackend<BE>
         + SvpPPolBytesOf
         + ModuleN
         + VecZnxDftBytesOf,
@@ -358,7 +362,6 @@ where
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res = &mut res.to_backend_mut();
 
@@ -379,28 +382,33 @@ where
         let (mut u_dft, mut scratch_1) = scratch.take_svp_ppol(self, 1);
 
         {
-            let (mut u, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
+            let (mut u_backend, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
             match pk.dist() {
                 Distribution::NONE => panic!(
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
                      Self::generate"
                 ),
-                Distribution::TernaryFixed(hw) => u.fill_ternary_hw(0, *hw, source_xu),
-                Distribution::TernaryProb(prob) => u.fill_ternary_prob(0, *prob, source_xu),
-                Distribution::BinaryFixed(hw) => u.fill_binary_hw(0, *hw, source_xu),
-                Distribution::BinaryProb(prob) => u.fill_binary_prob(0, *prob, source_xu),
-                Distribution::BinaryBlock(block_size) => u.fill_binary_block(0, *block_size, source_xu),
-                Distribution::ZERO => {}
+                Distribution::TernaryFixed(hw) => self.scalar_znx_fill_ternary_hw_source_backend(&mut u_backend, 0, *hw, source_xu),
+                Distribution::TernaryProb(prob) => {
+                    self.scalar_znx_fill_ternary_prob_source_backend(&mut u_backend, 0, *prob, source_xu)
+                }
+                Distribution::BinaryFixed(hw) => self.scalar_znx_fill_binary_hw_source_backend(&mut u_backend, 0, *hw, source_xu),
+                Distribution::BinaryProb(prob) => self.scalar_znx_fill_binary_prob_source_backend(&mut u_backend, 0, *prob, source_xu),
+                Distribution::BinaryBlock(block_size) => {
+                    self.scalar_znx_fill_binary_block_source_backend(&mut u_backend, 0, *block_size, source_xu)
+                }
+                Distribution::ZERO => {
+                    let mut u_vec = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut u_backend);
+                    self.vec_znx_zero_backend(&mut u_vec, 0);
+                }
             }
 
-            let u_ref = u.to_ref();
-            let u_backend = ScalarZnx::from_data(BE::from_host_bytes(u_ref.data), u_ref.n, u_ref.cols);
-            self.svp_prepare(
-                &mut u_dft,
-                0,
-                &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&u_backend),
-                0,
-            );
+            let u_backend_ref = ScalarZnx {
+                data: BE::view_ref_mut(&u_backend.data),
+                n: u_backend.n,
+                cols: u_backend.cols,
+            };
+            self.svp_prepare(&mut u_dft, 0, &u_backend_ref, 0);
             scratch_1 = scratch_2;
         }
 
@@ -418,15 +426,20 @@ where
                 }
 
                 // ci_big = u * p[i]
-                let mut ci_big = self.vec_znx_idft_apply_consume(ci_dft);
+                let (mut ci_big, scratch_3) = scratch_2.take_vec_znx_big(self, 1, size_pk);
+                {
+                    let mut ci_big_backend = ci_big.reborrow_backend_mut();
+                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    self.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
+                }
 
                 // ci_big = u * pk[i] + e
                 self.vec_znx_big_add_normal(base2k, &mut ci_big, 0, enc_infos.noise_infos(), source_xe);
 
-                let (mut ci, scratch_3) = scratch_2.take_vec_znx(self.n(), 1, size_pk);
+                let (mut ci, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, size_pk);
                 let scratch_next = {
                     let ci_big_ref = ci_big.reborrow_backend_ref();
-                    scratch_3
+                    scratch_4
                         .apply_mut(|scratch| self.vec_znx_big_normalize(&mut ci, base2k, 0, 0, &ci_big_ref, base2k, 0, scratch))
                 };
                 scratch_1 = scratch_next;
@@ -471,12 +484,12 @@ type GLWEEncryptSkPlaintext<'a, BE> = Option<(GLWEPlaintextBackendRef<'a, BE>, u
 
 impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where
-    Self: ModuleN
+        Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftAssign<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniformSourceBackend<BE>
         + VecZnxAddAssignBackend<BE>
@@ -559,7 +572,7 @@ where
 
             {
                 let scratch_dft = scratch_2.borrow();
-                let (mut ci_dft, mut scratch_3) = scratch_dft.take_vec_znx_dft(self, 1, size);
+                let (mut ci_dft, scratch_3) = scratch_dft.take_vec_znx_dft(self, 1, size);
                 {
                     let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
                     let mut ci_dft_mut = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
@@ -572,9 +585,14 @@ where
                     let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
                     self.svp_apply_dft_to_dft_inplace(&mut ci_dft_backend, 0, &sk.data, i - 1);
                 }
-                let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
+                let (mut ci_big, mut scratch_4) = scratch_3.take_vec_znx_big(self, 1, size);
                 {
-                    let mut scratch_norm = scratch_3.borrow();
+                    let mut ci_big_backend = ci_big.reborrow_backend_mut();
+                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    self.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
+                }
+                {
+                    let mut scratch_norm = scratch_4.borrow();
                     let ci_big_ref = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<
                         BE,
                     >>::reborrow_backend_ref(&ci_big);
