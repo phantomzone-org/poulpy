@@ -1,6 +1,9 @@
 use anyhow::Result;
 use poulpy_core::{EncryptionInfos, ScratchTakeCore, layouts::GLWEInfos};
-use poulpy_hal::{api::ScratchAvailable, layouts::{Backend, DataMut, DataRef, Scratch}};
+use poulpy_hal::{
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, DataRef, Scratch},
+};
 
 use crate::{
     layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},

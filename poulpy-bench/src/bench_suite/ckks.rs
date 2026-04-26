@@ -530,7 +530,8 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_conjugate_inplace(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow()).unwrap();
+                .ckks_conjugate_inplace(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow())
+                .unwrap();
         })
     });
     group.finish();

@@ -5,11 +5,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Scratch},
 };
 
-use crate::{
-    CKKSInfos,
-    layouts::CKKSPlaintextVecZnx,
-    oep::CKKSImpl,
-};
+use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
 
 pub trait CKKSPlaintextZnxOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_extract_pt_znx_tmp_bytes(&self) -> usize

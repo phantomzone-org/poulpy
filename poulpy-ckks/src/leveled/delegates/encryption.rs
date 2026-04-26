@@ -22,7 +22,8 @@ where
     where
         A: GLWEInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(ct_infos).max(self.ckks_add_pt_vec_znx_tmp_bytes())
+        self.glwe_encrypt_sk_tmp_bytes(ct_infos)
+            .max(self.ckks_add_pt_vec_znx_tmp_bytes())
     }
 
     #[allow(clippy::too_many_arguments)]

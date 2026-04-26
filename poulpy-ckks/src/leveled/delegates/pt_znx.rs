@@ -5,11 +5,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    CKKSInfos,
-    layouts::CKKSPlaintextVecZnx,
-    oep::CKKSImpl,
-};
+use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
 
 use crate::leveled::{api::CKKSPlaintextZnxOps, oep::CKKSPlaintextZnxOep};
 

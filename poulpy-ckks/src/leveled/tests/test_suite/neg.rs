@@ -51,7 +51,7 @@ pub fn test_neg_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
 // ─── negation in-place (GLWE<_, CKKS>::neg_inplace) ────────────────────────
 
 /// Negation in-place.
-pub fn test_neg_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>)  -> Result<()> {
+pub fn test_neg_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Result<()> {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_neg();
