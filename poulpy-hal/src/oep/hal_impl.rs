@@ -23,6 +23,23 @@ pub unsafe trait HalModuleImpl<BE: Backend>: Backend {
 pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     fn vec_znx_zero_backend<'r>(module: &Module<BE>, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize);
 
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        b: &ScalarZnxBackendRef<'b, BE>,
+        b_col: usize,
+        b_offset: usize,
+        len: usize,
+    );
+
     fn vec_znx_normalize_tmp_bytes(module: &Module<BE>) -> usize;
 
     #[allow(clippy::too_many_arguments)]

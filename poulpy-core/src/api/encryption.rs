@@ -10,8 +10,8 @@ use crate::{
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut,
         GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut, GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos,
-        GLWEPlaintextToBackendRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToRef,
-        LWESecretToRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
+        GLWEPlaintextToBackendRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos,
+        LWEPlaintextToBackendRef, LWESecretToBackendRef, LWESecretToRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut},
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },
@@ -41,8 +41,8 @@ pub trait LWEEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: LWEToBackendMut<BE>,
-        P: LWEPlaintextToRef,
-        S: LWESecretToRef,
+        P: LWEPlaintextToBackendRef<BE>,
+        S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;

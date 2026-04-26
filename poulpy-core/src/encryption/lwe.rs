@@ -1,16 +1,32 @@
 use poulpy_hal::{
     api::{
-        ScratchArenaTakeBasic, VecZnxAddNormalSourceBackend, VecZnxFillUniformSourceBackend, VecZnxNormalizeInplaceBackend,
-        VecZnxNormalizeTmpBytes,
+        ScratchArenaTakeBasic, VecZnxAddNormalSourceBackend, VecZnxCopyRangeBackend, VecZnxFillUniformSourceBackend,
+        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSubInnerProductAssignBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, vec_znx_backend_ref_from_mut},
     source::Source,
 };
 
 use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
-    layouts::{LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToBackendMut},
+    layouts::{LWEInfos, LWEPlaintext, LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut},
 };
+
+fn lwe_encrypt_sk_sub_mask<BE: Backend>(
+    module: &Module<BE>,
+    tmp: &mut VecZnx<BE::BufMut<'_>>,
+    res_data: &VecZnx<BE::BufMut<'_>>,
+    sk_data: &poulpy_hal::layouts::ScalarZnxBackendRef<'_, BE>,
+    res_size: usize,
+    res_n: usize,
+) where
+    Module<BE>: VecZnxSubInnerProductAssignBackend<BE>,
+{
+    let res_ref = vec_znx_backend_ref_from_mut::<BE>(res_data);
+    for i in 0..res_size {
+        module.vec_znx_sub_inner_product_assign_backend(tmp, 0, i, 0, &res_ref, 0, i, 1, sk_data, 0, 0, res_n);
+    }
+}
 
 #[doc(hidden)]
 pub trait LWEEncryptSkDefault<BE: Backend> {
@@ -29,8 +45,8 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: LWEToBackendMut<BE>,
-        P: LWEPlaintextToRef,
-        S: LWESecretToRef,
+        P: LWEPlaintextToBackendRef<BE>,
+        S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
@@ -41,8 +57,11 @@ where
     Self: Sized
         + VecZnxFillUniformSourceBackend<BE>
         + VecZnxAddNormalSourceBackend<BE>
+        + VecZnxCopyRangeBackend<BE>
         + VecZnxNormalizeInplaceBackend<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxSubInnerProductAssignBackend<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxZeroBackend<BE>,
 {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -68,15 +87,15 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: LWEToBackendMut<BE>,
-        P: LWEPlaintextToRef,
-        S: LWESecretToRef,
+        P: LWEPlaintextToBackendRef<BE>,
+        S: LWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res = &mut res.to_backend_mut();
-        let pt: &LWEPlaintext<&[u8]> = &pt.to_ref();
-        let sk: &LWESecret<&[u8]> = &sk.to_ref();
+        let pt = pt.to_backend_ref();
+        let sk = sk.to_backend_ref();
 
         #[cfg(debug_assertions)]
         {
@@ -91,31 +110,22 @@ where
         );
 
         let base2k: usize = res.base2k().into();
+        let res_size = res.size();
+        let res_n = usize::from(res.n());
 
         self.vec_znx_fill_uniform_source_backend(base2k, &mut res.data, 0, source_xa);
 
         let scratch = scratch.borrow();
-        let (mut tmp_znx, scratch_1) = scratch.take_vec_znx(1, 1, res.size());
-        tmp_znx.zero();
+        let (mut tmp_znx, scratch_1) = scratch.take_vec_znx(1, 1, res_size);
+        self.vec_znx_zero_backend(&mut tmp_znx, 0);
 
-        let min_size: usize = res.size().min(pt.size());
+        let min_size: usize = res_size.min(pt.size());
 
-        (0..min_size).for_each(|i| {
-            tmp_znx.at_mut(0, i)[0] = pt.data.at(0, i)[0]
-                - res.data.at(0, i)[1..]
-                    .iter()
-                    .zip(sk.data.at(0, 0))
-                    .map(|(x, y)| x * y)
-                    .sum::<i64>();
-        });
+        for i in 0..min_size {
+            self.vec_znx_copy_range_backend(&mut tmp_znx, 0, i, 0, &pt.data, 0, i, 0, 1);
+        }
 
-        (min_size..res.size()).for_each(|i| {
-            tmp_znx.at_mut(0, i)[0] -= res.data.at(0, i)[1..]
-                .iter()
-                .zip(sk.data.at(0, 0))
-                .map(|(x, y)| x * y)
-                .sum::<i64>();
-        });
+        lwe_encrypt_sk_sub_mask(self, &mut tmp_znx, &res.data, &sk.data, res_size, res_n);
 
         {
             let mut tmp_znx_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp_znx);
@@ -124,8 +134,9 @@ where
 
         let _ = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_znx, 0, scratch));
 
-        (0..res.size()).for_each(|i| {
-            res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];
-        });
+        let tmp_znx_ref = vec_znx_backend_ref_from_mut::<BE>(&tmp_znx);
+        for i in 0..res_size {
+            self.vec_znx_copy_range_backend(&mut res.data, 0, i, 0, &tmp_znx_ref, 0, i, 0, 1);
+        }
     }
 }

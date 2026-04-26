@@ -9,6 +9,26 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_zero_backend_default(module, res, res_col)
         }
 
+        fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            res_limb: usize,
+            res_offset: usize,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'a, Self>,
+            a_col: usize,
+            a_limb: usize,
+            a_offset: usize,
+            b: &poulpy_hal::layouts::ScalarZnxBackendRef<'b, Self>,
+            b_col: usize,
+            b_offset: usize,
+            len: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_inner_product_assign_backend_default(
+                module, res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, b, b_col, b_offset, len,
+            )
+        }
+
         fn vec_znx_normalize_tmp_bytes(module: &Module<Self>) -> usize {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_normalize_tmp_bytes_default(module)
         }

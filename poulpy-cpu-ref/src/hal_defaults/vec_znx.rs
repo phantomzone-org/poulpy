@@ -5,13 +5,13 @@ use std::mem::size_of;
 use crate::reference::vec_znx::{
     vec_znx_add_into, vec_znx_add_normal_ref, vec_znx_add_scalar_assign, vec_znx_add_scalar_into, vec_znx_automorphism,
     vec_znx_automorphism_inplace, vec_znx_automorphism_inplace_tmp_bytes, vec_znx_copy, vec_znx_fill_normal_ref,
-    vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_sub, vec_znx_lsh_tmp_bytes, vec_znx_merge_rings,
-    vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace,
+    vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_sub, vec_znx_lsh_tmp_bytes,
+    vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace,
     vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_negate, vec_znx_negate_inplace, vec_znx_normalize,
     vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
-    vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes,
-    vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
-    vec_znx_sub_scalar, vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
+    vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
+    vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace,
+    vec_znx_sub_negate_inplace, vec_znx_sub_scalar, vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
 };
 use crate::reference::znx::{
     ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign,
@@ -23,8 +23,8 @@ use crate::reference::znx::{
 use poulpy_hal::{
     api::HostBufMut,
     layouts::{
-        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef, ZnxView,
-        ZnxViewMut,
+        Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+        ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -58,6 +58,40 @@ where
         BE::BufMut<'r>: HostDataMut,
     {
         vec_znx_zero::<VecZnxBackendMut<'r, BE>, BE>(res, res_col);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_inner_product_assign_backend_default<'r, 'a, 'b>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        b: &ScalarZnxBackendRef<'b, BE>,
+        b_col: usize,
+        b_offset: usize,
+        len: usize,
+    ) where
+        BE: 'r,
+        BE::BufMut<'r>: HostDataMut,
+        for<'c> BE::BufRef<'c>: poulpy_hal::layouts::HostDataRef,
+    {
+        assert!(res_limb < res.size());
+        assert!(res_offset < res.n());
+        assert!(a_offset + len <= a.n());
+        assert!(b_offset + len <= b.n());
+
+        let sum: i64 = a.at(a_col, a_limb)[a_offset..a_offset + len]
+            .iter()
+            .zip(&b.at(b_col, 0)[b_offset..b_offset + len])
+            .map(|(x, y)| x * y)
+            .sum();
+
+        res.at_mut(res_col, res_limb)[res_offset] -= sum;
     }
 
     fn vec_znx_normalize_tmp_bytes_default(module: &Module<BE>) -> usize {

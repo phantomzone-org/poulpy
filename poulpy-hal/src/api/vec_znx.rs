@@ -28,6 +28,25 @@ pub trait VecZnxCopyRangeBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxSubInnerProductAssignBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        b: &ScalarZnxBackendRef<'b, B>,
+        b_col: usize,
+        b_offset: usize,
+        len: usize,
+    );
+}
+
 pub trait VecZnxNormalize<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.

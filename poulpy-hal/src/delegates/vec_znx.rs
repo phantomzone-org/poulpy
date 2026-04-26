@@ -9,9 +9,9 @@ use crate::{
         VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
         VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
         VecZnxRotateInplaceTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshSubBackend,
-        VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
-        VecZnxZeroBackend,
+        VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend,
+        VecZnxSubInnerProductAssignBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend,
+        VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
     layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
     oep::HalVecZnxImpl,
@@ -117,6 +117,29 @@ impl_vec_znx_delegate!(
         len: usize,
     ) {
         B::vec_znx_copy_range_backend(self, res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, len)
+    }
+);
+
+impl_vec_znx_delegate!(
+    VecZnxSubInnerProductAssignBackend<B>,
+    fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        b: &ScalarZnxBackendRef<'b, B>,
+        b_col: usize,
+        b_offset: usize,
+        len: usize,
+    ) {
+        B::vec_znx_sub_inner_product_assign_backend(
+            self, res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, b, b_col, b_offset, len,
+        )
     }
 );
 
