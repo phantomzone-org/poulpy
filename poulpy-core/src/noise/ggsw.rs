@@ -5,7 +5,7 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
-        VecZnxBigReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
+        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxZero,
     },
 };
 
@@ -126,7 +126,10 @@ where
                 &<poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&pt.data),
                 0,
             );
-            self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_backend.data, res_col - 1);
+            {
+                let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
+                self.svp_apply_dft_to_dft_inplace(&mut pt_dft_backend, 0, &sk_backend.data, res_col - 1);
+            }
             let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
             self.vec_znx_big_normalize(
                 &mut pt.data,

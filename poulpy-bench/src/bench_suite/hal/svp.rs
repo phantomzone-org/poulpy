@@ -145,7 +145,7 @@ where
         move || {
             let svp = svp.to_backend_ref();
             for j in 0..cols {
-                module.svp_apply_dft_to_dft(&mut res, j, &svp, j, &a.to_backend_ref(), j);
+                module.svp_apply_dft_to_dft(&mut res.to_backend_mut(), j, &svp, j, &a.to_backend_ref(), j);
             }
             black_box(());
         }
@@ -193,7 +193,7 @@ where
         move || {
             let svp = svp.to_backend_ref();
             for j in 0..cols {
-                module.svp_apply_dft_to_dft_assign(&mut res, j, &svp, j);
+                module.svp_apply_dft_to_dft_inplace(&mut res.to_backend_mut(), j, &svp, j);
             }
             black_box(());
         }

@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, SvpPPol, SvpPPolReborrowBackendRef,
+        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef,
         SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef, ZnxInfos,
     },
 };
@@ -9,7 +9,7 @@ use poulpy_hal::{
 use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank},
+    layouts::{Base2K, Degree, GLWEInfos, GLWESecretToBackendRef, GetDegree, LWEInfos, Rank},
 };
 
 /// DFT-domain (prepared) variant of [`GLWESecret`].
@@ -59,9 +59,28 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
         self.data.size()
     }
 }
+impl<D: Data, B: Backend> LWEInfos for &mut GLWESecretPrepared<D, B> {
+    fn base2k(&self) -> Base2K {
+        (**self).base2k()
+    }
+
+    fn n(&self) -> Degree {
+        (**self).n()
+    }
+
+    fn size(&self) -> usize {
+        (**self).size()
+    }
+}
 impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32)
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for &mut GLWESecretPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        (**self).rank()
     }
 }
 
@@ -97,15 +116,13 @@ where
     fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
-        O: GLWESecretToRef + GetDistribution,
+        O: GLWESecretToBackendRef<B> + GetDistribution,
     {
         {
             let mut res = res.to_backend_mut();
-            let other: GLWESecret<&[u8]> = other.to_ref();
-            let other_backend = ScalarZnx::from_data(B::from_host_bytes(other.data.data), other.data.n, other.data.cols);
-            let other_backend_ref = <ScalarZnx<B::OwnedBuf> as ScalarZnxToBackendRef<B>>::to_backend_ref(&other_backend);
+            let other = other.to_backend_ref();
             for i in 0..res.rank().into() {
-                self.svp_prepare(&mut res.data, i, &other_backend_ref, i);
+                self.svp_prepare(&mut res.data, i, &other.data, i);
             }
         }
 
@@ -174,6 +191,12 @@ impl<B: Backend> GLWESecretPreparedToBackendRef<B> for GLWESecretPrepared<B::Own
     }
 }
 
+impl<'b, B: Backend + 'b> GLWESecretPreparedToBackendRef<B> for &mut GLWESecretPrepared<B::BufMut<'b>, B> {
+    fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B> {
+        glwe_secret_prepared_backend_ref_from_mut::<B>(self)
+    }
+}
+
 pub trait GLWESecretPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWESecretPreparedBackendMut<'_, B>;
 }
@@ -183,6 +206,15 @@ impl<B: Backend> GLWESecretPreparedToBackendMut<B> for GLWESecretPrepared<B::Own
         GLWESecretPrepared {
             dist: self.dist,
             data: self.data.to_backend_mut(),
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> GLWESecretPreparedToBackendMut<B> for &mut GLWESecretPrepared<B::BufMut<'b>, B> {
+    fn to_backend_mut(&mut self) -> GLWESecretPreparedBackendMut<'_, B> {
+        GLWESecretPrepared {
+            dist: self.dist,
+            data: self.data.reborrow_backend_mut(),
         }
     }
 }

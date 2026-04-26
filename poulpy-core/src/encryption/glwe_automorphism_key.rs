@@ -1,8 +1,8 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAutomorphismBackend},
+    api::{ScratchOwnedAlloc, SvpPPolBytesOf, VecZnxAutomorphismBackend},
     layouts::{
-        Backend, GaloisElement, HostDataMut, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef,
-        ScalarZnxToBackendRef, ScratchArena, ScratchOwned, SvpPPolToBackendMut,
+        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, GaloisElement,
+        HostDataMut, Module, ScratchArena, ScratchOwned,
     },
     source::Source,
 };
@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos,
+        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretToBackendRef, LWEInfos,
         SetGaloisElement,
     },
 };
@@ -33,7 +33,7 @@ pub trait GLWEAutomorphismKeyEncryptSkDefault<BE: Backend> {
     ) where
         R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef;
+        S: GLWESecretToBackendRef<BE> + GLWEInfos;
 }
 
 impl<BE: Backend> GLWEAutomorphismKeyEncryptSkDefault<BE> for Module<BE>
@@ -76,9 +76,9 @@ where
     ) where
         R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef,
+        S: GLWESecretToBackendRef<BE> + GLWEInfos,
     {
-        let sk: &GLWESecret<&[u8]> = &sk.to_ref();
+        let sk = sk.to_backend_ref();
 
         assert_eq!(res.n(), sk.n());
         assert_eq!(res.rank_out(), res.rank_in());
@@ -91,49 +91,30 @@ where
             <Module<BE> as GLWEAutomorphismKeyEncryptSkDefault<BE>>::glwe_automorphism_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let mut sk_out_prepared = self.glwe_secret_prepared_alloc(sk.rank());
-
+        let scratch = scratch.borrow();
+        let (mut sk_out_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, sk.rank());
+        let (mut sk_out, _scratch_2) = scratch_1.take_glwe_secret(self.n().into(), sk.rank());
+        sk_out.dist = sk.dist;
         {
-            let mut sk_out = GLWESecret::alloc(sk.n(), sk.rank());
-            sk_out.dist = sk.dist;
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data), sk.data.n, sk.data.cols);
-            let mut sk_out_backend = ScalarZnx::from_data(
-                BE::from_host_bytes(sk_out.data.data.as_ref()),
-                sk_out.data.n,
-                sk_out.data.cols,
-            );
-
+            let sk_backend = scalar_znx_as_vec_znx_backend_ref_from_ref::<BE>(&sk.data);
+            let mut sk_out_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_out.data);
             for i in 0..sk.rank().into() {
-                self.vec_znx_automorphism_backend(
-                    self.galois_element_inv(p),
-                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
-                        &mut sk_out_backend,
-                    ),
-                    i,
-                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
-                    i,
-                );
+                self.vec_znx_automorphism_backend(self.galois_element_inv(p), &mut sk_out_backend, i, &sk_backend, i);
             }
-            BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
-            let sk_out_backend = ScalarZnx::from_data(
-                BE::from_host_bytes(sk_out.data.to_ref().data),
-                sk_out.data.n,
-                sk_out.data.cols,
-            );
-            let sk_out_backend_ref = <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&sk_out_backend);
-            let mut sk_out_prepared_data = sk_out_prepared.data.to_backend_mut();
-            for i in 0..sk_out.rank().into() {
-                self.svp_prepare(&mut sk_out_prepared_data, i, &sk_out_backend_ref, i);
-            }
-            sk_out_prepared.dist = sk_out.dist;
+        }
+        let sk_out_ref = &mut sk_out;
+        {
+            let mut sk_out_prepared_ref = &mut sk_out_prepared;
+            self.glwe_secret_prepare(&mut sk_out_prepared_ref, &sk_out_ref);
         }
 
-        let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data), sk.data.n, sk.data.cols);
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
+        let sk_data_ref = &sk.data;
+        let sk_out_prepared_ref = &mut sk_out_prepared;
         self.gglwe_encrypt_sk(
             res,
-            &sk_backend,
-            &sk_out_prepared,
+            &sk_data_ref,
+            &sk_out_prepared_ref,
             enc_infos,
             source_xe,
             source_xa,

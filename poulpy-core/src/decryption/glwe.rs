@@ -3,7 +3,7 @@ use poulpy_hal::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmallBackend,
         VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef},
+    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut},
 };
 
 pub use crate::api::GLWEDecrypt;
@@ -117,7 +117,10 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
     for i in 1..cols {
         let (mut ci_dft, _) = scratch_1.borrow().take_vec_znx_dft(module, 1, res.size());
         module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
-        module.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
+        {
+            let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+            module.svp_apply_dft_to_dft_inplace(&mut ci_dft_backend, 0, &sk.data, i - 1);
+        }
         let ci_big = module.vec_znx_idft_apply_consume(ci_dft);
         let ci_big_ref = ci_big.reborrow_backend_ref();
         module.vec_znx_big_add_assign(&mut c0_big, 0, &ci_big_ref, 0);

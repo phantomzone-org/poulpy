@@ -690,25 +690,23 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn svp_apply_dft_to_dft<R>(
+    fn svp_apply_dft_to_dft(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::SvpPPolBackendRef<'_, BE>,
         a_col: usize,
         b: &crate::layouts::VecZnxDftBackendRef<'_, BE>,
         b_col: usize,
-    ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+    );
 
-    fn svp_apply_dft_to_dft_inplace<R>(
+    fn svp_apply_dft_to_dft_inplace(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::SvpPPolBackendRef<'_, BE>,
         a_col: usize,
-    ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+    );
 }
 
 /// Vector-matrix product family extension point.

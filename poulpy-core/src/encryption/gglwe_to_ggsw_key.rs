@@ -1,6 +1,9 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchOwnedAlloc, SvpPrepare},
-    layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned, SvpPPolToBackendMut},
+    api::{ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, VecZnxCopyBackend},
+    layouts::{
+        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut, Backend, HostDataMut, Module,
+        ScratchArena, ScratchOwned,
+    },
     source::Source,
 };
 
@@ -8,9 +11,8 @@ use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKeyToBackendMut, GLWEInfos, GLWESecret, GLWESecretTensor, GLWESecretTensorFactory,
-        GLWESecretToRef, gglwe_to_ggsw_key_at_backend_mut_from_mut, prepared::GLWESecretPreparedFactory,
+        GLWESecretToBackendRef, gglwe_to_ggsw_key_at_backend_mut_from_mut, prepared::GLWESecretPreparedFactory,
     },
-    vec_znx_host_ops::vec_znx_copy,
 };
 
 #[doc(hidden)]
@@ -30,12 +32,12 @@ pub trait GGLWEToGGSWKeyEncryptSkDefault<BE: Backend> {
     ) where
         R: GGLWEToGGSWKeyToBackendMut<BE>,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 impl<BE: Backend> GGLWEToGGSWKeyEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE>,
+    Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopyBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
@@ -71,7 +73,7 @@ where
     ) where
         R: GGLWEToGGSWKeyToBackendMut<BE>,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos,
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
     {
         let mut res = res.to_backend_mut();
 
@@ -84,37 +86,36 @@ where
             <Module<BE> as GGLWEToGGSWKeyEncryptSkDefault<BE>>::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(self, &res)
         );
 
-        let mut sk_prepared = self.glwe_secret_prepared_alloc(res.rank());
-        let mut sk_tensor = GLWESecretTensor::alloc(self.n().into(), res.rank());
-        {
-            let sk_ref = sk.to_ref();
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ref.data.data), sk_ref.data.n, sk_ref.data.cols);
-            let sk_backend_ref = <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&sk_backend);
-            let mut sk_prepared_data = sk_prepared.data.to_backend_mut();
-            for i in 0..sk_ref.rank().into() {
-                self.svp_prepare(&mut sk_prepared_data, i, &sk_backend_ref, i);
-            }
-            sk_prepared.dist = *sk.dist();
-        }
-        self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, scratch);
+        let scratch = scratch.borrow();
+        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
+        let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
+        let (mut sk_ij, mut tensor_scratch) = scratch_2.take_scalar_znx(self.n(), rank);
+        let mut sk_prepared_ref = &mut sk_prepared;
+        let mut sk_tensor_ref = &mut sk_tensor;
+        self.glwe_secret_prepare(&mut sk_prepared_ref, sk);
+        self.glwe_secret_tensor_prepare(&mut sk_tensor_ref, sk, &mut tensor_scratch);
 
-        let mut sk_ij = ScalarZnx::alloc(self.n(), rank);
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(&res));
+        let sk_tensor_backend = scalar_znx_as_vec_znx_backend_ref_from_mut::<BE>(&sk_tensor.data);
 
         for i in 0..rank {
-            for j in 0..rank {
-                vec_znx_copy(&mut sk_ij.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+            {
+                let mut sk_ij_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_ij);
+                for j in 0..rank {
+                    let (lo, hi) = if i <= j { (i, j) } else { (j, i) };
+                    let idx: usize = lo * rank + hi - (lo * (lo + 1) / 2);
+                    self.vec_znx_copy_backend(&mut sk_ij_backend, j, &sk_tensor_backend, idx);
+                }
             }
-            let sk_ij_ref = sk_ij.to_ref();
-            let sk_ij_backend = ScalarZnx::from_data(BE::from_host_bytes(sk_ij_ref.data), sk_ij_ref.n, sk_ij_ref.cols);
 
             let mut ct = gglwe_to_ggsw_key_at_backend_mut_from_mut::<BE>(&mut res, i);
             let mut ct_ref = &mut ct;
+            let sk_ij_ref = &mut sk_ij;
 
             self.gglwe_encrypt_sk(
                 &mut ct_ref,
-                &sk_ij_backend,
-                &sk_prepared,
+                &sk_ij_ref,
+                &sk_prepared_ref,
                 enc_infos,
                 source_xe,
                 source_xa,

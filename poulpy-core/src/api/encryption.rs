@@ -10,8 +10,9 @@ use crate::{
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut,
         GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut, GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos,
-        GLWEPlaintextToBackendRef, GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos,
-        LWEPlaintextToBackendRef, LWESecretToBackendRef, LWESecretToRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
+        GLWEPlaintextToBackendRef, GLWESecretToBackendRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut,
+        LWEInfos, LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut, SetGaloisElement,
+        TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut},
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },
@@ -200,7 +201,7 @@ pub trait GGLWEToGGSWKeyEncryptSk<BE: Backend> {
     ) where
         R: GGLWEToGGSWKeyToBackendMut<BE>,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
@@ -220,8 +221,8 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
     ) where
         R: GGLWEToBackendMut<BE> + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
-        S1: GLWESecretToRef,
-        S2: GLWESecretToRef;
+        S1: GLWESecretToBackendRef<BE> + GLWEInfos,
+        S2: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 pub trait GLWESwitchingKeyEncryptPk<BE: Backend> {
@@ -246,7 +247,7 @@ pub trait GLWETensorKeyEncryptSk<BE: Backend> {
     ) where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
@@ -264,8 +265,8 @@ pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        S1: LWESecretToRef,
-        S2: GLWESecretToRef,
+        S1: LWESecretToBackendRef<BE>,
+        S2: GLWESecretToBackendRef<BE>,
         E: EncryptionInfos,
         R: GGLWEToBackendMut<BE> + GGLWEInfos;
 }
@@ -287,8 +288,8 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
     ) where
         R: GGLWEToBackendMut<BE> + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
-        S1: LWESecretToRef,
-        S2: LWESecretToRef;
+        S1: LWESecretToBackendRef<BE>,
+        S2: LWESecretToBackendRef<BE>;
 }
 
 pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
@@ -306,7 +307,7 @@ pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        S1: LWESecretToRef,
+        S1: LWESecretToBackendRef<BE>,
         S2: GLWESecretPreparedToBackendRef<BE>,
         E: EncryptionInfos,
         R: GGLWEToBackendMut<BE> + GGLWEInfos;
@@ -329,7 +330,7 @@ pub trait GLWEAutomorphismKeyEncryptSk<BE: Backend> {
     ) where
         R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef;
+        S: GLWESecretToBackendRef<BE> + GLWEInfos;
 }
 
 pub trait GLWEAutomorphismKeyEncryptPk<BE: Backend> {
@@ -425,8 +426,8 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
     ) where
         R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         E: EncryptionInfos,
-        S1: GLWESecretToRef,
-        S2: GLWESecretToRef;
+        S1: GLWESecretToBackendRef<BE> + GLWEInfos,
+        S2: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
@@ -446,7 +447,7 @@ pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
     ) where
         R: GGLWECompressedToBackendMut<BE> + GGLWECompressedSeedMut + SetGaloisElement + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GLWEInfos;
 }
 
 pub trait GLWETensorKeyCompressedEncryptSk<BE: Backend> {
@@ -465,7 +466,7 @@ pub trait GLWETensorKeyCompressedEncryptSk<BE: Backend> {
     ) where
         R: GGLWECompressedToBackendMut<BE> + GGLWEInfos + GGLWECompressedSeedMut,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }
 
 pub trait GGLWEToGGSWKeyCompressedEncryptSk<BE: Backend> {
@@ -484,5 +485,5 @@ pub trait GGLWEToGGSWKeyCompressedEncryptSk<BE: Backend> {
     ) where
         R: GGLWEToGGSWKeyCompressedToBackendMut<BE> + GGLWEInfos,
         E: EncryptionInfos,
-        S: GLWESecretToRef + GetDistribution + GLWEInfos;
+        S: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos;
 }

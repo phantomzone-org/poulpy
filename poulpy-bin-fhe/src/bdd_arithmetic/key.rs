@@ -19,8 +19,8 @@ use poulpy_core::{DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWESwitchingKeyEncryptSk}
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GLWEInfos, GLWESecretToRef, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPreparedFactory, LWEInfos, LWESecretToRef,
-        prepared::GLWEToLWEKeyPrepared,
+        GLWEInfos, GLWESecretToBackendRef, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPreparedFactory, LWEInfos,
+        LWESecretToBackendRef, LWESecretToRef, prepared::GLWEToLWEKeyPrepared,
     },
 };
 
@@ -178,8 +178,8 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GetDistribution + GLWEInfos,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's;
 }
 
@@ -207,8 +207,8 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GetDistribution + GLWEInfos,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
     {
         if let Some(key) = &mut res.ks_glwe {
@@ -256,8 +256,8 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GetDistribution + GLWEInfos,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         M: BDDKeyEncryptSk<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {

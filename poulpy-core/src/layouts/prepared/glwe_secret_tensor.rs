@@ -11,8 +11,8 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut,
-        GLWESecretPreparedToBackendRef, GLWESecretPreparedToMut, GLWESecretPreparedToRef, GLWESecretTensor, GLWESecretToRef,
-        GetDegree, LWEInfos, Rank,
+        GLWESecretPreparedToBackendRef, GLWESecretPreparedToMut, GLWESecretPreparedToRef, GLWESecretTensor,
+        GLWESecretToBackendRef, GetDegree, LWEInfos, Rank,
     },
 };
 
@@ -71,7 +71,7 @@ pub trait GLWESecretTensorPreparedFactory<B: Backend> {
     fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
-        O: GLWESecretToRef + GetDistribution;
+        O: GLWESecretToBackendRef<B> + GetDistribution;
 }
 
 impl<B: Backend> GLWESecretTensorPreparedFactory<B> for Module<B>
@@ -107,7 +107,7 @@ where
     fn glwe_secret_tensor_prepared_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToBackendMut<B> + GetDistributionMut,
-        O: GLWESecretToRef + GetDistribution,
+        O: GLWESecretToBackendRef<B> + GetDistribution,
     {
         self.glwe_secret_prepare(res, other);
     }

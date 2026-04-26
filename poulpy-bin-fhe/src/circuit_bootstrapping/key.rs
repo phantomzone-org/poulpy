@@ -5,7 +5,8 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
-        GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
+        GLWESecretPreparedFactory, GLWESecretToBackendRef, LWEInfos, LWESecretToBackendRef, LWESecretToRef,
+        prepared::GLWESecretPrepared,
     },
     trace_galois_elements,
 };
@@ -136,8 +137,8 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GLWEInfos + GetDistribution,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         BE: 's;
 }
 
@@ -204,8 +205,8 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GLWEInfos + GetDistribution,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         M: CircuitBootstrappingKeyEncryptSk<BRA, BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 's,
     {
@@ -242,8 +243,8 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToRef + GetDistribution + LWEInfos,
-        S1: GLWESecretToRef + GLWEInfos + GetDistribution,
+        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         BE: 's,
     {
         // TODO(device): this bundle encryptor is still effectively host-backed

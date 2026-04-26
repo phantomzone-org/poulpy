@@ -412,7 +412,10 @@ where
                 let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, size_pk);
                 // ci_dft = DFT(u) * DFT(pk[i])
                 let u_dft_ref = u_dft.reborrow_backend_ref();
-                self.svp_apply_dft_to_dft(&mut ci_dft, 0, &u_dft_ref, 0, &pk.data, i);
+                {
+                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    self.svp_apply_dft_to_dft(&mut ci_dft_backend, 0, &u_dft_ref, 0, &pk.data, i);
+                }
 
                 // ci_big = u * p[i]
                 let mut ci_big = self.vec_znx_idft_apply_consume(ci_dft);
@@ -565,7 +568,10 @@ where
                     <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(self, 1, 0, &mut ci_dft_mut, 0, &ci_ref, 0);
                 }
 
-                self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
+                {
+                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    self.svp_apply_dft_to_dft_inplace(&mut ci_dft_backend, 0, &sk.data, i - 1);
+                }
                 let ci_big = self.vec_znx_idft_apply_consume(ci_dft);
                 {
                     let mut scratch_norm = scratch_3.borrow();

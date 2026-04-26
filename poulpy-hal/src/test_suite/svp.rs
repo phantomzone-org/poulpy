@@ -254,7 +254,7 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
 
             for j in 0..cols {
                 module_ref.svp_apply_dft_to_dft(
-                    &mut res_dft_ref,
+                    &mut res_dft_ref.to_backend_mut(),
                     j,
                     &svp_ref.to_backend_ref(),
                     j,
@@ -262,7 +262,7 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend, BT: crate::
                     j,
                 );
                 module_test.svp_apply_dft_to_dft(
-                    &mut res_dft_test,
+                    &mut res_dft_test.to_backend_mut(),
                     j,
                     &svp_test.to_backend_ref(),
                     j,
@@ -409,8 +409,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: crate::test_suite::TestBackend, BT:
         assert_eq!(res.digest_u64(), res_digest);
 
         for j in 0..cols {
-            module_ref.svp_apply_dft_to_dft_inplace(&mut res_dft_ref, j, &svp_ref.to_backend_ref(), j);
-            module_test.svp_apply_dft_to_dft_inplace(&mut res_dft_test, j, &svp_test.to_backend_ref(), j);
+            module_ref.svp_apply_dft_to_dft_inplace(&mut res_dft_ref.to_backend_mut(), j, &svp_ref.to_backend_ref(), j);
+            module_test.svp_apply_dft_to_dft_inplace(&mut res_dft_test.to_backend_mut(), j, &svp_test.to_backend_ref(), j);
         }
 
         // Assert no change to inputs

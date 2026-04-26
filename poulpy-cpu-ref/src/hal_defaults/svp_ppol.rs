@@ -60,31 +60,36 @@ where
         fft64_svp_apply_dft(module.get_fft_table(), res, res_col, a, a_col, b, b_col);
     }
 
-    fn svp_apply_dft_to_dft_default<R, A>(
+    fn svp_apply_dft_to_dft_default<'r, 'b, A>(
         _module: &Module<BE>,
-        res: &mut R,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &VecZnxDftBackendRef<'_, BE>,
+        b: &VecZnxDftBackendRef<'b, BE>,
         b_col: usize,
     ) where
-        BE: Backend<ScalarPrep = f64> + ReimArith,
-        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        BE: 'r + 'b + Backend<ScalarPrep = f64> + ReimArith,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
     {
-        let b_ref: VecZnxDft<&[u8], BE> = VecZnxDft::from_data(b.data.as_ref(), b.n, b.cols, b.size);
-        fft64_svp_apply_dft_to_dft::<R, A, BE>(res, res_col, a, a_col, &b_ref, b_col);
+        let b_ref: VecZnxDft<&[u8], BE> = VecZnxDft::from_data(b.data, b.n, b.cols, b.size);
+        fft64_svp_apply_dft_to_dft::<_, A, BE>(res, res_col, a, a_col, &b_ref, b_col);
     }
 
-    fn svp_apply_dft_to_dft_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn svp_apply_dft_to_dft_inplace_default<'r, A>(
+        _module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    )
     where
-        BE: Backend<ScalarPrep = f64> + ReimArith,
-        R: VecZnxDftToMut<BE>,
+        BE: 'r + Backend<ScalarPrep = f64> + ReimArith,
+        for<'x> BE: Backend<BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
     {
-        fft64_svp_apply_dft_to_dft_assign::<R, A, BE>(res, res_col, a, a_col);
+        fft64_svp_apply_dft_to_dft_inplace::<_, A, BE>(res, res_col, a, a_col);
     }
 }
 
@@ -131,33 +136,38 @@ where
         ntt120_svp_apply_dft_to_dft(module, res, res_col, a, a_col, &b_dft_host, 0);
     }
 
-    fn svp_apply_dft_to_dft_default<R, A>(
+    fn svp_apply_dft_to_dft_default<'r, 'b, A>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &VecZnxDftBackendRef<'_, BE>,
+        b: &VecZnxDftBackendRef<'b, BE>,
         b_col: usize,
     ) where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttZero,
-        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        BE: 'r + 'b + Backend<ScalarPrep = Q120bScalar> + NttMulBbc + NttZero,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
     {
-        let b_ref: VecZnxDft<&[u8], BE> = VecZnxDft::from_data(b.data.as_ref(), b.n, b.cols, b.size);
-        ntt120_svp_apply_dft_to_dft::<R, A, BE>(module, res, res_col, a, a_col, &b_ref, b_col);
+        let b_ref: VecZnxDft<&[u8], BE> = VecZnxDft::from_data(b.data, b.n, b.cols, b.size);
+        ntt120_svp_apply_dft_to_dft::<_, A, BE>(module, res, res_col, a, a_col, &b_ref, b_col);
     }
 
-    fn svp_apply_dft_to_dft_assign_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn svp_apply_dft_to_dft_inplace_default<'r, A>(
+        module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    )
     where
         Module<BE>: NttModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttMulBbc,
-        R: VecZnxDftToMut<BE>,
+        BE: 'r + Backend<ScalarPrep = Q120bScalar> + NttMulBbc,
+        for<'x> BE: Backend<BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
     {
-        ntt120_svp_apply_dft_to_dft_assign::<R, A, BE>(module, res, res_col, a, a_col);
+        ntt120_svp_apply_dft_to_dft_inplace::<_, A, BE>(module, res, res_col, a, a_col);
     }
 }
 

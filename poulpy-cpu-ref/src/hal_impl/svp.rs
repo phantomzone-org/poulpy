@@ -23,29 +23,25 @@ macro_rules! hal_impl_svp {
             <Self as $defaults<Self>>::svp_apply_dft_default(module, res, res_col, a, a_col, b, b_col)
         }
 
-        fn svp_apply_dft_to_dft<R>(
+        fn svp_apply_dft_to_dft(
             module: &Module<Self>,
-            res: &mut R,
+            res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::SvpPPolBackendRef<'_, Self>,
             a_col: usize,
             b: &poulpy_hal::layouts::VecZnxDftBackendRef<'_, Self>,
             b_col: usize,
-        ) where
-            R: VecZnxDftToMut<Self>,
-        {
+        ) {
             <Self as $defaults<Self>>::svp_apply_dft_to_dft_default(module, res, res_col, a, a_col, b, b_col)
         }
 
-        fn svp_apply_dft_to_dft_inplace<R>(
+        fn svp_apply_dft_to_dft_inplace(
             module: &Module<Self>,
-            res: &mut R,
+            res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::SvpPPolBackendRef<'_, Self>,
             a_col: usize,
-        ) where
-            R: VecZnxDftToMut<Self>,
-        {
+        ) {
             <Self as $defaults<Self>>::svp_apply_dft_to_dft_inplace_default(module, res, res_col, a, a_col)
         }
     };

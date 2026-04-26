@@ -8,7 +8,7 @@ use crate::{
     alloc_aligned,
     layouts::{
         Backend, Data, DataView, DataViewMut, DigestU64, FillUniform, HostDataMut, HostDataRef, ReaderFrom, ToOwnedDeep, VecZnx,
-        WriterTo, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+        VecZnxBackendMut, VecZnxBackendRef, WriterTo, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -247,6 +247,26 @@ impl<B: Backend> ScalarZnxToBackendRef<B> for ScalarZnx<B::OwnedBuf> {
     }
 }
 
+impl<'b, B: Backend + 'b> ScalarZnxToBackendRef<B> for &ScalarZnx<B::BufRef<'b>> {
+    fn to_backend_ref(&self) -> ScalarZnxBackendRef<'_, B> {
+        ScalarZnx {
+            data: B::view_ref(&self.data),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> ScalarZnxToBackendRef<B> for &mut ScalarZnx<B::BufMut<'b>> {
+    fn to_backend_ref(&self) -> ScalarZnxBackendRef<'_, B> {
+        ScalarZnx {
+            data: B::view_ref_mut(&self.data),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
+}
+
 /// Mutably borrow a backend-owned `ScalarZnx` using the backend's native view type.
 pub trait ScalarZnxToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> ScalarZnxBackendMut<'_, B>;
@@ -318,6 +338,30 @@ impl<B: Backend> ScalarZnxAsVecZnxBackendRef<B> for ScalarZnx<B::OwnedBuf> {
     }
 }
 
+pub fn scalar_znx_as_vec_znx_backend_ref_from_ref<'a, 'b, B: Backend + 'b>(
+    scalar: &'a ScalarZnx<B::BufRef<'b>>,
+) -> VecZnxBackendRef<'a, B> {
+    VecZnx {
+        data: B::view_ref(&scalar.data),
+        n: scalar.n,
+        cols: scalar.cols,
+        size: 1,
+        max_size: 1,
+    }
+}
+
+pub fn scalar_znx_as_vec_znx_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(
+    scalar: &'a ScalarZnx<B::BufMut<'b>>,
+) -> VecZnxBackendRef<'a, B> {
+    VecZnx {
+        data: B::view_ref_mut(&scalar.data),
+        n: scalar.n,
+        cols: scalar.cols,
+        size: 1,
+        max_size: 1,
+    }
+}
+
 impl<D: HostDataMut> ScalarZnx<D> {
     /// Mutably views this `ScalarZnx` as a [`VecZnx`] with `size == 1`.
     pub fn as_vec_znx_mut(&mut self) -> VecZnx<&mut [u8]> {
@@ -345,6 +389,18 @@ impl<B: Backend> ScalarZnxAsVecZnxBackendMut<B> for ScalarZnx<B::OwnedBuf> {
             size: 1,
             max_size: 1,
         }
+    }
+}
+
+pub fn scalar_znx_as_vec_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    scalar: &'a mut ScalarZnx<B::BufMut<'b>>,
+) -> VecZnxBackendMut<'a, B> {
+    VecZnx {
+        data: B::view_mut_ref(&mut scalar.data),
+        n: scalar.n,
+        cols: scalar.cols,
+        size: 1,
+        max_size: 1,
     }
 }
 
