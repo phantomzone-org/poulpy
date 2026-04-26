@@ -208,92 +208,92 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::add::test_add_ct_aligned_smaller_output
             );
             run_test!(
-                add_ct_inplace_aligned,
-                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_aligned
+                add_ct_assign_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_ct_assign_aligned
             );
             run_test!(
-                add_ct_inplace_self_lt,
-                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_lt
+                add_ct_assign_self_lt,
+                $crate::leveled::tests::test_suite::add::test_add_ct_assign_self_lt
             );
             run_test!(
-                add_ct_inplace_self_gt,
-                $crate::leveled::tests::test_suite::add::test_add_ct_inplace_self_gt
+                add_ct_assign_self_gt,
+                $crate::leveled::tests::test_suite::add::test_add_ct_assign_self_gt
             );
             run_test!(
-                add_pt_vec_znx_inplace,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_inplace
+                add_pt_vec_znx_assign,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_assign
             );
             run_test!(
-                add_pt_vec_znx_aligned,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_aligned
+                add_pt_vec_znx_into_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_into_aligned
             );
             run_test!(
-                add_pt_vec_znx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_delta_log_decimal
+                add_pt_vec_znx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_into_delta_log_decimal
             );
             run_test!(
-                add_pt_vec_rnx_inplace,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_inplace
+                add_pt_vec_rnx_assign,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_assign
             );
             run_test!(
-                add_pt_vec_rnx_aligned,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_aligned
+                add_pt_vec_rnx_into_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_into_aligned
             );
             run_test!(
-                add_pt_vec_rnx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_delta_log_decimal
+                add_pt_vec_rnx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_into_delta_log_decimal
             );
             run_test!(
-                add_const_aligned,
-                $crate::leveled::tests::test_suite::add::test_add_const_rnx_aligned
+                add_const_into_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_const_rnx_into_aligned
             );
             run_test!(
-                add_const_inplace,
-                $crate::leveled::tests::test_suite::add::test_add_const_rnx_inplace
+                add_const_assign,
+                $crate::leveled::tests::test_suite::add::test_add_const_rnx_assign
             );
             run_test!(
-                add_const_delta_log_decimal,
-                $crate::leveled::tests::test_suite::add::test_add_const_rnx_delta_log_decimal
+                add_const_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::add::test_add_const_rnx_into_delta_log_decimal
             );
             run_test!(
-                add_const_real_only,
-                $crate::leveled::tests::test_suite::add::test_add_const_rnx_real_only
+                add_const_into_real_only,
+                $crate::leveled::tests::test_suite::add::test_add_const_rnx_into_real_only
             );
             run_test!(
-                add_const_znx_aligned,
-                $crate::leveled::tests::test_suite::add::test_add_const_znx_aligned
+                add_const_znx_into_aligned,
+                $crate::leveled::tests::test_suite::add::test_add_const_znx_into_aligned
             );
             run_test!(
-                add_pt_vec_znx_smaller_output,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_smaller_output
+                add_pt_vec_znx_into_smaller_output,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_into_smaller_output
             );
             run_test!(
                 add_pt_vec_znx_base2k_mismatch_error,
                 $crate::leveled::tests::test_suite::add::test_add_pt_vec_znx_base2k_mismatch_error
             );
             run_test!(
-                add_pt_vec_rnx_smaller_output,
-                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_smaller_output
+                add_pt_vec_rnx_into_smaller_output,
+                $crate::leveled::tests::test_suite::add::test_add_pt_vec_rnx_into_smaller_output
             );
             run_test!(
                 add_ct_aligned_unsafe,
                 $crate::leveled::tests::test_suite::add_unsafe::test_add_ct_aligned_unsafe
             );
             run_test!(
-                add_ct_inplace_aligned_unsafe,
-                $crate::leveled::tests::test_suite::add_unsafe::test_add_ct_inplace_aligned_unsafe
+                add_ct_assign_aligned_unsafe,
+                $crate::leveled::tests::test_suite::add_unsafe::test_add_ct_assign_aligned_unsafe
             );
             run_test!(
-                add_pt_vec_znx_aligned_unsafe,
-                $crate::leveled::tests::test_suite::add_unsafe::test_add_pt_vec_znx_aligned_unsafe
+                add_pt_vec_znx_into_aligned_unsafe,
+                $crate::leveled::tests::test_suite::add_unsafe::test_add_pt_vec_znx_into_aligned_unsafe
             );
             run_test!(
-                add_pt_vec_rnx_aligned_unsafe,
-                $crate::leveled::tests::test_suite::add_unsafe::test_add_pt_vec_rnx_aligned_unsafe
+                add_pt_vec_rnx_into_aligned_unsafe,
+                $crate::leveled::tests::test_suite::add_unsafe::test_add_pt_vec_rnx_into_aligned_unsafe
             );
             run_test!(
-                add_const_znx_aligned_unsafe,
-                $crate::leveled::tests::test_suite::add_unsafe::test_add_const_znx_aligned_unsafe
+                add_const_znx_into_aligned_unsafe,
+                $crate::leveled::tests::test_suite::add_unsafe::test_add_const_znx_into_aligned_unsafe
             );
             run_test!(
                 sub_ct_aligned,
@@ -316,72 +316,72 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::sub::test_sub_ct_smaller_output
             );
             run_test!(
-                sub_ct_inplace_aligned,
-                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_aligned
+                sub_ct_assign_aligned,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_assign_aligned
             );
             run_test!(
-                sub_ct_inplace_self_lt,
-                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_lt
+                sub_ct_assign_self_lt,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_assign_self_lt
             );
             run_test!(
-                sub_ct_inplace_self_gt,
-                $crate::leveled::tests::test_suite::sub::test_sub_ct_inplace_self_gt
+                sub_ct_assign_self_gt,
+                $crate::leveled::tests::test_suite::sub::test_sub_ct_assign_self_gt
             );
             run_test!(
-                sub_pt_vec_znx_inplace,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_inplace
+                sub_pt_vec_znx_assign,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_assign
             );
             run_test!(
-                sub_pt_vec_znx,
+                sub_pt_vec_znx_into,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx
             );
             run_test!(
-                sub_pt_vec_znx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_delta_log_decimal
+                sub_pt_vec_znx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_into_delta_log_decimal
             );
             run_test!(
-                sub_pt_vec_rnx_inplace,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_inplace
+                sub_pt_vec_rnx_assign,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_assign
             );
             run_test!(
-                sub_pt_vec_rnx,
+                sub_pt_vec_rnx_into,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx
             );
             run_test!(
-                sub_pt_vec_rnx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_delta_log_decimal
+                sub_pt_vec_rnx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_into_delta_log_decimal
             );
             run_test!(
-                sub_pt_vec_znx_smaller_output,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_smaller_output
+                sub_pt_vec_znx_into_smaller_output,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_into_smaller_output
             );
             run_test!(
-                sub_pt_vec_rnx_smaller_output,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_smaller_output
+                sub_pt_vec_rnx_into_smaller_output,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_into_smaller_output
             );
             run_test!(
-                sub_pt_const_znx_aligned,
-                $crate::leveled::tests::test_suite::sub::test_sub_pt_const_znx_aligned
+                sub_pt_const_znx_into_aligned,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_const_znx_into_aligned
             );
             run_test!(
                 sub_ct_aligned_unsafe,
                 $crate::leveled::tests::test_suite::sub_unsafe::test_sub_ct_aligned_unsafe
             );
             run_test!(
-                sub_ct_inplace_aligned_unsafe,
-                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_ct_inplace_aligned_unsafe
+                sub_ct_assign_aligned_unsafe,
+                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_ct_assign_aligned_unsafe
             );
             run_test!(
-                sub_pt_vec_znx_unsafe,
-                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_vec_znx_unsafe
+                sub_pt_vec_znx_into_unsafe,
+                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_vec_znx_into_unsafe
             );
             run_test!(
-                sub_pt_vec_rnx_unsafe,
-                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_vec_rnx_unsafe
+                sub_pt_vec_rnx_into_unsafe,
+                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_vec_rnx_into_unsafe
             );
             run_test!(
-                sub_pt_const_znx_aligned_unsafe,
-                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_const_znx_aligned_unsafe
+                sub_pt_const_znx_into_aligned_unsafe,
+                $crate::leveled::tests::test_suite::sub_unsafe::test_sub_pt_const_znx_into_aligned_unsafe
             );
             run_test!(
                 dot_product_overflow_guard,
@@ -392,7 +392,7 @@ macro_rules! ckks_backend_test_suite {
                 neg_smaller_output,
                 $crate::leveled::tests::test_suite::neg::test_neg_smaller_output
             );
-            run_test!(neg_inplace, $crate::leveled::tests::test_suite::neg::test_neg_inplace);
+            run_test!(neg_assign, $crate::leveled::tests::test_suite::neg::test_neg_assign);
             run_test!(
                 conjugate_aligned,
                 $crate::leveled::tests::test_suite::conjugate::test_conjugate_aligned
@@ -402,8 +402,8 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::conjugate::test_conjugate_smaller_output
             );
             run_test!(
-                conjugate_inplace,
-                $crate::leveled::tests::test_suite::conjugate::test_conjugate_inplace
+                conjugate_assign,
+                $crate::leveled::tests::test_suite::conjugate::test_conjugate_assign
             );
             run_test_with_arg!(
                 rotate_aligned,
@@ -416,13 +416,13 @@ macro_rules! ckks_backend_test_suite {
                 $rotations
             );
             run_test_with_arg!(
-                rotate_inplace,
-                $crate::leveled::tests::test_suite::rotate::test_rotate_inplace,
+                rotate_assign,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_assign,
                 $rotations
             );
             run_test!(
-                rotate_inplace_missing_key_error,
-                $crate::leveled::tests::test_suite::rotate::test_rotate_inplace_missing_key_error
+                rotate_assign_missing_key_error,
+                $crate::leveled::tests::test_suite::rotate::test_rotate_assign_missing_key_error
             );
             run_test!(
                 mul_ct_aligned,
@@ -445,16 +445,16 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul::test_mul_ct_smaller_output
             );
             run_test!(
-                mul_ct_inplace_aligned,
-                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_aligned
+                mul_ct_assign_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_assign_aligned
             );
             run_test!(
-                mul_ct_inplace_self_lt,
-                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_lt
+                mul_ct_assign_self_lt,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_assign_self_lt
             );
             run_test!(
-                mul_ct_inplace_self_gt,
-                $crate::leveled::tests::test_suite::mul::test_mul_ct_inplace_self_gt
+                mul_ct_assign_self_gt,
+                $crate::leveled::tests::test_suite::mul::test_mul_ct_assign_self_gt
             );
             run_test!(
                 square_aligned,
@@ -465,64 +465,64 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul::test_square_rescaled_input
             );
             run_test!(
-                square_inplace,
-                $crate::leveled::tests::test_suite::mul::test_square_inplace
+                square_assign,
+                $crate::leveled::tests::test_suite::mul::test_square_assign
             );
             run_test!(
                 square_smaller_output,
                 $crate::leveled::tests::test_suite::mul::test_square_smaller_output
             );
             run_test!(
-                mul_pt_vec_znx_aligned,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_aligned
+                mul_pt_vec_znx_into_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_into_aligned
             );
             run_test!(
-                mul_pt_vec_znx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_delta_log_decimal
+                mul_pt_vec_znx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_into_delta_log_decimal
             );
             run_test!(
-                mul_pt_vec_znx_smaller_output,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_smaller_output
+                mul_pt_vec_znx_into_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_into_smaller_output
             );
             run_test!(
-                mul_pt_vec_znx_inplace,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_inplace
+                mul_pt_vec_znx_assign,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_znx_assign
             );
             run_test!(
-                mul_pt_vec_rnx_aligned,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_aligned
+                mul_pt_vec_rnx_into_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_into_aligned
             );
             run_test!(
-                mul_pt_vec_rnx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_delta_log_decimal
+                mul_pt_vec_rnx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_into_delta_log_decimal
             );
             run_test!(
-                mul_pt_vec_rnx_smaller_output,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_smaller_output
+                mul_pt_vec_rnx_into_smaller_output,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_into_smaller_output
             );
             run_test!(
-                mul_pt_vec_rnx_inplace,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_inplace
+                mul_pt_vec_rnx_assign,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_vec_rnx_assign
             );
             run_test!(
-                mul_const_aligned,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_aligned
+                mul_const_into_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_into_aligned
             );
             run_test!(
-                mul_const_inplace,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_inplace
+                mul_const_assign,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_assign
             );
             run_test!(
-                mul_const_delta_log_decimal,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_delta_log_decimal
+                mul_const_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_into_delta_log_decimal
             );
             run_test!(
-                mul_const_real_only,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_real_only
+                mul_const_into_real_only,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_rnx_into_real_only
             );
             run_test!(
-                mul_const_znx_aligned,
-                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_znx_aligned
+                mul_const_znx_into_aligned,
+                $crate::leveled::tests::test_suite::mul::test_mul_pt_const_znx_into_aligned
             );
             run_test!(
                 mul_ct_explicit_metadata_error,
@@ -537,8 +537,8 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_smaller_output
             );
             run_test!(
-                mul_pow2_inplace,
-                $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_inplace
+                mul_pow2_assign,
+                $crate::leveled::tests::test_suite::mul_pow2::test_mul_pow2_assign
             );
             run_test!(
                 div_pow2_aligned,
@@ -549,12 +549,12 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_smaller_output
             );
             run_test!(
-                div_pow2_inplace,
-                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_inplace
+                div_pow2_assign,
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_assign
             );
             run_test!(
-                div_pow2_inplace_explicit_error,
-                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_inplace_explicit_error
+                div_pow2_assign_explicit_error,
+                $crate::leveled::tests::test_suite::mul_pow2::test_div_pow2_assign_explicit_error
             );
             run_test!(
                 composition_linear_sum,
@@ -625,24 +625,24 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul_add::test_mul_add_ct_unaligned_dst
             );
             run_test!(
-                mul_add_pt_vec_znx_aligned,
-                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_aligned
+                mul_add_pt_vec_znx_into_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_into_aligned
             );
             run_test!(
-                mul_add_pt_vec_znx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_delta_log_decimal
+                mul_add_pt_vec_znx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_znx_into_delta_log_decimal
             );
             run_test!(
-                mul_add_pt_vec_rnx_aligned,
-                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_rnx_aligned
+                mul_add_pt_vec_rnx_into_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_pt_vec_rnx_into_aligned
             );
             run_test!(
-                mul_add_const_znx_aligned,
-                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_znx_aligned
+                mul_add_const_znx_into_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_znx_into_aligned
             );
             run_test!(
-                mul_add_const_rnx_aligned,
-                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_aligned
+                mul_add_const_rnx_into_aligned,
+                $crate::leveled::tests::test_suite::mul_add::test_mul_add_const_rnx_into_aligned
             );
             run_test!(
                 mul_add_const_znx_zero_preserves_dst_meta,
@@ -665,16 +665,16 @@ macro_rules! ckks_backend_test_suite {
                 $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_znx_aligned
             );
             run_test!(
-                mul_sub_pt_vec_znx_delta_log_decimal,
-                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_znx_delta_log_decimal
+                mul_sub_pt_vec_znx_into_delta_log_decimal,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_znx_into_delta_log_decimal
             );
             run_test!(
                 mul_sub_pt_vec_rnx_aligned,
                 $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_vec_rnx_aligned
             );
             run_test!(
-                mul_sub_pt_const_znx_aligned,
-                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_const_znx_aligned
+                mul_sub_pt_const_znx_into_aligned,
+                $crate::leveled::tests::test_suite::mul_sub::test_mul_sub_pt_const_znx_into_aligned
             );
             run_test!(
                 mul_sub_pt_const_rnx_aligned,

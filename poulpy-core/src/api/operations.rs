@@ -37,7 +37,7 @@ pub trait GLWETrace<BE: Backend> {
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
 
-    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_assign<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -101,7 +101,7 @@ pub trait GLWEMulConst<BE: Backend> {
         R: DataMut,
         A: DataRef;
 
-    fn glwe_mul_const_inplace<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
+    fn glwe_mul_const_assign<R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut Scratch<BE>)
     where
         R: DataMut;
 }
@@ -129,7 +129,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         B: DataRef;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_inplace<R, A>(
+    fn glwe_mul_plain_assign<R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -310,7 +310,7 @@ where
         res.base2k = a.base2k;
     }
 
-    fn glwe_negate_inplace<R>(&self, res: &mut R)
+    fn glwe_negate_assign<R>(&self, res: &mut R)
     where
         R: GLWEToMut,
     {
@@ -318,7 +318,7 @@ where
         assert_eq!(res.n(), self.n() as u32);
         let cols = res.rank().as_usize() + 1;
         for i in 0..cols {
-            self.vec_znx_negate_inplace(res.data_mut(), i);
+            self.vec_znx_negate_assign(res.data_mut(), i);
         }
     }
 }
@@ -375,7 +375,7 @@ where
         }
     }
 
-    fn glwe_sub_inplace<R, A>(&self, res: &mut R, a: &A)
+    fn glwe_sub_assign<R, A>(&self, res: &mut R, a: &A)
     where
         R: GLWEToMut,
         A: GLWEToRef,
@@ -389,11 +389,11 @@ where
         assert!(res.rank() == a.rank() || a.rank() == 0);
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_inplace(res.data_mut(), i, a.data(), i);
+            self.vec_znx_sub_assign(res.data_mut(), i, a.data(), i);
         }
     }
 
-    fn glwe_sub_negate_inplace<R, A>(&self, res: &mut R, a: &A)
+    fn glwe_sub_negate_assign<R, A>(&self, res: &mut R, a: &A)
     where
         R: GLWEToMut,
         A: GLWEToRef,
@@ -407,7 +407,7 @@ where
         assert!(res.rank() == a.rank() || a.rank() == 0);
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_negate_inplace(res.data_mut(), i, a.data(), i);
+            self.vec_znx_sub_negate_assign(res.data_mut(), i, a.data(), i);
         }
     }
 }
@@ -417,7 +417,7 @@ where
     Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZero,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
-        self.vec_znx_rotate_inplace_tmp_bytes()
+        self.vec_znx_rotate_assign_tmp_bytes()
     }
 
     fn glwe_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
@@ -443,7 +443,7 @@ where
         }
     }
 
-    fn glwe_rotate_inplace<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_rotate_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -457,7 +457,7 @@ where
         );
 
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_rotate_inplace(k, res.data_mut(), i, scratch);
+            self.vec_znx_rotate_assign(k, res.data_mut(), i, scratch);
         }
     }
 }
@@ -491,7 +491,7 @@ where
         }
     }
 
-    fn ggsw_rotate_inplace<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn ggsw_rotate_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
         Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable,
@@ -509,7 +509,7 @@ where
 
         for row in 0..rows {
             for col in 0..cols {
-                self.glwe_rotate_inplace(k, &mut res.at_mut(row, col), scratch);
+                self.glwe_rotate_assign(k, &mut res.at_mut(row, col), scratch);
             }
         }
     }
@@ -536,7 +536,7 @@ where
         }
     }
 
-    fn glwe_mul_xp_minus_one_inplace<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_mul_xp_minus_one_assign<R>(&self, k: i64, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
     {
@@ -545,7 +545,7 @@ where
         assert_eq!(res.n(), self.n() as u32);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_mul_xp_minus_one_inplace(k, res.data_mut(), i, scratch);
+            self.vec_znx_mul_xp_minus_one_assign(k, res.data_mut(), i, scratch);
         }
     }
 }
@@ -607,11 +607,11 @@ where
         );
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_rsh_inplace(base2k, k, res.data_mut(), i, scratch);
+            self.vec_znx_rsh_assign(base2k, k, res.data_mut(), i, scratch);
         }
     }
 
-    fn glwe_lsh_inplace<R>(&self, res: &mut R, k: usize, scratch: &mut Scratch<BE>)
+    fn glwe_lsh_assign<R>(&self, res: &mut R, k: usize, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -627,7 +627,7 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_inplace(base2k, k, res.data_mut(), i, scratch);
+            self.vec_znx_lsh_assign(base2k, k, res.data_mut(), i, scratch);
         }
     }
 
@@ -802,7 +802,7 @@ where
         }
     }
 
-    fn glwe_normalize_inplace<R>(&self, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_normalize_assign<R>(&self, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -815,7 +815,7 @@ where
             self.glwe_normalize_tmp_bytes()
         );
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize_inplace(res.base2k().into(), res.data_mut(), i, scratch);
+            self.vec_znx_normalize_assign(res.base2k().into(), res.data_mut(), i, scratch);
         }
     }
 }

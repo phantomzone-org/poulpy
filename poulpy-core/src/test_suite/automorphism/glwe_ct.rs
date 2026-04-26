@@ -140,7 +140,7 @@ where
             .log2();
 
             module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
-            module.vec_znx_automorphism_inplace(p, &mut pt_out.data, 0, scratch.borrow());
+            module.vec_znx_automorphism_assign(p, &mut pt_out.data, 0, scratch.borrow());
 
             assert!(
                 module
@@ -154,7 +154,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_glwe_automorphism_inplace<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
+pub fn test_glwe_automorphism_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -247,7 +247,7 @@ where
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&autokey);
             module.glwe_automorphism_key_prepare(&mut autokey_prepared, &autokey, scratch.borrow());
 
-            module.glwe_automorphism_inplace(&mut ct, &autokey_prepared, scratch.borrow());
+            module.glwe_automorphism_assign(&mut ct, &autokey_prepared, scratch.borrow());
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,
@@ -265,7 +265,7 @@ where
             .sqrt()
             .log2();
 
-            module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
+            module.vec_znx_automorphism_assign(p, &mut pt_want.data, 0, scratch.borrow());
 
             assert!(module.glwe_noise(&ct, &pt_want, &sk_prepared, scratch.borrow()).std().log2() <= max_noise + 1.0)
         }

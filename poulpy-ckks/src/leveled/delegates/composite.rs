@@ -81,12 +81,12 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddManyOps<BE> for Module<BE> {
             _ => {
                 ensure_accumulation_fits("ckks_add_many", dst, inputs.len())?;
                 unsafe {
-                    self.ckks_add_unsafe(dst, inputs[0], inputs[1], scratch)?;
+                    self.ckks_add_into_unsafe(dst, inputs[0], inputs[1], scratch)?;
                     for ct in &inputs[2..] {
-                        self.ckks_add_inplace_unsafe(dst, ct, scratch)?;
+                        self.ckks_add_assign_unsafe(dst, ct, scratch)?;
                     }
                 }
-                self.glwe_normalize_inplace(dst, scratch);
+                self.glwe_normalize_assign(dst, scratch);
             }
         }
         Ok(())
@@ -121,7 +121,7 @@ where
             dst.meta.log_hom_rem = checked_log_hom_rem_sub("ckks_mul_many", inputs[0].log_hom_rem(), offset)?;
             Ok(())
         }
-        2 => module.ckks_mul(dst, inputs[0], inputs[1], tsk, scratch),
+        2 => module.ckks_mul_into(dst, inputs[0], inputs[1], tsk, scratch),
         _ => {
             let mid: usize = inputs.len() / 2;
             let (left_slice, right_slice) = inputs.split_at(mid);
@@ -153,7 +153,7 @@ where
             mul_many_rec(module, &mut left, left_slice, tsk, scratch_b)?;
             mul_many_rec(module, &mut right, right_slice, tsk, scratch_b)?;
 
-            module.ckks_mul(dst, &left, &right, tsk, scratch_b)
+            module.ckks_mul_into(dst, &left, &right, tsk, scratch_b)
         }
     }
 }
@@ -243,8 +243,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul(&mut tmp, a, b, tsk, scratch_r)?;
-        self.ckks_add_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_into(&mut tmp, a, b, tsk, scratch_r)?;
+        self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_add_pt_vec_znx(
@@ -259,8 +259,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_vec_znx(&mut tmp, a, pt_znx, scratch_r)?;
-        self.ckks_add_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_vec_znx_into(&mut tmp, a, pt_znx, scratch_r)?;
+        self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_add_pt_vec_rnx<F>(
@@ -277,8 +277,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_vec_rnx(&mut tmp, a, pt_rnx, prec, scratch_r)?;
-        self.ckks_add_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_vec_rnx_into(&mut tmp, a, pt_rnx, prec, scratch_r)?;
+        self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_add_pt_const_znx(
@@ -297,8 +297,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         }
 
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_const_znx(&mut tmp, a, cst_znx, scratch_r)?;
-        self.ckks_add_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_const_znx_into(&mut tmp, a, cst_znx, scratch_r)?;
+        self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_add_pt_const_rnx<F>(
@@ -319,8 +319,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         }
 
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_const_rnx(&mut tmp, a, cst_rnx, prec, scratch_r)?;
-        self.ckks_add_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_const_rnx_into(&mut tmp, a, cst_rnx, prec, scratch_r)?;
+        self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 }
 
@@ -376,8 +376,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul(&mut tmp, a, b, tsk, scratch_r)?;
-        self.ckks_sub_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_into(&mut tmp, a, b, tsk, scratch_r)?;
+        self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_sub_pt_vec_znx(
@@ -392,8 +392,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_vec_znx(&mut tmp, a, pt_znx, scratch_r)?;
-        self.ckks_sub_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_vec_znx_into(&mut tmp, a, pt_znx, scratch_r)?;
+        self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_sub_pt_vec_rnx<F>(
@@ -410,8 +410,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_vec_rnx(&mut tmp, a, pt_rnx, prec, scratch_r)?;
-        self.ckks_sub_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_vec_rnx_into(&mut tmp, a, pt_rnx, prec, scratch_r)?;
+        self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_sub_pt_const_znx(
@@ -430,8 +430,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         }
 
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_const_znx(&mut tmp, a, cst_znx, scratch_r)?;
-        self.ckks_sub_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_const_znx_into(&mut tmp, a, cst_znx, scratch_r)?;
+        self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
     fn ckks_mul_sub_pt_const_rnx<F>(
@@ -452,8 +452,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         }
 
         let (mut tmp, scratch_r) = take_mul_tmp(dst, scratch);
-        self.ckks_mul_pt_const_rnx(&mut tmp, a, cst_rnx, prec, scratch_r)?;
-        self.ckks_sub_inplace(dst, &tmp, scratch_r)
+        self.ckks_mul_pt_const_rnx_into(&mut tmp, a, cst_rnx, prec, scratch_r)?;
+        self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 }
 
@@ -492,10 +492,10 @@ where
     for i in 1..n {
         mul_term_into_tmp(&mut tmp, i, scratch_r)?;
         unsafe {
-            module.ckks_add_inplace_unsafe(dst, &tmp, scratch_r)?;
+            module.ckks_add_assign_unsafe(dst, &tmp, scratch_r)?;
         }
     }
-    module.glwe_normalize_inplace(dst, scratch_r);
+    module.glwe_normalize_assign(dst, scratch_r);
     Ok(())
 }
 
@@ -577,7 +577,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         ensure_accumulation_fits("ckks_dot_product_ct", dst, n)?;
 
         if n == 1 {
-            return self.ckks_mul(dst, a[0], b[0], tsk, scratch);
+            return self.ckks_mul_into(dst, a[0], b[0], tsk, scratch);
         }
 
         let a_min_lhr: usize = a.iter().map(|c| c.log_hom_rem()).min().unwrap();
@@ -592,8 +592,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             a.iter().all(|c| c.log_decimal() == a[0].log_decimal()) && b.iter().all(|c| c.log_decimal() == b[0].log_decimal());
 
         if !uniform_ld {
-            self.ckks_mul(dst, a[0], b[0], tsk, scratch)?;
-            return accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| self.ckks_mul(tmp, a[i], b[i], tsk, s));
+            self.ckks_mul_into(dst, a[0], b[0], tsk, scratch)?;
+            return accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| self.ckks_mul_into(tmp, a[i], b[i], tsk, s));
         }
 
         let a_ld: usize = a[0].log_decimal();
@@ -637,13 +637,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         if !a_aligned {
             for (i, ai) in a.iter().enumerate() {
                 let shift = ai.log_hom_rem() - a_min_lhr;
-                self.ckks_rescale(&mut a_buf[i], shift, *ai, scratch_ab)?;
+                self.ckks_rescale_into(&mut a_buf[i], shift, *ai, scratch_ab)?;
             }
         }
         if !b_aligned {
             for (i, bi) in b.iter().enumerate() {
                 let shift = bi.log_hom_rem() - b_min_lhr;
-                self.ckks_rescale(&mut b_buf[i], shift, *bi, scratch_ab)?;
+                self.ckks_rescale_into(&mut b_buf[i], shift, *bi, scratch_ab)?;
             }
         }
 
@@ -716,9 +716,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         check_lengths("ckks_dot_product_pt_vec_znx", a.len(), b.len())?;
         let n: usize = a.len();
         ensure_accumulation_fits("ckks_dot_product_pt_vec_znx", dst, n)?;
-        self.ckks_mul_pt_vec_znx(dst, a[0], b[0], scratch)?;
+        self.ckks_mul_pt_vec_znx_into(dst, a[0], b[0], scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
-            self.ckks_mul_pt_vec_znx(tmp, a[i], b[i], s)
+            self.ckks_mul_pt_vec_znx_into(tmp, a[i], b[i], s)
         })
     }
 
@@ -745,9 +745,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         check_lengths("ckks_dot_product_pt_vec_rnx", a.len(), b.len())?;
         let n: usize = a.len();
         ensure_accumulation_fits("ckks_dot_product_pt_vec_rnx", dst, n)?;
-        self.ckks_mul_pt_vec_rnx(dst, a[0], b[0], prec, scratch)?;
+        self.ckks_mul_pt_vec_rnx_into(dst, a[0], b[0], prec, scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
-            self.ckks_mul_pt_vec_rnx(tmp, a[i], b[i], prec, s)
+            self.ckks_mul_pt_vec_rnx_into(tmp, a[i], b[i], prec, s)
         })
     }
 
@@ -771,9 +771,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         check_lengths("ckks_dot_product_pt_const_znx", a.len(), b.len())?;
         let n: usize = a.len();
         ensure_accumulation_fits("ckks_dot_product_pt_const_znx", dst, n)?;
-        self.ckks_mul_pt_const_znx(dst, a[0], b[0], scratch)?;
+        self.ckks_mul_pt_const_znx_into(dst, a[0], b[0], scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
-            self.ckks_mul_pt_const_znx(tmp, a[i], b[i], s)
+            self.ckks_mul_pt_const_znx_into(tmp, a[i], b[i], s)
         })
     }
 
@@ -799,9 +799,9 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         check_lengths("ckks_dot_product_pt_const_rnx", a.len(), b.len())?;
         let n: usize = a.len();
         ensure_accumulation_fits("ckks_dot_product_pt_const_rnx", dst, n)?;
-        self.ckks_mul_pt_const_rnx(dst, a[0], b[0], prec, scratch)?;
+        self.ckks_mul_pt_const_rnx_into(dst, a[0], b[0], prec, scratch)?;
         accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| {
-            self.ckks_mul_pt_const_rnx(tmp, a[i], b[i], prec, s)
+            self.ckks_mul_pt_const_rnx_into(tmp, a[i], b[i], prec, s)
         })
     }
 }

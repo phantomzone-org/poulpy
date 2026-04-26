@@ -83,7 +83,7 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        ZNXARI::znx_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 

@@ -239,12 +239,12 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_automorphism_inplace<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_automorphism_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigAutomorphismInplace<B> + VecZnxBigAutomorphismInplaceTmpBytes + ModuleNew<B> + VecZnxBigAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_automorphism_inplace::{label}");
+    let group_name: String = format!("vec_znx_automorphism_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -263,14 +263,14 @@ where
 
         let mut res: VecZnxBig<DeviceBuf<B>, B> = module.vec_znx_big_alloc(cols, size);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_automorphism_inplace_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_big_automorphism_assign_tmp_bytes());
 
         // Fill a with random i64
         source.fill_bytes(res.data_mut().as_mut());
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_automorphism_inplace(-7, &mut res, i, scratch.borrow());
+                module.vec_znx_big_automorphism_assign(-7, &mut res, i, scratch.borrow());
             }
             black_box(());
         }
@@ -328,11 +328,11 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_negate_inplace<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_negate_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_negate_big_inplace::{label}");
+    let group_name: String = format!("vec_znx_negate_big_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -354,7 +354,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_negate_inplace(&mut a, i);
+                module.vec_znx_big_negate_assign(&mut a, i);
             }
             black_box(());
         }
@@ -676,11 +676,11 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_inplace<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
+    let group_name: String = format!("vec_znx_big_sub_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -704,7 +704,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_sub_inplace(&mut c, i, &a, i);
+                module.vec_znx_big_sub_assign(&mut c, i, &a, i);
             }
             black_box(());
         }
@@ -719,11 +719,11 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_negate_inplace<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_negate_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
+    let group_name: String = format!("vec_znx_big_sub_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -747,7 +747,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_sub_negate_inplace(&mut c, i, &a, i);
+                module.vec_znx_big_sub_negate_assign(&mut c, i, &a, i);
             }
             black_box(());
         }

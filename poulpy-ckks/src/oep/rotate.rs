@@ -12,7 +12,7 @@ macro_rules! impl_ckks_rotate_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_tmp_bytes_default(module, ct_infos, key_infos)
         }
 
-        fn ckks_rotate<H, K>(
+        fn ckks_rotate_into<H, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
             dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
             src: &$crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
@@ -26,10 +26,10 @@ macro_rules! impl_ckks_rotate_default_methods {
             H: poulpy_core::layouts::GLWEAutomorphismKeyHelper<K, $backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_default(module, dst, src, k, keys, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_into_default(module, dst, src, k, keys, scratch)
         }
 
-        fn ckks_rotate_inplace<H, K>(
+        fn ckks_rotate_assign<H, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
             dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
             k: i64,
@@ -42,7 +42,7 @@ macro_rules! impl_ckks_rotate_default_methods {
             H: poulpy_core::layouts::GLWEAutomorphismKeyHelper<K, $backend>,
             poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_inplace_default(module, dst, k, keys, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_assign_default(module, dst, k, keys, scratch)
         }
     };
 }

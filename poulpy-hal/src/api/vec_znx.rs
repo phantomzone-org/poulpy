@@ -35,7 +35,7 @@ pub trait VecZnxNormalize<B: Backend> {
 
 pub trait VecZnxNormalizeInplace<B: Backend> {
     /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_inplace<A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_normalize_assign<A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -96,7 +96,7 @@ pub trait VecZnxSubInplace {
     /// Subtracts the selected column of `a` from the selected column of `res` inplace.
     ///
     /// res\[res_col\] -= a\[a_col\]
-    fn vec_znx_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -106,7 +106,7 @@ pub trait VecZnxSubNegateInplace {
     /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
     ///
     /// res\[res_col\] = a\[a_col\] - res\[res_col\]
-    fn vec_znx_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -124,7 +124,7 @@ pub trait VecZnxSubScalar {
 
 pub trait VecZnxSubScalarInplace {
     /// Subtracts the selected column of `a` on the selected column and limb of `res`.
-    fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_scalar_assign<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: ScalarZnxToRef;
@@ -140,7 +140,7 @@ pub trait VecZnxNegate {
 
 pub trait VecZnxNegateInplace {
     /// Negates the selected column of `a`.
-    fn vec_znx_negate_inplace<A>(&self, a: &mut A, a_col: usize)
+    fn vec_znx_negate_assign<A>(&self, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
@@ -259,14 +259,14 @@ pub trait VecZnxRshSub<B: Backend> {
 
 pub trait VecZnxLshInplace<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_lsh_assign<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRshInplace<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_rsh_assign<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -280,12 +280,12 @@ pub trait VecZnxRotate {
 }
 
 pub trait VecZnxRotateInplaceTmpBytes {
-    fn vec_znx_rotate_inplace_tmp_bytes(&self) -> usize;
+    fn vec_znx_rotate_assign_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxRotateInplace<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace<A>(&self, p: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_rotate_assign<A>(&self, p: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -299,12 +299,12 @@ pub trait VecZnxAutomorphism {
 }
 
 pub trait VecZnxAutomorphismInplaceTmpBytes {
-    fn vec_znx_automorphism_inplace_tmp_bytes(&self) -> usize;
+    fn vec_znx_automorphism_assign_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace<R>(&self, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_automorphism_assign<R>(&self, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut;
 }
@@ -318,11 +318,11 @@ pub trait VecZnxMulXpMinusOne {
 }
 
 pub trait VecZnxMulXpMinusOneInplaceTmpBytes {
-    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(&self) -> usize;
+    fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxMulXpMinusOneInplace<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_mul_xp_minus_one_assign<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut;
 }

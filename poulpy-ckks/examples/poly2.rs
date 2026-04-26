@@ -354,7 +354,7 @@ fn evaluation(
     let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_hom_rem().into(), BASE2K.into());
     setup
         .module
-        .ckks_square(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
+        .ckks_square_into(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
     print_ct_meta("x^2", &ct_x2);
     println!("  -> compact limbs after square");
     setup.module.ckks_compact_limbs(&mut ct_x2)?;
@@ -364,7 +364,7 @@ fn evaluation(
 
     println!("  -> build right branch: c + d*x (unsafe add, normalize before ct-ct mul)");
     let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
-    setup.module.ckks_mul_pt_const_rnx(
+    setup.module.ckks_mul_pt_const_rnx_into(
         &mut right_linear,
         &encryption.ct_x,
         &encoding.cst_d,
@@ -375,18 +375,18 @@ fn evaluation(
     unsafe {
         setup
             .module
-            .ckks_add_pt_const_rnx_inplace_unsafe(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
+            .ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
     }
     print_ct_meta("c + d * x (not normalized)", &right_linear);
 
     println!("  -> normalize right branch before ct-ct multiply");
-    setup.module.glwe_normalize_inplace(&mut right_linear, setup.scratch.borrow());
+    setup.module.glwe_normalize_assign(&mut right_linear, setup.scratch.borrow());
     print_ct_meta("c + d * x normalized", &right_linear);
 
     println!("  -> multiply right branch by x^2");
     let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
     let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
-    setup.module.ckks_mul(
+    setup.module.ckks_mul_into(
         &mut right_branch,
         &right_linear,
         &ct_x2,
@@ -403,7 +403,7 @@ fn evaluation(
     unsafe {
         setup
             .module
-            .ckks_add_pt_const_rnx_unsafe(&mut poly, &right_branch, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
+            .ckks_add_pt_const_rnx_into_unsafe(&mut poly, &right_branch, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
     }
     print_ct_meta("right_branch + a (not normalized)", &poly);
     setup

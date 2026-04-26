@@ -223,20 +223,20 @@ fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
 
 pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
     let mut s = setup::<BE>();
-    let mut group = c.benchmark_group(format!("ckks_add::{label}"));
+    let mut group = c.benchmark_group(format!("ckks_add_into::{label}"));
     group.bench_function("add_ct", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.ct_b), s.scratch.borrow())
+                .ckks_add_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.ct_b), s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("add_ct_inplace", |b| {
+    group.bench_function("add_ct_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_inplace(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
+                .ckks_add_assign(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -244,7 +244,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_pt_vec_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
+                .ckks_add_pt_vec_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -252,7 +252,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_pt_vec_rnx(
+                .ckks_add_pt_vec_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.pt_rnx),
@@ -266,7 +266,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_add_pt_const_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -274,7 +274,7 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_add_pt_const_rnx(
+                .ckks_add_pt_const_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -289,20 +289,20 @@ pub fn bench_ckks_add<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
 
 pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
     let mut s = setup::<BE>();
-    let mut group = c.benchmark_group(format!("ckks_sub::{label}"));
+    let mut group = c.benchmark_group(format!("ckks_sub_into::{label}"));
     group.bench_function("sub_ct", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.ct_b), s.scratch.borrow())
+                .ckks_sub_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.ct_b), s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("sub_ct_inplace", |b| {
+    group.bench_function("sub_ct_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_inplace(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
+                .ckks_sub_assign(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -310,7 +310,7 @@ pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_pt_vec_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
+                .ckks_sub_pt_vec_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -318,7 +318,7 @@ pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_pt_vec_rnx(
+                .ckks_sub_pt_vec_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.pt_rnx),
@@ -332,7 +332,7 @@ pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_sub_pt_const_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -340,7 +340,7 @@ pub fn bench_ckks_sub<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_sub_pt_const_rnx(
+                .ckks_sub_pt_const_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -360,42 +360,42 @@ pub fn bench_ckks_unary<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_neg(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
+                .ckks_neg_into(&mut s.ct_dst, black_box(&s.ct_a), s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("neg_inplace", |b| {
+    group.bench_function("neg_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            s.module.ckks_neg_inplace(&mut s.ct_dst).unwrap();
+            s.module.ckks_neg_assign(&mut s.ct_dst).unwrap();
         })
     });
     group.bench_function("mul_pow2", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_pow2(&mut s.ct_dst, black_box(&s.ct_a), 3, s.scratch.borrow())
+                .ckks_mul_pow2_into(&mut s.ct_dst, black_box(&s.ct_a), 3, s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("mul_pow2_inplace", |b| {
+    group.bench_function("mul_pow2_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            s.module.ckks_mul_pow2_inplace(&mut s.ct_dst, 3, s.scratch.borrow()).unwrap();
+            s.module.ckks_mul_pow2_assign(&mut s.ct_dst, 3, s.scratch.borrow()).unwrap();
         })
     });
     group.bench_function("div_pow2", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_div_pow2(&mut s.ct_dst, black_box(&s.ct_a), 3, s.scratch.borrow())
+                .ckks_div_pow2_into(&mut s.ct_dst, black_box(&s.ct_a), 3, s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("div_pow2_inplace", |b| {
+    group.bench_function("div_pow2_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            s.module.ckks_div_pow2_inplace(&mut s.ct_dst, 3).unwrap();
+            s.module.ckks_div_pow2_assign(&mut s.ct_dst, 3).unwrap();
         })
     });
     group.finish();
@@ -403,12 +403,12 @@ pub fn bench_ckks_unary<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
 
 pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
     let mut s = setup::<BE>();
-    let mut group = c.benchmark_group(format!("ckks_mul::{label}"));
+    let mut group = c.benchmark_group(format!("ckks_mul_into::{label}"));
     group.bench_function("mul_ct", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul(
+                .ckks_mul_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.ct_b),
@@ -418,11 +418,11 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
                 .unwrap();
         })
     });
-    group.bench_function("mul_ct_inplace", |b| {
+    group.bench_function("mul_ct_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_inplace(&mut s.ct_dst, black_box(&s.ct_a), &s.tsk, s.scratch.borrow())
+                .ckks_mul_assign(&mut s.ct_dst, black_box(&s.ct_a), &s.tsk, s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -430,15 +430,15 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_square(&mut s.ct_dst, black_box(&s.ct_a), &s.tsk, s.scratch.borrow())
+                .ckks_square_into(&mut s.ct_dst, black_box(&s.ct_a), &s.tsk, s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("square_inplace", |b| {
+    group.bench_function("square_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_square_inplace(&mut s.ct_dst, &s.tsk, s.scratch.borrow())
+                .ckks_square_assign(&mut s.ct_dst, &s.tsk, s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -446,7 +446,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_pt_vec_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
+                .ckks_mul_pt_vec_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -454,7 +454,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_pt_vec_rnx(
+                .ckks_mul_pt_vec_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.pt_rnx),
@@ -468,7 +468,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_pt_const_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -476,7 +476,7 @@ pub fn bench_ckks_mul<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_pt_const_rnx(
+                .ckks_mul_pt_const_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -496,16 +496,16 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_rotate(&mut s.ct_dst, black_box(&s.ct_a), ROTATION, &s.atks, s.scratch.borrow())
+                .ckks_rotate_into(&mut s.ct_dst, black_box(&s.ct_a), ROTATION, &s.atks, s.scratch.borrow())
                 .unwrap();
         })
     });
-    group.bench_function("rotate_inplace", |b| {
+    group.bench_function("rotate_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             let _ = s
                 .module
-                .ckks_rotate_inplace::<_, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>(
+                .ckks_rotate_assign::<_, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>(
                     &mut s.ct_dst,
                     ROTATION,
                     &s.atks,
@@ -517,7 +517,7 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_conjugate(
+                .ckks_conjugate_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     s.atks.get(&-1).unwrap(),
@@ -526,11 +526,11 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
                 .unwrap();
         })
     });
-    group.bench_function("conjugate_inplace", |b| {
+    group.bench_function("conjugate_assign", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_conjugate_inplace(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow())
+                .ckks_conjugate_assign(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow())
                 .unwrap();
         })
     });

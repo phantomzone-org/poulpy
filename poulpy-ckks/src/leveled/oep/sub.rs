@@ -26,7 +26,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
     where
         Self: GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_sub(
+    fn ckks_sub_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -37,7 +37,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_sub_inplace(
+    fn ckks_sub_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -47,7 +47,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_sub_pt_vec_znx(
+    fn ckks_sub_pt_vec_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -58,7 +58,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Self: VecZnxRshSub<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_sub_pt_vec_znx_inplace(
+    fn ckks_sub_pt_vec_znx_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -74,7 +74,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         A: GLWEInfos,
         Self: ModuleN + GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_sub_pt_vec_rnx<F>(
+    fn ckks_sub_pt_vec_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -87,7 +87,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_sub_pt_vec_rnx_inplace<F>(
+    fn ckks_sub_pt_vec_rnx_assign<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -103,7 +103,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
     where
         Self: GLWEShift<BE>;
 
-    fn ckks_sub_pt_const_znx(
+    fn ckks_sub_pt_const_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -114,7 +114,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_sub_pt_const_znx_inplace(
+    fn ckks_sub_pt_const_znx_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -123,7 +123,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
     where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 
-    fn ckks_sub_pt_const_rnx<F>(
+    fn ckks_sub_pt_const_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -136,7 +136,7 @@ pub(crate) trait CKKSSubOep<BE: Backend + CKKSImpl<BE>> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
-    fn ckks_sub_pt_const_rnx_inplace<F>(
+    fn ckks_sub_pt_const_rnx_assign<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -163,7 +163,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         BE::ckks_sub_pt_vec_znx_tmp_bytes(self)
     }
 
-    fn ckks_sub(
+    fn ckks_sub_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -174,10 +174,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub(self, dst, a, b, scratch)
+        BE::ckks_sub_into(self, dst, a, b, scratch)
     }
 
-    fn ckks_sub_inplace(
+    fn ckks_sub_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -187,10 +187,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub_inplace(self, dst, a, scratch)
+        BE::ckks_sub_assign(self, dst, a, scratch)
     }
 
-    fn ckks_sub_pt_vec_znx(
+    fn ckks_sub_pt_vec_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -201,10 +201,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Self: VecZnxRshSub<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub_pt_vec_znx_out(self, dst, a, pt_znx, scratch)
+        BE::ckks_sub_pt_vec_znx_into(self, dst, a, pt_znx, scratch)
     }
 
-    fn ckks_sub_pt_vec_znx_inplace(
+    fn ckks_sub_pt_vec_znx_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -214,7 +214,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Self: VecZnxRshSub<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub_pt_vec_znx_inplace(self, dst, pt_znx, scratch)
+        BE::ckks_sub_pt_vec_znx_assign(self, dst, pt_znx, scratch)
     }
 
     fn ckks_sub_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
@@ -226,7 +226,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         BE::ckks_sub_pt_vec_rnx_tmp_bytes(self, res, a, b)
     }
 
-    fn ckks_sub_pt_vec_rnx<F>(
+    fn ckks_sub_pt_vec_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -239,10 +239,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        BE::ckks_sub_pt_vec_rnx(self, dst, a, pt_rnx, prec, scratch)
+        BE::ckks_sub_pt_vec_rnx_into(self, dst, a, pt_rnx, prec, scratch)
     }
 
-    fn ckks_sub_pt_vec_rnx_inplace<F>(
+    fn ckks_sub_pt_vec_rnx_assign<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
@@ -254,7 +254,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
     {
-        BE::ckks_sub_pt_vec_rnx_inplace(self, dst, pt_rnx, prec, scratch)
+        BE::ckks_sub_pt_vec_rnx_assign(self, dst, pt_rnx, prec, scratch)
     }
 
     fn ckks_sub_pt_const_tmp_bytes(&self) -> usize
@@ -264,7 +264,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         BE::ckks_sub_pt_const_tmp_bytes(self)
     }
 
-    fn ckks_sub_pt_const_znx(
+    fn ckks_sub_pt_const_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -275,10 +275,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub_pt_const_znx(self, dst, a, cst_znx, scratch)
+        BE::ckks_sub_pt_const_znx_into(self, dst, a, cst_znx, scratch)
     }
 
-    fn ckks_sub_pt_const_znx_inplace(
+    fn ckks_sub_pt_const_znx_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_znx: &CKKSPlaintextCstZnx,
@@ -287,10 +287,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
     where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        BE::ckks_sub_pt_const_znx_inplace(self, dst, cst_znx, scratch)
+        BE::ckks_sub_pt_const_znx_assign(self, dst, cst_znx, scratch)
     }
 
-    fn ckks_sub_pt_const_rnx<F>(
+    fn ckks_sub_pt_const_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -303,10 +303,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        BE::ckks_sub_pt_const_rnx(self, dst, a, cst_rnx, prec, scratch)
+        BE::ckks_sub_pt_const_rnx_into(self, dst, a, cst_rnx, prec, scratch)
     }
 
-    fn ckks_sub_pt_const_rnx_inplace<F>(
+    fn ckks_sub_pt_const_rnx_assign<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
@@ -317,6 +317,6 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSSubOep<BE> for Module<BE> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
-        BE::ckks_sub_pt_const_rnx_inplace(self, dst, cst_rnx, prec, scratch)
+        BE::ckks_sub_pt_const_rnx_assign(self, dst, cst_rnx, prec, scratch)
     }
 }

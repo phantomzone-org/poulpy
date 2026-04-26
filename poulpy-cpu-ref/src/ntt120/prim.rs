@@ -70,7 +70,7 @@ impl NttAdd for NTT120Ref {
 
 impl NttAddInplace for NTT120Ref {
     #[inline(always)]
-    fn ntt_add_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
@@ -96,7 +96,7 @@ impl NttSub for NTT120Ref {
 
 impl NttSubInplace for NTT120Ref {
     #[inline(always)]
-    fn ntt_sub_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
@@ -109,7 +109,7 @@ impl NttSubInplace for NTT120Ref {
 
 impl NttSubNegateInplace for NTT120Ref {
     #[inline(always)]
-    fn ntt_sub_negate_inplace(res: &mut [u64], a: &[u64]) {
+    fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q_s) in Q_SHIFTED.iter().enumerate() {
@@ -139,7 +139,7 @@ impl NttNegate for NTT120Ref {
 /// Output range is `(0, Q_SHIFTED[k]]`. Use `val % Q[k] == 0`, not `val == 0`, to test for zero.
 impl NttNegateInplace for NTT120Ref {
     #[inline(always)]
-    fn ntt_negate_inplace(res: &mut [u64]) {
+    fn ntt_negate_assign(res: &mut [u64]) {
         let n = res.len() / 4;
         for j in 0..n {
             for (k, &q_s) in Q_SHIFTED.iter().enumerate() {

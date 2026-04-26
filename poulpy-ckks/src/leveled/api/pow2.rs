@@ -9,7 +9,7 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
     where
         Self: GLWEShift<BE>;
 
-    fn ckks_mul_pow2(
+    fn ckks_mul_pow2_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -20,7 +20,7 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn ckks_mul_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_mul_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
@@ -29,7 +29,7 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
     where
         Self: GLWEShift<BE>;
 
-    fn ckks_div_pow2(
+    fn ckks_div_pow2_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -40,5 +40,5 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEShift<BE> + GLWECopy,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn ckks_div_pow2_inplace(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()>;
+    fn ckks_div_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()>;
 }

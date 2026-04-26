@@ -9,13 +9,13 @@ use crate::{
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::{
-        vec_znx::{vec_znx_rotate, vec_znx_sub_inplace},
+        vec_znx::{vec_znx_rotate, vec_znx_sub_assign},
         znx::{ZnxNegate, ZnxRotate, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero},
     },
     source::Source,
 };
 
-pub fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(n: usize) -> usize {
+pub fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
@@ -26,10 +26,10 @@ where
     ZNXARI: ZnxRotate + ZnxZero + ZnxSubInplace,
 {
     vec_znx_rotate::<_, _, ZNXARI>(p, res, res_col, a, a_col);
-    vec_znx_sub_inplace::<_, _, ZNXARI>(res, res_col, a, a_col);
+    vec_znx_sub_assign::<_, _, ZNXARI>(res, res_col, a, a_col);
 }
 
-pub fn vec_znx_mul_xp_minus_one_inplace<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_mul_xp_minus_one_assign<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
     ZNXARI: ZnxRotate + ZnxNegate + ZnxSubNegateInplace,
@@ -41,7 +41,7 @@ where
     }
     for j in 0..res.size() {
         ZNXARI::znx_rotate(p, tmp, res.at(res_col, j));
-        ZNXARI::znx_sub_negate_inplace(res.at_mut(res_col, j), tmp);
+        ZNXARI::znx_sub_negate_assign(res.at_mut(res_col, j), tmp);
     }
 }
 
@@ -89,12 +89,12 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_mul_xp_minus_one_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_mul_xp_minus_one_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_mul_xp_minus_one_inplace::{label}");
+    let group_name: String = format!("vec_znx_mul_xp_minus_one_assign::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -113,14 +113,14 @@ where
 
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
 
-        let mut scratch = ScratchOwned::alloc(module.vec_znx_mul_xp_minus_one_inplace_tmp_bytes());
+        let mut scratch = ScratchOwned::alloc(module.vec_znx_mul_xp_minus_one_assign_tmp_bytes());
 
         // Fill a with random i64
         res.fill_uniform(50, &mut source);
 
         move || {
             for i in 0..cols {
-                module.vec_znx_mul_xp_minus_one_inplace(-7, &mut res, i, scratch.borrow());
+                module.vec_znx_mul_xp_minus_one_assign(-7, &mut res, i, scratch.borrow());
             }
             black_box(());
         }

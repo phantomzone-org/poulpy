@@ -11,29 +11,29 @@
 //! | [`test_add_ct_delta_a_gt_b`] | `a.log_hom_rem() > b.log_hom_rem()` → a shifted to align with b |
 //! | [`test_add_ct_smaller_output`] | `offset > 0` (output one limb narrower than inputs) |
 //!
-//! ## Operations-layer ct+ct (`GLWE<_, CKKS>::add_inplace`)
+//! ## Operations-layer ct+ct (`GLWE<_, CKKS>::add_assign`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_add_ct_inplace_aligned`] | `self.log_hom_rem() == a.log_hom_rem()` |
-//! | [`test_add_ct_inplace_self_lt`] | `self.log_hom_rem() < a.log_hom_rem()` → a shifted to align with self |
-//! | [`test_add_ct_inplace_self_gt`] | `self.log_hom_rem() > a.log_hom_rem()` → self shifted to align with a |
+//! | [`test_add_ct_assign_aligned`] | `self.log_hom_rem() == a.log_hom_rem()` |
+//! | [`test_add_ct_assign_self_lt`] | `self.log_hom_rem() < a.log_hom_rem()` → a shifted to align with self |
+//! | [`test_add_ct_assign_self_gt`] | `self.log_hom_rem() > a.log_hom_rem()` → self shifted to align with a |
 //!
-//! ## Operations-layer ct + ZNX plaintext (`GLWE<_, CKKS>::add_pt_vec_znx[_inplace]`)
-//!
-//! | Function | Path exercised |
-//! |----------|----------------|
-//! | [`test_add_pt_vec_znx_inplace`] | in-place, `offset == 0` |
-//! | [`test_add_pt_vec_znx_aligned`] | out-of-place, `offset == 0` |
-//! | [`test_add_pt_vec_znx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
-//!
-//! ## Operations-layer ct + RNX plaintext (`GLWE<_, CKKS>::add_pt_vec_rnx[_inplace]`)
+//! ## Operations-layer ct + ZNX plaintext (`GLWE<_, CKKS>::add_pt_vec_znx[_assign]`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_add_pt_vec_rnx_inplace`] | in-place, `offset == 0`, RNX → ZNX auto-conversion |
-//! | [`test_add_pt_vec_rnx_aligned`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
-//! | [`test_add_pt_vec_rnx_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
+//! | [`test_add_pt_vec_znx_assign`] | in-place, `offset == 0` |
+//! | [`test_add_pt_vec_znx_into_aligned`] | out-of-place, `offset == 0` |
+//! | [`test_add_pt_vec_znx_into_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
+//!
+//! ## Operations-layer ct + RNX plaintext (`GLWE<_, CKKS>::add_pt_vec_rnx[_assign]`)
+//!
+//! | Function | Path exercised |
+//! |----------|----------------|
+//! | [`test_add_pt_vec_rnx_assign`] | in-place, `offset == 0`, RNX → ZNX auto-conversion |
+//! | [`test_add_pt_vec_rnx_into_aligned`] | out-of-place, `offset == 0`, RNX → ZNX auto-conversion |
+//! | [`test_add_pt_vec_rnx_into_smaller_output`] | out-of-place, `offset > 0` (output one limb narrower) |
 
 use crate::{
     CKKSCompositionError, CKKSInfos,
@@ -61,7 +61,7 @@ pub fn test_add_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>)
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("add_ct_aligned", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("add_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -78,7 +78,7 @@ pub fn test_add_ct_delta_a_lt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("add_ct a_lt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("add_ct a_lt_b", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -95,7 +95,7 @@ pub fn test_add_ct_delta_a_gt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
     );
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("add_ct a_gt_b", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("add_ct a_gt_b", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -111,7 +111,7 @@ pub fn test_add_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestConte
     let ct2 = ctx.encrypt_with_prec(ctx.max_k() - DELTA_LOG_DECIMAL, &b_re, &b_im, low_prec, scratch.borrow());
     let (want_re, want_im) = ctx.want_add_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("add_ct delta_log_decimal", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision_at_log_decimal(
         "add_ct delta_log_decimal",
@@ -134,28 +134,28 @@ pub fn test_add_ct_aligned_smaller_output<BE: Backend, F: TestScalar>(ctx: &Test
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ctx.module.ckks_add(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
+    ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     assert_binary_output_meta("add_ct smaller_output", &ct_res, &ct1, &ct2);
     ctx.assert_decrypt_precision("add_ct smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-// ─── ct+ct in-place (GLWE<_, CKKS>::add_inplace) ────────────────────────────
+// ─── ct+ct in-place (GLWE<_, CKKS>::add_assign) ────────────────────────────
 
 /// ct+ct in-place, aligned (same log_hom_rem()).
-pub fn test_add_ct_inplace_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_ct_assign_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_add();
     let expected_log_hom_rem = ct1.log_hom_rem().min(ct2.log_hom_rem());
     let expected_log_decimal = ct1.log_decimal().max(ct2.log_decimal());
-    ctx.module.ckks_add_inplace(&mut ct1, &ct2, scratch.borrow()).unwrap();
-    assert_ct_meta("add_ct_inplace_aligned", &ct1, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_ct_inplace_aligned", &ct1, &want_re, &want_im, scratch.borrow());
+    ctx.module.ckks_add_assign(&mut ct1, &ct2, scratch.borrow()).unwrap();
+    assert_ct_meta("add_ct_assign_aligned", &ct1, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_ct_assign_aligned", &ct1, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct+ct in-place, self.log_hom_rem() < a.log_hom_rem() (a is shifted down to align with self).
-pub fn test_add_ct_inplace_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_ct_assign_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_self = ctx.encrypt(
         ctx.max_k() - ctx.base2k().as_usize() - 1,
@@ -168,14 +168,14 @@ pub fn test_add_ct_inplace_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext
     let expected_log_hom_rem = ct_self.log_hom_rem().min(ct_other.log_hom_rem());
     let expected_log_decimal = ct_self.log_decimal().max(ct_other.log_decimal());
     ctx.module
-        .ckks_add_inplace(&mut ct_self, &ct_other, scratch.borrow())
+        .ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow())
         .unwrap();
-    assert_ct_meta("add_ct_inplace self_lt", &ct_self, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_ct_inplace self_lt", &ct_self, &want_re, &want_im, scratch.borrow());
+    assert_ct_meta("add_ct_assign self_lt", &ct_self, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_ct_assign self_lt", &ct_self, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct+ct in-place, self.log_hom_rem() > a.log_hom_rem() (self is shifted down to align with a).
-pub fn test_add_ct_inplace_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_ct_assign_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_self = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct_other = ctx.encrypt(
@@ -188,16 +188,16 @@ pub fn test_add_ct_inplace_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext
     let expected_log_hom_rem = ct_self.log_hom_rem().min(ct_other.log_hom_rem());
     let expected_log_decimal = ct_self.log_decimal().max(ct_other.log_decimal());
     ctx.module
-        .ckks_add_inplace(&mut ct_self, &ct_other, scratch.borrow())
+        .ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow())
         .unwrap();
-    assert_ct_meta("add_ct_inplace self_gt", &ct_self, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_ct_inplace self_gt", &ct_self, &want_re, &want_im, scratch.borrow());
+    assert_ct_meta("add_ct_assign self_gt", &ct_self, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_ct_assign self_gt", &ct_self, &want_re, &want_im, scratch.borrow());
 }
 
-// ─── ct + compact ZNX plaintext (GLWE<_, CKKS>::add_pt_vec_znx[_inplace]) ────────
+// ─── ct + compact ZNX plaintext (GLWE<_, CKKS>::add_pt_vec_znx[_assign]) ────────
 
 /// ct + ZNX plaintext, in-place.
-pub fn test_add_pt_vec_znx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_znx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
@@ -205,28 +205,28 @@ pub fn test_add_pt_vec_znx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
     ctx.module
-        .ckks_add_pt_vec_znx_inplace(&mut ct, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_assign(&mut ct, &pt_znx, scratch.borrow())
         .unwrap();
-    assert_ct_meta("add_pt_vec_znx_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_pt_vec_znx_inplace", &ct, &want_re, &want_im, scratch.borrow());
+    assert_ct_meta("add_pt_vec_znx_assign", &ct, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_pt_vec_znx_assign", &ct, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + ZNX plaintext, out-of-place.
-pub fn test_add_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_add_pt_vec_znx(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_into(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_znx", &ct_res, &ct1);
     ctx.assert_decrypt_precision("add_pt_vec_znx", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + ZNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
-pub fn test_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_znx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -237,7 +237,7 @@ pub fn test_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &T
     let (want_re, want_im) = ctx.want_add_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_add_pt_vec_znx(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_into(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_znx delta_log_decimal", &ct_res, &ct1);
     ctx.assert_decrypt_precision_at_log_decimal(
@@ -250,10 +250,10 @@ pub fn test_add_pt_vec_znx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &T
     );
 }
 
-// ─── ct + float RNX plaintext (GLWE<_, CKKS>::add_pt_vec_rnx[_inplace]) ──────────
+// ─── ct + float RNX plaintext (GLWE<_, CKKS>::add_pt_vec_rnx[_assign]) ──────────
 
 /// ct + RNX plaintext, in-place (auto-converts RNX → ZNX using scratch).
-pub fn test_add_pt_vec_rnx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_rnx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
@@ -261,28 +261,28 @@ pub fn test_add_pt_vec_rnx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext
     let expected_log_decimal = ct.log_decimal();
     let expected_log_hom_rem = ct.log_hom_rem();
     ctx.module
-        .ckks_add_pt_vec_rnx_inplace(&mut ct, &pt_rnx, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_assign(&mut ct, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
-    assert_ct_meta("add_pt_vec_rnx_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_pt_vec_rnx_inplace", &ct, &want_re, &want_im, scratch.borrow());
+    assert_ct_meta("add_pt_vec_rnx_assign", &ct, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_pt_vec_rnx_assign", &ct, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + RNX plaintext, out-of-place (auto-converts RNX → ZNX using scratch).
-pub fn test_add_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_add_pt_vec_rnx(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_into(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_rnx", &ct_res, &ct1);
     ctx.assert_decrypt_precision("add_pt_vec_rnx", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + RNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
-pub fn test_add_pt_vec_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -293,7 +293,7 @@ pub fn test_add_pt_vec_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &T
     let (want_re, want_im) = ctx.want_add_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_add_pt_vec_rnx(&mut ct_res, &ct1, &pt_rnx, low_prec, scratch.borrow())
+        .ckks_add_pt_vec_rnx_into(&mut ct_res, &ct1, &pt_rnx, low_prec, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_rnx delta_log_decimal", &ct_res, &ct1);
     ctx.assert_decrypt_precision_at_log_decimal(
@@ -307,7 +307,7 @@ pub fn test_add_pt_vec_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &T
 }
 
 /// ct + complex constant, out-of-place.
-pub fn test_add_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_const_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
@@ -315,14 +315,14 @@ pub fn test_add_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_const_rnx_into(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
-    assert_unary_output_meta("add_const_aligned", &ct_res, &ct);
-    ctx.assert_decrypt_precision("add_const_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    assert_unary_output_meta("add_const_into_aligned", &ct_res, &ct);
+    ctx.assert_decrypt_precision("add_const_into_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + complex constant, in-place.
-pub fn test_add_const_rnx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_const_rnx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
@@ -331,14 +331,14 @@ pub fn test_add_const_rnx_inplace<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let expected_log_hom_rem = ct.log_hom_rem();
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_add_pt_const_rnx_inplace(&mut ct, &cst, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_const_rnx_assign(&mut ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
-    assert_ct_meta("add_const_inplace", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision("add_const_inplace", &ct, &want_re, &want_im, scratch.borrow());
+    assert_ct_meta("add_const_assign", &ct, expected_log_decimal, expected_log_hom_rem);
+    ctx.assert_decrypt_precision("add_const_assign", &ct, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + complex constant, out-of-place, constant encoded at lower decimal precision.
-pub fn test_add_const_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_const_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
     let low_prec = ctx.precision_at(low_log_decimal);
@@ -349,11 +349,11 @@ pub fn test_add_const_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &Te
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, low_prec, scratch.borrow())
+        .ckks_add_pt_const_rnx_into(&mut ct_res, &ct, &cst, low_prec, scratch.borrow())
         .unwrap();
-    assert_unary_output_meta("add_const_delta_log_decimal", &ct_res, &ct);
+    assert_unary_output_meta("add_const_into_delta_log_decimal", &ct_res, &ct);
     ctx.assert_decrypt_precision_at_log_decimal(
-        "add_const_delta_log_decimal",
+        "add_const_into_delta_log_decimal",
         &ct_res,
         &want_re,
         &want_im,
@@ -363,7 +363,7 @@ pub fn test_add_const_rnx_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &Te
 }
 
 /// ct + real constant only, out-of-place.
-pub fn test_add_const_rnx_real_only<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_const_rnx_into_real_only<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_decimal);
@@ -371,13 +371,13 @@ pub fn test_add_const_rnx_real_only<BE: Backend, F: TestScalar>(ctx: &TestContex
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst = ctx.const_rnx(Some(CONST_RE), None);
     ctx.module
-        .ckks_add_pt_const_rnx(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_const_rnx_into(&mut ct_res, &ct, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
-    assert_unary_output_meta("add_const_real_only", &ct_res, &ct);
-    ctx.assert_decrypt_precision("add_const_real_only", &ct_res, &want_re, &want_im, scratch.borrow());
+    assert_unary_output_meta("add_const_into_real_only", &ct_res, &ct);
+    ctx.assert_decrypt_precision("add_const_into_real_only", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
@@ -394,24 +394,24 @@ pub fn test_add_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<
         )
         .unwrap();
     ctx.module
-        .ckks_add_pt_const_znx(&mut ct_res, &ct, &cst_znx, scratch.borrow())
+        .ckks_add_pt_const_znx_into(&mut ct_res, &ct, &cst_znx, scratch.borrow())
         .unwrap();
-    assert_unary_output_meta("add_const_znx_aligned", &ct_res, &ct);
-    ctx.assert_decrypt_precision("add_const_znx_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    assert_unary_output_meta("add_const_znx_into_aligned", &ct_res, &ct);
+    ctx.assert_decrypt_precision("add_const_znx_into_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// ct + ZNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
 ///
 /// Exercises the lsh-then-add path in `add_pt_vec_znx`.  The output log_hom_rem() must
 /// equal `a.log_hom_rem() − base2k`, not the original `a.log_hom_rem()`.
-pub fn test_add_pt_vec_znx_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_znx_into_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_znx = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ctx.module
-        .ckks_add_pt_vec_znx(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_into(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_znx smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision("add_pt_vec_znx smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
@@ -419,16 +419,16 @@ pub fn test_add_pt_vec_znx_smaller_output<BE: Backend, F: TestScalar>(ctx: &Test
 
 /// ct + RNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
 ///
-/// Same path as `test_add_pt_vec_znx_smaller_output` but entered via `add_pt_vec_rnx`
+/// Same path as `test_add_pt_vec_znx_into_smaller_output` but entered via `add_pt_vec_rnx`
 /// (which converts RNX → ZNX internally before delegating to `add_pt_vec_znx`).
-pub fn test_add_pt_vec_rnx_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_pt_vec_rnx_into_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ctx.module
-        .ckks_add_pt_vec_rnx(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
+        .ckks_add_pt_vec_rnx_into(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_unary_output_meta("add_pt_vec_rnx smaller_output", &ct_res, &ct1);
     ctx.assert_decrypt_precision("add_pt_vec_rnx smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
@@ -441,13 +441,13 @@ pub fn test_add_pt_vec_znx_base2k_mismatch_error<BE: Backend, F: TestScalar>(ctx
     let pt_znx = alloc_pt_znx(ctx.degree(), Base2K((ctx.base2k().as_usize() / 2) as u32), ctx.meta());
     let err = ctx
         .module
-        .ckks_add_pt_vec_znx_inplace(&mut ct, &pt_znx, scratch.borrow())
+        .ckks_add_pt_vec_znx_assign(&mut ct, &pt_znx, scratch.borrow())
         .unwrap_err();
     assert_ckks_error(
         "add_pt_vec_znx_base2k_mismatch",
         &err,
         CKKSCompositionError::PlaintextBase2KMismatch {
-            op: "ckks_add_pt_vec_znx",
+            op: "ckks_add_pt_vec_znx_into",
             ct_base2k: ctx.base2k().as_usize(),
             pt_base2k: pt_znx.base2k().as_usize(),
         },

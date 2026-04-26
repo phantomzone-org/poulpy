@@ -95,7 +95,7 @@ pub trait VecZnxDftSub<B: Backend> {
 
 /// In-place subtraction in DFT domain: `res -= a`.
 pub trait VecZnxDftSubInplace<B: Backend> {
-    fn vec_znx_dft_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
@@ -103,7 +103,7 @@ pub trait VecZnxDftSubInplace<B: Backend> {
 
 /// In-place negated subtraction in DFT domain: `res = a - res`.
 pub trait VecZnxDftSubNegateInplace<B: Backend> {
-    fn vec_znx_dft_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;

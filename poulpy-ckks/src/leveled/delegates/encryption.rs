@@ -45,7 +45,7 @@ where
         let log_hom_rem = checked_log_hom_rem_sub("ckks_encrypt_sk", enc_infos.noise_infos().k, pt.log_decimal())?;
         ct.meta.log_hom_rem = log_hom_rem;
         ct.meta.log_decimal = pt.log_decimal();
-        self.ckks_add_pt_vec_znx_inplace(ct, pt, scratch)?;
+        self.ckks_add_pt_vec_znx_assign(ct, pt, scratch)?;
         Ok(())
     }
 }

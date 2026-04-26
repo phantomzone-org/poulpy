@@ -19,7 +19,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOps<BE> for Module<BE> {
         CKKSConjugateOep::ckks_conjugate_tmp_bytes(self, ct_infos, key_infos)
     }
 
-    fn ckks_conjugate(
+    fn ckks_conjugate_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -30,10 +30,10 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOps<BE> for Module<BE> {
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        CKKSConjugateOep::ckks_conjugate(self, dst, src, key, scratch)
+        CKKSConjugateOep::ckks_conjugate_into(self, dst, src, key, scratch)
     }
 
-    fn ckks_conjugate_inplace(
+    fn ckks_conjugate_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
@@ -43,6 +43,6 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOps<BE> for Module<BE> {
         Self: GLWEAutomorphism<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        CKKSConjugateOep::ckks_conjugate_inplace(self, dst, key, scratch)
+        CKKSConjugateOep::ckks_conjugate_assign(self, dst, key, scratch)
     }
 }

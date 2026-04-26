@@ -30,7 +30,7 @@ pub trait ZnxAdd {
 }
 
 pub trait ZnxAddInplace {
-    fn znx_add_inplace(res: &mut [i64], a: &[i64]);
+    fn znx_add_assign(res: &mut [i64], a: &[i64]);
 }
 
 pub trait ZnxSub {
@@ -38,11 +38,11 @@ pub trait ZnxSub {
 }
 
 pub trait ZnxSubInplace {
-    fn znx_sub_inplace(res: &mut [i64], a: &[i64]);
+    fn znx_sub_assign(res: &mut [i64], a: &[i64]);
 }
 
 pub trait ZnxSubNegateInplace {
-    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]);
+    fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]);
 }
 
 pub trait ZnxAutomorphism {
@@ -58,7 +58,7 @@ pub trait ZnxNegate {
 }
 
 pub trait ZnxNegateInplace {
-    fn znx_negate_inplace(res: &mut [i64]);
+    fn znx_negate_assign(res: &mut [i64]);
 }
 
 pub trait ZnxRotate {
@@ -78,7 +78,7 @@ pub trait ZnxMulAddPowerOfTwo {
 }
 
 pub trait ZnxMulPowerOfTwoInplace {
-    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]);
+    fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]);
 }
 
 pub trait ZnxSwitchRing {
@@ -102,7 +102,7 @@ pub trait ZnxNormalizeFirstStepCarryOnly {
 }
 
 pub trait ZnxNormalizeFirstStepInplace {
-    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeMiddleStepCarryOnly {
@@ -110,7 +110,7 @@ pub trait ZnxNormalizeMiddleStepCarryOnly {
 }
 
 pub trait ZnxNormalizeMiddleStepInplace {
-    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeMiddleStepSub {
@@ -122,7 +122,7 @@ pub trait ZnxNormalizeFinalStepSub {
 }
 
 pub trait ZnxNormalizeFinalStepInplace {
-    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxExtractDigitAddMul {

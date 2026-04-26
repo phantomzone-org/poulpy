@@ -187,7 +187,7 @@ where
     // X^{data * 2^log_gap_out}
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n_glwe, 1);
     pt_ggsw.at_mut(0, 0)[0] = 1;
-    module.vec_znx_rotate_inplace(data * (1 << log_gap_out), &mut pt_ggsw.as_vec_znx_mut(), 0, scratch.borrow());
+    module.vec_znx_rotate_assign(data * (1 << log_gap_out), &mut pt_ggsw.as_vec_znx_mut(), 0, scratch.borrow());
 
     for row in 0..res.dnum().as_usize() {
         for col in 0..res.rank().as_usize() + 1 {
@@ -217,7 +217,7 @@ where
     let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
     module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
-    module.glwe_external_product_inplace(&mut ct_glwe, &res_prepared, scratch.borrow());
+    module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
@@ -407,7 +407,7 @@ where
     let mut res_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&res);
     module.ggsw_prepare(&mut res_prepared, &res, scratch.borrow());
 
-    module.glwe_external_product_inplace(&mut ct_glwe, &res_prepared, scratch.borrow());
+    module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     module.glwe_decrypt(&ct_glwe, &mut pt_res, &sk_glwe_prepared, scratch.borrow());

@@ -23,7 +23,7 @@
 //! - **Normalization**: [`ntt120_vec_znx_big_normalize`] — extract base-2k digits from
 //!   `i128` limbs into `i64` `VecZnx` output.  Uses an `i128` carry buffer.
 //! - **Automorphism**: [`ntt120_vec_znx_big_automorphism`] /
-//!   [`ntt120_vec_znx_big_automorphism_inplace`] — apply `X → X^p` on `i128` coefficients.
+//!   [`ntt120_vec_znx_big_automorphism_assign`] — apply `X → X^p` on `i128` coefficients.
 //! - **Gaussian noise**: [`ntt120_vec_znx_big_add_normal_ref`] — add rounded Gaussian
 //!   noise into a specified limb of a `VecZnxBig`.
 //!
@@ -52,13 +52,13 @@ fn nfc_zero(x: &mut [i128]) {
 
 /// Add two `i128` slices in-place: `res += a`.
 #[inline(always)]
-fn nfc_add_inplace(res: &mut [i128], a: &[i128]) {
+fn nfc_add_assign(res: &mut [i128], a: &[i128]) {
     res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = r.wrapping_add(ai));
 }
 
 /// Multiply an `i128` slice by `2^power` in-place (positive = left shift, negative = right shift).
 #[inline(always)]
-fn nfc_mul_pow2_inplace(power: i64, x: &mut [i128]) {
+fn nfc_mul_pow2_assign(power: i64, x: &mut [i128]) {
     if power > 0 {
         x.iter_mut().for_each(|xi| *xi <<= power as u32);
     } else if power < 0 {
@@ -181,7 +181,7 @@ impl AssignOp for SubOp {
 }
 
 #[inline(always)]
-fn nfc_middle_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+fn nfc_middle_step_into<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
     debug_assert_eq!(res.len(), a.len());
     debug_assert!(res.len() <= carry.len());
     debug_assert!(lsh < base2k);
@@ -220,10 +220,10 @@ fn nfc_middle_carry_assign<O: AssignOp>(base2k: usize, res: &mut [i64], carry: &
 
 /// Middle in-place: update an existing `i64` `res` limb using `i128` carry.
 ///
-/// Analogous to `znx_normalize_middle_step_inplace_ref` but with `i128` carry.
+/// Analogous to `znx_normalize_middle_step_assign_ref` but with `i128` carry.
 #[inline(always)]
 #[allow(dead_code)]
-fn nfc_middle_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+fn nfc_middle_step_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     debug_assert!(res.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -253,10 +253,10 @@ fn nfc_middle_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &m
 
 /// Final in-place step: flush `i128` carry into the last `i64` res limb.
 ///
-/// Analogous to `znx_normalize_final_step_inplace_ref` but with `i128` carry.
+/// Analogous to `znx_normalize_final_step_assign_ref` but with `i128` carry.
 #[inline(always)]
 #[allow(dead_code)]
-fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+fn nfc_final_step_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     debug_assert!(res.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -275,7 +275,7 @@ fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mu
 }
 
 #[inline(always)]
-fn nfc_final_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+fn nfc_final_step_into<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
     debug_assert!(res.len() <= carry.len());
     debug_assert!(lsh < base2k);
 
@@ -438,9 +438,9 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
     for j in 0..res_end {
         res.at_mut(res_col, res_end - j - 1).fill(0);
         if j == res_end - 1 {
-            BE::nfc_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::nfc_final_step_assign(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
-            BE::nfc_middle_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::nfc_middle_step_assign(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         }
     }
 }
@@ -538,7 +538,7 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
         if j == 0 {
             if !(a_tot_bits - a_start_bit).is_multiple_of(a_base2k) {
                 let take: usize = (a_tot_bits - a_start_bit) % a_base2k;
-                nfc_mul_pow2_inplace(-(take as i64), a_norm);
+                nfc_mul_pow2_assign(-(take as i64), a_norm);
                 a_take_left -= take;
             } else if !(res_tot_bits - res_start_bit).is_multiple_of(res_base2k) {
                 res_acc_left -= (res_tot_bits - res_start_bit) % res_base2k;
@@ -558,13 +558,13 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
 
             if res_acc_left == 0 || a_limb == 0 {
                 if a_limb == 0 && a_take_left == 0 {
-                    nfc_add_inplace(a_carry, a_norm);
+                    nfc_add_assign(a_carry, a_norm);
                     if res_acc_left != 0 {
                         let scale: usize = res_base2k - res_acc_left;
                         nfc_extract_digit_addmul(res_acc_left, scale, res_slice, a_carry);
                     }
-                    BE::nfc_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
-                    nfc_add_inplace(res_carry, a_carry);
+                    BE::nfc_middle_step_assign(res_base2k, 0, res_slice, res_carry);
+                    nfc_add_assign(res_carry, a_carry);
                     break 'outer;
                 }
 
@@ -577,7 +577,7 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
             }
 
             if a_take_left == 0 {
-                nfc_add_inplace(a_carry, a_norm);
+                nfc_add_assign(a_carry, a_norm);
                 break 'inner;
             }
         }
@@ -588,9 +588,9 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
         let carry_to_use = if a_start == a_end { a_carry } else { res_carry };
         for j in 0..res_end {
             if j == res_end - 1 {
-                BE::nfc_final_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::nfc_final_step_assign(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             } else {
-                BE::nfc_middle_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::nfc_middle_step_assign(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             }
         }
     }
@@ -648,7 +648,7 @@ fn ntt120_vec_znx_big_normalize_inter_assign<O, R, A, BE>(
 
     let mid_range: usize = a_start.saturating_sub(a_end);
     for j in 0..mid_range {
-        BE::nfc_middle_step_assign::<O>(
+        BE::nfc_middle_step_into::<O>(
             base2k,
             lsh_pos,
             res.at_mut(res_col, res_start - j - 1),
@@ -745,7 +745,7 @@ fn ntt120_vec_znx_big_normalize_cross_assign<O, R, A, BE>(
         if j == 0 {
             if !(a_tot_bits - a_start_bit).is_multiple_of(a_base2k) {
                 let take: usize = (a_tot_bits - a_start_bit) % a_base2k;
-                nfc_mul_pow2_inplace(-(take as i64), a_norm);
+                nfc_mul_pow2_assign(-(take as i64), a_norm);
                 a_take_left -= take;
             } else if !(res_tot_bits - res_start_bit).is_multiple_of(res_base2k) {
                 res_acc_left -= (res_tot_bits - res_start_bit) % res_base2k;
@@ -765,13 +765,13 @@ fn ntt120_vec_znx_big_normalize_cross_assign<O, R, A, BE>(
 
             if res_acc_left == 0 || a_limb == 0 {
                 if a_limb == 0 && a_take_left == 0 {
-                    nfc_add_inplace(a_carry, a_norm);
+                    nfc_add_assign(a_carry, a_norm);
                     if res_acc_left != 0 {
                         let scale: usize = res_base2k - res_acc_left;
                         nfc_extract_digit_assignmul::<O>(res_acc_left, scale, res_slice, a_carry);
                     }
-                    BE::nfc_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
-                    nfc_add_inplace(res_carry, a_carry);
+                    BE::nfc_middle_step_assign(res_base2k, 0, res_slice, res_carry);
+                    nfc_add_assign(res_carry, a_carry);
                     break 'outer;
                 }
 
@@ -784,7 +784,7 @@ fn ntt120_vec_znx_big_normalize_cross_assign<O, R, A, BE>(
             }
 
             if a_take_left == 0 {
-                nfc_add_inplace(a_carry, a_norm);
+                nfc_add_assign(a_carry, a_norm);
                 break 'inner;
             }
         }
@@ -826,7 +826,7 @@ pub trait I128BigOps {
     }
     /// `res[i] = res[i].wrapping_add(a[i])` for each `i`.
     #[inline(always)]
-    fn i128_add_inplace(res: &mut [i128], a: &[i128]) {
+    fn i128_add_assign(res: &mut [i128], a: &[i128]) {
         res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = r.wrapping_add(ai));
     }
     /// `res[i] = a[i].wrapping_add(b[i] as i128)` for each `i`.
@@ -839,7 +839,7 @@ pub trait I128BigOps {
     }
     /// `res[i] = res[i].wrapping_add(a[i] as i128)` for each `i`.
     #[inline(always)]
-    fn i128_add_small_inplace(res: &mut [i128], a: &[i64]) {
+    fn i128_add_small_assign(res: &mut [i128], a: &[i64]) {
         res.iter_mut()
             .zip(a.iter())
             .for_each(|(r, &ai)| *r = r.wrapping_add(ai as i128));
@@ -854,12 +854,12 @@ pub trait I128BigOps {
     }
     /// `res[i] = res[i].wrapping_sub(a[i])` for each `i`.
     #[inline(always)]
-    fn i128_sub_inplace(res: &mut [i128], a: &[i128]) {
+    fn i128_sub_assign(res: &mut [i128], a: &[i128]) {
         res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = r.wrapping_sub(ai));
     }
     /// `res[i] = a[i].wrapping_sub(res[i])` for each `i`.
     #[inline(always)]
-    fn i128_sub_negate_inplace(res: &mut [i128], a: &[i128]) {
+    fn i128_sub_negate_assign(res: &mut [i128], a: &[i128]) {
         res.iter_mut().zip(a.iter()).for_each(|(r, &ai)| *r = ai.wrapping_sub(*r));
     }
     /// `res[i] = (a[i] as i128).wrapping_sub(b[i])` for each `i`.
@@ -880,14 +880,14 @@ pub trait I128BigOps {
     }
     /// `res[i] = res[i].wrapping_sub(a[i] as i128)` for each `i`.
     #[inline(always)]
-    fn i128_sub_small_inplace(res: &mut [i128], a: &[i64]) {
+    fn i128_sub_small_assign(res: &mut [i128], a: &[i64]) {
         res.iter_mut()
             .zip(a.iter())
             .for_each(|(r, &ai)| *r = r.wrapping_sub(ai as i128));
     }
     /// `res[i] = (a[i] as i128).wrapping_sub(res[i])` for each `i`.
     #[inline(always)]
-    fn i128_sub_small_negate_inplace(res: &mut [i128], a: &[i64]) {
+    fn i128_sub_small_negate_assign(res: &mut [i128], a: &[i64]) {
         res.iter_mut()
             .zip(a.iter())
             .for_each(|(r, &ai)| *r = (ai as i128).wrapping_sub(*r));
@@ -899,7 +899,7 @@ pub trait I128BigOps {
     }
     /// `res[i] = res[i].wrapping_neg()` for each `i`.
     #[inline(always)]
-    fn i128_negate_inplace(res: &mut [i128]) {
+    fn i128_negate_assign(res: &mut [i128]) {
         res.iter_mut().for_each(|r| *r = r.wrapping_neg());
     }
     /// `res[i] = -(a[i] as i128)` for each `i`.
@@ -955,15 +955,15 @@ pub trait I128NormalizeOps {
 
     /// Fused middle step for `res ±= normalize(a)`.  `O = AddOp` adds; `O = SubOp` subtracts.
     #[inline(always)]
-    fn nfc_middle_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
-        nfc_middle_step_assign::<O>(base2k, lsh, res, a, carry);
+    fn nfc_middle_step_into<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
+        nfc_middle_step_into::<O>(base2k, lsh, res, a, carry);
     }
 
     /// Update an existing `i64` res limb using `i128` carry, updating carry in place.
     ///
-    /// Equivalent to the private `nfc_middle_step_inplace` helper.
+    /// Equivalent to the private `nfc_middle_step_assign` helper.
     #[inline(always)]
-    fn nfc_middle_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    fn nfc_middle_step_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
         if lsh == 0 {
             res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
                 let ri = *r as i128;
@@ -990,9 +990,9 @@ pub trait I128NormalizeOps {
 
     /// Flush `i128` carry into the last `i64` res limb.
     ///
-    /// Equivalent to the private `nfc_final_step_inplace` helper.
+    /// Equivalent to the private `nfc_final_step_assign` helper.
     #[inline(always)]
-    fn nfc_final_step_inplace(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+    fn nfc_final_step_assign(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
         if lsh == 0 {
             res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
                 let ri = *r as i128;
@@ -1009,8 +1009,8 @@ pub trait I128NormalizeOps {
 
     /// Fused final step for `res ±= normalize(a)`.  `O = AddOp` adds; `O = SubOp` subtracts.
     #[inline(always)]
-    fn nfc_final_step_assign<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
-        nfc_final_step_assign::<O>(base2k, lsh, res, carry);
+    fn nfc_final_step_into<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
+        nfc_final_step_into::<O>(base2k, lsh, res, carry);
     }
 }
 
@@ -1024,8 +1024,8 @@ pub fn ntt120_vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
 }
 
 /// Returns the scratch size (in bytes) required by
-/// [`ntt120_vec_znx_big_automorphism_inplace`].
-pub fn ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(n: usize) -> usize {
+/// [`ntt120_vec_znx_big_automorphism_assign`].
+pub fn ntt120_vec_znx_big_automorphism_assign_tmp_bytes(n: usize) -> usize {
     n * size_of::<i128>()
 }
 
@@ -1086,7 +1086,7 @@ where
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::i128_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
@@ -1135,7 +1135,7 @@ where
     let a = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::i128_add_small_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_add_small_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
@@ -1180,7 +1180,7 @@ where
 }
 
 /// In-place subtraction: `res[res_col] -= a[a_col]`.
-pub fn ntt120_vec_znx_big_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt120_vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
@@ -1190,12 +1190,12 @@ where
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::i128_sub_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_sub_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
 /// Swap-subtract in-place: `res[res_col] = a[a_col] - res[res_col]`.
-pub fn ntt120_vec_znx_big_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt120_vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
@@ -1207,10 +1207,10 @@ where
     let sum_size = res_size.min(a.size());
 
     for j in 0..sum_size {
-        BE::i128_sub_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_sub_negate_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in a.size()..res_size {
-        BE::i128_negate_inplace(res.at_mut(res_col, j));
+        BE::i128_negate_assign(res.at_mut(res_col, j));
     }
 }
 
@@ -1283,7 +1283,7 @@ where
 }
 
 /// In-place: `res[res_col] -= a[a_col]` where `a` is a `VecZnx` (i64).
-pub fn ntt120_vec_znx_big_sub_small_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt120_vec_znx_big_sub_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
@@ -1293,12 +1293,12 @@ where
     let a = a.to_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
-        BE::i128_sub_small_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_sub_small_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
 /// In-place: `res[res_col] = a[a_col] - res[res_col]` where `a` is a `VecZnx` (i64).
-pub fn ntt120_vec_znx_big_sub_small_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn ntt120_vec_znx_big_sub_small_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
@@ -1310,10 +1310,10 @@ where
     let sum_size = res_size.min(a.size());
 
     for j in 0..sum_size {
-        BE::i128_sub_small_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::i128_sub_small_negate_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
     for j in a.size()..res_size {
-        BE::i128_negate_inplace(res.at_mut(res_col, j));
+        BE::i128_negate_assign(res.at_mut(res_col, j));
     }
 }
 
@@ -1339,14 +1339,14 @@ where
 }
 
 /// In-place negation: `res[res_col] = -res[res_col]`.
-pub fn ntt120_vec_znx_big_negate_inplace<R, BE>(res: &mut R, res_col: usize)
+pub fn ntt120_vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
     R: VecZnxBigToMut<BE>,
 {
     let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     for j in 0..res.size() {
-        BE::i128_negate_inplace(res.at_mut(res_col, j));
+        BE::i128_negate_assign(res.at_mut(res_col, j));
     }
 }
 
@@ -1499,9 +1499,9 @@ where
 
 /// Apply `X → X^p` in-place to `res[res_col]`.
 ///
-/// `tmp` must have at least `ntt120_vec_znx_big_automorphism_inplace_tmp_bytes(n) / 16`
+/// `tmp` must have at least `ntt120_vec_znx_big_automorphism_assign_tmp_bytes(n) / 16`
 /// elements (i.e., `n` `i128` values).
-pub fn ntt120_vec_znx_big_automorphism_inplace<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i128])
+pub fn ntt120_vec_znx_big_automorphism_assign<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i128])
 where
     BE: Backend<ScalarBig = i128>,
     R: VecZnxBigToMut<BE>,

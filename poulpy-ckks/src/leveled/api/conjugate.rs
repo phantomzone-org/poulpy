@@ -14,7 +14,7 @@ pub trait CKKSConjugateOps<BE: Backend + CKKSImpl<BE>> {
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
-    fn ckks_conjugate(
+    fn ckks_conjugate_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         src: &CKKSCiphertext<impl DataRef>,
@@ -25,7 +25,7 @@ pub trait CKKSConjugateOps<BE: Backend + CKKSImpl<BE>> {
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
-    fn ckks_conjugate_inplace(
+    fn ckks_conjugate_assign(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,

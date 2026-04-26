@@ -127,7 +127,7 @@ where
 
             module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
 
-            module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_rotate_assign(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
@@ -167,7 +167,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_external_product_inplace<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
+pub fn test_ggsw_external_product_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
@@ -264,9 +264,9 @@ where
             let mut ct_rhs_prepared: GGSWPrepared<DeviceBuf<BE>, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
             module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, scratch.borrow());
 
-            module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, scratch.borrow());
+            module.ggsw_external_product_assign(&mut ggsw_out, &ct_rhs_prepared, scratch.borrow());
 
-            module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
+            module.vec_znx_rotate_assign(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;

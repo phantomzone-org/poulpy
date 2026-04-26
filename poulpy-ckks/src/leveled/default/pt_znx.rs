@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
-    fn ckks_add_pt_vec_znx_default(
+    fn ckks_add_pt_vec_znx_into_default(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
         pt: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -24,9 +24,9 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshAddInto<BE>,
     {
-        ensure_base2k_match("ckks_add_pt_vec_znx", ct.base2k().as_usize(), pt.base2k().as_usize())?;
+        ensure_base2k_match("ckks_add_pt_vec_znx_into", ct.base2k().as_usize(), pt.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
-            "ckks_add_pt_vec_znx",
+            "ckks_add_pt_vec_znx_into",
             ct.log_hom_rem(),
             pt.log_decimal(),
             pt.max_k().as_usize(),
@@ -35,7 +35,7 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_default(
+    fn ckks_sub_pt_vec_znx_into_default(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
         pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
@@ -45,9 +45,9 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         Scratch<BE>: ScratchTakeCore<BE>,
         Self: VecZnxRshSub<BE>,
     {
-        ensure_base2k_match("ckks_sub_pt_vec_znx", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
+        ensure_base2k_match("ckks_sub_pt_vec_znx_into", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
-            "ckks_sub_pt_vec_znx",
+            "ckks_sub_pt_vec_znx_into",
             ct.log_hom_rem(),
             pt_znx.log_decimal(),
             pt_znx.max_k().as_usize(),

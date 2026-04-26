@@ -58,7 +58,7 @@ where
         let lvl_0: usize = GLWESecret::bytes_of(self.n().into(), infos.rank_in());
         let lvl_1: usize = self
             .gglwe_encrypt_sk_tmp_bytes(infos)
-            .max(self.vec_znx_automorphism_inplace_tmp_bytes());
+            .max(self.vec_znx_automorphism_assign_tmp_bytes());
 
         lvl_0 + lvl_1
     }
@@ -94,7 +94,7 @@ where
 
         sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
         sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
-        self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
+        self.vec_znx_automorphism_assign(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
 
         self.gglwe_encrypt_sk(res, &sk_lwe_as_glwe.data, sk_glwe, enc_infos, source_xe, source_xa, scratch_1);
     }

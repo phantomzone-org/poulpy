@@ -100,7 +100,7 @@ where
             tmp_pt.data.zero();
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             self.vec_znx_add_scalar_assign(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
-            self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
+            self.vec_znx_normalize_assign(base2k, &mut tmp_pt.data, 0, scratch_1);
             for col_j in 0..rank + 1 {
                 self.glwe_encrypt_sk_internal(
                     base2k,

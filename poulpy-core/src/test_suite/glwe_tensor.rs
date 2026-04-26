@@ -180,7 +180,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
@@ -191,7 +191,7 @@ where
             module.glwe_decrypt(&res_relin, &mut pt_have, &sk_dft, scratch.borrow());
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
             // We can reuse the same noise bound because the relinearization noise (which is additive)
             // is much smaller than the tensoring noise (which is multiplicative)
@@ -423,7 +423,7 @@ where
             module.glwe_decrypt(&res_relin_square, &mut pt_have, &sk_dft, scratch.borrow());
             module.glwe_decrypt(&res_relin_tensor, &mut pt_want, &sk_dft, scratch.borrow());
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
             let noise_have: f64 = pt_tmp.stats().std().log2();
             assert!(noise_have <= -20.0, "{} > -20", noise_have);
         }
@@ -546,7 +546,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
@@ -671,7 +671,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
+            module.vec_znx_normalize_assign(pt_tmp.base2k().as_usize(), &mut pt_tmp.data, 0, scratch.borrow());
 
             let noise_have: f64 = pt_tmp.stats().std().log2();
             let noise_want = -((k - scale - res_offset - module.log_n()) as f64 - ((rank - 1) as f64) / SQRT_2);
