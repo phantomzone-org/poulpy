@@ -3,7 +3,7 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext,
+        GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext,
         GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
@@ -505,7 +505,6 @@ keyswitch_helper! {
         R: poulpy_core::layouts::LWEToBackendMut<BE> + LWEInfos,
         A: poulpy_core::layouts::LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
-        for<'x> BE::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
         BE: 's,
     ] => [LWEKeyswitchDefaults<BE>]::lwe_keyswitch(module, res, a, ksk, scratch);
 }
@@ -982,7 +981,6 @@ macro_rules! impl_keyswitching_via_helpers {
                 R: poulpy_core::layouts::LWEToBackendMut<Self> + LWEInfos,
                 A: poulpy_core::layouts::LWEToBackendRef<Self> + LWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
-                for<'x> <Self as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
             {
                 $($helpers)*::keyswitch_lwe_keyswitch(module, res, a, ksk, scratch)
             }
@@ -1183,8 +1181,8 @@ macro_rules! impl_automorphism_via_defaults {
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: GGLWEToMut + GGLWEToBackendMut<Self> + poulpy_core::layouts::SetGaloisElement + GGLWEInfos,
-                A: GGLWEToRef + GGLWEToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
+                R: GGLWEToBackendMut<Self> + poulpy_core::layouts::SetGaloisElement + GGLWEInfos,
+                A: GGLWEToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_default(module, res, a, key, scratch)
@@ -1196,8 +1194,7 @@ macro_rules! impl_automorphism_via_defaults {
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: GGLWEToMut
-                    + GGLWEToBackendMut<Self>
+                R: GGLWEToBackendMut<Self>
                     + poulpy_core::layouts::SetGaloisElement
                     + poulpy_core::layouts::GetGaloisElement
                     + GGLWEInfos,

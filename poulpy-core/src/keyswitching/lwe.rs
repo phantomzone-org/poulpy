@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 pub use crate::api::LWEKeySwitch;
 use crate::{
@@ -52,7 +52,6 @@ where
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         assert!(res.n().as_usize() <= self.n());
         assert!(a.n().as_usize() <= self.n());

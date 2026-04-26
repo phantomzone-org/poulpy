@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GLWEKeyswitch, ScratchArenaTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWE, GetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWE, GetGaloisElement,
         SetGaloisElement, gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, glwe_backend_ref_from_mut,
         prepared::GGLWEPreparedToBackendRef,
     },
@@ -52,8 +52,8 @@ where
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         assert!(
@@ -79,14 +79,12 @@ where
         let same_layout: bool = res.glwe_layout() == a.glwe_layout();
 
         {
-            let res: &mut GGLWE<BE::BufMut<'_>> = &mut res.to_backend_mut();
-            let a_ref = &a.to_ref();
+            let res = &mut res.to_backend_mut();
             let a_backend = <A as GGLWEToBackendRef<BE>>::to_backend_ref(a);
 
             for row in 0..res.dnum().as_usize() {
                 for col in 0..cols_in {
                     let mut res_tmp = gglwe_at_backend_mut_from_mut::<BE>(res, row, col);
-                    let a_ct = a_ref.at(row, col);
                     let a_ct_backend = gglwe_at_backend_ref_from_ref::<BE>(&a_backend, row, col);
 
                     if same_layout {
@@ -101,7 +99,7 @@ where
                             self.vec_znx_automorphism_inplace(p_inv, &mut res_tmp.data, i, &mut scratch_iter);
                         }
                     } else {
-                        let (mut tmp_glwe, mut scratch_iter) = scratch.borrow().take_glwe(&a_ct);
+                        let (mut tmp_glwe, mut scratch_iter) = scratch.borrow().take_glwe(&a_ct_backend);
 
                         for i in 0..cols_out {
                             self.vec_znx_automorphism_backend(p, &mut tmp_glwe.data, i, &a_ct_backend.data, i);
@@ -127,7 +125,7 @@ where
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         assert_eq!(res.rank(), key.rank(), "key rank: {} != key rank: {}", res.rank(), key.rank());
@@ -144,7 +142,7 @@ where
         let p_inv: i64 = self.galois_element_inv(p);
 
         {
-            let res: &mut GGLWE<BE::BufMut<'_>> = &mut res.to_backend_mut();
+            let res = &mut res.to_backend_mut();
             for row in 0..res.dnum().as_usize() {
                 for col in 0..cols_in {
                     let mut res_tmp = gglwe_at_backend_mut_from_mut::<BE>(res, row, col);

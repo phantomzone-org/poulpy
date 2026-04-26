@@ -4,8 +4,8 @@ use crate::{
     api::{GGSWAutomorphism, GLWEAutomorphism, GLWEAutomorphismKeyAutomorphism},
     automorphism::GGSWAutomorphismDefault,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos,
-        GLWEBackendMut, GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::AutomorphismImpl,
@@ -208,8 +208,8 @@ impl_automorphism_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         BE::glwe_automorphism_key_automorphism(self, res, a, key, scratch)
@@ -222,7 +222,7 @@ impl_automorphism_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     {
         BE::glwe_automorphism_key_automorphism_assign(self, res, key, scratch)

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ModuleN,
-    layouts::{Backend, HostDataMut, ScratchArena},
+    layouts::{Backend, ScratchArena},
 };
 
 use crate::{
@@ -205,7 +205,6 @@ where
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         assert!(res.n().as_usize() <= self.n());
         assert!(a.n().as_usize() <= self.n());

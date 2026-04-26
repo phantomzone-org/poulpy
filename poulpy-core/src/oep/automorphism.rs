@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     automorphism::{GGSWAutomorphismDefault, GLWEAutomorphismDefault, GLWEAutomorphismKeyAutomorphismDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToMut, GGLWEToRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut, GLWEBackendRef,
+        GLWEInfos, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -153,8 +153,8 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 
     fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(
@@ -163,7 +163,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 }
 
@@ -313,10 +313,9 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 
@@ -326,9 +325,8 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 }
@@ -600,10 +598,9 @@ where
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        R: crate::layouts::GGLWEToBackendMut<BE> + SetGaloisElement + GGLWEInfos,
+        A: crate::layouts::GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>,
     {
@@ -618,9 +615,8 @@ where
         key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        R: crate::layouts::GGLWEToBackendMut<BE> + SetGaloisElement + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        R: crate::layouts::GGLWEToBackendMut<BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>,
     {

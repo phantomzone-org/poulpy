@@ -164,7 +164,6 @@ impl_keyswitching_delegate!(
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
     {
         BE::lwe_keyswitch(self, res, a, ksk, scratch)
     }

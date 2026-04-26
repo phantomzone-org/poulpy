@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -131,8 +131,7 @@ pub unsafe trait LWEKeyswitchImpl<BE: Backend>: Backend {
         R: LWEToBackendMut<BE> + LWEInfos,
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 #[doc(hidden)]
@@ -240,8 +239,7 @@ pub trait LWEKeyswitchDefaults<BE: Backend>: Backend {
         R: LWEToBackendMut<BE> + LWEInfos,
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GLWEKeyswitchDefaults<BE> for BE
@@ -388,7 +386,6 @@ where
         R: LWEToBackendMut<BE> + LWEInfos,
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
-        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         <Module<BE> as LWEKeySwitchDefault<BE>>::lwe_keyswitch_default(module, res, a, ksk, scratch)
