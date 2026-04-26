@@ -1,10 +1,12 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        VecZnxZeroBackend,
+    },
     layouts::{
-        Backend, HostDataMut, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-        ZnxZero,
+        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
     },
     source::Source,
 };
@@ -39,8 +41,7 @@ pub trait GGLWECompressedEncryptSkDefault<BE: Backend> {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 impl<BE: Backend> GGLWECompressedEncryptSkDefault<BE> for Module<BE>
@@ -51,7 +52,8 @@ where
         + VecZnxDftBytesOf
         + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeTmpBytes
+        + VecZnxZeroBackend<BE>,
 {
     fn gglwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -81,7 +83,6 @@ where
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
 
@@ -137,7 +138,7 @@ where
             for col_j in 0..rank_in {
                 for row_i in 0..dnum {
                     // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-                    tmp_pt.data.zero(); // zeroes for next iteration
+                    self.vec_znx_zero_backend(&mut tmp_pt.data, 0);
                     {
                         let mut tmp_pt_data =
                             <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(

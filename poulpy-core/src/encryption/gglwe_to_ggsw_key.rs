@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, VecZnxCopyBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut, Backend, HostDataMut, Module,
-        ScratchArena, ScratchOwned,
+        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut, Backend, Module, ScratchArena,
+        ScratchOwned,
     },
     source::Source,
 };
@@ -40,7 +40,6 @@ where
     Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretTensorFactory<BE> + GLWESecretPreparedFactory<BE> + VecZnxCopyBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn gglwe_to_ggsw_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where

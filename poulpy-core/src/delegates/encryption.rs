@@ -211,7 +211,6 @@ impl_encryption_delegate!(
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GGLWEEncryptSkDefault<BE>>::gglwe_encrypt_sk(self, res, pt, sk, enc_infos, source_xe, source_xa, scratch)
     }
@@ -531,7 +530,6 @@ impl_encryption_delegate!(
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         <Module<BE> as GGLWECompressedEncryptSkDefault<BE>>::gglwe_compressed_encrypt_sk(
             self, res, pt, sk, seed, enc_infos, source_xe, scratch,

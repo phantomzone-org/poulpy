@@ -34,13 +34,13 @@ pub fn glwe_secret_prepared_backend_ref_from_mut<'a, 'b, B: Backend>(
     }
 }
 
-impl<D: HostDataRef, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
+impl<D: Data, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
     fn dist(&self) -> &Distribution {
         &self.dist
     }
 }
 
-impl<D: HostDataMut, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
+impl<D: Data, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
     fn dist_mut(&mut self) -> &mut Distribution {
         &mut self.dist
     }

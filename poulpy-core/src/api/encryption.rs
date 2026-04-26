@@ -158,8 +158,7 @@ pub trait GGLWEEncryptSk<BE: Backend> {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait GGSWEncryptSk<BE: Backend> {
@@ -382,8 +381,7 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
         P: ScalarZnxToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait GGSWCompressedEncryptSk<BE: Backend> {

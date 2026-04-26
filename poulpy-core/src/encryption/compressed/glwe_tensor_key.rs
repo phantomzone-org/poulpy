@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchOwnedAlloc,
-    layouts::{Backend, HostDataMut, Module, ScratchArena, ScratchOwned},
+    layouts::{Backend, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
 
@@ -37,7 +37,6 @@ where
     Self: GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + GLWESecretTensorFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
