@@ -40,19 +40,11 @@ pub fn test_add_ct_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_add();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     unsafe {
-        ctx.module
-            .ckks_add_unsafe(&mut ct_res, &ct1, &ct2, scratch.borrow())
-            .unwrap();
+        ctx.module.ckks_add_unsafe(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
     }
     assert_binary_output_meta("add_ct_aligned_unsafe", &ct_res, &ct1, &ct2);
     ctx.module.glwe_normalize_inplace(&mut ct_res, scratch.borrow());
-    ctx.assert_decrypt_precision(
-        "add_ct_aligned_unsafe",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_ct_aligned_unsafe", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_add_ct_inplace_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -63,9 +55,7 @@ pub fn test_add_ct_inplace_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &Test
     let expected_log_hom_rem = ct1.log_hom_rem().min(ct2.log_hom_rem());
     let expected_log_decimal = ct1.log_decimal().max(ct2.log_decimal());
     unsafe {
-        ctx.module
-            .ckks_add_inplace_unsafe(&mut ct1, &ct2, scratch.borrow())
-            .unwrap();
+        ctx.module.ckks_add_inplace_unsafe(&mut ct1, &ct2, scratch.borrow()).unwrap();
     }
     assert_ct_meta(
         "add_ct_inplace_aligned_unsafe",
@@ -74,13 +64,7 @@ pub fn test_add_ct_inplace_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &Test
         expected_log_hom_rem,
     );
     ctx.module.glwe_normalize_inplace(&mut ct1, scratch.borrow());
-    ctx.assert_decrypt_precision(
-        "add_ct_inplace_aligned_unsafe",
-        &ct1,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_ct_inplace_aligned_unsafe", &ct1, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_add_pt_vec_znx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -96,13 +80,7 @@ pub fn test_add_pt_vec_znx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &Test
     }
     assert_unary_output_meta("add_pt_vec_znx_unsafe", &ct_res, &ct1);
     ctx.module.glwe_normalize_inplace(&mut ct_res, scratch.borrow());
-    ctx.assert_decrypt_precision(
-        "add_pt_vec_znx_unsafe",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_pt_vec_znx_unsafe", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_add_pt_vec_rnx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -118,13 +96,7 @@ pub fn test_add_pt_vec_rnx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &Test
     }
     assert_unary_output_meta("add_pt_vec_rnx_unsafe", &ct_res, &ct1);
     ctx.module.glwe_normalize_inplace(&mut ct_res, scratch.borrow());
-    ctx.assert_decrypt_precision(
-        "add_pt_vec_rnx_unsafe",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_pt_vec_rnx_unsafe", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_add_const_znx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -150,11 +122,5 @@ pub fn test_add_const_znx_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestC
     }
     assert_unary_output_meta("add_const_znx_aligned_unsafe", &ct_res, &ct);
     ctx.module.glwe_normalize_inplace(&mut ct_res, scratch.borrow());
-    ctx.assert_decrypt_precision(
-        "add_const_znx_aligned_unsafe",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_const_znx_aligned_unsafe", &ct_res, &want_re, &want_im, scratch.borrow());
 }

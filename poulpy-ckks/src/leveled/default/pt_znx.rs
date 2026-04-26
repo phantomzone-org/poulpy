@@ -14,13 +14,6 @@ use crate::{
 };
 
 pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
-    fn ckks_add_pt_znx_tmp_bytes_default(&self) -> usize
-    where
-        Self: VecZnxRshTmpBytes,
-    {
-        self.vec_znx_rsh_tmp_bytes()
-    }
-
     fn ckks_add_pt_vec_znx_default(
         &self,
         ct: &mut CKKSCiphertext<impl DataMut>,
@@ -40,13 +33,6 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         )?;
         self.vec_znx_rsh_add_into(ct.base2k().as_usize(), offset, ct.data_mut(), 0, pt.data(), 0, scratch);
         Ok(())
-    }
-
-    fn ckks_sub_pt_znx_tmp_bytes_default(&self) -> usize
-    where
-        Self: VecZnxRshTmpBytes,
-    {
-        self.vec_znx_rsh_tmp_bytes()
     }
 
     fn ckks_sub_pt_vec_znx_default(

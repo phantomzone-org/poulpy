@@ -367,7 +367,7 @@ pub fn bench_ckks_unary<BE: CkksBenchBackend>(c: &mut Criterion, label: &str) {
     group.bench_function("neg_inplace", |b| {
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
-            s.module.ckks_neg_inplace(&mut s.ct_dst);
+            s.module.ckks_neg_inplace(&mut s.ct_dst).unwrap();
         })
     });
     group.bench_function("mul_pow2", |b| {
@@ -530,7 +530,7 @@ pub fn bench_ckks_automorphism<BE: CkksBenchBackend>(c: &mut Criterion, label: &
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_conjugate_inplace(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow());
+                .ckks_conjugate_inplace(&mut s.ct_dst, s.atks.get(&-1).unwrap(), s.scratch.borrow()).unwrap();
         })
     });
     group.finish();

@@ -38,34 +38,6 @@ use crate::{
 /// scratch, sizing, aliasing, and layout contracts required by the underlying
 /// `poulpy-core` and `poulpy-hal` operations they call.
 pub unsafe trait CKKSImpl<BE: Backend>: Backend {
-    fn ckks_add_pt_znx_tmp_bytes(module: &Module<BE>) -> usize
-    where
-        Module<BE>: VecZnxRshTmpBytes;
-
-    fn ckks_add_pt_vec_znx(
-        module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Module<BE>: VecZnxRshAddInto<BE>;
-
-    fn ckks_sub_pt_znx_tmp_bytes(module: &Module<BE>) -> usize
-    where
-        Module<BE>: VecZnxRshTmpBytes;
-
-    fn ckks_sub_pt_vec_znx(
-        module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Module<BE>: VecZnxRshSub<BE>;
-
     fn ckks_extract_pt_znx_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: VecZnxLshTmpBytes + VecZnxRshTmpBytes;

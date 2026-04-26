@@ -331,7 +331,10 @@ macro_rules! ckks_backend_test_suite {
                 sub_pt_vec_znx_inplace,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_inplace
             );
-            run_test!(sub_pt_vec_znx, $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx);
+            run_test!(
+                sub_pt_vec_znx,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx
+            );
             run_test!(
                 sub_pt_vec_znx_delta_log_decimal,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_znx_delta_log_decimal
@@ -340,7 +343,10 @@ macro_rules! ckks_backend_test_suite {
                 sub_pt_vec_rnx_inplace,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_inplace
             );
-            run_test!(sub_pt_vec_rnx, $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx);
+            run_test!(
+                sub_pt_vec_rnx,
+                $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx
+            );
             run_test!(
                 sub_pt_vec_rnx_delta_log_decimal,
                 $crate::leveled::tests::test_suite::sub::test_sub_pt_vec_rnx_delta_log_decimal
@@ -736,9 +742,9 @@ pub mod helpers;
 pub mod mul;
 pub mod mul_add;
 pub mod mul_many;
+pub mod mul_pow2;
 pub mod mul_sub;
 pub mod neg;
-pub mod mul_pow2;
 pub mod rotate;
 pub mod sub;
 pub mod sub_unsafe;

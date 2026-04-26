@@ -41,7 +41,9 @@ fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> Scratc
     let pt_rnx_bytes = ctx
         .module
         .ckks_dot_product_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let const_bytes = ctx.module.ckks_dot_product_pt_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
+    let const_bytes = ctx
+        .module
+        .ckks_dot_product_pt_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let bytes = ct_bytes.max(pt_znx_bytes).max(pt_rnx_bytes).max(const_bytes);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
 }

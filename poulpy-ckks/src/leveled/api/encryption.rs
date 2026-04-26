@@ -1,6 +1,6 @@
 use anyhow::Result;
 use poulpy_core::{EncryptionInfos, ScratchTakeCore, layouts::GLWEInfos};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
+use poulpy_hal::{api::ScratchAvailable, layouts::{Backend, DataMut, DataRef, Scratch}};
 
 use crate::{
     layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
@@ -31,7 +31,7 @@ pub trait CKKSEncrypt<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         S: GLWESecretPreparedToRef<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
 }
 
 pub trait CKKSDecrypt<BE: Backend + CKKSImpl<BE>> {
