@@ -8,8 +8,8 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchArenaTakeCore,
     glwe_trace::GLWETrace,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
-        LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos,
+        glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 

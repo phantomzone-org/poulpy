@@ -2,9 +2,7 @@
 
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend, VecZnxZeroBackend},
-    layouts::{
-        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-    },
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
     source::Source,
 };
 

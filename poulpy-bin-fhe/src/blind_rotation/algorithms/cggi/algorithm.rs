@@ -9,8 +9,8 @@ use poulpy_hal::{
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, SvpPPolOwned, SvpPPolToBackendRef, VecZnx,
         VecZnxDftReborrowBackendMut, VecZnxDftReborrowBackendRef, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
-        VmpPMatToBackendRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero, vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut,
-        vec_znx_dft_backend_ref_from_mut,
+        VmpPMatToBackendRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero, vec_znx_backend_ref_from_mut,
+        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
     oep::HalVecZnxImpl,
 };

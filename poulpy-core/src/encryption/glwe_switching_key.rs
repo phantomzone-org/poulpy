@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, VecZnxSwitchRingBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Module,
-        ScalarZnx, ScratchArena, ScratchOwned,
+        Backend, Module, ScalarZnx, ScratchArena, ScratchOwned, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
@@ -53,9 +53,7 @@ where
 
         let lvl_0: usize = ScalarZnx::bytes_of(self.n(), infos.rank_in().into());
         let lvl_1: usize = self.glwe_secret_prepared_bytes_of_from_infos(infos);
-        let lvl_2: usize = ScalarZnx::bytes_of(self.n(), 1).max(self.gglwe_encrypt_sk_tmp_bytes(infos));
-
-        lvl_0 + lvl_1 + lvl_2
+        lvl_0 + lvl_1
     }
 
     #[allow(clippy::too_many_arguments)]

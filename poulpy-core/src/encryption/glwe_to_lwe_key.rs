@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphismBackend, VecZnxCopyRangeBackend, VecZnxZeroBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut,
-        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Module, ScratchArena, ScratchOwned,
+        Backend, Module, ScratchArena, ScratchOwned, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
@@ -115,13 +115,7 @@ where
         {
             let sk_lwe_as_glwe_src_backend = scalar_znx_as_vec_znx_backend_ref_from_mut::<BE>(&sk_lwe_as_glwe_src.data);
             let mut sk_lwe_as_glwe_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_lwe_as_glwe.data);
-            self.vec_znx_automorphism_backend(
-                -1,
-                &mut sk_lwe_as_glwe_backend,
-                0,
-                &sk_lwe_as_glwe_src_backend,
-                0,
-            );
+            self.vec_znx_automorphism_backend(-1, &mut sk_lwe_as_glwe_backend, 0, &sk_lwe_as_glwe_src_backend, 0);
         }
         let sk_lwe_as_glwe_ref = &mut sk_lwe_as_glwe;
         let mut sk_lwe_as_glwe_prep_ref = &mut sk_lwe_as_glwe_prep;

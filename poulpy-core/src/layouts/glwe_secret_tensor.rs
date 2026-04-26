@@ -4,11 +4,10 @@ use poulpy_hal::{
         VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Data, HostDataMut,
-        HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScalarZnxToMut, ScratchArena, ScratchOwned, SvpPPolReborrowBackendMut,
-        SvpPPolReborrowBackendRef, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
-        VecZnxDftToBackendRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScalarZnxToMut, ScratchArena,
+        ScratchOwned, SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef, VecZnxBig, VecZnxBigToBackendMut,
+        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, ZnxInfos, ZnxView, ZnxViewMut,
+        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
 };
 
@@ -230,13 +229,7 @@ where
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn glwe_secret_tensor_prepare_tmp_bytes(&self, rank: Rank) -> usize {
-        let lvl_0: usize = self.glwe_secret_prepared_bytes_of(rank);
-        let lvl_1: usize = self.bytes_of_vec_znx_dft(rank.into(), 1);
-        let lvl_2: usize = self.bytes_of_vec_znx_big(1, 1);
-        let lvl_3: usize = self.bytes_of_vec_znx_dft(1, 1);
-        let lvl_4: usize = self.vec_znx_big_normalize_tmp_bytes();
-
-        lvl_0 + lvl_1 + lvl_2 + lvl_3 + lvl_4
+        self.glwe_secret_prepared_bytes_of(rank)
     }
 
     fn glwe_secret_tensor_prepare<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
@@ -305,7 +298,16 @@ where
                 }
                 {
                     let a_ij_big = a_ij_big_backend.to_backend_ref();
-                    self.vec_znx_big_normalize(&mut res_backend, base2k, 0, idx, &a_ij_big, base2k, 0, &mut norm_scratch.arena());
+                    self.vec_znx_big_normalize(
+                        &mut res_backend,
+                        base2k,
+                        0,
+                        idx,
+                        &a_ij_big,
+                        base2k,
+                        0,
+                        &mut norm_scratch.arena(),
+                    );
                 }
             }
         }

@@ -464,13 +464,7 @@ pub trait ScalarZnxFillTernaryHwSourceBackend<B: Backend> {
 }
 
 pub trait ScalarZnxFillTernaryHwBackend<B: Backend> {
-    fn scalar_znx_fill_ternary_hw_backend(
-        &self,
-        res: &mut ScalarZnxBackendMut<'_, B>,
-        res_col: usize,
-        hw: usize,
-        seed: [u8; 32],
-    );
+    fn scalar_znx_fill_ternary_hw_backend(&self, res: &mut ScalarZnxBackendMut<'_, B>, res_col: usize, hw: usize, seed: [u8; 32]);
 }
 
 pub trait ScalarZnxFillTernaryProbSourceBackend<B: Backend> {
@@ -504,13 +498,7 @@ pub trait ScalarZnxFillBinaryHwSourceBackend<B: Backend> {
 }
 
 pub trait ScalarZnxFillBinaryHwBackend<B: Backend> {
-    fn scalar_znx_fill_binary_hw_backend(
-        &self,
-        res: &mut ScalarZnxBackendMut<'_, B>,
-        res_col: usize,
-        hw: usize,
-        seed: [u8; 32],
-    );
+    fn scalar_znx_fill_binary_hw_backend(&self, res: &mut ScalarZnxBackendMut<'_, B>, res_col: usize, hw: usize, seed: [u8; 32]);
 }
 
 pub trait ScalarZnxFillBinaryProbSourceBackend<B: Backend> {

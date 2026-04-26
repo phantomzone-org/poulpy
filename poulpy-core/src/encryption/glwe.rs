@@ -3,15 +3,14 @@ use poulpy_hal::{
         ModuleN, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbSourceBackend,
         ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbSourceBackend, ScratchArenaTakeBasic, SvpApplyDftToDft,
         SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddAssignBackend, VecZnxAddNormalSourceBackend,
-        VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
-        VecZnxZeroBackend,
+        VecZnxBigAddNormal, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplaceBackend,
+        VecZnxNormalizeTmpBytes, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, Backend, Module, ScalarZnx, ScratchArena,
-        SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef,
-        VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
+        Backend, Module, ScalarZnx, ScratchArena, SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut,
+        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
+        scalar_znx_as_vec_znx_backend_mut_from_mut,
     },
     source::Source,
 };
@@ -96,9 +95,9 @@ where
 
         let lvl_0: usize = VecZnx::bytes_of(self.n(), 1, size);
         let lvl_1: usize = VecZnx::bytes_of(self.n(), 1, size);
-        let lvl_2: usize = self
-            .vec_znx_normalize_tmp_bytes()
-            .max(self.bytes_of_vec_znx_dft(1, size) + self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2: usize = self.vec_znx_normalize_tmp_bytes().max(
+            self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size) + self.vec_znx_big_normalize_tmp_bytes(),
+        );
 
         lvl_0 + lvl_1 + lvl_2
     }
@@ -250,7 +249,8 @@ where
         assert_eq!(self.n() as u32, infos.n());
         let lvl_0: usize = self.bytes_of_svp_ppol(1);
         let lvl_1: usize = ScalarZnx::bytes_of(self.n(), 1);
-        let lvl_2: usize = cols * (self.bytes_of_vec_znx_dft(1, size) + VecZnx::bytes_of(self.n(), 1, size));
+        let lvl_2: usize = cols
+            * (self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size) + VecZnx::bytes_of(self.n(), 1, size));
         let lvl_3: usize = self.vec_znx_big_normalize_tmp_bytes();
 
         lvl_0 + lvl_1 + lvl_2 + lvl_3
@@ -392,12 +392,16 @@ where
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
                      Self::generate"
                 ),
-                Distribution::TernaryFixed(hw) => self.scalar_znx_fill_ternary_hw_source_backend(&mut u_backend, 0, *hw, source_xu),
+                Distribution::TernaryFixed(hw) => {
+                    self.scalar_znx_fill_ternary_hw_source_backend(&mut u_backend, 0, *hw, source_xu)
+                }
                 Distribution::TernaryProb(prob) => {
                     self.scalar_znx_fill_ternary_prob_source_backend(&mut u_backend, 0, *prob, source_xu)
                 }
                 Distribution::BinaryFixed(hw) => self.scalar_znx_fill_binary_hw_source_backend(&mut u_backend, 0, *hw, source_xu),
-                Distribution::BinaryProb(prob) => self.scalar_znx_fill_binary_prob_source_backend(&mut u_backend, 0, *prob, source_xu),
+                Distribution::BinaryProb(prob) => {
+                    self.scalar_znx_fill_binary_prob_source_backend(&mut u_backend, 0, *prob, source_xu)
+                }
                 Distribution::BinaryBlock(block_size) => {
                     self.scalar_znx_fill_binary_block_source_backend(&mut u_backend, 0, *block_size, source_xu)
                 }
@@ -488,7 +492,7 @@ type GLWEEncryptSkPlaintext<'a, BE> = Option<(GLWEPlaintextBackendRef<'a, BE>, u
 
 impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where
-        Self: ModuleN
+    Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>

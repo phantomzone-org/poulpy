@@ -50,7 +50,11 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc((module).ggsw_encrypt_sk_tmp_bytes(&ggsw_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                (module)
+                    .ggsw_encrypt_sk_tmp_bytes(&ggsw_infos)
+                    .max(module.ggsw_noise_tmp_bytes(&ggsw_infos)),
+            );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -123,7 +127,11 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc((module).ggsw_compressed_encrypt_sk_tmp_bytes(&ggsw_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                (module)
+                    .ggsw_compressed_encrypt_sk_tmp_bytes(&ggsw_infos)
+                    .max(module.ggsw_noise_tmp_bytes(&ggsw_infos)),
+            );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);

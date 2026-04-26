@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, GGLWEEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWELayout, GGLWEToBackendMut, GLWEInfos, GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GLWEInfos, GLWESecretTensor, GLWESecretTensorFactory, GLWESecretToBackendRef,
         prepared::GLWESecretPreparedFactory,
     },
 };
@@ -47,21 +47,10 @@ where
         let sk_prepared: usize = self.glwe_secret_prepared_bytes_of(infos.rank_out());
         let sk_tensor: usize = GLWESecretTensor::bytes_of_from_infos(infos);
 
-        let tensor_infos: GGLWELayout = GGLWELayout {
-            n: infos.n(),
-            base2k: infos.base2k(),
-            k: infos.max_k(),
-            rank_in: GLWESecretTensor::pairs(infos.rank().into()).into(),
-            rank_out: infos.rank_out(),
-            dnum: infos.dnum(),
-            dsize: infos.dsize(),
-        };
-
         let lvl_0: usize = sk_prepared;
         let lvl_1: usize = sk_tensor;
-        let lvl_2_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(&tensor_infos);
         let lvl_2_prepare: usize = self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank());
-        let lvl_2: usize = lvl_2_encrypt.max(lvl_2_prepare);
+        let lvl_2: usize = lvl_2_prepare;
 
         lvl_0 + lvl_1 + lvl_2
     }

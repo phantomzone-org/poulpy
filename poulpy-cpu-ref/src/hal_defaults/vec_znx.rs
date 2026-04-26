@@ -5,13 +5,13 @@ use std::mem::size_of;
 use crate::reference::vec_znx::{
     vec_znx_add_into, vec_znx_add_normal_ref, vec_znx_add_scalar_assign, vec_znx_add_scalar_into, vec_znx_automorphism,
     vec_znx_automorphism_inplace, vec_znx_automorphism_inplace_tmp_bytes, vec_znx_copy, vec_znx_fill_normal_ref,
-    vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_sub, vec_znx_lsh_tmp_bytes,
-    vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace,
+    vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_sub, vec_znx_lsh_tmp_bytes, vec_znx_merge_rings,
+    vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace,
     vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_negate, vec_znx_negate_inplace, vec_znx_normalize,
     vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
-    vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
-    vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace,
-    vec_znx_sub_negate_inplace, vec_znx_sub_scalar, vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
+    vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes,
+    vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
+    vec_znx_sub_scalar, vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
 };
 use crate::reference::znx::{
     ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign,
@@ -24,8 +24,7 @@ use poulpy_hal::{
     api::HostBufMut,
     layouts::{
         Backend, HostDataMut, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut,
-        VecZnxBackendRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        VecZnxBackendRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     source::Source,
 };

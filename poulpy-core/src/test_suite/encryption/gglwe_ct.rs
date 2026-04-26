@@ -59,8 +59,11 @@ where
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc((module).glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_infos));
+                let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                    (module)
+                        .glwe_switching_key_encrypt_sk_tmp_bytes(&gglwe_infos)
+                        .max(module.gglwe_noise_tmp_bytes(&gglwe_infos)),
+                );
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -155,8 +158,11 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: crate::test_suite::Tes
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc((module).glwe_switching_key_compressed_encrypt_sk_tmp_bytes(&gglwe_infos));
+                let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                    (module)
+                        .glwe_switching_key_compressed_encrypt_sk_tmp_bytes(&gglwe_infos)
+                        .max(module.gglwe_noise_tmp_bytes(&gglwe_infos)),
+                );
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -253,8 +259,11 @@ where
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<BE> =
-                    ScratchOwned::alloc((module).gglwe_compressed_encrypt_sk_tmp_bytes(&gglwe_infos));
+                let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                    (module)
+                        .gglwe_compressed_encrypt_sk_tmp_bytes(&gglwe_infos)
+                        .max(module.gglwe_noise_tmp_bytes(&gglwe_infos)),
+                );
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);

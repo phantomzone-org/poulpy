@@ -1,4 +1,7 @@
-use poulpy_hal::{layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena}, source::Source};
+use poulpy_hal::{
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena},
+    source::Source,
+};
 
 use crate::{
     GetDistribution, GetDistributionMut,
@@ -23,8 +26,8 @@ use crate::{
         GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut,
         GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut, GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut,
         GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWESecretToBackendRef,
-        GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToBackendRef,
-        LWESecretToBackendRef, LWEToBackendMut, SetGaloisElement,
+        GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut,
+        SetGaloisElement,
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },
 };

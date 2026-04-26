@@ -1,15 +1,17 @@
 #![allow(clippy::too_many_arguments)]
 
-use poulpy_hal::{layouts::{Backend, NoiseInfos, ScalarZnxToBackendRef, ScratchArena}, source::Source};
+use poulpy_hal::{
+    layouts::{Backend, NoiseInfos, ScalarZnxToBackendRef, ScratchArena},
+    source::Source,
+};
 
 use crate::{
     GetDistribution, GetDistributionMut,
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut,
         GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut, GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos,
-        GLWEPlaintextToBackendRef, GLWESecretToBackendRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut,
-        LWEInfos, LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut, SetGaloisElement,
-        TorusPrecision,
+        GLWEPlaintextToBackendRef, GLWESecretToBackendRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos,
+        LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut},
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },

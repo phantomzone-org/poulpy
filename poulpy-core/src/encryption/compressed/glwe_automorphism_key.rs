@@ -3,8 +3,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchOwnedAlloc, VecZnxAutomorphismBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, GaloisElement,
-        Module, ScratchArena, ScratchOwned,
+        Backend, GaloisElement, Module, ScratchArena, ScratchOwned, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
@@ -50,9 +50,7 @@ where
     {
         assert_eq!(self.n() as u32, infos.n());
         let lvl_0: usize = self.glwe_secret_prepared_bytes_of_from_infos(infos);
-        let lvl_1: usize = self
-            .gglwe_compressed_encrypt_sk_tmp_bytes(infos)
-            .max(GLWESecret::bytes_of_from_infos(infos));
+        let lvl_1: usize = GLWESecret::bytes_of_from_infos(infos);
 
         lvl_0 + lvl_1
     }

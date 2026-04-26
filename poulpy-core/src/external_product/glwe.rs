@@ -138,6 +138,29 @@ pub(crate) trait GLWEExternalProductDefault<BE: Backend>:
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
+    fn glwe_external_product_dft_fill_tmp_bytes<A, B>(&self, a_infos: &A, ggsw_infos: &B) -> usize
+    where
+        A: GLWEInfos,
+        B: GGSWInfos,
+    {
+        let align: usize = BE::SCRATCH_ALIGN;
+        let in_size: usize = a_infos
+            .max_k()
+            .div_ceil(ggsw_infos.base2k())
+            .div_ceil(ggsw_infos.dsize().into()) as usize;
+        let ggsw_size: usize = ggsw_infos.size();
+        let cols: usize = (ggsw_infos.rank() + 1).into();
+        let lvl_0: usize = self.bytes_of_vec_znx_dft(cols, in_size);
+        let lvl_1: usize = if ggsw_infos.dsize() > 1 {
+            self.bytes_of_vec_znx_dft(cols, ggsw_size)
+        } else {
+            0
+        };
+        let lvl_2: usize = self.vmp_apply_dft_to_dft_tmp_bytes(ggsw_size, in_size, in_size, cols, cols, ggsw_size);
+
+        lvl_0.next_multiple_of(align) + lvl_1.next_multiple_of(align) + lvl_2
+    }
+
     fn glwe_external_product_tmp_bytes_default<R, A, B>(&self, res: &R, a: &A, ggsw: &B) -> usize
     where
         R: GLWEInfos,
@@ -161,7 +184,7 @@ where
             let lvl_2_0: usize = crate::layouts::GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos);
             let lvl_2_1: usize = self
                 .glwe_normalize_tmp_bytes()
-                .max(self.glwe_external_product_internal_tmp_bytes(res, &a_conv_infos, ggsw));
+                .max(self.glwe_external_product_dft_fill_tmp_bytes(&a_conv_infos, ggsw));
             lvl_2_0 + lvl_2_1
         } else {
             self.glwe_external_product_internal_tmp_bytes(res, a, ggsw)

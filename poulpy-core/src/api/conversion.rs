@@ -7,9 +7,8 @@ use crate::{
     ScratchArenaTakeCore,
     api::{GLWEKeyswitch, GLWERotate},
     layouts::{
-        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWE, GLWEBackendRef, GLWEInfos,
-        GLWELayout, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut, LWEToBackendRef, Rank,
-        glwe_backend_mut_from_mut,
+        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWE, GLWEBackendRef, GLWEInfos, GLWELayout,
+        GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut, LWEToBackendRef, Rank, glwe_backend_mut_from_mut,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };

@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmallBackend,
-        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxBigReborrowBackendMut,
+        Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef,
         VecZnxDftReborrowBackendMut,
     },
 };
@@ -22,7 +22,6 @@ pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     Sized
     + ModuleN
     + VecZnxDftBytesOf
-    + VecZnxNormalizeTmpBytes
     + VecZnxBigBytesOf
     + VecZnxBigFromSmallBackend<BE>
     + VecZnxDftApply<BE>
@@ -30,6 +29,7 @@ pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     + VecZnxIdftApplyTmpA<BE>
     + VecZnxBigAddAssign<BE>
     + VecZnxBigNormalize<BE>
+    + VecZnxBigNormalizeTmpBytes
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
@@ -41,7 +41,8 @@ where
         assert_eq!(self.n() as u32, infos.n());
 
         let lvl_0: usize = self.bytes_of_vec_znx_big(1, size);
-        let lvl_1: usize = self.bytes_of_vec_znx_dft(1, size).max(self.vec_znx_normalize_tmp_bytes());
+        let lvl_1: usize =
+            (self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size)).max(self.vec_znx_big_normalize_tmp_bytes());
 
         lvl_0 + lvl_1
     }
@@ -67,14 +68,14 @@ impl<BE: Backend> GLWEDecryptDefault<BE> for Module<BE>
 where
     Self: ModuleN
         + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
         + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigAddAssign<BE>
-        + VecZnxBigNormalize<BE>,
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
 }
@@ -89,14 +90,14 @@ pub(crate) fn glwe_decrypt_backend_inner<'s, M, BE: Backend + HostBackend + 's>(
     M: GLWEDecryptDefault<BE>
         + ModuleN
         + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
         + VecZnxBigFromSmallBackend<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigAddAssign<BE>
-        + VecZnxBigNormalize<BE>,
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {

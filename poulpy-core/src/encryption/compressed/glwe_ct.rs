@@ -1,6 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 
-use poulpy_hal::{layouts::{Backend, Module, ScratchArena}, source::Source};
+use poulpy_hal::{
+    layouts::{Backend, Module, ScratchArena},
+    source::Source,
+};
 
 use crate::{
     EncryptionInfos, ScratchArenaTakeCore,

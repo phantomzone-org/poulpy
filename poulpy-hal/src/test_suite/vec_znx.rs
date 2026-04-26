@@ -14,8 +14,9 @@ use crate::{
         VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
         VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
         VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshTmpBytes,
-        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
-        VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxZeroBackend,
     },
     layouts::{
         DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScalarZnxToBackendMut, ScratchOwned, VecZnx, ZnxInfos, ZnxView,
@@ -1364,13 +1365,8 @@ pub fn test_scalar_znx_secret_seed_sampling_matches_source_wrappers<B: crate::te
     let cols: usize = 2;
     let col_i: usize = 1;
 
-    fn check<Fw, Fb>(
-        seed_bytes: [u8; 32],
-        n: usize,
-        cols: usize,
-        mut fill_wrapper: Fw,
-        mut fill_backend: Fb,
-    ) where
+    fn check<Fw, Fb>(seed_bytes: [u8; 32], n: usize, cols: usize, mut fill_wrapper: Fw, mut fill_backend: Fb)
+    where
         Fw: FnMut(&mut ScalarZnx<Vec<u8>>, &mut Source),
         Fb: FnMut(&mut ScalarZnx<Vec<u8>>, [u8; 32]),
     {

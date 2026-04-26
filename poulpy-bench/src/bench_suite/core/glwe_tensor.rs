@@ -8,11 +8,12 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{
         CnvPVecAlloc, Convolution, ModuleNew, ScratchArenaTakeBasic, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize,
-        VecZnxIdftApplyConsume, VecZnxSubInplaceBackend,
+        VecZnxIdftApplyTmpA, VecZnxSubInplaceBackend,
     },
     layouts::{
-        Backend, CnvPVecLToBackendRef, CnvPVecRToBackendRef, HostDataMut, Module, ScratchOwned, VecZnx, VecZnxReborrowBackendMut,
-        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
+        Backend, CnvPVecLToBackendRef, CnvPVecRToBackendRef, HostDataMut, Module, ScratchOwned, VecZnx,
+        VecZnxBigReborrowBackendMut, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxToBackendRef, VecZnxToMut,
+        VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
     },
 };
 
@@ -159,12 +160,8 @@ pub fn bench_glwe_tensor_prepare_right<BE: Backend<OwnedBuf = Vec<u8>>>(
 
 pub fn bench_glwe_tensor_diag_lane<BE: Backend<OwnedBuf = Vec<u8>>>(glwe_infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
-    Module<BE>: ModuleNew<BE>
-        + GLWETensoring<BE>
-        + Convolution<BE>
-        + CnvPVecAlloc<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigNormalize<BE>,
+    Module<BE>:
+        ModuleNew<BE> + GLWETensoring<BE> + Convolution<BE> + CnvPVecAlloc<BE> + VecZnxIdftApplyTmpA<BE> + VecZnxBigNormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'x> BE::BufMut<'x>: HostDataMut + AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'x> BE::BufRef<'x>: AsRef<[u8]> + Send,
@@ -226,7 +223,16 @@ where
                 0,
                 &mut scratch,
             );
-            let res_big = module.vec_znx_idft_apply_consume(res_dft);
+            let (mut res_big, scratch) = scratch.take_vec_znx_big(&module, 1, diag_dft_size);
+            {
+                let mut res_big_backend = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_big);
+                let mut res_dft_backend = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_dft);
+                module.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
+            }
             let (mut tmp, mut scratch) = scratch.take_vec_znx(n, 1, tensor.size());
             module.vec_znx_big_normalize(
                 &mut tmp,
@@ -253,7 +259,7 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
         + GLWETensoring<BE>
         + Convolution<BE>
         + CnvPVecAlloc<BE>
-        + VecZnxIdftApplyConsume<BE>
+        + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxSubInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -320,7 +326,16 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
                 i,
                 &mut scratch,
             );
-            let res_big = module.vec_znx_idft_apply_consume(res_dft);
+            let (mut res_big, scratch) = scratch.take_vec_znx_big(&module, 1, pairwise_dft_size);
+            {
+                let mut res_big_backend = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_big);
+                let mut res_dft_backend = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_dft);
+                module.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
+            }
             let (mut tmp, mut scratch) = scratch.take_vec_znx(n, 1, tensor.size());
             module.vec_znx_big_normalize(
                 &mut tmp,
@@ -352,7 +367,16 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
                 1,
                 &mut scratch,
             );
-            let res_big = module.vec_znx_idft_apply_consume(res_dft);
+            let (mut res_big, scratch) = scratch.take_vec_znx_big(&module, 1, pairwise_dft_size);
+            {
+                let mut res_big_backend = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_big);
+                let mut res_dft_backend = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
+                    BE,
+                >>::reborrow_backend_mut(&mut res_dft);
+                module.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
+            }
             let (mut tmp, mut scratch) = scratch.take_vec_znx(n, 1, tensor.size());
             module.vec_znx_big_normalize(
                 &mut tmp,

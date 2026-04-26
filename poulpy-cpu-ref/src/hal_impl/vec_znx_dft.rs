@@ -119,6 +119,5 @@ macro_rules! hal_impl_vec_znx_dft {
         fn vec_znx_dft_zero(module: &Module<Self>, res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>, res_col: usize) {
             <Self as $defaults<Self>>::vec_znx_dft_zero_default(module, res, res_col)
         }
-
     };
 }

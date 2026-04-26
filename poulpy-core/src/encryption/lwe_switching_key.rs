@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAutomorphismBackend, VecZnxCopyRangeBackend, VecZnxZeroBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut,
-        scalar_znx_as_vec_znx_backend_ref_from_ref, Backend, Module, ScratchArena,
+        Backend, Module, ScratchArena, scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
@@ -10,9 +10,7 @@ use poulpy_hal::{
 use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
     encryption::glwe_switching_key::GLWESwitchingKeyEncryptSk,
-    layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecretToBackendRef, Rank,
-    },
+    layouts::{GGLWEInfos, GGLWEToBackendMut, GLWESecret, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecretToBackendRef, Rank},
 };
 
 #[doc(hidden)]
@@ -39,7 +37,11 @@ pub trait LWESwitchingKeyEncryptDefault<BE: Backend> {
 
 impl<BE: Backend> LWESwitchingKeyEncryptDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphismBackend<BE> + VecZnxCopyRangeBackend<BE> + VecZnxZeroBackend<BE>,
+    Self: ModuleN
+        + GLWESwitchingKeyEncryptSk<BE>
+        + VecZnxAutomorphismBackend<BE>
+        + VecZnxCopyRangeBackend<BE>
+        + VecZnxZeroBackend<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -100,18 +102,22 @@ where
             let mut sk_glwe_src_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_glwe_src.data);
             let sk_lwe_out_backend = scalar_znx_as_vec_znx_backend_ref_from_ref::<BE>(&sk_lwe_out.data);
             self.vec_znx_zero_backend(&mut sk_glwe_src_backend, 0);
-            self.vec_znx_copy_range_backend(&mut sk_glwe_src_backend, 0, 0, 0, &sk_lwe_out_backend, 0, 0, 0, sk_lwe_out.n().into());
+            self.vec_znx_copy_range_backend(
+                &mut sk_glwe_src_backend,
+                0,
+                0,
+                0,
+                &sk_lwe_out_backend,
+                0,
+                0,
+                0,
+                sk_lwe_out.n().into(),
+            );
         }
         {
             let sk_glwe_src_backend = scalar_znx_as_vec_znx_backend_ref_from_mut::<BE>(&sk_glwe_src.data);
             let mut sk_glwe_out_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_glwe_out.data);
-            self.vec_znx_automorphism_backend(
-                -1,
-                &mut sk_glwe_out_backend,
-                0,
-                &sk_glwe_src_backend,
-                0,
-            );
+            self.vec_znx_automorphism_backend(-1, &mut sk_glwe_out_backend, 0, &sk_glwe_src_backend, 0);
         }
 
         sk_glwe_src.dist = sk_lwe_in.dist;
@@ -120,18 +126,22 @@ where
             let mut sk_glwe_src_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_glwe_src.data);
             let sk_lwe_in_backend = scalar_znx_as_vec_znx_backend_ref_from_ref::<BE>(&sk_lwe_in.data);
             self.vec_znx_zero_backend(&mut sk_glwe_src_backend, 0);
-            self.vec_znx_copy_range_backend(&mut sk_glwe_src_backend, 0, 0, 0, &sk_lwe_in_backend, 0, 0, 0, sk_lwe_in.n().into());
+            self.vec_znx_copy_range_backend(
+                &mut sk_glwe_src_backend,
+                0,
+                0,
+                0,
+                &sk_lwe_in_backend,
+                0,
+                0,
+                0,
+                sk_lwe_in.n().into(),
+            );
         }
         {
             let sk_glwe_src_backend = scalar_znx_as_vec_znx_backend_ref_from_mut::<BE>(&sk_glwe_src.data);
             let mut sk_glwe_in_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_glwe_in.data);
-            self.vec_znx_automorphism_backend(
-                -1,
-                &mut sk_glwe_in_backend,
-                0,
-                &sk_glwe_src_backend,
-                0,
-            );
+            self.vec_znx_automorphism_backend(-1, &mut sk_glwe_in_backend, 0, &sk_glwe_src_backend, 0);
         }
 
         let sk_glwe_in_ref = &mut sk_glwe_in;

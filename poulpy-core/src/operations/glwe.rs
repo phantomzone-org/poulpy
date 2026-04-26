@@ -75,7 +75,8 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let cnv_offset = a.size().max(b_size);
         let res_size: usize = (res.size() * res_base2k).div_ceil(a_base2k);
-        let lvl_0: usize = self.bytes_of_vec_znx_big(1, res_size);
+        let res_dft_size: usize = a.size() + b_size - cnv_offset.saturating_sub(1);
+        let lvl_0: usize = self.bytes_of_vec_znx_big(1, res_dft_size) + VecZnx::bytes_of(self.n(), 1, res.size());
         let lvl_1_cnv: usize = self.cnv_by_const_apply_tmp_bytes(res_size, cnv_offset, a.size(), b_size);
         let lvl_1_norm: usize = self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1: usize = lvl_1_cnv.max(lvl_1_norm);
@@ -241,7 +242,7 @@ where
         let lvl_2_cnv_apply: usize = self.cnv_apply_dft_tmp_bytes(res_dft_size, cnv_offset, a_size, b_size);
 
         let lvl_2_res_dft: usize = self.bytes_of_vec_znx_dft(1, res_dft_size);
-        let lvl_2_res_tmp: usize = VecZnx::bytes_of(self.n(), 1, res.size());
+        let lvl_2_res_tmp: usize = self.bytes_of_vec_znx_big(1, res_dft_size) + VecZnx::bytes_of(self.n(), 1, res.size());
         let lvl_2_norm: usize = self.vec_znx_big_normalize_tmp_bytes();
         let lvl_2: usize = lvl_2_res_tmp + lvl_2_res_dft + lvl_2_cnv_apply.max(lvl_2_norm);
 
@@ -592,9 +593,14 @@ where
             normalize_input_limb_bound_worst_case(2 * a_size, res_size, res.base2k().as_usize(), a.base2k().as_usize());
         let lvl_2_pairwise: usize = self.cnv_pairwise_apply_dft_tmp_bytes(cnv_offset, pairwise_dft_size, a_size, a_size);
 
-        let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size) + lvl_2_apply.max(self.vec_znx_big_normalize_tmp_bytes());
-        let lvl_2b: usize =
-            self.bytes_of_vec_znx_dft(1, pairwise_dft_size) + lvl_2_pairwise.max(self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size)
+            + self.bytes_of_vec_znx_big(1, diag_dft_size)
+            + VecZnx::bytes_of(self.n(), 1, res_size)
+            + lvl_2_apply.max(self.vec_znx_big_normalize_tmp_bytes());
+        let lvl_2b: usize = self.bytes_of_vec_znx_dft(1, pairwise_dft_size)
+            + self.bytes_of_vec_znx_big(1, pairwise_dft_size)
+            + VecZnx::bytes_of(self.n(), 1, res_size)
+            + lvl_2_pairwise.max(self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2: usize = lvl_2a.max(lvl_2b);
 
         lvl_0 + lvl_diag_cache + lvl_1.max(lvl_2)
@@ -632,9 +638,13 @@ where
         let lvl_2_pairwise: usize = self.cnv_pairwise_apply_dft_tmp_bytes(cnv_offset, pairwise_dft_size, a_size, b_size);
 
         let lvl_2a: usize = self.bytes_of_vec_znx_dft(1, diag_dft_size)
-            + lvl_2_apply.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
+            + self.bytes_of_vec_znx_big(1, diag_dft_size)
+            + VecZnx::bytes_of(self.n(), 1, res_size)
+            + lvl_2_apply.max(self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2b: usize = self.bytes_of_vec_znx_dft(1, pairwise_dft_size)
-            + lvl_2_pairwise.max(VecZnx::bytes_of(self.n(), 1, res_size) + self.vec_znx_big_normalize_tmp_bytes());
+            + self.bytes_of_vec_znx_big(1, pairwise_dft_size)
+            + VecZnx::bytes_of(self.n(), 1, res_size)
+            + lvl_2_pairwise.max(self.vec_znx_big_normalize_tmp_bytes());
         let lvl_2: usize = lvl_2a.max(lvl_2b);
 
         lvl_0 + lvl_1.max(lvl_2)
@@ -673,7 +683,9 @@ where
         } else {
             0
         };
-        let lvl_1_big_norm: usize = VecZnx::bytes_of(self.n(), 1, res.size()) + self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_1_big_norm: usize = self.bytes_of_vec_znx_big(cols, tsk.size())
+            + VecZnx::bytes_of(self.n(), 1, res.size())
+            + self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1_main: usize = lvl_1_res_dft + lvl_1_gglwe_product.max(lvl_1_post_conv).max(lvl_1_big_norm);
         let lvl_1: usize = lvl_1_pre_conv.max(lvl_1_main);
 

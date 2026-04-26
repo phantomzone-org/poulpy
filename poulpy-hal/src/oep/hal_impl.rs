@@ -1,7 +1,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
+    layouts::{
+        Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+    },
     source::Source,
 };
 

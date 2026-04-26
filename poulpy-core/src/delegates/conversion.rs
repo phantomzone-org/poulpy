@@ -4,8 +4,8 @@ use crate::{
     api::{GGSWExpandRows, GGSWFromGGLWE, GLWEFromLWE, LWEFromGLWE},
     conversion::LWEFromGLWEDefault,
     layouts::{
-        GGLWEInfos, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
-        LWEInfos, LWEToBackendMut, LWEToBackendRef,
+        GGLWEInfos, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+        LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::{ConversionImpl, GLWEKeyswitchImpl, GLWERotateImpl},

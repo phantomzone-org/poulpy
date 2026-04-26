@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchArenaTakeBasic, ScratchOwnedAlloc, VecZnxCopyBackend},
     layouts::{
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_mut, Backend, Module, ScratchArena,
-        ScratchOwned,
+        Backend, Module, ScratchArena, ScratchOwned, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -53,9 +53,8 @@ where
         let lvl_0: usize = sk_prepared;
         let lvl_1: usize = sk_tensor;
         let lvl_2: usize = sk_ij;
-        let lvl_3_encrypt: usize = self.gglwe_encrypt_sk_tmp_bytes(infos);
         let lvl_3_prepare: usize = self.glwe_secret_tensor_prepare_tmp_bytes(infos.rank());
-        let lvl_3: usize = lvl_3_encrypt.max(lvl_3_prepare);
+        let lvl_3: usize = lvl_3_prepare;
 
         lvl_0 + lvl_1 + lvl_2 + lvl_3
     }

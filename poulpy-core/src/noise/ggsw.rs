@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssignBackend, VecZnxBigNormalize,
+        ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssignBackend, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
@@ -48,6 +48,7 @@ where
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
         + VecZnxIdftApplyTmpA<BE>
+        + VecZnxBigBytesOf
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
@@ -65,7 +66,9 @@ where
 
         let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
         let lvl_1_glwe_noise: usize = self.glwe_noise_tmp_bytes(infos);
-        let lvl_1_mul: usize = self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes();
+        let lvl_1_mul: usize = self.bytes_of_vec_znx_dft(1, infos.size())
+            + self.bytes_of_vec_znx_big(1, infos.size())
+            + self.vec_znx_big_normalize_tmp_bytes();
         let lvl_1: usize = lvl_1_glwe_noise.max(lvl_1_mul);
 
         lvl_0 + lvl_1

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use poulpy_hal::{api::ModuleLogN, layouts::{Backend, GaloisElement, Module, ScratchArena}};
+use poulpy_hal::{
+    api::ModuleLogN,
+    layouts::{Backend, GaloisElement, Module, ScratchArena},
+};
 
 pub use crate::api::GLWEPacking;
 use crate::{

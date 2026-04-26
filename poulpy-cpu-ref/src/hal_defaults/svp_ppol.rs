@@ -83,8 +83,7 @@ where
         res_col: usize,
         a: &A,
         a_col: usize,
-    )
-    where
+    ) where
         BE: 'r + Backend<ScalarPrep = f64> + ReimArith,
         for<'x> BE: Backend<BufMut<'x> = &'x mut [u8]>,
         A: SvpPPolToRef<BE>,
@@ -160,8 +159,7 @@ where
         res_col: usize,
         a: &A,
         a_col: usize,
-    )
-    where
+    ) where
         Module<BE>: NttModuleHandle,
         BE: 'r + Backend<ScalarPrep = Q120bScalar> + NttMulBbc,
         for<'x> BE: Backend<BufMut<'x> = &'x mut [u8]>,

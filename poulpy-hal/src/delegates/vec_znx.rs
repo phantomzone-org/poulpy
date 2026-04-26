@@ -4,20 +4,21 @@ use crate::{
         ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbBackend, ScalarZnxFillBinaryProbSourceBackend,
         ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
         ScalarZnxFillTernaryProbSourceBackend, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalBackend,
-        VecZnxAddNormalSourceBackend,
-        VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
-        VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend,
-        VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshAddIntoBackend,
-        VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend,
-        VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend,
+        VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend,
+        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
+        VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend,
+        VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
+        VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend,
         VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
         VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
         VecZnxRotateInplaceTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshSubBackend,
-        VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend,
-        VecZnxSubInnerProductAssignBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend,
-        VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInnerProductAssignBackend,
+        VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend,
+        VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef},
+    layouts::{
+        Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
+    },
     oep::HalVecZnxImpl,
     source::Source,
 };
@@ -637,13 +638,7 @@ impl_vec_znx_delegate!(
 
 impl_vec_znx_delegate!(
     ScalarZnxFillBinaryHwBackend<B>,
-    fn scalar_znx_fill_binary_hw_backend(
-        &self,
-        res: &mut ScalarZnxBackendMut<'_, B>,
-        res_col: usize,
-        hw: usize,
-        seed: [u8; 32],
-    ) {
+    fn scalar_znx_fill_binary_hw_backend(&self, res: &mut ScalarZnxBackendMut<'_, B>, res_col: usize, hw: usize, seed: [u8; 32]) {
         B::scalar_znx_fill_binary_hw_backend(self, res, res_col, hw, seed);
     }
 );

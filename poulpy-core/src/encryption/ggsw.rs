@@ -3,14 +3,12 @@ use poulpy_hal::{
         ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
-    layouts::{
-        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-    },
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
     source::Source,
 };
 
 use crate::{
-    EncryptionInfos, GGSWNoise, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
+    EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
         GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, LWEInfos, ggsw_at_backend_mut_from_mut,
@@ -46,7 +44,6 @@ where
     Self: ModuleN
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
-        + GGSWNoise<BE>
         + VecZnxDftBytesOf
         + VecZnxNormalizeInplaceBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
@@ -60,8 +57,7 @@ where
         assert_eq!(self.n() as u32, infos.n());
 
         let lvl_0: usize = GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(infos);
-        let lvl_encrypt: usize = lvl_0 + self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes());
-        lvl_encrypt.max(self.ggsw_noise_tmp_bytes(infos))
+        lvl_0 + self.glwe_encrypt_sk_tmp_bytes(infos).max(self.vec_znx_normalize_tmp_bytes())
     }
 
     #[allow(clippy::too_many_arguments)]

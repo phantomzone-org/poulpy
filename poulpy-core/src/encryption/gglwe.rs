@@ -3,9 +3,7 @@ use poulpy_hal::{
         ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
-    layouts::{
-        Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-    },
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
     source::Source,
 };
 
@@ -137,7 +135,7 @@ where
         //
         // (-(a*s) + s0, a)
         // (-(b*s) + s1, b)
-            for col_i in 0..rank_in {
+        for col_i in 0..rank_in {
             for row_i in 0..dnum {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 self.vec_znx_zero_backend(&mut tmp_pt.data, 0);

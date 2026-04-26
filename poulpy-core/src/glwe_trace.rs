@@ -16,7 +16,10 @@
 //! Requires automorphism keys indexed by the Galois elements returned
 //! from [`GLWETrace::glwe_trace_galois_elements`].
 
-use poulpy_hal::{api::ModuleLogN, layouts::{Backend, CyclotomicOrder, GaloisElement, Module, ScratchArena, galois_element}};
+use poulpy_hal::{
+    api::ModuleLogN,
+    layouts::{Backend, CyclotomicOrder, GaloisElement, Module, ScratchArena, galois_element},
+};
 
 pub use crate::api::GLWETrace;
 use crate::{
@@ -70,10 +73,10 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
     assert_eq!(ksk_infos.rank_in(), res.rank());
     assert_eq!(ksk_infos.rank_out(), res.rank());
     assert!(
-        scratch.available() >= module.glwe_trace_tmp_bytes_default(res, res, ksk_infos),
-        "scratch.available(): {} < GLWETrace::glwe_trace_tmp_bytes: {}",
+        scratch.available() >= module.glwe_trace_inplace_tmp_bytes_default(res, ksk_infos),
+        "scratch.available(): {} < GLWETrace::glwe_trace_inplace_tmp_bytes: {}",
         scratch.available(),
-        module.glwe_trace_tmp_bytes_default(res, res, ksk_infos)
+        module.glwe_trace_inplace_tmp_bytes_default(res, ksk_infos)
     );
 
     if res.base2k() != ksk_infos.base2k() {
@@ -121,6 +124,32 @@ pub trait GLWETraceDefault<BE: Backend>
 where
     Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy<BE> + CyclotomicOrder + GLWENormalize<BE>,
 {
+    fn glwe_trace_inplace_tmp_bytes_default<A, K>(&self, a_infos: &A, key_infos: &K) -> usize
+    where
+        A: GLWEInfos,
+        K: GGLWEInfos,
+    {
+        assert_eq!(self.n() as u32, a_infos.n());
+        assert_eq!(self.n() as u32, key_infos.n());
+
+        if a_infos.base2k() != key_infos.base2k() {
+            let a_conv_infos: GLWELayout = GLWELayout {
+                n: a_infos.n(),
+                base2k: key_infos.base2k(),
+                k: a_infos.max_k(),
+                rank: a_infos.rank(),
+            };
+            let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos);
+            let lvl_1: usize = self
+                .glwe_normalize_tmp_bytes()
+                .max(self.glwe_trace_inplace_tmp_bytes_default(&a_conv_infos, key_infos));
+            return lvl_0 + lvl_1;
+        }
+
+        self.glwe_shift_tmp_bytes()
+            .max(self.glwe_automorphism_tmp_bytes(a_infos, a_infos, key_infos))
+    }
+
     fn glwe_trace_galois_elements_default(&self) -> Vec<i64> {
         trace_galois_elements(self.log_n(), self.cyclotomic_order())
     }
@@ -135,26 +164,26 @@ where
         assert_eq!(self.n() as u32, a_infos.n());
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let lvl_0: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
-        if a_infos.base2k() != key_infos.base2k() {
-            let a_conv_infos: GLWELayout = GLWELayout {
-                n: a_infos.n(),
-                base2k: key_infos.base2k(),
-                k: a_infos.max_k(),
-                rank: a_infos.rank(),
-            };
-            let lvl_1: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos) + self.glwe_normalize_tmp_bytes();
-            let lvl_2: usize = self.glwe_trace_tmp_bytes_default(&a_conv_infos, &a_conv_infos, key_infos);
-            return lvl_1 + lvl_2;
-        }
-
-        let lvl_1: usize = if res_infos.max_k() > a_infos.max_k() {
-            GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos)
+        let tmp_infos: GLWELayout = GLWELayout {
+            n: res_infos.n(),
+            base2k: key_infos.base2k(),
+            k: a_infos.max_k().max(res_infos.max_k()),
+            rank: res_infos.rank(),
+        };
+        let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&tmp_infos);
+        let lvl_1: usize = if a_infos.base2k() == key_infos.base2k() {
+            0
         } else {
-            GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos)
+            self.glwe_normalize_tmp_bytes()
+        };
+        let lvl_2: usize = self.glwe_trace_inplace_tmp_bytes_default(&tmp_infos, key_infos);
+        let lvl_3: usize = if res_infos.base2k() == key_infos.base2k() {
+            0
+        } else {
+            GLWE::<Vec<u8>>::bytes_of_from_infos(res_infos) + self.glwe_normalize_tmp_bytes()
         };
 
-        lvl_0 + lvl_1
+        lvl_0 + lvl_1.max(lvl_2).max(lvl_3)
     }
 
     fn glwe_trace_default<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &'s mut ScratchArena<'s, BE>)

@@ -52,9 +52,11 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(
-            module, &key_infos,
-        ));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+            GGLWEToGGSWKeyEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(module, &key_infos)
+                .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
+                .max(module.gglwe_noise_tmp_bytes(&key_infos)),
+        );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -135,7 +137,9 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-            GGLWEToGGSWKeyCompressedEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(module, &key_infos),
+            GGLWEToGGSWKeyCompressedEncryptSk::gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(module, &key_infos)
+                .max(module.glwe_secret_tensor_prepare_tmp_bytes(rank.into()))
+                .max(module.gglwe_noise_tmp_bytes(&key_infos)),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);

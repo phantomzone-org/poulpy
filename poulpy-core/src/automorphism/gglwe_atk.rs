@@ -34,14 +34,14 @@ where
         assert_eq!(self.n() as u32, a_infos.n());
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let lvl_0: usize = if res_infos.glwe_layout() == a_infos.glwe_layout() {
-            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-        } else {
-            self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos) + GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos)
-        };
-        let lvl_1: usize = self.vec_znx_automorphism_assign_tmp_bytes();
+        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
+        let lvl_1: usize = self.vec_znx_automorphism_inplace_tmp_bytes();
 
-        lvl_0.max(lvl_1)
+        if res_infos.glwe_layout() == a_infos.glwe_layout() {
+            lvl_0.max(lvl_1)
+        } else {
+            GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos) + lvl_0.max(lvl_1)
+        }
     }
 
     fn glwe_automorphism_key_automorphism_default<'s, R, A, K>(
