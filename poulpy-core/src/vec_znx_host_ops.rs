@@ -21,54 +21,6 @@ where
     }
 }
 
-pub(crate) fn vec_znx_sub<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    B: VecZnxToRef,
-{
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let b: VecZnx<&[u8]> = b.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), a.n());
-        assert_eq!(res.n(), b.n());
-    }
-
-    let res_size = res.size();
-    let a_size = a.size();
-    let b_size = b.size();
-
-    for j in 0..a_size.min(b_size).min(res_size) {
-        let res_j: &mut [i64] = cast_slice_mut(res.at_mut(res_col, j));
-        let a_j: &[i64] = cast_slice(a.at(a_col, j));
-        let b_j: &[i64] = cast_slice(b.at(b_col, j));
-        for ((res_i, a_i), b_i) in res_j.iter_mut().zip(a_j.iter()).zip(b_j.iter()) {
-            *res_i = *a_i - *b_i;
-        }
-    }
-
-    if a_size > b_size {
-        for j in b_size..a_size.min(res_size) {
-            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
-        }
-    } else {
-        for j in a_size..b_size.min(res_size) {
-            let res_j: &mut [i64] = cast_slice_mut(res.at_mut(res_col, j));
-            let b_j: &[i64] = cast_slice(b.at(b_col, j));
-            for (res_i, b_i) in res_j.iter_mut().zip(b_j.iter()) {
-                *res_i = -*b_i;
-            }
-        }
-    }
-
-    for j in a_size.max(b_size)..res_size {
-        res.at_mut(res_col, j).fill(0);
-    }
-}
-
 pub(crate) fn vec_znx_sub_inplace<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,

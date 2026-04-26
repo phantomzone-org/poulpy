@@ -8,7 +8,8 @@ use crate::{
     GGSWExpandRows, ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref,
+        GGLWEInfos, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut,
+        ggsw_at_backend_ref_from_ref,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };

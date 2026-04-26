@@ -1,12 +1,12 @@
-use poulpy_hal::{api::VecZnxZeroBackend, layouts::{Backend, Module, ScratchArena, ZnxInfos}};
+use poulpy_hal::{
+    api::VecZnxZeroBackend,
+    layouts::{Backend, Module, ScratchArena, ZnxInfos},
+};
 
 pub use crate::api::GGLWEExternalProduct;
 use crate::{
     GLWEExternalProduct, ScratchArenaTakeCore,
-    layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos,
-        prepared::GGSWPreparedToBackendRef,
-    },
+    layouts::{GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, prepared::GGSWPreparedToBackendRef},
 };
 
 #[doc(hidden)]

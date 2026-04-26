@@ -105,4 +105,7 @@ where
     }
 }
 
-impl<BE: Backend> GGSWExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> + ModuleN + VecZnxZeroBackend<BE> {}
+impl<BE: Backend> GGSWExternalProductDefault<BE> for Module<BE> where
+    Self: GLWEExternalProduct<BE> + ModuleN + VecZnxZeroBackend<BE>
+{
+}

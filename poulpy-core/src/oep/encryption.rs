@@ -19,10 +19,10 @@ use crate::{
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToBackendMut, GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut,
         GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut, GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut,
-        GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWEPlaintextToRef,
-        GLWESecretToRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef,
-        LWEToBackendMut, SetGaloisElement,
-        prepared::{GLWEPreparedToBackendRef, GLWEPreparedToRef, GLWESecretPreparedToBackendRef},
+        GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos, GLWEPlaintextToBackendRef, GLWESecretToRef,
+        GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos, LWEPlaintextToRef, LWESecretToRef, LWEToBackendMut,
+        SetGaloisElement,
+        prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },
 };
 
@@ -64,7 +64,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE>,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
+        P: GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -102,9 +102,9 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
+        P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
@@ -120,7 +120,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut;
@@ -330,7 +330,7 @@ pub trait EncryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
+        P: GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -523,7 +523,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE>,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
+        P: GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -568,9 +568,9 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE> + GLWEInfos,
+        P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -589,7 +589,7 @@ where
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         E: EncryptionInfos,
-        K: GLWEPreparedToBackendRef<BE> + GLWEPreparedToRef<BE> + GetDistribution + GLWEInfos,
+        K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -884,7 +884,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
-        P: GLWEPlaintextToRef + GLWEPlaintextToBackendRef<BE>,
+        P: GLWEPlaintextToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,

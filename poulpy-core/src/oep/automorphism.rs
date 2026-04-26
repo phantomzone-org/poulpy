@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     automorphism::{GGSWAutomorphismDefault, GLWEAutomorphismDefault, GLWEAutomorphismKeyAutomorphismDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GetGaloisElement, SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };

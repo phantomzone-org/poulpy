@@ -11,7 +11,7 @@ use crate::{
     EncryptionInfos, GGSWNoise, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
-        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos, ggsw_at_backend_mut_from_mut,
+        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, LWEInfos, ggsw_at_backend_mut_from_mut,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -118,7 +118,6 @@ where
             for col_j in 0..rank + 1 {
                 {
                     let mut scratch = scratch_1.borrow();
-                    let tmp_pt_ref = tmp_pt.to_ref();
                     let tmp_pt_backend = GLWEPlaintext {
                         data: <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(
                             &tmp_pt.data,
@@ -132,7 +131,7 @@ where
                         &mut ct.data,
                         cols,
                         false,
-                        Some((tmp_pt_ref, tmp_pt_backend, col_j)),
+                        Some((tmp_pt_backend, col_j)),
                         sk,
                         enc_infos,
                         source_xe,

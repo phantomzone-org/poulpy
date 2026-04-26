@@ -6,8 +6,8 @@ use poulpy_hal::{
 use crate::{
     GLWEKeyswitch, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWE, GetGaloisElement,
-        SetGaloisElement, gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, glwe_backend_ref_from_mut,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWE, GetGaloisElement, SetGaloisElement,
+        gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, glwe_backend_ref_from_mut,
         prepared::GGLWEPreparedToBackendRef,
     },
 };

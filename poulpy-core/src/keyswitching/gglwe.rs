@@ -5,8 +5,8 @@ use crate::{
     ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWESwitchingKey,
-        gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWESwitchingKey, gglwe_at_backend_mut_from_mut,
+        gglwe_at_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
     },
 };
 

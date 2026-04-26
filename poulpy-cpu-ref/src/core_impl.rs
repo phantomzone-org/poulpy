@@ -3,9 +3,8 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext,
-        GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
-        LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
+        GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared,
+        GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
     oep::{
         AutomorphismDefaults, AutomorphismImpl, ConversionDefaults, ConversionImpl, DecryptionDefaults, DecryptionImpl,
