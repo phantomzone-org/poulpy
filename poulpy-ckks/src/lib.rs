@@ -7,21 +7,35 @@
 //!
 //! The crate uses a bivariate polynomial representation over the Torus
 //! (base-`2^{base2k}` digits) instead of the RNS representation used by
-//! most other CKKS libraries. A ciphertext tracks three related precisions:
-//! the stored torus prefix `inner.k()`, the semantic message position
-//! `offset_bits`, and the torus scaling factor `torus_scale_bits`. Rescale
-//! visibly consumes precision by lowering all three together, while prefix
-//! truncation lowers `inner.k()` and `offset_bits` without changing
-//! `torus_scale_bits`.
+//! most other CKKS libraries. Public precision management is exposed through
+//! [`CKKSMeta`]:
+//!
+//! - `log_decimal`: base-2 logarithm of the encoded plaintext scaling factor
+//! - `log_hom_rem`: remaining homomorphic headroom, also tracked in bits
+//!
+//! Together they define the semantic torus width of a value:
+//! `effective_k() = log_decimal + log_hom_rem`.
+//! Storage is rounded up to the next multiple of `base2k`, so the allocated
+//! width `max_k()` may exceed `effective_k()`. Arithmetic APIs update this
+//! metadata for you, while maintenance helpers let you compact or resize owned
+//! buffers without violating those invariants.
+//!
+//! Safe add/sub operations return K-normalized ciphertexts. The paired
+//! `unsafe` traits ([`leveled::CKKSAddOpsUnsafe`] and
+//! [`leveled::CKKSSubOpsUnsafe`]) expose `*_unsafe` variants for callers who
+//! want to fuse several linear steps before normalizing explicitly. The
+//! current `examples/poly2.rs` demonstrates that style: it uses unsafe
+//! intermediate linear ops, calls `glwe_normalize_inplace` before the ct-ct
+//! multiply, and finishes with a normalized fused `mul_add`.
 //!
 //! ## Modules
 //!
 //! | Module | Role |
 //! |--------|------|
 //! | [`encoding`] | CKKS encoders/decoders, including slot-wise real/imaginary packing |
-//! | [`layouts`] | CKKS-level data structures: ciphertext, plaintext, prepared plaintext, tensor, and evaluation keys |
+//! | [`layouts`] | CKKS ciphertext/plaintext wrappers and metadata-aware allocation helpers |
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
-//! | bootstrapping | Planned CKKS bootstrapping work |
+//! | bootstrapping | Planned CKKS bootstrapping |
 
 use poulpy_core::layouts::{Base2K, TorusPrecision};
 
