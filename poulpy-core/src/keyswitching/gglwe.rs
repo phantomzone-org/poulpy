@@ -5,7 +5,7 @@ use crate::{
     ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GLWESwitchingKey,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWESwitchingKey,
         gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
     },
 };
@@ -28,8 +28,8 @@ where
 
     fn gglwe_keyswitch_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -82,7 +82,7 @@ where
 
     fn gglwe_keyswitch_inplace_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,

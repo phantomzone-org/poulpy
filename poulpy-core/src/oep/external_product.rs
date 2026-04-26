@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     external_product::{GGLWEExternalProductDefault, GGSWExternalProductDefault, GLWEExternalProductDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef,
-        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
     },
 };
 
@@ -57,15 +57,15 @@ pub unsafe trait GGLWEExternalProductImpl<BE: Backend>: Backend {
 
     fn gglwe_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
     fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -85,15 +85,15 @@ pub unsafe trait GGSWExternalProductImpl<BE: Backend>: Backend {
 
     fn ggsw_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
     fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -139,15 +139,15 @@ pub trait GGLWEExternalProductDefaults<BE: Backend>: Backend {
 
     fn gglwe_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
     fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -163,15 +163,15 @@ pub trait GGSWExternalProductDefaults<BE: Backend>: Backend {
 
     fn ggsw_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
     fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -237,8 +237,8 @@ where
 
     fn gglwe_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -248,7 +248,7 @@ where
 
     fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -274,8 +274,8 @@ where
 
     fn ggsw_external_product<'s, R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -285,7 +285,7 @@ where
 
     fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,

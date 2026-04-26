@@ -8,8 +8,7 @@ use crate::{
     GGSWExpandRows, ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GGSWToMut, GGSWToRef, LWEInfos, ggsw_at_backend_mut_from_mut,
-        ggsw_at_backend_ref_from_ref,
+        GGLWEInfos, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -40,7 +39,7 @@ where
 
     fn ggsw_keyswitch_inplace_default<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
@@ -67,8 +66,8 @@ where
 
     fn ggsw_keyswitch_default<'s, R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,

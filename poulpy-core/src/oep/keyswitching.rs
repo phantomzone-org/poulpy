@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     keyswitching::{GGLWEKeyswitchDefault, GGSWKeyswitchDefault, GLWEKeyswitchDefault, LWEKeySwitchDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef,
-        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, LWEInfos, LWEToBackendMut, LWEToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, LWEInfos, LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -56,14 +56,14 @@ pub unsafe trait GGLWEKeyswitchImpl<BE: Backend>: Backend {
 
     fn gglwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
     fn gglwe_keyswitch_inplace<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 }
@@ -95,8 +95,8 @@ pub unsafe trait GGSWKeyswitchImpl<BE: Backend>: Backend {
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
@@ -108,7 +108,7 @@ pub unsafe trait GGSWKeyswitchImpl<BE: Backend>: Backend {
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
@@ -173,14 +173,14 @@ pub trait GGLWEKeyswitchDefaults<BE: Backend>: Backend {
 
     fn gglwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
     fn gglwe_keyswitch_inplace<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 }
@@ -208,8 +208,8 @@ pub trait GGSWKeyswitchDefaults<BE: Backend>: Backend {
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
@@ -221,7 +221,7 @@ pub trait GGSWKeyswitchDefaults<BE: Backend>: Backend {
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
@@ -300,8 +300,8 @@ where
 
     fn gglwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
@@ -310,7 +310,7 @@ where
 
     fn gglwe_keyswitch_inplace<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
@@ -349,8 +349,8 @@ where
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
@@ -360,7 +360,7 @@ where
 
     fn ggsw_keyswitch_inplace<'s, R, K, T>(module: &Module<BE>, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,

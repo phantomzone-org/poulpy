@@ -3,7 +3,7 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GGSWToRef, GLWEInfos, GLWEPlaintext,
+        GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext,
         GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
@@ -287,8 +287,8 @@ external_helper! {
     )
     where [
         BE: Backend + GGLWEExternalProductDefaults<BE>,
-        R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -302,7 +302,7 @@ external_helper! {
     )
     where [
         BE: Backend + GGLWEExternalProductDefaults<BE>,
-        R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -326,8 +326,8 @@ external_helper! {
     )
     where [
         BE: Backend + GGSWExternalProductDefaults<BE>,
-        R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
+        R: poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
+        A: poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -341,7 +341,7 @@ external_helper! {
     )
     where [
         BE: Backend + GGSWExternalProductDefaults<BE>,
-        R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
+        R: poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -423,8 +423,8 @@ keyswitch_helper! {
     )
     where [
         BE: Backend + GGLWEKeyswitchDefaults<BE>,
-        R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: poulpy_core::layouts::GGLWEToBackendRef<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch(module, res, a, key, scratch);
@@ -437,7 +437,7 @@ keyswitch_helper! {
     )
     where [
         BE: Backend + GGLWEKeyswitchDefaults<BE>,
-        R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch_inplace(module, res, key, scratch);
@@ -462,8 +462,8 @@ keyswitch_helper! {
     )
     where [
         BE: Backend + GGSWKeyswitchDefaults<BE>,
-        R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
+        R: poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
+        A: poulpy_core::layouts::GGSWToBackendRef<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
@@ -478,7 +478,7 @@ keyswitch_helper! {
     )
     where [
         BE: Backend + GGSWKeyswitchDefaults<BE>,
-        R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
+        R: poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
@@ -757,8 +757,8 @@ macro_rules! impl_external_product_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
-                A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<Self> + GGLWEInfos,
+                R: poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
+                A: poulpy_core::layouts::GGLWEToBackendRef<Self> + GGLWEInfos,
                 B: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -773,7 +773,7 @@ macro_rules! impl_external_product_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
+                R: poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
                 A: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -800,8 +800,8 @@ macro_rules! impl_external_product_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
-                A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<Self> + GGSWInfos,
+                R: poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
+                A: poulpy_core::layouts::GGSWToBackendRef<Self> + GGSWInfos,
                 B: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -816,7 +816,7 @@ macro_rules! impl_external_product_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
+                R: poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
                 A: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -886,8 +886,8 @@ macro_rules! impl_keyswitching_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
-                A: GGLWEToRef + poulpy_core::layouts::GGLWEToBackendRef<Self> + GGLWEInfos,
+                R: poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
+                A: poulpy_core::layouts::GGLWEToBackendRef<Self> + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
@@ -901,7 +901,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGLWEToMut + poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
+                R: poulpy_core::layouts::GGLWEToBackendMut<Self> + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
@@ -935,8 +935,8 @@ macro_rules! impl_keyswitching_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
-                A: GGSWToRef + poulpy_core::layouts::GGSWToBackendRef<Self> + GGSWInfos,
+                R: poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
+                A: poulpy_core::layouts::GGSWToBackendRef<Self> + GGSWInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
@@ -952,7 +952,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
+                R: poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,

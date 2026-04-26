@@ -1,10 +1,10 @@
-use poulpy_hal::layouts::{Backend, Module, ScratchArena, ZnxZero};
+use poulpy_hal::{api::VecZnxZeroBackend, layouts::{Backend, Module, ScratchArena, ZnxInfos}};
 
 pub use crate::api::GGLWEExternalProduct;
 use crate::{
     GLWEExternalProduct, ScratchArenaTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos,
         prepared::GGSWPreparedToBackendRef,
     },
 };
@@ -12,7 +12,7 @@ use crate::{
 #[doc(hidden)]
 pub trait GGLWEExternalProductDefault<BE: Backend>
 where
-    Self: GLWEExternalProduct<BE>,
+    Self: GLWEExternalProduct<BE> + VecZnxZeroBackend<BE>,
 {
     fn gglwe_external_product_tmp_bytes_default<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
@@ -25,8 +25,8 @@ where
 
     fn gglwe_external_product_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>,
         BE: 's,
@@ -79,10 +79,13 @@ where
         }
 
         if min_dnum < res_dnum {
-            let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+            let mut res = res.to_backend_mut();
             for row in min_dnum..res_dnum {
                 for col in 0..res_rank_in {
-                    res.at_mut(row, col).data_mut().zero();
+                    let mut ct = crate::layouts::gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col);
+                    for data_col in 0..ct.data.cols() {
+                        self.vec_znx_zero_backend(&mut ct.data, data_col);
+                    }
                 }
             }
         }
@@ -90,7 +93,7 @@ where
 
     fn gglwe_external_product_inplace_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>,
         BE: 's,
@@ -124,4 +127,4 @@ where
     }
 }
 
-impl<BE: Backend> GGLWEExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
+impl<BE: Backend> GGLWEExternalProductDefault<BE> for Module<BE> where Self: GLWEExternalProduct<BE> + VecZnxZeroBackend<BE> {}

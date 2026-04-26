@@ -4,8 +4,8 @@ use crate::{
     api::{GGLWEExternalProduct, GGSWExternalProduct, GLWEExternalProduct},
     external_product::{GGLWEExternalProductDefault, GGSWExternalProductDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef,
-        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
     },
     oep::{GGLWEExternalProductImpl, GGSWExternalProductImpl, GLWEExternalProductImpl},
 };
@@ -83,8 +83,8 @@ impl_external_product_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
-        A: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
+        A: GGLWEToBackendRef<BE> + GGLWEInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -99,7 +99,7 @@ impl_external_product_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGLWEToMut + GGLWEToBackendMut<BE> + GGLWEInfos,
+        R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -128,8 +128,8 @@ impl_external_product_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        A: GGSWToBackendRef<BE> + GGSWInfos,
         B: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -144,7 +144,7 @@ impl_external_product_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
