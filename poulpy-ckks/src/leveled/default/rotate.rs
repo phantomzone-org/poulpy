@@ -6,7 +6,7 @@ use poulpy_core::{
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 use crate::{
-    CKKSCompositionError, CKKSInfos, checked_log_hom_rem_sub,
+    CKKSCompositionError, CKKSInfos, checked_log_budget_sub,
     layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
 };
 
@@ -51,7 +51,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         }
 
         dst.meta = src.meta();
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("rotate", dst.log_hom_rem(), offset)?;
+        dst.meta.log_budget = checked_log_budget_sub("rotate", dst.log_budget(), offset)?;
         Ok(())
     }
 

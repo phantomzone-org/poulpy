@@ -7,7 +7,7 @@
 //! to the unsafe API:
 //!
 //! - the `unsafe`-trait dispatch reaches the right default helper,
-//! - meta (`log_hom_rem`, `log_decimal`) is set by the unnormalized op,
+//! - meta (`log_budget`, `log_delta`) is set by the unnormalized op,
 //! - a caller-supplied `glwe_normalize_assign` recovers a decryptable
 //!   ciphertext equivalent to the safe path.
 //!
@@ -54,17 +54,12 @@ pub fn test_sub_ct_assign_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestC
     let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     let (want_re, want_im) = ctx.want_sub();
-    let expected_log_hom_rem = ct1.log_hom_rem().min(ct2.log_hom_rem());
-    let expected_log_decimal = ct1.log_decimal().max(ct2.log_decimal());
+    let expected_log_budget = ct1.log_budget().min(ct2.log_budget());
+    let expected_log_delta = ct1.log_delta().max(ct2.log_delta());
     unsafe {
         ctx.module.ckks_sub_assign_unsafe(&mut ct1, &ct2, scratch.borrow()).unwrap();
     }
-    assert_ct_meta(
-        "sub_ct_assign_aligned_unsafe",
-        &ct1,
-        expected_log_decimal,
-        expected_log_hom_rem,
-    );
+    assert_ct_meta("sub_ct_assign_aligned_unsafe", &ct1, expected_log_delta, expected_log_budget);
     ctx.module.glwe_normalize_assign(&mut ct1, scratch.borrow());
     ctx.assert_decrypt_precision("sub_ct_assign_aligned_unsafe", &ct1, &want_re, &want_im, scratch.borrow());
 }
@@ -104,7 +99,7 @@ pub fn test_sub_pt_vec_rnx_into_unsafe<BE: Backend, F: TestScalar>(ctx: &TestCon
 pub fn test_sub_pt_const_znx_into_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let want_re: Vec<F> = ctx.re1.iter().map(|x| *x - const_re).collect();
     let want_im: Vec<F> = ctx.im1.iter().map(|x| *x - const_im).collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
@@ -112,10 +107,10 @@ pub fn test_sub_pt_const_znx_into_aligned_unsafe<BE: Backend, F: TestScalar>(ctx
     let cst_znx = cst_rnx
         .to_znx_at_k(
             ctx.base2k(),
-            ct.log_hom_rem()
-                .checked_add(ctx.meta().log_decimal)
+            ct.log_budget()
+                .checked_add(ctx.meta().log_delta)
                 .expect("aligned precision overflow"),
-            ctx.meta().log_decimal,
+            ctx.meta().log_delta,
         )
         .unwrap();
     unsafe {

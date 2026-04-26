@@ -12,8 +12,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, CKKSMeta, checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem,
-    error::checked_mul_pt_log_hom_rem,
+    CKKSInfos, CKKSMeta, checked_log_budget_sub, checked_mul_ct_log_budget,
+    error::checked_mul_pt_log_budget,
     layouts::{
         CKKSCiphertext,
         plaintext::{
@@ -55,7 +55,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, a, b)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, a, b)?;
 
         let a_ref = a.to_ref();
         let b_ref = b.to_ref();
@@ -80,8 +80,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         );
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -96,7 +96,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, dst, a)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, dst, a)?;
 
         let tensor_layout = GLWELayout {
             n: dst.n(),
@@ -118,8 +118,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         );
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -154,7 +154,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, a, a)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, a, a)?;
         let a_ref = a.to_ref();
         let tensor_layout = GLWELayout {
             n: dst.n(),
@@ -167,8 +167,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -182,7 +182,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWETensoring<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_ct_params(dst, dst, dst)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, dst, dst)?;
         let tensor_layout = GLWELayout {
             n: dst.n(),
             base2k: dst.base2k(),
@@ -194,8 +194,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &dst.to_ref(), dst.effective_k(), scratch_1);
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -251,7 +251,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
         self.glwe_mul_plain(
             cnv_offset,
             &mut dst.to_mut(),
@@ -261,8 +261,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             pt_znx.max_k().as_usize(),
             scratch,
         );
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -276,7 +276,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWEMulPlain<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_pt_params(dst, dst, pt_znx)?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, dst, pt_znx)?;
         let dst_effective_k = dst.effective_k();
 
         self.glwe_mul_plain_assign(
@@ -287,8 +287,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             pt_znx.max_k().as_usize(),
             scratch,
         );
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -350,7 +350,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_const_params(dst, a, cst_znx.meta())?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_const_params(dst, a, cst_znx.meta())?;
         match (cst_znx.re(), cst_znx.im()) {
             (None, None) => dst.data_mut().zero(),
             (Some(re_const), None) => self.glwe_mul_const(cnv_offset, &mut dst.to_mut(), &a.to_ref(), re_const, scratch),
@@ -368,8 +368,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             }
         }
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -383,7 +383,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let (res_log_hom_rem, res_log_decimal, cnv_offset) = get_mul_const_params(dst, dst, cst_znx.meta())?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_const_params(dst, dst, cst_znx.meta())?;
         match (cst_znx.re(), cst_znx.im()) {
             (None, None) => dst.data_mut().zero(),
             (Some(re_const), None) => self.glwe_mul_const_assign(cnv_offset, &mut dst.to_mut(), re_const, scratch),
@@ -401,8 +401,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             }
         }
 
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 
@@ -420,10 +420,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
         if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
-            let (res_log_hom_rem, res_log_decimal, _) = get_mul_const_params(dst, a, prec)?;
+            let (res_log_budget, res_log_delta, _) = get_mul_const_params(dst, a, prec)?;
             dst.data_mut().zero();
-            dst.meta.log_hom_rem = res_log_hom_rem;
-            dst.meta.log_decimal = res_log_decimal;
+            dst.meta.log_budget = res_log_budget;
+            dst.meta.log_delta = res_log_delta;
             return Ok(());
         }
 
@@ -444,10 +444,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
     {
         if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
-            let (res_log_hom_rem, res_log_decimal, _) = get_mul_const_params(dst, dst, prec)?;
+            let (res_log_budget, res_log_delta, _) = get_mul_const_params(dst, dst, prec)?;
             dst.data_mut().zero();
-            dst.meta.log_hom_rem = res_log_hom_rem;
-            dst.meta.log_decimal = res_log_decimal;
+            dst.meta.log_budget = res_log_budget;
+            dst.meta.log_delta = res_log_delta;
             return Ok(());
         }
 
@@ -464,15 +464,15 @@ where
     A: poulpy_core::layouts::LWEInfos + CKKSInfos,
     B: poulpy_core::layouts::LWEInfos + CKKSInfos,
 {
-    let res_log_hom_rem = checked_mul_ct_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
-    let res_log_decimal = a.log_decimal().min(b.log_decimal());
+    let res_log_budget = checked_mul_ct_log_budget("mul", a.log_budget(), b.log_budget(), a.log_delta(), b.log_delta())?;
+    let res_log_delta = a.log_delta().min(b.log_delta());
 
-    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+    let res_offset = (res_log_budget + res_log_delta).saturating_sub(res.max_k().as_usize());
     let cnv_offset = a.effective_k().max(b.effective_k()) + res_offset;
 
     Ok((
-        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
-        res_log_decimal,
+        checked_log_budget_sub("mul", res_log_budget, res_offset)?,
+        res_log_delta,
         cnv_offset,
     ))
 }
@@ -483,14 +483,14 @@ where
     A: poulpy_core::layouts::LWEInfos + CKKSInfos,
     B: poulpy_core::layouts::LWEInfos + CKKSInfos,
 {
-    let res_log_hom_rem = checked_mul_pt_log_hom_rem("mul", a.log_hom_rem(), b.log_hom_rem(), a.log_decimal(), b.log_decimal())?;
-    let res_log_decimal = a.log_decimal();
-    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+    let res_log_budget = checked_mul_pt_log_budget("mul", a.log_budget(), b.log_budget(), a.log_delta(), b.log_delta())?;
+    let res_log_delta = a.log_delta();
+    let res_offset = (res_log_budget + res_log_delta).saturating_sub(res.max_k().as_usize());
     let cnv_offset = b.max_k().as_usize() + res_offset;
 
     Ok((
-        checked_log_hom_rem_sub("mul", res_log_hom_rem, res_offset)?,
-        res_log_decimal,
+        checked_log_budget_sub("mul", res_log_budget, res_offset)?,
+        res_log_delta,
         cnv_offset,
     ))
 }
@@ -500,20 +500,14 @@ where
     R: poulpy_core::layouts::LWEInfos + CKKSInfos,
     A: poulpy_core::layouts::LWEInfos + CKKSInfos,
 {
-    let res_log_hom_rem = checked_mul_pt_log_hom_rem(
-        "mul_const",
-        a.log_hom_rem(),
-        prec.log_hom_rem,
-        a.log_decimal(),
-        prec.log_decimal,
-    )?;
-    let res_log_decimal = a.log_decimal();
-    let res_offset = (res_log_hom_rem + res_log_decimal).saturating_sub(res.max_k().as_usize());
+    let res_log_budget = checked_mul_pt_log_budget("mul_const", a.log_budget(), prec.log_budget, a.log_delta(), prec.log_delta)?;
+    let res_log_delta = a.log_delta();
+    let res_offset = (res_log_budget + res_log_delta).saturating_sub(res.max_k().as_usize());
     let cnv_offset = prec.min_k(res.base2k()).as_usize() + res_offset;
 
     Ok((
-        checked_log_hom_rem_sub("mul_const", res_log_hom_rem, res_offset)?,
-        res_log_decimal,
+        checked_log_budget_sub("mul_const", res_log_budget, res_offset)?,
+        res_log_delta,
         cnv_offset,
     ))
 }

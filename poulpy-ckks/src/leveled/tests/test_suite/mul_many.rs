@@ -7,7 +7,7 @@
 //! | [`test_mul_many_aligned`] | balanced tree on `n=4` aligned inputs |
 //! | [`test_mul_many_single_smaller_output`] | one input into a narrower output |
 //! | [`test_mul_many_odd_tree`] | odd `n=5` exercising the carry-up branch |
-//! | [`test_mul_many_unaligned_log_hom_rem`] | one input rescaled by one limb |
+//! | [`test_mul_many_unaligned_log_budget`] | one input rescaled by one limb |
 //! | [`test_mul_many_smaller_output`] | output narrower than would be needed |
 
 use poulpy_hal::{
@@ -107,7 +107,7 @@ pub fn test_mul_many_odd_tree<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, 
     run(ctx, 5, ctx.max_k(), "mul_many_odd_tree");
 }
 
-pub fn test_mul_many_unaligned_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let n: usize = 4;
     let mut scratch = alloc_scratch(ctx, n);
     let (factors, want_re, want_im) = build_factors(ctx, n);
@@ -125,13 +125,7 @@ pub fn test_mul_many_unaligned_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &Tes
     ctx.module
         .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision(
-        "mul_many unaligned_log_hom_rem",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("mul_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_mul_many_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

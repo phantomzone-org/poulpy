@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxAddInto, VecZnxCopy, VecZnxLsh, VecZnxLshAddInto,
-        VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate,
-        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace,
+        VecZnxLshAssign, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxNegate,
+        VecZnxNegateAssign, VecZnxNormalize, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign,
+        VecZnxRotateAssignTmpBytes, VecZnxRshAssign, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign,
         VecZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, GaloisElement, Scratch},
@@ -291,7 +291,7 @@ where
 
 pub trait GLWENegate
 where
-    Self: VecZnxNegate + VecZnxNegateInplace + VecZnxZero + ModuleN,
+    Self: VecZnxNegate + VecZnxNegateAssign + VecZnxZero + ModuleN,
 {
     fn glwe_negate<R, A>(&self, res: &mut R, a: &A)
     where
@@ -325,7 +325,7 @@ where
 
 pub trait GLWESub
 where
-    Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubInplace + VecZnxSubNegateInplace,
+    Self: ModuleN + VecZnxSub + VecZnxCopy + VecZnxNegate + VecZnxZero + VecZnxSubAssign + VecZnxSubNegateAssign,
 {
     fn glwe_sub<R, A, B>(&self, res: &mut R, a: &A, b: &B)
     where
@@ -414,7 +414,7 @@ where
 
 pub trait GLWERotate<BE: Backend>
 where
-    Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZero,
+    Self: ModuleN + VecZnxRotate + VecZnxRotateAssign<BE> + VecZnxRotateAssignTmpBytes + VecZnxZero,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()
@@ -517,7 +517,7 @@ where
 
 pub trait GLWEMulXpMinusOne<BE: Backend>
 where
-    Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE>,
+    Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneAssign<BE>,
 {
     fn glwe_mul_xp_minus_one<R, A>(&self, k: i64, res: &mut R, a: &A)
     where
@@ -581,12 +581,12 @@ where
 pub trait GLWEShift<BE: Backend>
 where
     Self: ModuleN
-        + VecZnxRshInplace<BE>
+        + VecZnxRshAssign<BE>
         + VecZnxLshAddInto<BE>
         + VecZnxLshSub<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
-        + VecZnxLshInplace<BE>
+        + VecZnxLshAssign<BE>
         + VecZnxLsh<BE>,
 {
     fn glwe_shift_tmp_bytes(&self) -> usize {
@@ -712,7 +712,7 @@ where
 
 pub trait GLWENormalize<BE: Backend>
 where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeAssign<BE> + VecZnxNormalizeTmpBytes,
 {
     fn glwe_normalize_tmp_bytes(&self) -> usize {
         self.vec_znx_normalize_tmp_bytes()

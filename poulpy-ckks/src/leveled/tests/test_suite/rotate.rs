@@ -64,17 +64,12 @@ pub fn test_rotate_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, 
     for &r in rotations {
         let (want_re, want_im) = ctx.want_rotate(r);
         let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-        let expected_log_decimal = ct.log_decimal();
-        let expected_log_hom_rem = ct.log_hom_rem();
+        let expected_log_delta = ct.log_delta();
+        let expected_log_budget = ct.log_budget();
         ctx.module
             .ckks_rotate_assign(&mut ct, r, ctx.atks(), scratch.borrow())
             .unwrap();
-        assert_ct_meta(
-            &format!("rotate_assign({r})"),
-            &ct,
-            expected_log_decimal,
-            expected_log_hom_rem,
-        );
+        assert_ct_meta(&format!("rotate_assign({r})"), &ct, expected_log_delta, expected_log_budget);
         ctx.assert_decrypt_precision(&format!("rotate_assign({r})"), &ct, &want_re, &want_im, scratch.borrow());
     }
 }

@@ -34,12 +34,12 @@
 //! | [`NttIfmaFromZnx64`] | Load `i64` coefficients into 3-prime CRT format |
 //! | [`NttIfmaToZnx128`] | CRT-reconstruct from 3-prime CRT to `i128` |
 //! | [`NttIfmaAdd`] | Component-wise addition |
-//! | [`NttIfmaAddInplace`] | In-place component-wise addition |
+//! | [`NttIfmaAddAssign`] | In-place component-wise addition |
 //! | [`NttIfmaSub`] | Component-wise subtraction |
-//! | [`NttIfmaSubInplace`] | In-place component-wise subtraction |
-//! | [`NttIfmaSubNegateInplace`] | In-place swap-subtract: `res = a - res` |
+//! | [`NttIfmaSubAssign`] | In-place component-wise subtraction |
+//! | [`NttIfmaSubNegateAssign`] | In-place swap-subtract: `res = a - res` |
 //! | [`NttIfmaNegate`] | Component-wise negation |
-//! | [`NttIfmaNegateInplace`] | In-place negation |
+//! | [`NttIfmaNegateAssign`] | In-place negation |
 //! | [`NttIfmaZero`] | Zero a CRT vector |
 //! | [`NttIfmaCopy`] | Copy a CRT vector |
 //! | [`NttIfmaMulBbc`] | Pointwise product: b × c → b |
@@ -118,7 +118,7 @@ pub trait NttIfmaAdd {
 }
 
 /// In-place component-wise addition.
-pub trait NttIfmaAddInplace {
+pub trait NttIfmaAddAssign {
     fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]);
 }
 
@@ -128,12 +128,12 @@ pub trait NttIfmaSub {
 }
 
 /// In-place component-wise subtraction.
-pub trait NttIfmaSubInplace {
+pub trait NttIfmaSubAssign {
     fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]);
 }
 
 /// In-place swap-subtract: `res = a - res`.
-pub trait NttIfmaSubNegateInplace {
+pub trait NttIfmaSubNegateAssign {
     fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]);
 }
 
@@ -143,7 +143,7 @@ pub trait NttIfmaNegate {
 }
 
 /// In-place negation.
-pub trait NttIfmaNegateInplace {
+pub trait NttIfmaNegateAssign {
     fn ntt_ifma_negate_assign(res: &mut [u64]);
 }
 

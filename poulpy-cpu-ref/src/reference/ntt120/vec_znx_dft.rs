@@ -30,8 +30,8 @@ use crate::{
         ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
-        NttAdd, NttAddInplace, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateInplace, NttSub, NttSubInplace,
-        NttSubNegateInplace, NttToZnx128, NttZero,
+        NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
+        NttSubNegateAssign, NttToZnx128, NttZero,
         mat_vec::{BbbMeta, BbcMeta},
         ntt::{NttTable, NttTableInv, intt_ref},
         primes::{PrimeSet, Primes30},
@@ -468,7 +468,7 @@ where
 /// DFT-domain in-place add: `res[res_col] += a[a_col]`.
 pub fn ntt120_vec_znx_dft_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -487,7 +487,7 @@ where
 /// `a_scale < 0` shifts `a` up by `|a_scale|` limbs (adds into higher limbs).
 pub fn ntt120_vec_znx_dft_add_scaled_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -571,7 +571,7 @@ where
 /// DFT-domain in-place sub: `res[res_col] -= a[a_col]`.
 pub fn ntt120_vec_znx_dft_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttSubInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttSubAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -589,7 +589,7 @@ where
 /// Extra `res` limbs beyond `a.size()` are negated.
 pub fn ntt120_vec_znx_dft_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateInplace + NttNegateInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateAssign + NttNegateAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {

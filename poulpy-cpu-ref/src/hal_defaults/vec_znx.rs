@@ -15,10 +15,10 @@ use crate::reference::vec_znx::{
     vec_znx_sub_scalar_assign, vec_znx_switch_ring, vec_znx_zero,
 };
 use crate::reference::znx::{
-    ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace,
-    ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
-    ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-    ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace,
+    ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign,
+    ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
+    ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
+    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign,
     ZnxSwitchRing, ZnxZero,
 };
 use poulpy_hal::{
@@ -53,16 +53,16 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
     ) where
         BE: ZnxZero
             + ZnxCopy
-            + ZnxAddInplace
-            + ZnxMulPowerOfTwoInplace
+            + ZnxAddAssign
+            + ZnxMulPowerOfTwoAssign
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeMiddleStep
             + ZnxNormalizeFinalStep
             + ZnxNormalizeFirstStep
             + ZnxExtractDigitAddMul
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFinalStepInplace
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFinalStepAssign
             + ZnxNormalizeDigit,
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -85,7 +85,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         scratch: &mut Scratch<BE>,
     ) where
-        BE: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
+        BE: ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
     {
         let byte_count = vec_znx_normalize_tmp_bytes(module.n());
@@ -118,7 +118,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
 
     fn vec_znx_add_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: ZnxAddInplace,
+        BE: ZnxAddAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -152,7 +152,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         a: &A,
         a_col: usize,
     ) where
-        BE: ZnxAddInplace,
+        BE: ZnxAddAssign,
         R: VecZnxToMut,
         A: ScalarZnxToRef,
     {
@@ -171,7 +171,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
 
     fn vec_znx_sub_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: ZnxSubInplace,
+        BE: ZnxSubAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -180,7 +180,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
 
     fn vec_znx_sub_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: ZnxSubNegateInplace + ZnxNegateInplace,
+        BE: ZnxSubNegateAssign + ZnxNegateAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -214,7 +214,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         a: &A,
         a_col: usize,
     ) where
-        BE: ZnxSubInplace,
+        BE: ZnxSubAssign,
         R: VecZnxToMut,
         A: ScalarZnxToRef,
     {
@@ -232,7 +232,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
 
     fn vec_znx_negate_assign_default<R>(_module: &Module<BE>, res: &mut R, res_col: usize)
     where
-        BE: ZnxNegateInplace,
+        BE: ZnxNegateAssign,
         R: VecZnxToMut,
     {
         vec_znx_negate_assign::<R, BE>(res, res_col);
@@ -259,9 +259,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeFirstStep
             + ZnxNormalizeMiddleStep
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFirstStepInplace
-            + ZnxNormalizeFinalStepInplace,
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFirstStepAssign
+            + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -289,9 +289,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeFirstStep
             + ZnxNormalizeMiddleStep
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFirstStepInplace
-            + ZnxNormalizeFinalStepInplace,
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFirstStepAssign
+            + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -404,9 +404,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeMiddleStepSub
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFirstStepInplace
-            + ZnxNormalizeFinalStepInplace,
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFirstStepAssign
+            + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -430,9 +430,9 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeMiddleStep
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFirstStepInplace
-            + ZnxNormalizeFinalStepInplace,
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFirstStepAssign
+            + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
     {
         let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
@@ -450,7 +450,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         scratch: &mut Scratch<BE>,
     ) where
-        BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
+        BE: ZnxZero + ZnxCopy + ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
         R: VecZnxToMut,
     {
         let (carry, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(
@@ -512,7 +512,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
 
     fn vec_znx_mul_xp_minus_one_default<R, A>(_module: &Module<BE>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: ZnxRotate + ZnxZero + ZnxSubInplace,
+        BE: ZnxRotate + ZnxZero + ZnxSubAssign,
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -530,7 +530,7 @@ pub trait HalVecZnxDefaults<BE: Backend>: Backend {
         res_col: usize,
         scratch: &mut Scratch<BE>,
     ) where
-        BE: ZnxRotate + ZnxNegate + ZnxSubNegateInplace,
+        BE: ZnxRotate + ZnxNegate + ZnxSubNegateAssign,
         R: VecZnxToMut,
     {
         let (tmp, _) = <BE as HalScratchDefaults<BE>>::take_slice_default::<i64>(

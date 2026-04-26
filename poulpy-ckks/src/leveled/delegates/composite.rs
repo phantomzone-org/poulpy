@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, CKKSMeta, checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem,
+    CKKSInfos, CKKSMeta, checked_log_budget_sub, checked_mul_ct_log_budget,
     layouts::{
         CKKSCiphertext,
         ciphertext::CKKSOffset,
@@ -76,7 +76,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSAddManyOps<BE> for Module<BE> {
                 let offset = dst.offset_unary(inputs[0]);
                 self.glwe_lsh(dst, inputs[0], offset, scratch);
                 dst.meta = inputs[0].meta();
-                dst.meta.log_hom_rem = checked_log_hom_rem_sub("ckks_add_many", inputs[0].log_hom_rem(), offset)?;
+                dst.meta.log_budget = checked_log_budget_sub("ckks_add_many", inputs[0].log_budget(), offset)?;
             }
             _ => {
                 ensure_accumulation_fits("ckks_add_many", dst, inputs.len())?;
@@ -118,7 +118,7 @@ where
             let offset = dst.offset_unary(inputs[0]);
             module.glwe_lsh(dst, inputs[0], offset, scratch);
             dst.meta = inputs[0].meta();
-            dst.meta.log_hom_rem = checked_log_hom_rem_sub("ckks_mul_many", inputs[0].log_hom_rem(), offset)?;
+            dst.meta.log_budget = checked_log_budget_sub("ckks_mul_many", inputs[0].log_budget(), offset)?;
             Ok(())
         }
         2 => module.ckks_mul_into(dst, inputs[0], inputs[1], tsk, scratch),
@@ -126,11 +126,11 @@ where
             let mid: usize = inputs.len() / 2;
             let (left_slice, right_slice) = inputs.split_at(mid);
 
-            let log_decimal: usize = inputs[0].log_decimal();
+            let log_delta: usize = inputs[0].log_delta();
             let left_min_eff_k: usize = left_slice.iter().map(|c| c.effective_k()).min().unwrap();
             let right_min_eff_k: usize = right_slice.iter().map(|c| c.effective_k()).min().unwrap();
-            let left_max_k: usize = left_min_eff_k.saturating_sub(ceil_log2(left_slice.len()) * log_decimal);
-            let right_max_k: usize = right_min_eff_k.saturating_sub(ceil_log2(right_slice.len()) * log_decimal);
+            let left_max_k: usize = left_min_eff_k.saturating_sub(ceil_log2(left_slice.len()) * log_delta);
+            let right_max_k: usize = right_min_eff_k.saturating_sub(ceil_log2(right_slice.len()) * log_delta);
 
             let left_layout = GLWELayout {
                 n: dst.n(),
@@ -580,24 +580,24 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
             return self.ckks_mul_into(dst, a[0], b[0], tsk, scratch);
         }
 
-        let a_min_lhr: usize = a.iter().map(|c| c.log_hom_rem()).min().unwrap();
-        let b_min_lhr: usize = b.iter().map(|c| c.log_hom_rem()).min().unwrap();
+        let a_min_lhr: usize = a.iter().map(|c| c.log_budget()).min().unwrap();
+        let b_min_lhr: usize = b.iter().map(|c| c.log_budget()).min().unwrap();
         let a_aligned: bool = a
             .iter()
-            .all(|c| c.log_hom_rem() == a_min_lhr && c.log_decimal() == a[0].log_decimal());
+            .all(|c| c.log_budget() == a_min_lhr && c.log_delta() == a[0].log_delta());
         let b_aligned: bool = b
             .iter()
-            .all(|c| c.log_hom_rem() == b_min_lhr && c.log_decimal() == b[0].log_decimal());
+            .all(|c| c.log_budget() == b_min_lhr && c.log_delta() == b[0].log_delta());
         let uniform_ld =
-            a.iter().all(|c| c.log_decimal() == a[0].log_decimal()) && b.iter().all(|c| c.log_decimal() == b[0].log_decimal());
+            a.iter().all(|c| c.log_delta() == a[0].log_delta()) && b.iter().all(|c| c.log_delta() == b[0].log_delta());
 
         if !uniform_ld {
             self.ckks_mul_into(dst, a[0], b[0], tsk, scratch)?;
             return accumulate_unnormalized(self, dst, n, scratch, |tmp, i, s| self.ckks_mul_into(tmp, a[i], b[i], tsk, s));
         }
 
-        let a_ld: usize = a[0].log_decimal();
-        let b_ld: usize = b[0].log_decimal();
+        let a_ld: usize = a[0].log_delta();
+        let b_ld: usize = b[0].log_delta();
         let a_target_eff_k: usize = a_min_lhr + a_ld;
         let b_target_eff_k: usize = b_min_lhr + b_ld;
 
@@ -636,22 +636,22 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
 
         if !a_aligned {
             for (i, ai) in a.iter().enumerate() {
-                let shift = ai.log_hom_rem() - a_min_lhr;
+                let shift = ai.log_budget() - a_min_lhr;
                 self.ckks_rescale_into(&mut a_buf[i], shift, *ai, scratch_ab)?;
             }
         }
         if !b_aligned {
             for (i, bi) in b.iter().enumerate() {
-                let shift = bi.log_hom_rem() - b_min_lhr;
+                let shift = bi.log_budget() - b_min_lhr;
                 self.ckks_rescale_into(&mut b_buf[i], shift, *bi, scratch_ab)?;
             }
         }
 
         let dst_max_k: usize = dst.max_k().as_usize();
-        let res_log_decimal: usize = a_ld.min(b_ld);
-        let lhr0: usize = checked_mul_ct_log_hom_rem("dot_product_ct", a_min_lhr, b_min_lhr, a_ld, b_ld)?;
-        let res_offset: usize = (lhr0 + res_log_decimal).saturating_sub(dst_max_k);
-        let res_log_hom_rem: usize = checked_log_hom_rem_sub("dot_product_ct", lhr0, res_offset)?;
+        let res_log_delta: usize = a_ld.min(b_ld);
+        let lhr0: usize = checked_mul_ct_log_budget("dot_product_ct", a_min_lhr, b_min_lhr, a_ld, b_ld)?;
+        let res_offset: usize = (lhr0 + res_log_delta).saturating_sub(dst_max_k);
+        let res_log_budget: usize = checked_log_budget_sub("dot_product_ct", lhr0, res_offset)?;
         let cnv_offset: usize = a_target_eff_k.max(b_target_eff_k) + res_offset;
 
         let tensor_max_k: usize = a_target_eff_k.max(b_target_eff_k);
@@ -691,8 +691,8 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSDotProductOps<BE> for Module<BE> {
         }
 
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &acc_tensor, tsk, tsk.size(), scratch_t2);
-        dst.meta.log_hom_rem = res_log_hom_rem;
-        dst.meta.log_decimal = res_log_decimal;
+        dst.meta.log_budget = res_log_budget;
+        dst.meta.log_delta = res_log_delta;
         Ok(())
     }
 

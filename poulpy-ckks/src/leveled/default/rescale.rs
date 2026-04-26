@@ -2,7 +2,7 @@ use anyhow::Result;
 use poulpy_core::{GLWEShift, ScratchTakeCore};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-use crate::{CKKSInfos, checked_log_hom_rem_sub, layouts::CKKSCiphertext};
+use crate::{CKKSInfos, checked_log_budget_sub, layouts::CKKSCiphertext};
 
 #[doc(hidden)]
 pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
@@ -30,9 +30,9 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let log_hom_rem = checked_log_hom_rem_sub("rescale_assign", ct.log_hom_rem(), k)?;
+        let log_budget = checked_log_budget_sub("rescale_assign", ct.log_budget(), k)?;
         self.glwe_lsh_assign(ct, k, scratch);
-        ct.meta.log_hom_rem = log_hom_rem;
+        ct.meta.log_budget = log_budget;
         Ok(())
     }
 
@@ -47,10 +47,10 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let log_hom_rem = checked_log_hom_rem_sub("rescale", src.log_hom_rem(), k)?;
+        let log_budget = checked_log_budget_sub("rescale", src.log_budget(), k)?;
         self.glwe_lsh(dst, src, k, scratch);
         dst.meta = src.meta();
-        dst.meta.log_hom_rem = log_hom_rem;
+        dst.meta.log_budget = log_budget;
         Ok(())
     }
 
@@ -64,10 +64,10 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         Self: GLWEShift<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        if a.log_hom_rem() < b.log_hom_rem() {
-            self.ckks_rescale_assign_default(b, b.log_hom_rem() - a.log_hom_rem(), scratch)
+        if a.log_budget() < b.log_budget() {
+            self.ckks_rescale_assign_default(b, b.log_budget() - a.log_budget(), scratch)
         } else {
-            self.ckks_rescale_assign_default(a, a.log_hom_rem() - b.log_hom_rem(), scratch)
+            self.ckks_rescale_assign_default(a, a.log_budget() - b.log_budget(), scratch)
         }
     }
 }

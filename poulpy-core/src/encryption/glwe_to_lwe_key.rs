@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes},
     layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
@@ -40,8 +40,8 @@ where
     Self: ModuleN
         + GGLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxAutomorphismInplace<BE>
-        + VecZnxAutomorphismInplaceTmpBytes,
+        + VecZnxAutomorphismAssign<BE>
+        + VecZnxAutomorphismAssignTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_to_lwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

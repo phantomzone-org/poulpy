@@ -96,7 +96,7 @@ pub trait VecZnxBigSub<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubInplace<B: Backend> {
+pub trait VecZnxBigSubAssign<B: Backend> {
     /// Subtracts `a` from `b` and stores the result on `b`.
     fn vec_znx_big_sub_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -104,7 +104,7 @@ pub trait VecZnxBigSubInplace<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubNegateInplace<B: Backend> {
+pub trait VecZnxBigSubNegateAssign<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `b`.
     fn vec_znx_big_sub_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -121,7 +121,7 @@ pub trait VecZnxBigSubSmallA<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallInplace<B: Backend> {
+pub trait VecZnxBigSubSmallAssign<B: Backend> {
     /// Subtracts `a` from `res` and stores the result on `res`.
     fn vec_znx_big_sub_small_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -138,7 +138,7 @@ pub trait VecZnxBigSubSmallB<B: Backend> {
         C: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallNegateInplace<B: Backend> {
+pub trait VecZnxBigSubSmallNegateAssign<B: Backend> {
     /// Subtracts `res` from `a` and stores the result on `res`.
     fn vec_znx_big_sub_small_negate_assign<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -155,7 +155,7 @@ pub trait VecZnxBigNegate<B: Backend> {
 }
 
 /// Negates the selected column of `res` in-place.
-pub trait VecZnxBigNegateInplace<B: Backend> {
+pub trait VecZnxBigNegateAssign<B: Backend> {
     fn vec_znx_big_negate_assign<R>(&self, res: &mut R, res_col: usize)
     where
         R: VecZnxBigToMut<B>;
@@ -292,7 +292,7 @@ pub trait VecZnxBigNormalize<B: Backend> {
 }
 
 /// Returns scratch bytes required for in-place automorphism on [`VecZnxBig`](crate::layouts::VecZnxBig).
-pub trait VecZnxBigAutomorphismInplaceTmpBytes {
+pub trait VecZnxBigAutomorphismAssignTmpBytes {
     fn vec_znx_big_automorphism_assign_tmp_bytes(&self) -> usize;
 }
 
@@ -304,7 +304,7 @@ pub trait VecZnxBigAutomorphism<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAutomorphismInplace<B: Backend> {
+pub trait VecZnxBigAutomorphismAssign<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
     fn vec_znx_big_automorphism_assign<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where

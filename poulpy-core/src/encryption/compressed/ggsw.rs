@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxNormalizeInplace},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxNormalizeAssign},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
@@ -41,7 +41,7 @@ pub trait GGSWCompressedEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> GGSWCompressedEncryptSkDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
+    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

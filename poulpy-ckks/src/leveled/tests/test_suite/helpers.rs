@@ -255,10 +255,10 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         self.params.k
     }
 
-    pub fn precision_at(&self, log_decimal: usize) -> CKKSMeta {
+    pub fn precision_at(&self, log_delta: usize) -> CKKSMeta {
         CKKSMeta {
-            log_decimal,
-            log_hom_rem: self.params.prec.log_hom_rem(),
+            log_delta,
+            log_budget: self.params.prec.log_budget(),
         }
     }
 
@@ -382,8 +382,8 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         }
     }
 
-    pub fn quantized_const(&self, re: f64, im: f64, log_decimal: usize) -> (F, F) {
-        let scale = Self::to_scalar(2.0).powi(log_decimal as i32);
+    pub fn quantized_const(&self, re: f64, im: f64, log_delta: usize) -> (F, F) {
+        let scale = Self::to_scalar(2.0).powi(log_delta as i32);
         let re = (Self::to_scalar(re) * scale).round() / scale;
         let im = (Self::to_scalar(im) * scale).round() / scale;
         (re, im)
@@ -456,8 +456,8 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let prec = CKKSMeta {
-            log_decimal: ct.log_decimal(),
-            log_hom_rem: ct.log_hom_rem().min(self.params.prec.log_hom_rem()),
+            log_delta: ct.log_delta(),
+            log_budget: ct.log_budget().min(self.params.prec.log_budget()),
         };
         let pt_znx = self.decrypt_with_prec(ct, prec, scratch).unwrap();
 
@@ -694,51 +694,51 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         (re_out, im_out)
     }
 
-    pub fn quantized_vector(&self, which: TestVector, log_decimal: usize) -> (Vec<F>, Vec<F>) {
+    pub fn quantized_vector(&self, which: TestVector, log_delta: usize) -> (Vec<F>, Vec<F>) {
         let (re, im) = self.test_vector(which);
-        let scale = ((log_decimal as isize) - (self.meta().log_decimal as isize)) as i32;
+        let scale = ((log_delta as isize) - (self.meta().log_delta as isize)) as i32;
         let factor = Self::to_scalar(2.0).powi(scale);
         let re_scaled = re.iter().copied().map(|x| x * factor).collect::<Vec<_>>();
         let im_scaled = im.iter().copied().map(|x| x * factor).collect::<Vec<_>>();
-        self.quantized_slots(&re_scaled, &im_scaled, self.precision_at(log_decimal))
+        self.quantized_slots(&re_scaled, &im_scaled, self.precision_at(log_delta))
     }
 
     /// Returns the minimum expected average log2 precision for a standard-ring
-    /// CKKS value encoded at `log_decimal`.
+    /// CKKS value encoded at `log_delta`.
     ///
     /// This follows the crate's dynamic precision heuristic:
-    /// `log_decimal - log2(ring_degree) - 2`, clamped at zero.
-    pub fn expected_log2_precision(&self, log_decimal: usize) -> f64 {
-        expected_log2_precision(log_decimal, self.degree().as_usize())
+    /// `log_delta - log2(ring_degree) - 2`, clamped at zero.
+    pub fn expected_log2_precision(&self, log_delta: usize) -> f64 {
+        expected_log2_precision(log_delta, self.degree().as_usize())
     }
 
     /// Asserts that `got` and `want` meet the expected average precision for
-    /// the provided `log_decimal`.
-    pub fn assert_precision_for_log_decimal(&self, label: &str, got: &[F], want: &[F], log_decimal: usize) {
-        assert_precision(label, got, want, log_decimal, self.degree().as_usize());
+    /// the provided `log_delta`.
+    pub fn assert_precision_for_log_delta(&self, label: &str, got: &[F], want: &[F], log_delta: usize) {
+        assert_precision(label, got, want, log_delta, self.degree().as_usize());
     }
 
     /// Decrypts `ct`, decodes, and asserts both channels meet the expected
-    /// average precision for the caller-provided `log_decimal`.
-    pub fn assert_decrypt_precision_at_log_decimal(
+    /// average precision for the caller-provided `log_delta`.
+    pub fn assert_decrypt_precision_at_log_delta(
         &self,
         label: &str,
         ct: &CKKSCiphertext<impl DataRef>,
         want_re: &[F],
         want_im: &[F],
-        log_decimal: usize,
+        log_delta: usize,
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let (re_out, im_out) = self.decrypt_decode(ct, scratch);
-        self.assert_precision_for_log_decimal(&format!("{label} re"), &re_out, want_re, log_decimal);
-        self.assert_precision_for_log_decimal(&format!("{label} im"), &im_out, want_im, log_decimal);
+        self.assert_precision_for_log_delta(&format!("{label} re"), &re_out, want_re, log_delta);
+        self.assert_precision_for_log_delta(&format!("{label} im"), &im_out, want_im, log_delta);
     }
 
     /// Decrypts `ct`, decodes, and asserts both channels meet the expected
-    /// average precision for `ct.log_decimal()`.
+    /// average precision for `ct.log_delta()`.
     pub fn assert_decrypt_precision(
         &self,
         label: &str,
@@ -750,7 +750,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.assert_decrypt_precision_at_log_decimal(label, ct, want_re, want_im, ct.log_decimal(), scratch);
+        self.assert_decrypt_precision_at_log_delta(label, ct, want_re, want_im, ct.log_delta(), scratch);
     }
 }
 
@@ -766,26 +766,26 @@ pub struct PrecisionStats {
 }
 
 /// Additional safety margin applied on top of the
-/// `log_decimal - log2(ring_degree)` bound.
+/// `log_delta - log2(ring_degree)` bound.
 const PRECISION_GUARD_BITS: f64 = 2.0;
 
 /// Returns the minimum expected average log2 precision for standard-ring CKKS
 /// at the given ring degree and scaling precision.
-pub fn expected_log2_precision(log_decimal: usize, degree: usize) -> f64 {
-    (log_decimal as f64 - degree.ilog2() as f64 - PRECISION_GUARD_BITS).max(0.0)
+pub fn expected_log2_precision(log_delta: usize, degree: usize) -> f64 {
+    (log_delta as f64 - degree.ilog2() as f64 - PRECISION_GUARD_BITS).max(0.0)
 }
 
 /// Computes per-slot log2 precision statistics.
 ///
 /// Precision is evaluated slot-by-slot as `-log2(abs(err))`, with exact
-/// matches capped at `log_decimal`.
-pub fn precision_stats<F>(got: &[F], want: &[F], log_decimal: usize) -> PrecisionStats
+/// matches capped at `log_delta`.
+pub fn precision_stats<F>(got: &[F], want: &[F], log_delta: usize) -> PrecisionStats
 where
     F: Float + ToPrimitive + Debug,
 {
     assert_eq!(got.len(), want.len(), "precision_stats: vector length mismatch");
 
-    let capped_prec = log_decimal as f64;
+    let capped_prec = log_delta as f64;
     let mut min_log2_prec = f64::INFINITY;
     let mut max_log2_prec: f64 = 0.0;
     let mut sum_log2_prec = 0.0;
@@ -825,19 +825,19 @@ where
 }
 
 /// Asserts that `got` and `want` meet the expected average log2 precision for
-/// a standard-ring CKKS value encoded at `log_decimal`.
-pub fn assert_precision<F>(label: &str, got: &[F], want: &[F], log_decimal: usize, degree: usize)
+/// a standard-ring CKKS value encoded at `log_delta`.
+pub fn assert_precision<F>(label: &str, got: &[F], want: &[F], log_delta: usize, degree: usize)
 where
     F: Float + ToPrimitive + Debug,
 {
-    let stats = precision_stats(got, want, log_decimal);
-    let min_bits = expected_log2_precision(log_decimal, degree);
+    let stats = precision_stats(got, want, log_delta);
+    let min_bits = expected_log2_precision(log_delta, degree);
     assert!(
         stats.avg_log2_prec >= min_bits,
-        "{label}: avg precision {:.1} bits < {:.1} (log_decimal={}, degree={}, min={:.1}, max={:.1}, max_err={}, sample_idx={}, got={}, want={})",
+        "{label}: avg precision {:.1} bits < {:.1} (log_delta={}, degree={}, min={:.1}, max={:.1}, max_err={}, sample_idx={}, got={}, want={})",
         stats.avg_log2_prec,
         min_bits,
-        log_decimal,
+        log_delta,
         degree,
         stats.min_log2_prec,
         stats.max_log2_prec,
@@ -848,9 +848,9 @@ where
     );
 }
 
-pub fn assert_ct_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, log_decimal: usize, log_hom_rem: usize) {
-    assert_eq!(ct.log_decimal(), log_decimal, "{label}: unexpected log_decimal");
-    assert_eq!(ct.log_hom_rem(), log_hom_rem, "{label}: unexpected log_hom_rem");
+pub fn assert_ct_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, log_delta: usize, log_budget: usize) {
+    assert_eq!(ct.log_delta(), log_delta, "{label}: unexpected log_delta");
+    assert_eq!(ct.log_budget(), log_budget, "{label}: unexpected log_budget");
 }
 
 pub fn assert_ckks_error(label: &str, err: &anyhow::Error, want: CKKSCompositionError) {
@@ -859,7 +859,7 @@ pub fn assert_ckks_error(label: &str, err: &anyhow::Error, want: CKKSComposition
 }
 
 pub fn assert_unary_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, input: &CKKSCiphertext<impl DataRef>) {
-    assert_ct_meta(label, ct, input.log_decimal(), input.log_hom_rem() - ct.offset_unary(input));
+    assert_ct_meta(label, ct, input.log_delta(), input.log_budget() - ct.offset_unary(input));
 }
 
 pub fn assert_binary_output_meta(
@@ -871,21 +871,21 @@ pub fn assert_binary_output_meta(
     assert_ct_meta(
         label,
         ct,
-        a.log_decimal().max(b.log_decimal()),
-        a.log_hom_rem().min(b.log_hom_rem()) - ct.offset_binary(a, b),
+        a.log_delta().max(b.log_delta()),
+        a.log_budget().min(b.log_budget()) - ct.offset_binary(a, b),
     );
 }
 
 pub fn assert_mul_ct_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
-    let log_hom_rem = a.log_hom_rem().min(b.log_hom_rem()) - a.log_decimal().max(b.log_decimal());
-    let log_decimal = a.log_decimal().min(b.log_decimal());
-    let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
-    assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);
+    let log_budget = a.log_budget().min(b.log_budget()) - a.log_delta().max(b.log_delta());
+    let log_delta = a.log_delta().min(b.log_delta());
+    let offset = (log_budget + log_delta).saturating_sub(ct.max_k().as_usize());
+    assert_ct_meta(label, ct, log_delta, log_budget - offset);
 }
 
 pub fn assert_mul_pt_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
-    let log_hom_rem = a.log_hom_rem() - a.log_decimal().min(b.log_decimal());
-    let log_decimal = a.log_decimal().max(b.log_decimal());
-    let offset = (log_hom_rem + log_decimal).saturating_sub(ct.max_k().as_usize());
-    assert_ct_meta(label, ct, log_decimal, log_hom_rem - offset);
+    let log_budget = a.log_budget() - a.log_delta().min(b.log_delta());
+    let log_delta = a.log_delta().max(b.log_delta());
+    let offset = (log_budget + log_delta).saturating_sub(ct.max_k().as_usize());
+    assert_ct_meta(label, ct, log_delta, log_budget - offset);
 }

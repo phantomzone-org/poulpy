@@ -5,9 +5,9 @@
 //! transform-domain arithmetic on q120b values.
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
-    NttIfmaAdd, NttIfmaAddInplace, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
-    NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateInplace, NttIfmaSub, NttIfmaSubInplace,
-    NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
+    NttIfmaAdd, NttIfmaAddAssign, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
+    NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateAssign, NttIfmaSub, NttIfmaSubAssign,
+    NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
     mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
     primes::Primes40,
@@ -25,7 +25,7 @@ use core::arch::x86_64::{
 };
 
 use poulpy_cpu_ref::reference::ntt120::{
-    NttAdd, NttAddInplace, NttCopy, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttZero,
+    NttAdd, NttAddAssign, NttCopy, NttNegate, NttNegateAssign, NttSub, NttSubAssign, NttSubNegateAssign, NttZero,
 };
 
 use crate::NTTIfma;
@@ -362,7 +362,7 @@ impl NttIfmaAdd for NTTIfma {
     }
 }
 
-impl NttIfmaAddInplace for NTTIfma {
+impl NttIfmaAddAssign for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_add_assign(res, a) };
@@ -376,14 +376,14 @@ impl NttIfmaSub for NTTIfma {
     }
 }
 
-impl NttIfmaSubInplace for NTTIfma {
+impl NttIfmaSubAssign for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_assign(res, a) };
     }
 }
 
-impl NttIfmaSubNegateInplace for NTTIfma {
+impl NttIfmaSubNegateAssign for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_negate_assign(res, a) };
@@ -397,7 +397,7 @@ impl NttIfmaNegate for NTTIfma {
     }
 }
 
-impl NttIfmaNegateInplace for NTTIfma {
+impl NttIfmaNegateAssign for NTTIfma {
     #[inline(always)]
     fn ntt_ifma_negate_assign(res: &mut [u64]) {
         unsafe { simd_negate_assign(res) };
@@ -497,7 +497,7 @@ impl NttAdd for NTTIfma {
     }
 }
 
-impl NttAddInplace for NTTIfma {
+impl NttAddAssign for NTTIfma {
     #[inline(always)]
     fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_add_assign(res, a) };
@@ -511,14 +511,14 @@ impl NttSub for NTTIfma {
     }
 }
 
-impl NttSubInplace for NTTIfma {
+impl NttSubAssign for NTTIfma {
     #[inline(always)]
     fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_assign(res, a) };
     }
 }
 
-impl NttSubNegateInplace for NTTIfma {
+impl NttSubNegateAssign for NTTIfma {
     #[inline(always)]
     fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_negate_assign(res, a) };
@@ -532,7 +532,7 @@ impl NttNegate for NTTIfma {
     }
 }
 
-impl NttNegateInplace for NTTIfma {
+impl NttNegateAssign for NTTIfma {
     #[inline(always)]
     fn ntt_negate_assign(res: &mut [u64]) {
         unsafe { simd_negate_assign(res) };

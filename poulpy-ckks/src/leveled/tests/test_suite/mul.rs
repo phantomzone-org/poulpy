@@ -6,25 +6,25 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_ct_aligned`] | both inputs at same `log_hom_rem()` |
-//! | [`test_mul_ct_delta_a_lt_b`] | `a.log_hom_rem() < b.log_hom_rem()` |
-//! | [`test_mul_ct_delta_a_gt_b`] | `a.log_hom_rem() > b.log_hom_rem()` |
+//! | [`test_mul_ct_aligned`] | both inputs at same `log_budget()` |
+//! | [`test_mul_ct_delta_a_lt_b`] | `a.log_budget() < b.log_budget()` |
+//! | [`test_mul_ct_delta_a_gt_b`] | `a.log_budget() > b.log_budget()` |
 //! | [`test_mul_ct_smaller_output`] | output has smaller `max_k()` than inputs |
 //!
 //! ## ct x ct inplace ct-ct (`GLWE<_, CKKS>::mul_assign`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_ct_assign_aligned`] | `self.log_hom_rem() == a.log_hom_rem()` |
-//! | [`test_mul_ct_assign_self_lt`] | `self.log_hom_rem() < a.log_hom_rem()` → a shifted to align with self |
-//! | [`test_mul_ct_assign_self_gt`] | `self.log_hom_rem() > a.log_hom_rem()` → self shifted to align with a |
+//! | [`test_mul_ct_assign_aligned`] | `self.log_budget() == a.log_budget()` |
+//! | [`test_mul_ct_assign_self_lt`] | `self.log_budget() < a.log_budget()` → a shifted to align with self |
+//! | [`test_mul_ct_assign_self_gt`] | `self.log_budget() > a.log_budget()` → self shifted to align with a |
 //!
 //! ## ct² squaring out of place (`GLWE<_, CKKS>::square`)
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_square_aligned`] | square at default precision |
-//! | [`test_square_rescaled_input`] | square after a rescale (reduced `log_hom_rem()`) |
+//! | [`test_square_rescaled_input`] | square after a rescale (reduced `log_budget()`) |
 //! | [`test_square_smaller_output`] | square into smaller output buffer |
 //!
 //! ## ct² squaring inplace (`GLWE<_, CKKS>::square_assign`)
@@ -37,8 +37,8 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_pt_vec_znx_into_aligned`] | input and output at same `log_hom_rem()` |
-//! | [`test_mul_pt_vec_znx_into_smaller_output`] | output at smaller `log_hom_rem()` |
+//! | [`test_mul_pt_vec_znx_into_aligned`] | input and output at same `log_budget()` |
+//! | [`test_mul_pt_vec_znx_into_smaller_output`] | output at smaller `log_budget()` |
 //!
 //! ## ct x pt_znx inplace (`GLWE<_, CKKS>::mul_pt_vec_znx_assign`)
 //!
@@ -50,8 +50,8 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_mul_pt_vec_znx_into_aligned`] | input and output at same `log_hom_rem()` |
-//! | [`test_mul_pt_vec_znx_into_smaller_output`] | output at smaller `log_hom_rem()` |
+//! | [`test_mul_pt_vec_znx_into_aligned`] | input and output at same `log_budget()` |
+//! | [`test_mul_pt_vec_znx_into_smaller_output`] | output at smaller `log_budget()` |
 //!
 //! ## ct x pt_rnx inplace (`GLWE<_, CKKS>::mul_pt_vec_rnx_assign`)
 //!
@@ -77,7 +77,7 @@ const CONST_IM: f64 = -0.271_828_182_845_904_5;
 const DELTA_LOG_DECIMAL: usize = 8;
 // ─── ct × ct out-of-place (GLWE<_, CKKS>::mul) ─────────────────────────────────
 
-/// ct × ct multiplication with both inputs at the same log_hom_rem().
+/// ct × ct multiplication with both inputs at the same log_budget().
 pub fn test_mul_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
@@ -91,7 +91,7 @@ pub fn test_mul_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>)
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// ct × ct, a.log_hom_rem() < b.log_hom_rem() (a rescaled by one limb).
+/// ct × ct, a.log_budget() < b.log_budget() (a rescaled by one limb).
 pub fn test_mul_ct_delta_a_lt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(
@@ -110,7 +110,7 @@ pub fn test_mul_ct_delta_a_lt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
     ctx.assert_decrypt_precision("mul_ct a_lt_b", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// ct × ct, a.log_hom_rem() > b.log_hom_rem() (b rescaled by one limb).
+/// ct × ct, a.log_budget() > b.log_budget() (b rescaled by one limb).
 pub fn test_mul_ct_delta_a_gt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
@@ -129,13 +129,13 @@ pub fn test_mul_ct_delta_a_gt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
     ctx.assert_decrypt_precision("mul_ct a_gt_b", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// ct × ct with aligned homomorphic capacity but different log_decimal.
-pub fn test_mul_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+/// ct × ct with aligned homomorphic capacity but different log_delta.
+pub fn test_mul_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let ct1 = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let ct2 = ctx.encrypt_with_prec(ctx.max_k() - DELTA_LOG_DECIMAL, &b_re, &b_im, low_prec, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_from(&a_re, &a_im, &b_re, &b_im);
@@ -143,13 +143,13 @@ pub fn test_mul_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestConte
     ctx.module
         .ckks_mul_into(&mut ct_res, &ct1, &ct2, ctx.tsk(), scratch.borrow())
         .unwrap();
-    assert_mul_ct_output_meta("mul_ct delta_log_decimal", &ct_res, &ct1, &ct2);
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_ct delta_log_decimal",
+    assert_mul_ct_output_meta("mul_ct delta_log_delta", &ct_res, &ct1, &ct2);
+    ctx.assert_decrypt_precision_at_log_delta(
+        "mul_ct delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -170,7 +170,7 @@ pub fn test_mul_ct_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<
 
 // ─── ct × ct out-of-place (GLWE<_, CKKS>::mul_assign) ─────────────────────────────────
 
-/// ct × ct multiplication with both inputs at the same log_hom_rem().
+/// ct × ct multiplication with both inputs at the same log_budget().
 pub fn test_mul_ct_assign_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_res = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
@@ -184,7 +184,7 @@ pub fn test_mul_ct_assign_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// ct-ct in-place, self.log_hom_rem() < a.log_hom_rem() (a is shifted down to align with self).
+/// ct-ct in-place, self.log_budget() < a.log_budget() (a is shifted down to align with self).
 pub fn test_mul_ct_assign_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_res = ctx.encrypt(
@@ -203,7 +203,7 @@ pub fn test_mul_ct_assign_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<
     ctx.assert_decrypt_precision("mul_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// ct-ct in-place, self.log_hom_rem() > a.log_hom_rem() (a is shifted down to align with self).
+/// ct-ct in-place, self.log_budget() > a.log_budget() (a is shifted down to align with self).
 pub fn test_mul_ct_assign_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct_res = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
@@ -296,12 +296,12 @@ pub fn test_mul_pt_vec_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestCo
     ctx.assert_decrypt_precision("mul_pt_vec_znx_into_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_pt_vec_znx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_pt_vec_znx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let ct = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_znx_with_prec(&b_re, &b_im, low_prec);
     let (want_re, want_im) = ctx.want_mul_from(&a_re, &a_im, &b_re, &b_im);
@@ -309,13 +309,13 @@ pub fn test_mul_pt_vec_znx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ct
     ctx.module
         .ckks_mul_pt_vec_znx_into(&mut ct_res, &ct, &pt, scratch.borrow())
         .unwrap();
-    assert_mul_pt_output_meta("mul_pt_vec_znx_into_delta_log_decimal", &ct_res, &ct, &pt);
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_pt_vec_znx_into_delta_log_decimal",
+    assert_mul_pt_output_meta("mul_pt_vec_znx_into_delta_log_delta", &ct_res, &ct, &pt);
+    ctx.assert_decrypt_precision_at_log_delta(
+        "mul_pt_vec_znx_into_delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -361,12 +361,12 @@ pub fn test_mul_pt_vec_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestCo
     ctx.assert_decrypt_precision("mul_pt_vec_znx_into_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_pt_vec_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_pt_vec_rnx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let ct = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_rnx(&b_re, &b_im);
     let (want_re, want_im) = ctx.want_mul_from(&a_re, &a_im, &b_re, &b_im);
@@ -374,13 +374,13 @@ pub fn test_mul_pt_vec_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ct
     ctx.module
         .ckks_mul_pt_vec_rnx_into(&mut ct_res, &ct, &pt, low_prec, scratch.borrow())
         .unwrap();
-    assert_mul_pt_output_meta("mul_pt_vec_rnx_into_delta_log_decimal", &ct_res, &ct, &low_prec);
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_pt_vec_rnx_into_delta_log_decimal",
+    assert_mul_pt_output_meta("mul_pt_vec_rnx_into_delta_log_delta", &ct_res, &ct, &low_prec);
+    ctx.assert_decrypt_precision_at_log_delta(
+        "mul_pt_vec_rnx_into_delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -416,7 +416,7 @@ pub fn test_mul_pt_vec_rnx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<
 pub fn test_mul_pt_const_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
@@ -430,7 +430,7 @@ pub fn test_mul_pt_const_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 pub fn test_mul_pt_const_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let ct_meta = ct.meta();
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
@@ -441,12 +441,12 @@ pub fn test_mul_pt_const_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
     ctx.assert_decrypt_precision("mul_const_assign", &ct, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_pt_const_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_pt_const_rnx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, low_log_delta);
     let ct = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_const_from(&a_re, &a_im, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
@@ -454,13 +454,13 @@ pub fn test_mul_pt_const_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(
     ctx.module
         .ckks_mul_pt_const_rnx_into(&mut ct_res, &ct, &cst, low_prec, scratch.borrow())
         .unwrap();
-    assert_mul_pt_output_meta("mul_const_into_delta_log_decimal", &ct_res, &ct, &low_prec);
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_const_into_delta_log_decimal",
+    assert_mul_pt_output_meta("mul_const_into_delta_log_delta", &ct_res, &ct, &low_prec);
+    ctx.assert_decrypt_precision_at_log_delta(
+        "mul_const_into_delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -468,7 +468,7 @@ pub fn test_mul_pt_const_rnx_into_delta_log_decimal<BE: Backend, F: TestScalar>(
 pub fn test_mul_pt_const_rnx_into_real_only<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_delta);
     let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst = ctx.const_rnx(Some(CONST_RE), None);
@@ -482,7 +482,7 @@ pub fn test_mul_pt_const_rnx_into_real_only<BE: Backend, F: TestScalar>(ctx: &Te
 pub fn test_mul_pt_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
@@ -499,8 +499,8 @@ pub fn test_mul_ct_explicit_metadata_error<BE: Backend, F: TestScalar>(ctx: &Tes
     let mut scratch = ctx.alloc_scratch();
     let mut ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let mut ct2 = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
-    ct1.meta.log_hom_rem = 8;
-    ct2.meta.log_hom_rem = 9;
+    ct1.meta.log_budget = 8;
+    ct2.meta.log_budget = 9;
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     let err = ctx
         .module
@@ -511,10 +511,10 @@ pub fn test_mul_ct_explicit_metadata_error<BE: Backend, F: TestScalar>(ctx: &Tes
         &err,
         CKKSCompositionError::MultiplicationPrecisionUnderflow {
             op: "mul",
-            lhs_log_hom_rem: 8,
-            rhs_log_hom_rem: 9,
-            lhs_log_decimal: ctx.meta().log_decimal,
-            rhs_log_decimal: ctx.meta().log_decimal,
+            lhs_log_budget: 8,
+            rhs_log_budget: 9,
+            lhs_log_delta: ctx.meta().log_delta,
+            rhs_log_delta: ctx.meta().log_delta,
         },
     );
 }

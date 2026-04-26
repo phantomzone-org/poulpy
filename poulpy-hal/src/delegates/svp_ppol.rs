@@ -1,5 +1,5 @@
 use crate::{
-    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
+    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
         Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
     },
@@ -59,7 +59,7 @@ where
     }
 }
 
-impl<B> SvpApplyDftToDftInplace<B> for Module<B>
+impl<B> SvpApplyDftToDftAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {

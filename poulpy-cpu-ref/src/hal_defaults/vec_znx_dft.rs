@@ -17,8 +17,8 @@ use crate::reference::{
         },
     },
     ntt_ifma::{
-        NttIfmaAdd, NttIfmaAddInplace, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateInplace,
-        NttIfmaSub, NttIfmaSubInplace, NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
+        NttIfmaAdd, NttIfmaAddAssign, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateAssign,
+        NttIfmaSub, NttIfmaSubAssign, NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
         ntt::{NttIfmaTable, NttIfmaTableInv},
         primes::Primes40,
         vec_znx_dft::{
@@ -37,8 +37,8 @@ use crate::reference::{
         },
     },
     ntt120::{
-        NttAdd, NttAddInplace, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateInplace, NttSub, NttSubInplace,
-        NttSubNegateInplace, NttToZnx128, NttZero,
+        NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
+        NttSubNegateAssign, NttToZnx128, NttZero,
         ntt::{NttTable, NttTableInv},
         primes::Primes30,
         types::Q120bScalar,
@@ -318,7 +318,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
         a_col: usize,
         a_scale: i64,
     ) where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -327,7 +327,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_add_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -353,7 +353,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttSubInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttSubAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -362,7 +362,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateInplace + NttNegateInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateAssign + NttNegateAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -489,7 +489,7 @@ pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
         a_col: usize,
         a_scale: i64,
     ) where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -498,7 +498,7 @@ pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_add_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -524,7 +524,7 @@ pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -533,7 +533,7 @@ pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubNegateInplace + NttIfmaNegateInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubNegateAssign + NttIfmaNegateAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {

@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, CKKSMeta, checked_log_hom_rem_sub,
+    CKKSInfos, CKKSMeta, checked_log_budget_sub,
     layouts::{
         CKKSCiphertext,
         ciphertext::CKKSOffset,
@@ -88,19 +88,19 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
     {
         let offset = dst.offset_binary(a, b);
 
-        if offset == 0 && a.log_hom_rem() == b.log_hom_rem() {
+        if offset == 0 && a.log_budget() == b.log_budget() {
             self.glwe_sub(dst, a, b);
-        } else if a.log_hom_rem() <= b.log_hom_rem() {
+        } else if a.log_budget() <= b.log_budget() {
             self.glwe_lsh(dst, a, offset, scratch);
-            self.glwe_lsh_sub(dst, b, b.log_hom_rem() - a.log_hom_rem() + offset, scratch);
+            self.glwe_lsh_sub(dst, b, b.log_budget() - a.log_budget() + offset, scratch);
         } else {
-            self.glwe_lsh(dst, a, a.log_hom_rem() - b.log_hom_rem() + offset, scratch);
+            self.glwe_lsh(dst, a, a.log_budget() - b.log_budget() + offset, scratch);
             self.glwe_lsh_sub(dst, b, offset, scratch);
         }
 
-        let log_hom_rem = checked_log_hom_rem_sub("sub", a.log_hom_rem().min(b.log_hom_rem()), offset)?;
-        dst.meta.log_decimal = a.log_decimal().max(b.log_decimal());
-        dst.meta.log_hom_rem = log_hom_rem;
+        let log_budget = checked_log_budget_sub("sub", a.log_budget().min(b.log_budget()), offset)?;
+        dst.meta.log_delta = a.log_delta().max(b.log_delta());
+        dst.meta.log_budget = log_budget;
         Ok(())
     }
 
@@ -129,18 +129,18 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         Self: GLWESub + GLWEShift<BE>,
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
-        let dst_log_hom_rem = dst.log_hom_rem();
+        let dst_log_budget = dst.log_budget();
 
-        if dst_log_hom_rem < a.log_hom_rem() {
-            self.glwe_lsh_sub(dst, a, a.log_hom_rem() - dst_log_hom_rem, scratch);
-        } else if dst_log_hom_rem > a.log_hom_rem() {
-            self.glwe_lsh_assign(dst, dst_log_hom_rem - a.log_hom_rem(), scratch);
+        if dst_log_budget < a.log_budget() {
+            self.glwe_lsh_sub(dst, a, a.log_budget() - dst_log_budget, scratch);
+        } else if dst_log_budget > a.log_budget() {
+            self.glwe_lsh_assign(dst, dst_log_budget - a.log_budget(), scratch);
             self.glwe_sub_assign(dst, a);
         } else {
             self.glwe_sub_assign(dst, a);
         }
 
-        dst.meta.log_hom_rem = dst_log_hom_rem.min(a.log_hom_rem());
+        dst.meta.log_budget = dst_log_budget.min(a.log_budget());
         Ok(())
     }
 
@@ -174,7 +174,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         let offset = dst.offset_unary(a);
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_pt_vec_znx", a.log_hom_rem(), offset)?;
+        dst.meta.log_budget = checked_log_budget_sub("sub_pt_vec_znx", a.log_budget(), offset)?;
         self.ckks_sub_pt_vec_znx_assign_unsafe_default(dst, pt_znx, scratch)?;
         Ok(())
     }
@@ -320,7 +320,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         let offset = dst.offset_unary(a);
         self.glwe_lsh(dst, a, offset, scratch);
         dst.meta = a.meta();
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_pt_const_znx", a.log_hom_rem(), offset)?;
+        dst.meta.log_budget = checked_log_budget_sub("sub_pt_const_znx", a.log_budget(), offset)?;
         self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, cst_znx, scratch)
     }
 
@@ -354,8 +354,8 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
 
         let _offset = crate::ensure_plaintext_alignment(
             "ckks_sub_pt_const_znx_into",
-            dst.log_hom_rem(),
-            cst_znx.log_decimal(),
+            dst.log_budget(),
+            cst_znx.log_delta(),
             cst_znx.effective_k(),
         )?;
         let n = dst.n().as_usize();
@@ -407,17 +407,17 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
             self.glwe_lsh(dst, a, offset, scratch);
             dst.meta = a.meta();
-            dst.meta.log_hom_rem = checked_log_hom_rem_sub("sub_pt_const_rnx", a.log_hom_rem(), offset)?;
+            dst.meta.log_budget = checked_log_budget_sub("sub_pt_const_rnx", a.log_budget(), offset)?;
             return Ok(());
         }
 
-        let res_log_hom_rem = checked_log_hom_rem_sub("sub_pt_const_rnx", a.log_hom_rem(), offset)?;
+        let res_log_budget = checked_log_budget_sub("sub_pt_const_rnx", a.log_budget(), offset)?;
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
-            res_log_hom_rem
-                .checked_add(prec.log_decimal)
+            res_log_budget
+                .checked_add(prec.log_delta)
                 .expect("aligned precision overflow"),
-            prec.log_decimal,
+            prec.log_delta,
         )?;
         self.ckks_sub_pt_const_znx_into_unsafe_default(dst, a, &cst_znx, scratch)
     }
@@ -456,10 +456,10 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
 
         let cst_znx = cst_rnx.to_znx_at_k(
             dst.base2k(),
-            dst.log_hom_rem()
-                .checked_add(prec.log_decimal)
+            dst.log_budget()
+                .checked_add(prec.log_delta)
                 .expect("aligned precision overflow"),
-            prec.log_decimal,
+            prec.log_delta,
         )?;
         self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, &cst_znx, scratch)
     }

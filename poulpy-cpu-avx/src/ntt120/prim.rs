@@ -32,9 +32,9 @@ use core::arch::x86_64::{
 };
 
 use poulpy_cpu_ref::reference::ntt120::{
-    NttAdd, NttAddInplace, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
-    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateInplace, NttPackLeft1BlkX2, NttPackRight1BlkX2,
-    NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2, NttSub, NttSubInplace, NttSubNegateInplace, NttToZnx128, NttZero,
+    NttAdd, NttAddAssign, NttCFromB, NttCopy, NttDFTExecute, NttExtract1BlkContiguous, NttFromZnx64, NttMulBbb, NttMulBbc,
+    NttMulBbc1ColX2, NttMulBbc2ColsX2, NttNegate, NttNegateAssign, NttPackLeft1BlkX2, NttPackRight1BlkX2,
+    NttPairwisePackLeft1BlkX2, NttPairwisePackRight1BlkX2, NttSub, NttSubAssign, NttSubNegateAssign, NttToZnx128, NttZero,
     mat_vec::{BbbMeta, BbcMeta},
     ntt::{NttTable, NttTableInv},
     primes::Primes30,
@@ -263,7 +263,7 @@ impl NttAdd for NTT120Avx {
     }
 }
 
-impl NttAddInplace for NTT120Avx {
+impl NttAddAssign for NTT120Avx {
     #[inline(always)]
     fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
@@ -279,7 +279,7 @@ impl NttSub for NTT120Avx {
     }
 }
 
-impl NttSubInplace for NTT120Avx {
+impl NttSubAssign for NTT120Avx {
     #[inline(always)]
     fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
@@ -287,7 +287,7 @@ impl NttSubInplace for NTT120Avx {
     }
 }
 
-impl NttSubNegateInplace for NTT120Avx {
+impl NttSubNegateAssign for NTT120Avx {
     #[inline(always)]
     fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.
@@ -303,7 +303,7 @@ impl NttNegate for NTT120Avx {
     }
 }
 
-impl NttNegateInplace for NTT120Avx {
+impl NttNegateAssign for NTT120Avx {
     #[inline(always)]
     fn ntt_negate_assign(res: &mut [u64]) {
         // SAFETY: NTT120Avx::new() verifies AVX2 availability at construction time.

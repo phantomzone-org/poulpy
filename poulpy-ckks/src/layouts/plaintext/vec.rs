@@ -151,8 +151,8 @@ impl<D: DataRef> fmt::Display for CKKSPlaintextVecZnx<D> {
 
 /// Conversion between RNX floating-point plaintexts and ZNX torus plaintexts.
 pub trait CKKSPlaintextConversion {
-    /// Maximum supported `log_decimal` for the conversion implementation.
-    fn max_log_decimal_prec() -> usize;
+    /// Maximum supported `log_delta` for the conversion implementation.
+    fn max_log_delta_prec() -> usize;
 
     /// Quantizes an RNX plaintext into a ZNX plaintext buffer.
     ///
@@ -211,7 +211,7 @@ impl<F> CKKSPlaintextVecRnx<F> {
     }
 }
 
-fn max_log_decimal_prec_for<F>() -> usize
+fn max_log_delta_prec_for<F>() -> usize
 where
     F: Float + ToPrimitive,
 {
@@ -222,23 +222,23 @@ impl<F> CKKSPlaintextConversion for CKKSPlaintextVecRnx<F>
 where
     F: Float + FromPrimitive + ToPrimitive + Debug,
 {
-    fn max_log_decimal_prec() -> usize {
-        max_log_decimal_prec_for::<F>()
+    fn max_log_delta_prec() -> usize {
+        max_log_delta_prec_for::<F>()
     }
 
     /// TODO: use buffers internally instead of allocating.
     fn decode_from_znx(&mut self, other: &CKKSPlaintextVecZnx<impl DataRef>) -> Result<()> {
-        let log_decimal = other.log_decimal();
-        let log_hom_rem = other.log_hom_rem();
+        let log_delta = other.log_delta();
+        let log_budget = other.log_budget();
         let n = other.n().as_usize();
 
-        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
+        anyhow::ensure!(log_delta <= Self::max_log_delta_prec());
         anyhow::ensure!(self.0.len() == other.n().as_usize());
-        anyhow::ensure!(log_decimal + log_hom_rem <= 127);
+        anyhow::ensure!(log_delta + log_budget <= 127);
 
-        let scale = (-F::from_usize(log_decimal).unwrap()).exp2();
+        let scale = (-F::from_usize(log_delta).unwrap()).exp2();
         let k = other.max_k();
-        if log_decimal + log_hom_rem <= 63 {
+        if log_delta + log_budget <= 63 {
             let mut data = vec![0i64; n];
             other.decode_vec_i64(&mut data, k);
             self.0
@@ -259,15 +259,15 @@ where
 
     /// TODO: use buffers internally instead of allocating.
     fn to_znx(&self, other: &mut CKKSPlaintextVecZnx<impl DataMut>) -> Result<()> {
-        let log_decimal = other.log_decimal();
-        let log_hom_rem = other.log_hom_rem();
+        let log_delta = other.log_delta();
+        let log_budget = other.log_budget();
 
-        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
+        anyhow::ensure!(log_delta <= Self::max_log_delta_prec());
         anyhow::ensure!(self.0.len() == other.n().as_usize());
 
-        let scale = F::from_usize(log_decimal).unwrap().exp2();
+        let scale = F::from_usize(log_delta).unwrap().exp2();
         let k = other.max_k();
-        if log_decimal + log_hom_rem <= 63 {
+        if log_delta + log_budget <= 63 {
             let data: Vec<i64> = self.0.iter().map(|&x| (x * scale).round().to_i64().unwrap()).collect();
             other.encode_vec_i64(&data, k);
         } else {
@@ -284,12 +284,12 @@ impl<D: Data> CKKSInfos for CKKSPlaintextVecZnx<D> {
         self.meta
     }
 
-    fn log_decimal(&self) -> usize {
-        self.meta.log_decimal()
+    fn log_delta(&self) -> usize {
+        self.meta.log_delta()
     }
 
-    fn log_hom_rem(&self) -> usize {
-        self.meta.log_hom_rem()
+    fn log_budget(&self) -> usize {
+        self.meta.log_budget()
     }
 }
 
@@ -321,7 +321,7 @@ mod tests {
         rnx_out.decode_from_znx(&znx).unwrap();
 
         let err = max_err(&values, &rnx_out.0);
-        let bound = (prec.log_decimal as f64).exp2().recip();
+        let bound = (prec.log_delta as f64).exp2().recip();
         assert!(err < bound, "max_err={err:.2e} exceeds bound={bound:.2e}");
     }
 
@@ -330,8 +330,8 @@ mod tests {
         roundtrip_f64(
             16,
             CKKSMeta {
-                log_hom_rem: 10,
-                log_decimal: 40,
+                log_budget: 10,
+                log_delta: 40,
             },
         );
     }
@@ -341,8 +341,8 @@ mod tests {
         roundtrip_f64(
             16,
             CKKSMeta {
-                log_hom_rem: 30,
-                log_decimal: 40,
+                log_budget: 30,
+                log_delta: 40,
             },
         );
     }
@@ -351,8 +351,8 @@ mod tests {
     fn add_extract_roundtrip() {
         let n = 16usize;
         let prec = CKKSMeta {
-            log_hom_rem: 12,
-            log_decimal: 40,
+            log_budget: 12,
+            log_delta: 40,
         };
         let base2k: usize = 52;
 
@@ -375,7 +375,7 @@ mod tests {
         rnx_out.decode_from_znx(&pt_out).unwrap();
 
         let err = max_err(&values, &rnx_out.0);
-        let bound = (prec.log_decimal as f64).exp2().recip();
+        let bound = (prec.log_delta as f64).exp2().recip();
         assert!(err < bound, "max_err={err:.2e} exceeds bound={bound:.2e}");
     }
 }

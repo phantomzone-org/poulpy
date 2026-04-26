@@ -1,10 +1,10 @@
 use crate::{
     api::{
         VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddNormal, VecZnxBigAddSmallAssign, VecZnxBigAddSmallInto, VecZnxBigAlloc,
-        VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf,
-        VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
+        VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigBytesOf,
+        VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
+        VecZnxBigSubSmallAssign, VecZnxBigSubSmallB, VecZnxBigSubSmallNegateAssign,
     },
     layouts::{
         Backend, DeviceBuf, Module, NoiseInfos, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,
@@ -129,7 +129,7 @@ where
     }
 }
 
-impl<B> VecZnxBigSubInplace<B> for Module<B>
+impl<B> VecZnxBigSubAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -142,7 +142,7 @@ where
     }
 }
 
-impl<B> VecZnxBigSubNegateInplace<B> for Module<B>
+impl<B> VecZnxBigSubNegateAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -169,7 +169,7 @@ where
     }
 }
 
-impl<B> VecZnxBigSubSmallInplace<B> for Module<B>
+impl<B> VecZnxBigSubSmallAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -196,7 +196,7 @@ where
     }
 }
 
-impl<B> VecZnxBigSubSmallNegateInplace<B> for Module<B>
+impl<B> VecZnxBigSubSmallNegateAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -222,7 +222,7 @@ where
     }
 }
 
-impl<B> VecZnxBigNegateInplace<B> for Module<B>
+impl<B> VecZnxBigNegateAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -316,7 +316,7 @@ where
     }
 }
 
-impl<B> VecZnxBigAutomorphismInplaceTmpBytes for Module<B>
+impl<B> VecZnxBigAutomorphismAssignTmpBytes for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -325,7 +325,7 @@ where
     }
 }
 
-impl<B> VecZnxBigAutomorphismInplace<B> for Module<B>
+impl<B> VecZnxBigAutomorphismAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {

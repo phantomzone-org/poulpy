@@ -1,7 +1,7 @@
 use crate::layouts::{ScalarZnxToRef, VecZnxToMut, VecZnxToRef};
 use crate::{
     layouts::{ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxSub, ZnxSubInplace, ZnxZero},
+    reference::znx::{ZnxSub, ZnxSubAssign, ZnxZero},
 };
 
 pub fn vec_znx_sub_scalar<R, A, B, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
@@ -39,7 +39,7 @@ pub fn vec_znx_sub_scalar_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, res_
 where
     R: VecZnxToMut,
     A: ScalarZnxToRef,
-    ZNXARI: ZnxSubInplace,
+    ZNXARI: ZnxSubAssign,
 {
     let a: ScalarZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();

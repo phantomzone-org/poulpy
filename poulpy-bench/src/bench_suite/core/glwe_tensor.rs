@@ -8,7 +8,7 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{
         CnvPVecAlloc, Convolution, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic,
-        VecZnxBigNormalize, VecZnxCopy, VecZnxIdftApplyConsume, VecZnxSubInplace,
+        VecZnxBigNormalize, VecZnxCopy, VecZnxIdftApplyConsume, VecZnxSubAssign,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned, VecZnx},
 };
@@ -222,7 +222,7 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxCopy
-        + VecZnxSubInplace,
+        + VecZnxSubAssign,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE> + ScratchAvailable + ScratchTakeBasic,
 {

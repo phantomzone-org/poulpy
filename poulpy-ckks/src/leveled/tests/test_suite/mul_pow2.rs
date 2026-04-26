@@ -1,7 +1,7 @@
 //! Multiplication and division by a power of two.
 //!
 //! These operations shift the GLWE payload without altering CKKS metadata
-//! (`log_decimal`, `log_hom_rem`).
+//! (`log_delta`, `log_budget`).
 //!
 //! # Test inventory
 //!
@@ -43,12 +43,12 @@ pub fn test_mul_pow2_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
         .ckks_mul_pow2_into(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("mul_pow2", &ct_res, &ct);
-    ctx.assert_decrypt_precision_at_log_decimal(
+    ctx.assert_decrypt_precision_at_log_delta(
         "mul_pow2",
         &ct_res,
         &want_re,
         &want_im,
-        ct.log_decimal() - SHIFT_BITS,
+        ct.log_delta() - SHIFT_BITS,
         scratch.borrow(),
     );
 }
@@ -63,12 +63,12 @@ pub fn test_mul_pow2_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContex
         .ckks_mul_pow2_into(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("mul_pow2 smaller_output", &ct_res, &ct);
-    ctx.assert_decrypt_precision_at_log_decimal(
+    ctx.assert_decrypt_precision_at_log_delta(
         "mul_pow2",
         &ct_res,
         &want_re,
         &want_im,
-        ct.log_decimal() - SHIFT_BITS,
+        ct.log_delta() - SHIFT_BITS,
         scratch.borrow(),
     );
 }
@@ -78,18 +78,18 @@ pub fn test_mul_pow2_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_mul_pow2(SHIFT_BITS);
-    let expected_log_decimal = ct.log_decimal();
-    let expected_log_hom_rem = ct.log_hom_rem();
+    let expected_log_delta = ct.log_delta();
+    let expected_log_budget = ct.log_budget();
     ctx.module
         .ckks_mul_pow2_assign(&mut ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
-    assert_ct_meta("mul_pow2_assign", &ct, expected_log_decimal, expected_log_hom_rem);
-    ctx.assert_decrypt_precision_at_log_decimal(
+    assert_ct_meta("mul_pow2_assign", &ct, expected_log_delta, expected_log_budget);
+    ctx.assert_decrypt_precision_at_log_delta(
         "mul_pow2_assign",
         &ct,
         &want_re,
         &want_im,
-        expected_log_decimal - SHIFT_BITS,
+        expected_log_delta - SHIFT_BITS,
         scratch.borrow(),
     );
 }
@@ -105,7 +105,7 @@ pub fn test_div_pow2_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     ctx.module
         .ckks_div_pow2_into(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
-    assert_ct_meta("div_pow2", &ct_res, ct.log_decimal(), ct.log_hom_rem() - SHIFT_BITS);
+    assert_ct_meta("div_pow2", &ct_res, ct.log_delta(), ct.log_budget() - SHIFT_BITS);
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
@@ -122,8 +122,8 @@ pub fn test_div_pow2_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContex
     assert_ct_meta(
         "div_pow2 smaller_output",
         &ct_res,
-        ct.log_decimal(),
-        ct.log_hom_rem() - SHIFT_BITS - offset,
+        ct.log_delta(),
+        ct.log_budget() - SHIFT_BITS - offset,
     );
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -133,10 +133,10 @@ pub fn test_div_pow2_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_div_pow2(SHIFT_BITS);
-    let expected_log_decimal = ct.log_decimal();
-    let expected_log_hom_rem = ct.log_hom_rem() - SHIFT_BITS;
+    let expected_log_delta = ct.log_delta();
+    let expected_log_budget = ct.log_budget() - SHIFT_BITS;
     ctx.module.ckks_div_pow2_assign(&mut ct, SHIFT_BITS).unwrap();
-    assert_ct_meta("div_pow2_assign", &ct, expected_log_decimal, expected_log_hom_rem);
+    assert_ct_meta("div_pow2_assign", &ct, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("div_pow2_assign", &ct, &want_re, &want_im, scratch.borrow());
 }
 
@@ -144,15 +144,15 @@ pub fn test_div_pow2_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>
 pub fn test_div_pow2_assign_explicit_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let available_log_hom_rem = ct.log_hom_rem();
-    let required_bits = available_log_hom_rem + 1;
+    let available_log_budget = ct.log_budget();
+    let required_bits = available_log_budget + 1;
     let err = ctx.module.ckks_div_pow2_assign(&mut ct, required_bits).unwrap_err();
     assert_ckks_error(
         "div_pow2_assign_explicit_error",
         &err,
         CKKSCompositionError::InsufficientHomomorphicCapacity {
             op: "div_pow2_assign",
-            available_log_hom_rem,
+            available_log_budget,
             required_bits,
         },
     );

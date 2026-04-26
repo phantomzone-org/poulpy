@@ -2,7 +2,7 @@ use itertools::izip;
 use poulpy_hal::{
     api::{
         ModuleN, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubAssign,
         VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotate, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPolOwned, VecZnx, ZnxZero},
@@ -32,7 +32,7 @@ where
         + VmpApplyDftToDft<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxDftAddAssign<BE>
-        + VecZnxDftSubInplace<BE>
+        + VecZnxDftSubAssign<BE>
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
@@ -137,7 +137,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
         + VmpApplyDftToDft<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxDftAddAssign<BE>
-        + VecZnxDftSubInplace<BE>
+        + VecZnxDftSubAssign<BE>
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
@@ -291,7 +291,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
         + VmpApplyDftToDft<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxDftAddAssign<BE>
-        + VecZnxDftSubInplace<BE>
+        + VecZnxDftSubAssign<BE>
         + VecZnxIdftApply<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>

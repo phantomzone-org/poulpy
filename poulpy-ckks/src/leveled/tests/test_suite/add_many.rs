@@ -4,10 +4,10 @@
 //!
 //! | Function | Path exercised |
 //! |----------|----------------|
-//! | [`test_add_many_aligned`] | all inputs at the same `log_hom_rem` / `log_decimal` |
+//! | [`test_add_many_aligned`] | all inputs at the same `log_budget` / `log_delta` |
 //! | [`test_add_many_single_smaller_output`] | one input into a narrower output |
-//! | [`test_add_many_unaligned_log_hom_rem`] | one input rescaled by one limb |
-//! | [`test_add_many_delta_log_decimal`] | inputs at different `log_decimal` |
+//! | [`test_add_many_unaligned_log_budget`] | one input rescaled by one limb |
+//! | [`test_add_many_delta_log_delta`] | inputs at different `log_delta` |
 //! | [`test_add_many_smaller_output`] | output narrower than inputs (`offset > 0`) |
 
 use poulpy_hal::api::ScratchOwnedBorrow;
@@ -55,9 +55,9 @@ pub fn test_add_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    let expected_log_decimal: usize = cts.iter().map(|c| c.log_decimal()).max().unwrap();
-    let expected_log_hom_rem: usize = cts.iter().map(|c| c.log_hom_rem()).min().unwrap();
-    assert_ct_meta("add_many_aligned", &ct_res, expected_log_decimal, expected_log_hom_rem);
+    let expected_log_delta: usize = cts.iter().map(|c| c.log_delta()).max().unwrap();
+    let expected_log_budget: usize = cts.iter().map(|c| c.log_budget()).min().unwrap();
+    assert_ct_meta("add_many_aligned", &ct_res, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("add_many_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
@@ -76,9 +76,9 @@ pub fn test_add_many_single_smaller_output<BE: Backend, F: TestScalar>(ctx: &Tes
     );
 }
 
-/// One input encrypted at a lower `log_hom_rem`, forcing the others to be
+/// One input encrypted at a lower `log_budget`, forcing the others to be
 /// shifted down to align before the sum is performed.
-pub fn test_add_many_unaligned_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let (terms, want_re, want_im) = build_terms(ctx, N);
     let smaller_k = ctx.max_k() - ctx.base2k().as_usize() + 1;
@@ -93,23 +93,17 @@ pub fn test_add_many_unaligned_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &Tes
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    ctx.assert_decrypt_precision(
-        "add_many unaligned_log_hom_rem",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// One input encoded at a lower `log_decimal`. The sum's precision is
+/// One input encoded at a lower `log_delta`. The sum's precision is
 /// bounded by the least precise summand.
-pub fn test_add_many_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_add_many_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (hi_re, hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (lo_re, lo_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (hi_re, hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (lo_re, lo_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
 
     let scale = F::from_f64(1.0 / (2.0 * N as f64)).unwrap();
     let hi_scaled: (Vec<F>, Vec<F>) = (
@@ -148,12 +142,12 @@ pub fn test_add_many_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestCon
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "add_many delta_log_decimal",
+    ctx.assert_decrypt_precision_at_log_delta(
+        "add_many delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }

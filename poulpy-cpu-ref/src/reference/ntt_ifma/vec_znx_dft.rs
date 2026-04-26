@@ -20,8 +20,8 @@ use crate::{
 };
 
 use super::{
-    NttIfmaAdd, NttIfmaAddInplace, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateInplace,
-    NttIfmaSub, NttIfmaSubInplace, NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
+    NttIfmaAdd, NttIfmaAddAssign, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateAssign,
+    NttIfmaSub, NttIfmaSubAssign, NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
     mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
     ntt::{NttIfmaTable, NttIfmaTableInv},
     primes::Primes40,
@@ -297,7 +297,7 @@ where
 /// DFT-domain in-place add: `res[res_col] += a[a_col]`.
 pub fn ntt_ifma_vec_znx_dft_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -313,7 +313,7 @@ where
 /// DFT-domain scaled in-place add: `res[res_col] += a[a_col] >> (a_scale * base2k)`.
 pub fn ntt_ifma_vec_znx_dft_add_scaled_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaAddAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -397,7 +397,7 @@ where
 /// DFT-domain in-place sub: `res[res_col] -= a[a_col]`.
 pub fn ntt_ifma_vec_znx_dft_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -413,7 +413,7 @@ where
 /// DFT-domain in-place swap-sub: `res[res_col] = a[a_col] - res[res_col]`.
 pub fn ntt_ifma_vec_znx_dft_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubNegateInplace + NttIfmaNegateInplace,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaSubNegateAssign + NttIfmaNegateAssign,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {

@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace,
+        VecZnxNormalizeAssign,
     },
     layouts::{DeviceBuf, FillUniform, Module, Scratch, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
@@ -29,7 +29,7 @@ where
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeAssign<BE>
         + GLWESecretTensorFactory<BE>
         + VecZnxCopy
         + VecZnxNormalize<BE>
@@ -279,7 +279,7 @@ where
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeAssign<BE>
         + GLWESecretTensorFactory<BE>
         + VecZnxCopy
         + VecZnxNormalize<BE>
@@ -437,7 +437,7 @@ where
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeAssign<BE>
         + VecZnxCopy
         + VecZnxNormalize<BE>
         + GLWEMulPlain<BE>,
@@ -563,7 +563,7 @@ where
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
         + GLWESub
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeAssign<BE>
         + VecZnxCopy
         + VecZnxNormalize<BE>
         + GLWEMulConst<BE>,

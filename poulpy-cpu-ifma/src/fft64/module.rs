@@ -8,11 +8,11 @@ use poulpy_cpu_ref::reference::{
         reim4::{Reim4BlkMatVec, Reim4Convolution},
     },
     znx::{
-        ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
-        ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-        ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-        ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-        ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref,
+        ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
+        ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
+        ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly,
+        ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxSwitchRing, ZnxZero, znx_copy_ref,
         znx_rotate, znx_zero_ref,
     },
 };
@@ -132,7 +132,7 @@ impl ZnxAdd for FFT64Ifma {
     }
 }
 
-impl ZnxAddInplace for FFT64Ifma {
+impl ZnxAddAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_add_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
@@ -150,7 +150,7 @@ impl ZnxSub for FFT64Ifma {
     }
 }
 
-impl ZnxSubInplace for FFT64Ifma {
+impl ZnxSubAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
@@ -159,7 +159,7 @@ impl ZnxSubInplace for FFT64Ifma {
     }
 }
 
-impl ZnxSubNegateInplace for FFT64Ifma {
+impl ZnxSubNegateAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
@@ -193,7 +193,7 @@ impl ZnxNegate for FFT64Ifma {
     }
 }
 
-impl ZnxNegateInplace for FFT64Ifma {
+impl ZnxNegateAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_negate_assign(res: &mut [i64]) {
         unsafe {
@@ -220,7 +220,7 @@ impl ZnxMulPowerOfTwo for FFT64Ifma {
     }
 }
 
-impl ZnxMulPowerOfTwoInplace for FFT64Ifma {
+impl ZnxMulPowerOfTwoAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
         unsafe {
@@ -270,7 +270,7 @@ impl ZnxNormalizeFinalStepSub for FFT64Ifma {
     }
 }
 
-impl ZnxNormalizeFinalStepInplace for FFT64Ifma {
+impl ZnxNormalizeFinalStepAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
@@ -297,7 +297,7 @@ impl ZnxNormalizeFirstStepCarryOnly for FFT64Ifma {
     }
 }
 
-impl ZnxNormalizeFirstStepInplace for FFT64Ifma {
+impl ZnxNormalizeFirstStepAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
@@ -333,7 +333,7 @@ impl ZnxNormalizeMiddleStepCarryOnly for FFT64Ifma {
     }
 }
 
-impl ZnxNormalizeMiddleStepInplace for FFT64Ifma {
+impl ZnxNormalizeMiddleStepAssign for FFT64Ifma {
     #[inline(always)]
     fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {

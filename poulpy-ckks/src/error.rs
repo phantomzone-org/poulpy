@@ -12,14 +12,14 @@ pub enum CKKSCompositionError {
     /// Shrinking a ciphertext buffer would drop required semantic bits.
     LimbReallocationShrinksBelowMetadata {
         max_k: usize,
-        log_decimal: usize,
+        log_delta: usize,
         base2k: usize,
         requested_limbs: usize,
     },
-    /// An operation requires more `log_hom_rem` than is still available.
+    /// An operation requires more `log_budget` than is still available.
     InsufficientHomomorphicCapacity {
         op: &'static str,
-        available_log_hom_rem: usize,
+        available_log_budget: usize,
         required_bits: usize,
     },
     /// A plaintext and ciphertext use different limb radices.
@@ -33,17 +33,17 @@ pub enum CKKSCompositionError {
     /// A plaintext cannot be aligned into the requested destination precision.
     PlaintextAlignmentImpossible {
         op: &'static str,
-        ct_log_hom_rem: usize,
-        pt_log_decimal: usize,
+        ct_log_budget: usize,
+        pt_log_delta: usize,
         pt_max_k: usize,
     },
     /// A multiplication would consume more semantic precision than available.
     MultiplicationPrecisionUnderflow {
         op: &'static str,
-        lhs_log_hom_rem: usize,
-        rhs_log_hom_rem: usize,
-        lhs_log_decimal: usize,
-        rhs_log_decimal: usize,
+        lhs_log_budget: usize,
+        rhs_log_budget: usize,
+        lhs_log_delta: usize,
+        rhs_log_delta: usize,
     },
 }
 
@@ -52,21 +52,21 @@ impl fmt::Display for CKKSCompositionError {
         match self {
             Self::LimbReallocationShrinksBelowMetadata {
                 max_k,
-                log_decimal,
+                log_delta,
                 base2k,
                 requested_limbs,
             } => write!(
                 f,
-                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext metadata requires a larger buffer (max_k={max_k}, log_decimal={log_decimal}, base2k={base2k})",
+                "cannot reallocate to {requested_limbs} limbs: requested capacity is {} bits but ciphertext metadata requires a larger buffer (max_k={max_k}, log_delta={log_delta}, base2k={base2k})",
                 requested_limbs * base2k,
             ),
             Self::InsufficientHomomorphicCapacity {
                 op,
-                available_log_hom_rem,
+                available_log_budget,
                 required_bits,
             } => write!(
                 f,
-                "{op} cannot consume {required_bits} bits of log_hom_rem: only {available_log_hom_rem} bits remain"
+                "{op} cannot consume {required_bits} bits of log_budget: only {available_log_budget} bits remain"
             ),
             Self::PlaintextBase2KMismatch {
                 op,
@@ -84,25 +84,25 @@ impl fmt::Display for CKKSCompositionError {
             }
             Self::PlaintextAlignmentImpossible {
                 op,
-                ct_log_hom_rem,
-                pt_log_decimal,
+                ct_log_budget,
+                pt_log_delta,
                 pt_max_k,
             } => write!(
                 f,
-                "{op} cannot align plaintext with ciphertext: ct.log_hom_rem + pt.log_decimal = {} but pt.max_k = {pt_max_k} (ct.log_hom_rem={ct_log_hom_rem}, pt.log_decimal={pt_log_decimal})",
-                ct_log_hom_rem + pt_log_decimal
+                "{op} cannot align plaintext with ciphertext: ct.log_budget + pt.log_delta = {} but pt.max_k = {pt_max_k} (ct.log_budget={ct_log_budget}, pt.log_delta={pt_log_delta})",
+                ct_log_budget + pt_log_delta
             ),
             Self::MultiplicationPrecisionUnderflow {
                 op,
-                lhs_log_hom_rem,
-                rhs_log_hom_rem,
-                lhs_log_decimal,
-                rhs_log_decimal,
+                lhs_log_budget,
+                rhs_log_budget,
+                lhs_log_delta,
+                rhs_log_delta,
             } => write!(
                 f,
-                "{op} cannot compose inputs: min(log_hom_rem)={} is smaller than min(log_decimal)={} (lhs: log_hom_rem={lhs_log_hom_rem}, log_decimal={lhs_log_decimal}; rhs: log_hom_rem={rhs_log_hom_rem}, log_decimal={rhs_log_decimal})",
-                lhs_log_hom_rem.min(rhs_log_hom_rem),
-                lhs_log_decimal.min(rhs_log_decimal)
+                "{op} cannot compose inputs: min(log_budget)={} is smaller than min(log_delta)={} (lhs: log_budget={lhs_log_budget}, log_delta={lhs_log_delta}; rhs: log_budget={rhs_log_budget}, log_delta={rhs_log_delta})",
+                lhs_log_budget.min(rhs_log_budget),
+                lhs_log_delta.min(rhs_log_delta)
             ),
         }
     }
@@ -110,11 +110,11 @@ impl fmt::Display for CKKSCompositionError {
 
 impl Error for CKKSCompositionError {}
 
-pub(crate) fn checked_log_hom_rem_sub(op: &'static str, available_log_hom_rem: usize, required_bits: usize) -> Result<usize> {
-    available_log_hom_rem.checked_sub(required_bits).ok_or_else(|| {
+pub(crate) fn checked_log_budget_sub(op: &'static str, available_log_budget: usize, required_bits: usize) -> Result<usize> {
+    available_log_budget.checked_sub(required_bits).ok_or_else(|| {
         CKKSCompositionError::InsufficientHomomorphicCapacity {
             op,
-            available_log_hom_rem,
+            available_log_budget,
             required_bits,
         }
         .into()
@@ -135,16 +135,16 @@ pub(crate) fn ensure_base2k_match(op: &'static str, ct_base2k: usize, pt_base2k:
 
 pub(crate) fn ensure_plaintext_alignment(
     op: &'static str,
-    ct_log_hom_rem: usize,
-    pt_log_decimal: usize,
+    ct_log_budget: usize,
+    pt_log_delta: usize,
     pt_max_k: usize,
 ) -> Result<usize> {
-    let available = ct_log_hom_rem + pt_log_decimal;
+    let available = ct_log_budget + pt_log_delta;
     if available < pt_max_k {
         return Err(CKKSCompositionError::PlaintextAlignmentImpossible {
             op,
-            ct_log_hom_rem,
-            pt_log_decimal,
+            ct_log_budget,
+            pt_log_delta,
             pt_max_k,
         }
         .into());
@@ -152,42 +152,42 @@ pub(crate) fn ensure_plaintext_alignment(
     Ok(available - pt_max_k)
 }
 
-pub(crate) fn checked_mul_ct_log_hom_rem(
+pub(crate) fn checked_mul_ct_log_budget(
     op: &'static str,
-    lhs_log_hom_rem: usize,
-    rhs_log_hom_rem: usize,
-    lhs_log_decimal: usize,
-    rhs_log_decimal: usize,
+    lhs_log_budget: usize,
+    rhs_log_budget: usize,
+    lhs_log_delta: usize,
+    rhs_log_delta: usize,
 ) -> Result<usize> {
-    lhs_log_hom_rem
-        .min(rhs_log_hom_rem)
-        .checked_sub(lhs_log_decimal.max(rhs_log_decimal))
+    lhs_log_budget
+        .min(rhs_log_budget)
+        .checked_sub(lhs_log_delta.max(rhs_log_delta))
         .ok_or_else(|| {
             CKKSCompositionError::MultiplicationPrecisionUnderflow {
                 op,
-                lhs_log_hom_rem,
-                rhs_log_hom_rem,
-                lhs_log_decimal,
-                rhs_log_decimal,
+                lhs_log_budget,
+                rhs_log_budget,
+                lhs_log_delta,
+                rhs_log_delta,
             }
             .into()
         })
 }
 
-pub(crate) fn checked_mul_pt_log_hom_rem(
+pub(crate) fn checked_mul_pt_log_budget(
     op: &'static str,
-    lhs_log_hom_rem: usize,
-    rhs_log_hom_rem: usize,
-    lhs_log_decimal: usize,
-    rhs_log_decimal: usize,
+    lhs_log_budget: usize,
+    rhs_log_budget: usize,
+    lhs_log_delta: usize,
+    rhs_log_delta: usize,
 ) -> Result<usize> {
-    lhs_log_hom_rem.checked_sub(rhs_log_decimal).ok_or_else(|| {
+    lhs_log_budget.checked_sub(rhs_log_delta).ok_or_else(|| {
         CKKSCompositionError::MultiplicationPrecisionUnderflow {
             op,
-            lhs_log_hom_rem,
-            rhs_log_hom_rem,
-            lhs_log_decimal,
-            rhs_log_decimal,
+            lhs_log_budget,
+            rhs_log_budget,
+            lhs_log_delta,
+            rhs_log_delta,
         }
         .into()
     })

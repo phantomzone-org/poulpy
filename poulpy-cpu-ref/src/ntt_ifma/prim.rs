@@ -10,9 +10,9 @@
 //!   lanes + 1 padding) is the same, the implementations are identical.
 
 use crate::reference::ntt_ifma::{
-    NttIfmaAdd, NttIfmaAddInplace, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
-    NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateInplace, NttIfmaSub, NttIfmaSubInplace,
-    NttIfmaSubNegateInplace, NttIfmaToZnx128, NttIfmaZero,
+    NttIfmaAdd, NttIfmaAddAssign, NttIfmaCFromB, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64,
+    NttIfmaMulBbc, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2, NttIfmaNegate, NttIfmaNegateAssign, NttIfmaSub, NttIfmaSubAssign,
+    NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
     arithmetic::{b_ifma_from_znx64_ref, b_ifma_to_znx128_ref, c_ifma_from_b_ref},
     mat_vec::{
         BbcIfmaMeta, extract_1blk_from_contiguous_ifma_ref, vec_mat1col_product_bbc_ifma_ref,
@@ -24,7 +24,7 @@ use crate::reference::ntt_ifma::{
 };
 
 use crate::reference::ntt120::{
-    NttAdd, NttAddInplace, NttCopy, NttNegate, NttNegateInplace, NttSub, NttSubInplace, NttSubNegateInplace, NttZero,
+    NttAdd, NttAddAssign, NttCopy, NttNegate, NttNegateAssign, NttSub, NttSubAssign, NttSubNegateAssign, NttZero,
 };
 
 use crate::NTTIfmaRef;
@@ -90,7 +90,7 @@ impl NttIfmaAdd for NTTIfmaRef {
     }
 }
 
-impl NttIfmaAddInplace for NTTIfmaRef {
+impl NttIfmaAddAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -118,7 +118,7 @@ impl NttIfmaSub for NTTIfmaRef {
     }
 }
 
-impl NttIfmaSubInplace for NTTIfmaRef {
+impl NttIfmaSubAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -131,7 +131,7 @@ impl NttIfmaSubInplace for NTTIfmaRef {
     }
 }
 
-impl NttIfmaSubNegateInplace for NTTIfmaRef {
+impl NttIfmaSubNegateAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -159,7 +159,7 @@ impl NttIfmaNegate for NTTIfmaRef {
     }
 }
 
-impl NttIfmaNegateInplace for NTTIfmaRef {
+impl NttIfmaNegateAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_ifma_negate_assign(res: &mut [u64]) {
         let n = res.len() / 4;
@@ -256,7 +256,7 @@ impl NttAdd for NTTIfmaRef {
     }
 }
 
-impl NttAddInplace for NTTIfmaRef {
+impl NttAddAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -283,7 +283,7 @@ impl NttSub for NTTIfmaRef {
     }
 }
 
-impl NttSubInplace for NTTIfmaRef {
+impl NttSubAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -296,7 +296,7 @@ impl NttSubInplace for NTTIfmaRef {
     }
 }
 
-impl NttSubNegateInplace for NTTIfmaRef {
+impl NttSubNegateAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         let n = res.len() / 4;
@@ -323,7 +323,7 @@ impl NttNegate for NTTIfmaRef {
     }
 }
 
-impl NttNegateInplace for NTTIfmaRef {
+impl NttNegateAssign for NTTIfmaRef {
     #[inline(always)]
     fn ntt_negate_assign(res: &mut [u64]) {
         let n = res.len() / 4;

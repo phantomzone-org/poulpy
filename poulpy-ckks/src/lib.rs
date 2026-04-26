@@ -10,11 +10,11 @@
 //! most other CKKS libraries. Public precision management is exposed through
 //! [`CKKSMeta`]:
 //!
-//! - `log_decimal`: base-2 logarithm of the encoded plaintext scaling factor
-//! - `log_hom_rem`: remaining homomorphic headroom, also tracked in bits
+//! - `log_delta`: base-2 logarithm of the encoded plaintext scaling factor
+//! - `log_budget`: remaining homomorphic headroom, also tracked in bits
 //!
 //! Together they define the semantic torus width of a value:
-//! `effective_k() = log_decimal + log_hom_rem`.
+//! `effective_k() = log_delta + log_budget`.
 //! Storage is rounded up to the next multiple of `base2k`, so the allocated
 //! width `max_k()` may exceed `effective_k()`. Arithmetic APIs update this
 //! metadata for you, while maintenance helpers let you compact or resize owned
@@ -25,7 +25,7 @@
 //! [`leveled::CKKSSubOpsUnsafe`]) expose `*_unsafe` variants for callers who
 //! want to fuse several linear steps before normalizing explicitly. The
 //! current `examples/poly2.rs` demonstrates that style: it uses unsafe
-//! intermediate linear ops, calls `glwe_normalize_inplace` before the ct-ct
+//! intermediate linear ops, calls `glwe_normalize_assign` before the ct-ct
 //! multiply, and finishes with a normalized fused `mul_add`.
 //!
 //! ## Modules
@@ -45,19 +45,19 @@ pub mod layouts;
 pub mod leveled;
 pub mod oep;
 pub use error::CKKSCompositionError;
-pub(crate) use error::{checked_log_hom_rem_sub, checked_mul_ct_log_hom_rem, ensure_base2k_match, ensure_plaintext_alignment};
+pub(crate) use error::{checked_log_budget_sub, checked_mul_ct_log_budget, ensure_base2k_match, ensure_plaintext_alignment};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
 ///
-/// `log_decimal` is the scaling precision of the encoded value and
-/// `log_hom_rem` is the remaining homomorphic headroom available before the
+/// `log_delta` is the scaling precision of the encoded value and
+/// `log_budget` is the remaining homomorphic headroom available before the
 /// value must be rescaled or truncated.
 pub struct CKKSMeta {
     /// Base 2 logarithm of the decimal precision.
-    pub log_decimal: usize,
+    pub log_delta: usize,
     /// Base 2 logarithm of the Remaining homomorphic capacity.
-    pub log_hom_rem: usize,
+    pub log_budget: usize,
 }
 
 /// Common metadata accessors for CKKS ciphertext and plaintext containers.
@@ -69,22 +69,22 @@ pub trait CKKSInfos {
     fn meta(&self) -> CKKSMeta;
 
     /// Returns the base-2 logarithm of the encoded decimal scaling factor.
-    fn log_decimal(&self) -> usize;
+    fn log_delta(&self) -> usize;
 
     /// Returns the base-2 logarithm of the remaining homomorphic capacity.
-    fn log_hom_rem(&self) -> usize;
+    fn log_budget(&self) -> usize;
 
-    /// Returns the next multiple of [Base2K] greater than [Self::log_decimal] + [Self::log_hom_rem].
+    /// Returns the next multiple of [Base2K] greater than [Self::log_delta] + [Self::log_budget].
     fn min_k(&self, base2k: Base2K) -> TorusPrecision {
-        ((self.log_decimal() + self.log_hom_rem()).next_multiple_of(base2k.as_usize())).into()
+        ((self.log_delta() + self.log_budget()).next_multiple_of(base2k.as_usize())).into()
     }
 
     /// Returns the semantic torus width carried by the value.
     ///
-    /// This is `log_decimal + log_hom_rem` and may differ from the rounded
+    /// This is `log_delta + log_budget` and may differ from the rounded
     /// storage capacity `max_k()`.
     fn effective_k(&self) -> usize {
-        self.log_decimal() + self.log_hom_rem()
+        self.log_delta() + self.log_budget()
     }
 }
 
@@ -93,11 +93,11 @@ impl CKKSInfos for CKKSMeta {
         *self
     }
 
-    fn log_decimal(&self) -> usize {
-        self.log_decimal
+    fn log_delta(&self) -> usize {
+        self.log_delta
     }
 
-    fn log_hom_rem(&self) -> usize {
-        self.log_hom_rem
+    fn log_budget(&self) -> usize {
+        self.log_budget
     }
 }

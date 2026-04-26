@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddAssign, VecZnxBigAddSmallAssign,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftAssign, VecZnxBigAddAssign, VecZnxBigAddSmallAssign,
         VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataViewMut, Module, Scratch},
@@ -18,7 +18,7 @@ pub(crate) trait GLWEDecryptDefault<BE: Backend>:
     + VecZnxNormalizeTmpBytes
     + VecZnxBigBytesOf
     + VecZnxDftApply<BE>
-    + SvpApplyDftToDftInplace<BE>
+    + SvpApplyDftToDftAssign<BE>
     + VecZnxIdftApplyConsume<BE>
     + VecZnxBigAddAssign<BE>
     + VecZnxBigAddSmallAssign<BE>
@@ -103,7 +103,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxBigBytesOf
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
+        + SvpApplyDftToDftAssign<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigAddAssign<BE>
         + VecZnxBigAddSmallAssign<BE>

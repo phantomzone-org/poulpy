@@ -3,12 +3,12 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
-        ZnxAddInplace, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-        ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
-        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxZero,
+        ZnxAddAssign, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
+        ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly,
+        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly, ZnxZero,
     },
     source::Source,
 };
@@ -32,16 +32,16 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
     A: VecZnxToRef,
     ZNXARI: ZnxZero
         + ZnxCopy
-        + ZnxAddInplace
-        + ZnxMulPowerOfTwoInplace
+        + ZnxAddAssign
+        + ZnxMulPowerOfTwoAssign
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFinalStepInplace
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFinalStepAssign
         + ZnxNormalizeDigit,
 {
     match res_base2k == a_base2k {
@@ -65,8 +65,8 @@ fn vec_znx_normalize_inter_base2k<R, A, ZNXARI>(
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
-        + ZnxNormalizeFinalStepInplace
-        + ZnxNormalizeMiddleStepInplace,
+        + ZnxNormalizeFinalStepAssign
+        + ZnxNormalizeMiddleStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -161,16 +161,16 @@ fn vec_znx_normalize_cross_base2k<R, A, ZNXARI>(
     A: VecZnxToRef,
     ZNXARI: ZnxZero
         + ZnxCopy
-        + ZnxAddInplace
-        + ZnxMulPowerOfTwoInplace
+        + ZnxAddAssign
+        + ZnxMulPowerOfTwoAssign
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFinalStepInplace
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFinalStepAssign
         + ZnxNormalizeDigit,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -405,7 +405,7 @@ fn vec_znx_normalize_cross_base2k<R, A, ZNXARI>(
 
 pub fn vec_znx_normalize_assign<R: VecZnxToMut, ZNXARI>(base2k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
 where
-    ZNXARI: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
+    ZNXARI: ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -686,7 +686,7 @@ where
 
 pub fn bench_vec_znx_normalize_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxNormalizeAssign<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_normalize_assign::{label}");
@@ -695,7 +695,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxNormalizeAssign<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];

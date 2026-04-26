@@ -9,7 +9,7 @@
 //! | [`test_dot_product_ct_aligned`] | ct · ct, aligned |
 //! | [`test_dot_product_ct_unaligned`] | ct · ct, one a-side input rescaled |
 //! | [`test_dot_product_ct_unaligned_b`] | ct · ct, one b-side input rescaled |
-//! | [`test_dot_product_ct_delta_log_decimal`] | ct · ct fallback with non-uniform `log_decimal` |
+//! | [`test_dot_product_ct_delta_log_delta`] | ct · ct fallback with non-uniform `log_delta` |
 //! | [`test_dot_product_ct_smaller_output`] | ct · ct, output narrower than inputs |
 //! | [`test_dot_product_pt_vec_znx_aligned`] | ct · ZNX plaintext |
 //! | [`test_dot_product_pt_vec_rnx_aligned`] | ct · RNX plaintext |
@@ -116,7 +116,7 @@ pub fn test_dot_product_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext
     ctx.assert_decrypt_precision("dot_product_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-/// One of the `a`-side ciphertexts is encrypted at a lower `log_hom_rem`.
+/// One of the `a`-side ciphertexts is encrypted at a lower `log_budget`.
 pub fn test_dot_product_ct_unaligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let a_vecs = three_vectors(ctx);
@@ -201,14 +201,14 @@ pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestCon
     ctx.assert_decrypt_precision("dot_product_ct_unaligned_b", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_dot_product_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
-    let (a_hi_re, a_hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (b_hi_re, b_hi_im) = ctx.quantized_vector(TestVector::Second, ctx.meta().log_decimal);
-    let (b_lo_re, b_lo_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
+    let (a_hi_re, a_hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (b_hi_re, b_hi_im) = ctx.quantized_vector(TestVector::Second, ctx.meta().log_delta);
+    let (b_lo_re, b_lo_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let a_vecs = [
         (scaled(&a_hi_re, half), scaled(&a_hi_im, half)),
         (scaled(&a_hi_re, half), scaled(&a_hi_im, half)),
@@ -256,12 +256,12 @@ pub fn test_dot_product_ct_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &T
     ctx.module
         .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "dot_product_ct_delta_log_decimal",
+    ctx.assert_decrypt_precision_at_log_delta(
+        "dot_product_ct_delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -390,7 +390,7 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
     let const_pairs: [(f64, f64); 3] = [(0.25, -0.125), (0.125, 0.0625), (-0.3125, 0.25)];
     let quantized: Vec<(F, F)> = const_pairs
         .iter()
-        .map(|(r, i)| ctx.quantized_const(*r, *i, ctx.meta().log_decimal))
+        .map(|(r, i)| ctx.quantized_const(*r, *i, ctx.meta().log_delta))
         .collect();
 
     let m = ctx.re1.len();
@@ -431,7 +431,7 @@ pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
     let const_pairs: [(f64, f64); 3] = [(0.25, -0.125), (0.125, 0.0625), (-0.3125, 0.25)];
     let quantized: Vec<(F, F)> = const_pairs
         .iter()
-        .map(|(r, i)| ctx.quantized_const(*r, *i, ctx.meta().log_decimal))
+        .map(|(r, i)| ctx.quantized_const(*r, *i, ctx.meta().log_delta))
         .collect();
 
     let m = ctx.re1.len();

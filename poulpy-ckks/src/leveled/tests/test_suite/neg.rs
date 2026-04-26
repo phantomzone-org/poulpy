@@ -55,10 +55,10 @@ pub fn test_neg_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> 
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_neg();
-    let expected_log_decimal = ct.log_decimal();
-    let expected_log_hom_rem = ct.log_hom_rem();
+    let expected_log_delta = ct.log_delta();
+    let expected_log_budget = ct.log_budget();
     ctx.module.ckks_neg_assign(&mut ct)?;
-    assert_ct_meta("neg_assign", &ct, expected_log_decimal, expected_log_hom_rem);
+    assert_ct_meta("neg_assign", &ct, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("neg_assign", &ct, &want_re, &want_im, scratch.borrow());
     Ok(())
 }

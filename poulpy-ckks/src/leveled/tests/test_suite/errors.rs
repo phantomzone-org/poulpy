@@ -22,7 +22,7 @@ pub fn test_reallocate_limbs_checked_error<BE: Backend, F: TestScalar>(ctx: &Tes
         &err,
         CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
             max_k: ct.max_k().as_usize(),
-            log_decimal: ct.log_decimal(),
+            log_delta: ct.log_delta(),
             base2k: ct.base2k().as_usize(),
             requested_limbs,
         },
@@ -49,7 +49,7 @@ pub fn test_compact_limbs_copy<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
 pub fn test_add_pt_vec_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    ct.meta.log_hom_rem = 0;
+    ct.meta.log_budget = 0;
     let pt_znx = alloc_pt_znx(ctx.degree(), ctx.base2k(), ctx.meta());
     let err = ctx
         .module
@@ -60,8 +60,8 @@ pub fn test_add_pt_vec_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &Tes
         &err,
         CKKSCompositionError::PlaintextAlignmentImpossible {
             op: "ckks_add_pt_vec_znx_into",
-            ct_log_hom_rem: 0,
-            pt_log_decimal: ctx.meta().log_decimal,
+            ct_log_budget: 0,
+            pt_log_delta: ctx.meta().log_delta,
             pt_max_k: pt_znx.max_k().as_usize(),
         },
     );
