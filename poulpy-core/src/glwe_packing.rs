@@ -9,7 +9,7 @@ pub use crate::api::GLWEPacking;
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut,
+        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
         GetGaloisElement, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
@@ -72,8 +72,8 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     scratch: &mut ScratchArena<'s, BE>,
 ) where
     M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub<BE> + GLWEShift<BE> + GLWEAdd<BE> + GLWENormalize<BE> + ?Sized,
-    A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
-    B: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    A: GLWEToBackendMut<BE> + GLWEInfos,
+    B: GLWEToBackendMut<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
@@ -192,7 +192,7 @@ where
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,

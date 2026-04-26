@@ -12,6 +12,22 @@ pub trait VecZnxZeroBackend<B: Backend> {
     fn vec_znx_zero_backend<'r>(&self, res: &mut VecZnxBackendMut<'r, B>, res_col: usize);
 }
 
+pub trait VecZnxCopyRangeBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_copy_range_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        len: usize,
+    );
+}
+
 pub trait VecZnxNormalize<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.

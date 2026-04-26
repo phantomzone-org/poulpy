@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, HostDataMut, HostDataRef, ScratchArena};
 
 use crate::layouts::{
     GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
-    GLWEToBackendRef, GLWEToRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
+    GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     prepared::GLWESecretPreparedToBackendRef,
 };
 
@@ -49,7 +49,7 @@ pub trait GLWETensorDecrypt<BE: Backend> {
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: HostDataRef,
-        GLWETensor<R>: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: HostDataRef,

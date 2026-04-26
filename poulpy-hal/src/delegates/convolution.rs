@@ -1,8 +1,8 @@
 use crate::{
     api::{CnvPVecAlloc, CnvPVecBytesOf, Convolution},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, Module,
-        ScratchArena, VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
+        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, Module, ScratchArena,
+        VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos, ZnxViewMut,
     },
     oep::HalConvolutionImpl,
 };

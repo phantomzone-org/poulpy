@@ -126,7 +126,8 @@ where
 
         <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(module, 1, 0, &mut b_dft_ref, 0, b, b_col);
         let b_dft_backend = b_dft_ref.reborrow_backend_ref();
-        let b_dft_host: VecZnxDft<&[u8], BE> = VecZnxDft::from_data(b_dft_backend.data, b_dft_backend.n, b_dft_backend.cols, b_dft_backend.size);
+        let b_dft_host: VecZnxDft<&[u8], BE> =
+            VecZnxDft::from_data(b_dft_backend.data, b_dft_backend.n, b_dft_backend.cols, b_dft_backend.size);
         ntt120_svp_apply_dft_to_dft(module, res, res_col, a, a_col, &b_dft_host, 0);
     }
 

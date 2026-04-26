@@ -1,19 +1,19 @@
-use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxView, ZnxViewMut, ZnxZero};
+use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
 
 pub use crate::api::LWEKeySwitch;
 use crate::{
     LWESampleExtract, ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision, glwe_backend_ref_from_mut,
-        prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GLWE, GLWELayout, LWEInfos, LWEToBackendMut, LWEToBackendRef, Rank, TorusPrecision,
+        glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
 #[doc(hidden)]
 pub trait LWEKeySwitchDefault<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + LWESampleExtract,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract<BE>,
 {
     fn lwe_keyswitch_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -48,15 +48,12 @@ where
 
     fn lwe_keyswitch_default<'s, R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: LWEToMut,
-        A: LWEToRef,
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
         for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
-        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
-        let a: &LWE<&[u8]> = &a.to_ref();
-
         assert!(res.n().as_usize() <= self.n());
         assert!(a.n().as_usize() <= self.n());
         assert_eq!(ksk.n(), self.n() as u32);
@@ -68,20 +65,21 @@ where
         );
 
         let scratch = scratch.borrow();
+        let a_backend = a.to_backend_ref();
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
             k: a.max_k(),
             rank: Rank(1),
         });
-        glwe_in.data.zero();
+        self.vec_znx_zero_backend(&mut glwe_in.data, 0);
+        self.vec_znx_zero_backend(&mut glwe_in.data, 1);
 
         let n_lwe: usize = a.n().into();
 
         for i in 0..a.size() {
-            let data_lwe: &[i64] = a.data.at(0, i);
-            glwe_in.data.at_mut(0, i)[0] = data_lwe[0];
-            glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+            self.vec_znx_copy_range_backend(&mut glwe_in.data, 0, i, 0, &a_backend.data, 0, i, 0, 1);
+            self.vec_znx_copy_range_backend(&mut glwe_in.data, 1, i, 0, &a_backend.data, 0, i, 1, n_lwe);
         }
 
         let (mut glwe_out, mut scratch_2) = scratch_1.take_glwe(&GLWELayout {
@@ -93,8 +91,9 @@ where
 
         let glwe_in_ref = glwe_backend_ref_from_mut::<BE>(&glwe_in);
         self.glwe_keyswitch(&mut glwe_out, &glwe_in_ref, ksk, &mut scratch_2);
-        self.lwe_sample_extract(res, &glwe_out);
+        let glwe_out_ref = glwe_backend_ref_from_mut::<BE>(&glwe_out);
+        self.lwe_sample_extract(res, &glwe_out_ref);
     }
 }
 
-impl<BE: Backend> LWEKeySwitchDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract {}
+impl<BE: Backend> LWEKeySwitchDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract<BE> {}

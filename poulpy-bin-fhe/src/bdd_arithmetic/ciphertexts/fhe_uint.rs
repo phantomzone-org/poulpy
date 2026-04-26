@@ -4,7 +4,7 @@ use poulpy_core::{
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEPlaintext,
         GLWEPlaintextLayout, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
-        GetGaloisElement, LWEInfos, LWEToMut, Rank, TorusPrecision,
+        GetGaloisElement, LWEInfos, LWEToBackendMut, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -427,7 +427,7 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<OwnedBuf = Vec<u8>> + 's,
-        R: LWEToMut,
+        R: LWEToBackendMut<BE> + LWEInfos,
         Self: GLWEToBackendRef<BE>,
         KGLWE: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         KLWE: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -447,12 +447,10 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
                 let mut scratch_op = scratch_1.borrow();
                 module.glwe_keyswitch(&mut res_tmp_backend, &self_backend, ks_glwe, &mut scratch_op);
             }
-            let mut res_lwe = res.to_mut();
             let mut scratch_op = scratch_1.borrow();
-            module.lwe_from_glwe(&mut res_lwe, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, &mut scratch_op);
+            module.lwe_from_glwe(res, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, &mut scratch_op);
         } else {
-            let mut res_lwe = res.to_mut();
-            module.lwe_from_glwe(&mut res_lwe, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
+            module.lwe_from_glwe(res, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
         }
     }
 

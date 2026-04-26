@@ -53,14 +53,7 @@ pub fn svp_apply_dft<R, A, B, BE>(
     }
 }
 
-pub fn svp_apply_dft_to_dft<R, A, BE>(
-    res: &mut R,
-    res_col: usize,
-    a: &A,
-    a_col: usize,
-    b: &VecZnxDft<&[u8], BE>,
-    b_col: usize,
-)
+pub fn svp_apply_dft_to_dft<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &VecZnxDft<&[u8], BE>, b_col: usize)
 where
     BE: Backend<ScalarPrep = f64> + ReimArith,
     R: VecZnxDftToMut<BE>,

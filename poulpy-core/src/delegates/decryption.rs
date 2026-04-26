@@ -79,7 +79,7 @@ impl_decryption_delegate!(
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: HostDataRef,
-        GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: HostDataRef,

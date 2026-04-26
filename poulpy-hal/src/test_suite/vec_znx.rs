@@ -5,14 +5,15 @@ use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalSourceBackend,
         VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend, VecZnxAutomorphismInplace,
-        VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend,
-        VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshTmpBytes,
-        VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend,
-        VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend, VecZnxNegateInplaceBackend, VecZnxNormalize,
-        VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSplitRingBackend,
-        VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend,
-        VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend,
+        VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshBackend,
+        VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
+        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
+        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshTmpBytes,
+        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
+        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxZeroBackend,
     },
     layouts::{DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     source::Source,
@@ -570,6 +571,59 @@ pub fn test_vec_znx_copy_backend_matches_wrapper<BR: crate::test_suite::TestBack
             );
 
             assert_eq!(wrapper, backend);
+        }
+    }
+}
+
+pub fn test_vec_znx_copy_range_backend<BR: crate::test_suite::TestBackend, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    _module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    BT::OwnedBuf: crate::layouts::HostDataMut,
+    Module<BT>: VecZnxCopyRangeBackend<BT>,
+{
+    let base2k = params.base2k;
+    let n: usize = module_test.n();
+    let cols: usize = 2;
+    let a_col: usize = 0;
+    let res_col: usize = 1;
+    let mut source: Source = Source::new([13u8; 32]);
+
+    for a_size in [1, 2, 3, 4] {
+        let a_limb = a_size - 1;
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
+        a.fill_uniform(base2k, &mut source);
+
+        for res_size in [1, 2, 3, 4] {
+            let res_limb = res_size - 1;
+            let mut expected: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+            let mut actual: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+            expected.fill_uniform(base2k, &mut source);
+            actual.data.copy_from_slice(&expected.data);
+
+            for (res_offset, a_offset, len) in [(0usize, 0usize, 1usize), (1, 0, 2), (0, 1, 3), (2, 4, 5)] {
+                if res_offset + len > n || a_offset + len > n {
+                    continue;
+                }
+
+                expected.at_mut(res_col, res_limb)[res_offset..res_offset + len]
+                    .copy_from_slice(&a.at(a_col, a_limb)[a_offset..a_offset + len]);
+
+                module_test.vec_znx_copy_range_backend(
+                    &mut vec_znx_backend_mut::<BT>(&mut actual),
+                    res_col,
+                    res_limb,
+                    res_offset,
+                    &vec_znx_backend_ref::<BT>(&a),
+                    a_col,
+                    a_limb,
+                    a_offset,
+                    len,
+                );
+            }
+
+            assert_eq!(expected, actual);
         }
     }
 }

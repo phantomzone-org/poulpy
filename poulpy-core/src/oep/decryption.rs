@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     decryption::{GLWEDecryptDefault, GLWETensorDecryptDefault, LWEDecryptDefault},
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
-        GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
+        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, LWEInfos,
+        LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -52,7 +52,7 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: HostDataRef,
-        GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: HostDataRef,
@@ -102,7 +102,7 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: HostDataRef,
-        GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: HostDataRef,
@@ -167,7 +167,7 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: HostDataRef,
-        GLWETensor<R>: crate::layouts::GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: HostDataRef,

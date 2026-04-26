@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPreparedBackendMut, GGLWEPreparedBackendRef, GGLWEToBackendRef,
-    GLWEInfos, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPreparedBackendMut, GGLWEPreparedBackendRef, GGLWEToBackendRef, GLWEInfos,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     prepared::{
         GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef, GGLWEPreparedToMut,
         GGLWEPreparedToRef,

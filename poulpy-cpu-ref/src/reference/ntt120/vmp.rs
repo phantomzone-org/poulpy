@@ -66,8 +66,7 @@ pub fn ntt120_vmp_prepare<BE>(
     res: &mut VmpPMatBackendMut<'_, BE>,
     a: &MatZnxBackendRef<'_, BE>,
     tmp: &mut [u64],
-)
-where
+) where
     BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
     for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,

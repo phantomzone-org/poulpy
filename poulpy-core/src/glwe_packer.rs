@@ -8,8 +8,8 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchArenaTakeCore,
     glwe_trace::GLWETrace,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
-        GetGaloisElement, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GetGaloisElement,
+        LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -117,7 +117,7 @@ pub fn glwe_packer_add<A, K, H, M, BE: Backend>(
     auto_keys: &H,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+    A: GLWEToBackendRef<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     M: GLWEPackerOps<BE>,
@@ -198,7 +198,7 @@ where
         auto_keys: &H,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
@@ -231,7 +231,7 @@ pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
     auto_keys: &H,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+    A: GLWEToBackendRef<BE> + GLWEInfos,
     M: ModuleLogN
         + GLWEAutomorphism<BE>
         + GaloisElement
@@ -309,7 +309,7 @@ fn combine<B, K, H, M, BE: Backend>(
     auto_keys: &H,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    B: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+    B: GLWEToBackendRef<BE> + GLWEInfos,
     M: ModuleLogN
         + GLWEAutomorphism<BE>
         + GaloisElement

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ModuleN,
+    api::{ModuleN, VecZnxCopyRangeBackend, VecZnxZeroBackend},
     layouts::{Backend, HostDataMut, Module, ScratchArena},
 };
 
@@ -7,17 +7,17 @@ pub use crate::api::{LWEFromGLWE, LWESampleExtract};
 use crate::{
     GLWEKeyswitch, GLWERotate, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendRef, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank,
-        glwe_backend_mut_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendRef, LWEInfos, LWEToBackendMut, Rank, glwe_backend_mut_from_mut,
+        glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
-impl<BE: Backend> LWESampleExtract for Module<BE> where Self: ModuleN {}
+impl<BE: Backend> LWESampleExtract<BE> for Module<BE> where Self: ModuleN + VecZnxCopyRangeBackend<BE> + VecZnxZeroBackend<BE> {}
 
 #[doc(hidden)]
 pub trait LWEFromGLWEDefault<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE>,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract<BE> + GLWERotate<BE>,
 {
     fn lwe_from_glwe_tmp_bytes_default<R, A, K>(&self, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
     where
@@ -44,24 +44,22 @@ where
 
     fn lwe_from_glwe_default<'s, R, A, K>(&self, res: &mut R, a: &A, a_idx: usize, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: LWEToMut,
-        A: GLWEToRef + GLWEToBackendRef<BE>,
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
         for<'x> BE::BufMut<'x>: HostDataMut,
     {
-        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
-        let a_ref: &GLWE<&[u8]> = &a.to_ref();
         let a_backend = a.to_backend_ref();
 
-        assert_eq!(a_ref.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
         assert!(res.n() <= self.n() as u32);
         assert!(
-            scratch.available() >= self.lwe_from_glwe_tmp_bytes_default(res, a_ref, key),
+            scratch.available() >= self.lwe_from_glwe_tmp_bytes_default(res, a, key),
             "scratch.available(): {} < LWEFromGLWE::lwe_from_glwe_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_from_glwe_tmp_bytes_default(res, a_ref, key)
+            self.lwe_from_glwe_tmp_bytes_default(res, a, key)
         );
 
         let glwe_layout: GLWELayout = GLWELayout {
@@ -80,13 +78,14 @@ where
             self.glwe_rotate_inplace(-(a_idx as i64), &mut tmp_glwe_rank_1_backend, &mut scratch_1);
         }
 
-        self.lwe_sample_extract(res, &tmp_glwe_rank_1);
+        let tmp_glwe_rank_1_ref = glwe_backend_ref_from_mut::<BE>(&tmp_glwe_rank_1);
+        self.lwe_sample_extract(res, &tmp_glwe_rank_1_ref);
     }
 }
 
 impl<BE: Backend> LWEFromGLWEDefault<BE> for Module<BE>
 where
-    Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE>,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract<BE> + GLWERotate<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
 {

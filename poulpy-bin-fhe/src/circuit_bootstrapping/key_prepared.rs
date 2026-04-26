@@ -38,8 +38,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>> CircuitBootstrappi
         module: &M,
         other: &CircuitBootstrappingKey<BE::OwnedBuf, BRA>,
         scratch: &mut ScratchArena<'s, BE>,
-    )
-    where
+    ) where
         M: CircuitBootstrappingKeyPreparedFactory<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable,
         BE: 's,

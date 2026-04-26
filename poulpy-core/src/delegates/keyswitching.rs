@@ -5,7 +5,7 @@ use crate::{
     keyswitching::{GGLWEKeyswitchDefault, GGSWKeyswitchDefault, LWEKeySwitchDefault},
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef,
-        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, LWEInfos, LWEToMut, LWEToRef,
+        GGSWToMut, GGSWToRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, LWEInfos, LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::{GGLWEKeyswitchImpl, GGSWKeyswitchImpl, GLWEKeyswitchImpl, LWEKeyswitchImpl},
@@ -160,8 +160,8 @@ impl_keyswitching_delegate!(
 
     fn lwe_keyswitch<'s, R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: LWEToMut,
-        A: LWEToRef,
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
         for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,

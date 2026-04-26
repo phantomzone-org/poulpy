@@ -26,7 +26,7 @@ use crate::{
     GLWEAutomorphism, GLWECopy, GLWENormalize, GLWEShift, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWELayout, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWELayout, GLWEToBackendMut,
-        GLWEToBackendRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        GLWEToBackendRef, GetGaloisElement, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
         prepared::GGLWEPreparedToBackendRef,
     },
 };
@@ -164,7 +164,7 @@ where
     fn glwe_trace_default<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &'s mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -220,7 +220,7 @@ where
 
     fn glwe_trace_inplace_default<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,

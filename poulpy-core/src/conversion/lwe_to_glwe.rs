@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchArenaTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut, ZnxZero},
+    api::{ScratchArenaTakeBasic, VecZnxCopyRangeBackend, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxZeroBackend},
+    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef},
 };
 
 pub use crate::api::GLWEFromLWE;
@@ -8,13 +8,13 @@ use crate::{
     ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitchDefault,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, GLWEToMut, LWE, LWEInfos, LWEToRef, glwe_backend_ref_from_mut,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, LWEInfos, LWEToBackendRef, glwe_backend_ref_from_mut,
         prepared::GGLWEPreparedToBackendRef,
     },
 };
 
 pub(crate) trait GLWEFromLWEDefault<BE: Backend>:
-    GLWEKeyswitchDefault<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>
+    GLWEKeyswitchDefault<BE> + VecZnxCopyRangeBackend<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE> + VecZnxZeroBackend<BE>
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
@@ -48,31 +48,28 @@ where
 
     fn glwe_from_lwe_default<'s, R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + GLWEToBackendMut<BE>,
-        A: LWEToRef,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res_infos = {
-            let res = res.to_mut();
-            GLWELayout {
-                n: res.n(),
-                base2k: res.base2k(),
-                k: res.max_k(),
-                rank: res.rank(),
-            }
+        let res_infos = GLWELayout {
+            n: res.n(),
+            base2k: res.base2k(),
+            k: res.max_k(),
+            rank: res.rank(),
         };
-        let lwe: &LWE<&[u8]> = &lwe.to_ref();
+        let lwe = lwe.to_backend_ref();
 
         assert_eq!(res_infos.n.as_u32(), self.n() as u32);
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(lwe.n() <= self.n() as u32);
         assert!(
-            scratch.available() >= self.glwe_from_lwe_tmp_bytes_default(&res_infos, lwe, ksk),
+            scratch.available() >= self.glwe_from_lwe_tmp_bytes_default(&res_infos, &lwe, ksk),
             "scratch.available(): {} < GLWEFromLWE::glwe_from_lwe_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_from_lwe_tmp_bytes_default(&res_infos, lwe, ksk)
+            self.glwe_from_lwe_tmp_bytes_default(&res_infos, &lwe, ksk)
         );
 
         let scratch = scratch.borrow();
@@ -83,24 +80,23 @@ where
             k: lwe.max_k(),
             rank: 1u32.into(),
         });
-        glwe.data.zero();
+        self.vec_znx_zero_backend(&mut glwe.data, 0);
+        self.vec_znx_zero_backend(&mut glwe.data, 1);
 
         let n_lwe: usize = lwe.n().into();
 
         let mut scratch_1 = if lwe.base2k() == ksk.base2k() {
             for i in 0..lwe.size() {
-                let data_lwe: &[i64] = lwe.data.at(0, i);
-                glwe.data.at_mut(0, i)[0] = data_lwe[0];
-                glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+                self.vec_znx_copy_range_backend(&mut glwe.data, 0, i, 0, &lwe.data, 0, i, 0, 1);
+                self.vec_znx_copy_range_backend(&mut glwe.data, 1, i, 0, &lwe.data, 0, i, 1, n_lwe);
             }
             scratch_1
         } else {
             {
                 let (mut a_conv, mut scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.size());
-                a_conv.zero();
+                self.vec_znx_zero_backend(&mut a_conv, 0);
                 for j in 0..lwe.size() {
-                    let data_lwe: &[i64] = lwe.data.at(0, j);
-                    a_conv.at_mut(0, j)[0] = data_lwe[0]
+                    self.vec_znx_copy_range_backend(&mut a_conv, 0, j, 0, &lwe.data, 0, j, 0, 1);
                 }
 
                 self.vec_znx_normalize(
@@ -114,10 +110,9 @@ where
                     &mut scratch_2.borrow(),
                 );
 
-                a_conv.zero();
+                self.vec_znx_zero_backend(&mut a_conv, 0);
                 for j in 0..lwe.size() {
-                    let data_lwe: &[i64] = lwe.data.at(0, j);
-                    a_conv.at_mut(0, j)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+                    self.vec_znx_copy_range_backend(&mut a_conv, 0, j, 0, &lwe.data, 0, j, 1, n_lwe);
                 }
 
                 self.vec_znx_normalize(
@@ -143,7 +138,11 @@ where
 
 impl<BE: Backend> GLWEFromLWEDefault<BE> for Module<BE>
 where
-    Self: GLWEKeyswitchDefault<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>,
+    Self: GLWEKeyswitchDefault<BE>
+        + VecZnxCopyRangeBackend<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxNormalize<BE>
+        + VecZnxZeroBackend<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     for<'s> BE::BufMut<'s>: HostDataMut,
 {

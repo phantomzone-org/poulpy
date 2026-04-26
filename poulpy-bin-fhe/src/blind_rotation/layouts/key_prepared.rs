@@ -63,12 +63,8 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<BE::OwnedBuf,
     ///
     /// Convenience wrapper around
     /// [`BlindRotationKeyPreparedFactory::prepare_blind_rotation_key`].
-    pub fn prepare<M>(
-        &mut self,
-        module: &M,
-        other: &BlindRotationKey<BE::OwnedBuf, BRA>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) where
+    pub fn prepare<M>(&mut self, module: &M, other: &BlindRotationKey<BE::OwnedBuf, BRA>, scratch: &mut ScratchArena<'_, BE>)
+    where
         M: BlindRotationKeyPreparedFactory<BRA, BE>,
     {
         module.prepare_blind_rotation_key(self, other, scratch);

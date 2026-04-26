@@ -5,8 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedBackendRef, GGLWEPreparedToBackendMut,
-    GGLWEPreparedToBackendRef, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToBackendRef, GLWEInfos,
-    GLWESwitchingKeyDegrees,
+    GGLWEPreparedToBackendRef, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToBackendRef, GLWEInfos, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     prepared::{
         GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory, GLWESwitchingKeyPreparedToBackendMut,

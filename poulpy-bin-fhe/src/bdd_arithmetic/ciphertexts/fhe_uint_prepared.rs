@@ -434,7 +434,8 @@ where
         let ggsw_infos: &GGSWLayout = &res.ggsw_layout();
         let scratch_local = scratch.borrow();
         let mut tmp_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(ggsw_infos);
-        let (mut tmp_lwe, mut scratch_1) = scratch_local.take_lwe(bits);
+        let mut tmp_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits);
+        let mut scratch_1 = scratch_local;
 
         for bit in bit_start..bit_end {
             let mut scratch_bit = scratch_1.borrow();

@@ -713,6 +713,28 @@ where
         vec_znx_copy::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(res, res_col, a, a_col);
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_copy_range_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        len: usize,
+    ) where
+        BE: ZnxCopy,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        crate::reference::vec_znx::vec_znx_copy_range::<VecZnxBackendMut<'r, BE>, VecZnxBackendRef<'a, BE>, BE>(
+            res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, len,
+        );
+    }
+
     fn vec_znx_fill_uniform_backend_default(
         _module: &Module<BE>,
         base2k: usize,

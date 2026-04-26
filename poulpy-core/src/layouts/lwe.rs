@@ -234,6 +234,15 @@ impl<BE: Backend> LWEToBackendRef<BE> for LWE<BE::OwnedBuf> {
     }
 }
 
+impl<'b, BE: Backend + 'b> LWEToBackendRef<BE> for &mut LWE<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> LWEBackendRef<'_, BE> {
+        LWE {
+            base2k: self.base2k,
+            data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
 impl<D: HostDataRef> LWEToRef for LWE<D> {
     fn to_ref(&self) -> LWE<&[u8]> {
         LWE {
@@ -259,6 +268,15 @@ impl<BE: Backend> LWEToBackendMut<BE> for LWE<BE::OwnedBuf> {
         LWE {
             base2k: self.base2k,
             data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> LWEToBackendMut<BE> for &mut LWE<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE> {
+        LWE {
+            base2k: self.base2k,
+            data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
         }
     }
 }

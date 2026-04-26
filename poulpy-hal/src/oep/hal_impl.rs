@@ -325,6 +325,19 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
+    fn vec_znx_copy_range_backend(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'_, BE>,
+        res_col: usize,
+        res_limb: usize,
+        res_offset: usize,
+        a: &VecZnxBackendRef<'_, BE>,
+        a_col: usize,
+        a_limb: usize,
+        a_offset: usize,
+        len: usize,
+    );
+
     fn vec_znx_fill_uniform_backend(
         module: &Module<BE>,
         base2k: usize,

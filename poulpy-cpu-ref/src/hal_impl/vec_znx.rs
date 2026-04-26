@@ -477,6 +477,23 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_copy_backend_default(module, res, res_col, a, a_col)
         }
 
+        fn vec_znx_copy_range_backend(
+            module: &Module<Self>,
+            res: &mut VecZnxBackendMut<'_, Self>,
+            res_col: usize,
+            res_limb: usize,
+            res_offset: usize,
+            a: &VecZnxBackendRef<'_, Self>,
+            a_col: usize,
+            a_limb: usize,
+            a_offset: usize,
+            len: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_copy_range_backend_default(
+                module, res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, len,
+            )
+        }
+
         fn vec_znx_fill_uniform_backend(
             module: &Module<Self>,
             base2k: usize,

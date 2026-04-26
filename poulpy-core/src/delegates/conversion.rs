@@ -5,7 +5,7 @@ use crate::{
     conversion::LWEFromGLWEDefault,
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
-        GLWEToMut, GLWEToRef, LWEInfos, LWEToMut, LWEToRef,
+        LWEInfos, LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::{ConversionImpl, GLWEKeyswitchImpl, GLWERotateImpl},
@@ -42,8 +42,8 @@ impl_conversion_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GLWEToMut + GLWEToBackendMut<BE>,
-        A: LWEToRef,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
@@ -74,8 +74,8 @@ impl_conversion_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: LWEToMut,
-        A: GLWEToRef + GLWEToBackendRef<BE>,
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,

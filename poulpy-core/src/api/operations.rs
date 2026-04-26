@@ -18,8 +18,8 @@ use crate::{
     glwe_packer::{GLWEPacker, pack_core},
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef,
-        GetGaloisElement, LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
+        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
         glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
         prepared::GLWETensorKeyPreparedToBackendRef,
     },
@@ -37,7 +37,7 @@ pub trait GLWETrace<BE: Backend> {
     fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -46,7 +46,7 @@ pub trait GLWETrace<BE: Backend> {
 
     fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -71,7 +71,7 @@ pub trait GLWEPacking<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -101,7 +101,7 @@ where
         auto_keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,

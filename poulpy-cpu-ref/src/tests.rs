@@ -84,6 +84,7 @@ cross_backend_test_suite! {
         test_vec_znx_split_ring => poulpy_hal::test_suite::vec_znx::test_vec_znx_split_ring,
         test_vec_znx_copy => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy,
         test_vec_znx_copy_backend_matches_wrapper => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy_backend_matches_wrapper,
+        test_vec_znx_copy_range_backend => poulpy_hal::test_suite::vec_znx::test_vec_znx_copy_range_backend,
     }
 }
 cross_backend_test_suite! {

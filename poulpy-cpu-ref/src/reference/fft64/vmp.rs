@@ -1,8 +1,10 @@
+use crate::layouts::{VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 use crate::{
     cast_mut,
     layouts::{
-        Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnx, VecZnxDftBackendRef, VecZnxDftReborrowBackendRef,
-        VecZnxToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToMut, VmpPMatToRef, ZnxView, ZnxViewMut,
+        Backend, DataViewMut, HostDataMut, HostDataRef, MatZnxBackendRef, VecZnx, VecZnxDftBackendRef,
+        VecZnxDftReborrowBackendRef, VecZnxToRef, VmpPMat, VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatToMut, VmpPMatToRef,
+        ZnxView, ZnxViewMut,
     },
     reference::fft64::{
         reim::{ReimArith, ReimFFTExecute, ReimFFTTable},
@@ -10,14 +12,17 @@ use crate::{
         vec_znx_dft::vec_znx_dft_apply,
     },
 };
-use crate::layouts::{VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 
 pub fn vmp_prepare_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vmp_prepare<BE>(table: &ReimFFTTable<f64>, pmat: &mut VmpPMatBackendMut<'_, BE>, mat: &MatZnxBackendRef<'_, BE>, tmp: &mut [f64])
-where
+pub fn vmp_prepare<BE>(
+    table: &ReimFFTTable<f64>,
+    pmat: &mut VmpPMatBackendMut<'_, BE>,
+    mat: &MatZnxBackendRef<'_, BE>,
+    tmp: &mut [f64],
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
     for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
@@ -32,7 +37,13 @@ where
             pmat.cols_in(),
             mat.cols_in()
         );
-        assert_eq!(pmat.rows(), mat.rows(), "pmat.rows: {} != mat.rows: {}", pmat.rows(), mat.rows());
+        assert_eq!(
+            pmat.rows(),
+            mat.rows(),
+            "pmat.rows: {} != mat.rows: {}",
+            pmat.rows(),
+            mat.rows()
+        );
         assert_eq!(
             pmat.cols_out(),
             mat.cols_out(),
@@ -40,7 +51,13 @@ where
             pmat.cols_out(),
             mat.cols_out()
         );
-        assert_eq!(pmat.size(), mat.size(), "pmat.size: {} != mat.size: {}", pmat.size(), mat.size());
+        assert_eq!(
+            pmat.size(),
+            mat.size(),
+            "pmat.size: {} != mat.size: {}",
+            pmat.size(),
+            mat.size()
+        );
     }
 
     let nrows: usize = mat.cols_in() * mat.rows();
@@ -147,8 +164,7 @@ pub fn vmp_apply_dft_to_dft<R, BE>(
     pmat: &VmpPMatBackendRef<'_, BE>,
     limb_offset: usize,
     tmp_bytes: &mut [f64],
-)
-where
+) where
     BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
     for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
     R: VecZnxDftToMut<BE>,

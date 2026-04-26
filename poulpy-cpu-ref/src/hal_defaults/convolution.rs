@@ -31,8 +31,8 @@ use crate::reference::{
 use poulpy_hal::{
     api::{HostBufMut, ModuleN, VecZnxDftBytesOf},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, HostDataRef,
-        Module, ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos,
+        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, HostDataRef, Module,
+        ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos,
     },
 };
 

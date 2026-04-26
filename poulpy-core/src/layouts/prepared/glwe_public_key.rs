@@ -7,10 +7,9 @@ use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
     layouts::{
-        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedBackendMut, GLWEPreparedFactory, GLWEPreparedToBackendMut,
-        GLWEPreparedBackendRef, GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree,
-        LWEInfos, Rank,
-        TorusPrecision,
+        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedBackendMut, GLWEPreparedBackendRef, GLWEPreparedFactory,
+        GLWEPreparedToBackendMut, GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree,
+        LWEInfos, Rank, TorusPrecision,
     },
 };
 

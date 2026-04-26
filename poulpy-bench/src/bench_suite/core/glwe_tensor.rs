@@ -11,9 +11,8 @@ use poulpy_hal::{
         VecZnxIdftApplyConsume, VecZnxSubInplaceBackend,
     },
     layouts::{
-        Backend, CnvPVecLToBackendRef, CnvPVecRToBackendRef, HostDataMut, Module, ScratchOwned, VecZnx,
-        VecZnxReborrowBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
-        vec_znx_big_backend_ref_from_mut,
+        Backend, CnvPVecLToBackendRef, CnvPVecRToBackendRef, HostDataMut, Module, ScratchOwned, VecZnx, VecZnxReborrowBackendMut,
+        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, vec_znx_big_backend_ref_from_mut,
     },
 };
 

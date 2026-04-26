@@ -12,7 +12,7 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor,
-        GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToMut, GLWEToRef, GetGaloisElement,
+        GLWETensorKeyPrepared, GLWEToBackendMut, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     oep::{
@@ -386,7 +386,7 @@ impl_operations_delegate!(
     fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
@@ -397,7 +397,7 @@ impl_operations_delegate!(
     },
     fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
@@ -431,7 +431,7 @@ impl_operations_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToMut + crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
@@ -455,7 +455,7 @@ impl_operations_delegate!(
         auto_keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        A: GLWEToRef + crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,

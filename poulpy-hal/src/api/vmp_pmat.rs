@@ -21,7 +21,12 @@ pub trait VmpPrepareTmpBytes {
 /// Prepares a coefficient-domain [`MatZnx`](crate::layouts::MatZnx) into a
 /// DFT-domain [`VmpPMat`](crate::layouts::VmpPMat).
 pub trait VmpPrepare<B: Backend> {
-    fn vmp_prepare<'s>(&self, pmat: &mut VmpPMatBackendMut<'_, B>, mat: &MatZnxBackendRef<'_, B>, scratch: &mut ScratchArena<'s, B>);
+    fn vmp_prepare<'s>(
+        &self,
+        pmat: &mut VmpPMatBackendMut<'_, B>,
+        mat: &MatZnxBackendRef<'_, B>,
+        scratch: &mut ScratchArena<'s, B>,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -46,8 +51,7 @@ pub trait VmpApplyDft<B: Backend> {
         a: &VecZnxBackendRef<'_, B>,
         pmat: &VmpPMatBackendRef<'_, B>,
         scratch: &mut ScratchArena<'s, B>,
-    )
-    where
+    ) where
         R: VecZnxDftToMut<B>;
 }
 

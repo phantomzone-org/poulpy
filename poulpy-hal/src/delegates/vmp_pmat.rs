@@ -42,7 +42,12 @@ impl_vmp_delegate!(
 
 impl_vmp_delegate!(
     VmpPrepare<B>,
-    fn vmp_prepare<'s>(&self, res: &mut VmpPMatBackendMut<'_, B>, a: &MatZnxBackendRef<'_, B>, scratch: &mut ScratchArena<'s, B>) {
+    fn vmp_prepare<'s>(
+        &self,
+        res: &mut VmpPMatBackendMut<'_, B>,
+        a: &MatZnxBackendRef<'_, B>,
+        scratch: &mut ScratchArena<'s, B>,
+    ) {
         <B as HalVmpImpl<B>>::vmp_prepare(self, res, a, scratch);
     }
 );
@@ -70,8 +75,7 @@ impl_vmp_delegate!(
         a: &VecZnxBackendRef<'_, B>,
         b: &VmpPMatBackendRef<'_, B>,
         scratch: &mut ScratchArena<'s, B>,
-    )
-    where
+    ) where
         R: VecZnxDftToMut<B>,
     {
         <B as HalVmpImpl<B>>::vmp_apply_dft(self, res, a, b, scratch)
