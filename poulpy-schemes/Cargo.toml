@@ -15,7 +15,6 @@ enable-avx512f = ["dep:poulpy-cpu-ifma", "poulpy-cpu-ifma/enable-avx512f", "poul
 enable-ifma = ["enable-avx512f", "poulpy-cpu-ifma/enable-ifma", "poulpy-core/enable-ifma"]
 
 [dependencies]
-criterion = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
 poulpy-cpu-ifma = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true}

@@ -567,7 +567,6 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "byteorder",
- "criterion",
  "dashu-float",
  "itertools 0.14.0",
  "once_cell",
@@ -618,7 +617,6 @@ version = "0.5.0"
 dependencies = [
  "bytemuck",
  "byteorder",
- "criterion",
  "dashu-float",
  "itertools 0.14.0",
  "once_cell",
@@ -638,7 +636,6 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "cmake",
- "criterion",
  "dashu-float",
  "itertools 0.14.0",
  "libc",
@@ -656,7 +653,6 @@ version = "0.5.0"
 dependencies = [
  "anyhow",
  "byteorder",
- "criterion",
  "itertools 0.14.0",
  "paste",
  "poulpy-core",

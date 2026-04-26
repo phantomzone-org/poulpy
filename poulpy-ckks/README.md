@@ -59,8 +59,8 @@ RNS CKKS libraries.
 
 Each ciphertext carries CKKS metadata:
 
-- `log_decimal`: base-2 logarithm of the plaintext precision
-- `log_hom_rem`: remaining homomorphic capacity
+- `log_delta`: base-2 logarithm of the plaintext scaling factor (precision)
+- `log_budget`: remaining homomorphic headroom
 
 That metadata is part of the evaluator state. User code should treat it as
 scheme-managed information: encryption, rescale, multiplication, addition, and
@@ -94,8 +94,8 @@ The main CKKS-facing types are:
 
 ```rust
 pub struct CKKSMeta {
-    pub log_decimal: usize,
-    pub log_hom_rem: usize,
+    pub log_delta: usize,
+    pub log_budget: usize,
 }
 ```
 
@@ -149,11 +149,11 @@ use poulpy_ckks::{
 };
 use poulpy_core::GLWENormalize;
 
-let mut ct_x2 = CKKSCiphertext::alloc(N.into(), ct_x.log_hom_rem().into(), BASE2K.into());
+let mut ct_x2 = CKKSCiphertext::alloc(N.into(), ct_x.log_budget().into(), BASE2K.into());
 module.ckks_square(&mut ct_x2, &ct_x, &tsk_prepared, scratch.borrow())?;
 module.ckks_compact_limbs(&mut ct_x2)?;
 
-let linear_k = ct_x.effective_k() - PREC_PT.log_decimal;
+let linear_k = ct_x.effective_k() - PREC_PT.log_delta;
 
 let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
 module.ckks_mul_pt_const_rnx(&mut right_linear, &ct_x, &cst_d, PREC_PT, scratch.borrow())?;
@@ -162,7 +162,7 @@ unsafe {
 }
 module.glwe_normalize_assign(&mut right_linear, scratch.borrow());
 
-let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
+let right_branch_k = ct_x2.effective_k() - ct_x2.log_delta();
 let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
 module.ckks_mul(&mut right_branch, &right_linear, &ct_x2, &tsk_prepared, scratch.borrow())?;
 module.ckks_compact_limbs(&mut right_branch)?;

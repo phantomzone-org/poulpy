@@ -132,7 +132,3 @@ harness = false
 [[bench]]
 name = "standard"
 harness = false
-
-[[bench]]
-name = "ckks_mul_table"
-harness = false

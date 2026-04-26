@@ -402,7 +402,7 @@ where
     }
     eprintln!();
     eprintln!("These two failure modes match the user's note.md description:");
-    eprintln!("  - 'log_decimal: 91' / non-aligned consumption == sub-limb shift inflation");
+    eprintln!("  - 'log_delta: 91' / non-aligned consumption == sub-limb shift inflation");
     eprintln!("  - 'loss in the top limbs' == carry-out-of-the-top");
     eprintln!();
     eprintln!("Localisation in the source:");
