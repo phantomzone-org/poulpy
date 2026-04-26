@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismAssign},
     layouts::{DeviceBuf, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -26,7 +26,7 @@ where
         + GGLWEToGGSWKeyPreparedFactory<BE>
         + GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismAssign<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -191,7 +191,7 @@ where
         + GGLWEToGGSWKeyPreparedFactory<BE>
         + GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAutomorphismAssign<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,

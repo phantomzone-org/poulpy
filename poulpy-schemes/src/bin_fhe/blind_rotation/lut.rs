@@ -3,8 +3,8 @@ use poulpy_cpu_ref::reference::vec_znx::vec_znx_rotate_assign;
 use poulpy_cpu_ref::reference::znx::ZnxRef;
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, TakeSlice, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, TakeSlice, VecZnxCopy, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes,
+        VecZnxRotateAssign, VecZnxRotateAssignTmpBytes, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
 };
@@ -257,14 +257,14 @@ fn max_bit_size(vec: &[i64]) -> u32 {
 
 impl<BE: Backend> LookupTableFactory for Module<BE>
 where
-    Self: VecZnxRotateInplace<BE>
-        + VecZnxNormalizeInplace<BE>
+    Self: VecZnxRotateAssign<BE>
+        + VecZnxNormalizeAssign<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxSwitchRing
         + VecZnxCopy
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxRotateInplace<BE>
-        + VecZnxRotateInplaceTmpBytes,
+        + VecZnxRotateAssignTmpBytes
+        + VecZnxRotateAssign<BE>
+        + VecZnxRotateAssignTmpBytes,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: TakeSlice,
 {

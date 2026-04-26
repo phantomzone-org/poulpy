@@ -27,8 +27,8 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         ensure_base2k_match("ckks_add_pt_vec_znx_into", ct.base2k().as_usize(), pt.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
             "ckks_add_pt_vec_znx_into",
-            ct.log_hom_rem(),
-            pt.log_decimal(),
+            ct.log_budget(),
+            pt.log_delta(),
             pt.max_k().as_usize(),
         )?;
         self.vec_znx_rsh_add_into(ct.base2k().as_usize(), offset, ct.data_mut(), 0, pt.data(), 0, scratch);
@@ -48,8 +48,8 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         ensure_base2k_match("ckks_sub_pt_vec_znx_into", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
             "ckks_sub_pt_vec_znx_into",
-            ct.log_hom_rem(),
-            pt_znx.log_decimal(),
+            ct.log_budget(),
+            pt_znx.log_delta(),
             pt_znx.max_k().as_usize(),
         )?;
         self.vec_znx_rsh_sub(ct.base2k().as_usize(), offset, ct.data_mut(), 0, pt_znx.data(), 0, scratch);
@@ -76,12 +76,12 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         Self: VecZnxLsh<BE> + VecZnxRsh<BE>,
     {
         ensure_base2k_match("ckks_extract_pt_znx", src.base2k().as_usize(), dst.base2k().as_usize())?;
-        let available = src_meta.log_hom_rem() + dst.log_decimal();
+        let available = src_meta.log_budget() + dst.log_delta();
         if available < dst.effective_k() {
             return Err(crate::CKKSCompositionError::PlaintextAlignmentImpossible {
                 op: "ckks_extract_pt_znx",
-                ct_log_hom_rem: src_meta.log_hom_rem(),
-                pt_log_decimal: dst.log_decimal(),
+                ct_log_budget: src_meta.log_budget(),
+                pt_log_delta: dst.log_delta(),
                 pt_max_k: dst.max_k().as_usize(),
             }
             .into());

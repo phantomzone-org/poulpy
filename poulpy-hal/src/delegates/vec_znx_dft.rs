@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAddScaledAssign, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero,
+        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubAssign, VecZnxDftSubNegateAssign, VecZnxDftZero,
         VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
@@ -143,7 +143,7 @@ where
     }
 }
 
-impl<B> VecZnxDftSubInplace<B> for Module<B>
+impl<B> VecZnxDftSubAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -156,7 +156,7 @@ where
     }
 }
 
-impl<B> VecZnxDftSubNegateInplace<B> for Module<B>
+impl<B> VecZnxDftSubNegateAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {

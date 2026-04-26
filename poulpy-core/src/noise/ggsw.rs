@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssign, VecZnxBigNormalize,
+        ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDftAssign, VecZnxAddScalarAssign, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
     layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
@@ -37,7 +37,7 @@ impl<BE: Backend> GGSWNoise<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarAssign
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
+        + SvpApplyDftToDftAssign<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>

@@ -34,10 +34,10 @@ use crate::reference::{
         ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_negate_assign,
     },
     znx::{
-        ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
-        ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-        ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero, znx_copy_ref, znx_zero_ref,
+        ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate,
+        ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign,
+        ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_copy_ref, znx_zero_ref,
     },
 };
 use poulpy_hal::{
@@ -106,7 +106,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_add_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+        BE: Backend<ScalarBig = i64> + ZnxAddAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
     {
@@ -132,7 +132,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_add_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+        BE: Backend<ScalarBig = i64> + ZnxAddAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxToRef,
     {
@@ -158,7 +158,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_sub_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+        BE: Backend<ScalarBig = i64> + ZnxSubAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
     {
@@ -167,7 +167,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_sub_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+        BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxBigToRef<BE>,
     {
@@ -193,7 +193,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_sub_small_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+        BE: Backend<ScalarBig = i64> + ZnxSubAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxToRef,
     {
@@ -219,7 +219,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_sub_small_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+        BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
         R: VecZnxBigToMut<BE>,
         A: VecZnxToRef,
     {
@@ -237,7 +237,7 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
 
     fn vec_znx_big_negate_assign_default<R>(_module: &Module<BE>, res: &mut R, res_col: usize)
     where
-        BE: Backend<ScalarBig = i64> + ZnxNegateInplace,
+        BE: Backend<ScalarBig = i64> + ZnxNegateAssign,
         R: VecZnxBigToMut<BE>,
     {
         fft64_vec_znx_big_negate_assign(res, res_col);
@@ -264,8 +264,8 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
         BE: Backend<ScalarBig = i64>
             + ZnxZero
             + ZnxCopy
-            + ZnxAddInplace
-            + ZnxMulPowerOfTwoInplace
+            + ZnxAddAssign
+            + ZnxMulPowerOfTwoAssign
             + ZnxNormalizeFirstStepCarryOnly
             + ZnxNormalizeMiddleStepCarryOnly
             + ZnxNormalizeMiddleStep
@@ -273,8 +273,8 @@ pub trait FFT64VecZnxBigDefaults<BE: Backend>: Backend {
             + ZnxNormalizeFirstStep
             + ZnxExtractDigitAddMul
             + ZnxNormalizeDigit
-            + ZnxNormalizeMiddleStepInplace
-            + ZnxNormalizeFinalStepInplace,
+            + ZnxNormalizeMiddleStepAssign
+            + ZnxNormalizeFinalStepAssign,
         Scratch<BE>: TakeSlice,
         R: VecZnxToMut,
         A: VecZnxBigToRef<BE>,

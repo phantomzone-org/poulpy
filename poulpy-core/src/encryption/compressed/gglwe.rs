@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
@@ -45,7 +45,7 @@ where
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
-        + VecZnxNormalizeInplace<BE>
+        + VecZnxNormalizeAssign<BE>
         + VecZnxAddScalarAssign
         + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,

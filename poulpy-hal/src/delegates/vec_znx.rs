@@ -1,13 +1,13 @@
 use crate::{
     api::{
         VecZnxAddAssign, VecZnxAddInto, VecZnxAddNormal, VecZnxAddScalarAssign, VecZnxAddScalarInto, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy, VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh,
-        VecZnxLshAddInto, VecZnxLshInplace, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshInplace, VecZnxRshSub, VecZnxRshTmpBytes,
-        VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar,
-        VecZnxSubScalarInplace, VecZnxSwitchRing, VecZnxZero,
+        VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxCopy, VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh,
+        VecZnxLshAddInto, VecZnxLshAssign, VecZnxLshSub, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxMulXpMinusOneAssignTmpBytes, VecZnxNegate, VecZnxNegateAssign,
+        VecZnxNormalize, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign,
+        VecZnxRotateAssignTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshAssign, VecZnxRshSub, VecZnxRshTmpBytes,
+        VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign, VecZnxSubScalar,
+        VecZnxSubScalarAssign, VecZnxSwitchRing, VecZnxZero,
     },
     layouts::{Backend, Module, NoiseInfos, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::HalImpl,
@@ -58,7 +58,7 @@ where
     }
 }
 
-impl<B> VecZnxNormalizeInplace<B> for Module<B>
+impl<B> VecZnxNormalizeAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -146,7 +146,7 @@ where
     }
 }
 
-impl<B> VecZnxSubInplace for Module<B>
+impl<B> VecZnxSubAssign for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<B> VecZnxSubNegateInplace for Module<B>
+impl<B> VecZnxSubNegateAssign for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -186,7 +186,7 @@ where
     }
 }
 
-impl<B> VecZnxSubScalarInplace for Module<B>
+impl<B> VecZnxSubScalarAssign for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -212,7 +212,7 @@ where
     }
 }
 
-impl<B> VecZnxNegateInplace for Module<B>
+impl<B> VecZnxNegateAssign for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -368,7 +368,7 @@ where
     }
 }
 
-impl<B> VecZnxLshInplace<B> for Module<B>
+impl<B> VecZnxLshAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -380,7 +380,7 @@ where
     }
 }
 
-impl<B> VecZnxRshInplace<B> for Module<B>
+impl<B> VecZnxRshAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -405,7 +405,7 @@ where
     }
 }
 
-impl<B> VecZnxRotateInplaceTmpBytes for Module<B>
+impl<B> VecZnxRotateAssignTmpBytes for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -414,7 +414,7 @@ where
     }
 }
 
-impl<B> VecZnxRotateInplace<B> for Module<B>
+impl<B> VecZnxRotateAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -439,7 +439,7 @@ where
     }
 }
 
-impl<B> VecZnxAutomorphismInplaceTmpBytes for Module<B>
+impl<B> VecZnxAutomorphismAssignTmpBytes for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -448,7 +448,7 @@ where
     }
 }
 
-impl<B> VecZnxAutomorphismInplace<B> for Module<B>
+impl<B> VecZnxAutomorphismAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -473,7 +473,7 @@ where
     }
 }
 
-impl<B> VecZnxMulXpMinusOneInplaceTmpBytes for Module<B>
+impl<B> VecZnxMulXpMinusOneAssignTmpBytes for Module<B>
 where
     B: Backend + HalImpl<B>,
 {
@@ -482,7 +482,7 @@ where
     }
 }
 
-impl<B> VecZnxMulXpMinusOneInplace<B> for Module<B>
+impl<B> VecZnxMulXpMinusOneAssign<B> for Module<B>
 where
     B: Backend + HalImpl<B>,
 {

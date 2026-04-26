@@ -106,8 +106,8 @@ fn ckks_layout() -> GLWELayout {
 
 fn ckks_meta() -> CKKSMeta {
     CKKSMeta {
-        log_decimal: LOG_DECIMAL,
-        log_hom_rem: K - LOG_DECIMAL,
+        log_delta: LOG_DECIMAL,
+        log_budget: K - LOG_DECIMAL,
     }
 }
 

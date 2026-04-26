@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes},
+    api::{ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes},
     layouts::{Backend, CyclotomicOrder, GaloisElement, Module, Scratch},
 };
 
@@ -13,8 +13,8 @@ pub(crate) trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
     + GaloisElement
     + GLWEKeyswitch<BE>
     + VecZnxAutomorphism
-    + VecZnxAutomorphismInplace<BE>
-    + VecZnxAutomorphismInplaceTmpBytes
+    + VecZnxAutomorphismAssign<BE>
+    + VecZnxAutomorphismAssignTmpBytes
     + CyclotomicOrder
 where
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -160,8 +160,8 @@ where
     Self: GaloisElement
         + GLWEKeyswitch<BE>
         + VecZnxAutomorphism
-        + VecZnxAutomorphismInplace<BE>
-        + VecZnxAutomorphismInplaceTmpBytes
+        + VecZnxAutomorphismAssign<BE>
+        + VecZnxAutomorphismAssignTmpBytes
         + CyclotomicOrder,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

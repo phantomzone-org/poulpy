@@ -4,12 +4,12 @@ use std::f64::consts::SQRT_2;
 use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddAssign, VecZnxAddInto, VecZnxAddNormal, VecZnxAddScalarAssign,
-        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy,
-        VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings,
-        VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
-        VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing,
-        VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace,
+        VecZnxAddScalarInto, VecZnxAutomorphism, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxCopy,
+        VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshAssign, VecZnxLshTmpBytes, VecZnxMergeRings,
+        VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxMulXpMinusOneAssignTmpBytes,
+        VecZnxNegate, VecZnxNegateAssign, VecZnxNormalize, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxRotateAssign, VecZnxRotateAssignTmpBytes, VecZnxRsh, VecZnxRshAssign, VecZnxRshTmpBytes, VecZnxSplitRing,
+        VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign, VecZnxSubScalar, VecZnxSubScalarAssign,
         VecZnxSwitchRing,
     },
     layouts::{
@@ -259,9 +259,9 @@ pub fn test_vec_znx_automorphism_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxAutomorphismInplace<BR> + VecZnxAutomorphismInplaceTmpBytes,
+    Module<BR>: VecZnxAutomorphismAssign<BR> + VecZnxAutomorphismAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxAutomorphismInplace<BT> + VecZnxAutomorphismInplaceTmpBytes,
+    Module<BT>: VecZnxAutomorphismAssign<BT> + VecZnxAutomorphismAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -439,9 +439,9 @@ pub fn test_vec_znx_mul_xp_minus_one_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxMulXpMinusOneInplace<BR> + VecZnxMulXpMinusOneInplaceTmpBytes,
+    Module<BR>: VecZnxMulXpMinusOneAssign<BR> + VecZnxMulXpMinusOneAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxMulXpMinusOneInplace<BT> + VecZnxMulXpMinusOneInplaceTmpBytes,
+    Module<BT>: VecZnxMulXpMinusOneAssign<BT> + VecZnxMulXpMinusOneAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -522,8 +522,8 @@ pub fn test_vec_znx_negate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxNegateInplace,
-    Module<BT>: VecZnxNegateInplace,
+    Module<BR>: VecZnxNegateAssign,
+    Module<BT>: VecZnxNegateAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -597,9 +597,9 @@ pub fn test_vec_znx_normalize_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxNormalizeInplace<BR> + VecZnxNormalizeTmpBytes,
+    Module<BR>: VecZnxNormalizeAssign<BR> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxNormalizeInplace<BT> + VecZnxNormalizeTmpBytes,
+    Module<BT>: VecZnxNormalizeAssign<BT> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -680,9 +680,9 @@ pub fn test_vec_znx_rotate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxRotateInplace<BR> + VecZnxRotateInplaceTmpBytes,
+    Module<BR>: VecZnxRotateAssign<BR> + VecZnxRotateAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxRotateInplace<BT> + VecZnxRotateInplaceTmpBytes,
+    Module<BT>: VecZnxRotateAssign<BT> + VecZnxRotateAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -860,9 +860,9 @@ where
 
 pub fn test_vec_znx_lsh_assign<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxLshInplace<BR> + VecZnxLshTmpBytes,
+    Module<BR>: VecZnxLshAssign<BR> + VecZnxLshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxLshInplace<BT> + VecZnxLshTmpBytes,
+    Module<BT>: VecZnxLshAssign<BT> + VecZnxLshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -938,9 +938,9 @@ where
 
 pub fn test_vec_znx_rsh_assign<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxRshInplace<BR> + VecZnxRshTmpBytes,
+    Module<BR>: VecZnxRshAssign<BR> + VecZnxRshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
-    Module<BT>: VecZnxRshInplace<BT> + VecZnxRshTmpBytes,
+    Module<BT>: VecZnxRshAssign<BT> + VecZnxRshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT> + ScratchOwnedBorrow<BT>,
 {
     let base2k = params.base2k;
@@ -1067,8 +1067,8 @@ pub fn test_vec_znx_sub_scalar_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxSubScalarInplace,
-    Module<BT>: VecZnxSubScalarInplace,
+    Module<BR>: VecZnxSubScalarAssign,
+    Module<BT>: VecZnxSubScalarAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1145,8 +1145,8 @@ where
 
 pub fn test_vec_znx_sub_assign<BR: Backend, BT: Backend>(params: &TestParams, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxSubInplace,
-    Module<BT>: VecZnxSubInplace,
+    Module<BR>: VecZnxSubAssign,
+    Module<BT>: VecZnxSubAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1183,8 +1183,8 @@ pub fn test_vec_znx_sub_negate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxSubNegateInplace,
-    Module<BT>: VecZnxSubNegateInplace,
+    Module<BR>: VecZnxSubNegateAssign,
+    Module<BT>: VecZnxSubNegateAssign,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());

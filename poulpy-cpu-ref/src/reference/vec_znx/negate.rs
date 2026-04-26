@@ -3,9 +3,9 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    api::{ModuleNew, VecZnxNegate, VecZnxNegateInplace},
+    api::{ModuleNew, VecZnxNegate, VecZnxNegateAssign},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxNegate, ZnxNegateInplace, ZnxZero},
+    reference::znx::{ZnxNegate, ZnxNegateAssign, ZnxZero},
     source::Source,
 };
 
@@ -37,7 +37,7 @@ where
 pub fn vec_znx_negate_assign<R, ZNXARI>(res: &mut R, res_col: usize)
 where
     R: VecZnxToMut,
-    ZNXARI: ZnxNegateInplace,
+    ZNXARI: ZnxNegateAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     for j in 0..res.size() {
@@ -91,7 +91,7 @@ where
 
 pub fn bench_vec_znx_negate_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxNegateInplace + ModuleNew<B>,
+    Module<B>: VecZnxNegateAssign + ModuleNew<B>,
 {
     let group_name: String = format!("vec_znx_negate_assign::{label}");
 
@@ -99,7 +99,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxNegateInplace + ModuleNew<B>,
+        Module<B>: VecZnxNegateAssign + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];

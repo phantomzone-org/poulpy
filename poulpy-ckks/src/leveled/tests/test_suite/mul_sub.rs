@@ -5,9 +5,9 @@
 //! | Function | Path exercised |
 //! |----------|----------------|
 //! | [`test_mul_sub_ct_aligned`] | ct-ct, all operands aligned |
-//! | [`test_mul_sub_ct_unaligned_dst`] | ct-ct with `dst` at a lower `log_hom_rem` |
+//! | [`test_mul_sub_ct_unaligned_dst`] | ct-ct with `dst` at a lower `log_budget` |
 //! | [`test_mul_sub_pt_vec_znx_aligned`] | ZNX plaintext, aligned |
-//! | [`test_mul_sub_pt_vec_znx_into_delta_log_decimal`] | ZNX plaintext at lower `log_decimal` |
+//! | [`test_mul_sub_pt_vec_znx_into_delta_log_delta`] | ZNX plaintext at lower `log_delta` |
 //! | [`test_mul_sub_pt_vec_rnx_aligned`] | RNX plaintext, aligned |
 //! | [`test_mul_sub_pt_const_znx_into_aligned`] | ZNX constant, aligned |
 //! | [`test_mul_sub_pt_const_rnx_aligned`] | RNX constant, aligned |
@@ -91,7 +91,7 @@ pub fn test_mul_sub_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
     ctx.assert_decrypt_precision("mul_sub_ct_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-/// `dst` starts at a lower `log_hom_rem` than the product `a·b`, forcing
+/// `dst` starts at a lower `log_budget` than the product `a·b`, forcing
 /// alignment inside the fused sub.
 pub fn test_mul_sub_ct_unaligned_dst<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
@@ -140,15 +140,15 @@ pub fn test_mul_sub_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCon
     ctx.assert_decrypt_precision("mul_sub_pt_vec_znx_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
 
-pub fn test_mul_sub_pt_vec_znx_into_delta_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_mul_sub_pt_vec_znx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
-    let low_log_decimal = ctx.meta().log_decimal - DELTA_LOG_DECIMAL;
-    let low_prec = ctx.precision_at(low_log_decimal);
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_prec = ctx.precision_at(low_log_delta);
     let dst_re = scaled(&ctx.re1, half);
     let dst_im = scaled(&ctx.im1, half);
-    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_decimal);
-    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_decimal);
+    let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
+    let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let a_re = scaled(&a_re, half);
     let a_im = scaled(&a_im, half);
     let b_re = scaled(&b_re, half);
@@ -164,12 +164,12 @@ pub fn test_mul_sub_pt_vec_znx_into_delta_log_decimal<BE: Backend, F: TestScalar
     ctx.module
         .ckks_mul_sub_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision_at_log_decimal(
-        "mul_sub_pt_vec_znx_into_delta_log_decimal",
+    ctx.assert_decrypt_precision_at_log_delta(
+        "mul_sub_pt_vec_znx_into_delta_log_delta",
         &dst,
         &want_re,
         &want_im,
-        low_log_decimal,
+        low_log_delta,
         scratch.borrow(),
     );
 }
@@ -205,7 +205,7 @@ pub fn test_mul_sub_pt_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &
     let a_re = scaled(&ctx.re2, half);
     let a_im = scaled(&ctx.im2, half);
 
-    let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let (prod_re, prod_im) = cmul_scalar(&a_re, &a_im, c_re, c_im);
     let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
     let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
@@ -228,7 +228,7 @@ pub fn test_mul_sub_pt_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestC
     let a_re = scaled(&ctx.re2, half);
     let a_im = scaled(&ctx.im2, half);
 
-    let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_decimal);
+    let (c_re, c_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
     let (prod_re, prod_im) = cmul_scalar(&a_re, &a_im, c_re, c_im);
     let want_re: Vec<F> = (0..dst_re.len()).map(|i| dst_re[i] - prod_re[i]).collect();
     let want_im: Vec<F> = (0..dst_im.len()).map(|i| dst_im[i] - prod_im[i]).collect();
@@ -255,13 +255,13 @@ pub fn test_mul_sub_pt_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestSca
     let dst_meta = dst.meta();
     let cst_rnx = ctx.const_rnx(None, None);
     let cst_znx = cst_rnx
-        .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL))
+        .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DECIMAL))
         .unwrap();
     ctx.module
         .ckks_mul_sub_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
 
-    assert_ct_meta("mul_sub_pt_const_znx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);
+    assert_ct_meta("mul_sub_pt_const_znx_zero", &dst, dst_meta.log_delta, dst_meta.log_budget);
     ctx.assert_decrypt_precision("mul_sub_pt_const_znx_zero", &dst, &dst_re, &dst_im, scratch.borrow());
 }
 
@@ -282,11 +282,11 @@ pub fn test_mul_sub_pt_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestSca
             &mut dst,
             &a,
             &cst,
-            ctx.precision_at(ctx.meta().log_decimal - DELTA_LOG_DECIMAL),
+            ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DECIMAL),
             scratch.borrow(),
         )
         .unwrap();
 
-    assert_ct_meta("mul_sub_pt_const_rnx_zero", &dst, dst_meta.log_decimal, dst_meta.log_hom_rem);
+    assert_ct_meta("mul_sub_pt_const_rnx_zero", &dst, dst_meta.log_delta, dst_meta.log_budget);
     ctx.assert_decrypt_precision("mul_sub_pt_const_rnx_zero", &dst, &dst_re, &dst_im, scratch.borrow());
 }

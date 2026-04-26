@@ -70,7 +70,7 @@ impl CKKSPlaintextCstZnx {
 /// Conversion between scalar RNX constants and quantized ZNX constants.
 pub trait CKKSConstPlaintextConversion {
     /// Maximum supported decimal precision for this conversion implementation.
-    fn max_log_decimal_prec() -> usize;
+    fn max_log_delta_prec() -> usize;
 
     /// Encodes a constant RNX plaintext into its default ZNX representation.
     ///
@@ -89,14 +89,14 @@ pub trait CKKSConstPlaintextConversion {
     /// the ciphertext body, so they must already be aligned to the destination
     /// ciphertext precision, typically:
     ///
-    /// `k = dst.log_hom_rem() + prec.log_decimal`
+    /// `k = dst.log_budget() + prec.log_delta`
     ///
     /// Using `prec.min_k(base2k)` there would place the constant at the wrong
     /// bit position.
-    fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_decimal: usize) -> Result<CKKSPlaintextCstZnx>;
+    fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_delta: usize) -> Result<CKKSPlaintextCstZnx>;
 }
 
-fn max_log_decimal_prec_for<F>() -> usize
+fn max_log_delta_prec_for<F>() -> usize
 where
     F: Float + ToPrimitive,
 {
@@ -107,21 +107,21 @@ impl<F> CKKSConstPlaintextConversion for CKKSPlaintextCstRnx<F>
 where
     F: Float + FromPrimitive + ToPrimitive,
 {
-    fn max_log_decimal_prec() -> usize {
-        max_log_decimal_prec_for::<F>()
+    fn max_log_delta_prec() -> usize {
+        max_log_delta_prec_for::<F>()
     }
 
     fn to_znx(&self, base2k: Base2K, prec: CKKSMeta) -> Result<CKKSPlaintextCstZnx> {
-        self.to_znx_at_k(base2k, prec.min_k(base2k).as_usize(), prec.log_decimal())
+        self.to_znx_at_k(base2k, prec.min_k(base2k).as_usize(), prec.log_delta())
     }
 
-    fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_decimal: usize) -> Result<CKKSPlaintextCstZnx> {
-        let log_hom_rem = k.saturating_sub(log_decimal);
+    fn to_znx_at_k(&self, base2k: Base2K, k: usize, log_delta: usize) -> Result<CKKSPlaintextCstZnx> {
+        let log_budget = k.saturating_sub(log_delta);
 
-        anyhow::ensure!(log_decimal <= Self::max_log_decimal_prec());
+        anyhow::ensure!(log_delta <= Self::max_log_delta_prec());
 
-        let scale = F::from_usize(log_decimal).unwrap().exp2();
-        let (re, im) = if log_decimal + log_hom_rem <= 63 {
+        let scale = F::from_usize(log_delta).unwrap().exp2();
+        let (re, im) = if log_delta + log_budget <= 63 {
             (
                 self.re
                     .map(|re| encode_const_coeff_i64(base2k, k, (re * scale).round().to_i64().unwrap())),
@@ -141,8 +141,8 @@ where
             re,
             im,
             CKKSMeta {
-                log_decimal,
-                log_hom_rem,
+                log_delta,
+                log_budget,
             },
         ))
     }
@@ -165,11 +165,11 @@ impl CKKSInfos for CKKSPlaintextCstZnx {
         self.meta
     }
 
-    fn log_decimal(&self) -> usize {
-        self.meta.log_decimal
+    fn log_delta(&self) -> usize {
+        self.meta.log_delta
     }
 
-    fn log_hom_rem(&self) -> usize {
-        self.meta.log_hom_rem
+    fn log_budget(&self) -> usize {
+        self.meta.log_budget
     }
 }

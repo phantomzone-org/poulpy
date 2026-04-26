@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes,
-        VecZnxBigAddSmallAssign, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalize,
-        VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxNormalize,
+        ScratchAvailable, ScratchTakeBasic, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes,
+        VecZnxBigAddSmallAssign, VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigNormalize,
+        VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign, VecZnxNormalize,
     },
     layouts::{Backend, Module, Scratch, VecZnxBig},
 };
@@ -18,12 +18,12 @@ pub(crate) trait GLWEAutomorphismDefault<BE: Backend>:
     + GLWEKeyswitch<BE>
     + GLWEKeySwitchInternal<BE>
     + VecZnxNormalize<BE>
-    + VecZnxAutomorphismInplace<BE>
-    + VecZnxAutomorphismInplaceTmpBytes
-    + VecZnxBigAutomorphismInplace<BE>
-    + VecZnxBigAutomorphismInplaceTmpBytes
-    + VecZnxBigSubSmallInplace<BE>
-    + VecZnxBigSubSmallNegateInplace<BE>
+    + VecZnxAutomorphismAssign<BE>
+    + VecZnxAutomorphismAssignTmpBytes
+    + VecZnxBigAutomorphismAssign<BE>
+    + VecZnxBigAutomorphismAssignTmpBytes
+    + VecZnxBigSubSmallAssign<BE>
+    + VecZnxBigSubSmallNegateAssign<BE>
     + VecZnxBigAddSmallAssign<BE>
     + VecZnxBigNormalize<BE>
     + GLWENormalize<BE>
@@ -367,12 +367,12 @@ where
         + GLWEKeyswitch<BE>
         + GLWEKeySwitchInternal<BE>
         + VecZnxNormalize<BE>
-        + VecZnxAutomorphismInplace<BE>
-        + VecZnxAutomorphismInplaceTmpBytes
-        + VecZnxBigAutomorphismInplace<BE>
-        + VecZnxBigAutomorphismInplaceTmpBytes
-        + VecZnxBigSubSmallInplace<BE>
-        + VecZnxBigSubSmallNegateInplace<BE>
+        + VecZnxAutomorphismAssign<BE>
+        + VecZnxAutomorphismAssignTmpBytes
+        + VecZnxBigAutomorphismAssign<BE>
+        + VecZnxBigAutomorphismAssignTmpBytes
+        + VecZnxBigSubSmallAssign<BE>
+        + VecZnxBigSubSmallNegateAssign<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
         + GLWENormalize<BE>,

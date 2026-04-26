@@ -5,7 +5,7 @@ use criterion::{BenchmarkId, Criterion};
 use crate::{
     api::{ModuleNew, VecZnxAddAssign, VecZnxAddInto},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxAdd, ZnxAddInplace, ZnxCopy, ZnxZero},
+    reference::znx::{ZnxAdd, ZnxAddAssign, ZnxCopy, ZnxZero},
     source::Source,
 };
 
@@ -67,7 +67,7 @@ pub fn vec_znx_add_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_co
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxAddInplace,
+    ZNXARI: ZnxAddAssign,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();

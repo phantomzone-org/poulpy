@@ -6,7 +6,7 @@ use poulpy_core::{
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 use crate::{
-    CKKSInfos, checked_log_hom_rem_sub,
+    CKKSInfos, checked_log_budget_sub,
     layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
 };
 
@@ -40,7 +40,7 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
         }
 
         dst.meta = src.meta();
-        dst.meta.log_hom_rem = checked_log_hom_rem_sub("conjugate", dst.log_hom_rem(), offset)?;
+        dst.meta.log_budget = checked_log_budget_sub("conjugate", dst.log_budget(), offset)?;
         Ok(())
     }
 

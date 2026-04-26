@@ -6,10 +6,10 @@
 //! |----------|----------------|
 //! | [`test_encrypt_decrypt`] | legacy helper round-trip |
 //! | [`test_decrypt_extract_same_meta`] | `available == pt.max_k()`, no truncation |
-//! | [`test_decrypt_extract_truncates_log_hom_rem`] | `ct.log_hom_rem() > pt.log_hom_rem()` |
-//! | [`test_decrypt_extract_rsh_for_smaller_log_decimal`] | `available < pt.max_k()` → `vec_znx_rsh` |
-//! | [`test_decrypt_extract_lsh_for_larger_log_decimal`] | `available > pt.max_k()` → `vec_znx_lsh` |
-//! | [`test_decrypt_extract_output_hom_rem_too_large`] | `ct.log_hom_rem() < pt.log_hom_rem()` error |
+//! | [`test_decrypt_extract_truncates_log_budget`] | `ct.log_budget() > pt.log_budget()` |
+//! | [`test_decrypt_extract_rsh_for_smaller_log_delta`] | `available < pt.max_k()` → `vec_znx_rsh` |
+//! | [`test_decrypt_extract_lsh_for_larger_log_delta`] | `available > pt.max_k()` → `vec_znx_lsh` |
+//! | [`test_decrypt_extract_output_hom_rem_too_large`] | `ct.log_budget() < pt.log_budget()` error |
 //! | [`test_decrypt_extract_base2k_mismatch_error`] | plaintext/ciphertext `base2k` mismatch |
 
 use super::helpers::{TestCiphertextBackend as Backend, TestContext, TestScalar, assert_ckks_error, assert_ct_meta};
@@ -20,13 +20,13 @@ use poulpy_hal::api::ScratchOwnedBorrow;
 fn extract_src_prec<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> CKKSMeta {
     if ctx.base2k().as_usize() == 19 {
         CKKSMeta {
-            log_decimal: 40,
-            log_hom_rem: 17,
+            log_delta: 40,
+            log_budget: 17,
         }
     } else {
         CKKSMeta {
-            log_decimal: 40,
-            log_hom_rem: 12,
+            log_delta: 40,
+            log_budget: 12,
         }
     }
 }
@@ -47,23 +47,23 @@ where
     let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
-    assert_ct_meta(&format!("{label} src"), &ct, src_prec.log_decimal, src_prec.log_hom_rem);
+    assert_ct_meta(&format!("{label} src"), &ct, src_prec.log_delta, src_prec.log_budget);
 
     let pt = ctx.decrypt_with_prec(&ct, dst_prec, scratch.borrow()).unwrap();
     assert_eq!(pt.meta, dst_prec, "{label}: decrypt changed destination metadata");
 
     let (re_out, im_out) = ctx.decode_pt_znx(&pt);
-    let (want_prec, assert_log_decimal) = if dst_prec.log_decimal > src_prec.log_decimal {
+    let (want_prec, assert_log_delta) = if dst_prec.log_delta > src_prec.log_delta {
         // A left-shift during extraction only repacks the same source
         // quantization at a larger scale; it does not manufacture additional
         // absolute precision.
-        (src_prec, src_prec.log_decimal)
+        (src_prec, src_prec.log_delta)
     } else {
-        (dst_prec, dst_prec.log_decimal)
+        (dst_prec, dst_prec.log_delta)
     };
     let (want_re, want_im) = ctx.quantized_slots(&ctx.re1, &ctx.im1, want_prec);
-    ctx.assert_precision_for_log_decimal(&format!("{label} re"), &re_out, &want_re, assert_log_decimal);
-    ctx.assert_precision_for_log_decimal(&format!("{label} im"), &im_out, &want_im, assert_log_decimal);
+    ctx.assert_precision_for_log_delta(&format!("{label} re"), &re_out, &want_re, assert_log_delta);
+    ctx.assert_precision_for_log_delta(&format!("{label} im"), &im_out, &want_im, assert_log_delta);
 }
 
 /// Verifies that encrypt → decrypt → decode recovers the original message.
@@ -73,50 +73,50 @@ pub fn test_encrypt_decrypt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>
     assert_ct_meta(
         "encrypt_decrypt",
         &ct,
-        ctx.meta().log_decimal,
-        ctx.max_k() - ctx.meta().log_decimal,
+        ctx.meta().log_delta,
+        ctx.max_k() - ctx.meta().log_delta,
     );
     let (re_out, im_out) = ctx.decrypt_decode(&ct, scratch.borrow());
-    ctx.assert_precision_for_log_decimal("encrypt_decrypt re", &re_out, &ctx.re1, ct.log_decimal());
-    ctx.assert_precision_for_log_decimal("encrypt_decrypt im", &im_out, &ctx.im1, ct.log_decimal());
+    ctx.assert_precision_for_log_delta("encrypt_decrypt re", &re_out, &ctx.re1, ct.log_delta());
+    ctx.assert_precision_for_log_delta("encrypt_decrypt im", &im_out, &ctx.im1, ct.log_delta());
 }
 
 pub fn test_decrypt_extract_same_meta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     assert_decrypt_extract_success("decrypt_extract_same_meta", ctx, extract_src_prec(ctx));
 }
 
-pub fn test_decrypt_extract_truncates_log_hom_rem<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_decrypt_extract_truncates_log_budget<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
-        "decrypt_extract_truncates_log_hom_rem",
+        "decrypt_extract_truncates_log_budget",
         ctx,
         CKKSMeta {
-            log_decimal: src_prec.log_decimal,
-            log_hom_rem: 0,
+            log_delta: src_prec.log_delta,
+            log_budget: 0,
         },
     );
 }
 
-pub fn test_decrypt_extract_rsh_for_smaller_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_decrypt_extract_rsh_for_smaller_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
         "decrypt_extract_rsh",
         ctx,
         CKKSMeta {
-            log_decimal: src_prec.log_decimal - 8,
-            log_hom_rem: src_prec.log_hom_rem,
+            log_delta: src_prec.log_delta - 8,
+            log_budget: src_prec.log_budget,
         },
     );
 }
 
-pub fn test_decrypt_extract_lsh_for_larger_log_decimal<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
+pub fn test_decrypt_extract_lsh_for_larger_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let src_prec = extract_src_prec(ctx);
     assert_decrypt_extract_success(
         "decrypt_extract_lsh",
         ctx,
         CKKSMeta {
-            log_decimal: src_prec.log_decimal,
-            log_hom_rem: src_prec.log_hom_rem - 8,
+            log_delta: src_prec.log_delta,
+            log_budget: src_prec.log_budget - 8,
         },
     );
 }
@@ -129,8 +129,8 @@ pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>
         ctx.degree(),
         ctx.base2k(),
         CKKSMeta {
-            log_decimal: src_prec.log_decimal,
-            log_hom_rem: src_prec.log_hom_rem + 1,
+            log_delta: src_prec.log_delta,
+            log_budget: src_prec.log_budget + 1,
         },
     );
     let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
@@ -139,8 +139,8 @@ pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>
         &err,
         CKKSCompositionError::PlaintextAlignmentImpossible {
             op: "ckks_extract_pt_znx",
-            ct_log_hom_rem: src_prec.log_hom_rem,
-            pt_log_decimal: src_prec.log_decimal,
+            ct_log_budget: src_prec.log_budget,
+            pt_log_delta: src_prec.log_delta,
             pt_max_k: pt.max_k().as_usize(),
         },
     );

@@ -101,10 +101,10 @@ pub fn test_linear_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestCont
 
     let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     // `alloc_ct` takes the total stored width `k`. For `x * pt`, the output
-    // effective width is `x.effective_k() - log_decimal`, which is numerically
-    // equal to `x.log_hom_rem()` in these tests.
-    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
-    let mut term2 = ctx.alloc_ct(x.log_hom_rem());
+    // effective width is `x.effective_k() - log_delta`, which is numerically
+    // equal to `x.log_budget()` in these tests.
+    let mut term1 = ctx.alloc_ct(x.log_budget());
+    let mut term2 = ctx.alloc_ct(x.log_budget());
     ctx.module
         .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -113,8 +113,8 @@ pub fn test_linear_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestCont
         .unwrap();
 
     assert_eq!(
-        term1.log_hom_rem(),
-        term2.log_hom_rem(),
+        term1.log_budget(),
+        term2.log_budget(),
         "linear branches should remain aligned"
     );
     ctx.module.ckks_add_assign(&mut term1, &term2, scratch.borrow()).unwrap();
@@ -133,15 +133,15 @@ pub fn test_poly2_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
     let (want_re, want_im) = poly2_expected(ctx, (0.0, 0.0), c1, c2);
 
     let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    // Likewise, `square` consumes one `log_decimal` chunk, so the post-square
-    // effective width is `x.effective_k() - log_decimal == x.log_hom_rem()`.
-    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    // Likewise, `square` consumes one `log_delta` chunk, so the post-square
+    // effective width is `x.effective_k() - log_delta == x.log_budget()`.
+    let mut x2 = ctx.alloc_ct(x.log_budget());
     ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // These allocations still mean "result effective_k", not "headroom only".
-    // The equality with `log_hom_rem()` is specific to these operation chains.
-    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
-    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    // The equality with `log_budget()` is specific to these operation chains.
+    let mut term1 = ctx.alloc_ct(x.log_budget());
+    let mut term2 = ctx.alloc_ct(x2.log_budget());
     ctx.module
         .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -150,7 +150,7 @@ pub fn test_poly2_sum<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
         .unwrap();
 
     assert!(
-        term1.log_hom_rem() > term2.log_hom_rem(),
+        term1.log_budget() > term2.log_budget(),
         "x^2 branch should consume more precision"
     );
     let mut sum = ctx.alloc_ct(term2.effective_k());
@@ -172,15 +172,15 @@ pub fn test_poly2_sum_with_const<BE: TestCompositionBackend, F: TestScalar>(ctx:
     let (want_re, want_im) = poly2_expected(ctx, c0, c1, c2);
 
     let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    // `square` output width matches `x.log_hom_rem()` here only because
-    // squaring drops one `log_decimal` chunk from `x.effective_k()`.
-    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    // `square` output width matches `x.log_budget()` here only because
+    // squaring drops one `log_delta` chunk from `x.effective_k()`.
+    let mut x2 = ctx.alloc_ct(x.log_budget());
     ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
     // `mul_pt_vec_rnx` again allocates by post-op effective width; using
-    // `log_hom_rem()` is a numeric shortcut that holds for this fixture.
-    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
-    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    // `log_budget()` is a numeric shortcut that holds for this fixture.
+    let mut term1 = ctx.alloc_ct(x.log_budget());
+    let mut term2 = ctx.alloc_ct(x2.log_budget());
     ctx.module
         .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -211,14 +211,14 @@ pub fn test_poly2_mul<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
     let x = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let y = ctx.encrypt(ctx.max_k(), &ctx.re2, &ctx.im2, scratch.borrow());
     // Here too, the allocated `k` is the post-square effective width, which
-    // happens to equal `x.log_hom_rem()` for CKKS square in this setup.
-    let mut x2 = ctx.alloc_ct(x.log_hom_rem());
+    // happens to equal `x.log_budget()` for CKKS square in this setup.
+    let mut x2 = ctx.alloc_ct(x.log_budget());
     ctx.module.ckks_square_into(&mut x2, &x, ctx.tsk(), scratch.borrow()).unwrap();
 
-    // The same caution applies below: `log_hom_rem()` is not semantically the
+    // The same caution applies below: `log_budget()` is not semantically the
     // ciphertext width, it just matches the required post-op width here.
-    let mut term1 = ctx.alloc_ct(x.log_hom_rem());
-    let mut term2 = ctx.alloc_ct(x2.log_hom_rem());
+    let mut term1 = ctx.alloc_ct(x.log_budget());
+    let mut term2 = ctx.alloc_ct(x2.log_budget());
     ctx.module
         .ckks_mul_pt_vec_rnx_into(&mut term1, &x, &pt1, ctx.meta(), scratch.borrow())
         .unwrap();
@@ -243,21 +243,21 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let mut squares = 0usize;
 
-    while ct.log_hom_rem() >= ct.log_decimal() {
-        let prev_log_hom_rem = ct.log_hom_rem();
-        let prev_log_decimal = ct.log_decimal();
-        let next_k = ct.effective_k() - ct.log_decimal();
+    while ct.log_budget() >= ct.log_delta() {
+        let prev_log_budget = ct.log_budget();
+        let prev_log_delta = ct.log_delta();
+        let next_k = ct.effective_k() - ct.log_delta();
         let mut next = ctx.alloc_ct(next_k);
         ctx.module.ckks_square_into(&mut next, &ct, ctx.tsk(), scratch.borrow()).unwrap();
         assert_eq!(
-            next.log_decimal(),
-            prev_log_decimal,
-            "square should preserve log_decimal across repeated squaring",
+            next.log_delta(),
+            prev_log_delta,
+            "square should preserve log_delta across repeated squaring",
         );
         assert_eq!(
-            next.log_hom_rem(),
-            prev_log_hom_rem - prev_log_decimal,
-            "square should consume exactly one log_decimal chunk of HE capacity",
+            next.log_budget(),
+            prev_log_budget - prev_log_delta,
+            "square should consume exactly one log_delta chunk of HE capacity",
         );
         ct = next;
         squares += 1;
@@ -265,7 +265,7 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
 
     assert!(squares > 0, "expected at least one square");
     assert!(
-        ct.log_hom_rem() < ct.log_decimal(),
+        ct.log_budget() < ct.log_delta(),
         "expected squaring to consume all HE capacity"
     );
     let (got_re, got_im) = ctx.decrypt_decode(&ct, scratch.borrow());
@@ -291,10 +291,10 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
         &err,
         CKKSCompositionError::MultiplicationPrecisionUnderflow {
             op: "mul",
-            lhs_log_hom_rem: ct.log_hom_rem(),
-            rhs_log_hom_rem: ct.log_hom_rem(),
-            lhs_log_decimal: ct.log_decimal(),
-            rhs_log_decimal: ct.log_decimal(),
+            lhs_log_budget: ct.log_budget(),
+            rhs_log_budget: ct.log_budget(),
+            lhs_log_delta: ct.log_delta(),
+            rhs_log_delta: ct.log_delta(),
         },
     );
 }

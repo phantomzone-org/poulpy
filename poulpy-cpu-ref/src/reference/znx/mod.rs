@@ -29,7 +29,7 @@ pub trait ZnxAdd {
     fn znx_add(res: &mut [i64], a: &[i64], b: &[i64]);
 }
 
-pub trait ZnxAddInplace {
+pub trait ZnxAddAssign {
     fn znx_add_assign(res: &mut [i64], a: &[i64]);
 }
 
@@ -37,11 +37,11 @@ pub trait ZnxSub {
     fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]);
 }
 
-pub trait ZnxSubInplace {
+pub trait ZnxSubAssign {
     fn znx_sub_assign(res: &mut [i64], a: &[i64]);
 }
 
-pub trait ZnxSubNegateInplace {
+pub trait ZnxSubNegateAssign {
     fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]);
 }
 
@@ -57,7 +57,7 @@ pub trait ZnxNegate {
     fn znx_negate(res: &mut [i64], src: &[i64]);
 }
 
-pub trait ZnxNegateInplace {
+pub trait ZnxNegateAssign {
     fn znx_negate_assign(res: &mut [i64]);
 }
 
@@ -77,7 +77,7 @@ pub trait ZnxMulAddPowerOfTwo {
     fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]);
 }
 
-pub trait ZnxMulPowerOfTwoInplace {
+pub trait ZnxMulPowerOfTwoAssign {
     fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]);
 }
 
@@ -101,7 +101,7 @@ pub trait ZnxNormalizeFirstStepCarryOnly {
     fn znx_normalize_first_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]);
 }
 
-pub trait ZnxNormalizeFirstStepInplace {
+pub trait ZnxNormalizeFirstStepAssign {
     fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
@@ -109,7 +109,7 @@ pub trait ZnxNormalizeMiddleStepCarryOnly {
     fn znx_normalize_middle_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]);
 }
 
-pub trait ZnxNormalizeMiddleStepInplace {
+pub trait ZnxNormalizeMiddleStepAssign {
     fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
@@ -121,7 +121,7 @@ pub trait ZnxNormalizeFinalStepSub {
     fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
 }
 
-pub trait ZnxNormalizeFinalStepInplace {
+pub trait ZnxNormalizeFinalStepAssign {
     fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 

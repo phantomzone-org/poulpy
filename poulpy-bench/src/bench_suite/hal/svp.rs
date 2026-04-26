@@ -4,7 +4,7 @@ use criterion::{BenchmarkId, Criterion};
 use rand::Rng;
 
 use poulpy_hal::{
-    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
+    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
     layouts::{Backend, DataViewMut, DeviceBuf, FillUniform, Module, ScalarZnx, SvpPPol, VecZnx, VecZnxDft},
     source::Source,
 };
@@ -143,7 +143,7 @@ where
 
 pub fn bench_svp_apply_dft_to_dft_assign<B>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: SvpApplyDftToDftInplace<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: SvpApplyDftToDftAssign<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     B: Backend,
 {
     let group_name: String = format!("svp_apply_dft_to_dft_assign::{label}");
@@ -152,7 +152,7 @@ where
 
     fn runner<B>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: SvpApplyDftToDftInplace<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: SvpApplyDftToDftAssign<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
         B: Backend,
     {
         let n: usize = 1 << sweep[0];

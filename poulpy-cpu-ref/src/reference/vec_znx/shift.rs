@@ -4,12 +4,12 @@ use criterion::{BenchmarkId, Criterion};
 use dashu_float::ops::DivRemEuclid;
 
 use crate::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshAssign, VecZnxRsh, VecZnxRshAssign},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
-        ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-        ZnxNormalizeMiddleStepInplace, ZnxNormalizeMiddleStepSub, ZnxZero,
+        ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+        ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepSub, ZnxZero,
     },
     source::Source,
 };
@@ -23,10 +23,10 @@ where
     R: VecZnxToMut,
     ZNXARI: ZnxZero
         + ZnxCopy
-        + ZnxNormalizeFirstStepInplace
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFirstStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeFirstStepAssign
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFirstStepAssign
+        + ZnxNormalizeFinalStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -42,7 +42,7 @@ where
         return;
     }
 
-    // Inplace shift of limbs by a k/base2k
+    // Assign shift of limbs by a k/base2k
     if steps > 0 {
         let start: usize = n * res_col;
         let end: usize = start + n;
@@ -196,9 +196,9 @@ where
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFirstStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFirstStepAssign
+        + ZnxNormalizeFinalStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let n: usize = res.n();
@@ -264,9 +264,9 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeFirstStep
         + ZnxNormalizeMiddleStep
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFirstStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFirstStepAssign
+        + ZnxNormalizeFinalStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -355,9 +355,9 @@ where
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStepSub
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFirstStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFirstStepAssign
+        + ZnxNormalizeFinalStepAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -418,7 +418,7 @@ where
 
 pub fn bench_vec_znx_lsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxLshInplace<B>,
+    Module<B>: ModuleNew<B> + VecZnxLshAssign<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh_assign::{label}");
@@ -427,7 +427,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxLshInplace<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshAssign<B> + ModuleNew<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -518,7 +518,7 @@ where
 
 pub fn bench_vec_znx_rsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRshInplace<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshAssign<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh_assign::{label}");
@@ -527,7 +527,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRshInplace<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshAssign<B> + ModuleNew<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];

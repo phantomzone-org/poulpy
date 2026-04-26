@@ -3,7 +3,7 @@ use rand::Rng;
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyConsume,
     },
     layouts::{
@@ -218,7 +218,7 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
     module_test: &Module<BT>,
 ) where
     Module<BR>: SvpPrepare<BR>
-        + SvpApplyDftToDftInplace<BR>
+        + SvpApplyDftToDftAssign<BR>
         + SvpPPolAlloc<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxBigNormalize<BR>
@@ -226,7 +226,7 @@ pub fn test_svp_apply_dft_to_dft_assign<BR: Backend, BT: Backend>(
         + VecZnxIdftApplyConsume<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: SvpPrepare<BT>
-        + SvpApplyDftToDftInplace<BT>
+        + SvpApplyDftToDftAssign<BT>
         + SvpPPolAlloc<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxBigNormalize<BT>

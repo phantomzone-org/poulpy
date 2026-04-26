@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarAssign, VecZnxDftBytesOf, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
@@ -43,7 +43,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
         + VecZnxAddScalarAssign
-        + VecZnxNormalizeInplace<BE>,
+        + VecZnxNormalizeAssign<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

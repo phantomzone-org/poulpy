@@ -26,7 +26,7 @@ use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeAssign},
     layouts::{DeviceBuf, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        ScratchAvailable, ScratchTakeBasic, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
@@ -37,7 +37,7 @@ pub trait LWEEncryptSkDefault<BE: Backend> {
 
 impl<BE: Backend> LWEEncryptSkDefault<BE> for Module<BE>
 where
-    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
+    Self: Sized + VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeAssign<BE> + VecZnxNormalizeTmpBytes,
     Scratch<BE>: ScratchTakeBasic + ScratchAvailable,
 {
     fn lwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

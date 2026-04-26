@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, checked_log_hom_rem_sub,
+    CKKSInfos, checked_log_budget_sub,
     layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
 };
 
@@ -32,7 +32,7 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
             dst.meta = src.meta();
-            dst.meta.log_hom_rem = checked_log_hom_rem_sub("neg", src.log_hom_rem(), offset)?;
+            dst.meta.log_budget = checked_log_budget_sub("neg", src.log_budget(), offset)?;
             self.glwe_negate_assign(dst);
         } else {
             self.glwe_negate(dst, src);

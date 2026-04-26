@@ -4,13 +4,13 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace,
-        VecZnxMulXpMinusOneInplaceTmpBytes,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign,
+        VecZnxMulXpMinusOneAssignTmpBytes,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::{
         vec_znx::{vec_znx_rotate, vec_znx_sub_assign},
-        znx::{ZnxNegate, ZnxRotate, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero},
+        znx::{ZnxNegate, ZnxRotate, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero},
     },
     source::Source,
 };
@@ -23,7 +23,7 @@ pub fn vec_znx_mul_xp_minus_one<R, A, ZNXARI>(p: i64, res: &mut R, res_col: usiz
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxRotate + ZnxZero + ZnxSubInplace,
+    ZNXARI: ZnxRotate + ZnxZero + ZnxSubAssign,
 {
     vec_znx_rotate::<_, _, ZNXARI>(p, res, res_col, a, a_col);
     vec_znx_sub_assign::<_, _, ZNXARI>(res, res_col, a, a_col);
@@ -32,7 +32,7 @@ where
 pub fn vec_znx_mul_xp_minus_one_assign<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
-    ZNXARI: ZnxRotate + ZnxNegate + ZnxSubNegateInplace,
+    ZNXARI: ZnxRotate + ZnxNegate + ZnxSubNegateAssign,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     #[cfg(debug_assertions)]
@@ -91,7 +91,7 @@ where
 
 pub fn bench_vec_znx_mul_xp_minus_one_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
+    Module<B>: VecZnxMulXpMinusOneAssign<B> + VecZnxMulXpMinusOneAssignTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_mul_xp_minus_one_assign::{label}");
@@ -100,7 +100,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxMulXpMinusOneInplace<B> + ModuleNew<B> + VecZnxMulXpMinusOneInplaceTmpBytes,
+        Module<B>: VecZnxMulXpMinusOneAssign<B> + ModuleNew<B> + VecZnxMulXpMinusOneAssignTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];

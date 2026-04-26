@@ -4,8 +4,8 @@ use rand::Rng;
 use crate::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubInplace,
-        VecZnxDftSubNegateInplace, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubAssign,
+        VecZnxDftSubNegateAssign, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft},
     source::Source,
@@ -772,13 +772,13 @@ pub fn test_vec_znx_dft_sub_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxDftSubInplace<BR>
+    Module<BR>: VecZnxDftSubAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxIdftApplyConsume<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxDftSubInplace<BT>
+    Module<BT>: VecZnxDftSubAssign<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>
@@ -883,13 +883,13 @@ pub fn test_vec_znx_dft_sub_negate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxDftSubNegateInplace<BR>
+    Module<BR>: VecZnxDftSubNegateAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxIdftApplyConsume<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxDftSubNegateInplace<BT>
+    Module<BT>: VecZnxDftSubNegateAssign<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>

@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, checked_log_hom_rem_sub,
+    CKKSInfos, checked_log_budget_sub,
     layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
     leveled::api::{CKKSAddOps, CKKSDecrypt, CKKSEncrypt, CKKSPlaintextZnxOps},
     oep::CKKSImpl,
@@ -42,9 +42,9 @@ where
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         self.glwe_encrypt_zero_sk(ct, sk, enc_infos, source_xe, source_xa, scratch);
-        let log_hom_rem = checked_log_hom_rem_sub("ckks_encrypt_sk", enc_infos.noise_infos().k, pt.log_decimal())?;
-        ct.meta.log_hom_rem = log_hom_rem;
-        ct.meta.log_decimal = pt.log_decimal();
+        let log_budget = checked_log_budget_sub("ckks_encrypt_sk", enc_infos.noise_infos().k, pt.log_delta())?;
+        ct.meta.log_budget = log_budget;
+        ct.meta.log_delta = pt.log_delta();
         self.ckks_add_pt_vec_znx_assign(ct, pt, scratch)?;
         Ok(())
     }

@@ -17,8 +17,8 @@ use crate::reference::{
         },
     },
     ntt120::{
-        NttAdd, NttAddInplace, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateInplace, NttSub, NttSubInplace,
-        NttSubNegateInplace, NttToZnx128, NttZero,
+        NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,
+        NttSubNegateAssign, NttToZnx128, NttZero,
         ntt::{NttTable, NttTableInv},
         primes::Primes30,
         types::Q120bScalar,
@@ -298,7 +298,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
         a_col: usize,
         a_scale: i64,
     ) where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -307,7 +307,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_add_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttAddInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttAddAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -333,7 +333,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttSubInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttSubAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {
@@ -342,7 +342,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 
     fn vec_znx_dft_sub_negate_assign_default<R, A>(_module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateInplace + NttNegateInplace,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttSubNegateAssign + NttNegateAssign,
         R: VecZnxDftToMut<BE>,
         A: VecZnxDftToRef<BE>,
     {

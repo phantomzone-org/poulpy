@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssign},
     layouts::{DeviceBuf, Module, ScalarZnx, ScalarZnxToMut, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
@@ -23,7 +23,7 @@ where
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxRotateInplace<BE>
+        + VecZnxRotateAssign<BE>
         + GGSWPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -186,7 +186,7 @@ pub fn test_gglwe_switching_key_external_product_assign<BE: crate::test_suite::T
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxRotateInplace<BE>
+        + VecZnxRotateAssign<BE>
         + GGSWPreparedFactory<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

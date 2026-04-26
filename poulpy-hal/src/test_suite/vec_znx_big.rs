@@ -4,10 +4,10 @@ use rand::Rng;
 use crate::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign,
-        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
-        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
+        VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign,
+        VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
+        VecZnxBigSubSmallB, VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign,
     },
     layouts::{
         Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, ZnxView, ZnxViewMut,
@@ -527,16 +527,16 @@ pub fn test_vec_znx_big_automorphism_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigAutomorphismInplace<BR>
+    Module<BR>: VecZnxBigAutomorphismAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigAutomorphismInplace<BT>
+    Module<BT>: VecZnxBigAutomorphismAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
@@ -704,16 +704,16 @@ pub fn test_vec_znx_big_negate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigNegateInplace<BR>
+    Module<BR>: VecZnxBigNegateAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigNegateInplace<BT>
+    Module<BT>: VecZnxBigNegateAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
@@ -789,12 +789,12 @@ pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(
 ) where
     Module<BR>: VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
     Module<BT>: VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigNormalize<BT>
         + VecZnxBigNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR> + ScratchOwnedBorrow<BR>,
@@ -1138,12 +1138,12 @@ pub fn test_vec_znx_big_sub_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubInplace<BR>
+    Module<BR>: VecZnxBigSubAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubInplace<BT>
+    Module<BT>: VecZnxBigSubAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1238,12 +1238,12 @@ pub fn test_vec_znx_big_sub_negate_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubNegateInplace<BR>
+    Module<BR>: VecZnxBigSubNegateAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubNegateInplace<BT>
+    Module<BT>: VecZnxBigSubNegateAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1546,12 +1546,12 @@ pub fn test_vec_znx_big_sub_small_a_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallInplace<BR>
+    Module<BR>: VecZnxBigSubSmallAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallInplace<BT>
+    Module<BT>: VecZnxBigSubSmallAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1636,12 +1636,12 @@ pub fn test_vec_znx_big_sub_small_b_assign<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallNegateInplace<BR>
+    Module<BR>: VecZnxBigSubSmallNegateAssign<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallNegateInplace<BT>
+    Module<BT>: VecZnxBigSubSmallNegateAssign<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>

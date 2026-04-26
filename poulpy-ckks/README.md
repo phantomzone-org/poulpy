@@ -158,9 +158,9 @@ let linear_k = ct_x.effective_k() - PREC_PT.log_decimal;
 let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
 module.ckks_mul_pt_const_rnx(&mut right_linear, &ct_x, &cst_d, PREC_PT, scratch.borrow())?;
 unsafe {
-    module.ckks_add_pt_const_rnx_inplace_unsafe(&mut right_linear, &cst_c, PREC_PT, scratch.borrow())?;
+    module.ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &cst_c, PREC_PT, scratch.borrow())?;
 }
-module.glwe_normalize_inplace(&mut right_linear, scratch.borrow());
+module.glwe_normalize_assign(&mut right_linear, scratch.borrow());
 
 let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
 let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
@@ -192,7 +192,7 @@ use poulpy_ckks::{
 };
 
 module.ckks_add(&mut dst, &lhs, &rhs, scratch)?;
-module.ckks_add_inplace(&mut lhs, &rhs, scratch)?;
+module.ckks_add_assign(&mut lhs, &rhs, scratch)?;
 ```
 
 The same pattern is used for:

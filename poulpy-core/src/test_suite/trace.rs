@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxSubInplace},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeAssign, VecZnxSubAssign},
     layouts::{DeviceBuf, Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
@@ -28,8 +28,8 @@ where
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
-        + VecZnxSubInplace
-        + VecZnxNormalizeInplace<BE>,
+        + VecZnxSubAssign
+        + VecZnxNormalizeAssign<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {

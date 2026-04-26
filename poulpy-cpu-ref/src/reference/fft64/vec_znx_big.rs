@@ -15,10 +15,10 @@ use crate::{
             vec_znx_sub_negate_assign,
         },
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
-            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
+            ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate,
+            ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep,
             ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-            ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero, znx_add_normal_f64_ref,
+            ZnxNormalizeMiddleStepAssign, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -64,7 +64,7 @@ where
 
 pub fn vec_znx_big_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -121,7 +121,7 @@ where
 
 pub fn vec_znx_big_add_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -217,7 +217,7 @@ where
 
 pub fn vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxNegateAssign,
     R: VecZnxBigToMut<BE>,
 {
     let res: VecZnxBig<&mut [u8], _> = res.to_mut();
@@ -253,8 +253,8 @@ pub fn vec_znx_big_normalize<R, A, BE>(
     BE: Backend<ScalarBig = i64>
         + ZnxZero
         + ZnxCopy
-        + ZnxAddInplace
-        + ZnxMulPowerOfTwoInplace
+        + ZnxAddAssign
+        + ZnxMulPowerOfTwoAssign
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
@@ -262,8 +262,8 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
         + ZnxNormalizeDigit
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFinalStepAssign,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -380,7 +380,7 @@ where
 /// R <- A - B
 pub fn vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -409,7 +409,7 @@ where
 /// R <- B - A
 pub fn vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -498,7 +498,7 @@ where
 ///  R <- R - A
 pub fn vec_znx_big_sub_small_a_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -518,7 +518,7 @@ where
 /// R <- A - R
 pub fn vec_znx_big_sub_small_b_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {

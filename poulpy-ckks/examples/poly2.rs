@@ -51,12 +51,12 @@ const CT_K: usize = 95;
 const HW: usize = 192;
 const DSIZE: usize = 1;
 const PREC_CT: CKKSMeta = CKKSMeta {
-    log_decimal: 30,
-    log_hom_rem: 5,
+    log_delta: 30,
+    log_budget: 5,
 };
 const PREC_PT: CKKSMeta = CKKSMeta {
-    log_decimal: 4,
-    log_hom_rem: 0,
+    log_delta: 4,
+    log_budget: 0,
 };
 
 /// Long-lived objects prepared during setup and reused by the later phases.
@@ -146,7 +146,7 @@ fn max_err(a: &[f64], b: &[f64]) -> f64 {
 
 /// Quantizes a complex coefficient onto the plaintext precision grid.
 fn quantize_coeff(re: f64, im: f64) -> (f64, f64) {
-    let scale = (PREC_PT.log_decimal as f64).exp2();
+    let scale = (PREC_PT.log_delta as f64).exp2();
     ((re * scale).round() / scale, (im * scale).round() / scale)
 }
 
@@ -162,8 +162,8 @@ fn format_complex(re: f64, im: f64, digits: usize) -> String {
 fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
     println!(
         "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
-        ct.log_decimal(),
-        ct.log_hom_rem(),
+        ct.log_delta(),
+        ct.log_budget(),
         ct.effective_k(),
         ct.size(),
         ct.max_k().as_usize()
@@ -174,8 +174,8 @@ fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
 fn print_pt_meta(label: &str, pt: &CKKSPlaintextVecZnx<Vec<u8>>) {
     println!(
         "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
-        pt.log_decimal(),
-        pt.log_hom_rem(),
+        pt.log_delta(),
+        pt.log_budget(),
         pt.effective_k(),
         pt.size(),
         pt.max_k().as_usize()
@@ -197,7 +197,7 @@ fn setup() -> Result<SetupArtifacts> {
     println!("  polynomial: p(x) = (a + b*x) + (c + d*x) * x^2");
     println!(
         "  params: n={N}, slots={M}, base2k={BASE2K}, ct_k={CT_K}, prec_ct=({}, {}), prec_pt=({}, {})",
-        PREC_CT.log_decimal, PREC_CT.log_hom_rem, PREC_PT.log_decimal, PREC_PT.log_hom_rem
+        PREC_CT.log_delta, PREC_CT.log_budget, PREC_PT.log_delta, PREC_PT.log_budget
     );
 
     let module = Module::<BakcendImpl>::new(N as u64);
@@ -334,7 +334,7 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 /// homomorphically.
 ///
 /// The metadata prints are the main thing to watch:
-/// - `x^2` consumes one `log_decimal` chunk of homomorphic capacity
+/// - `x^2` consumes one `log_delta` chunk of homomorphic capacity
 /// - `ckks_compact_limbs` trims storage after each non-linear step
 /// - unsafe (without-normalization) add ops are used for intermediate linear
 ///   steps; limbs are only K-normalized at the final step or just before a
@@ -351,7 +351,7 @@ fn evaluation(
     print_ct_meta("input x", &encryption.ct_x);
 
     println!("  -> square x");
-    let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_hom_rem().into(), BASE2K.into());
+    let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_budget().into(), BASE2K.into());
     setup
         .module
         .ckks_square_into(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
@@ -360,7 +360,7 @@ fn evaluation(
     setup.module.ckks_compact_limbs(&mut ct_x2)?;
     print_ct_meta("x^2 compacted", &ct_x2);
 
-    let linear_k = encryption.ct_x.effective_k() - PREC_PT.log_decimal;
+    let linear_k = encryption.ct_x.effective_k() - PREC_PT.log_delta;
 
     println!("  -> build right branch: c + d*x (unsafe add, normalize before ct-ct mul)");
     let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
@@ -384,7 +384,7 @@ fn evaluation(
     print_ct_meta("c + d * x normalized", &right_linear);
 
     println!("  -> multiply right branch by x^2");
-    let right_branch_k = ct_x2.effective_k() - ct_x2.log_decimal();
+    let right_branch_k = ct_x2.effective_k() - ct_x2.log_delta();
     let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
     setup.module.ckks_mul_into(
         &mut right_branch,

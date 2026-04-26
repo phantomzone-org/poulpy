@@ -4,8 +4,8 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxAutomorphismInplaceTmpBytes,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxAutomorphismAssign,
+        VecZnxAutomorphismAssignTmpBytes,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{ZnxAutomorphism, ZnxCopy, ZnxZero},
@@ -105,7 +105,7 @@ where
 
 pub fn bench_vec_znx_automorphism_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxAutomorphismInplace<B> + VecZnxAutomorphismInplaceTmpBytes + ModuleNew<B>,
+    Module<B>: VecZnxAutomorphismAssign<B> + VecZnxAutomorphismAssignTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_automorphism_assign::{label}");
@@ -114,7 +114,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxAutomorphismInplace<B> + ModuleNew<B> + VecZnxAutomorphismInplaceTmpBytes,
+        Module<B>: VecZnxAutomorphismAssign<B> + ModuleNew<B> + VecZnxAutomorphismAssignTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];

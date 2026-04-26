@@ -3,7 +3,7 @@ use poulpy_core::{
     layouts::{GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos},
 };
 use poulpy_hal::{
-    api::{VecZnxAddScalarAssign, VecZnxNormalizeInplace},
+    api::{VecZnxAddScalarAssign, VecZnxNormalizeAssign},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
 };
 
@@ -11,7 +11,7 @@ use crate::bin_fhe::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
 }
@@ -28,7 +28,7 @@ where
 ///   the scalar test-vector into each row of a temporary GLWE and then rotating.
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeInplace<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssign + VecZnxNormalizeAssign<BE>,
 {
     /// Returns the minimum scratch-space size in bytes required by
     /// [`ggsw_blind_rotation`][Self::ggsw_blind_rotation].

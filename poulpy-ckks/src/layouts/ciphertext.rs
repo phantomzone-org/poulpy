@@ -67,12 +67,12 @@ impl<D: Data> CKKSInfos for CKKSCiphertext<D> {
         self.meta
     }
 
-    fn log_decimal(&self) -> usize {
-        self.meta.log_decimal()
+    fn log_delta(&self) -> usize {
+        self.meta.log_delta()
     }
 
-    fn log_hom_rem(&self) -> usize {
-        self.meta.log_hom_rem()
+    fn log_budget(&self) -> usize {
+        self.meta.log_budget()
     }
 }
 
@@ -185,7 +185,7 @@ pub trait CKKSMaintainOpsDefault {
             size >= required_limbs,
             CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
                 max_k: ct.max_k().as_usize(),
-                log_decimal: ct.log_decimal(),
+                log_delta: ct.log_delta(),
                 base2k,
                 requested_limbs: size,
             }
