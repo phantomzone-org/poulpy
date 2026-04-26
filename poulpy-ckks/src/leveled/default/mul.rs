@@ -501,13 +501,7 @@ where
     R: poulpy_core::layouts::LWEInfos + CKKSInfos,
     A: poulpy_core::layouts::LWEInfos + CKKSInfos,
 {
-    let res_log_budget = checked_mul_pt_log_budget(
-        "mul_const",
-        a.log_budget(),
-        prec.log_budget,
-        a.log_delta(),
-        prec.log_delta,
-    )?;
+    let res_log_budget = checked_mul_pt_log_budget("mul_const", a.log_budget(), prec.log_budget, a.log_delta(), prec.log_delta)?;
     let res_log_delta = a.log_delta();
     let res_offset = (res_log_budget + res_log_delta).saturating_sub(res.max_k().as_usize());
     let cnv_offset = prec.min_k(res.base2k()).as_usize() + res_offset;

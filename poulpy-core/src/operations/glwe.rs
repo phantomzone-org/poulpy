@@ -3,9 +3,9 @@ use poulpy_hal::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxAddAssign, VecZnxAddInto,
         VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
         VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxLsh, VecZnxLshAddInto, VecZnxLshAssign, VecZnxLshSub, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxNegate, VecZnxNegateAssign, VecZnxNormalize,
-        VecZnxNormalizeAssign, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign, VecZnxRotateAssignTmpBytes,
-        VecZnxRshAssign, VecZnxRshTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign, VecZnxZero,
+        VecZnxMulXpMinusOne, VecZnxMulXpMinusOneAssign, VecZnxNegate, VecZnxNegateAssign, VecZnxNormalize, VecZnxNormalizeAssign,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateAssign, VecZnxRotateAssignTmpBytes, VecZnxRshAssign,
+        VecZnxRshTmpBytes, VecZnxSub, VecZnxSubAssign, VecZnxSubNegateAssign, VecZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
 };

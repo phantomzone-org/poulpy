@@ -125,13 +125,7 @@ pub fn test_mul_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &Test
     ctx.module
         .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision(
-        "mul_many unaligned_log_budget",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("mul_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 pub fn test_mul_many_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

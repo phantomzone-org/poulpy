@@ -4,7 +4,7 @@ use crate::{
         VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigBytesOf,
         VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign,
+        VecZnxBigSubSmallAssign, VecZnxBigSubSmallB, VecZnxBigSubSmallNegateAssign,
     },
     layouts::{
         Backend, DeviceBuf, Module, NoiseInfos, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,

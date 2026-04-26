@@ -495,13 +495,7 @@ pub(super) unsafe fn nfc_final_step_assign_avx2(base2k: u32, lsh: u32, n: usize,
 }
 
 #[target_feature(enable = "avx2")]
-pub(super) unsafe fn nfc_final_step_into_avx2<O: AssignOp>(
-    base2k: u32,
-    lsh: u32,
-    n: usize,
-    res: &mut [i64],
-    carry: &mut [i128],
-) {
+pub(super) unsafe fn nfc_final_step_into_avx2<O: AssignOp>(base2k: u32, lsh: u32, n: usize, res: &mut [i64], carry: &mut [i128]) {
     unsafe {
         let s = NfcShifts::new(base2k, lsh);
         let c_ptr = carry.as_ptr() as *const __m256i;
@@ -1004,8 +998,8 @@ pub(super) unsafe fn vi128_neg_from_small_avx2(n: usize, res: &mut [i128], a: &[
 #[cfg(all(test, target_feature = "avx2"))]
 mod tests {
     use super::{
-        nfc_final_step_assign_avx2, nfc_final_step_assign_scalar, nfc_middle_step_avx2, nfc_middle_step_assign_avx2,
-        nfc_middle_step_assign_scalar, nfc_middle_step_scalar, vi128_add_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2,
+        nfc_final_step_assign_avx2, nfc_final_step_assign_scalar, nfc_middle_step_assign_avx2, nfc_middle_step_assign_scalar,
+        nfc_middle_step_avx2, nfc_middle_step_scalar, vi128_add_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2,
         vi128_negate_avx2, vi128_sub_avx2,
     };
 

@@ -230,7 +230,9 @@ pub fn test_square_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>)
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow())
+        .unwrap();
     assert_mul_ct_output_meta("square_aligned", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision("square_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -246,7 +248,9 @@ pub fn test_square_rescaled_input<BE: Backend, F: TestScalar>(ctx: &TestContext<
     );
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow())
+        .unwrap();
     assert_mul_ct_output_meta("square_rescaled_input", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision("square_rescaled_input", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -257,7 +261,9 @@ pub fn test_square_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     let (want_re, want_im) = ctx.want_square();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ctx.module.ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_square_into(&mut ct_res, &ct, ctx.tsk(), scratch.borrow())
+        .unwrap();
     assert_mul_ct_output_meta("square_smaller_output", &ct_res, &ct, &ct);
     ctx.assert_decrypt_precision(" square_smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
 }
@@ -335,9 +341,7 @@ pub fn test_mul_pt_vec_znx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let pt = ctx.encode_pt_znx(&ctx.re2, &ctx.im2);
     let (want_re, want_im) = ctx.want_mul();
     let ct_meta = ct.meta();
-    ctx.module
-        .ckks_mul_pt_vec_znx_assign(&mut ct, &pt, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_mul_pt_vec_znx_assign(&mut ct, &pt, scratch.borrow()).unwrap();
     assert_mul_pt_output_meta("mul_pt_vec_znx_into_aligned", &ct, &ct_meta, &pt);
     ctx.assert_decrypt_precision("mul_pt_vec_znx_into_aligned", &ct, &want_re, &want_im, scratch.borrow());
 }

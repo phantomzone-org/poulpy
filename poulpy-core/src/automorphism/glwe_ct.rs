@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes,
-        VecZnxBigAddSmallAssign, VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigNormalize,
-        VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign, VecZnxNormalize,
+        ScratchAvailable, ScratchTakeBasic, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxBigAddSmallAssign,
+        VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigNormalize, VecZnxBigSubSmallAssign,
+        VecZnxBigSubSmallNegateAssign, VecZnxNormalize,
     },
     layouts::{Backend, Module, Scratch, VecZnxBig},
 };

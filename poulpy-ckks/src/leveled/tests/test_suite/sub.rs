@@ -162,9 +162,7 @@ pub fn test_sub_ct_assign_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_sub();
     let expected_log_budget = ct_self.log_budget().min(ct_other.log_budget());
     let expected_log_delta = ct_self.log_delta().max(ct_other.log_delta());
-    ctx.module
-        .ckks_sub_assign(&mut ct_self, &ct_other, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_sub_assign(&mut ct_self, &ct_other, scratch.borrow()).unwrap();
     assert_ct_meta("sub_ct_assign self_lt", &ct_self, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("sub_ct_assign self_lt", &ct_self, &want_re, &want_im, scratch.borrow());
 }
@@ -182,9 +180,7 @@ pub fn test_sub_ct_assign_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_sub();
     let expected_log_budget = ct_self.log_budget().min(ct_other.log_budget());
     let expected_log_delta = ct_self.log_delta().max(ct_other.log_delta());
-    ctx.module
-        .ckks_sub_assign(&mut ct_self, &ct_other, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_sub_assign(&mut ct_self, &ct_other, scratch.borrow()).unwrap();
     assert_ct_meta("sub_ct_assign self_gt", &ct_self, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("sub_ct_assign self_gt", &ct_self, &want_re, &want_im, scratch.borrow());
 }
@@ -315,7 +311,13 @@ pub fn test_sub_pt_vec_znx_into_smaller_output<BE: Backend, F: TestScalar>(ctx: 
         .ckks_sub_pt_vec_znx_into(&mut ct_res, &ct1, &pt_znx, scratch.borrow())
         .unwrap();
     assert_unary_output_meta("sub_pt_vec_znx_into smaller_output", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("sub_pt_vec_znx_into smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "sub_pt_vec_znx_into smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        scratch.borrow(),
+    );
 }
 
 /// ct - RNX plaintext, out-of-place, output buffer has smaller max_k than `a` (offset > 0).
@@ -332,7 +334,13 @@ pub fn test_sub_pt_vec_rnx_into_smaller_output<BE: Backend, F: TestScalar>(ctx: 
         .ckks_sub_pt_vec_rnx_into(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), scratch.borrow())
         .unwrap();
     assert_unary_output_meta("sub_pt_vec_rnx_into smaller_output", &ct_res, &ct1);
-    ctx.assert_decrypt_precision("sub_pt_vec_rnx_into smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "sub_pt_vec_rnx_into smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        scratch.borrow(),
+    );
 }
 
 pub fn test_sub_pt_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

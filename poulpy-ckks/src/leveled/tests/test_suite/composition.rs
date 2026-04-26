@@ -232,7 +232,9 @@ pub fn test_poly2_mul<BE: TestCompositionBackend, F: TestScalar>(ctx: &TestConte
         .unwrap();
 
     let mut res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_mul_into(&mut res, &y, &poly, ctx.tsk(), scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_mul_into(&mut res, &y, &poly, ctx.tsk(), scratch.borrow())
+        .unwrap();
 
     ctx.assert_decrypt_precision("poly2_mul", &res, &want_re, &want_im, scratch.borrow());
 }
@@ -248,7 +250,9 @@ pub fn test_repeated_square_exhausts_capacity<BE: TestCompositionBackend, F: Tes
         let prev_log_delta = ct.log_delta();
         let next_k = ct.effective_k() - ct.log_delta();
         let mut next = ctx.alloc_ct(next_k);
-        ctx.module.ckks_square_into(&mut next, &ct, ctx.tsk(), scratch.borrow()).unwrap();
+        ctx.module
+            .ckks_square_into(&mut next, &ct, ctx.tsk(), scratch.borrow())
+            .unwrap();
         assert_eq!(
             next.log_delta(),
             prev_log_delta,

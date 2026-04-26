@@ -167,9 +167,7 @@ pub fn test_add_ct_assign_self_lt<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_add();
     let expected_log_budget = ct_self.log_budget().min(ct_other.log_budget());
     let expected_log_delta = ct_self.log_delta().max(ct_other.log_delta());
-    ctx.module
-        .ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow()).unwrap();
     assert_ct_meta("add_ct_assign self_lt", &ct_self, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("add_ct_assign self_lt", &ct_self, &want_re, &want_im, scratch.borrow());
 }
@@ -187,9 +185,7 @@ pub fn test_add_ct_assign_self_gt<BE: Backend, F: TestScalar>(ctx: &TestContext<
     let (want_re, want_im) = ctx.want_add();
     let expected_log_budget = ct_self.log_budget().min(ct_other.log_budget());
     let expected_log_delta = ct_self.log_delta().max(ct_other.log_delta());
-    ctx.module
-        .ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow())
-        .unwrap();
+    ctx.module.ckks_add_assign(&mut ct_self, &ct_other, scratch.borrow()).unwrap();
     assert_ct_meta("add_ct_assign self_gt", &ct_self, expected_log_delta, expected_log_budget);
     ctx.assert_decrypt_precision("add_ct_assign self_gt", &ct_self, &want_re, &want_im, scratch.borrow());
 }

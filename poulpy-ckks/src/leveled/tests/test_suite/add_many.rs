@@ -93,13 +93,7 @@ pub fn test_add_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &Test
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    ctx.assert_decrypt_precision(
-        "add_many unaligned_log_budget",
-        &ct_res,
-        &want_re,
-        &want_im,
-        scratch.borrow(),
-    );
+    ctx.assert_decrypt_precision("add_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
 /// One input encoded at a lower `log_delta`. The sum's precision is

@@ -137,14 +137,7 @@ where
             )
         };
 
-        Ok(CKKSPlaintextCstZnx::new(
-            re,
-            im,
-            CKKSMeta {
-                log_delta,
-                log_budget,
-            },
-        ))
+        Ok(CKKSPlaintextCstZnx::new(re, im, CKKSMeta { log_delta, log_budget }))
     }
 }
 

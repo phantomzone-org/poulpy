@@ -401,9 +401,13 @@ fn evaluation(
     println!("  -> final assembly: right_branch + a (unsafe), then += b*x (normalizing)");
     let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
     unsafe {
-        setup
-            .module
-            .ckks_add_pt_const_rnx_into_unsafe(&mut poly, &right_branch, &encoding.cst_a, PREC_PT, setup.scratch.borrow())?;
+        setup.module.ckks_add_pt_const_rnx_into_unsafe(
+            &mut poly,
+            &right_branch,
+            &encoding.cst_a,
+            PREC_PT,
+            setup.scratch.borrow(),
+        )?;
     }
     print_ct_meta("right_branch + a (not normalized)", &poly);
     setup

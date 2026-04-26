@@ -31,12 +31,12 @@ use crate::reference::{
         ntt120_vec_znx_big_negate_assign, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_add_assign,
         ntt120_vec_znx_big_normalize_sub_assign, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
         ntt120_vec_znx_big_sub_assign, ntt120_vec_znx_big_sub_negate_assign, ntt120_vec_znx_big_sub_small_a,
-        ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_negate_assign,
+        ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_negate_assign,
     },
     znx::{
         ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate,
         ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly,
         ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_copy_ref, znx_zero_ref,
     },
 };

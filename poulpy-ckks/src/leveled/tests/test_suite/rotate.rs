@@ -69,12 +69,7 @@ pub fn test_rotate_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, 
         ctx.module
             .ckks_rotate_assign(&mut ct, r, ctx.atks(), scratch.borrow())
             .unwrap();
-        assert_ct_meta(
-            &format!("rotate_assign({r})"),
-            &ct,
-            expected_log_delta,
-            expected_log_budget,
-        );
+        assert_ct_meta(&format!("rotate_assign({r})"), &ct, expected_log_delta, expected_log_budget);
         ctx.assert_decrypt_precision(&format!("rotate_assign({r})"), &ct, &want_re, &want_im, scratch.borrow());
     }
 }

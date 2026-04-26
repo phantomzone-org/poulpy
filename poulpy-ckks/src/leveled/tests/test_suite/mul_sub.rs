@@ -217,7 +217,13 @@ pub fn test_mul_sub_pt_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &
     ctx.module
         .ckks_mul_sub_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_sub_pt_const_znx_into_aligned", &dst, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "mul_sub_pt_const_znx_into_aligned",
+        &dst,
+        &want_re,
+        &want_im,
+        scratch.borrow(),
+    );
 }
 
 pub fn test_mul_sub_pt_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

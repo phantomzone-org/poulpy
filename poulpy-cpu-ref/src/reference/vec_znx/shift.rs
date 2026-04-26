@@ -8,8 +8,8 @@ use crate::{
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
         ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-        ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepSub, ZnxZero,
+        ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
+        ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepSub, ZnxZero,
     },
     source::Source,
 };

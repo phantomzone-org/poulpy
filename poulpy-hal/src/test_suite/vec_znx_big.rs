@@ -7,7 +7,7 @@ use crate::{
         VecZnxBigAddSmallInto, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign,
         VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign,
+        VecZnxBigSubSmallAssign, VecZnxBigSubSmallB, VecZnxBigSubSmallNegateAssign,
     },
     layouts::{
         Backend, DataViewMut, DeviceBuf, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, ZnxView, ZnxViewMut,

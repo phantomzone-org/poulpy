@@ -199,13 +199,8 @@ macro_rules! hal_impl_vec_znx_big_fft64 {
             <Self as FFT64VecZnxBigDefaults<Self>>::vec_znx_big_automorphism_assign_tmp_bytes_default(module)
         }
 
-        fn vec_znx_big_automorphism_assign<A>(
-            module: &Module<Self>,
-            k: i64,
-            a: &mut A,
-            a_col: usize,
-            scratch: &mut Scratch<Self>,
-        ) where
+        fn vec_znx_big_automorphism_assign<A>(module: &Module<Self>, k: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<Self>)
+        where
             A: VecZnxBigToMut<Self>,
         {
             <Self as FFT64VecZnxBigDefaults<Self>>::vec_znx_big_automorphism_assign_default(module, k, a, a_col, scratch)
