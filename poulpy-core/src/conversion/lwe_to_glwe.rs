@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchArenaTakeBasic, VecZnxCopyRangeBackend, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxZeroBackend},
-    layouts::{Backend, HostDataMut, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef},
+    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef},
 };
 
 pub use crate::api::GLWEFromLWE;
@@ -52,7 +52,6 @@ where
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let res_infos = GLWELayout {
             n: res.n(),
@@ -144,6 +143,5 @@ where
         + VecZnxNormalize<BE>
         + VecZnxZeroBackend<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
 }

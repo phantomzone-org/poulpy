@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_hal::{
-    api::ModuleLogN,
-    layouts::{Backend, GaloisElement, HostDataMut, Module, ScratchArena},
-};
+use poulpy_hal::{api::ModuleLogN, layouts::{Backend, GaloisElement, Module, ScratchArena}};
 
 pub use crate::api::GLWEPacking;
 use crate::{
@@ -77,7 +74,6 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
-    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
@@ -198,7 +194,6 @@ where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         assert!(*a.keys().max().unwrap() < self.n());
         let key_infos = keys.automorphism_key_infos();

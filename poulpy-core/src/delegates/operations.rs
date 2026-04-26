@@ -391,7 +391,6 @@ impl_operations_delegate!(
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-        BE::BufMut<'s>: HostDataMut,
     {
         BE::glwe_trace(self, res, skip, a, keys, scratch)
     },
@@ -402,7 +401,6 @@ impl_operations_delegate!(
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-        BE::BufMut<'s>: HostDataMut,
     {
         BE::glwe_trace_assign(self, res, skip, keys, scratch)
     }
@@ -437,7 +435,6 @@ impl_operations_delegate!(
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
-        BE::BufMut<'s>: HostDataMut,
     {
         BE::glwe_pack(self, res, a, log_gap_out, keys, scratch)
     }
@@ -461,7 +458,6 @@ impl_operations_delegate!(
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         BE::packer_add(self, packer, a, i, auto_keys, scratch)
     }

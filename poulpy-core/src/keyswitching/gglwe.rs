@@ -1,17 +1,14 @@
-use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 pub use crate::api::GGLWEKeyswitch;
 use crate::{
     ScratchArenaTakeCore,
     keyswitching::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWESwitchingKey, gglwe_at_backend_mut_from_mut,
-        gglwe_at_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref,
+        prepared::GGLWEPreparedToBackendRef,
     },
 };
-
-impl<DataSelf: HostDataMut> GLWESwitchingKey<DataSelf> {}
-
 #[doc(hidden)]
 pub trait GGLWEKeyswitchDefault<BE: Backend>
 where

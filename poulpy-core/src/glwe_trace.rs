@@ -16,10 +16,7 @@
 //! Requires automorphism keys indexed by the Galois elements returned
 //! from [`GLWETrace::glwe_trace_galois_elements`].
 
-use poulpy_hal::{
-    api::ModuleLogN,
-    layouts::{Backend, CyclotomicOrder, GaloisElement, HostDataMut, Module, ScratchArena, galois_element},
-};
+use poulpy_hal::{api::ModuleLogN, layouts::{Backend, CyclotomicOrder, GaloisElement, Module, ScratchArena, galois_element}};
 
 pub use crate::api::GLWETrace;
 use crate::{
@@ -63,7 +60,6 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
     let log_n: usize = module.log_n();
@@ -169,7 +165,6 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let atk_layout: &GGLWELayout = &keys.automorphism_key_infos();
         assert!(
@@ -225,7 +220,6 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         {
             let mut res_backend = res.to_backend_mut();

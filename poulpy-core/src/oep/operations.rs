@@ -333,8 +333,7 @@ pub unsafe trait GLWETraceImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 
     fn glwe_trace_inplace<'s, R, K, H>(
         module: &Module<BE>,
@@ -347,8 +346,7 @@ pub unsafe trait GLWETraceImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 }
 
 /// Backend-provided GLWE packing operations.
@@ -377,8 +375,7 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 
     fn packer_add<'s, A, K, H>(
         module: &Module<BE>,
@@ -637,8 +634,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
-        for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>;
 
     fn glwe_trace_inplace_default<'s, R, K, H>(
         module: &Module<BE>,
@@ -651,8 +647,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
-        for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>;
 
     fn glwe_pack_galois_elements_default(module: &Module<BE>) -> Vec<i64>;
 
@@ -675,8 +670,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>;
 
     fn packer_add_default<'s, A, K, H>(
         module: &Module<BE>,
@@ -1070,7 +1064,6 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let mut scratch_local = scratch.borrow();
         <Module<BE> as GLWETraceDefault<BE>>::glwe_trace_default(module, res, skip, a, keys, &mut scratch_local)
@@ -1088,7 +1081,6 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let mut scratch_local = scratch.borrow();
         <Module<BE> as GLWETraceDefault<BE>>::glwe_trace_inplace_default(module, res, skip, keys, &mut scratch_local)
@@ -1121,7 +1113,6 @@ where
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let mut scratch_local = scratch.borrow();
         <Module<BE> as GLWEPackingDefault<BE>>::glwe_pack_default(module, res, a, log_gap_out, keys, &mut scratch_local)

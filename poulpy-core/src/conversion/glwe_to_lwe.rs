@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxCopyRangeBackend, VecZnxZeroBackend},
-    layouts::{Backend, HostDataMut, Module, ScratchArena},
+    layouts::{Backend, Module, ScratchArena},
 };
 
 pub use crate::api::{LWEFromGLWE, LWESampleExtract};
@@ -48,7 +48,6 @@ where
         A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         let a_backend = a.to_backend_ref();
 
@@ -87,6 +86,5 @@ impl<BE: Backend> LWEFromGLWEDefault<BE> for Module<BE>
 where
     Self: GLWEKeyswitch<BE> + LWESampleExtract<BE> + GLWERotate<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
 }

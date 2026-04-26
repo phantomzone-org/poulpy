@@ -41,8 +41,7 @@ pub trait GLWETrace<BE: Backend> {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 
     fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
@@ -50,8 +49,7 @@ pub trait GLWETrace<BE: Backend> {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 }
 
 pub trait GLWEPacking<BE: Backend> {
@@ -76,8 +74,7 @@ pub trait GLWEPacking<BE: Backend> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
-        BE: 's,
-        BE::BufMut<'s>: HostDataMut;
+        BE: 's;
 }
 
 pub trait GLWEPackerOps<BE: Backend>
@@ -107,7 +104,6 @@ where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }

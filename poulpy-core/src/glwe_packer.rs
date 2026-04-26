@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ModuleLogN,
-    layouts::{Backend, GaloisElement, HostDataMut, Module, ScratchArena},
+    layouts::{Backend, GaloisElement, Module, ScratchArena},
 };
 
 pub use crate::api::GLWEPackerOps;
@@ -8,7 +8,7 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchArenaTakeCore,
     glwe_trace::GLWETrace,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GetGaloisElement,
+        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
@@ -123,7 +123,6 @@ pub fn glwe_packer_add<A, K, H, M, BE: Backend>(
     M: GLWEPackerOps<BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
     for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-    for<'x> BE::BufMut<'x>: HostDataMut,
 {
     assert!(
         (packer.counter as u32) < packer.accumulators[0].data.n(),
@@ -148,10 +147,9 @@ pub fn glwe_packer_flush<R, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     res: &mut R,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    R: GLWEToBackendMut<BE> + GLWEInfos,
     M: GLWEPackerOps<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     assert!(packer.counter as u32 == packer.accumulators[0].data.n());
 
@@ -203,7 +201,6 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        for<'s> BE::BufMut<'s>: HostDataMut,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }
@@ -245,7 +242,6 @@ pub(crate) fn pack_core<A, K, H, M, BE: Backend>(
     H: GLWEAutomorphismKeyHelper<K, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     let log_n: usize = module.log_n();
 
@@ -323,7 +319,6 @@ fn combine<B, K, H, M, BE: Backend>(
     H: GLWEAutomorphismKeyHelper<K, BE>,
     GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     let log_n: usize = acc.data.n().log2();
     let a: &mut GLWE<Vec<u8>> = &mut acc.data;

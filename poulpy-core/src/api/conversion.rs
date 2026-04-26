@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxCopyRangeBackend, VecZnxZeroBackend},
-    layouts::{Backend, HostDataMut, ScratchArena},
+    layouts::{Backend, ScratchArena},
 };
 
 use crate::{
@@ -55,8 +55,7 @@ where
         A: LWEToBackendRef<BE> + LWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait LWEFromGLWE<BE: Backend>
@@ -93,7 +92,6 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
-        for<'a> BE::BufMut<'a>: HostDataMut,
     {
         let a_backend = a.to_backend_ref();
 
@@ -139,8 +137,7 @@ pub trait GGSWFromGGLWE<BE: Backend> {
         A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
-        for<'a> BE::BufMut<'a>: HostDataMut;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
 pub trait GGSWExpandRows<BE: Backend> {
