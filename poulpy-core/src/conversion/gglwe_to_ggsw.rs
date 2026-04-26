@@ -14,7 +14,7 @@ pub use crate::api::{GGSWExpandRows, GGSWFromGGLWE};
 use crate::{
     GGLWEProduct, GLWECopy, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut, GLWEInfos, LWEInfos,
+        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWEInfos, LWEInfos,
         gglwe_at_backend_ref_from_ref, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_mut,
         prepared::{GGLWEToGGSWKeyPreparedBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
@@ -36,7 +36,7 @@ where
 
     fn ggsw_from_gglwe_default<'s, R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

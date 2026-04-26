@@ -3,7 +3,7 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared,
+        GGSWInfos, GGSWPreparedToBackendRef, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared,
         GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToMut, LWESecretToRef, LWEToRef, SetLWEInfos,
     },
     oep::{
@@ -183,7 +183,7 @@ conversion_helper! {
     )
     where [
         BE: Backend + ConversionDefaults<BE>,
-        R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
+        R: poulpy_core::layouts::GGSWToBackendMut<BE> + GGSWInfos,
         A: GGLWEToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -655,7 +655,7 @@ macro_rules! impl_conversion_via_helpers {
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
-                R: GGSWToMut + poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
+                R: poulpy_core::layouts::GGSWToBackendMut<Self> + GGSWInfos,
                 A: GGLWEToBackendRef<Self> + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
