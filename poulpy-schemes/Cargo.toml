@@ -13,7 +13,6 @@ documentation = "https://docs.rs/poulpy"
 enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx"]
 
 [dependencies]
-criterion = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}

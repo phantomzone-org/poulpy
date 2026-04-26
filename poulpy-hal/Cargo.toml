@@ -11,7 +11,6 @@ documentation = "https://docs.rs/poulpy"
 
 [dependencies]
 dashu-float = {workspace = true}
-criterion = {workspace = true}
 itertools = {workspace = true}
 rand = {workspace = true}
 rand_distr = {workspace = true}

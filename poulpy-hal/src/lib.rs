@@ -51,13 +51,11 @@
 //!
 //! ## Testing and Benchmarking
 //!
-//! The [`test_suite`] module provides fully generic, backend-parametric test
-//! functions. Backend crates instantiate these via the [`backend_test_suite!`] and
+//! The `poulpy-bench` crate provides generic, backend-parametric test helpers
+//! (`test_suite`) and Criterion benchmark harnesses (`bench_suite`). Backend
+//! crates instantiate tests via the [`backend_test_suite!`] and
 //! [`cross_backend_test_suite!`] macros to validate correctness against the
 //! reference implementation.
-//!
-//! The [`bench_suite`] module provides analogous benchmark harnesses built on
-//! Criterion.
 //!
 //! ## Safety Contract
 //!
