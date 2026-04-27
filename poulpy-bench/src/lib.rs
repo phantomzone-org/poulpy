@@ -102,6 +102,11 @@ macro_rules! for_each_ntt_backend_family {
             use $fn as __f;
             __f::<poulpy_cpu_avx::NTT120Avx>($($arg,)* $c, "ntt120-avx");
         }
+        #[cfg(all(feature = "enable-avx512f", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_avx512::NTT120Avx512>($($arg,)* $c, "ntt120-avx512");
+        }
         {
             use $fn as __f;
             __f::<poulpy_cpu_ref::NTTIfmaRef>($($arg,)* $c, "ntt-ifma-ref");

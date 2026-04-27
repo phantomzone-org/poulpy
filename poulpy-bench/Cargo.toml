@@ -62,6 +62,10 @@ name = "ntt"
 harness = false
 
 [[bench]]
+name = "ntt120_avx_vs_avx512"
+harness = false
+
+[[bench]]
 name = "operations"
 harness = false
 

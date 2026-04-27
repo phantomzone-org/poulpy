@@ -1,19 +1,25 @@
 //! AVX-512 / AVX-512-IFMA accelerated CPU backends for the Poulpy lattice cryptography library.
 //!
-//! This crate provides two high-performance backend implementations for [`poulpy_hal`] that
+//! This crate provides three high-performance backend implementations for [`poulpy_hal`] that
 //! leverage x86-64 SIMD instruction sets (AVX-512F and AVX-512-IFMA) to accelerate cryptographic
 //! operations in fully homomorphic encryption (FHE) schemes based on Ring-Learning-With-Errors (RLWE):
 //!
 //! - `FFT64Avx512`: FFT64-domain backend using AVX-512F for REIM FFT kernels.
+//! - `NTT120Avx512`: NTT-domain backend over four ~30-bit CRT primes, AVX-512F-only (no IFMA).
 //! - `NTT120Ifma`: NTT-domain backend over three ~40-bit CRT primes, accelerated with AVX-512-IFMA.
+//!
+//! **Backend selection.** On hosts that support AVX-512-IFMA, prefer `NTT120Ifma`: its
+//! `vpmadd52`-driven mat_vec / VMP / SVP kernels outpace the `NTT120Avx512` pair-pack
+//! widening (typically ~2–3× vs ~1.5–2× over the AVX2 NTT120 backend). `NTT120Avx512` is
+//! the right choice on AVX-512F hosts that lack IFMA (e.g. Skylake-X / Cascade Lake / KNL).
 //!
 //! # Architecture
 //!
 //! `poulpy_hal` defines a hardware abstraction layer (HAL) via the [`Backend`](poulpy_hal::layouts::Backend)
 //! trait and a family of _open extension point_ (OEP) traits in [`poulpy_hal::oep`]. This crate
-//! implements every OEP trait for `FFT64Avx512` and `NTT120Ifma` using hand-optimized AVX-512 / IFMA
-//! intrinsics where profiling demonstrates performance benefits over compiler-generated code, and
-//! reuses the reference backend for colder paths.
+//! implements every OEP trait for `FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma` using
+//! hand-optimized AVX-512 / IFMA intrinsics where profiling demonstrates performance
+//! benefits over compiler-generated code, and reuses the reference backend for colder paths.
 //!
 //! The internal modules are organized by operation domain:
 //!
@@ -21,17 +27,19 @@
 //! |-----------------|-----------------------------------------------------------|
 //! | `fft64`         | `FFT64Avx512` backend and AVX-512 REIM FFT kernels        |
 //! | `znx_avx512`    | AVX-512F single ring element (`Z[X]/(X^n+1)`) arithmetic  |
+//! | `ntt120_avx512` | `NTT120Avx512` backend (AVX-512F-only, 4×30-bit CRT primes) |
 //! | `ntt120_ifma`   | `NTT120Ifma` backend, IFMA mat_vec, vec_znx_dft / vec_znx_big |
 //! | `hal_impl`      | Implementations of the HAL OEP traits per backend         |
 //!
 //! # Scalar types
 //!
-//! - For `FFT64Avx512`: `ScalarPrep = f64` (DFT-domain), `ScalarBig = i64` (one scalar word per limb).
-//! - For `NTT120Ifma`:   `ScalarPrep = Q120bScalar` (4 × u64 CRT residues), `ScalarBig = i128`.
+//! - For `FFT64Avx512`:  `ScalarPrep = f64` (DFT-domain), `ScalarBig = i64` (one scalar word per limb).
+//! - For `NTT120Avx512`: `ScalarPrep = Q120bScalar` (4 × u64 CRT residues over four ~30-bit primes), `ScalarBig = i128`.
+//! - For `NTT120Ifma`:   `ScalarPrep = Q120bScalar` (3 × u64 CRT residues over three ~40-bit primes), `ScalarBig = i128`.
 //!
 //! # CPU requirements
 //!
-//! `FFT64Avx512` requires only:
+//! `FFT64Avx512` and `NTT120Avx512` require only:
 //! - **AVX-512F**: 512-bit SIMD foundation.
 //!
 //! `NTT120Ifma` additionally requires:
@@ -45,12 +53,12 @@
 //!
 //! Two layered cargo features control which backend is built:
 //!
-//! - `enable-avx512f` builds **only** `FFT64Avx512` (needs AVX-512F at compile time).
+//! - `enable-avx512f` builds `FFT64Avx512` and `NTT120Avx512` (needs AVX-512F at compile time).
 //! - `enable-ifma` (which implies `enable-avx512f`) additionally builds `NTT120Ifma`
 //!   (needs AVX-512F + AVX-512-IFMA + AVX-512VL at compile time).
 //!
 //! ```text
-//! # AVX-512F only host (Skylake-X / Cascade Lake / KNL): FFT64Avx512 only
+//! # AVX-512F only host (Skylake-X / Cascade Lake / KNL): FFT64Avx512 + NTT120Avx512
 //! RUSTFLAGS="-C target-feature=+avx512f" \
 //!     cargo build --release --features enable-avx512f
 //!
@@ -104,16 +112,32 @@
 //! ## Asymptotic complexity
 //!
 //! - **FFT/IFFT** (`FFT64Avx512`): O(n log n) for polynomial degree n.
-//! - **NTT/INTT** (`NTT120Ifma`):   O(n log n) for polynomial degree n.
+//! - **NTT/INTT** (`NTT120Avx512`, `NTT120Ifma`): O(n log n) for polynomial degree n.
 //! - **Convolution**: O(n log n) via FFT- or NTT-based approach.
 //! - **Normalization**: O(n) per limb with vectorized digit extraction.
 //!
 //! ## Typical speedup over reference / AVX2 backends
 //!
-//! - **Ring element arithmetic** (add/sub/negate): ~6-8× over reference (memory bandwidth bound).
-//! - **NTT mat_vec / VMP / SVP** (IFMA `vpmadd52`): ~2-3× over the AVX2 NTT120 backend.
+//! Measured on a Zen 5 host (n = 16384) for the AMD micro-architecture; numbers vary
+//! across CPUs, especially Intel-vs-AMD AVX-512 implementations.
+//!
+//! - **Ring element arithmetic** (add/sub/negate, lazy q120b ops): ~1.05–1.15× over the
+//!   AVX2 NTT120 backend (memory-bandwidth bound; the 256→512-bit widening barely helps).
+//! - **NTT forward / inverse** (`NTT120Avx512`, 2-coefficient pair-pack): ~1.15× over the
+//!   AVX2 NTT120 backend.
+//! - **NTT forward** (`NTT120Ifma`, `vpmadd52`): ~1.4× over the AVX2 NTT120 backend
+//!   (~1.2× over `NTT120Avx512`).
+//! - **VMP / SVP apply_dft_to_dft** (`NTT120Ifma`): ~1.3–2× over the AVX2 NTT120 backend
+//!   (the IFMA mat_vec inner loop is the main beneficiary). `NTT120Avx512`'s VMP is on
+//!   par with — sometimes slightly slower than — the AVX2 backend; pair-packing the NTT
+//!   does not benefit the BBC inner-product hot path.
 //! - **FFT16 kernels** (hand-written assembly): on par with the AVX2 backend.
-//! - **VecZnxBig add/sub/negate / normalize**: ~1.5-2× over the AVX2 backend.
+//! - **VecZnxBig i128 add/sub/negate**: on par with the AVX2 backend (memory-bandwidth
+//!   bound; widening from 2 i128 / `__m256i` to 4 i128 / `__m512i` does not help).
+//!
+//! Net on IFMA-capable hardware: `NTT120Ifma` is the faster choice end-to-end. Its lead
+//! is concentrated in NTT/INTT and the BBC mat_vec / VMP / SVP path — workloads dominated
+//! by VMP (key-switch, external product) see the largest gain.
 //!
 //! ## Memory layout
 //!
@@ -123,15 +147,16 @@
 //!
 //! # Threading and concurrency
 //!
-//! - **`FFT64Avx512` and `NTT120Ifma` are `Send + Sync`**: zero-sized marker types, no internal state.
-//! - **`Module<FFT64Avx512>` / `Module<NTT120Ifma>` are `Send + Sync`**: FFT/NTT tables are immutable
-//!   after construction.
+//! - **`FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma` are `Send + Sync`**: zero-sized marker
+//!   types, no internal state.
+//! - **`Module<FFT64Avx512>` / `Module<NTT120Avx512>` / `Module<NTT120Ifma>` are `Send + Sync`**:
+//!   FFT/NTT tables are immutable after construction.
 //! - **Operations require `&mut` for outputs**: prevents data races at the API level.
 //! - **No internal locking**: all synchronization is the caller's responsibility.
 //!
 //! # Feature flags
 //!
-//! - `enable-avx512f`: builds `FFT64Avx512` only. Needs AVX-512F at compile time.
+//! - `enable-avx512f`: builds `FFT64Avx512` and `NTT120Avx512`. Needs AVX-512F at compile time.
 //! - `enable-ifma`: implies `enable-avx512f` and additionally builds `NTT120Ifma`. Needs
 //!   AVX-512F + AVX-512-IFMA + AVX-512VL at compile time.
 //!
@@ -153,15 +178,17 @@
 //!
 //! # Usage
 //!
-//! This crate exports two public types, `FFT64Avx512` and `NTT120Ifma`, used as type parameters
-//! to the HAL generic types. Application code typically does not import this crate directly,
-//! but instead uses it via `poulpy_core` or `poulpy_schemes` with runtime backend selection.
+//! This crate exports three public types — `FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma` —
+//! used as type parameters to the HAL generic types. Application code typically does not
+//! import this crate directly, but instead uses it via `poulpy_core` or `poulpy_schemes`
+//! with runtime backend selection.
 //!
 //! # Versioning and stability
 //!
-//! This crate follows semantic versioning. The public API consists solely of the `FFT64Avx512`
-//! and `NTT120Ifma` marker types and their trait implementations from `poulpy_hal::oep`. All other
-//! items are implementation details subject to change without notice.
+//! This crate follows semantic versioning. The public API consists solely of the
+//! `FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma` marker types and their trait
+//! implementations from `poulpy_hal::oep`. All other items are implementation details
+//! subject to change without notice.
 
 // ─────────────────────────────────────────────────────────────
 // Build the backends only when ALL prerequisites are satisfied
@@ -185,11 +212,13 @@ compile_error!(
     "feature `enable-ifma` requires AVX512VL. Build with RUSTFLAGS=\"-C target-feature=+avx512f,+avx512ifma,+avx512vl\"."
 );
 
-// `FFT64Avx512` and its supporting AVX-512F `znx_avx512` helpers are gated on `enable-avx512f`.
+// `FFT64Avx512`, `NTT120Avx512`, and their supporting AVX-512F `znx_avx512` helpers are gated on `enable-avx512f`.
 #[cfg(feature = "enable-avx512f")]
 mod fft64;
 #[cfg(feature = "enable-avx512f")]
 mod hal_impl;
+#[cfg(feature = "enable-avx512f")]
+mod ntt120_avx512;
 #[cfg(feature = "enable-avx512f")]
 mod znx_avx512;
 
@@ -199,6 +228,8 @@ mod ntt120_ifma;
 
 #[cfg(feature = "enable-avx512f")]
 pub use fft64::{FFT64Avx512, ReimFFTAvx512, ReimIFFTAvx512};
+#[cfg(feature = "enable-avx512f")]
+pub use ntt120_avx512::NTT120Avx512;
 #[cfg(feature = "enable-ifma")]
 pub use ntt120_ifma::NTT120Ifma;
 
@@ -208,6 +239,11 @@ use poulpy_core::oep::CoreImpl;
 #[cfg(feature = "enable-avx512f")]
 unsafe impl CoreImpl<FFT64Avx512> for FFT64Avx512 {
     poulpy_core::impl_core_default_methods!(FFT64Avx512);
+}
+
+#[cfg(feature = "enable-avx512f")]
+unsafe impl CoreImpl<NTT120Avx512> for NTT120Avx512 {
+    poulpy_core::impl_core_default_methods!(NTT120Avx512);
 }
 
 #[cfg(feature = "enable-ifma")]
