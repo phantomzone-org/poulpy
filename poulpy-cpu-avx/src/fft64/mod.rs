@@ -35,7 +35,8 @@ mod reim4;
 /// # Performance notes
 ///
 /// - Optimized for x86-64 CPUs with AVX2 (2013+) and FMA (Haswell and later).
-/// - Hand-written assembly FFT kernels outperform compiler-generated intrinsics by ~2×.
+/// - Hand-written assembly FFT kernels outperform compiler-generated intrinsics on
+///   supported micro-architectures; the exact gain is host-dependent.
 /// - Memory layout is vectorized (4 × `i64` per AVX2 register) with 64-byte alignment.
 /// - Scalar fallback for non-multiple-of-4 lengths (negligible overhead for typical FHE parameters).
 ///

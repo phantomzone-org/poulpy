@@ -224,6 +224,226 @@ unsafe fn ntt_iter_red_nn2_block_pairs(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// nn = 4 cross-block pair-pack helpers
+//
+// Per-block layout: 4 __m256i = `[v0, v1 | v2, v3]` = 2 __m512i words, with
+// ptr1 covering `[v0, v1]` (i=0 a, i=1 a) and ptr2 covering `[v2, v3]` (i=0 b,
+// i=1 b). Two contiguous blocks A, B form 4 __m512i words. Cross-block pair-
+// packing collects the i=0 lanes of both blocks into one __m512i and the i=1
+// lanes of both blocks into another, so each butterfly stage runs at full
+// 512-bit width on coefficients drawn from two distinct blocks.
+//
+// idx_a permute selects [lower 256 of arg0 | lower 256 of arg1]; idx_b selects
+// the upper halves. The same indices reverse the packing on the way back.
+// ──────────────────────────────────────────────────────────────────────────────
+
+/// Forward butterfly at `nn = 4` (one identity + one twiddled butterfly per block),
+/// pair-packed across two adjacent blocks. The twiddle ω₁ is identical for every
+/// block at this stage and is broadcast to both halves of `vw_512`.
+#[inline(always)]
+unsafe fn ntt_iter_nn4_block_pairs(
+    begin: *mut __m256i,
+    end: *const __m256i,
+    vq2bs_512: __m512i,
+    h: __m128i,
+    vmask_512: __m512i,
+    vw_512: __m512i,
+) -> *mut __m256i {
+    unsafe {
+        let idx_a = cross_block_idx_a();
+        let idx_b = cross_block_idx_b();
+        let mut data = begin;
+        while data.add(8) as usize <= end as usize {
+            let w0 = _mm512_loadu_si512(data as *const __m512i); // [v0_A, v1_A]
+            let w1 = _mm512_loadu_si512(data.add(2) as *const __m512i); // [v2_A, v3_A]
+            let w2 = _mm512_loadu_si512(data.add(4) as *const __m512i); // [v0_B, v1_B]
+            let w3 = _mm512_loadu_si512(data.add(6) as *const __m512i); // [v2_B, v3_B]
+
+            // Pair-pack i=0 lanes (lower 256 of each ptr1/ptr2 word) and i=1 lanes (upper).
+            let a_i0 = _mm512_permutex2var_epi64(w0, idx_a, w2); // [v0_A | v0_B]
+            let a_i1 = _mm512_permutex2var_epi64(w0, idx_b, w2); // [v1_A | v1_B]
+            let b_i0 = _mm512_permutex2var_epi64(w1, idx_a, w3); // [v2_A | v2_B]
+            let b_i1 = _mm512_permutex2var_epi64(w1, idx_b, w3); // [v3_A | v3_B]
+
+            // i = 0: identity butterfly.
+            let out_a_i0 = _mm512_add_epi64(a_i0, b_i0);
+            let out_b_i0 = _mm512_sub_epi64(_mm512_add_epi64(a_i0, vq2bs_512), b_i0);
+
+            // i = 1: twiddled butterfly.
+            let out_a_i1 = _mm512_add_epi64(a_i1, b_i1);
+            let b1 = _mm512_sub_epi64(_mm512_add_epi64(a_i1, vq2bs_512), b_i1);
+            let out_b_i1 = split_precompmul_si512(b1, vw_512, h, vmask_512);
+
+            // Reverse the pair-pack: same idx_a/idx_b reconstruct memory layout.
+            let new_w0 = _mm512_permutex2var_epi64(out_a_i0, idx_a, out_a_i1);
+            let new_w2 = _mm512_permutex2var_epi64(out_a_i0, idx_b, out_a_i1);
+            let new_w1 = _mm512_permutex2var_epi64(out_b_i0, idx_a, out_b_i1);
+            let new_w3 = _mm512_permutex2var_epi64(out_b_i0, idx_b, out_b_i1);
+
+            _mm512_storeu_si512(data as *mut __m512i, new_w0);
+            _mm512_storeu_si512(data.add(2) as *mut __m512i, new_w1);
+            _mm512_storeu_si512(data.add(4) as *mut __m512i, new_w2);
+            _mm512_storeu_si512(data.add(6) as *mut __m512i, new_w3);
+            data = data.add(8);
+        }
+        data
+    }
+}
+
+/// Forward butterfly at `nn = 4` with prior reduction.
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+unsafe fn ntt_iter_red_nn4_block_pairs(
+    begin: *mut __m256i,
+    end: *const __m256i,
+    vq2bs_512: __m512i,
+    h: __m128i,
+    vmask_512: __m512i,
+    vw_512: __m512i,
+    rh: __m128i,
+    rmask_512: __m512i,
+    rcst_512: __m512i,
+) -> *mut __m256i {
+    unsafe {
+        let idx_a = cross_block_idx_a();
+        let idx_b = cross_block_idx_b();
+        let mut data = begin;
+        while data.add(8) as usize <= end as usize {
+            let w0 = _mm512_loadu_si512(data as *const __m512i);
+            let w1 = _mm512_loadu_si512(data.add(2) as *const __m512i);
+            let w2 = _mm512_loadu_si512(data.add(4) as *const __m512i);
+            let w3 = _mm512_loadu_si512(data.add(6) as *const __m512i);
+
+            let a_i0 = modq_red_si512(_mm512_permutex2var_epi64(w0, idx_a, w2), rh, rmask_512, rcst_512);
+            let a_i1 = modq_red_si512(_mm512_permutex2var_epi64(w0, idx_b, w2), rh, rmask_512, rcst_512);
+            let b_i0 = modq_red_si512(_mm512_permutex2var_epi64(w1, idx_a, w3), rh, rmask_512, rcst_512);
+            let b_i1 = modq_red_si512(_mm512_permutex2var_epi64(w1, idx_b, w3), rh, rmask_512, rcst_512);
+
+            let out_a_i0 = _mm512_add_epi64(a_i0, b_i0);
+            let out_b_i0 = _mm512_sub_epi64(_mm512_add_epi64(a_i0, vq2bs_512), b_i0);
+
+            let out_a_i1 = _mm512_add_epi64(a_i1, b_i1);
+            let b1 = _mm512_sub_epi64(_mm512_add_epi64(a_i1, vq2bs_512), b_i1);
+            let out_b_i1 = split_precompmul_si512(b1, vw_512, h, vmask_512);
+
+            let new_w0 = _mm512_permutex2var_epi64(out_a_i0, idx_a, out_a_i1);
+            let new_w2 = _mm512_permutex2var_epi64(out_a_i0, idx_b, out_a_i1);
+            let new_w1 = _mm512_permutex2var_epi64(out_b_i0, idx_a, out_b_i1);
+            let new_w3 = _mm512_permutex2var_epi64(out_b_i0, idx_b, out_b_i1);
+
+            _mm512_storeu_si512(data as *mut __m512i, new_w0);
+            _mm512_storeu_si512(data.add(2) as *mut __m512i, new_w1);
+            _mm512_storeu_si512(data.add(4) as *mut __m512i, new_w2);
+            _mm512_storeu_si512(data.add(6) as *mut __m512i, new_w3);
+            data = data.add(8);
+        }
+        data
+    }
+}
+
+/// Inverse butterfly at `nn = 4`, pair-packed across two adjacent blocks.
+/// Inverse-NTT applies the twiddle to `b` *before* the butterfly:
+///   bo = split_precompmul(b, ω₁); (a, bo) → (a + bo, a + q2bs - bo).
+#[inline(always)]
+unsafe fn intt_iter_nn4_block_pairs(
+    begin: *mut __m256i,
+    end: *const __m256i,
+    vq2bs_512: __m512i,
+    h: __m128i,
+    vmask_512: __m512i,
+    vw_512: __m512i,
+) -> *mut __m256i {
+    unsafe {
+        let idx_a = cross_block_idx_a();
+        let idx_b = cross_block_idx_b();
+        let mut data = begin;
+        while data.add(8) as usize <= end as usize {
+            let w0 = _mm512_loadu_si512(data as *const __m512i);
+            let w1 = _mm512_loadu_si512(data.add(2) as *const __m512i);
+            let w2 = _mm512_loadu_si512(data.add(4) as *const __m512i);
+            let w3 = _mm512_loadu_si512(data.add(6) as *const __m512i);
+
+            let a_i0 = _mm512_permutex2var_epi64(w0, idx_a, w2);
+            let a_i1 = _mm512_permutex2var_epi64(w0, idx_b, w2);
+            let b_i0 = _mm512_permutex2var_epi64(w1, idx_a, w3);
+            let b_i1 = _mm512_permutex2var_epi64(w1, idx_b, w3);
+
+            // i = 0: no twiddle.
+            let out_a_i0 = _mm512_add_epi64(a_i0, b_i0);
+            let out_b_i0 = _mm512_sub_epi64(_mm512_add_epi64(a_i0, vq2bs_512), b_i0);
+
+            // i = 1: twiddle on b before butterfly.
+            let bo = split_precompmul_si512(b_i1, vw_512, h, vmask_512);
+            let out_a_i1 = _mm512_add_epi64(a_i1, bo);
+            let out_b_i1 = _mm512_sub_epi64(_mm512_add_epi64(a_i1, vq2bs_512), bo);
+
+            let new_w0 = _mm512_permutex2var_epi64(out_a_i0, idx_a, out_a_i1);
+            let new_w2 = _mm512_permutex2var_epi64(out_a_i0, idx_b, out_a_i1);
+            let new_w1 = _mm512_permutex2var_epi64(out_b_i0, idx_a, out_b_i1);
+            let new_w3 = _mm512_permutex2var_epi64(out_b_i0, idx_b, out_b_i1);
+
+            _mm512_storeu_si512(data as *mut __m512i, new_w0);
+            _mm512_storeu_si512(data.add(2) as *mut __m512i, new_w1);
+            _mm512_storeu_si512(data.add(4) as *mut __m512i, new_w2);
+            _mm512_storeu_si512(data.add(6) as *mut __m512i, new_w3);
+            data = data.add(8);
+        }
+        data
+    }
+}
+
+/// Inverse butterfly at `nn = 4` with prior reduction.
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+unsafe fn intt_iter_red_nn4_block_pairs(
+    begin: *mut __m256i,
+    end: *const __m256i,
+    vq2bs_512: __m512i,
+    h: __m128i,
+    vmask_512: __m512i,
+    vw_512: __m512i,
+    rh: __m128i,
+    rmask_512: __m512i,
+    rcst_512: __m512i,
+) -> *mut __m256i {
+    unsafe {
+        let idx_a = cross_block_idx_a();
+        let idx_b = cross_block_idx_b();
+        let mut data = begin;
+        while data.add(8) as usize <= end as usize {
+            let w0 = _mm512_loadu_si512(data as *const __m512i);
+            let w1 = _mm512_loadu_si512(data.add(2) as *const __m512i);
+            let w2 = _mm512_loadu_si512(data.add(4) as *const __m512i);
+            let w3 = _mm512_loadu_si512(data.add(6) as *const __m512i);
+
+            let a_i0 = modq_red_si512(_mm512_permutex2var_epi64(w0, idx_a, w2), rh, rmask_512, rcst_512);
+            let a_i1 = modq_red_si512(_mm512_permutex2var_epi64(w0, idx_b, w2), rh, rmask_512, rcst_512);
+            let b_i0 = modq_red_si512(_mm512_permutex2var_epi64(w1, idx_a, w3), rh, rmask_512, rcst_512);
+            let b_i1 = modq_red_si512(_mm512_permutex2var_epi64(w1, idx_b, w3), rh, rmask_512, rcst_512);
+
+            let out_a_i0 = _mm512_add_epi64(a_i0, b_i0);
+            let out_b_i0 = _mm512_sub_epi64(_mm512_add_epi64(a_i0, vq2bs_512), b_i0);
+
+            let bo = split_precompmul_si512(b_i1, vw_512, h, vmask_512);
+            let out_a_i1 = _mm512_add_epi64(a_i1, bo);
+            let out_b_i1 = _mm512_sub_epi64(_mm512_add_epi64(a_i1, vq2bs_512), bo);
+
+            let new_w0 = _mm512_permutex2var_epi64(out_a_i0, idx_a, out_a_i1);
+            let new_w2 = _mm512_permutex2var_epi64(out_a_i0, idx_b, out_a_i1);
+            let new_w1 = _mm512_permutex2var_epi64(out_b_i0, idx_a, out_b_i1);
+            let new_w3 = _mm512_permutex2var_epi64(out_b_i0, idx_b, out_b_i1);
+
+            _mm512_storeu_si512(data as *mut __m512i, new_w0);
+            _mm512_storeu_si512(data.add(2) as *mut __m512i, new_w1);
+            _mm512_storeu_si512(data.add(4) as *mut __m512i, new_w2);
+            _mm512_storeu_si512(data.add(6) as *mut __m512i, new_w3);
+            data = data.add(8);
+        }
+        data
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // NTT iteration kernels (private)
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -309,11 +529,16 @@ unsafe fn ntt_iter(nn: usize, begin: *mut __m256i, end: *const __m256i, meta: &N
         let vmask_512 = _mm512_set1_epi64(meta.mask as i64);
         let h = _mm_cvtsi64_si128(meta.half_bs as i64);
 
-        // Cross-block pair-pack fast path for the deepest stage (nn = 2): each block has
-        // a single butterfly, so two adjacent blocks fit one __m512i pair via permute.
+        // Cross-block pair-pack fast paths for the deepest stages.
+        // - nn = 2: 1 butterfly per block, identity twiddle — fully cross-block packed.
+        // - nn = 4: 1 identity + 1 twiddled butterfly per block — cross-block packed
+        //   with the twiddle (single ω₁ shared across all blocks) broadcast to both halves.
         let mut data = begin;
         if nn == 2 {
             data = ntt_iter_nn2_block_pairs(data, end, vq2bs_512);
+        } else if nn == 4 {
+            let vw_512 = bcast_quad_512(powomega as *const u64);
+            data = ntt_iter_nn4_block_pairs(data, end, vq2bs_512, h, vmask_512, vw_512);
         }
         while (data as usize) < (end as usize) {
             let mut ptr1 = data;
@@ -334,7 +559,27 @@ unsafe fn ntt_iter(nn: usize, begin: *mut __m256i, end: *const __m256i, meta: &N
                 // halfnn-1 is odd (halfnn power of 2 ≥ 4): pair (1,2),(3,4),...(halfnn-3,halfnn-2);
                 // tail i = halfnn-1.
                 let pairs = (halfnn - 2) / 2; // = halfnn/2 - 1
-                for _ in 0..pairs {
+                // 2-way unrolled main loop: two independent split_precompmul chains expose ILP
+                // and keep both vector mul ports busy when halfnn ≥ 8.
+                let unrolled = pairs / 2;
+                for _ in 0..unrolled {
+                    let a0 = _mm512_loadu_si512(ptr1 as *const __m512i);
+                    let b0 = _mm512_loadu_si512(ptr2 as *const __m512i);
+                    let a1 = _mm512_loadu_si512(ptr1.add(2) as *const __m512i);
+                    let b1v = _mm512_loadu_si512(ptr2.add(2) as *const __m512i);
+                    let po0 = _mm512_loadu_si512(po_ptr as *const __m512i);
+                    let po1 = _mm512_loadu_si512(po_ptr.add(2) as *const __m512i);
+                    _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, b0));
+                    _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, b1v));
+                    let d0 = _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), b0);
+                    let d1 = _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), b1v);
+                    _mm512_storeu_si512(ptr2 as *mut __m512i, split_precompmul_si512(d0, po0, h, vmask_512));
+                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, split_precompmul_si512(d1, po1, h, vmask_512));
+                    ptr1 = ptr1.add(4);
+                    ptr2 = ptr2.add(4);
+                    po_ptr = po_ptr.add(4);
+                }
+                if pairs & 1 != 0 {
                     let a = _mm512_loadu_si512(ptr1 as *const __m512i);
                     let b = _mm512_loadu_si512(ptr2 as *const __m512i);
                     _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a, b));
@@ -400,9 +645,12 @@ unsafe fn ntt_iter_red(
         let rcst_512 = bcast_quad_512(reduc.modulo_red_cst.as_ptr());
 
         let mut data = begin;
-        // Cross-block pair-pack fast path for nn = 2 (with prior reduction).
+        // Cross-block pair-pack fast paths for nn ∈ {2, 4} (with prior reduction).
         if nn == 2 {
             data = ntt_iter_red_nn2_block_pairs(data, end, vq2bs_512, rh, rmask_512, rcst_512);
+        } else if nn == 4 {
+            let vw_512 = bcast_quad_512(powomega as *const u64);
+            data = ntt_iter_red_nn4_block_pairs(data, end, vq2bs_512, h, vmask_512, vw_512, rh, rmask_512, rcst_512);
         }
         while (data as usize) < (end as usize) {
             let mut ptr1 = data;
@@ -419,7 +667,25 @@ unsafe fn ntt_iter_red(
             let mut po_ptr = powomega;
             if halfnn >= 4 {
                 let pairs = (halfnn - 2) / 2;
-                for _ in 0..pairs {
+                let unrolled = pairs / 2;
+                for _ in 0..unrolled {
+                    let a0 = modq_red_si512(_mm512_loadu_si512(ptr1 as *const __m512i), rh, rmask_512, rcst_512);
+                    let b0 = modq_red_si512(_mm512_loadu_si512(ptr2 as *const __m512i), rh, rmask_512, rcst_512);
+                    let a1 = modq_red_si512(_mm512_loadu_si512(ptr1.add(2) as *const __m512i), rh, rmask_512, rcst_512);
+                    let b1v = modq_red_si512(_mm512_loadu_si512(ptr2.add(2) as *const __m512i), rh, rmask_512, rcst_512);
+                    let po0 = _mm512_loadu_si512(po_ptr as *const __m512i);
+                    let po1 = _mm512_loadu_si512(po_ptr.add(2) as *const __m512i);
+                    _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, b0));
+                    _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, b1v));
+                    let d0 = _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), b0);
+                    let d1 = _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), b1v);
+                    _mm512_storeu_si512(ptr2 as *mut __m512i, split_precompmul_si512(d0, po0, h, vmask_512));
+                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, split_precompmul_si512(d1, po1, h, vmask_512));
+                    ptr1 = ptr1.add(4);
+                    ptr2 = ptr2.add(4);
+                    po_ptr = po_ptr.add(4);
+                }
+                if pairs & 1 != 0 {
                     let a = modq_red_si512(_mm512_loadu_si512(ptr1 as *const __m512i), rh, rmask_512, rcst_512);
                     let b = modq_red_si512(_mm512_loadu_si512(ptr2 as *const __m512i), rh, rmask_512, rcst_512);
                     _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a, b));
@@ -473,11 +739,13 @@ unsafe fn intt_iter(nn: usize, begin: *mut __m256i, end: *const __m256i, meta: &
         let vmask_512 = _mm512_set1_epi64(meta.mask as i64);
         let h = _mm_cvtsi64_si128(meta.half_bs as i64);
 
-        // Cross-block pair-pack fast path for nn = 2 (the inverse butterfly at i = 0 has
-        // identity twiddle, so it has the same shape as the forward butterfly).
+        // Cross-block pair-pack fast paths for nn ∈ {2, 4} (inverse butterfly).
         let mut data = begin;
         if nn == 2 {
             data = ntt_iter_nn2_block_pairs(data, end, vq2bs_512);
+        } else if nn == 4 {
+            let vw_512 = bcast_quad_512(powomega as *const u64);
+            data = intt_iter_nn4_block_pairs(data, end, vq2bs_512, h, vmask_512, vw_512);
         }
         while (data as usize) < (end as usize) {
             let mut ptr1 = data;
@@ -494,7 +762,25 @@ unsafe fn intt_iter(nn: usize, begin: *mut __m256i, end: *const __m256i, meta: &
             let mut po_ptr = powomega;
             if halfnn >= 4 {
                 let pairs = (halfnn - 2) / 2;
-                for _ in 0..pairs {
+                let unrolled = pairs / 2;
+                for _ in 0..unrolled {
+                    let a0 = _mm512_loadu_si512(ptr1 as *const __m512i);
+                    let b0 = _mm512_loadu_si512(ptr2 as *const __m512i);
+                    let a1 = _mm512_loadu_si512(ptr1.add(2) as *const __m512i);
+                    let b1v = _mm512_loadu_si512(ptr2.add(2) as *const __m512i);
+                    let po0 = _mm512_loadu_si512(po_ptr as *const __m512i);
+                    let po1 = _mm512_loadu_si512(po_ptr.add(2) as *const __m512i);
+                    let bo0 = split_precompmul_si512(b0, po0, h, vmask_512);
+                    let bo1 = split_precompmul_si512(b1v, po1, h, vmask_512);
+                    _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, bo0));
+                    _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, bo1));
+                    _mm512_storeu_si512(ptr2 as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), bo0));
+                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1));
+                    ptr1 = ptr1.add(4);
+                    ptr2 = ptr2.add(4);
+                    po_ptr = po_ptr.add(4);
+                }
+                if pairs & 1 != 0 {
                     let a = _mm512_loadu_si512(ptr1 as *const __m512i);
                     let b = _mm512_loadu_si512(ptr2 as *const __m512i);
                     let po = _mm512_loadu_si512(po_ptr as *const __m512i);
@@ -558,9 +844,12 @@ unsafe fn intt_iter_red(
         let rcst_512 = bcast_quad_512(reduc.modulo_red_cst.as_ptr());
 
         let mut data = begin;
-        // Cross-block pair-pack fast path for nn = 2 (with prior reduction).
+        // Cross-block pair-pack fast paths for nn ∈ {2, 4} (inverse, with prior reduction).
         if nn == 2 {
             data = ntt_iter_red_nn2_block_pairs(data, end, vq2bs_512, rh, rmask_512, rcst_512);
+        } else if nn == 4 {
+            let vw_512 = bcast_quad_512(powomega as *const u64);
+            data = intt_iter_red_nn4_block_pairs(data, end, vq2bs_512, h, vmask_512, vw_512, rh, rmask_512, rcst_512);
         }
         while (data as usize) < (end as usize) {
             let mut ptr1 = data;
@@ -577,7 +866,25 @@ unsafe fn intt_iter_red(
             let mut po_ptr = powomega;
             if halfnn >= 4 {
                 let pairs = (halfnn - 2) / 2;
-                for _ in 0..pairs {
+                let unrolled = pairs / 2;
+                for _ in 0..unrolled {
+                    let a0 = modq_red_si512(_mm512_loadu_si512(ptr1 as *const __m512i), rh, rmask_512, rcst_512);
+                    let b0 = modq_red_si512(_mm512_loadu_si512(ptr2 as *const __m512i), rh, rmask_512, rcst_512);
+                    let a1 = modq_red_si512(_mm512_loadu_si512(ptr1.add(2) as *const __m512i), rh, rmask_512, rcst_512);
+                    let b1v = modq_red_si512(_mm512_loadu_si512(ptr2.add(2) as *const __m512i), rh, rmask_512, rcst_512);
+                    let po0 = _mm512_loadu_si512(po_ptr as *const __m512i);
+                    let po1 = _mm512_loadu_si512(po_ptr.add(2) as *const __m512i);
+                    let bo0 = split_precompmul_si512(b0, po0, h, vmask_512);
+                    let bo1 = split_precompmul_si512(b1v, po1, h, vmask_512);
+                    _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, bo0));
+                    _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, bo1));
+                    _mm512_storeu_si512(ptr2 as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), bo0));
+                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1));
+                    ptr1 = ptr1.add(4);
+                    ptr2 = ptr2.add(4);
+                    po_ptr = po_ptr.add(4);
+                }
+                if pairs & 1 != 0 {
                     let a = modq_red_si512(_mm512_loadu_si512(ptr1 as *const __m512i), rh, rmask_512, rcst_512);
                     let b = modq_red_si512(_mm512_loadu_si512(ptr2 as *const __m512i), rh, rmask_512, rcst_512);
                     let po = _mm512_loadu_si512(po_ptr as *const __m512i);

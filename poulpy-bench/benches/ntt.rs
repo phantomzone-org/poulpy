@@ -242,14 +242,86 @@ pub fn bench_intt_avx(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(not(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f")))]
+fn bench_ntt_avx512(_c: &mut Criterion) {
+    eprintln!("Skipping: AVX-512 NTT benchmark requires x86_64 + AVX512F");
+}
+
+#[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f"))]
+pub fn bench_ntt_avx512(c: &mut Criterion) {
+    use criterion::BenchmarkId;
+    use poulpy_cpu_avx512::NTT120Avx512;
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTable, Primes30};
+    use std::hint::black_box;
+
+    let group_name: String = "ntt_avx512f".to_string();
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner(n: usize) -> impl FnMut() {
+        let mut values: Vec<u64> = vec![0u64; 4 * n];
+        values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
+        let table: NttTable<Primes30> = NttTable::<Primes30>::new(n);
+        move || {
+            NTT120Avx512::ntt_dft_execute(&table, &mut values);
+            black_box(());
+        }
+    }
+
+    for log_n in [10, 11, 12, 13, 14, 15, 16] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 1 << log_n));
+        let mut runner = runner(1 << log_n);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+#[cfg(not(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f")))]
+fn bench_intt_avx512(_c: &mut Criterion) {
+    eprintln!("Skipping: AVX-512 INTT benchmark requires x86_64 + AVX512F");
+}
+
+#[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f"))]
+pub fn bench_intt_avx512(c: &mut Criterion) {
+    use criterion::BenchmarkId;
+    use poulpy_cpu_avx512::NTT120Avx512;
+    use poulpy_cpu_ref::reference::ntt120::{NttDFTExecute, NttTableInv, Primes30};
+    use std::hint::black_box;
+
+    let group_name: String = "intt_avx512f".to_string();
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner(n: usize) -> impl FnMut() {
+        let mut values: Vec<u64> = vec![0u64; 4 * n];
+        values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
+        let table: NttTableInv<Primes30> = NttTableInv::<Primes30>::new(n);
+        move || {
+            NTT120Avx512::ntt_dft_execute(&table, &mut values);
+            black_box(());
+        }
+    }
+
+    for log_n in [10, 11, 12, 13, 14, 15, 16] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 1 << log_n));
+        let mut runner = runner(1 << log_n);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
 criterion_group! {
     name = benches;
     config = poulpy_bench::criterion_config();
     targets = bench_ntt_ref,
     bench_intt_ref,
     bench_ntt_avx,
+    bench_intt_avx,
+    bench_ntt_avx512,
+    bench_intt_avx512,
     bench_ntt_ifma,
-    bench_intt_avx
-    , bench_intt_ifma
+    bench_intt_ifma
 }
 criterion_main!(benches);

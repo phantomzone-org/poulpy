@@ -93,35 +93,74 @@ unsafe fn reduce_bbc(s_lo: __m256i, s_hi: __m256i, mask_h2: __m256i, h2: u64, s2
 pub(crate) unsafe fn vec_mat1col_product_bbc_avx2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
     // Pair-pack: 2 elements per __m512i iteration. Two 256-bit accumulator halves run
     // independent dot products; per-prime sums are folded across halves at the end.
+    //
+    // 2-way unroll: maintain 2 independent (s1, s2) accumulator chains so the two
+    // mul_epu32 + accumulate sequences are not serialized through a single dep chain.
+    // Zen 5 / Sapphire Rapids have 2 vector mul ports; a single chain bottlenecks on
+    // mul→add latency (~5 cycles) at half the achievable mul throughput.
     unsafe {
         let mask32_512 = _mm512_set1_epi64(u32::MAX as i64);
-        let mut s1 = _mm512_setzero_si512();
-        let mut s2 = _mm512_setzero_si512();
+        let mut s1a = _mm512_setzero_si512();
+        let mut s2a = _mm512_setzero_si512();
+        let mut s1b = _mm512_setzero_si512();
+        let mut s2b = _mm512_setzero_si512();
 
         let mut x_ptr = x.as_ptr() as *const __m512i;
         let mut y_ptr = y.as_ptr() as *const __m512i;
 
         let pairs = ell / 2;
-        for _ in 0..pairs {
+        let unrolled = pairs / 2;
+        for _ in 0..unrolled {
+            let xv0 = _mm512_loadu_si512(x_ptr);
+            let xl0 = _mm512_and_si512(xv0, mask32_512);
+            let xh0 = _mm512_srli_epi64::<32>(xv0);
+            let yv0 = _mm512_loadu_si512(y_ptr);
+            let y0a = _mm512_and_si512(yv0, mask32_512);
+            let y1a = _mm512_srli_epi64::<32>(yv0);
+
+            let xv1 = _mm512_loadu_si512(x_ptr.add(1));
+            let xl1 = _mm512_and_si512(xv1, mask32_512);
+            let xh1 = _mm512_srli_epi64::<32>(xv1);
+            let yv1 = _mm512_loadu_si512(y_ptr.add(1));
+            let y0b = _mm512_and_si512(yv1, mask32_512);
+            let y1b = _mm512_srli_epi64::<32>(yv1);
+
+            let a0 = _mm512_mul_epu32(xl0, y0a);
+            let b0 = _mm512_mul_epu32(xh0, y1a);
+            let a1 = _mm512_mul_epu32(xl1, y0b);
+            let b1 = _mm512_mul_epu32(xh1, y1b);
+
+            s1a = _mm512_add_epi64(s1a, _mm512_and_si512(a0, mask32_512));
+            s1b = _mm512_add_epi64(s1b, _mm512_and_si512(a1, mask32_512));
+            s1a = _mm512_add_epi64(s1a, _mm512_and_si512(b0, mask32_512));
+            s1b = _mm512_add_epi64(s1b, _mm512_and_si512(b1, mask32_512));
+            s2a = _mm512_add_epi64(s2a, _mm512_srli_epi64::<32>(a0));
+            s2b = _mm512_add_epi64(s2b, _mm512_srli_epi64::<32>(a1));
+            s2a = _mm512_add_epi64(s2a, _mm512_srli_epi64::<32>(b0));
+            s2b = _mm512_add_epi64(s2b, _mm512_srli_epi64::<32>(b1));
+
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(2);
+        }
+        if pairs & 1 != 0 {
             let xv = _mm512_loadu_si512(x_ptr);
             let xl = _mm512_and_si512(xv, mask32_512);
             let xh = _mm512_srli_epi64::<32>(xv);
             let yv = _mm512_loadu_si512(y_ptr);
             let y0 = _mm512_and_si512(yv, mask32_512);
             let y1 = _mm512_srli_epi64::<32>(yv);
-
             let a = _mm512_mul_epu32(xl, y0);
             let b = _mm512_mul_epu32(xh, y1);
-
-            s1 = _mm512_add_epi64(s1, _mm512_and_si512(a, mask32_512));
-            s1 = _mm512_add_epi64(s1, _mm512_and_si512(b, mask32_512));
-            s2 = _mm512_add_epi64(s2, _mm512_srli_epi64::<32>(a));
-            s2 = _mm512_add_epi64(s2, _mm512_srli_epi64::<32>(b));
-
+            s1a = _mm512_add_epi64(s1a, _mm512_and_si512(a, mask32_512));
+            s1a = _mm512_add_epi64(s1a, _mm512_and_si512(b, mask32_512));
+            s2a = _mm512_add_epi64(s2a, _mm512_srli_epi64::<32>(a));
+            s2a = _mm512_add_epi64(s2a, _mm512_srli_epi64::<32>(b));
             x_ptr = x_ptr.add(1);
             y_ptr = y_ptr.add(1);
         }
 
+        let s1 = _mm512_add_epi64(s1a, s1b);
+        let s2 = _mm512_add_epi64(s2a, s2b);
         let mut s1 = _mm256_add_epi64(_mm512_extracti64x4_epi64::<0>(s1), _mm512_extracti64x4_epi64::<1>(s1));
         let mut s2 = _mm256_add_epi64(_mm512_extracti64x4_epi64::<0>(s2), _mm512_extracti64x4_epi64::<1>(s2));
 
@@ -190,29 +229,58 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_avx2<const NT_STORE: bool>(
     // both dot products in parallel. The reduce_bbc step is per-256-bit-half.
     unsafe {
         let mask32_512 = _mm512_set1_epi64(u32::MAX as i64);
-        let mut s_lo = _mm512_setzero_si512(); // low partial sums (low half = A, high half = B)
-        let mut s_hi = _mm512_setzero_si512(); // high partial sums
+        // 2-way unroll: paired (s_lo*, s_hi*) chains expose ILP between two iterations.
+        let mut s_lo_a = _mm512_setzero_si512();
+        let mut s_hi_a = _mm512_setzero_si512();
+        let mut s_lo_b = _mm512_setzero_si512();
+        let mut s_hi_b = _mm512_setzero_si512();
 
         let mut x_ptr = x.as_ptr() as *const __m512i;
         let mut y_ptr = y.as_ptr() as *const __m512i;
 
-        for _ in 0..ell {
+        let pairs = ell / 2;
+        for _ in 0..pairs {
+            let xv0 = _mm512_loadu_si512(x_ptr);
+            let xv0_hi = _mm512_srli_epi64::<32>(xv0);
+            let yv0 = _mm512_loadu_si512(y_ptr);
+            let yv0_hi = _mm512_srli_epi64::<32>(yv0);
+
+            let xv1 = _mm512_loadu_si512(x_ptr.add(1));
+            let xv1_hi = _mm512_srli_epi64::<32>(xv1);
+            let yv1 = _mm512_loadu_si512(y_ptr.add(1));
+            let yv1_hi = _mm512_srli_epi64::<32>(yv1);
+
+            let p0_lo = _mm512_mul_epu32(xv0, yv0);
+            let p0_hi = _mm512_mul_epu32(xv0_hi, yv0_hi);
+            let p1_lo = _mm512_mul_epu32(xv1, yv1);
+            let p1_hi = _mm512_mul_epu32(xv1_hi, yv1_hi);
+
+            s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(p0_lo, mask32_512));
+            s_lo_b = _mm512_add_epi64(s_lo_b, _mm512_and_si512(p1_lo, mask32_512));
+            s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(p0_hi, mask32_512));
+            s_lo_b = _mm512_add_epi64(s_lo_b, _mm512_and_si512(p1_hi, mask32_512));
+            s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(p0_lo));
+            s_hi_b = _mm512_add_epi64(s_hi_b, _mm512_srli_epi64::<32>(p1_lo));
+            s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(p0_hi));
+            s_hi_b = _mm512_add_epi64(s_hi_b, _mm512_srli_epi64::<32>(p1_hi));
+
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(2);
+        }
+        if ell & 1 != 0 {
             let xv = _mm512_loadu_si512(x_ptr);
             let xv_hi = _mm512_srli_epi64::<32>(xv);
             let yv = _mm512_loadu_si512(y_ptr);
             let yv_hi = _mm512_srli_epi64::<32>(yv);
-
             let prod_lo = _mm512_mul_epu32(xv, yv);
             let prod_hi = _mm512_mul_epu32(xv_hi, yv_hi);
-
-            s_lo = _mm512_add_epi64(s_lo, _mm512_and_si512(prod_lo, mask32_512));
-            s_lo = _mm512_add_epi64(s_lo, _mm512_and_si512(prod_hi, mask32_512));
-            s_hi = _mm512_add_epi64(s_hi, _mm512_srli_epi64::<32>(prod_lo));
-            s_hi = _mm512_add_epi64(s_hi, _mm512_srli_epi64::<32>(prod_hi));
-
-            x_ptr = x_ptr.add(1);
-            y_ptr = y_ptr.add(1);
+            s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(prod_lo, mask32_512));
+            s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(prod_hi, mask32_512));
+            s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(prod_lo));
+            s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(prod_hi));
         }
+        let s_lo = _mm512_add_epi64(s_lo_a, s_lo_b);
+        let s_hi = _mm512_add_epi64(s_hi_a, s_hi_b);
 
         let mask_h2 = _mm256_set1_epi64x(((1u64 << meta.h) - 1) as i64);
         let s2l_pow_red = _mm256_loadu_si256(meta.s2l_pow_red.as_ptr() as *const __m256i);
@@ -280,26 +348,60 @@ pub(crate) unsafe fn vec_mat1col_product_blkpair_bbc_pm_avx2(
 
             // Pair-pack 2 rows per __m512i; halves run independent dot products,
             // folded into 4-lane accumulators before reduce_bbc.
-            let mut s_lo_512 = _mm512_setzero_si512();
-            let mut s_hi_512 = _mm512_setzero_si512();
+            // 2-way unroll over `pairs` doubles independent (lo, hi) chains for ILP.
+            let mut s_lo_a = _mm512_setzero_si512();
+            let mut s_hi_a = _mm512_setzero_si512();
+            let mut s_lo_b = _mm512_setzero_si512();
+            let mut s_hi_b = _mm512_setzero_si512();
             let pairs = ell / 2;
-            for r2 in 0..pairs {
+            let unrolled = pairs / 2;
+            for q2 in 0..unrolled {
+                let r2 = q2 * 2;
+                let xv0 = _mm512_loadu_si512(x_ptr.add(2 * r2) as *const __m512i);
+                let xl0 = _mm512_and_si512(xv0, mask32_512);
+                let xh0 = _mm512_srli_epi64::<32>(xv0);
+                let yv0 = _mm512_loadu_si512(y_ptr.add(2 * r2) as *const __m512i);
+                let y0a = _mm512_and_si512(yv0, mask32_512);
+                let y1a = _mm512_srli_epi64::<32>(yv0);
+
+                let xv1 = _mm512_loadu_si512(x_ptr.add(2 * (r2 + 1)) as *const __m512i);
+                let xl1 = _mm512_and_si512(xv1, mask32_512);
+                let xh1 = _mm512_srli_epi64::<32>(xv1);
+                let yv1 = _mm512_loadu_si512(y_ptr.add(2 * (r2 + 1)) as *const __m512i);
+                let y0b = _mm512_and_si512(yv1, mask32_512);
+                let y1b = _mm512_srli_epi64::<32>(yv1);
+
+                let p0_lo = _mm512_mul_epu32(xl0, y0a);
+                let p0_hi = _mm512_mul_epu32(xh0, y1a);
+                let p1_lo = _mm512_mul_epu32(xl1, y0b);
+                let p1_hi = _mm512_mul_epu32(xh1, y1b);
+
+                s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(p0_lo, mask32_512));
+                s_lo_b = _mm512_add_epi64(s_lo_b, _mm512_and_si512(p1_lo, mask32_512));
+                s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(p0_hi, mask32_512));
+                s_lo_b = _mm512_add_epi64(s_lo_b, _mm512_and_si512(p1_hi, mask32_512));
+                s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(p0_lo));
+                s_hi_b = _mm512_add_epi64(s_hi_b, _mm512_srli_epi64::<32>(p1_lo));
+                s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(p0_hi));
+                s_hi_b = _mm512_add_epi64(s_hi_b, _mm512_srli_epi64::<32>(p1_hi));
+            }
+            if pairs & 1 != 0 {
+                let r2 = pairs - 1;
                 let xv = _mm512_loadu_si512(x_ptr.add(2 * r2) as *const __m512i);
                 let xl = _mm512_and_si512(xv, mask32_512);
                 let xh = _mm512_srli_epi64::<32>(xv);
-
                 let yv = _mm512_loadu_si512(y_ptr.add(2 * r2) as *const __m512i);
                 let y0 = _mm512_and_si512(yv, mask32_512);
                 let y1 = _mm512_srli_epi64::<32>(yv);
-
                 let prod_lo = _mm512_mul_epu32(xl, y0);
                 let prod_hi = _mm512_mul_epu32(xh, y1);
-
-                s_lo_512 = _mm512_add_epi64(s_lo_512, _mm512_and_si512(prod_lo, mask32_512));
-                s_lo_512 = _mm512_add_epi64(s_lo_512, _mm512_and_si512(prod_hi, mask32_512));
-                s_hi_512 = _mm512_add_epi64(s_hi_512, _mm512_srli_epi64::<32>(prod_lo));
-                s_hi_512 = _mm512_add_epi64(s_hi_512, _mm512_srli_epi64::<32>(prod_hi));
+                s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(prod_lo, mask32_512));
+                s_lo_a = _mm512_add_epi64(s_lo_a, _mm512_and_si512(prod_hi, mask32_512));
+                s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(prod_lo));
+                s_hi_a = _mm512_add_epi64(s_hi_a, _mm512_srli_epi64::<32>(prod_hi));
             }
+            let s_lo_512 = _mm512_add_epi64(s_lo_a, s_lo_b);
+            let s_hi_512 = _mm512_add_epi64(s_hi_a, s_hi_b);
             let mut s_lo = _mm256_add_epi64(
                 _mm512_extracti64x4_epi64::<0>(s_lo_512),
                 _mm512_extracti64x4_epi64::<1>(s_lo_512),
@@ -388,41 +490,91 @@ pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_avx2(
     // column run both pair A and pair B in parallel, halved at the end into 4 reduce_bbc calls.
     unsafe {
         let mask32_512 = _mm512_set1_epi64(u32::MAX as i64);
-        let mut c0_lo = _mm512_setzero_si512(); // col 0 low sums  ([A | B])
-        let mut c0_hi = _mm512_setzero_si512(); // col 0 high sums
-        let mut c1_lo = _mm512_setzero_si512(); // col 1 low sums
-        let mut c1_hi = _mm512_setzero_si512(); // col 1 high sums
+        // The two columns already act as independent chains (col0 vs col1), but each
+        // column's (lo, hi) is still a single chain over `ell`. Process two rows per
+        // iteration so each column gets two parallel sub-chains.
+        let mut c0_lo_a = _mm512_setzero_si512();
+        let mut c0_hi_a = _mm512_setzero_si512();
+        let mut c0_lo_b = _mm512_setzero_si512();
+        let mut c0_hi_b = _mm512_setzero_si512();
+        let mut c1_lo_a = _mm512_setzero_si512();
+        let mut c1_hi_a = _mm512_setzero_si512();
+        let mut c1_lo_b = _mm512_setzero_si512();
+        let mut c1_hi_b = _mm512_setzero_si512();
 
         let mut x_ptr = x.as_ptr() as *const __m512i;
         let mut y_ptr = y.as_ptr() as *const __m512i;
 
-        for _ in 0..ell {
+        let pairs = ell / 2;
+        for _ in 0..pairs {
+            let xv0 = _mm512_loadu_si512(x_ptr);
+            let xv0_hi = _mm512_srli_epi64::<32>(xv0);
+            let xv1 = _mm512_loadu_si512(x_ptr.add(1));
+            let xv1_hi = _mm512_srli_epi64::<32>(xv1);
+
+            // Column 0
+            let yc0a = _mm512_loadu_si512(y_ptr);
+            let yc0a_hi = _mm512_srli_epi64::<32>(yc0a);
+            let yc0b = _mm512_loadu_si512(y_ptr.add(2));
+            let yc0b_hi = _mm512_srli_epi64::<32>(yc0b);
+            let p0a_lo = _mm512_mul_epu32(xv0, yc0a);
+            let p0a_hi = _mm512_mul_epu32(xv0_hi, yc0a_hi);
+            let p0b_lo = _mm512_mul_epu32(xv1, yc0b);
+            let p0b_hi = _mm512_mul_epu32(xv1_hi, yc0b_hi);
+            c0_lo_a = _mm512_add_epi64(c0_lo_a, _mm512_and_si512(p0a_lo, mask32_512));
+            c0_lo_b = _mm512_add_epi64(c0_lo_b, _mm512_and_si512(p0b_lo, mask32_512));
+            c0_lo_a = _mm512_add_epi64(c0_lo_a, _mm512_and_si512(p0a_hi, mask32_512));
+            c0_lo_b = _mm512_add_epi64(c0_lo_b, _mm512_and_si512(p0b_hi, mask32_512));
+            c0_hi_a = _mm512_add_epi64(c0_hi_a, _mm512_srli_epi64::<32>(p0a_lo));
+            c0_hi_b = _mm512_add_epi64(c0_hi_b, _mm512_srli_epi64::<32>(p0b_lo));
+            c0_hi_a = _mm512_add_epi64(c0_hi_a, _mm512_srli_epi64::<32>(p0a_hi));
+            c0_hi_b = _mm512_add_epi64(c0_hi_b, _mm512_srli_epi64::<32>(p0b_hi));
+
+            // Column 1
+            let yc1a = _mm512_loadu_si512(y_ptr.add(1));
+            let yc1a_hi = _mm512_srli_epi64::<32>(yc1a);
+            let yc1b = _mm512_loadu_si512(y_ptr.add(3));
+            let yc1b_hi = _mm512_srli_epi64::<32>(yc1b);
+            let p1a_lo = _mm512_mul_epu32(xv0, yc1a);
+            let p1a_hi = _mm512_mul_epu32(xv0_hi, yc1a_hi);
+            let p1b_lo = _mm512_mul_epu32(xv1, yc1b);
+            let p1b_hi = _mm512_mul_epu32(xv1_hi, yc1b_hi);
+            c1_lo_a = _mm512_add_epi64(c1_lo_a, _mm512_and_si512(p1a_lo, mask32_512));
+            c1_lo_b = _mm512_add_epi64(c1_lo_b, _mm512_and_si512(p1b_lo, mask32_512));
+            c1_lo_a = _mm512_add_epi64(c1_lo_a, _mm512_and_si512(p1a_hi, mask32_512));
+            c1_lo_b = _mm512_add_epi64(c1_lo_b, _mm512_and_si512(p1b_hi, mask32_512));
+            c1_hi_a = _mm512_add_epi64(c1_hi_a, _mm512_srli_epi64::<32>(p1a_lo));
+            c1_hi_b = _mm512_add_epi64(c1_hi_b, _mm512_srli_epi64::<32>(p1b_lo));
+            c1_hi_a = _mm512_add_epi64(c1_hi_a, _mm512_srli_epi64::<32>(p1a_hi));
+            c1_hi_b = _mm512_add_epi64(c1_hi_b, _mm512_srli_epi64::<32>(p1b_hi));
+
+            x_ptr = x_ptr.add(2);
+            y_ptr = y_ptr.add(4);
+        }
+        if ell & 1 != 0 {
             let xv = _mm512_loadu_si512(x_ptr);
             let xv_hi = _mm512_srli_epi64::<32>(xv);
-
-            // Column 0: y_ptr[0] = [yc0a | yc0b]
             let yc0 = _mm512_loadu_si512(y_ptr);
             let yc0_hi = _mm512_srli_epi64::<32>(yc0);
             let p0_lo = _mm512_mul_epu32(xv, yc0);
             let p0_hi = _mm512_mul_epu32(xv_hi, yc0_hi);
-            c0_lo = _mm512_add_epi64(c0_lo, _mm512_and_si512(p0_lo, mask32_512));
-            c0_lo = _mm512_add_epi64(c0_lo, _mm512_and_si512(p0_hi, mask32_512));
-            c0_hi = _mm512_add_epi64(c0_hi, _mm512_srli_epi64::<32>(p0_lo));
-            c0_hi = _mm512_add_epi64(c0_hi, _mm512_srli_epi64::<32>(p0_hi));
-
-            // Column 1: y_ptr[1] = [yc1a | yc1b]
+            c0_lo_a = _mm512_add_epi64(c0_lo_a, _mm512_and_si512(p0_lo, mask32_512));
+            c0_lo_a = _mm512_add_epi64(c0_lo_a, _mm512_and_si512(p0_hi, mask32_512));
+            c0_hi_a = _mm512_add_epi64(c0_hi_a, _mm512_srli_epi64::<32>(p0_lo));
+            c0_hi_a = _mm512_add_epi64(c0_hi_a, _mm512_srli_epi64::<32>(p0_hi));
             let yc1 = _mm512_loadu_si512(y_ptr.add(1));
             let yc1_hi = _mm512_srli_epi64::<32>(yc1);
             let p1_lo = _mm512_mul_epu32(xv, yc1);
             let p1_hi = _mm512_mul_epu32(xv_hi, yc1_hi);
-            c1_lo = _mm512_add_epi64(c1_lo, _mm512_and_si512(p1_lo, mask32_512));
-            c1_lo = _mm512_add_epi64(c1_lo, _mm512_and_si512(p1_hi, mask32_512));
-            c1_hi = _mm512_add_epi64(c1_hi, _mm512_srli_epi64::<32>(p1_lo));
-            c1_hi = _mm512_add_epi64(c1_hi, _mm512_srli_epi64::<32>(p1_hi));
-
-            x_ptr = x_ptr.add(1);
-            y_ptr = y_ptr.add(2);
+            c1_lo_a = _mm512_add_epi64(c1_lo_a, _mm512_and_si512(p1_lo, mask32_512));
+            c1_lo_a = _mm512_add_epi64(c1_lo_a, _mm512_and_si512(p1_hi, mask32_512));
+            c1_hi_a = _mm512_add_epi64(c1_hi_a, _mm512_srli_epi64::<32>(p1_lo));
+            c1_hi_a = _mm512_add_epi64(c1_hi_a, _mm512_srli_epi64::<32>(p1_hi));
         }
+        let c0_lo = _mm512_add_epi64(c0_lo_a, c0_lo_b);
+        let c0_hi = _mm512_add_epi64(c0_hi_a, c0_hi_b);
+        let c1_lo = _mm512_add_epi64(c1_lo_a, c1_lo_b);
+        let c1_hi = _mm512_add_epi64(c1_hi_a, c1_hi_b);
 
         let mask_h2 = _mm256_set1_epi64x(((1u64 << meta.h) - 1) as i64);
         let s2l_pow_red = _mm256_loadu_si256(meta.s2l_pow_red.as_ptr() as *const __m256i);

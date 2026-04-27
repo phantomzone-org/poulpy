@@ -99,11 +99,16 @@
 //! - **Convolution**: O(n log n) via FFT-based approach
 //! - **Normalization**: O(n) per limb with vectorized digit extraction
 //!
-//! ## Typical speedup over reference backend
+//! ## Speedup over reference backend
 //!
-//! - **Ring element arithmetic** (add/sub/negate): ~3-4× (memory bandwidth bound)
-//! - **FFT16 kernels** (hand-written assembly): ~2× over intrinsics
-//! - **Convolution** (large degree): ~3-5× depending on coefficient size
+//! Speedups depend on the host micro-architecture and on the operation profile of the
+//! workload. Run the benches in `poulpy-bench` on the target host for representative
+//! numbers. Qualitative trends:
+//!
+//! - **Ring element arithmetic** (add/sub/negate): bandwidth-bound, modest gains.
+//! - **FFT16 kernels** (hand-written assembly): noticeably ahead of compiler-generated
+//!   intrinsics on supported micro-architectures.
+//! - **Convolution** (large degree): the largest gains, scaling with coefficient size.
 //!
 //! ## Memory layout
 //!

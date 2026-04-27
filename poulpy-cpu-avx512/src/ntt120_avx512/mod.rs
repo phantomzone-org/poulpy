@@ -33,9 +33,9 @@
 //! | Pack helpers (`arithmetic::pack_*_1blk_x2*`, `pairwise_pack_*_1blk_x2*`) | AVX-512F (pair-pack the two q120b's per row) |
 //! | VecZnxBig i128 ops + normalization (`vec_znx_big_avx512`) | AVX-512F, 4-i128/512-bit (mask-based borrow) |
 //!
-//! Block-order tight inner stages (`nn = 2, 4`) keep the 256-bit kernel where pair-packing
-//! along `i` is impossible: those iterations have ≤ 1 twiddled butterfly per block, so 256-bit
-//! is optimal there. Cross-block pair-packing for `nn = 2` is a tracked follow-up.
+//! Block-order tight inner stages (`nn = 2, 4`) cannot pair-pack along `i` (≤ 1 twiddled
+//! butterfly per block). `nn = 2` uses a cross-block pair-pack kernel; `nn = 4` currently
+//! falls back to 256-bit and is a candidate for cross-block pair-packing.
 //!
 //! # Scalar types
 //!

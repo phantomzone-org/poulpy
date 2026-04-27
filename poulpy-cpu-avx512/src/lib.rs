@@ -9,9 +9,9 @@
 //! - `NTT120Ifma`: NTT-domain backend over three ~40-bit CRT primes, accelerated with AVX-512-IFMA.
 //!
 //! **Backend selection.** On hosts that support AVX-512-IFMA, prefer `NTT120Ifma`: its
-//! `vpmadd52`-driven mat_vec / VMP / SVP kernels outpace the `NTT120Avx512` pair-pack
-//! widening (typically ~2–3× vs ~1.5–2× over the AVX2 NTT120 backend). `NTT120Avx512` is
-//! the right choice on AVX-512F hosts that lack IFMA (e.g. Skylake-X / Cascade Lake / KNL).
+//! `vpmadd52`-driven mat_vec / VMP / SVP kernels typically lead end-to-end on CKKS-style
+//! workloads. `NTT120Avx512` is the right choice on AVX-512F hosts that lack IFMA
+//! (e.g. Skylake-X / Cascade Lake / KNL).
 //!
 //! # Architecture
 //!
@@ -118,28 +118,27 @@
 //! - **Convolution**: O(n log n) via FFT- or NTT-based approach.
 //! - **Normalization**: O(n) per limb with vectorized digit extraction.
 //!
-//! ## Typical speedup over reference / AVX2 backends
+//! ## Speedup over reference / AVX2 backends
 //!
-//! Measured on a Zen 5 host (n = 16384) for the AMD micro-architecture; numbers vary
-//! across CPUs, especially Intel-vs-AMD AVX-512 implementations.
+//! Speedups depend strongly on the host micro-architecture (Intel vs AMD, generation,
+//! cache hierarchy, AVX-512 implementation width) and on the operation profile of the
+//! workload, so concrete factors are not quoted here. Run the benches in `poulpy-bench`
+//! on the target host for representative numbers.
 //!
-//! - **Ring element arithmetic** (add/sub/negate, lazy q120b ops): ~1.05–1.15× over the
-//!   AVX2 NTT120 backend (memory-bandwidth bound; the 256→512-bit widening barely helps).
-//! - **NTT forward / inverse** (`NTT120Avx512`, 2-coefficient pair-pack): ~1.15× over the
-//!   AVX2 NTT120 backend.
-//! - **NTT forward** (`NTT120Ifma`, `vpmadd52`): ~1.4× over the AVX2 NTT120 backend
-//!   (~1.2× over `NTT120Avx512`).
-//! - **VMP / SVP apply_dft_to_dft** (`NTT120Ifma`): ~1.3–2× over the AVX2 NTT120 backend
-//!   (the IFMA mat_vec inner loop is the main beneficiary). `NTT120Avx512`'s VMP is on
-//!   par with — sometimes slightly slower than — the AVX2 backend; pair-packing the NTT
-//!   does not benefit the BBC inner-product hot path.
+//! Qualitative trends observed across operations:
+//!
+//! - **Ring element arithmetic** (add/sub/negate, lazy q120b ops, VecZnxBig i128 ops):
+//!   memory-bandwidth bound; the 256→512-bit widening yields little headroom over AVX2.
+//! - **NTT forward / inverse** (`NTT120Avx512`, 2-coefficient pair-pack): a moderate
+//!   improvement over AVX2 in cache-resident regimes; the gap narrows at large `n` as
+//!   the kernel becomes bandwidth-bound.
+//! - **NTT and BBC mat_vec / VMP / SVP** (`NTT120Ifma`): IFMA's `vpmadd52` chain shortens
+//!   the modular-multiply critical path and is the main beneficiary of AVX-512 on
+//!   compute-heavy paths (key-switch, external product, relinearization).
 //! - **FFT16 kernels** (hand-written assembly): on par with the AVX2 backend.
-//! - **VecZnxBig i128 add/sub/negate**: on par with the AVX2 backend (memory-bandwidth
-//!   bound; widening from 2 i128 / `__m256i` to 4 i128 / `__m512i` does not help).
 //!
-//! Net on IFMA-capable hardware: `NTT120Ifma` is the faster choice end-to-end. Its lead
-//! is concentrated in NTT/INTT and the BBC mat_vec / VMP / SVP path — workloads dominated
-//! by VMP (key-switch, external product) see the largest gain.
+//! Net on IFMA-capable hardware: `NTT120Ifma` is typically the faster choice end-to-end
+//! on CKKS-style workloads, with the largest gains on VMP-dominated operations.
 //!
 //! ## Memory layout
 //!
