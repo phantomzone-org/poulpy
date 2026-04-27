@@ -14,7 +14,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout},
     circuit_bootstrapping::{
         CircuitBootstrappingEncryptionInfos, CircuitBootstrappingExecute, CircuitBootstrappingKey,

@@ -532,15 +532,30 @@ name = "poulpy-bench"
 version = "0.5.0"
 dependencies = [
  "criterion",
+ "poulpy-bin-fhe",
  "poulpy-ckks",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",
  "poulpy-hal",
- "poulpy-schemes",
  "rand",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "poulpy-bin-fhe"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "itertools 0.14.0",
+ "paste",
+ "poulpy-core",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "rand",
 ]
 
 [[package]]
@@ -624,21 +639,6 @@ dependencies = [
  "rand_chacha",
  "rand_core",
  "rand_distr",
-]
-
-[[package]]
-name = "poulpy-schemes"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "byteorder",
- "itertools 0.14.0",
- "paste",
- "poulpy-core",
- "poulpy-cpu-avx",
- "poulpy-cpu-ref",
- "poulpy-hal",
- "rand",
 ]
 
 [[package]]

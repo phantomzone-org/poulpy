@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use poulpy_schemes::bin_fhe::blind_rotation::CGGI;
+use poulpy_bin_fhe::blind_rotation::CGGI;
 
 fn bench_circuit_bootstrapping(c: &mut Criterion) {
     poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_ref::FFT64Ref, CGGI>(
