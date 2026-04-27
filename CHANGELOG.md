@@ -86,7 +86,8 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 - Flatten AVX test module paths to remove redundant crate prefixes.
 - Split backend code into family-specific `hal_impl/*` modules (module/scratch/vec_znx/vmp/svp/convolution) for clearer override points.
 
-### `poulpy-schemes`
+### `poulpy-bin-fhe`
+- **Breaking:** Remove the former `poulpy-schemes` crate and move its bin-FHE implementation into the standalone `poulpy-bin-fhe` crate. Downstream users should depend on `poulpy-bin-fhe` and import it as `poulpy_bin_fhe`.
 - **Breaking:** Update all call sites to use the renamed `_assign` methods (e.g. `ggsw_external_product_assign`, `glwe_automorphism_assign`, `ggsw_blind_rotation_assign`) following the workspace-wide rename from `_assign`.
 - Update bin-FHE BDD arithmetic, blind rotation, and test suites for the new core/HAL APIs.
 - Refresh scheme examples and library wiring; remove the redundant `poulpy-schemes/README.md`.
