@@ -1,8 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend, VecZnxFillUniformSourceBackend},
-    layouts::{
-        Backend, GaloisElement, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchOwned,
-    },
+    layouts::{Backend, GaloisElement, Module, ScalarZnx, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -13,8 +11,8 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
-        prepared::GLWESecretPrepared,
+        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, ModuleCoreAlloc, ModuleCoreCompressedAlloc,
+        compressed::GLWEAutomorphismKeyCompressed, prepared::GLWESecretPrepared,
     },
     noise::GGLWENoise,
 };
@@ -24,6 +22,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
     module: &Module<BE>,
 ) where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -56,7 +55,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
             })
             .unwrap();
 
-            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -68,7 +67,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
                     .max(module.gglwe_noise_tmp_bytes(&atk_infos)),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -84,22 +83,24 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: crate::test_suite::TestBackend
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n(), sk.data.cols());
             let mut sk_out_backend = ScalarZnx::from_data(
                 BE::from_host_bytes(sk_out.data.data.as_ref()),
-                sk_out.data.n,
-                sk_out.data.cols,
+                sk_out.data.n(),
+                sk_out.data.cols(),
             );
-            for i in 0..atk.rank().into() {
-                module.vec_znx_automorphism_backend(
-                    module.galois_element_inv(p),
-                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
-                        &mut sk_out_backend,
-                    ),
-                    i,
-                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
-                    i,
-                );
+            {
+                let sk_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_ref::<BE>(&sk_backend);
+                let mut sk_out_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut sk_out_backend);
+                for i in 0..atk.rank().into() {
+                    module.vec_znx_automorphism_backend(
+                        module.galois_element_inv(p),
+                        &mut sk_out_backend_as_vec,
+                        i,
+                        &sk_backend_as_vec,
+                        i,
+                    );
+                }
             }
             BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
             let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
@@ -129,6 +130,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
     module: &Module<BE>,
 ) where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
@@ -162,7 +164,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
             .unwrap();
 
             let mut atk_compressed: GLWEAutomorphismKeyCompressed<Vec<u8>> =
-                GLWEAutomorphismKeyCompressed::alloc_from_infos(&atk_infos);
+                module.glwe_automorphism_key_compressed_alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -173,7 +175,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
                     .max(module.gglwe_noise_tmp_bytes(&atk_infos)),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p: i64 = -5;
@@ -191,28 +193,30 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: crate::test_suite::
             );
 
             let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n(), sk.data.cols());
             let mut sk_out_backend = ScalarZnx::from_data(
                 BE::from_host_bytes(sk_out.data.data.as_ref()),
-                sk_out.data.n,
-                sk_out.data.cols,
+                sk_out.data.n(),
+                sk_out.data.cols(),
             );
-            for i in 0..atk_compressed.rank().into() {
-                module.vec_znx_automorphism_backend(
-                    module.galois_element_inv(p),
-                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
-                        &mut sk_out_backend,
-                    ),
-                    i,
-                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
-                    i,
-                );
+            {
+                let sk_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_ref::<BE>(&sk_backend);
+                let mut sk_out_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut sk_out_backend);
+                for i in 0..atk_compressed.rank().into() {
+                    module.vec_znx_automorphism_backend(
+                        module.galois_element_inv(p),
+                        &mut sk_out_backend_as_vec,
+                        i,
+                        &sk_backend_as_vec,
+                        i,
+                    );
+                }
             }
             BE::copy_to_host(&sk_out_backend.data, sk_out.data.data.as_mut());
             let mut sk_out_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(sk_out.rank());
             module.glwe_secret_prepare(&mut sk_out_prepared, &sk_out);
 
-            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&atk_infos);
             module.decompress_automorphism_key(&mut atk, &atk_compressed);
 
             let max_noise: f64 = DEFAULT_SIGMA_XE.log2() - (k_ksk as f64) + 0.5;

@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedBackendRef, GGLWEPreparedToBackendMut,
-    GGLWEPreparedToBackendRef, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToBackendRef, GLWEInfos, GLWESwitchingKeyDegrees,
-    GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+    GGLWEPreparedToBackendRef, GGLWEToBackendRef, GLWEInfos, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank,
+    TorusPrecision,
     prepared::{
         GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory, GLWESwitchingKeyPreparedToBackendMut,
         GLWESwitchingKeyPreparedToBackendRef,
@@ -111,13 +111,13 @@ where
 
     fn glwe_to_lwe_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
-        R: GGLWEPreparedToMut<B> + GGLWEPreparedToBackendMut<B> + GLWESwitchingKeyDegreesMut,
+        R: GGLWEPreparedToBackendMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToBackendRef<B> + GLWESwitchingKeyDegrees,
         ScratchArena<'s, B>: ScratchAvailable,
         B: 's,
     {
         let tmp_bytes = {
-            let res_infos = res.to_mut();
+            let res_infos = res.to_backend_mut();
             self.glwe_to_lwe_key_prepare_tmp_bytes(&res_infos)
         };
         assert!(
@@ -135,31 +135,16 @@ impl<B: Backend> GLWEToLWEKeyPreparedFactory<B> for Module<B> where Self: GLWESw
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEToLWEKeyPreparedFactory` on `Module`.
 
-impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GLWEToLWEKeyPrepared<D, B>
+impl<D: Data, B: Backend> GGLWEPreparedToBackendMut<B> for GLWEToLWEKeyPrepared<D, B>
 where
-    GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToRef<B>,
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
 {
-    fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
-        self.0.to_ref()
-    }
-}
-
-impl<B: Backend> GGLWEPreparedToBackendMut<B> for GLWEToLWEKeyPrepared<B::OwnedBuf, B> {
     fn to_backend_mut(&mut self) -> crate::layouts::GGLWEPreparedBackendMut<'_, B> {
-        GLWESwitchingKeyPreparedToBackendMut::to_backend_mut(&mut self.0).key
+        self.0.key.to_backend_mut()
     }
 }
 
-impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEToLWEKeyPrepared<D, B>
-where
-    GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToRef<B>,
-{
-    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
-        self.0.to_mut()
-    }
-}
-
-impl<D: HostDataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrepared<D, B> {
     fn input_degree(&mut self) -> &mut Degree {
         &mut self.0.input_degree
     }
@@ -169,7 +154,7 @@ impl<D: HostDataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWEKeyPrep
     }
 }
 
-impl<D: HostDataRef, B: Backend> GLWESwitchingKeyDegrees for GLWEToLWEKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GLWESwitchingKeyDegrees for GLWEToLWEKeyPrepared<D, B> {
     fn input_degree(&self) -> &Degree {
         &self.0.input_degree
     }
@@ -186,13 +171,19 @@ pub trait GLWEToLWEKeyPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWEToLWEKeyPreparedBackendRef<'_, B>;
 }
 
-impl<B: Backend> GLWEToLWEKeyPreparedToBackendRef<B> for GLWEToLWEKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEToLWEKeyPreparedToBackendRef<B> for GLWEToLWEKeyPrepared<D, B>
+where
+    GLWESwitchingKeyPrepared<D, B>: GLWESwitchingKeyPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GLWEToLWEKeyPreparedBackendRef<'_, B> {
-        GLWEToLWEKeyPrepared(GLWESwitchingKeyPreparedToBackendRef::to_backend_ref(&self.0))
+        GLWEToLWEKeyPrepared(self.0.to_backend_ref())
     }
 }
 
-impl<B: Backend> GGLWEPreparedToBackendRef<B> for GLWEToLWEKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEPreparedToBackendRef<B> for GLWEToLWEKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
         self.0.key.to_backend_ref()
     }
@@ -202,8 +193,11 @@ pub trait GLWEToLWEKeyPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWEToLWEKeyPreparedBackendMut<'_, B>;
 }
 
-impl<B: Backend> GLWEToLWEKeyPreparedToBackendMut<B> for GLWEToLWEKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEToLWEKeyPreparedToBackendMut<B> for GLWEToLWEKeyPrepared<D, B>
+where
+    GLWESwitchingKeyPrepared<D, B>: GLWESwitchingKeyPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GLWEToLWEKeyPreparedBackendMut<'_, B> {
-        GLWEToLWEKeyPrepared(GLWESwitchingKeyPreparedToBackendMut::to_backend_mut(&mut self.0))
+        GLWEToLWEKeyPrepared(self.0.to_backend_mut())
     }
 }

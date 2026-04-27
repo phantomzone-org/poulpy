@@ -1,15 +1,14 @@
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut},
+    layouts::{
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut,
+    },
 };
 
 pub use crate::api::LWEDecrypt;
 use crate::{
     ScratchArenaTakeCore,
-    layouts::{
-        LWE, LWEInfos, LWEPlaintext, LWEPlaintextToBackendMut, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToRef,
-        SetLWEInfos,
-    },
+    layouts::{LWEInfos, LWEPlaintext, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos},
 };
 
 pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {
@@ -25,30 +24,31 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
 
     fn lwe_decrypt_default<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: LWEToRef,
-        P: LWEPlaintextToMut + LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
-        S: LWESecretToRef,
+        R: LWEToBackendRef<BE> + LWEInfos,
+        P: LWEPlaintextToBackendMut<BE> + SetLWEInfos + LWEInfos,
+        S: LWESecretToBackendRef<BE> + LWEInfos,
         BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
+        for<'a> BE::BufRef<'a>: HostDataRef,
     {
-        let res: &LWE<&[u8]> = &res.to_ref();
-        let sk: LWESecret<&[u8]> = sk.to_ref();
+        let res = res.to_backend_ref();
+        let sk = sk.to_backend_ref();
 
         #[cfg(debug_assertions)]
         {
             assert_eq!(res.n(), sk.n());
         }
         assert!(
-            scratch.available() >= self.lwe_decrypt_tmp_bytes_default(res),
+            scratch.available() >= self.lwe_decrypt_tmp_bytes_default(&res),
             "scratch.available(): {} < LWEDecrypt::lwe_decrypt_tmp_bytes: {}",
             scratch.available(),
-            self.lwe_decrypt_tmp_bytes_default(res)
+            self.lwe_decrypt_tmp_bytes_default(&res)
         );
 
         let scratch = scratch.borrow();
 
-        let (mut tmp, mut scratch_1) = scratch.take_lwe_plaintext(res);
+        let (mut tmp, mut scratch_1) = scratch.take_lwe_plaintext(&res);
         for i in 0..res.size() {
             tmp.data.at_mut(0, i)[0] = res.data.at(0, i)[0]
                 + res.data.at(0, i)[1..]

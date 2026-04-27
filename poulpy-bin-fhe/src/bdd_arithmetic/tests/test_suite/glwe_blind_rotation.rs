@@ -2,7 +2,7 @@ use poulpy_core::{
     EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
-        GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, Rank, TorusPrecision,
+        GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -67,9 +67,9 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
 
-    let mut test_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
+    let mut test_glwe: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_infos);
     let mut data: Vec<i64> = vec![0i64; module.n()];
     data.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
     test_glwe.encode_vec_i64(&data, base2k.as_usize().into());
@@ -97,7 +97,7 @@ where
     // Starting bit
     let mut bit_start: usize = 0;
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
+    let mut pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_infos);
 
     for _ in 0..32_usize.div_ceil(module.log_n()) {
         // By how many bits to left shift

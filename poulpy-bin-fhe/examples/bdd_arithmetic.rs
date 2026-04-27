@@ -12,8 +12,7 @@ use poulpy_core::{
     EncryptionLayout, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout,
-        GLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank,
-        TorusPrecision,
+        GLWELayout, GLWESecretPreparedFactory, GLWESwitchingKeyLayout, GLWEToLWEKeyLayout, ModuleCoreAlloc, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -151,10 +150,10 @@ where
 
     ////////// Key Generation and Preparation
     // Generating the GLWE and LWE key
-    let mut sk_glwe = GLWESecret::alloc_from_infos(&glwe_layout);
+    let mut sk_glwe = module.glwe_secret_alloc_from_infos(&glwe_layout);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_lwe = LWESecret::alloc(bdd_layout.cbt_layout.brk_layout.n_lwe);
+    let mut sk_lwe = module.lwe_secret_alloc(bdd_layout.cbt_layout.brk_layout.n_lwe);
     sk_lwe.fill_binary_block(BINARY_BLOCK_SIZE as usize, &mut source_xs);
 
     // Preparing the private keys
@@ -166,7 +165,7 @@ where
     // and for performing the operations themselves
     let bdd_enc_infos = BDDEncryptionInfos::from_default_sigma(&bdd_layout).unwrap();
 
-    let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_layout);
+    let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&module, &bdd_layout);
     bdd_key.encrypt_sk(
         &module,
         &sk_lwe,
@@ -184,7 +183,7 @@ where
 
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_layout).unwrap();
 
-    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
     a_enc.encrypt_sk(
         &module,
         input_a,
@@ -195,7 +194,7 @@ where
         &mut scratch.borrow(),
     );
 
-    let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+    let mut b_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
     b_enc.encrypt_sk(
         &module,
         input_b,
@@ -223,7 +222,7 @@ where
     b_enc_prepared.prepare(&module, &b_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     // Allocating the intermediate ciphertext c_enc
-    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
 
     // Performing the operation
     c_enc.add(
@@ -239,7 +238,7 @@ where
     c_enc_prepared.prepare(&module, &c_enc, &bdd_key_prepared, &mut scratch.borrow());
 
     // Creating the output ciphertext d_enc
-    let mut selected_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+    let mut selected_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
     selected_enc.xor(
         &module,
         &c_enc_prepared,
@@ -283,7 +282,7 @@ where
 
     let mut inputs_a_enc_vec: Vec<FheUint<Vec<u8>, u32>> = Vec::new();
     for input in &inputs_a_vec {
-        let mut next_input: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+        let mut next_input: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
         next_input.encrypt_sk(
             &module,
             *input,
@@ -301,7 +300,7 @@ where
         inputs_a_enc_vec_map.insert(i, input);
     }
 
-    let mut input_selector_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_layout);
+    let mut input_selector_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_layout);
     input_selector_enc.encrypt_sk(
         &module,
         input_selector,

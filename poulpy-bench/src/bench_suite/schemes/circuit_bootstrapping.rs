@@ -5,7 +5,7 @@ use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk,
     layouts::{
         Dsize, GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret,
-        GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
+        GLWESecretPreparedFactory, LWE, LWELayout, LWESecret, ModuleCoreAlloc,
     },
 };
 use poulpy_hal::{
@@ -96,17 +96,17 @@ pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend
     let mut source_xa: Source = Source::new([1u8; 32]);
     let mut source_xe: Source = Source::new([1u8; 32]);
 
-    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
+    let mut sk_lwe: LWESecret<Vec<u8>> = module.lwe_secret_alloc(n_lwe);
     sk_lwe.fill_binary_block(7, &mut source_xs);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
+    let ct_lwe: LWE<Vec<u8>> = module.lwe_alloc_from_infos(&lwe_infos);
 
     let cbt_enc_infos = CircuitBootstrappingEncryptionInfos::from_default_sigma(&cbt_infos).unwrap();
 
-    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&module, &cbt_infos);
     module.circuit_bootstrapping_key_encrypt_sk(
         &mut cbt_key,
         &sk_lwe,
@@ -117,7 +117,7 @@ pub fn bench_circuit_bootstrapping<BE: Backend<OwnedBuf = Vec<u8>> + HostBackend
         &mut scratch.borrow(),
     );
 
-    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_infos);
     let mut cbt_prepared: CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE> =
         CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_infos);
     cbt_prepared.prepare(&module, &cbt_key, &mut scratch.borrow());

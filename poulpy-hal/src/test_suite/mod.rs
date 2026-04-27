@@ -6,8 +6,8 @@
 //! Tests validate correctness against the [`crate::reference`] implementation.
 
 use crate::layouts::{
-    Backend, HostDataMut, ScalarZnx, ScalarZnxBackendRef, ScalarZnxToBackendRef, VecZnx, VecZnxBackendMut, VecZnxBackendRef,
-    VecZnxToBackendMut, VecZnxToBackendRef,
+    Backend, DataView, HostBytesBackend, HostDataRef, MatZnx, ScalarZnx, ScalarZnxBackendRef, ScalarZnxToBackendRef, VecZnx,
+    VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut, VecZnxToBackendRef,
 };
 
 pub mod convolution;
@@ -36,36 +36,83 @@ pub struct TestParams {
     pub base2k: usize,
 }
 
-/// Host-visible backend bound used by the generic test suites.
+/// Backend bound used by the generic test suites.
 ///
-/// The current HAL tests allocate owned layouts directly from `BE::OwnedBuf`
-/// and inspect them through host-byte utilities, so they require the backend's
-/// owned storage to remain host-readable and byte-backed.
-pub trait TestBackend: Backend<OwnedBuf = Vec<u8>>
-where
-    Self::OwnedBuf: HostDataMut,
-{
-}
+/// Tests upload only coefficient-domain host layouts (`ScalarZnx`, `VecZnx`,
+/// `MatZnx`) and keep all intermediate layouts backend-local.
+pub trait TestBackend: Backend {}
 
-impl<BE> TestBackend for BE
-where
-    BE: Backend<OwnedBuf = Vec<u8>>,
-    BE::OwnedBuf: HostDataMut,
-{
-}
+impl<BE: Backend> TestBackend for BE {}
 
-pub fn vec_znx_backend_ref<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a VecZnx<BE::OwnedBuf>) -> VecZnxBackendRef<'a, BE> {
+pub fn vec_znx_backend_ref<'a, BE: Backend>(vec: &'a VecZnx<BE::OwnedBuf>) -> VecZnxBackendRef<'a, BE> {
     <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(vec)
 }
 
-pub fn vec_znx_backend_mut<'a, BE: Backend<OwnedBuf = Vec<u8>>>(vec: &'a mut VecZnx<BE::OwnedBuf>) -> VecZnxBackendMut<'a, BE> {
+pub fn vec_znx_backend_mut<'a, BE: Backend>(vec: &'a mut VecZnx<BE::OwnedBuf>) -> VecZnxBackendMut<'a, BE> {
     <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(vec)
 }
 
-pub fn scalar_znx_backend_ref<'a, BE: Backend<OwnedBuf = Vec<u8>>>(
-    scalar: &'a ScalarZnx<BE::OwnedBuf>,
-) -> ScalarZnxBackendRef<'a, BE> {
+pub fn scalar_znx_backend_ref<'a, BE: Backend>(scalar: &'a ScalarZnx<BE::OwnedBuf>) -> ScalarZnxBackendRef<'a, BE> {
     <ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(scalar)
+}
+
+pub fn upload_scalar_znx<BE: Backend>(host: &ScalarZnx<impl HostDataRef>) -> ScalarZnx<BE::OwnedBuf> {
+    let shape = host.shape();
+    ScalarZnx::from_data(BE::from_host_bytes(host.data.as_ref()), shape.n(), shape.cols())
+}
+
+pub fn download_scalar_znx<BE: Backend>(backend: &ScalarZnx<BE::OwnedBuf>) -> ScalarZnx<Vec<u8>> {
+    let shape = backend.shape();
+    let host_bytes = BE::to_host_bytes(&backend.data);
+    ScalarZnx::from_data(HostBytesBackend::from_host_bytes(&host_bytes), shape.n(), shape.cols())
+}
+
+pub fn upload_vec_znx<BE: Backend>(host: &VecZnx<impl HostDataRef>) -> VecZnx<BE::OwnedBuf> {
+    let shape = host.shape();
+    VecZnx::from_data_with_max_size(
+        BE::from_host_bytes(host.data.as_ref()),
+        shape.n(),
+        shape.cols(),
+        shape.size(),
+        shape.max_size(),
+    )
+}
+
+pub fn download_vec_znx<BE: Backend>(backend: &VecZnx<BE::OwnedBuf>) -> VecZnx<Vec<u8>> {
+    let shape = backend.shape();
+    let host_bytes = BE::to_host_bytes(&backend.data);
+    VecZnx::from_data_with_max_size(
+        HostBytesBackend::from_host_bytes(&host_bytes),
+        shape.n(),
+        shape.cols(),
+        shape.size(),
+        shape.max_size(),
+    )
+}
+
+pub fn upload_mat_znx<BE: Backend>(host: &MatZnx<impl HostDataRef>) -> MatZnx<BE::OwnedBuf> {
+    let shape = host.shape();
+    MatZnx::from_data(
+        BE::from_host_bytes(host.data().as_ref()),
+        shape.n(),
+        shape.rows(),
+        shape.cols_in(),
+        shape.cols_out(),
+        shape.size(),
+    )
+}
+
+pub fn download_mat_znx<BE: Backend>(backend: &MatZnx<BE::OwnedBuf>) -> MatZnx<Vec<u8>> {
+    let shape = backend.shape();
+    let host_bytes = BE::to_host_bytes(backend.data());
+    MatZnx::from_data(
+        HostBytesBackend::from_host_bytes(&host_bytes),
+        shape.n(),
+        shape.rows(),
+        shape.cols_in(),
+        shape.cols_out(),
+        shape.size(),
+    )
 }
 
 #[macro_export]

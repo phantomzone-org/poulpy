@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniformSourceBackend, VecZnxNormalizeInplaceBackend},
-    layouts::{Module, ScratchOwned, ZnxView, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplaceBackend},
+    layouts::{Module, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
 };
@@ -13,23 +13,24 @@ use crate::{
     glwe_trace::GLWETrace,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
-        GLWESecret, GLWESecretPreparedFactory, LWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, LWEInfos, ModuleCoreAlloc,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::var_noise_gglwe_product,
+    test_suite::{download_glwe_plaintext, upload_glwe, upload_glwe_automorphism_key, upload_glwe_plaintext, upload_glwe_secret},
     vec_znx_host_ops::vec_znx_sub_inplace,
 };
 
 pub fn test_glwe_trace_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWETrace<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
-        + VecZnxFillUniformSourceBackend<BE>
         + GLWESecretPreparedFactory<BE>
         + VecZnxNormalizeInplaceBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -65,9 +66,9 @@ where
         })
         .unwrap();
 
-        let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let glwe_out_template: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let pt_template: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>>;
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -80,26 +81,28 @@ where
                 | module.glwe_trace_tmp_bytes(&glwe_out_infos, &glwe_out_infos, &key_infos),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_out_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
+        let sk_backend = upload_glwe_secret(module, &sk);
 
         let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
-        module.glwe_secret_prepare(&mut sk_dft, &sk);
+        module.glwe_secret_prepare(&mut sk_dft, &sk_backend);
 
         let mut data_want: Vec<i64> = vec![0i64; n];
 
         data_want.iter_mut().for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-        module.vec_znx_fill_uniform_source_backend(
-            out_base2k,
-            &mut vec_znx_backend_mut::<BE>(&mut pt_have.data),
-            0,
-            &mut source_xa,
-        );
+        pt_want = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        for j in 0..pt_want.data.size() {
+            pt_want.data.at_mut(0, j).fill(0);
+        }
+        pt_want.data.at_mut(0, 0)[0] = data_want[0];
+        let pt_input = upload_glwe_plaintext(module, &pt_want);
 
+        let mut glwe_out = upload_glwe(module, &glwe_out_template);
         module.glwe_encrypt_sk(
             &mut glwe_out,
-            &pt_have,
+            &pt_input,
             &sk_dft,
             &glwe_out_infos,
             &mut source_xe,
@@ -109,12 +112,13 @@ where
 
         let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE>> = HashMap::new();
         let gal_els: Vec<i64> = module.glwe_trace_galois_elements();
-        let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
+        let tmp_template: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
+            let mut tmp = upload_glwe_automorphism_key(module, &tmp_template);
             module.glwe_automorphism_key_encrypt_sk(
                 &mut tmp,
                 *gal_el,
-                &sk,
+                &sk_backend,
                 &key_infos,
                 &mut source_xe,
                 &mut source_xa,
@@ -127,18 +131,19 @@ where
         });
 
         module.glwe_trace_inplace(&mut glwe_out, 0, &auto_keys, &mut scratch.borrow());
-
-        (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
-
-        module.glwe_decrypt(&glwe_out, &mut pt_have, &sk_dft, &mut scratch.borrow());
+        let mut pt_have_backend = upload_glwe_plaintext(module, &pt_template);
+        module.glwe_decrypt(&glwe_out, &mut pt_have_backend, &sk_dft, &mut scratch.borrow());
+        let pt_have: GLWEPlaintext<Vec<u8>> = download_glwe_plaintext(module, &pt_have_backend);
 
         vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
+        let mut pt_noise = upload_glwe_plaintext(module, &pt_want);
         module.vec_znx_normalize_inplace_backend(
-            pt_want.base2k().as_usize(),
-            &mut vec_znx_backend_mut::<BE>(&mut pt_want.data),
+            pt_noise.base2k().as_usize(),
+            &mut vec_znx_backend_mut::<BE>(&mut pt_noise.data),
             0,
             &mut scratch.borrow(),
         );
+        pt_want = download_glwe_plaintext(module, &pt_noise);
 
         let noise_have: f64 = pt_want.stats().std().log2();
 

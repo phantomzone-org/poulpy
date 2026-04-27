@@ -1,6 +1,8 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEDecrypt, GLWEEncryptSk,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
+    layouts::{
+        GLWE, GLWEInfos, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc, prepared::GLWESecretPrepared,
+    },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -25,14 +27,14 @@ where
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(infos.rank());
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
+    let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let mut pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(infos);
 
     let mut scratch: ScratchOwned<BE> =
         ScratchOwned::alloc(module.glwe_encrypt_sk_tmp_bytes(infos) | module.glwe_decrypt_tmp_bytes(infos));

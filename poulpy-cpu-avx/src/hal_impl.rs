@@ -1,26 +1,14 @@
 use crate::{FFT64Avx, NTT120Avx};
 use poulpy_cpu_ref::hal_defaults::{
     FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
-    FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120ModuleDefaults, NTT120SvpDefaults,
+    FFT64VmpDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120ModuleDefaults, NTT120SvpDefaults,
     NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults, NTT120VmpDefaults,
 };
 use poulpy_hal::{
     api::{VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
-    layouts::{
-        Backend, CnvPVecLToMut, CnvPVecLToRef, CnvPVecRToMut, CnvPVecRToRef, Data, MatZnxToRef, Module, NoiseInfos,
-        ScalarZnxToRef, Scratch, ScratchOwned, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft,
-        VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
-    },
-    oep::{
-        HalConvolutionImpl, HalModuleImpl, HalScratchImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl,
-        HalVmpImpl,
-    },
-    source::Source,
+    layouts::{Backend, Module, NoiseInfos, VecZnxBackendMut, VecZnxBackendRef, VecZnxDftToBackendMut, ZnxInfos},
+    oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
 };
-
-unsafe impl HalScratchImpl<FFT64Avx> for FFT64Avx {
-    poulpy_cpu_ref::hal_impl_scratch!();
-}
 
 unsafe impl HalVecZnxImpl<FFT64Avx> for FFT64Avx {
     poulpy_cpu_ref::hal_impl_vec_znx!();
@@ -48,10 +36,6 @@ unsafe impl HalSvpImpl<FFT64Avx> for FFT64Avx {
 
 unsafe impl HalVecZnxDftImpl<FFT64Avx> for FFT64Avx {
     poulpy_cpu_ref::hal_impl_vec_znx_dft!(FFT64VecZnxDftDefaults);
-}
-
-unsafe impl HalScratchImpl<NTT120Avx> for NTT120Avx {
-    poulpy_cpu_ref::hal_impl_scratch!();
 }
 
 unsafe impl HalVecZnxImpl<NTT120Avx> for NTT120Avx {

@@ -5,7 +5,7 @@ use poulpy_core::{
     EncryptionLayout, GLWEDecrypt, LWEEncryptSk,
     layouts::{
         Base2K, Dnum, GLWE, GLWELayout, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, LWE, LWEInfos, LWELayout,
-        LWESecret, TorusPrecision,
+        LWESecret, ModuleCoreAlloc, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -35,12 +35,12 @@ where
     let group_name: String = format!("blind_rotate::{label}");
     let mut group = c.benchmark_group(group_name);
 
-    let n_glwe: usize = 512;
-    let n_lwe: usize = 687;
-    let rank: usize = 3;
-    let block_size: usize = 3;
-    let extension_factor: usize = 1;
-    let log_message_modulus: usize = 2;
+    let n_glwe: usize = 2048;
+    let n_lwe: usize = 1160;
+    let rank: usize = 1;
+    let block_size: usize = 8;
+    let extension_factor: usize = 8;
+    let log_message_modulus: usize = 8;
     let message_modulus: usize = 1 << log_message_modulus;
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 24);
@@ -70,17 +70,17 @@ where
         base2k: Base2K(18),
     };
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let mut sk_glwe_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
     module.glwe_secret_prepare(&mut sk_glwe_dft, &sk_glwe);
 
-    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
+    let mut sk_lwe: LWESecret<Vec<u8>> = module.lwe_secret_alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
     let brk_enc_infos = EncryptionLayout::new_from_default_sigma(brk_infos).unwrap();
 
-    let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&brk_infos);
+    let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(&module, &brk_infos);
     module.blind_rotation_key_encrypt_sk(
         &mut brk,
         &sk_glwe_dft,
@@ -94,9 +94,9 @@ where
     let mut brk_prepared: BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE> = BlindRotationKeyPrepared::alloc(&module, &brk);
     brk_prepared.prepare(&module, &brk, &mut scratch.borrow());
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
     res.data_mut().fill_uniform(glwe_infos.base2k().as_usize(), &mut source_xa);
-    let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
+    let mut lwe: LWE<Vec<u8>> = module.lwe_alloc_from_infos(&lwe_infos);
     lwe.data_mut().fill_uniform(lwe_infos.base2k().as_usize(), &mut source_xa);
 
     let mut f_vec: Vec<i64> = vec![0i64; message_modulus];
@@ -108,7 +108,7 @@ where
         k: TorusPrecision(2),
         base2k: Base2K(17),
     };
-    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
+    let mut lut: LookupTable = LookupTable::alloc(&module, &lut_infos);
     lut.set(&module, &f_vec, log_message_modulus + 1);
 
     let id: BenchmarkId = BenchmarkId::from_parameter(format!("{n_glwe} / {n_lwe}"));

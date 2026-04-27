@@ -8,9 +8,8 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, SvpPPolOwned, SvpPPolToBackendRef, VecZnx,
-        VecZnxDftReborrowBackendMut, VecZnxDftReborrowBackendRef, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
-        VmpPMatToBackendRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero, vec_znx_backend_ref_from_mut,
-        vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
+        VecZnxDftReborrowBackendMut, VecZnxDftReborrowBackendRef, VecZnxToBackendRef, VmpPMatToBackendRef, ZnxView, ZnxViewMut,
+        ZnxZero, vec_znx_backend_ref_from_mut, vec_znx_big_backend_ref_from_mut, vec_znx_dft_backend_ref_from_mut,
     },
     oep::HalVecZnxImpl,
 };
@@ -18,32 +17,16 @@ use poulpy_hal::{
 use poulpy_core::{
     Distribution, GLWEAdd, GLWECopy, GLWEExternalProduct, GLWEMulXpMinusOne, GLWENormalize, ScratchArenaTakeCore,
     layouts::{
-        GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, LWE, LWEInfos, LWEToRef,
+        GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWE, LWEInfos, LWEToBackendRef, ModuleCoreAlloc,
         glwe_backend_ref_from_mut,
     },
 };
-
-fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let mut res = res.to_mut();
-    let a = a.to_ref();
-    let min_size = res.size().min(a.size());
-    for j in 0..min_size {
-        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
-    }
-    for j in min_size..res.size() {
-        res.at_mut(res_col, j).fill(0);
-    }
-}
 
 use crate::bin_fhe::blind_rotation::{
     BlindRotationExecute, BlindRotationKeyInfos, BlindRotationKeyPrepared, CGGI, LookupTable, mod_switch_2n,
 };
 
-impl<BE: Backend<OwnedBuf = Vec<u8>>> BlindRotationExecute<CGGI, BE> for Module<BE>
+impl<BE: Backend<OwnedBuf = Vec<u8>> + 'static> BlindRotationExecute<CGGI, BE> for Module<BE>
 where
     Self: VecZnxDftBytesOf
         + VecZnxBigBytesOf
@@ -71,7 +54,9 @@ where
     // public blind-rotation API backend-generic, but leave this implementation
     // host-backed until those helpers are migrated.
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::OwnedBuf: HostDataRef,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     BE: HalVecZnxImpl<BE>,
 {
     fn blind_rotation_execute_tmp_bytes<G, B>(
@@ -125,9 +110,9 @@ where
         brk: &BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         DL: Data,
-        LWE<DL>: LWEToRef,
+        LWE<DL>: LWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
@@ -164,11 +149,12 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     brk: &BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    R: GLWEToBackendMut<BE> + GLWEInfos,
     DataIn: Data,
-    LWE<DataIn>: LWEToRef,
+    LWE<DataIn>: LWEToBackendRef<BE>,
     M: VecZnxDftBytesOf
         + ModuleN
+        + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
         + VecZnxRotateBackend<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftZero<BE>
@@ -185,6 +171,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     // TODO(device): this extended block-binary path still performs host-side
     // coefficient orchestration over temporary accumulators.
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::OwnedBuf: HostDataRef,
 {
     let n_glwe: usize = brk.n_glwe().into();
@@ -212,12 +199,11 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     }
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).as_usize()]; // TODO: from scratch space
-    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
     let two_n: usize = 2 * n_glwe;
     let two_n_ext: usize = 2 * lut.domain_size();
 
-    mod_switch_2n(two_n_ext, &mut lwe_2n, &lwe_ref, lut.rotation_direction());
+    mod_switch_2n::<BE, _>(two_n_ext, &mut lwe_2n, lwe, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b_pos: usize = ((lwe_2n[0] + two_n_ext as i64) & (two_n_ext - 1) as i64) as usize;
@@ -257,8 +243,9 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
             for i in 0..extension_factor {
                 let skii_ref = skii.data().to_backend_ref();
                 scratch_5.scope(|mut scratch_local| {
+                    let mut vmp_res_i = &mut vmp_res[i];
                     module.vmp_apply_dft_to_dft(
-                        &mut vmp_res[i],
+                        &mut vmp_res_i,
                         &acc_dft[i].reborrow_backend_ref(),
                         &skii_ref,
                         0,
@@ -350,10 +337,17 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
         });
     }
 
-    let mut res_mut = res.to_mut();
-    (0..cols).for_each(|i| {
-        vec_znx_copy(res_mut.data_mut(), i, &acc[0], i);
-    });
+    let mut res_mut = res.to_backend_mut();
+    for i in 0..cols {
+        let res_data = res_mut.data_mut();
+        let min_size = res_data.size().min(acc[0].size());
+        for j in 0..min_size {
+            res_data.at_mut(i, j).copy_from_slice(acc[0].at(i, j));
+        }
+        for j in min_size..res_data.size() {
+            res_data.at_mut(i, j).fill(0);
+        }
+    }
 }
 
 fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
@@ -364,11 +358,12 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     brk: &BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    R: GLWEToBackendMut<BE> + GLWEInfos,
     DataIn: Data,
-    LWE<DataIn>: LWEToRef,
+    LWE<DataIn>: LWEToBackendRef<BE>,
     M: VecZnxDftBytesOf
         + ModuleN
+        + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
         + VecZnxRotateBackend<BE>
         + VecZnxDftApply<BE>
         + VecZnxDftZero<BE>
@@ -385,19 +380,19 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     // TODO(device): this block-binary path still assumes host-visible
     // temporary accumulators and LUT buffers.
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::OwnedBuf: HostDataRef,
 {
     let n_glwe: usize = brk.n_glwe().into();
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
-    let mut out_tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
-    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
+    let mut out_tmp: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(res);
     let two_n: usize = n_glwe << 1;
     let base2k: usize = brk.base2k().into();
     let dnum: usize = brk.dnum().into();
 
     let cols: usize = (out_tmp.rank() + 1).into();
 
-    mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref, lut.rotation_direction());
+    mod_switch_2n::<BE, _>(2 * lut.domain_size(), &mut lwe_2n, lwe, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];
@@ -441,8 +436,9 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
             // vmp_res = DFT(acc) * BRK[i]
             let skii_ref = skii.data().to_backend_ref();
+            let mut vmp_res_backend = &mut vmp_res;
             module.vmp_apply_dft_to_dft(
-                &mut vmp_res,
+                &mut vmp_res_backend,
                 &acc_dft.reborrow_backend_ref(),
                 &skii_ref,
                 0,
@@ -506,14 +502,21 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     brk: &BlindRotationKeyPrepared<BE::OwnedBuf, CGGI, BE>,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+    R: GLWEToBackendMut<BE> + GLWEInfos,
     DataIn: Data,
-    LWE<DataIn>: LWEToRef,
-    M: VecZnxRotateBackend<BE> + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd<BE> + GLWENormalize<BE> + GLWECopy<BE>,
+    LWE<DataIn>: LWEToBackendRef<BE>,
+    M: VecZnxRotateBackend<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEMulXpMinusOne<BE>
+        + GLWEAdd<BE>
+        + GLWENormalize<BE>
+        + GLWECopy<BE>
+        + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     // TODO(device): the standard CGGI path still uses host-visible
     // coefficient staging for the accumulator.
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::OwnedBuf: HostDataRef,
 {
     #[cfg(debug_assertions)]
@@ -543,14 +546,13 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     }
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
-    let mut out_tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+    let mut out_tmp: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(res);
     module.glwe_copy(
         &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp),
         &res.to_backend_ref(),
     );
-    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
-    mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref, lut.rotation_direction());
+    mod_switch_2n::<BE, _>(2 * lut.domain_size(), &mut lwe_2n, lwe, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];

@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{ModuleLogN, ModuleN},
-    layouts::{Backend, HostDataMut, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, HostDataMut, HostDataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
 };
 
 use poulpy_core::{
     GGSWExpandRows, GGSWFromGGLWE, GLWECopy, GLWEDecrypt, GLWENormalize, GLWEPacking, GLWERotate, GLWETrace,
     ScratchArenaTakeCore,
     layouts::{
-        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GGSWToMut,
+        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut,
         GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
-        GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank, glwe_backend_mut_from_mut,
+        GetGaloisElement, LWEInfos, LWEToBackendRef, ModuleCoreAlloc, Rank, glwe_backend_mut_from_mut,
     },
 };
 
@@ -34,6 +34,7 @@ pub trait CircuitBootstrappingExecute<BRA, BE>
 where
     BRA: BlindRotationAlgo,
     BE: Backend<OwnedBuf = Vec<u8>>,
+    Self: ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     /// Returns the minimum scratch-space size (bytes) required by the circuit
     /// bootstrapping evaluation methods.
@@ -66,8 +67,8 @@ where
         extension_factor: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos;
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos;
 
     /// Bootstraps `lwe` into `res`, encoding the plaintext in the exponent of
     /// the polynomial variable.
@@ -85,8 +86,8 @@ where
         extension_factor: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos;
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos;
 }
 
 impl<BRA, BE> CircuitBootstrappingKeyPrepared<BE::OwnedBuf, BRA, BE>
@@ -108,8 +109,8 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: CircuitBootstrappingExecute<BRA, BE>,
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos,
     {
         module.circuit_bootstrapping_execute_to_constant(res, lwe, self, log_domain, extension_factor, scratch);
     }
@@ -130,8 +131,8 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         M: CircuitBootstrappingExecute<BRA, BE>,
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos,
     {
         module.circuit_bootstrapping_execute_to_exponent(log_gap_out, res, lwe, self, log_domain, extension_factor, scratch);
     }
@@ -142,6 +143,7 @@ where
     BRA: BlindRotationAlgo,
     BE: Backend<OwnedBuf = Vec<u8>> + 'static,
     Self: ModuleN
+        + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
         + LookupTableFactory
         + BlindRotationExecute<BRA, BE>
         + GLWETrace<BE>
@@ -196,8 +198,8 @@ where
         extension_factor: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos,
     {
         assert!(
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
@@ -219,8 +221,8 @@ where
         extension_factor: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GGSWToMut + GGSWToBackendMut<BE> + GGSWInfos,
-        L: LWEToRef + LWEInfos,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
+        L: LWEToBackendRef<BE> + LWEInfos,
     {
         assert!(
             scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
@@ -247,9 +249,10 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
 ) where
     BRA: BlindRotationAlgo,
     BE: Backend<OwnedBuf = Vec<u8>> + 'static,
-    R: GGSWToMut + GGSWToBackendMut<BE>,
-    L: LWEToRef,
+    R: GGSWToBackendMut<BE>,
+    L: LWEToBackendRef<BE>,
     M: ModuleN
+        + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
         + LookupTableFactory
         + BlindRotationExecute<BRA, BE>
         + GLWETrace<BE>
@@ -270,8 +273,8 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
     // TODO(device): this core routine still drops to host GLWE/LWE views for
     // trace/packing orchestration. It is intentionally kept behind a
     // backend-generic public API so we can swap in device-native helpers later.
-    let res_host: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-    let lwe: &LWE<&[u8]> = &lwe.to_ref();
+    let res_host: &mut GGSW<&mut [u8]> = &mut res.to_backend_mut();
+    let lwe: &LWE<&[u8]> = &lwe.to_backend_ref();
 
     assert_eq!(res_host.n(), key.brk.n());
 
@@ -316,7 +319,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
     };
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
+    let mut lut: LookupTable = LookupTable::alloc(module, &lut_infos);
     lut.set(module, &f, res_base2k * dnum_res);
 
     if to_exponent {
@@ -340,13 +343,15 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
     };
 
     let mut scratch_1 = scratch.borrow();
-    let mut res_glwe_atk_layout: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_atk_layout);
+    let mut res_glwe_atk_layout: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(glwe_atk_layout);
 
     // Execute blind rotation over BRK layout and returns result over ATK layout
     {
-        let mut res_glwe_brk_layout: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_brk_layout);
+        let mut res_glwe_brk_layout: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(glwe_brk_layout);
+        let mut lwe_owned: LWE<Vec<u8>> = module.lwe_alloc_from_infos(lwe);
+        lwe_owned.data_mut().raw_mut().copy_from_slice(lwe.data().raw());
         key.brk
-            .execute(module, &mut res_glwe_brk_layout, lwe, &lut, &mut scratch_1.borrow());
+            .execute(module, &mut res_glwe_brk_layout, &lwe_owned, &lut, &mut scratch_1.borrow());
 
         if res_glwe_brk_layout.base2k() == res_glwe_atk_layout.base2k() {
             module.glwe_copy(
@@ -387,7 +392,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
                 &mut scratch_1,
             );
         } else {
-            let mut tmp_row: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&res_row);
+            let mut tmp_row: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&res_row);
             module.glwe_trace(&mut tmp_row, 0, &res_glwe_atk_layout, &key.atk, &mut scratch_1.borrow());
             module.glwe_copy(
                 &mut glwe_backend_mut_from_mut::<BE>(&mut res_row),
@@ -407,9 +412,9 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn post_process<'s, R, A, M, H, K, BE>(
+fn post_process<'s, A, M, H, K, BE>(
     module: &M,
-    res: &mut R,
+    res: &mut GLWE<&mut [u8]>,
     a: &A,
     log_gap_in: usize,
     log_gap_out: usize,
@@ -418,11 +423,10 @@ fn post_process<'s, R, A, M, H, K, BE>(
     scratch: &mut ScratchArena<'s, BE>,
 ) where
     BE: Backend<OwnedBuf = Vec<u8>> + 'static + 's,
-    R: GLWEToMut + GLWEInfos,
-    A: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
+    A: GLWEToBackendRef<BE> + GLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy<BE>,
+    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
@@ -433,8 +437,8 @@ fn post_process<'s, R, A, M, H, K, BE>(
     // TODO: optimize with packing and final partial trace
     // If gap_out < gap_in, then we need to repack, i.e. reduce the cap between coefficients.
     if log_gap_in != log_gap_out {
-        let mut a_trace: GLWE<Vec<u8>> = GLWE::alloc_from_infos(a);
-        let mut packed: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+        let mut a_trace: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(a);
+        let mut packed: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(res);
 
         // First partial trace, vanishes all coefficients which are not multiples of gap_in
         // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -448,7 +452,7 @@ fn post_process<'s, R, A, M, H, K, BE>(
 
         let steps: usize = 1 << log_domain;
 
-        let mut cts_vec: Vec<GLWE<Vec<u8>>> = (0..steps).map(|_| GLWE::alloc_from_infos(a)).collect();
+        let mut cts_vec: Vec<GLWE<Vec<u8>>> = (0..steps).map(|_| module.glwe_alloc_from_infos(a)).collect();
 
         for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             if i != 0 {
@@ -468,15 +472,15 @@ fn post_process<'s, R, A, M, H, K, BE>(
         }
 
         module.glwe_pack(&mut packed, cts, log_gap_out, auto_keys, &mut scratch.borrow());
-        let mut res_host = res.to_mut();
+        let mut res_host = glwe_backend_mut_from_mut::<BE>(res);
         module.glwe_copy(
             &mut glwe_backend_mut_from_mut::<BE>(&mut res_host),
             &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&packed),
         );
     } else {
-        let mut traced: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+        let mut traced: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(res);
         module.glwe_trace(&mut traced, module.log_n() - log_gap_in + 1, a, auto_keys, scratch);
-        let mut res_host = res.to_mut();
+        let mut res_host = glwe_backend_mut_from_mut::<BE>(res);
         module.glwe_copy(
             &mut glwe_backend_mut_from_mut::<BE>(&mut res_host),
             &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&traced),

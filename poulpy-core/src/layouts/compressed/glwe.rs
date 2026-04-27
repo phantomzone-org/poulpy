@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{VecZnxCopyBackend, VecZnxFillUniformSourceBackend},
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef,
-        VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, vec_znx_backend_mut_from_mut, vec_znx_backend_ref_from_mut,
+        WriterTo, vec_znx_backend_mut_from_mut, vec_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -119,7 +119,7 @@ impl<D: HostDataMut> FillUniform for GLWECompressed<D> {
 
 impl GLWECompressed<Vec<u8>> {
     /// Allocates a new compressed GLWE by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GLWEInfos,
     {
@@ -130,9 +130,15 @@ impl GLWECompressed<Vec<u8>> {
     ///
     /// The underlying `VecZnx` is sized to hold one column of
     /// `ceil(k / base2k)` limbs at ring degree `n`.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
         GLWECompressed {
-            data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(n.into(), 1, size)),
+                n.into(),
+                1,
+                size,
+            ),
             base2k,
             rank,
             seed: [0u8; 32],
@@ -222,40 +228,6 @@ where
 }
 
 // module-only API: decompression is provided by `GLWEDecompress` on `Module`.
-
-/// Converts a compressed GLWE to an immutably-borrowed variant.
-pub trait GLWECompressedToRef {
-    /// Returns an immutably-borrowed view of this compressed GLWE.
-    fn to_ref(&self) -> GLWECompressed<&[u8]>;
-}
-
-impl<D: HostDataRef> GLWECompressedToRef for GLWECompressed<D> {
-    fn to_ref(&self) -> GLWECompressed<&[u8]> {
-        GLWECompressed {
-            seed: self.seed,
-            base2k: self.base2k,
-            rank: self.rank,
-            data: self.data.to_ref(),
-        }
-    }
-}
-
-/// Converts a compressed GLWE to a mutably-borrowed variant.
-pub trait GLWECompressedToMut {
-    /// Returns a mutably-borrowed view of this compressed GLWE.
-    fn to_mut(&mut self) -> GLWECompressed<&mut [u8]>;
-}
-
-impl<D: HostDataMut> GLWECompressedToMut for GLWECompressed<D> {
-    fn to_mut(&mut self) -> GLWECompressed<&mut [u8]> {
-        GLWECompressed {
-            seed: self.seed,
-            base2k: self.base2k,
-            rank: self.rank,
-            data: self.data.to_mut(),
-        }
-    }
-}
 
 pub trait GLWECompressedToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> GLWECompressedBackendRef<'_, BE>;

@@ -4,12 +4,14 @@ use criterion::{BenchmarkId, Criterion};
 
 use poulpy_cpu_ref::reference::vec_znx::{vec_znx_lsh_tmp_bytes, vec_znx_rsh_tmp_bytes};
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshAssign, VecZnxRsh, VecZnxRshAssign},
-    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx},
-    source::Source,
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxRshBackend,
+        VecZnxRshInplaceBackend,
+    },
+    layouts::{Backend, Module, ScratchOwned},
 };
 
-pub fn bench_vec_znx_lsh_assign<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: ModuleNew<B> + VecZnxLshAssign<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
@@ -31,18 +33,15 @@ where
 
         let base2k: usize = 50;
 
-        let mut source: Source = Source::new([0u8; 32]);
-
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        b.fill_uniform(50, &mut source);
+        let b = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let mut b = crate::upload_host_vec_znx::<B>(&b);
 
         move || {
+            let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
                 module.vec_znx_lsh_assign(base2k, base2k - 1, &mut b, i, scratch.borrow());
             }
@@ -81,18 +80,17 @@ where
 
         let base2k: usize = 50;
 
-        let mut source: Source = Source::new([0u8; 32]);
-
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        res.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let a = crate::upload_host_vec_znx::<B>(&a);
+        let mut res = module.vec_znx_alloc(cols, size);
 
         move || {
+            let a = crate::vec_znx_backend_ref::<B>(&a);
+            let mut res = crate::vec_znx_backend_mut::<B>(&mut res);
             for i in 0..cols {
                 module.vec_znx_lsh(base2k, base2k - 1, &mut res, i, &a, i, scratch.borrow());
             }
@@ -109,7 +107,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rsh_assign<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxRshAssign<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
@@ -131,18 +129,15 @@ where
 
         let base2k: usize = 50;
 
-        let mut source: Source = Source::new([0u8; 32]);
-
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        b.fill_uniform(50, &mut source);
+        let b = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let mut b = crate::upload_host_vec_znx::<B>(&b);
 
         move || {
+            let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
                 module.vec_znx_rsh_assign(base2k, base2k - 1, &mut b, i, scratch.borrow());
             }
@@ -181,18 +176,17 @@ where
 
         let base2k: usize = 50;
 
-        let mut source: Source = Source::new([0u8; 32]);
-
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        res.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let a = crate::upload_host_vec_znx::<B>(&a);
+        let mut res = module.vec_znx_alloc(cols, size);
 
         move || {
+            let a = crate::vec_znx_backend_ref::<B>(&a);
+            let mut res = crate::vec_znx_backend_mut::<B>(&mut res);
             for i in 0..cols {
                 module.vec_znx_rsh(base2k, base2k - 1, &mut res, i, &a, i, scratch.borrow());
             }

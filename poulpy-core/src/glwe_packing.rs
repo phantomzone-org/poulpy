@@ -9,8 +9,8 @@ pub use crate::api::GLWEPacking;
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
-        GetGaloisElement, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut,
+        GLWEToBackendRef, GetGaloisElement, ModuleCoreAlloc, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -71,12 +71,19 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     auto_key: &K,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub<BE> + GLWEShift<BE> + GLWEAdd<BE> + GLWENormalize<BE> + ?Sized,
+    M: GLWEAutomorphism<BE>
+        + GLWERotate<BE>
+        + GLWESub<BE>
+        + GLWEShift<BE>
+        + GLWEAdd<BE>
+        + GLWENormalize<BE>
+        + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+        + ?Sized,
     A: GLWEToBackendMut<BE> + GLWEInfos,
     B: GLWEToBackendMut<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+    BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
@@ -93,7 +100,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
 
         if let Some(b) = b.as_deref_mut() {
             let a_layout = a.glwe_layout();
-            let mut tmp_b = GLWE::alloc_from_infos(&a_layout);
+            let mut tmp_b = module.glwe_alloc_from_infos(&a_layout);
 
             glwe_rotate_inplace_on(module, -t, a, scratch);
 
@@ -109,13 +116,13 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
 
             {
                 let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
-                    <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+                    <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
                 module.glwe_normalize_inplace(&mut tmp_b_backend, scratch);
             }
 
             {
                 let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
-                    <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+                    <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
                 module.glwe_automorphism_inplace(&mut tmp_b_backend, auto_key, scratch);
             }
 
@@ -132,15 +139,16 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
         let t: i64 = 1 << (b.n().log2() - i - 1);
 
         let b_layout = b.glwe_layout();
-        let mut tmp_b = GLWE::alloc_from_infos(&b_layout);
+        let mut tmp_b = module.glwe_alloc_from_infos(&b_layout);
         {
             let b_backend = b.to_backend_ref();
-            let mut tmp_b_backend: GLWEBackendMut<'_, BE> = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+            let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
+                <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
             module.glwe_rotate(t, &mut tmp_b_backend, &b_backend);
         }
         module.glwe_rsh(1, &mut tmp_b, scratch);
 
-        let tmp_b_ref = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_b);
+        let tmp_b_ref = <BackendGLWE<BE> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_b);
         let mut b_backend = b.to_backend_mut();
         module.glwe_automorphism_sub_negate(&mut b_backend, &tmp_b_ref, auto_key, scratch)
     }
@@ -152,6 +160,7 @@ where
     Self: GLWEAutomorphism<BE>
         + GaloisElement
         + ModuleLogN
+        + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
         + GLWERotate<BE>
         + GLWESub<BE>
         + GLWEShift<BE>
@@ -195,7 +204,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         BE: 's,
     {
         assert!(*a.keys().max().unwrap() < self.n());
@@ -244,6 +253,7 @@ impl<BE: Backend> GLWEPackingDefault<BE> for Module<BE> where
     Self: GLWEAutomorphism<BE>
         + GaloisElement
         + ModuleLogN
+        + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
         + GLWERotate<BE>
         + GLWESub<BE>
         + GLWEShift<BE>

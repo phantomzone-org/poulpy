@@ -1,14 +1,11 @@
 use bytemuck::{cast_slice, cast_slice_mut};
-use poulpy_hal::layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
+use poulpy_hal::layouts::{ZnxInfos, ZnxView, ZnxViewMut};
 
 pub(crate) fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
+    R: ZnxViewMut<Scalar = i64> + ZnxInfos,
+    A: ZnxView<Scalar = i64> + ZnxInfos,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     #[cfg(debug_assertions)]
     assert_eq!(res.n(), a.n());
 
@@ -23,12 +20,9 @@ where
 
 pub(crate) fn vec_znx_sub_inplace<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
+    R: ZnxViewMut<Scalar = i64> + ZnxInfos,
+    A: ZnxView<Scalar = i64> + ZnxInfos,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     #[cfg(debug_assertions)]
     assert_eq!(res.n(), a.n());
 

@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWELayout, GGLWEPrepared, GGLWEPreparedBackendMut, GGLWEPreparedBackendRef,
-    GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos,
-    GetGaloisElement, LWEInfos, Rank, SetGaloisElement, TorusPrecision,
+    GGLWEPreparedFactory, GGLWEToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement, LWEInfos, Rank,
+    SetGaloisElement, TorusPrecision,
 };
 
 impl<K, BE: Backend> GLWEAutomorphismKeyHelper<K, BE> for HashMap<i64, K>
@@ -145,13 +145,13 @@ where
 
     fn glwe_automorphism_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
-        R: GGLWEPreparedToMut<B> + GGLWEPreparedToBackendMut<B> + SetGaloisElement,
+        R: GGLWEPreparedToBackendMut<B> + SetGaloisElement,
         O: GGLWEToBackendRef<B> + GetGaloisElement,
         ScratchArena<'s, B>: ScratchAvailable,
         B: 's,
     {
         let tmp_bytes = {
-            let res_infos = res.to_mut();
+            let res_infos = res.to_backend_mut();
             self.glwe_automorphism_key_prepare_tmp_bytes(&res_infos)
         };
         assert!(
@@ -170,18 +170,6 @@ impl<B: Backend> GLWEAutomorphismKeyPreparedFactory<B> for Module<B> where Modul
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEAutomorphismKeyPreparedFactory` on `Module`.
 
-impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWEAutomorphismKeyPrepared<D, B> {
-    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
-        self.key.to_mut()
-    }
-}
-
-impl<D: HostDataRef, BE: Backend> GGLWEPreparedToRef<BE> for GLWEAutomorphismKeyPrepared<D, BE> {
-    fn to_ref(&self) -> GGLWEPrepared<&[u8], BE> {
-        self.key.to_ref()
-    }
-}
-
 pub type GLWEAutomorphismKeyPreparedBackendRef<'a, B> = GLWEAutomorphismKeyPrepared<<B as Backend>::BufRef<'a>, B>;
 pub type GLWEAutomorphismKeyPreparedBackendMut<'a, B> = GLWEAutomorphismKeyPrepared<<B as Backend>::BufMut<'a>, B>;
 
@@ -189,7 +177,10 @@ pub trait GLWEAutomorphismKeyPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWEAutomorphismKeyPreparedBackendRef<'_, B>;
 }
 
-impl<B: Backend> GLWEAutomorphismKeyPreparedToBackendRef<B> for GLWEAutomorphismKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEAutomorphismKeyPreparedToBackendRef<B> for GLWEAutomorphismKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GLWEAutomorphismKeyPreparedBackendRef<'_, B> {
         GLWEAutomorphismKeyPrepared {
             key: self.key.to_backend_ref(),
@@ -198,13 +189,19 @@ impl<B: Backend> GLWEAutomorphismKeyPreparedToBackendRef<B> for GLWEAutomorphism
     }
 }
 
-impl<B: Backend> GGLWEPreparedToBackendRef<B> for GLWEAutomorphismKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEPreparedToBackendRef<B> for GLWEAutomorphismKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
         self.key.to_backend_ref()
     }
 }
 
-impl<B: Backend> GGLWEPreparedToBackendMut<B> for GLWEAutomorphismKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEPreparedToBackendMut<B> for GLWEAutomorphismKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B> {
         self.key.to_backend_mut()
     }
@@ -214,7 +211,10 @@ pub trait GLWEAutomorphismKeyPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWEAutomorphismKeyPreparedBackendMut<'_, B>;
 }
 
-impl<B: Backend> GLWEAutomorphismKeyPreparedToBackendMut<B> for GLWEAutomorphismKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEAutomorphismKeyPreparedToBackendMut<B> for GLWEAutomorphismKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GLWEAutomorphismKeyPreparedBackendMut<'_, B> {
         GLWEAutomorphismKeyPrepared {
             key: self.key.to_backend_mut(),

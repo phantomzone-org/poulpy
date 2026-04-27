@@ -1,6 +1,32 @@
 use std::marker::PhantomData;
 
-use crate::layouts::{Backend, Data, DataView, DataViewMut, HostDataMut, HostDataRef, ZnxInfos, ZnxView};
+use crate::layouts::{Backend, Data, DataView, DataViewMut, HostDataRef, ZnxInfos, ZnxView};
+
+#[repr(C)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Default)]
+pub struct CnvPVecShape {
+    n: usize,
+    size: usize,
+    cols: usize,
+}
+
+impl CnvPVecShape {
+    pub const fn new(n: usize, cols: usize, size: usize) -> Self {
+        Self { n, size, cols }
+    }
+
+    pub const fn n(self) -> usize {
+        self.n
+    }
+
+    pub const fn size(self) -> usize {
+        self.size
+    }
+
+    pub const fn cols(self) -> usize {
+        self.cols
+    }
+}
 
 /// Prepared right operand for bivariate convolution.
 ///
@@ -10,19 +36,17 @@ use crate::layouts::{Backend, Data, DataView, DataViewMut, HostDataMut, HostData
 /// Created via [`Convolution::cnv_prepare_right`](crate::api::Convolution::cnv_prepare_right).
 pub struct CnvPVecR<D: Data, BE: Backend> {
     data: D,
-    n: usize,
-    size: usize,
-    cols: usize,
+    shape: CnvPVecShape,
     _phantom: PhantomData<BE>,
 }
 
 impl<D: Data, BE: Backend> ZnxInfos for CnvPVecR<D, BE> {
     fn cols(&self) -> usize {
-        self.cols
+        self.shape.cols()
     }
 
     fn n(&self) -> usize {
-        self.n
+        self.shape.n()
     }
 
     fn rows(&self) -> usize {
@@ -30,7 +54,7 @@ impl<D: Data, BE: Backend> ZnxInfos for CnvPVecR<D, BE> {
     }
 
     fn size(&self) -> usize {
-        self.size
+        self.shape.size()
     }
 }
 
@@ -51,14 +75,30 @@ impl<D: HostDataRef, BE: Backend> ZnxView for CnvPVecR<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
+impl<D: Data, BE: Backend> CnvPVecR<D, BE> {
+    pub fn shape(&self) -> CnvPVecShape {
+        self.shape
+    }
+
+    pub fn n(&self) -> usize {
+        self.shape.n()
+    }
+
+    pub fn cols(&self) -> usize {
+        self.shape.cols()
+    }
+
+    pub fn size(&self) -> usize {
+        self.shape.size()
+    }
+}
+
 impl<B: Backend> CnvPVecR<B::OwnedBuf, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: B::OwnedBuf = B::alloc_bytes(B::bytes_of_cnv_pvec_right(n, cols, size));
+        let data: B::OwnedBuf = B::alloc_zeroed_bytes(B::bytes_of_cnv_pvec_right(n, cols, size));
         Self {
             data,
-            n,
-            size,
-            cols,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -69,9 +109,7 @@ impl<B: Backend> CnvPVecR<B::OwnedBuf, B> {
         let data: B::OwnedBuf = B::from_host_bytes(&data);
         Self {
             data,
-            n,
-            size,
-            cols,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -81,9 +119,7 @@ impl<D: Data, B: Backend> CnvPVecR<D, B> {
     pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
-            n,
-            cols,
-            size,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -97,19 +133,17 @@ impl<D: Data, B: Backend> CnvPVecR<D, B> {
 /// Created via [`Convolution::cnv_prepare_left`](crate::api::Convolution::cnv_prepare_left).
 pub struct CnvPVecL<D: Data, BE: Backend> {
     data: D,
-    n: usize,
-    size: usize,
-    cols: usize,
+    shape: CnvPVecShape,
     _phantom: PhantomData<BE>,
 }
 
 impl<D: Data, BE: Backend> ZnxInfos for CnvPVecL<D, BE> {
     fn cols(&self) -> usize {
-        self.cols
+        self.shape.cols()
     }
 
     fn n(&self) -> usize {
-        self.n
+        self.shape.n()
     }
 
     fn rows(&self) -> usize {
@@ -117,7 +151,7 @@ impl<D: Data, BE: Backend> ZnxInfos for CnvPVecL<D, BE> {
     }
 
     fn size(&self) -> usize {
-        self.size
+        self.shape.size()
     }
 }
 
@@ -138,14 +172,30 @@ impl<D: HostDataRef, BE: Backend> ZnxView for CnvPVecL<D, BE> {
     type Scalar = BE::ScalarPrep;
 }
 
+impl<D: Data, BE: Backend> CnvPVecL<D, BE> {
+    pub fn shape(&self) -> CnvPVecShape {
+        self.shape
+    }
+
+    pub fn n(&self) -> usize {
+        self.shape.n()
+    }
+
+    pub fn cols(&self) -> usize {
+        self.shape.cols()
+    }
+
+    pub fn size(&self) -> usize {
+        self.shape.size()
+    }
+}
+
 impl<B: Backend> CnvPVecL<B::OwnedBuf, B> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: B::OwnedBuf = B::alloc_bytes(B::bytes_of_cnv_pvec_left(n, cols, size));
+        let data: B::OwnedBuf = B::alloc_zeroed_bytes(B::bytes_of_cnv_pvec_left(n, cols, size));
         Self {
             data,
-            n,
-            size,
-            cols,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -156,9 +206,7 @@ impl<B: Backend> CnvPVecL<B::OwnedBuf, B> {
         let data: B::OwnedBuf = B::from_host_bytes(&data);
         Self {
             data,
-            n,
-            size,
-            cols,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -168,9 +216,7 @@ impl<D: Data, B: Backend> CnvPVecL<D, B> {
     pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
-            n,
-            cols,
-            size,
+            shape: CnvPVecShape::new(n, cols, size),
             _phantom: PhantomData,
         }
     }
@@ -191,9 +237,7 @@ impl<BE: Backend> CnvPVecRToBackendRef<BE> for CnvPVecR<BE::OwnedBuf, BE> {
     fn to_backend_ref(&self) -> CnvPVecRBackendRef<'_, BE> {
         CnvPVecR {
             data: BE::view(&self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -208,9 +252,7 @@ impl<'b, BE: Backend + 'b> CnvPVecRReborrowBackendRef<BE> for CnvPVecR<BE::BufMu
     fn reborrow_backend_ref(&self) -> CnvPVecRBackendRef<'_, BE> {
         CnvPVecR {
             data: BE::view_ref_mut(&self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -225,9 +267,7 @@ impl<BE: Backend> CnvPVecRToBackendMut<BE> for CnvPVecR<BE::OwnedBuf, BE> {
     fn to_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE> {
         CnvPVecR {
             data: BE::view_mut(&mut self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -242,43 +282,7 @@ impl<'b, BE: Backend + 'b> CnvPVecRReborrowBackendMut<BE> for CnvPVecR<BE::BufMu
     fn reborrow_backend_mut(&mut self) -> CnvPVecRBackendMut<'_, BE> {
         CnvPVecR {
             data: BE::view_mut_ref(&mut self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
-            _phantom: self._phantom,
-        }
-    }
-}
-
-/// Borrow a `CnvPVecR` as a shared reference view.
-pub trait CnvPVecRToRef<BE: Backend> {
-    fn to_ref(&self) -> CnvPVecR<&[u8], BE>;
-}
-
-impl<D: HostDataRef, BE: Backend> CnvPVecRToRef<BE> for CnvPVecR<D, BE> {
-    fn to_ref(&self) -> CnvPVecR<&[u8], BE> {
-        CnvPVecR {
-            data: self.data.as_ref(),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
-            _phantom: self._phantom,
-        }
-    }
-}
-
-/// Borrow a `CnvPVecR` as a mutable reference view.
-pub trait CnvPVecRToMut<BE: Backend> {
-    fn to_mut(&mut self) -> CnvPVecR<&mut [u8], BE>;
-}
-
-impl<D: HostDataMut, BE: Backend> CnvPVecRToMut<BE> for CnvPVecR<D, BE> {
-    fn to_mut(&mut self) -> CnvPVecR<&mut [u8], BE> {
-        CnvPVecR {
-            data: self.data.as_mut(),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -293,9 +297,7 @@ impl<BE: Backend> CnvPVecLToBackendRef<BE> for CnvPVecL<BE::OwnedBuf, BE> {
     fn to_backend_ref(&self) -> CnvPVecLBackendRef<'_, BE> {
         CnvPVecL {
             data: BE::view(&self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -310,9 +312,7 @@ impl<'b, BE: Backend + 'b> CnvPVecLReborrowBackendRef<BE> for CnvPVecL<BE::BufMu
     fn reborrow_backend_ref(&self) -> CnvPVecLBackendRef<'_, BE> {
         CnvPVecL {
             data: BE::view_ref_mut(&self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -327,9 +327,7 @@ impl<BE: Backend> CnvPVecLToBackendMut<BE> for CnvPVecL<BE::OwnedBuf, BE> {
     fn to_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE> {
         CnvPVecL {
             data: BE::view_mut(&mut self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }
@@ -344,43 +342,7 @@ impl<'b, BE: Backend + 'b> CnvPVecLReborrowBackendMut<BE> for CnvPVecL<BE::BufMu
     fn reborrow_backend_mut(&mut self) -> CnvPVecLBackendMut<'_, BE> {
         CnvPVecL {
             data: BE::view_mut_ref(&mut self.data),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
-            _phantom: self._phantom,
-        }
-    }
-}
-
-/// Borrow a `CnvPVecL` as a shared reference view.
-pub trait CnvPVecLToRef<BE: Backend> {
-    fn to_ref(&self) -> CnvPVecL<&[u8], BE>;
-}
-
-impl<D: HostDataRef, BE: Backend> CnvPVecLToRef<BE> for CnvPVecL<D, BE> {
-    fn to_ref(&self) -> CnvPVecL<&[u8], BE> {
-        CnvPVecL {
-            data: self.data.as_ref(),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
-            _phantom: self._phantom,
-        }
-    }
-}
-
-/// Borrow a `CnvPVecL` as a mutable reference view.
-pub trait CnvPVecLToMut<BE: Backend> {
-    fn to_mut(&mut self) -> CnvPVecL<&mut [u8], BE>;
-}
-
-impl<D: HostDataMut, BE: Backend> CnvPVecLToMut<BE> for CnvPVecL<D, BE> {
-    fn to_mut(&mut self) -> CnvPVecL<&mut [u8], BE> {
-        CnvPVecL {
-            data: self.data.as_mut(),
-            n: self.n,
-            size: self.size,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: self._phantom,
         }
     }

@@ -1,8 +1,7 @@
-use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, ScalarZnx, ScratchArena, Stats};
+use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, HostDataRef, ScalarZnx, ScratchArena, Stats};
 
 use crate::layouts::{
-    GGLWEInfos, GGLWEToBackendRef, GGLWEToRef, GGSWInfos, GGSWToBackendRef, GGSWToRef, GLWEInfos, GLWESecretPreparedToBackendRef,
-    GLWEToBackendRef, GLWEToRef,
+    GGLWEInfos, GGLWEToBackendRef, GGSWInfos, GGSWToBackendRef, GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendRef,
 };
 
 pub trait GLWENoise<BE: Backend> {
@@ -12,11 +11,12 @@ pub trait GLWENoise<BE: Backend> {
 
     fn glwe_noise<'s, R, P, S>(&self, res: &R, pt_want: &P, sk_prepared: &S, scratch: &mut ScratchArena<'s, BE>) -> Stats
     where
-        R: GLWEToRef + GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEToRef,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendRef<BE>,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut;
 }
 
@@ -35,10 +35,11 @@ pub trait GGLWENoise<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGLWEToRef + GGLWEToBackendRef<BE> + GGLWEInfos,
+        R: GGLWEToBackendRef<BE> + GGLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> BE::BufMut<'a>: HostDataMut;
 }
 
@@ -57,9 +58,10 @@ pub trait GGSWNoise<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendRef<BE> + GGSWInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: HostBackend,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> BE::BufMut<'a>: HostDataMut;
 }

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::VecZnxZeroBackend,
-    layouts::{Backend, Module, ScratchArena, ZnxInfos},
+    layouts::{Backend, Module, ScratchArena},
 };
 
 pub use crate::api::GGLWEExternalProduct;

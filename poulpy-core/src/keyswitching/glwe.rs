@@ -7,7 +7,7 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, Module, ScratchArena, VecZnxBackendRef, VecZnxBigReborrowBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
-        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
+        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendRef,
     },
 };
 
@@ -180,12 +180,17 @@ where
             self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, &mut scratch.borrow());
         }
         if a_base2k != key_base2k {
-            let mut res_small =
-                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
-                    &mut res.data,
-                );
-            res_small.size = key.size();
-            self.vec_znx_normalize(&mut res_small, key_base2k, 0, 0, &a.data, a_base2k, 0, &mut scratch.borrow());
+            let (mut res_small, mut scratch_2) = scratch.borrow().take_vec_znx(self.n(), 1, key.size());
+            self.vec_znx_normalize(
+                &mut res_small,
+                key_base2k,
+                0,
+                0,
+                &a.data,
+                a_base2k,
+                0,
+                &mut scratch_2.borrow(),
+            );
             let res_small_ref =
                 <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_small);
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &res_small_ref, 0);
@@ -498,7 +503,7 @@ where
             for di in 0..dsize {
                 // Sets ai_dft size according to the current digit (if dsize does not divides a_size),
                 // bounded by the number of rows (digits) in the prepared matrix.
-                ai_dft.size = ((a_size + di) / dsize).min(dnum);
+                ai_dft.set_size(((a_size + di) / dsize).min(dnum));
 
                 // Small optimization for dsize > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * Base2k}, then
@@ -507,7 +512,7 @@ where
                 // It is possible to further ignore the last dsize-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                res.size = key.size() - ((dsize - di) as isize - 2).max(0) as usize;
+                res.set_size(key.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
                     self.vec_znx_dft_copy(dsize, dsize - di - 1, &mut ai_dft, j, a, j);
@@ -520,7 +525,7 @@ where
                 } else {
                     // Overwrite tmp with shifted product, then fold into res.
                     // This avoids scattered read-add-write on the res DFT buffer.
-                    res_dft_tmp.size = res.size();
+                    res_dft_tmp.set_size(res.size());
                     let ai_dft_ref = ai_dft.reborrow_backend_ref();
                     self.vmp_apply_dft_to_dft_backend_ref(&mut res_dft_tmp, &ai_dft_ref, &key.data, di, &mut scratch_2.borrow());
                     let res_dft_tmp_ref = res_dft_tmp.reborrow_backend_ref();
@@ -530,7 +535,7 @@ where
                 }
             }
 
-            res.size = res.max_size;
+            res.set_size(res.max_size());
         }
     }
 }

@@ -2,10 +2,10 @@ use crate::{FFT64Avx, NTT120Avx};
 use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToGGSWKeyPreparedToBackendRef, GGLWEToMut, GGLWEToRef,
-        GGSWInfos, GGSWPreparedToBackendRef, GGSWToMut, GGSWToRef, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut,
-        GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToMut, GLWEToRef, LWEInfos, LWEPlaintextToMut,
-        LWESecretToRef, LWEToMut, LWEToRef, SetLWEInfos,
+        GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
+        GGSWInfos, GGSWPreparedToBackendRef, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
+        GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef,
+        SetLWEInfos,
     },
     oep::{
         AutomorphismDefaults, AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl,
@@ -14,7 +14,7 @@ use poulpy_core::{
         GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl, OperationsDefaults,
     },
 };
-use poulpy_hal::layouts::{Backend, HostDataMut, HostDataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena};
 
 poulpy_cpu_ref::impl_decryption_via_helpers!(FFT64Avx, poulpy_cpu_ref::core_impl);
 poulpy_cpu_ref::impl_conversion_via_helpers!(FFT64Avx, poulpy_cpu_ref::core_impl);

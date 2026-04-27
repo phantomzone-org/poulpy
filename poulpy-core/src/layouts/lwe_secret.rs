@@ -1,7 +1,7 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, ScalarZnxToMut,
-        TransferFrom, ZnxInfos, ZnxView, ZnxZero,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendMut, ScalarZnxToBackendRef, TransferFrom,
+        ZnxView, ZnxZero,
     },
     source::Source,
 };
@@ -21,10 +21,15 @@ pub struct LWESecret<D: Data> {
 pub type LWESecretBackendRef<'a, BE> = LWESecret<<BE as Backend>::BufRef<'a>>;
 pub type LWESecretBackendMut<'a, BE> = LWESecret<<BE as Backend>::BufMut<'a>>;
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl LWESecret<Vec<u8>> {
-    pub fn alloc(n: Degree) -> Self {
+    pub(crate) fn alloc(n: Degree) -> Self {
         LWESecret {
-            data: ScalarZnx::alloc(n.into(), 1),
+            data: ScalarZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(ScalarZnx::<Vec<u8>>::bytes_of(n.into(), 1)),
+                n.into(),
+                1,
+            ),
             dist: Distribution::NONE,
         }
     }
@@ -49,8 +54,11 @@ impl<D: Data> LWESecret<D> {
     where
         To: Backend<OwnedBuf = D>,
     {
+        let n = self.data.n();
+        let cols = self.data.cols();
+        let data = self.data.data;
         LWESecret {
-            data: ScalarZnx::from_data(self.data.data, self.data.n, self.data.cols),
+            data: ScalarZnx::from_data(data, n, cols),
             dist: self.dist,
         }
     }
@@ -122,10 +130,6 @@ impl<D: HostDataMut> LWESecret<D> {
     }
 }
 
-pub trait LWESecretToRef {
-    fn to_ref(&self) -> LWESecret<&[u8]>;
-}
-
 pub trait LWESecretToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> LWESecretBackendRef<'_, BE>;
 }
@@ -139,17 +143,22 @@ impl<BE: Backend> LWESecretToBackendRef<BE> for LWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: HostDataRef> LWESecretToRef for LWESecret<D> {
-    fn to_ref(&self) -> LWESecret<&[u8]> {
+impl<'b, BE: Backend + 'b> LWESecretToBackendRef<BE> for &LWESecret<BE::BufRef<'b>> {
+    fn to_backend_ref(&self) -> LWESecretBackendRef<'_, BE> {
         LWESecret {
             dist: self.dist,
-            data: self.data.to_ref(),
+            data: ScalarZnx::from_data(BE::view_ref(&self.data.data), self.data.n(), self.data.cols()),
         }
     }
 }
 
-pub trait LWESecretToMut {
-    fn to_mut(&mut self) -> LWESecret<&mut [u8]>;
+impl<'b, BE: Backend + 'b> LWESecretToBackendRef<BE> for &mut LWESecret<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> LWESecretBackendRef<'_, BE> {
+        LWESecret {
+            dist: self.dist,
+            data: ScalarZnx::from_data(BE::view_ref_mut(&self.data.data), self.data.n(), self.data.cols()),
+        }
+    }
 }
 
 pub trait LWESecretToBackendMut<BE: Backend>: LWESecretToBackendRef<BE> {
@@ -165,11 +174,13 @@ impl<BE: Backend> LWESecretToBackendMut<BE> for LWESecret<BE::OwnedBuf> {
     }
 }
 
-impl<D: HostDataMut> LWESecretToMut for LWESecret<D> {
-    fn to_mut(&mut self) -> LWESecret<&mut [u8]> {
+impl<'b, BE: Backend + 'b> LWESecretToBackendMut<BE> for &mut LWESecret<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> LWESecretBackendMut<'_, BE> {
+        let n = self.data.n();
+        let cols = self.data.cols();
         LWESecret {
             dist: self.dist,
-            data: self.data.to_mut(),
+            data: ScalarZnx::from_data(BE::view_mut_ref(&mut self.data.data), n, cols),
         }
     }
 }

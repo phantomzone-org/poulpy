@@ -5,17 +5,19 @@ use poulpy_hal::{
 
 use poulpy_core::{
     Distribution, EncryptionInfos, GGSWEncryptSk, GetDistribution, ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecret, LWESecretToRef},
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecretToBackendRef},
 };
 
 use crate::blind_rotation::{BlindRotationKey, BlindRotationKeyEncryptSk, CGGI};
 
-impl<BE: Backend> BlindRotationKeyEncryptSk<CGGI, BE> for Module<BE>
+impl<BE: Backend + 'static> BlindRotationKeyEncryptSk<CGGI, BE> for Module<BE>
 where
     Self: GGSWEncryptSk<BE>,
     // TODO(device): this implementation is still host-backed because the
     // plaintext staging buffer is built via host-visible scalar views.
+    BE::OwnedBuf: HostDataMut,
     for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     fn blind_rotation_key_encrypt_sk_tmp_bytes<A: GGSWInfos>(&self, infos: &A) -> usize {
         self.ggsw_encrypt_sk_tmp_bytes(infos)
@@ -33,7 +35,7 @@ where
     ) where
         S0: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
-        S1: LWESecretToRef + LWEInfos + GetDistribution,
+        S1: LWESecretToBackendRef<BE> + LWEInfos + GetDistribution,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
@@ -49,19 +51,17 @@ where
         }
 
         {
-            let sk_lwe: &LWESecret<&[u8]> = &sk_lwe.to_ref();
+            let sk_lwe = sk_lwe.to_backend_ref();
 
             res.dist = sk_lwe.dist();
 
-            let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(sk_glwe.n().into(), 1);
-            let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data().to_ref();
+            let mut pt: ScalarZnx<BE::OwnedBuf> = self.scalar_znx_alloc(1);
+            let sk_ref = sk_lwe.data();
 
             for (i, ggsw) in res.keys.iter_mut().enumerate() {
                 pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-                let pt_ref = pt.to_ref();
-                let pt_backend = ScalarZnx::from_data(BE::from_host_bytes(pt_ref.data), pt_ref.n, pt_ref.cols);
                 let mut scratch_iter = scratch.borrow();
-                self.ggsw_encrypt_sk(ggsw, &pt_backend, sk_glwe, enc_infos, source_xe, source_xa, &mut scratch_iter);
+                self.ggsw_encrypt_sk(ggsw, &pt, sk_glwe, enc_infos, source_xe, source_xa, &mut scratch_iter);
             }
         }
     }

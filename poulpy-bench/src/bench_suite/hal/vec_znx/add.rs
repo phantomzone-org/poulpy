@@ -3,9 +3,8 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxAddAssign, VecZnxAddInto},
-    layouts::{Backend, FillUniform, Module, VecZnx},
-    source::Source,
+    api::{ModuleNew, VecZnxAddAssignBackend, VecZnxAddIntoBackend},
+    layouts::{Backend, Module},
 };
 
 pub fn bench_vec_znx_add_into<B: Backend>(c: &mut Criterion, label: &str)
@@ -26,17 +25,18 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut source: Source = Source::new([0u8; 32]);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut c: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        b.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let b = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let a = crate::upload_host_vec_znx::<B>(&a);
+        let b = crate::upload_host_vec_znx::<B>(&b);
+        let mut c = module.vec_znx_alloc(cols, size);
 
         move || {
+            let a = crate::vec_znx_backend_ref::<B>(&a);
+            let b = crate::vec_znx_backend_ref::<B>(&b);
+            let mut c = crate::vec_znx_backend_mut::<B>(&mut c);
             for i in 0..cols {
                 module.vec_znx_add_into(&mut c, i, &a, i, &b, i);
             }
@@ -71,16 +71,15 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut source: Source = Source::new([0u8; 32]);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        b.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let a = crate::upload_host_vec_znx::<B>(&a);
+        let mut b = module.vec_znx_alloc(cols, size);
 
         move || {
+            let a = crate::vec_znx_backend_ref::<B>(&a);
+            let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
                 module.vec_znx_add_assign(&mut b, i, &a, i);
             }

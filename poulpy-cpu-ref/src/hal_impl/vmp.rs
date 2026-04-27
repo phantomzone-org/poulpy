@@ -22,7 +22,7 @@ macro_rules! hal_impl_vmp {
             b: &poulpy_hal::layouts::VmpPMatBackendRef<'_, Self>,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) where
-            R: VecZnxDftToMut<Self>,
+            R: VecZnxDftToBackendMut<Self>,
         {
             let a_cols = <poulpy_hal::layouts::VecZnxBackendRef<'_, Self> as ZnxInfos>::cols(a);
             let a_size = <poulpy_hal::layouts::VecZnxBackendRef<'_, Self> as ZnxInfos>::size(a);
@@ -100,10 +100,11 @@ macro_rules! hal_impl_vmp {
             limb_offset: usize,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) where
-            R: VecZnxDftToMut<Self>,
+            R: VecZnxDftToBackendMut<Self>,
         {
             let mut scratch = scratch.borrow();
-            <Self as $defaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, &mut scratch);
+            let mut res_ref = res.to_backend_mut();
+            <Self as $defaults<Self>>::vmp_apply_dft_to_dft_default(module, &mut res_ref, a, b, limb_offset, &mut scratch);
         }
 
         fn vmp_apply_dft_to_dft_backend_ref<'s, 'r, 'a>(

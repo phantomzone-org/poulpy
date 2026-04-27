@@ -1,10 +1,12 @@
 use std::marker::PhantomData;
 
 use poulpy_core::layouts::{
-    Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
+    Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, ModuleCoreAlloc, Rank, TorusPrecision,
+    prepared::{GGSWPrepared, GGSWPreparedBackendMut},
 };
 use poulpy_core::layouts::{
-    GGLWEInfos, GGLWEPreparedToBackendRef, GGSW, GGSWLayout, GGSWPreparedToMut, GLWEAutomorphismKeyHelper, GetGaloisElement, LWE,
+    GGLWEInfos, GGLWEPreparedToBackendRef, GGSW, GGSWLayout, GGSWPreparedToBackendMut, GLWEAutomorphismKeyHelper,
+    GetGaloisElement, LWE,
 };
 use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
 
@@ -88,28 +90,34 @@ pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
     /// # Panics
     ///
     /// Panics if `bit >= self.bit_size()`.
-    fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE>;
+    fn get_bit(&mut self, bit: usize) -> GGSWPreparedBackendMut<'_, BE>;
     /// Returns mutable views of `count` consecutive GGSW ciphertexts starting
     /// at `start`.
     ///
     /// # Panics
     ///
     /// Panics if `start + count > self.bit_size()`.
-    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>>;
+    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPreparedBackendMut<'_, BE>>;
 }
 
-impl<D: HostDataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
-    fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
+impl<D: Data, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE>
+where
+    GGSWPrepared<D, BE>: GGSWPreparedToBackendMut<BE>,
+{
+    fn get_bit(&mut self, bit: usize) -> GGSWPreparedBackendMut<'_, BE> {
         assert!(
             bit < self.bits.len(),
             "bit index {bit} out of bounds, len={}",
             self.bits.len()
         );
-        self.bits[bit].to_mut()
+        self.bits[bit].to_backend_mut()
     }
-    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>> {
+    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPreparedBackendMut<'_, BE>> {
         assert!(start + count <= self.bits.len());
-        self.bits[start..start + count].iter_mut().map(|bit| bit.to_mut()).collect()
+        self.bits[start..start + count]
+            .iter_mut()
+            .map(|bit| bit.to_backend_mut())
+            .collect()
     }
 }
 
@@ -170,7 +178,7 @@ impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<BE::OwnedBuf, T, BE> {
 }
 
 impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend> FheUintPreparedEncryptSk<T, BE> for Module<BE> where
-    Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>
+    Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
 {
 }
 
@@ -182,7 +190,7 @@ impl<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>
 /// and then immediately DFT-prepared in place.
 pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend<OwnedBuf = Vec<u8>> + HostBackend>
 where
-    Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
+    Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     #[allow(clippy::too_many_arguments)]
     fn fhe_uint_prepared_encrypt_sk<S, E>(
@@ -206,7 +214,7 @@ where
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk.n(), self.n() as u32);
 
-        let mut tmp_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(res);
+        let mut tmp_ggsw: GGSW<BE::OwnedBuf> = self.ggsw_alloc_from_infos(res);
         let (mut pt, mut scratch_1) = scratch.borrow().take_scalar_znx(self.n(), 1);
         pt.zero();
 
@@ -214,7 +222,7 @@ where
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
             let pt_ref = pt.to_ref();
-            let pt_backend = ScalarZnx::from_data(BE::from_host_bytes(pt_ref.data), pt_ref.n, pt_ref.cols);
+            let pt_backend = ScalarZnx::from_data(BE::from_host_bytes(pt_ref.data), pt_ref.n(), pt_ref.cols());
             let mut scratch_bit = scratch_1.borrow();
             self.ggsw_encrypt_sk(
                 &mut tmp_ggsw,
@@ -259,7 +267,7 @@ where
 {
     pub fn decrypt<M, S, H, K>(&self, module: &M, sk: &S, keys: &H, scratch: &mut ScratchArena<'_, BE>) -> T
     where
-        M: ModuleLogN + GLWEDecrypt<BE> + Cmux<BE> + GLWEPacking<BE> + GLWECopy<BE>,
+        M: ModuleCoreAlloc<OwnedBuf = Vec<u8>> + ModuleLogN + GLWEDecrypt<BE> + Cmux<BE> + GLWEPacking<BE> + GLWECopy<BE>,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -269,7 +277,7 @@ where
         for<'a> BE::BufMut<'a>: HostDataMut,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
-        let mut tmp: FheUint<Vec<u8>, T> = FheUint::alloc_from_infos(self);
+        let mut tmp: FheUint<Vec<u8>, T> = FheUint::alloc_from_infos(module, self);
         let mut scratch_1 = scratch.borrow();
         tmp.from_fhe_uint_prepared(module, self, keys, &mut scratch_1);
         tmp.decrypt(module, sk, &mut scratch_1)
@@ -433,8 +441,8 @@ where
 
         let ggsw_infos: &GGSWLayout = &res.ggsw_layout();
         let scratch_local = scratch.borrow();
-        let mut tmp_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(ggsw_infos);
-        let mut tmp_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits);
+        let mut tmp_ggsw: GGSW<Vec<u8>> = self.ggsw_alloc_from_infos(ggsw_infos);
+        let mut tmp_lwe: LWE<Vec<u8>> = self.lwe_alloc_from_infos(bits);
         let mut scratch_1 = scratch_local;
 
         for bit in bit_start..bit_end {

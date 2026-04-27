@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::ModuleN,
     api::VecZnxZeroBackend,
-    layouts::{Backend, Module, ScratchArena, ZnxInfos},
+    layouts::{Backend, Module, ScratchArena},
 };
 
 pub use crate::api::GGSWExternalProduct;

@@ -1,9 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf},
-    layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut,
-        SvpPPolToRef, ZnxInfos,
-    },
+    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, ZnxInfos},
 };
 
 use crate::{
@@ -11,8 +8,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut,
-        GLWESecretPreparedToBackendRef, GLWESecretPreparedToMut, GLWESecretPreparedToRef, GLWESecretTensor,
-        GLWESecretToBackendRef, GetDegree, LWEInfos, Rank,
+        GLWESecretPreparedToBackendRef, GLWESecretTensor, GLWESecretToBackendRef, GetDegree, LWEInfos, Rank,
     },
 };
 
@@ -126,24 +122,6 @@ impl<D: Data, B: Backend> GLWESecretTensorPrepared<D, B> {
 }
 
 // module-only API: preparation is provided by `GLWESecretTensorPreparedFactory` on `Module`.
-
-impl<D: HostDataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretTensorPrepared<D, B> {
-    fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {
-        GLWESecretPrepared {
-            data: self.data.to_ref(),
-            dist: self.dist,
-        }
-    }
-}
-
-impl<D: HostDataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretTensorPrepared<D, B> {
-    fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
-        GLWESecretPrepared {
-            dist: self.dist,
-            data: self.data.to_mut(),
-        }
-    }
-}
 
 pub type GLWESecretTensorPreparedBackendRef<'a, B> = GLWESecretTensorPrepared<<B as Backend>::BufRef<'a>, B>;
 pub type GLWESecretTensorPreparedBackendMut<'a, B> = GLWESecretTensorPrepared<<B as Backend>::BufMut<'a>, B>;

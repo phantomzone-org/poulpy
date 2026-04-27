@@ -12,7 +12,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
-        GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
+        GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     var_noise_gglwe_product_v2,
@@ -21,6 +21,7 @@ use crate::{
 pub fn test_glwe_automorphism<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -75,11 +76,11 @@ where
             })
             .unwrap();
 
-            let mut autokey: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&autokey_infos);
-            let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ct_in_infos);
-            let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ct_out_infos);
-            let mut pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ct_in_infos);
-            let mut pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ct_out_infos);
+            let mut autokey: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&autokey_infos);
+            let mut ct_in: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&ct_in_infos);
+            let mut ct_out: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&ct_out_infos);
+            let mut pt_in: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ct_in_infos);
+            let mut pt_out: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ct_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -99,7 +100,7 @@ where
                     | module.glwe_automorphism_tmp_bytes(&ct_out, &ct_in, &autokey),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
@@ -173,6 +174,7 @@ where
 pub fn test_glwe_automorphism_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -218,9 +220,9 @@ where
             })
             .unwrap();
 
-            let mut autokey: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&autokey_infos);
-            let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ct_out_infos);
-            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ct_out_infos);
+            let mut autokey: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&autokey_infos);
+            let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&ct_out_infos);
+            let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ct_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -240,7 +242,7 @@ where
                     | module.glwe_automorphism_tmp_bytes(&ct, &ct, &autokey),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&ct);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);

@@ -1,13 +1,13 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk,
     layouts::{
-        GGLWEInfos, GGSW, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GGLWEInfos, GGSWInfos, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc,
         prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScalarZnx, ScratchOwned},
+    layouts::{Backend, Module, NoiseInfos, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -26,13 +26,13 @@ where
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(infos.rank());
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    let mut ct: poulpy_core::layouts::GLWE<Vec<u8>> = poulpy_core::layouts::GLWE::alloc_from_infos(infos);
+    let mut ct: poulpy_core::layouts::GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_encrypt_sk_tmp_bytes(infos));
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
@@ -69,14 +69,14 @@ where
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(infos.rank());
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    let pt = ScalarZnx::alloc(n, 1);
-    let mut ct = GGSW::alloc_from_infos(infos);
+    let pt = module.scalar_znx_alloc(1);
+    let mut ct = module.ggsw_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.ggsw_encrypt_sk_tmp_bytes(infos));
 
     let enc_infos = NoiseInfos::new(infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();
@@ -116,10 +116,10 @@ pub fn bench_glwe_automorphism_key_encrypt_sk<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(atk_infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(atk_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
+    let mut atk: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(atk_infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_automorphism_key_encrypt_sk_tmp_bytes(atk_infos));
 
     let enc_infos = NoiseInfos::new(atk_infos.max_k().as_usize(), DEFAULT_SIGMA_XE, DEFAULT_BOUND_XE).unwrap();

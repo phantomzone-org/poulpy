@@ -1,32 +1,15 @@
-use poulpy_core::layouts::{Base2K, Degree, GLWE, LWEInfos, Rank, TorusPrecision};
-use poulpy_cpu_ref::reference::vec_znx::{vec_znx_rotate_inplace, vec_znx_switch_ring};
-use poulpy_cpu_ref::reference::znx::ZnxRef;
+use poulpy_core::layouts::{Base2K, Degree, GLWE, LWEInfos, ModuleCoreAlloc, Rank, TorusPrecision};
+use poulpy_cpu_ref::reference::znx::{ZnxCopy, ZnxRef, ZnxRotate, ZnxSwitchRing};
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
         VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes,
     },
     layouts::{
-        Backend, Data, HostDataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToMut, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, HostDataRef, Module, ScratchOwned, TransferFrom, VecZnx, VecZnxToBackendMut, ZnxViewMut,
+        vec_znx_host_backend_mut,
     },
 };
-
-fn vec_znx_copy<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let mut res = res.to_mut();
-    let a = a.to_ref();
-    let min_size = res.size().min(a.size());
-    for j in 0..min_size {
-        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
-    }
-    for j in min_size..res.size() {
-        res.at_mut(res_col, j).fill(0);
-    }
-}
 
 /// Specifies in which direction the LUT is rotated by the LWE constant term
 /// during blind rotation.
@@ -177,7 +160,7 @@ pub trait LookupTableFactory {
     fn lookup_table_rotate(&self, k: i64, res: &mut LookupTable<Vec<u8>>);
 }
 
-impl<D: Data> LookupTable<D> {
+impl LookupTable<Vec<u8>> {
     /// Returns `log2(extension_factor)`.
     pub fn log_extension_factor(&self) -> usize {
         (usize::BITS - (self.extension_factor() - 1).leading_zeros()) as _
@@ -207,8 +190,9 @@ impl LookupTable<Vec<u8>> {
     /// # Panics
     ///
     /// Panics if `infos.extension_factor()` is zero or not a power of two.
-    pub fn alloc<A>(infos: &A) -> Self
+    pub fn alloc<M, A>(module: &M, infos: &A) -> Self
     where
+        M: ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
         A: LookupTableInfos,
     {
         assert!(
@@ -216,9 +200,9 @@ impl LookupTable<Vec<u8>> {
             "extension_factor must be a non-zero power of two, got: {}",
             infos.extension_factor()
         );
-        Self {
+        LookupTable {
             data: (0..infos.extension_factor())
-                .map(|_| GLWE::alloc(infos.n(), infos.base2k(), infos.k(), Rank(0)))
+                .map(|_| module.glwe_alloc(infos.base2k(), infos.k(), Rank(0)))
                 .collect(),
             base2k: infos.base2k(),
             k: infos.k(),
@@ -338,9 +322,11 @@ where
         let size: usize = res.k.as_usize().div_ceil(base2k);
 
         // Equivalent to AUTO([f(0), -f(n-1), -f(n-2), ..., -f(1)], -1)
-        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::alloc(domain_size, 1, size);
+        // but staged purely in host vectors so we do not need to allocate a
+        // second module with ring degree `domain_size`.
+        let mut lut_full_limbs: Vec<Vec<i64>> = (0..size).map(|_| vec![0i64; domain_size]).collect();
 
-        let lut_at: &mut [i64] = lut_full.at_mut(0, limbs - 1);
+        let lut_at: &mut [i64] = &mut lut_full_limbs[limbs - 1];
 
         let step: usize = domain_size.div_round(f_len);
 
@@ -354,16 +340,25 @@ where
 
         // Rotates half the step to the left
         if res.extension_factor() > 1 {
-            let mut tmp: Vec<i64> = vec![0i64; lut_full.n()];
+            let mut tmp: Vec<i64> = vec![0i64; domain_size];
 
             for i in 0..res.extension_factor() {
-                vec_znx_switch_ring::<_, _, ZnxRef>(res.data[i].data_mut(), 0, &lut_full, 0);
-                if i < res.extension_factor() {
-                    vec_znx_rotate_inplace::<_, ZnxRef>(-1, &mut lut_full, 0, &mut tmp);
+                let mut res_at = vec_znx_host_backend_mut(res.data[i].data_mut());
+                for (limb, limb_data) in lut_full_limbs.iter().enumerate().take(res_at.size()) {
+                    ZnxRef::znx_switch_ring(res_at.at_mut(0, limb), limb_data);
+                }
+                if i + 1 < res.extension_factor() {
+                    for limb_data in &mut lut_full_limbs {
+                        ZnxRef::znx_rotate(-1, &mut tmp, limb_data);
+                        ZnxRef::znx_copy(limb_data, &tmp);
+                    }
                 }
             }
         } else {
-            vec_znx_copy(res.data[0].data_mut(), 0, &lut_full, 0);
+            let mut res_at = vec_znx_host_backend_mut(res.data[0].data_mut());
+            for (limb, limb_data) in lut_full_limbs.iter().enumerate().take(res_at.size()) {
+                res_at.at_mut(0, limb).copy_from_slice(limb_data);
+            }
         }
 
         for a in res.data.iter_mut() {

@@ -4,7 +4,7 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::layouts::{Backend, Data, DataView, DataViewMut, DigestU64, HostDataMut, HostDataRef, ZnxInfos, ZnxView};
+use crate::layouts::{Backend, Data, DataView, DataViewMut, DigestU64, HostDataRef, ScalarZnxShape, ZnxInfos, ZnxView};
 
 /// Prepared (DFT-domain) scalar polynomial for scalar-vector products.
 ///
@@ -22,8 +22,7 @@ use crate::layouts::{Backend, Data, DataView, DataViewMut, DigestU64, HostDataMu
 #[derive(PartialEq, Eq, Hash)]
 pub struct SvpPPol<D: Data, B: Backend> {
     pub data: D,
-    pub n: usize,
-    pub cols: usize,
+    shape: ScalarZnxShape,
     pub _phantom: PhantomData<B>,
 }
 
@@ -31,8 +30,8 @@ impl<D: HostDataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
     fn digest_u64(&self) -> u64 {
         let mut h: DefaultHasher = DefaultHasher::new();
         h.write(self.data.as_ref());
-        h.write_usize(self.n);
-        h.write_usize(self.cols);
+        h.write_usize(self.n());
+        h.write_usize(self.cols());
         h.finish()
     }
 }
@@ -43,7 +42,7 @@ impl<D: HostDataRef, B: Backend> ZnxView for SvpPPol<D, B> {
 
 impl<D: Data, B: Backend> ZnxInfos for SvpPPol<D, B> {
     fn cols(&self) -> usize {
-        self.cols
+        self.shape.cols()
     }
 
     fn rows(&self) -> usize {
@@ -51,11 +50,25 @@ impl<D: Data, B: Backend> ZnxInfos for SvpPPol<D, B> {
     }
 
     fn n(&self) -> usize {
-        self.n
+        self.shape.n()
     }
 
     fn size(&self) -> usize {
         1
+    }
+}
+
+impl<D: Data, B: Backend> SvpPPol<D, B> {
+    pub fn n(&self) -> usize {
+        self.shape.n()
+    }
+
+    pub fn cols(&self) -> usize {
+        self.shape.cols()
+    }
+
+    pub fn shape(&self) -> ScalarZnxShape {
+        self.shape
     }
 }
 
@@ -74,11 +87,10 @@ impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
 
 impl<B: Backend> SvpPPol<<B as Backend>::OwnedBuf, B> {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: <B as Backend>::OwnedBuf = B::alloc_bytes(B::bytes_of_svp_ppol(n, cols));
+        let data: <B as Backend>::OwnedBuf = B::alloc_zeroed_bytes(B::bytes_of_svp_ppol(n, cols));
         Self {
             data,
-            n,
-            cols,
+            shape: ScalarZnxShape::new(n, cols),
             _phantom: PhantomData,
         }
     }
@@ -95,8 +107,7 @@ pub type SvpPPolBackendMut<'a, B> = SvpPPol<<B as Backend>::BufMut<'a>, B>;
 pub fn svp_ppol_backend_ref_from_mut<'a, 'b, B: Backend>(ppol: &'a SvpPPolBackendMut<'b, B>) -> SvpPPolBackendRef<'a, B> {
     SvpPPol {
         data: B::view_ref_mut(&ppol.data),
-        n: ppol.n,
-        cols: ppol.cols,
+        shape: ppol.shape,
         _phantom: PhantomData,
     }
 }
@@ -110,8 +121,17 @@ impl<B: Backend> SvpPPolToBackendRef<B> for SvpPPol<B::OwnedBuf, B> {
     fn to_backend_ref(&self) -> SvpPPolBackendRef<'_, B> {
         SvpPPol {
             data: B::view(&self.data),
-            n: self.n,
-            cols: self.cols,
+            shape: self.shape,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> SvpPPolToBackendRef<B> for &SvpPPol<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> SvpPPolBackendRef<'_, B> {
+        SvpPPol {
+            data: B::view_ref(&self.data),
+            shape: self.shape,
             _phantom: PhantomData,
         }
     }
@@ -137,8 +157,17 @@ impl<B: Backend> SvpPPolToBackendMut<B> for SvpPPol<B::OwnedBuf, B> {
     fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
         SvpPPol {
             data: B::view_mut(&mut self.data),
-            n: self.n,
-            cols: self.cols,
+            shape: self.shape,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> SvpPPolToBackendMut<B> for &mut SvpPPol<B::BufMut<'b>, B> {
+    fn to_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
+        SvpPPol {
+            data: B::view_mut_ref(&mut self.data),
+            shape: self.shape,
             _phantom: PhantomData,
         }
     }
@@ -153,40 +182,7 @@ impl<'b, B: Backend + 'b> SvpPPolReborrowBackendMut<B> for SvpPPol<B::BufMut<'b>
     fn reborrow_backend_mut(&mut self) -> SvpPPolBackendMut<'_, B> {
         SvpPPol {
             data: B::view_mut_ref(&mut self.data),
-            n: self.n,
-            cols: self.cols,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-/// Borrow an `SvpPPol` as a shared reference view.
-pub trait SvpPPolToRef<B: Backend> {
-    fn to_ref(&self) -> SvpPPol<&[u8], B>;
-}
-
-impl<D: HostDataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
-    fn to_ref(&self) -> SvpPPol<&[u8], B> {
-        SvpPPol {
-            data: self.data.as_ref(),
-            n: self.n,
-            cols: self.cols,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-/// Borrow an `SvpPPol` as a mutable reference view.
-pub trait SvpPPolToMut<B: Backend> {
-    fn to_mut(&mut self) -> SvpPPol<&mut [u8], B>;
-}
-
-impl<D: HostDataMut, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
-    fn to_mut(&mut self) -> SvpPPol<&mut [u8], B> {
-        SvpPPol {
-            data: self.data.as_mut(),
-            n: self.n,
-            cols: self.cols,
+            shape: self.shape,
             _phantom: PhantomData,
         }
     }
@@ -196,8 +192,7 @@ impl<D: Data, B: Backend> SvpPPol<D, B> {
     pub fn from_data(data: D, n: usize, cols: usize) -> Self {
         Self {
             data,
-            n,
-            cols,
+            shape: ScalarZnxShape::new(n, cols),
             _phantom: PhantomData,
         }
     }
@@ -205,9 +200,9 @@ impl<D: Data, B: Backend> SvpPPol<D, B> {
 
 impl<D: HostDataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "SvpPPol(n={}, cols={})", self.n, self.cols)?;
+        writeln!(f, "SvpPPol(n={}, cols={})", self.n(), self.cols())?;
 
-        for col in 0..self.cols {
+        for col in 0..self.cols() {
             writeln!(f, "Column {col}:")?;
             let coeffs = self.at(col, 0);
             write!(f, "[")?;

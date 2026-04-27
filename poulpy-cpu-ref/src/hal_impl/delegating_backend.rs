@@ -6,8 +6,8 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
     layouts::{
-        Backend, CnvPVecLToMut, CnvPVecRToMut, Module, NoiseInfos, ScratchArena, ScratchOwned, VecZnxBackendMut,
-        VecZnxBackendRef, VecZnxBigToMut, VecZnxDftToMut, ZnxInfos,
+        Backend, Module, NoiseInfos, ScratchArena, ScratchOwned, VecZnxBackendMut, VecZnxBackendRef, VecZnxDftToBackendMut,
+        ZnxInfos,
     },
     oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
 };
@@ -30,7 +30,7 @@ use crate::{
             ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
             ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
             ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-            ZnxNormalizeMiddleStepSub, ZnxRef, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
+            ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
         },
     },
 };
@@ -184,7 +184,7 @@ unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
         assert_eq!(res.rank(), a.rank());
 
         for i in 0..res.rank().as_usize() + 1 {
-            vec_znx_mul_xp_minus_one::<_, _, ZnxRef>(k, res.data_mut(), i, a.data(), i);
+            vec_znx_mul_xp_minus_one::<DelegatingFFT64Ref>(k, res.data_mut(), i, a.data(), i);
         }
     }
 
@@ -202,7 +202,7 @@ unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
 
         let mut tmp = vec![0i64; module.n()];
         for i in 0..res.rank().as_usize() + 1 {
-            vec_znx_mul_xp_minus_one_inplace::<_, ZnxRef>(k, res.data_mut(), i, &mut tmp);
+            vec_znx_mul_xp_minus_one_inplace::<DelegatingFFT64Ref>(k, res.data_mut(), i, &mut tmp);
         }
     }
 }
@@ -255,7 +255,9 @@ unsafe impl GLWERotateImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
         let res_back: GLWE<<DelegatingFFT64Ref as Backend>::OwnedBuf> =
             <Module<FFT64Ref> as ModuleTransfer<FFT64Ref>>::download_glwe::<FFT64Ref>(&delegate, &res_delegate)
                 .reinterpret::<DelegatingFFT64Ref>();
-        let res_back_ref = poulpy_core::layouts::GLWEToRef::to_ref(&res_back);
+        let res_back_ref = <GLWE<<DelegatingFFT64Ref as Backend>::OwnedBuf> as poulpy_core::layouts::GLWEToBackendRef<
+            DelegatingFFT64Ref,
+        >>::to_backend_ref(&res_back);
 
         let mut bytes = Vec::new();
         poulpy_hal::layouts::WriterTo::write_to(&res_back_ref, &mut bytes)

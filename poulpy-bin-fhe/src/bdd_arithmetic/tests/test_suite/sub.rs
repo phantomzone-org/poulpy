@@ -50,7 +50,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
+    let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(module, &glwe_infos);
     let mut a_enc_prep: FheUintPrepared<BE::OwnedBuf, u32, BE> =
         FheUintPrepared::<BE::OwnedBuf, u32, BE>::alloc_from_infos(module, &ggsw_infos);
     let mut b_enc_prep: FheUintPrepared<BE::OwnedBuf, u32, BE> =

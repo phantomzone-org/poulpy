@@ -40,6 +40,9 @@ pub use vmp_pmat::*;
 pub use znx_base::*;
 
 use anyhow::Result;
+use std::ptr::NonNull;
+
+use crate::oep::HalModuleImpl;
 
 /// Base trait alias for all data containers.
 ///
@@ -105,6 +108,128 @@ where
     for<'a> BE::BufRef<'a>: AsRef<[u8]>,
     for<'a> BE::BufMut<'a>: AsRef<[u8]> + AsMut<[u8]>,
 {
+}
+
+/// Minimal host-resident backend used as the default backend adapter for
+/// host-visible byte-slice views in generic helper code.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct HostBytesBackend;
+
+impl Backend for HostBytesBackend {
+    type ScalarBig = i128;
+    type ScalarPrep = i64;
+    type OwnedBuf = Vec<u8>;
+    type BufRef<'a> = &'a [u8];
+    type BufMut<'a> = &'a mut [u8];
+    type Handle = ();
+    type Location = Host;
+
+    fn alloc_bytes(len: usize) -> Self::OwnedBuf {
+        crate::alloc_aligned::<u8>(len)
+    }
+
+    fn alloc_zeroed_bytes(len: usize) -> Self::OwnedBuf {
+        crate::alloc_aligned::<u8>(len)
+    }
+
+    fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {
+        let mut out = crate::alloc_aligned::<u8>(bytes.len());
+        out.copy_from_slice(bytes);
+        out
+    }
+
+    fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
+        if crate::is_aligned(bytes.as_ptr()) {
+            bytes
+        } else {
+            let mut out = crate::alloc_aligned::<u8>(bytes.len());
+            out.copy_from_slice(&bytes);
+            out
+        }
+    }
+
+    fn to_host_bytes(buf: &Self::OwnedBuf) -> Vec<u8> {
+        buf.clone()
+    }
+
+    fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
+        dst.copy_from_slice(buf);
+    }
+
+    fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
+        buf.copy_from_slice(src);
+    }
+
+    fn len_bytes(buf: &Self::OwnedBuf) -> usize {
+        buf.len()
+    }
+
+    fn view(buf: &Self::OwnedBuf) -> Self::BufRef<'_> {
+        buf.as_slice()
+    }
+
+    fn view_ref<'a, 'b>(buf: &'a Self::BufRef<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        buf
+    }
+
+    fn view_mut(buf: &mut Self::OwnedBuf) -> Self::BufMut<'_> {
+        buf.as_mut_slice()
+    }
+
+    fn region(buf: &Self::OwnedBuf, offset: usize, len: usize) -> Self::BufRef<'_> {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut(buf: &mut Self::OwnedBuf, offset: usize, len: usize) -> Self::BufMut<'_> {
+        &mut buf[offset..offset + len]
+    }
+
+    fn region_ref<'a, 'b>(buf: &'a Self::BufRef<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_ref_mut<'a, 'b>(buf: &'a Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufRef<'a>
+    where
+        Self: 'b,
+    {
+        &buf[offset..offset + len]
+    }
+
+    fn region_mut_ref<'a, 'b>(buf: &'a mut Self::BufMut<'b>, offset: usize, len: usize) -> Self::BufMut<'a>
+    where
+        Self: 'b,
+    {
+        &mut buf[offset..offset + len]
+    }
+
+    unsafe fn destroy(_handle: NonNull<Self::Handle>) {}
+}
+
+unsafe impl HalModuleImpl<HostBytesBackend> for HostBytesBackend {
+    fn new(n: u64) -> crate::layouts::Module<Self> {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
+        unsafe { crate::layouts::Module::from_nonnull(NonNull::dangling(), n) }
+    }
 }
 
 /// Convenience marker for device-resident backends.
@@ -178,6 +303,10 @@ macro_rules! impl_backend_from {
 
             fn alloc_bytes(len: usize) -> Self::OwnedBuf {
                 <$from as poulpy_hal::layouts::Backend>::alloc_bytes(len)
+            }
+
+            fn alloc_zeroed_bytes(len: usize) -> Self::OwnedBuf {
+                <$from as poulpy_hal::layouts::Backend>::alloc_zeroed_bytes(len)
             }
 
             fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {

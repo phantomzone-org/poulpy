@@ -83,7 +83,7 @@ where
         let pt_backend = pt.to_backend_ref();
 
         assert_eq!(res.rank(), sk_ref.rank());
-        assert_eq!(pt_backend.n, self.n());
+        assert_eq!(pt_backend.n(), self.n());
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk_ref.n(), self.n() as u32);
         assert!(

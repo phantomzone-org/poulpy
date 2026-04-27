@@ -715,6 +715,14 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
+    fn svp_ppol_copy_backend(
+        module: &Module<BE>,
+        res: &mut crate::layouts::SvpPPolBackendMut<'_, BE>,
+        res_col: usize,
+        a: &crate::layouts::SvpPPolBackendRef<'_, BE>,
+        a_col: usize,
+    );
+
     fn svp_apply_dft(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
@@ -777,7 +785,7 @@ pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
         b: &crate::layouts::VmpPMatBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+        R: crate::layouts::VecZnxDftToBackendMut<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn vmp_apply_dft_to_dft_tmp_bytes(
@@ -798,7 +806,7 @@ pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
         limb_offset: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+        R: crate::layouts::VecZnxDftToBackendMut<BE>;
 
     fn vmp_apply_dft_to_dft_backend_ref<'s, 'r, 'a>(
         module: &Module<BE>,
@@ -820,25 +828,23 @@ pub unsafe trait HalVmpImpl<BE: Backend>: Backend {
 pub unsafe trait HalConvolutionImpl<BE: Backend>: Backend {
     fn cnv_prepare_left_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 
-    fn cnv_prepare_left<'s, R>(
+    fn cnv_prepare_left<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut crate::layouts::CnvPVecLBackendMut<'r, BE>,
         a: &crate::layouts::VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: crate::layouts::CnvPVecLToMut<BE>;
+    );
 
     fn cnv_prepare_right_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 
-    fn cnv_prepare_right<'s, R>(
+    fn cnv_prepare_right<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut crate::layouts::CnvPVecRBackendMut<'r, BE>,
         a: &crate::layouts::VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: crate::layouts::CnvPVecRToMut<BE>;
+    );
 
     fn cnv_apply_dft_tmp_bytes(module: &Module<BE>, cnv_offset: usize, res_size: usize, a_size: usize, b_size: usize) -> usize;
 
@@ -851,31 +857,29 @@ pub unsafe trait HalConvolutionImpl<BE: Backend>: Backend {
     ) -> usize;
 
     #[allow(clippy::too_many_arguments)]
-    fn cnv_by_const_apply<'s, R>(
+    fn cnv_by_const_apply<'s>(
         module: &Module<BE>,
         cnv_offset: usize,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::VecZnxBackendRef<'_, BE>,
         a_col: usize,
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: crate::layouts::VecZnxBigToMut<BE>;
+    );
 
     #[allow(clippy::too_many_arguments)]
-    fn cnv_apply_dft<'s, R>(
+    fn cnv_apply_dft<'s>(
         module: &Module<BE>,
         cnv_offset: usize,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::CnvPVecLBackendRef<'_, BE>,
         a_col: usize,
         b: &crate::layouts::CnvPVecRBackendRef<'_, BE>,
         b_col: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+    );
 
     fn cnv_pairwise_apply_dft_tmp_bytes(
         module: &Module<BE>,
@@ -886,29 +890,26 @@ pub unsafe trait HalConvolutionImpl<BE: Backend>: Backend {
     ) -> usize;
 
     #[allow(clippy::too_many_arguments)]
-    fn cnv_pairwise_apply_dft<'s, R>(
+    fn cnv_pairwise_apply_dft<'s>(
         module: &Module<BE>,
         cnv_offset: usize,
-        res: &mut R,
+        res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
         a: &crate::layouts::CnvPVecLBackendRef<'_, BE>,
         b: &crate::layouts::CnvPVecRBackendRef<'_, BE>,
         i: usize,
         j: usize,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        R: crate::layouts::VecZnxDftToMut<BE>;
+    );
 
     fn cnv_prepare_self_tmp_bytes(module: &Module<BE>, res_size: usize, a_size: usize) -> usize;
 
-    fn cnv_prepare_self<'s, L, R>(
+    fn cnv_prepare_self<'s, 'l, 'r>(
         module: &Module<BE>,
-        left: &mut L,
-        right: &mut R,
+        left: &mut crate::layouts::CnvPVecLBackendMut<'l, BE>,
+        right: &mut crate::layouts::CnvPVecRBackendMut<'r, BE>,
         a: &crate::layouts::VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        L: crate::layouts::CnvPVecLToMut<BE>,
-        R: crate::layouts::CnvPVecRToMut<BE>;
+    );
 }

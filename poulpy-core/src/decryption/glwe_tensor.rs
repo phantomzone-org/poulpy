@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::SvpPPolBytesOf,
-    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
+    api::{SvpPPolBytesOf, SvpPPolCopyBackend},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 pub use crate::api::GLWETensorDecrypt;
@@ -11,12 +11,15 @@ use crate::{
     layouts::{
         GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared,
         GLWETensor, GLWEToBackendRef,
-        prepared::{GLWESecretPreparedFactory, glwe_secret_prepared_backend_ref_from_mut},
+        prepared::{
+            GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut, GLWESecretPreparedToBackendRef,
+            GLWESecretTensorPreparedToBackendRef, glwe_secret_prepared_backend_ref_from_mut,
+        },
     },
 };
 
 pub(crate) trait GLWETensorDecryptDefault<BE: Backend>:
-    Sized + GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>
+    Sized + GLWEDecryptDefault<BE> + SvpPPolBytesOf + SvpPPolCopyBackend<BE> + GLWESecretPreparedFactory<BE>
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
@@ -33,7 +36,7 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_tensor_decrypt_default<R, P, S0, S1>(
+    fn glwe_tensor_decrypt_default<R: Data, P: Data, S0: Data, S1: Data>(
         &self,
         res: &GLWETensor<R>,
         pt: &mut GLWEPlaintext<P>,
@@ -41,14 +44,10 @@ where
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: HostDataRef,
         GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: HostDataMut,
         GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + crate::layouts::SetLWEInfos,
-        S0: HostDataRef,
-        S1: HostDataRef,
-        BE: HostBackend,
-        for<'a> BE::BufMut<'a>: HostDataMut,
+        GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos,
     {
         assert!(
             scratch.available() >= self.glwe_tensor_decrypt_tmp_bytes_default(res),
@@ -63,12 +62,19 @@ where
             .borrow()
             .take_glwe_secret_prepared(self, (GLWESecretTensor::pairs(rank) + rank).into());
 
-        for i in 0..rank {
-            sk_grouped.data.at_mut(i, 0).copy_from_slice(sk.data.at(i, 0));
-        }
+        {
+            let mut binding = &mut sk_grouped;
+            let mut grouped_backend = binding.to_backend_mut();
+            let sk_backend = sk.to_backend_ref();
+            let sk_tensor_backend = sk_tensor.to_backend_ref();
 
-        for i in 0..sk_grouped.rank().as_usize() - rank {
-            sk_grouped.data.at_mut(i + rank, 0).copy_from_slice(sk_tensor.data.at(i, 0));
+            for i in 0..rank {
+                self.svp_ppol_copy_backend(&mut grouped_backend.data, i, &sk_backend.data, i);
+            }
+
+            for i in 0..(grouped_backend.rank().as_usize() - rank) {
+                self.svp_ppol_copy_backend(&mut grouped_backend.data, i + rank, &sk_tensor_backend.data, i);
+            }
         }
 
         let res_backend = res.to_backend_ref();
@@ -80,7 +86,7 @@ where
 
 impl<BE: Backend> GLWETensorDecryptDefault<BE> for Module<BE>
 where
-    Self: GLWEDecryptDefault<BE> + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
+    Self: GLWEDecryptDefault<BE> + SvpPPolBytesOf + SvpPPolCopyBackend<BE> + GLWESecretPreparedFactory<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
 }

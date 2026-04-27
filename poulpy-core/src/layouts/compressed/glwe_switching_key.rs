@@ -6,10 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GLWEInfos, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
-    compressed::{
-        GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef,
-        GGLWEDecompress,
-    },
+    compressed::{GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -112,7 +109,7 @@ impl<D: HostDataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
 
 impl GLWESwitchingKeyCompressed<Vec<u8>> {
     /// Allocates a new compressed GLWE switching key by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -128,7 +125,15 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
     }
 
     /// Allocates a new compressed GLWE switching key with the given parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> Self {
         GLWESwitchingKeyCompressed {
             key: GGLWECompressed::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
             input_degree: Degree(0),
@@ -189,12 +194,6 @@ impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecom
 
 // module-only API: decompression is provided by `GLWESwitchingKeyDecompress` on `Module`.
 
-impl<D: HostDataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        self.key.to_mut()
-    }
-}
-
 impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWESwitchingKeyCompressed<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {
         <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendRef<BE>>::to_backend_ref(&self.key)
@@ -204,11 +203,5 @@ impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWESwitchingKeyCompressed
 impl<BE: Backend> GGLWECompressedToBackendMut<BE> for GLWESwitchingKeyCompressed<BE::OwnedBuf> {
     fn to_backend_mut(&mut self) -> crate::layouts::compressed::GGLWECompressedBackendMut<'_, BE> {
         <crate::layouts::GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.key)
-    }
-}
-
-impl<D: HostDataRef> GGLWECompressedToRef for GLWESwitchingKeyCompressed<D> {
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        self.key.to_ref()
     }
 }

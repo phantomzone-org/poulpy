@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, SvpPPol, SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef,
-        SvpPPolToBackendMut, SvpPPolToBackendRef, SvpPPolToMut, SvpPPolToRef, ZnxInfos,
+        Backend, Data, Module, SvpPPol, SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef, SvpPPolToBackendMut,
+        SvpPPolToBackendRef, ZnxInfos,
     },
 };
 
@@ -149,35 +149,6 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
 
 // module-only API: preparation is provided by `GLWESecretPreparedFactory` on `Module`.
 
-pub trait GLWESecretPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;
-}
-
-impl<D: HostDataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D, B> {
-    fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {
-        GLWESecretPrepared {
-            data: self.data.to_ref(),
-            dist: self.dist,
-        }
-    }
-}
-
-pub trait GLWESecretPreparedToMut<B: Backend>
-where
-    Self: GLWESecretPreparedToRef<B>,
-{
-    fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
-}
-
-impl<D: HostDataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D, B> {
-    fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
-        GLWESecretPrepared {
-            dist: self.dist,
-            data: self.data.to_mut(),
-        }
-    }
-}
-
 pub trait GLWESecretPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B>;
 }
@@ -194,6 +165,15 @@ impl<B: Backend> GLWESecretPreparedToBackendRef<B> for GLWESecretPrepared<B::Own
 impl<'b, B: Backend + 'b> GLWESecretPreparedToBackendRef<B> for &mut GLWESecretPrepared<B::BufMut<'b>, B> {
     fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B> {
         glwe_secret_prepared_backend_ref_from_mut::<B>(self)
+    }
+}
+
+impl<'b, B: Backend + 'b> GLWESecretPreparedToBackendRef<B> for &GLWESecretPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GLWESecretPreparedBackendRef<'_, B> {
+        GLWESecretPrepared {
+            dist: self.dist,
+            data: SvpPPol::from_data(B::view_ref(&self.data.data), self.data.n(), self.data.cols()),
+        }
     }
 }
 

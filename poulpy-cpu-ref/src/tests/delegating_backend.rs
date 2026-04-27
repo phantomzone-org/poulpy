@@ -1,12 +1,11 @@
 use poulpy_core::{
     api::{GLWEMulXpMinusOne, GLWERotate},
     layouts::{
-        Base2K, Degree, GLWE, GLWEBackendMut, GLWEBackendRef, GLWELayout, GLWEToBackendMut, GLWEToBackendRef, Rank,
-        TorusPrecision,
+        Base2K, Degree, GLWE, GLWEBackendMut, GLWEBackendRef, GLWELayout, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc,
+        Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
-    api::ModuleNew,
     layouts::{FillUniform, Module},
     source::Source,
 };
@@ -20,7 +19,8 @@ fn sample_glwe() -> GLWE<Vec<u8>> {
         k: TorusPrecision(50),
         rank: Rank(2),
     };
-    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&layout);
+    let module: Module<FFT64Ref> = Module::new(256);
+    let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&layout);
     let mut source = Source::new([7u8; 32]);
     ct.fill_uniform(40, &mut source);
     ct
@@ -32,8 +32,8 @@ fn delegating_backend_manual_family_matches_fft64_ref() {
     let module_ref: Module<FFT64Ref> = Module::new(256);
 
     let input = sample_glwe();
-    let mut delegating_out = GLWE::alloc_from_infos(&input);
-    let mut ref_out = GLWE::alloc_from_infos(&input);
+    let mut delegating_out = module_delegating.glwe_alloc_from_infos(&input);
+    let mut ref_out = module_ref.glwe_alloc_from_infos(&input);
 
     module_delegating.glwe_mul_xp_minus_one(-7, &mut delegating_out, &input);
     module_ref.glwe_mul_xp_minus_one(-7, &mut ref_out, &input);
@@ -47,8 +47,8 @@ fn delegating_backend_delegated_family_matches_fft64_ref() {
     let module_ref: Module<FFT64Ref> = Module::new(256);
 
     let input = sample_glwe();
-    let mut delegating_out = GLWE::alloc_from_infos(&input);
-    let mut ref_out = GLWE::alloc_from_infos(&input);
+    let mut delegating_out = module_delegating.glwe_alloc_from_infos(&input);
+    let mut ref_out = module_ref.glwe_alloc_from_infos(&input);
 
     let input_delegating: GLWEBackendRef<'_, DelegatingFFT64Ref> =
         <GLWE<Vec<u8>> as GLWEToBackendRef<DelegatingFFT64Ref>>::to_backend_ref(&input);

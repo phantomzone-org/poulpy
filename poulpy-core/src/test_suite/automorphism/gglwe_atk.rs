@@ -1,8 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismBackend},
-    layouts::{
-        Backend, GaloisElement, Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchOwned,
-    },
+    layouts::{Backend, GaloisElement, Module, ScalarZnx, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -12,7 +10,7 @@ use crate::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret,
-        GLWESecretPreparedFactory,
+        GLWESecretPreparedFactory, ModuleCoreAlloc,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     var_noise_gglwe_product_v2,
@@ -24,6 +22,7 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
     module: &Module<BE>,
 ) where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
@@ -85,9 +84,11 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
             })
             .unwrap();
 
-            let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_in_infos);
-            let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_out_infos);
-            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_apply_infos);
+            let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&auto_key_in_infos);
+            let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>> =
+                module.glwe_automorphism_key_alloc_from_infos(&auto_key_out_infos);
+            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> =
+                module.glwe_automorphism_key_alloc_from_infos(&auto_key_apply_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -104,7 +105,7 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
                     )),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_in);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&auto_key_in);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
@@ -142,24 +143,26 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
                 &mut scratch.borrow(),
             );
 
-            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_out_infos);
+            let mut sk_auto: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&auto_key_out_infos);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n(), sk.data.cols());
             let mut sk_auto_backend = ScalarZnx::from_data(
                 BE::from_host_bytes(sk_auto.data.data.as_ref()),
-                sk_auto.data.n,
-                sk_auto.data.cols,
+                sk_auto.data.n(),
+                sk_auto.data.cols(),
             );
-            for i in 0..rank {
-                module.vec_znx_automorphism_backend(
-                    module.galois_element_inv(p0 * p1),
-                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
-                        &mut sk_auto_backend,
-                    ),
-                    i,
-                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
-                    i,
-                );
+            {
+                let sk_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_ref::<BE>(&sk_backend);
+                let mut sk_auto_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut sk_auto_backend);
+                for i in 0..rank {
+                    module.vec_znx_automorphism_backend(
+                        module.galois_element_inv(p0 * p1),
+                        &mut sk_auto_backend_as_vec,
+                        i,
+                        &sk_backend_as_vec,
+                        i,
+                    );
+                }
             }
             BE::copy_to_host(&sk_auto_backend.data, sk_auto.data.data.as_mut());
 
@@ -204,6 +207,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
     module: &Module<BE>,
 ) where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
@@ -253,8 +257,9 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
             })
             .unwrap();
 
-            let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_layout);
-            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_apply_layout);
+            let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = module.glwe_automorphism_key_alloc_from_infos(&auto_key_layout);
+            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> =
+                module.glwe_automorphism_key_alloc_from_infos(&auto_key_apply_layout);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -266,7 +271,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
                     | module.glwe_automorphism_key_automorphism_tmp_bytes(&auto_key, &auto_key, &auto_key_apply),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key);
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&auto_key);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
@@ -299,25 +304,27 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
             module.glwe_automorphism_key_automorphism_inplace(&mut auto_key, &auto_key_apply_prepared, &mut scratch.borrow());
 
-            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key);
+            let mut sk_auto: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&auto_key);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
 
-            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n, sk.data.cols);
+            let sk_backend = ScalarZnx::from_data(BE::from_host_bytes(sk.data.data.as_ref()), sk.data.n(), sk.data.cols());
             let mut sk_auto_backend = ScalarZnx::from_data(
                 BE::from_host_bytes(sk_auto.data.data.as_ref()),
-                sk_auto.data.n,
-                sk_auto.data.cols,
+                sk_auto.data.n(),
+                sk_auto.data.cols(),
             );
-            for i in 0..rank {
-                module.vec_znx_automorphism_backend(
-                    module.galois_element_inv(p0 * p1),
-                    &mut <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(
-                        &mut sk_auto_backend,
-                    ),
-                    i,
-                    &<ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_backend),
-                    i,
-                );
+            {
+                let sk_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_ref::<BE>(&sk_backend);
+                let mut sk_auto_backend_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut sk_auto_backend);
+                for i in 0..rank {
+                    module.vec_znx_automorphism_backend(
+                        module.galois_element_inv(p0 * p1),
+                        &mut sk_auto_backend_as_vec,
+                        i,
+                        &sk_backend_as_vec,
+                        i,
+                    );
+                }
             }
             BE::copy_to_host(&sk_auto_backend.data, sk_auto.data.data.as_mut());
 

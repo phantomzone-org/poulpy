@@ -1,24 +1,21 @@
 use crate::{
-    api::{ModuleNew, VecZnxAddAssignBackend, VecZnxAddIntoBackend},
-    layouts::{
-        Backend, FillUniform, Module, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut,
-    },
+    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
     reference::znx::{ZnxAdd, ZnxAddInplace, ZnxCopy, ZnxZero},
     source::Source,
 };
 
-pub fn vec_znx_add_into<R, A, B, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    B: VecZnxToRef,
-    ZNXARI: ZnxAdd + ZnxCopy + ZnxZero,
+pub fn vec_znx_add_into<'r, 'a, BE>(
+    res: &mut VecZnxBackendMut<'r, BE>,
+    res_col: usize,
+    a: &VecZnxBackendRef<'a, BE>,
+    a_col: usize,
+    b: &VecZnxBackendRef<'a, BE>,
+    b_col: usize,
+) where
+    BE: Backend + ZnxAdd + ZnxCopy + ZnxZero,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
 {
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let b: VecZnx<&[u8]> = b.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -34,43 +31,44 @@ where
         let cpy_size: usize = b_size.min(res_size);
 
         for j in 0..sum_size {
-            ZNXARI::znx_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            BE::znx_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            ZNXARI::znx_copy(res.at_mut(res_col, j), b.at(b_col, j));
+            BE::znx_copy(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
         let cpy_size: usize = a_size.min(res_size);
 
         for j in 0..sum_size {
-            ZNXARI::znx_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            BE::znx_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            ZNXARI::znx_copy(res.at_mut(res_col, j), a.at(a_col, j));
+            BE::znx_copy(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
     }
 }
 
-pub fn vec_znx_add_assign<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxAddAssign,
+pub fn vec_znx_add_assign<'r, 'a, BE>(
+    res: &mut VecZnxBackendMut<'r, BE>,
+    res_col: usize,
+    a: &VecZnxBackendRef<'a, BE>,
+    a_col: usize,
+) where
+    BE: Backend + ZnxAddInplace,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
 {
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -79,7 +77,7 @@ where
     let sum_size: usize = a.size().min(res.size());
 
     for j in 0..sum_size {
-        ZNXARI::znx_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::znx_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 

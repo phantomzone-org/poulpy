@@ -7,7 +7,7 @@ use std::{
 use bytemuck::Pod;
 use rand_distr::num_traits::Zero;
 
-use crate::layouts::{Data, Location};
+use crate::layouts::{Data, Location, MatZnx, ScalarZnx, VecZnx};
 use crate::{
     GALOISGENERATOR,
     api::{ModuleLogN, ModuleN},
@@ -50,6 +50,18 @@ pub trait Backend: Sized + Sync + Send {
     type Location: Location;
     /// Allocates a backend-owned byte buffer of `len` bytes.
     fn alloc_bytes(len: usize) -> Self::OwnedBuf;
+    /// Allocates a zero-initialized backend-owned byte buffer of `len` bytes.
+    ///
+    /// Backends may override this with a device-native implementation
+    /// (e.g. `cudaMemset`-backed allocation). The default implementation
+    /// falls back to allocating first and then zero-filling through the
+    /// existing host upload path.
+    fn alloc_zeroed_bytes(len: usize) -> Self::OwnedBuf {
+        let mut buf = Self::alloc_bytes(len);
+        let zeros = vec![0u8; len];
+        Self::copy_from_host(&mut buf, &zeros);
+        buf
+    }
     /// Uploads or copies host bytes into backend-owned storage.
     fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf;
     /// Wraps/Uploads a host-owned byte buffer into backend-owned storage.
@@ -157,20 +169,15 @@ pub trait Backend: Sized + Sync + Send {
 
 /// Primary entry point for all polynomial operations over `Z[X]/(X^N + 1)`.
 ///
-/// A `Module` pairs a ring degree `N` (always a power of two) with an
-/// optional backend-specific handle that holds precomputed state. All
+/// A `Module` pairs a ring degree `N` (always a power of two) with a
+/// backend-specific handle that holds any required precomputed state. All
 /// [`api`](crate::api) trait methods are dispatched through this type.
 ///
-/// A *marker* module (created with [`Module::new_marker`]) has no backend
-/// handle and can only be used for operations that do not require one
-/// (e.g. metadata queries). Operations that need the handle will panic
-/// on a marker module.
-///
 /// The module **owns** its handle; dropping the `Module` calls
-/// [`Backend::destroy`] if a handle is present.
+/// [`Backend::destroy`].
 #[repr(C)]
 pub struct Module<B: Backend> {
-    ptr: Option<NonNull<B::Handle>>,
+    ptr: NonNull<B::Handle>,
     n: u64,
     _marker: PhantomData<B>,
 }
@@ -179,16 +186,13 @@ unsafe impl<B: Backend> Sync for Module<B> {}
 unsafe impl<B: Backend> Send for Module<B> {}
 
 impl<B: Backend> Module<B> {
-    /// Creates a marker module with no backend handle.
-    /// Operations requiring a backend handle will panic.
+    /// Creates a backend module for ring degree `N`.
     #[inline]
-    pub fn new_marker(n: u64) -> Self {
-        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
-        Self {
-            ptr: None,
-            n,
-            _marker: PhantomData,
-        }
+    pub fn new(n: u64) -> Self
+    where
+        Self: crate::api::ModuleNew<B>,
+    {
+        <Self as crate::api::ModuleNew<B>>::new(n)
     }
 
     /// Creates a module from a [`NonNull`] backend handle.
@@ -202,7 +206,7 @@ impl<B: Backend> Module<B> {
     pub unsafe fn from_nonnull(ptr: NonNull<B::Handle>, n: u64) -> Self {
         assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Self {
-            ptr: Some(ptr),
+            ptr,
             n,
             _marker: PhantomData,
         }
@@ -215,22 +219,17 @@ impl<B: Backend> Module<B> {
     pub unsafe fn from_raw_parts(ptr: *mut B::Handle, n: u64) -> Self {
         assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
         Self {
-            ptr: Some(NonNull::new(ptr).expect("null module ptr")),
+            ptr: NonNull::new(ptr).expect("null module ptr"),
             n,
             _marker: PhantomData,
         }
     }
 
     /// Returns the raw pointer to the backend handle.
-    ///
-    /// # Panics
-    /// Panics if this is a marker module (created via `new_marker`).
     #[allow(clippy::missing_safety_doc)]
     #[inline]
     pub unsafe fn ptr(&self) -> *mut <B as Backend>::Handle {
-        self.ptr
-            .expect("called ptr() on a marker module (no backend handle)")
-            .as_ptr()
+        self.ptr.as_ptr()
     }
 
     /// Returns the ring degree `N`.
@@ -239,21 +238,43 @@ impl<B: Backend> Module<B> {
         self.n as usize
     }
 
-    /// Returns the raw pointer to the backend handle.
-    ///
-    /// # Panics
-    /// Panics if this is a marker module (created via `new_marker`).
+    /// Allocates a zero-initialized backend-owned [`ScalarZnx`].
     #[inline]
-    pub fn as_mut_ptr(&self) -> *mut B::Handle {
-        self.ptr
-            .expect("called as_mut_ptr() on a marker module (no backend handle)")
-            .as_ptr()
+    pub fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnx<B::OwnedBuf> {
+        let n = self.n();
+        let len = ScalarZnx::<Vec<u8>>::bytes_of(n, cols);
+        let bytes = B::alloc_zeroed_bytes(len);
+        ScalarZnx::from_data(bytes, n, cols)
     }
 
-    /// Returns true if this module has a backend handle (not a marker).
+    /// Allocates a zero-initialized backend-owned [`VecZnx`].
     #[inline]
-    pub fn has_handle(&self) -> bool {
-        self.ptr.is_some()
+    pub fn vec_znx_alloc(&self, cols: usize, size: usize) -> VecZnx<B::OwnedBuf> {
+        self.vec_znx_alloc_with_max_size(cols, size, size)
+    }
+
+    /// Allocates a zero-initialized backend-owned [`VecZnx`] with explicit limb capacity.
+    #[inline]
+    pub fn vec_znx_alloc_with_max_size(&self, cols: usize, size: usize, max_size: usize) -> VecZnx<B::OwnedBuf> {
+        let n = self.n();
+        let len = VecZnx::<Vec<u8>>::bytes_of(n, cols, max_size);
+        let bytes = B::alloc_zeroed_bytes(len);
+        VecZnx::from_data_with_max_size(bytes, n, cols, size, max_size)
+    }
+
+    /// Allocates a zero-initialized backend-owned [`MatZnx`].
+    #[inline]
+    pub fn mat_znx_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnx<B::OwnedBuf> {
+        let n = self.n();
+        let len = MatZnx::<Vec<u8>>::bytes_of(n, rows, cols_in, cols_out, size);
+        let bytes = B::alloc_zeroed_bytes(len);
+        MatZnx::from_data(bytes, n, rows, cols_in, cols_out, size)
+    }
+
+    /// Returns the raw pointer to the backend handle.
+    #[inline]
+    pub fn as_mut_ptr(&self) -> *mut B::Handle {
+        self.ptr.as_ptr()
     }
 
     /// Returns `log2(N)`.
@@ -359,9 +380,7 @@ impl<BE: Backend> GaloisElement for Module<BE> where Self: CyclotomicOrder {}
 
 impl<B: Backend> Drop for Module<B> {
     fn drop(&mut self) {
-        if let Some(ptr) = self.ptr {
-            unsafe { B::destroy(ptr) }
-        }
+        unsafe { B::destroy(self.ptr) }
     }
 }
 

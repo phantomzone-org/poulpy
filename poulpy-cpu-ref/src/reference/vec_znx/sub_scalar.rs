@@ -1,25 +1,21 @@
-use crate::layouts::{VecZnxToMut, VecZnxToRef};
 use crate::{
-    layouts::{ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxSub, ZnxSubAssign, ZnxZero},
+    layouts::{Backend, HostDataMut, HostDataRef, ScalarZnxBackendRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
+    reference::znx::{ZnxSub, ZnxSubInplace, ZnxZero},
 };
 
-pub fn vec_znx_sub_scalar<R, B, ZNXARI>(
-    res: &mut R,
+pub fn vec_znx_sub_scalar<'r, 'a, BE>(
+    res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
-    a: &ScalarZnx<&[u8]>,
+    a: &ScalarZnxBackendRef<'a, BE>,
     a_col: usize,
-    b: &B,
+    b: &VecZnxBackendRef<'a, BE>,
     b_col: usize,
     b_limb: usize,
 ) where
-    R: VecZnxToMut,
-    B: VecZnxToRef,
-    ZNXARI: ZnxSub + ZnxZero,
+    BE: Backend + ZnxSub + ZnxZero,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
 {
-    let b: VecZnx<&[u8]> = b.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     let min_size: usize = b.size().min(res.size());
 
     #[cfg(debug_assertions)]
@@ -29,28 +25,32 @@ pub fn vec_znx_sub_scalar<R, B, ZNXARI>(
 
     for j in 0..min_size {
         if j == b_limb {
-            ZNXARI::znx_sub(res.at_mut(res_col, j), b.at(b_col, j), a.at(a_col, 0));
+            BE::znx_sub(res.at_mut(res_col, j), b.at(b_col, j), a.at(a_col, 0));
         } else {
             res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j));
         }
     }
 
     for j in min_size..res.size() {
-        ZNXARI::znx_zero(res.at_mut(res_col, j));
+        BE::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-pub fn vec_znx_sub_scalar_inplace<R, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &ScalarZnx<&[u8]>, a_col: usize)
-where
-    R: VecZnxToMut,
-    ZNXARI: ZnxSubInplace,
+pub fn vec_znx_sub_scalar_inplace<'r, 'a, BE>(
+    res: &mut VecZnxBackendMut<'r, BE>,
+    res_col: usize,
+    res_limb: usize,
+    a: &ScalarZnxBackendRef<'a, BE>,
+    a_col: usize,
+) where
+    BE: Backend + ZnxSubInplace,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert!(res_limb < res.size());
     }
 
-    ZNXARI::znx_sub_assign(res.at_mut(res_col, res_limb), a.at(a_col, 0));
+    BE::znx_sub_inplace(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }

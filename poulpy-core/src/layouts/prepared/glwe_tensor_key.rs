@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedBackendMut, GGLWEPreparedFactory, GGLWEPreparedToMut,
-    GGLWEPreparedToRef, GGLWEToBackendRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedBackendMut, GGLWEPreparedFactory, GGLWEToBackendRef,
+    GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of a GLWE tensor key.
@@ -99,13 +99,13 @@ where
 
     fn prepare_tensor_key<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, B>)
     where
-        R: GGLWEPreparedToMut<B> + GGLWEPreparedToBackendMut<B>,
+        R: GGLWEPreparedToBackendMut<B>,
         O: GGLWEToBackendRef<B>,
         ScratchArena<'s, B>: ScratchAvailable,
         B: 's,
     {
         let tmp_bytes = {
-            let res_infos = res.to_mut();
+            let res_infos = res.to_backend_mut();
             self.prepare_tensor_key_tmp_bytes(&res_infos)
         };
         assert!(
@@ -126,24 +126,6 @@ impl<B: Backend> GLWETensorKeyPreparedFactory<B> for Module<B> where Module<B>: 
 
 // module-only API: preparation is provided by `GLWETensorKeyPreparedFactory` on `Module`.
 
-impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GLWETensorKeyPrepared<D, B>
-where
-    GGLWEPrepared<D, B>: GGLWEPreparedToMut<B>,
-{
-    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
-        self.0.to_mut()
-    }
-}
-
-impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GLWETensorKeyPrepared<D, B>
-where
-    GGLWEPrepared<D, B>: GGLWEPreparedToRef<B>,
-{
-    fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
-        self.0.to_ref()
-    }
-}
-
 pub type GLWETensorKeyPreparedBackendRef<'a, B> = GLWETensorKeyPrepared<<B as Backend>::BufRef<'a>, B>;
 pub type GLWETensorKeyPreparedBackendMut<'a, B> = GLWETensorKeyPrepared<<B as Backend>::BufMut<'a>, B>;
 
@@ -151,7 +133,10 @@ pub trait GLWETensorKeyPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWETensorKeyPreparedBackendRef<'_, B>;
 }
 
-impl<B: Backend> GLWETensorKeyPreparedToBackendRef<B> for GLWETensorKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWETensorKeyPreparedToBackendRef<B> for GLWETensorKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GLWETensorKeyPreparedBackendRef<'_, B> {
         GLWETensorKeyPrepared(self.0.to_backend_ref())
     }
@@ -161,13 +146,19 @@ pub trait GLWETensorKeyPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWETensorKeyPreparedBackendMut<'_, B>;
 }
 
-impl<B: Backend> GLWETensorKeyPreparedToBackendMut<B> for GLWETensorKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWETensorKeyPreparedToBackendMut<B> for GLWETensorKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GLWETensorKeyPreparedBackendMut<'_, B> {
         GLWETensorKeyPrepared(self.0.to_backend_mut())
     }
 }
 
-impl<B: Backend> GGLWEPreparedToBackendMut<B> for GLWETensorKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEPreparedToBackendMut<B> for GLWETensorKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B> {
         self.0.to_backend_mut()
     }

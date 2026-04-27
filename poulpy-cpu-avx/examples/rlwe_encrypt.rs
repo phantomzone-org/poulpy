@@ -17,15 +17,14 @@ use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare,
-        VecZnxAddNormalSourceBackend, VecZnxBigAddSmallAssign, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSubSmallNegateInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeInplaceBackend,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormalSourceBackend,
+        VecZnxBigAddSmallAssign, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
+        VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalizeInplaceBackend,
     },
     layouts::{
         Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef,
         VecZnx, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxToBackendMut,
-        VecZnxToBackendRef, ZnxInfos,
+        VecZnxToBackendRef,
     },
     source::Source,
 };
@@ -45,7 +44,7 @@ fn main() {
     let mut source: Source = Source::new(seed);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
-    let mut s: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
+    let mut s: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
@@ -60,8 +59,7 @@ fn main() {
     );
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
-    let mut ct: VecZnx<Vec<u8>> = VecZnx::alloc(
-        module.n(),
+    let mut ct: VecZnx<Vec<u8>> = module.vec_znx_alloc(
         2,       // Number of columns
         ct_size, // Number of small poly per column
     );
@@ -94,8 +92,7 @@ fn main() {
     module.vec_znx_idft_apply_tmpa(&mut buf_big.to_backend_mut(), 0, &mut buf_dft.to_backend_mut(), 0);
 
     // Creates a plaintext: VecZnx with 1 column
-    let mut m = VecZnx::alloc(
-        module.n(),
+    let mut m = module.vec_znx_alloc(
         1,        // Number of columns
         msg_size, // Number of small polynomials
     );
@@ -168,7 +165,7 @@ fn main() {
     );
 
     // m + e <- BIG(ct[1] * s + ct[0])
-    let mut res = VecZnx::alloc(module.n(), 1, ct_size);
+    let mut res = module.vec_znx_alloc(1, ct_size);
     module.vec_znx_big_normalize(
         &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<BackendImpl>>::to_backend_mut(&mut res),
         base2k,

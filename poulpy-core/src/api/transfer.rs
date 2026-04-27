@@ -1,6 +1,4 @@
-use poulpy_hal::layouts::{
-    Backend, DataView, MatZnx, Module, ScalarZnx, SvpPPol, TransferFrom, VecZnx, VecZnxDft, VmpPMat, ZnxInfos,
-};
+use poulpy_hal::layouts::{Backend, DataView, MatZnx, Module, ScalarZnx, SvpPPol, TransferFrom, VecZnx, VecZnxDft, VmpPMat};
 
 use crate::layouts::{
     BackendGGLWE, BackendGGLWEPrepared, BackendGGLWEToGGSWKeyPrepared, BackendGGSW, BackendGGSWPrepared, BackendGLWE,

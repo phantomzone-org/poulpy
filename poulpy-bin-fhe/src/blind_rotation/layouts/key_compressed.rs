@@ -1,4 +1,5 @@
 use poulpy_hal::{
+    api::ModuleN,
     layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
@@ -8,7 +9,7 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, compressed::GGSWCompressed},
+    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, ModuleCoreCompressedAlloc, compressed::GGSWCompressed},
 };
 
 use crate::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
@@ -45,8 +46,9 @@ pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
 
 /// Algorithm-specific factory for allocating a [`BlindRotationKeyCompressed`].
 pub trait BlindRotationKeyCompressedFactory<BRA: BlindRotationAlgo> {
-    fn blind_rotation_key_compressed_alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
+    fn blind_rotation_key_compressed_alloc<M, A>(module: &M, infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
     where
+        M: ModuleCoreCompressedAlloc + ModuleN,
         A: BlindRotationKeyInfos;
 }
 
@@ -54,11 +56,12 @@ impl<BRA: BlindRotationAlgo> BlindRotationKeyCompressed<Vec<u8>, BRA>
 where
     Self: BlindRotationKeyCompressedFactory<BRA>,
 {
-    pub fn alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
+    pub fn alloc<M, A>(module: &M, infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
     where
+        M: ModuleCoreCompressedAlloc + ModuleN,
         A: BlindRotationKeyInfos,
     {
-        Self::blind_rotation_key_compressed_alloc(infos)
+        Self::blind_rotation_key_compressed_alloc(module, infos)
     }
 }
 

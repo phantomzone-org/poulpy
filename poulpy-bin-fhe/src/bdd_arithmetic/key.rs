@@ -13,14 +13,14 @@ use anyhow::Result;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use poulpy_core::layouts::{
     GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
-    GLWESwitchingKeyPrepared,
+    GLWESwitchingKeyPrepared, ModuleCoreAlloc,
 };
 use poulpy_core::{DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWESwitchingKeyEncryptSk};
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, ScratchArenaTakeCore,
     layouts::{
         GLWEInfos, GLWESecretToBackendRef, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPreparedFactory, LWEInfos,
-        LWESecretToBackendRef, LWESecretToRef, prepared::GLWEToLWEKeyPrepared,
+        LWESecretToBackendRef, prepared::GLWEToLWEKeyPrepared,
     },
 };
 
@@ -136,11 +136,17 @@ where
 }
 
 impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA> {
-    pub fn alloc_from_infos<A: BDDKeyInfos>(infos: &A) -> Self {
+    pub fn alloc_from_infos<M, A: BDDKeyInfos>(module: &M, infos: &A) -> Self
+    where
+        M: ModuleCoreAlloc<OwnedBuf = Vec<u8>> + poulpy_hal::api::ModuleN,
+    {
         Self {
-            cbt: CircuitBootstrappingKey::alloc_from_infos(&infos.cbt_infos()),
-            ks_glwe: infos.ks_glwe_infos().as_ref().map(GLWESwitchingKey::alloc_from_infos),
-            ks_lwe: GLWEToLWEKey::alloc_from_infos(&infos.ks_lwe_infos()),
+            cbt: CircuitBootstrappingKey::alloc_from_infos(module, &infos.cbt_infos()),
+            ks_glwe: infos
+                .ks_glwe_infos()
+                .as_ref()
+                .map(|infos| module.glwe_switching_key_alloc_from_infos(infos)),
+            ks_lwe: module.glwe_to_lwe_key_alloc_from_infos(&infos.ks_lwe_infos()),
         }
     }
 }
@@ -178,7 +184,7 @@ pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's;
 }
@@ -207,7 +213,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         BE: 's,
     {
@@ -216,7 +222,7 @@ where
                 .ks_glwe
                 .as_ref()
                 .expect("ks_glwe enc_infos missing when ks_glwe key exists");
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(sk_glwe.n(), key.rank_out());
+            let mut sk_out: GLWESecret<Vec<u8>> = self.glwe_secret_alloc(key.rank_out());
             sk_out.fill_ternary_prob(0.5, source_xe);
             self.glwe_switching_key_encrypt_sk(key, sk_glwe, &sk_out, ks_glwe_infos, source_xe, source_xa, scratch);
             self.glwe_to_lwe_key_encrypt_sk(
@@ -256,7 +262,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GetDistribution + GLWEInfos,
         M: BDDKeyEncryptSk<BRA, BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

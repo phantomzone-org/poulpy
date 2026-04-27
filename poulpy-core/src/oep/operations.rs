@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -37,11 +37,10 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<A>: GLWEToBackendRef<BE>;
 
     fn glwe_mul_const_inplace<'s, R>(
         module: &Module<BE>,
@@ -50,12 +49,8 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        R: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
 }
 
 /// Backend-provided GLWE-by-plaintext multiplication operations.
@@ -81,13 +76,12 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
-        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     fn glwe_mul_plain_inplace<'s, R, A>(
         module: &Module<BE>,
@@ -98,11 +92,10 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        R: Data,
+        A: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 }
 
 /// Backend-provided GLWE tensoring and relinearization operations.
@@ -133,13 +126,12 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_square_apply<'s, R, A>(
         module: &Module<BE>,
@@ -149,11 +141,10 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
         module: &Module<BE>,
@@ -163,13 +154,12 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
-        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, a: &A, tsk: &B) -> usize
     where
@@ -379,7 +369,7 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
 
     fn packer_add<'s, A, K, H>(
         module: &Module<BE>,
-        packer: &mut GLWEPacker,
+        packer: &mut GLWEPacker<BE::OwnedBuf>,
         a: Option<&A>,
         i: usize,
         auto_keys: &H,
@@ -388,7 +378,7 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
         A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        crate::layouts::BackendGLWE<BE>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 }
 
@@ -407,8 +397,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>;
 
@@ -419,8 +409,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        GLWE<R>: GLWEToBackendMut<BE>;
+        R: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -439,9 +429,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
@@ -456,9 +446,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        R: Data,
+        A: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
@@ -483,9 +473,9 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         GLWE<B>: crate::layouts::GLWEToBackendRef<BE>;
@@ -499,8 +489,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
@@ -512,8 +502,8 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
@@ -674,7 +664,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn packer_add_default<'s, A, K, H>(
         module: &Module<BE>,
-        packer: &mut GLWEPacker,
+        packer: &mut GLWEPacker<BE::OwnedBuf>,
         a: Option<&A>,
         i: usize,
         auto_keys: &H,
@@ -700,7 +690,6 @@ where
         + GLWEPackingDefault<BE>
         + GLWEPackerOpsDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    for<'s> BE::BufMut<'s>: HostDataMut,
 {
     fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
     where
@@ -718,8 +707,8 @@ where
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
     {
@@ -733,8 +722,8 @@ where
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        R: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, scratch)
     }
@@ -758,9 +747,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
@@ -786,9 +775,9 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        R: Data,
+        A: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_assign(
@@ -829,9 +818,9 @@ where
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
@@ -856,8 +845,8 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
     {
@@ -872,8 +861,8 @@ where
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
@@ -1120,7 +1109,7 @@ where
 
     fn packer_add_default<'s, A, K, H>(
         module: &Module<BE>,
-        packer: &mut GLWEPacker,
+        packer: &mut GLWEPacker<BE::OwnedBuf>,
         a: Option<&A>,
         i: usize,
         auto_keys: &H,
@@ -1129,7 +1118,7 @@ where
         A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        BE: Backend<OwnedBuf = Vec<u8>>,
+        BE: Backend,
     {
         <Module<BE> as GLWEPackerOpsDefault<BE>>::packer_add_default(module, packer, a, i, auto_keys, scratch)
     }
@@ -1153,18 +1142,18 @@ macro_rules! impl_glwe_rotate_impl_from {
 
             fn glwe_rotate<R, A>(module: &poulpy_hal::layouts::Module<$be>, k: i64, res: &mut R, a: &A)
             where
-                R: $crate::layouts::GLWEToMut,
-                A: $crate::layouts::GLWEToRef,
+                R: $crate::layouts::GLWEToBackendMut,
+                A: $crate::layouts::GLWEToBackendRef,
             {
                 let delegate: poulpy_hal::layouts::Module<$from> =
                     <poulpy_hal::layouts::Module<$from> as poulpy_hal::api::ModuleNew<$from>>::new(module.n() as u64);
 
                 let a_host: $crate::layouts::GLWE<Vec<u8>> =
-                    poulpy_hal::layouts::ToOwnedDeep::to_owned_deep(&$crate::layouts::GLWEToRef::to_ref(a));
+                    poulpy_hal::layouts::ToOwnedDeep::to_owned_deep(&$crate::layouts::GLWEToBackendRef::to_backend_ref(a));
                 let a_src: $crate::layouts::GLWE<<$be as poulpy_hal::layouts::Backend>::OwnedBuf> = a_host.reinterpret::<$be>();
 
-                let res_infos = $crate::layouts::GLWEToMut::to_mut(res);
-                let res_host: $crate::layouts::GLWE<Vec<u8>> = $crate::layouts::GLWE::alloc_from_infos(&res_infos);
+                let res_infos = $crate::layouts::GLWEToBackendMut::to_backend_mut(res);
+                let res_host: $crate::layouts::GLWE<Vec<u8>> = delegate.glwe_alloc_from_infos(&res_infos);
                 let res_src: $crate::layouts::GLWE<<$be as poulpy_hal::layouts::Backend>::OwnedBuf> =
                     res_host.reinterpret::<$be>();
 
@@ -1180,14 +1169,14 @@ macro_rules! impl_glwe_rotate_impl_from {
 
                 let res_back: $crate::layouts::GLWE<<$be as poulpy_hal::layouts::Backend>::OwnedBuf> =
                     $crate::api::ModuleTransfer::download_glwe::<$from>(&delegate, &res_delegate);
-                let res_back_ref = $crate::layouts::GLWEToRef::to_ref(&res_back);
+                let res_back_ref = $crate::layouts::GLWEToBackendRef::to_backend_ref(&res_back);
 
                 let mut bytes = Vec::new();
                 poulpy_hal::layouts::WriterTo::write_to(&res_back_ref, &mut bytes)
                     .expect("failed to serialize delegated GLWE rotate result");
 
                 let mut cursor = std::io::Cursor::new(bytes);
-                let mut res_mut = $crate::layouts::GLWEToMut::to_mut(res);
+                let mut res_mut = $crate::layouts::GLWEToBackendMut::to_backend_mut(res);
                 poulpy_hal::layouts::ReaderFrom::read_from(&mut res_mut, &mut cursor)
                     .expect("failed to write delegated GLWE rotate result back");
             }
@@ -1198,13 +1187,13 @@ macro_rules! impl_glwe_rotate_impl_from {
                 res: &mut R,
                 _scratch: &mut poulpy_hal::layouts::ScratchArena<'s, $be>,
             ) where
-                R: $crate::layouts::GLWEToMut,
+                R: $crate::layouts::GLWEToBackendMut,
             {
                 let delegate: poulpy_hal::layouts::Module<$from> =
                     <poulpy_hal::layouts::Module<$from> as poulpy_hal::api::ModuleNew<$from>>::new(module.n() as u64);
 
                 let res_host: $crate::layouts::GLWE<Vec<u8>> =
-                    poulpy_hal::layouts::ToOwnedDeep::to_owned_deep(&$crate::layouts::GLWEToMut::to_mut(res));
+                    poulpy_hal::layouts::ToOwnedDeep::to_owned_deep(&$crate::layouts::GLWEToBackendMut::to_backend_mut(res));
                 let res_src: $crate::layouts::GLWE<<$be as poulpy_hal::layouts::Backend>::OwnedBuf> =
                     res_host.reinterpret::<$be>();
                 let mut res_delegate = $crate::api::ModuleTransfer::upload_glwe::<$be>(&delegate, &res_src);
@@ -1227,14 +1216,14 @@ macro_rules! impl_glwe_rotate_impl_from {
 
                 let res_back: $crate::layouts::GLWE<<$be as poulpy_hal::layouts::Backend>::OwnedBuf> =
                     $crate::api::ModuleTransfer::download_glwe::<$from>(&delegate, &res_delegate);
-                let res_back_ref = $crate::layouts::GLWEToRef::to_ref(&res_back);
+                let res_back_ref = $crate::layouts::GLWEToBackendRef::to_backend_ref(&res_back);
 
                 let mut bytes = Vec::new();
                 poulpy_hal::layouts::WriterTo::write_to(&res_back_ref, &mut bytes)
                     .expect("failed to serialize delegated GLWE rotate inplace result");
 
                 let mut cursor = std::io::Cursor::new(bytes);
-                let mut res_mut = $crate::layouts::GLWEToMut::to_mut(res);
+                let mut res_mut = $crate::layouts::GLWEToBackendMut::to_backend_mut(res);
                 poulpy_hal::layouts::ReaderFrom::read_from(&mut res_mut, &mut cursor)
                     .expect("failed to write delegated GLWE rotate inplace result back");
             }

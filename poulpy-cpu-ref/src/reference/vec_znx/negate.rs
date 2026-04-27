@@ -1,22 +1,15 @@
 use crate::{
-    api::{ModuleNew, VecZnxNegateBackend, VecZnxNegateInplaceBackend},
-    layouts::{
-        Backend, FillUniform, Module, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
-        ZnxView, ZnxViewMut,
-    },
+    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
     reference::znx::{ZnxNegate, ZnxNegateInplace, ZnxZero},
     source::Source,
 };
 
-pub fn vec_znx_negate<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_negate<'r, 'a, BE>(res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, a: &VecZnxBackendRef<'a, BE>, a_col: usize)
 where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxNegate + ZnxZero,
+    BE: Backend + ZnxNegate + ZnxZero,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
 {
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.n(), res.n());
@@ -25,22 +18,21 @@ where
     let min_size: usize = res.size().min(a.size());
 
     for j in 0..min_size {
-        ZNXARI::znx_negate(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::znx_negate(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in min_size..res.size() {
-        ZNXARI::znx_zero(res.at_mut(res_col, j));
+        BE::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-pub fn vec_znx_negate_assign<R, ZNXARI>(res: &mut R, res_col: usize)
+pub fn vec_znx_negate_inplace<'r, BE>(res: &mut VecZnxBackendMut<'r, BE>, res_col: usize)
 where
-    R: VecZnxToMut,
-    ZNXARI: ZnxNegateAssign,
+    BE: Backend + ZnxNegateInplace,
+    BE::BufMut<'r>: HostDataMut,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
     for j in 0..res.size() {
-        ZNXARI::znx_negate_assign(res.at_mut(res_col, j));
+        BE::znx_negate_inplace(res.at_mut(res_col, j));
     }
 }
 

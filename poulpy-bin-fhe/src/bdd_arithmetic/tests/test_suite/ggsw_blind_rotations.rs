@@ -2,14 +2,14 @@ use poulpy_core::{
     DEFAULT_SIGMA_XE, EncryptionLayout, GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecretPrepared,
-        GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
+        GLWESecretPreparedFactory, LWEInfos, ModuleCoreAlloc, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
     layouts::{
-        Backend, HostBackend, HostDataMut, Module, ScalarZnx, ScratchArena, ScratchOwned, VecZnx, VecZnxToBackendMut, ZnxView,
-        ZnxViewMut,
+        Backend, HostBackend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned, VecZnx,
+        VecZnxToBackendMut, ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -73,9 +73,9 @@ where
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
-    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_res_infos);
+    let mut res: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_res_infos);
 
-    let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
+    let mut scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     scalar.raw_mut().iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
 
     let k: u32 = source.next_u32();
@@ -122,7 +122,7 @@ where
 
             module.scalar_to_ggsw_blind_rotation(
                 &mut res,
-                &scalar.to_ref(),
+                &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&scalar),
                 &k_enc_prep,
                 false,
                 bit_start,
@@ -133,10 +133,10 @@ where
 
             let rot: i64 = (((k >> bit_start) & mask) << bit_step) as i64;
 
-            let mut scalar_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
+            let mut scalar_want: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
             scalar_want.raw_mut().copy_from_slice(scalar.raw());
 
-            let mut scalar_want_vec: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), 1, 1);
+            let mut scalar_want_vec: VecZnx<Vec<u8>> = module.vec_znx_alloc(1, 1);
             scalar_want_vec.raw_mut().copy_from_slice(scalar_want.raw());
             {
                 let mut scalar_want_backend = <VecZnx<Vec<u8>> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut scalar_want_vec);
@@ -147,9 +147,16 @@ where
             for row in 0..res.dnum().as_usize() {
                 for col in 0..res.rank().as_usize() + 1 {
                     assert!(
-                        res.noise(module, row, col, &scalar_want.to_ref(), sk_glwe_prep, &mut scratch.borrow())
-                            .std()
-                            .log2()
+                        res.noise(
+                            module,
+                            row,
+                            col,
+                            &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&scalar_want),
+                            sk_glwe_prep,
+                            &mut scratch.borrow(),
+                        )
+                        .std()
+                        .log2()
                             <= max_noise(col)
                     )
                 }

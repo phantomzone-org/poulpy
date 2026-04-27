@@ -1,5 +1,5 @@
 use crate::layouts::{
-    Backend, MatZnxBackendRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToMut,
+    Backend, MatZnxBackendRef, ScratchArena, VecZnxBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef, VecZnxDftToBackendMut,
     VmpPMatBackendMut, VmpPMatBackendRef, VmpPMatOwned,
 };
 
@@ -52,7 +52,7 @@ pub trait VmpApplyDft<B: Backend> {
         pmat: &VmpPMatBackendRef<'_, B>,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        R: VecZnxDftToMut<B>;
+        R: VecZnxDftToBackendMut<B>;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -102,7 +102,7 @@ pub trait VmpApplyDftToDft<B: Backend> {
         limb_offset: usize,
         scratch: &mut ScratchArena<'s, B>,
     ) where
-        R: VecZnxDftToMut<B>;
+        R: VecZnxDftToBackendMut<B>;
 }
 
 /// Applies the vector-matrix product using a backend-native prepared-matrix borrow.

@@ -1,14 +1,7 @@
 use dashu_float::ops::DivRemEuclid;
 
 use crate::{
-    api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxRshBackend,
-        VecZnxRshInplaceBackend,
-    },
-    layouts::{
-        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
-    },
+    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
     reference::znx::{
         ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
         ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
@@ -20,18 +13,17 @@ pub fn vec_znx_lsh_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_lsh_assign<R, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
+pub fn vec_znx_lsh_inplace<'r, BE>(base2k: usize, k: usize, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, carry: &mut [i64])
 where
-    R: VecZnxToMut,
-    ZNXARI: ZnxZero
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE: ZnxZero
         + ZnxCopy
         + ZnxNormalizeFirstStepAssign
         + ZnxNormalizeMiddleStepAssign
         + ZnxNormalizeFirstStepAssign
         + ZnxNormalizeFinalStepAssign,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
     let n: usize = res.n();
     let cols: usize = res.cols();
     let size: usize = res.size();
@@ -39,7 +31,7 @@ where
 
     if steps >= size {
         for j in 0..size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
         return;
     }
@@ -53,37 +45,38 @@ where
 
         (0..size - steps).for_each(|j| {
             let (lhs, rhs) = res_raw.split_at_mut(slice_size * (j + steps));
-            ZNXARI::znx_copy(&mut lhs[start + j * slice_size..end + j * slice_size], &rhs[start..end]);
+            BE::znx_copy(&mut lhs[start + j * slice_size..end + j * slice_size], &rhs[start..end]);
         });
 
         for j in size - steps..size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
     }
 
     for j in (0..size - steps).rev() {
         if j == size - steps - 1 {
-            ZNXARI::znx_normalize_first_step_assign(base2k, k_rem, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_first_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
         } else if j == 0 {
-            ZNXARI::znx_normalize_final_step_assign(base2k, k_rem, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_final_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_assign(base2k, k_rem, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_middle_step_inplace(base2k, k_rem, res.at_mut(res_col, j), carry);
         }
     }
 }
 
-pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
+pub fn vec_znx_lsh<'r, 'a, BE, const OVERWRITE: bool>(
     base2k: usize,
     k: usize,
-    res: &mut R,
+    res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
-    a: &A,
+    a: &VecZnxBackendRef<'a, BE>,
     a_col: usize,
     carry: &mut [i64],
 ) where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxZero
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
+    BE: ZnxZero
         + ZnxNormalizeFirstStep
         + ZnxNormalizeMiddleStep
         + ZnxCopy
@@ -91,9 +84,6 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     let res_size: usize = res.size();
     let a_size = a.size();
     let (steps, k_rem) = k.div_rem_euclid(base2k);
@@ -101,7 +91,7 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
     if steps >= res_size.max(a_size) {
         if OVERWRITE {
             for j in 0..res_size {
-                ZNXARI::znx_zero(res.at_mut(res_col, j));
+                BE::znx_zero(res.at_mut(res_col, j));
             }
         }
 
@@ -113,47 +103,52 @@ pub fn vec_znx_lsh<R, A, ZNXARI, const OVERWRITE: bool>(
 
     for j in (carry_only_start..a_size).rev() {
         if j == a_size - 1 {
-            ZNXARI::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+            BE::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+            BE::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
         }
     }
 
     if carry_only_start == a_size {
-        ZNXARI::znx_zero(carry);
+        BE::znx_zero(carry);
     }
 
     // Simply a left shifted normalization of limbs
     // by k/base2k and intra-limb by base2k - k%base2k
     for j in (0..min_size).rev() {
         if j == 0 {
-            ZNXARI::znx_normalize_final_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            BE::znx_normalize_final_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            BE::znx_normalize_middle_step::<OVERWRITE>(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         }
     }
 
     if OVERWRITE {
         // Zeroes bottom
         for j in min_size..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
     }
 }
 
-pub fn vec_znx_lsh_sub<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxZero
+pub fn vec_znx_lsh_sub<'r, 'a, BE>(
+    base2k: usize,
+    k: usize,
+    res: &mut VecZnxBackendMut<'r, BE>,
+    res_col: usize,
+    a: &VecZnxBackendRef<'a, BE>,
+    a_col: usize,
+    carry: &mut [i64],
+) where
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
+    BE: ZnxZero
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepSub
         + ZnxNormalizeFinalStepSub
         + ZnxNormalizeMiddleStepCarryOnly,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     let res_size: usize = res.size();
     let a_size = a.size();
     let (steps, k_rem) = k.div_rem_euclid(base2k);
@@ -167,21 +162,21 @@ where
 
     for j in (carry_only_start..a_size).rev() {
         if j == a_size - 1 {
-            ZNXARI::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+            BE::znx_normalize_first_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
+            BE::znx_normalize_middle_step_carry_only(base2k, k_rem, a.at(a_col, j), carry);
         }
     }
 
     if carry_only_start == a_size {
-        ZNXARI::znx_zero(carry);
+        BE::znx_zero(carry);
     }
 
     for j in (0..min_size).rev() {
         if j == 0 {
-            ZNXARI::znx_normalize_final_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            BE::znx_normalize_final_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
+            BE::znx_normalize_middle_step_sub(base2k, k_rem, res.at_mut(res_col, j), a.at(a_col, j + steps), carry);
         }
     }
 }
@@ -190,10 +185,11 @@ pub fn vec_znx_rsh_tmp_bytes(n: usize) -> usize {
     2 * n * size_of::<i64>()
 }
 
-pub fn vec_znx_rsh_assign<R, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_rsh_inplace<'r, BE>(base2k: usize, k: usize, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, tmp: &mut [i64])
 where
-    R: VecZnxToMut,
-    ZNXARI: ZnxZero
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE: ZnxZero
         + ZnxCopy
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
@@ -202,7 +198,6 @@ where
         + ZnxNormalizeFirstStepAssign
         + ZnxNormalizeFinalStepAssign,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let n: usize = res.n();
 
     let size: usize = res.size();
@@ -225,42 +220,43 @@ where
     // but the carry still need to be computed.
     for j in 0..steps {
         if j == 0 {
-            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
+            BE::znx_normalize_first_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
+            BE::znx_normalize_middle_step_carry_only(base2k, lsh, res.at(res_col, size - j - 1), carry);
         }
     }
 
     // Continues with shifted normalization
     for j in 0..size - steps {
-        ZNXARI::znx_copy(tmp, res.at(res_col, size - steps - j - 1));
-        ZNXARI::znx_normalize_middle_step_assign(base2k, lsh, tmp, carry);
-        ZNXARI::znx_copy(res.at_mut(res_col, size - j - 1), tmp);
+        BE::znx_copy(tmp, res.at(res_col, size - steps - j - 1));
+        BE::znx_normalize_middle_step_inplace(base2k, lsh, tmp, carry);
+        BE::znx_copy(res.at_mut(res_col, size - j - 1), tmp);
     }
 
     // Propagates carry on the rest of the limbs of res
     for j in 0..steps {
-        ZNXARI::znx_zero(res.at_mut(res_col, j));
+        BE::znx_zero(res.at_mut(res_col, j));
         if j == 0 {
-            ZNXARI::znx_normalize_final_step_assign(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
+            BE::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_assign(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
+            BE::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, steps - j - 1), carry);
         }
     }
 }
 
-pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
+pub fn vec_znx_rsh<'r, 'a, BE, const OVERWRITE: bool>(
     base2k: usize,
     k: usize,
-    res: &mut R,
+    res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
-    a: &A,
+    a: &VecZnxBackendRef<'a, BE>,
     a_col: usize,
     carry: &mut [i64],
 ) where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxZero
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
+    BE: ZnxZero
         + ZnxCopy
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
@@ -270,9 +266,6 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
         + ZnxNormalizeFirstStepAssign
         + ZnxNormalizeFinalStepAssign,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     let res_size: usize = res.size();
     let a_size: usize = a.size();
 
@@ -297,20 +290,20 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
 
     for j in 0..a_out_range {
         if j == 0 {
-            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+            BE::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+            BE::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
         }
     }
 
     if a_out_range == 0 {
-        ZNXARI::znx_zero(carry);
+        BE::znx_zero(carry);
     }
 
     if OVERWRITE {
         // Zeroes lower limbs of res if a_size + steps < res_size
         for j in 0..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
+            BE::znx_zero(res.at_mut(res_col, j));
         }
     }
 
@@ -318,7 +311,7 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
     let mid_range: usize = res_start.saturating_sub(res_end);
 
     for j in 0..mid_range {
-        ZNXARI::znx_normalize_middle_step::<OVERWRITE>(
+        BE::znx_normalize_middle_step::<OVERWRITE>(
             base2k,
             lsh,
             res.at_mut(res_col, res_start - j - 1),
@@ -331,28 +324,36 @@ pub fn vec_znx_rsh<R, A, ZNXARI, const OVERWRITE: bool>(
         // Propagates carry on the rest of the limbs of res
         for j in 0..res_end {
             if j == res_end - 1 {
-                ZNXARI::znx_normalize_final_step_assign(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+                BE::znx_normalize_final_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_assign(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
+                BE::znx_normalize_middle_step_inplace(base2k, lsh, res.at_mut(res_col, res_end - j - 1), carry);
             }
         }
     } else {
         // Propagates carry on the rest of the limbs of res
         for j in 0..res_end {
             if j == res_end - 1 {
-                ZNXARI::znx_normalize_final_step_assign(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+                BE::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_assign(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+                BE::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
             }
         }
     }
 }
 
-pub fn vec_znx_rsh_sub<R, A, ZNXARI>(base2k: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-    ZNXARI: ZnxZero
+pub fn vec_znx_rsh_sub<'r, 'a, BE>(
+    base2k: usize,
+    k: usize,
+    res: &mut VecZnxBackendMut<'r, BE>,
+    res_col: usize,
+    a: &VecZnxBackendRef<'a, BE>,
+    a_col: usize,
+    carry: &mut [i64],
+) where
+    BE: Backend,
+    BE::BufMut<'r>: HostDataMut,
+    BE::BufRef<'a>: HostDataRef,
+    BE: ZnxZero
         + ZnxCopy
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
@@ -361,9 +362,6 @@ where
         + ZnxNormalizeFirstStepAssign
         + ZnxNormalizeFinalStepAssign,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
     let res_size: usize = res.size();
     let a_size: usize = a.size();
 
@@ -383,20 +381,20 @@ where
 
     for j in 0..a_out_range {
         if j == 0 {
-            ZNXARI::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+            BE::znx_normalize_first_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
+            BE::znx_normalize_middle_step_carry_only(base2k, lsh, a.at(a_col, a_size - j - 1), carry);
         }
     }
 
     if a_out_range == 0 {
-        ZNXARI::znx_zero(carry);
+        BE::znx_zero(carry);
     }
 
     let mid_range: usize = res_start.saturating_sub(res_end);
 
     for j in 0..mid_range {
-        ZNXARI::znx_normalize_middle_step_sub(
+        BE::znx_normalize_middle_step_sub(
             base2k,
             lsh,
             res.at_mut(res_col, res_start - j - 1),
@@ -411,9 +409,9 @@ where
 
     for j in 0..res_end {
         if j == res_end - 1 {
-            ZNXARI::znx_normalize_final_step_assign(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_assign(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, res_end - j - 1), carry);
         }
     }
 }
@@ -641,16 +639,23 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        layouts::{FillUniform, VecZnx, ZnxView},
-        reference::{
-            vec_znx::{
-                vec_znx_copy, vec_znx_lsh, vec_znx_lsh_assign, vec_znx_lsh_tmp_bytes, vec_znx_normalize_assign, vec_znx_rsh,
-                vec_znx_rsh_assign, vec_znx_rsh_tmp_bytes, vec_znx_sub_assign,
-            },
-            znx::ZnxRef,
+        FFT64Ref,
+        layouts::{Backend, FillUniform, HostBytesBackend, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, ZnxView},
+        reference::vec_znx::{
+            vec_znx_copy, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_tmp_bytes, vec_znx_normalize_inplace, vec_znx_rsh,
+            vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_sub_inplace,
         },
         source::Source,
     };
+
+    fn alloc_host_vec_znx(n: usize, cols: usize, size: usize) -> VecZnx<Vec<u8>> {
+        VecZnx::from_data(
+            HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(n, cols, size)),
+            n,
+            cols,
+            size,
+        )
+    }
 
     #[test]
     fn test_vec_znx_lsh() {
@@ -658,9 +663,9 @@ mod tests {
         let cols: usize = 2;
         let size: usize = 7;
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, size);
+        let mut res_ref: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, size);
+        let mut res_test: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, size);
 
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -672,14 +677,43 @@ mod tests {
             a.fill_uniform(50, &mut source);
 
             for i in 0..cols {
-                vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut a, i, &mut carry);
-                vec_znx_copy::<_, _, ZnxRef>(&mut res_ref, i, &a, i);
+                vec_znx_normalize_inplace::<FFT64Ref>(
+                    base2k,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut a),
+                    i,
+                    &mut carry,
+                );
+                vec_znx_copy::<FFT64Ref>(
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                    i,
+                    &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                    i,
+                );
             }
 
             for i in 0..cols {
-                vec_znx_lsh_assign::<_, ZnxRef>(base2k, k, &mut res_ref, i, &mut carry);
-                vec_znx_lsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, i, &a, i, &mut carry);
-                vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut res_test, i, &mut carry);
+                vec_znx_lsh_inplace::<FFT64Ref>(
+                    base2k,
+                    k,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                    i,
+                    &mut carry,
+                );
+                vec_znx_lsh::<FFT64Ref, true>(
+                    base2k,
+                    k,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                    i,
+                    &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                    i,
+                    &mut carry,
+                );
+                vec_znx_normalize_inplace::<FFT64Ref>(
+                    base2k,
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                    i,
+                    &mut carry,
+                );
             }
 
             assert_eq!(res_ref, res_test);
@@ -698,17 +732,35 @@ mod tests {
         let res_size: usize = 4;
         let k: usize = 2 * base2k;
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-        let zero: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+        let mut a: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, a_size);
+        let mut res_test: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, res_size);
+        let zero: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, res_size);
 
         a.fill_uniform(base2k, &mut source);
         res_test.fill_uniform(base2k, &mut source);
 
         for i in 0..cols {
-            vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut a, i, &mut carry);
-            vec_znx_lsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, i, &a, i, &mut carry);
-            vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut res_test, i, &mut carry);
+            vec_znx_normalize_inplace::<FFT64Ref>(
+                base2k,
+                &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut a),
+                i,
+                &mut carry,
+            );
+            vec_znx_lsh::<FFT64Ref, true>(
+                base2k,
+                k,
+                &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                i,
+                &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                i,
+                &mut carry,
+            );
+            vec_znx_normalize_inplace::<FFT64Ref>(
+                base2k,
+                &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                i,
+                &mut carry,
+            );
         }
 
         assert_eq!(res_test, zero);
@@ -721,8 +773,8 @@ mod tests {
 
         let res_size: usize = 7;
 
-        let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-        let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
+        let mut res_ref: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, res_size);
+        let mut res_test: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, res_size);
 
         let mut carry: Vec<i64> = vec![0i64; vec_znx_rsh_tmp_bytes(n) / size_of::<i64>()];
 
@@ -733,26 +785,62 @@ mod tests {
         let zero: Vec<i64> = vec![0i64; n];
 
         for a_size in [res_size - 1, res_size, res_size + 1] {
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
+            let mut a: VecZnx<Vec<u8>> = alloc_host_vec_znx(n, cols, a_size);
 
             for k in 0..res_size * base2k {
                 a.fill_uniform(50, &mut source);
 
                 for i in 0..cols {
-                    vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut a, i, &mut carry);
-                    vec_znx_copy::<_, _, ZnxRef>(&mut res_ref, i, &a, i);
+                    vec_znx_normalize_inplace::<FFT64Ref>(
+                        base2k,
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut a),
+                        i,
+                        &mut carry,
+                    );
+                    vec_znx_copy::<FFT64Ref>(
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                        i,
+                        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                        i,
+                    );
                 }
 
                 res_test.fill_uniform(50, &mut source);
 
                 for j in 0..cols {
-                    vec_znx_rsh_assign::<_, ZnxRef>(base2k, k, &mut res_ref, j, &mut carry);
-                    vec_znx_rsh::<_, _, ZnxRef, true>(base2k, k, &mut res_test, j, &a, j, &mut carry);
+                    vec_znx_rsh_inplace::<FFT64Ref>(
+                        base2k,
+                        k,
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                        j,
+                        &mut carry,
+                    );
+                    vec_znx_rsh::<FFT64Ref, true>(
+                        base2k,
+                        k,
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                        j,
+                        &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                        j,
+                        &mut carry,
+                    );
                 }
 
                 for j in 0..cols {
-                    vec_znx_lsh_assign::<_, ZnxRef>(base2k, k, &mut res_ref, j, &mut carry);
-                    vec_znx_lsh_assign::<_, ZnxRef>(base2k, k, &mut res_test, j, &mut carry);
+                    vec_znx_lsh_inplace::<FFT64Ref>(
+                        base2k,
+                        k,
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                        j,
+                        &mut carry,
+                    );
+                    vec_znx_lsh_inplace::<FFT64Ref>(
+                        base2k,
+                        k,
+                        &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                        j,
+                        &mut carry,
+                    );
                 }
 
                 // Case where res has enough to fully store a right shifted without any loss
@@ -776,11 +864,31 @@ mod tests {
                 // res.
                 } else {
                     for j in 0..cols {
-                        vec_znx_sub_assign::<_, _, ZnxRef>(&mut res_ref, j, &a, j);
-                        vec_znx_sub_assign::<_, _, ZnxRef>(&mut res_test, j, &a, j);
+                        vec_znx_sub_inplace::<FFT64Ref>(
+                            &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                            j,
+                            &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                            j,
+                        );
+                        vec_znx_sub_inplace::<FFT64Ref>(
+                            &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                            j,
+                            &<VecZnx<Vec<u8>> as VecZnxToBackendRef<FFT64Ref>>::to_backend_ref(&a),
+                            j,
+                        );
 
-                        vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut res_ref, j, &mut carry);
-                        vec_znx_normalize_assign::<_, ZnxRef>(base2k, &mut res_test, j, &mut carry);
+                        vec_znx_normalize_inplace::<FFT64Ref>(
+                            base2k,
+                            &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_ref),
+                            j,
+                            &mut carry,
+                        );
+                        vec_znx_normalize_inplace::<FFT64Ref>(
+                            base2k,
+                            &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<FFT64Ref>>::to_backend_mut(&mut res_test),
+                            j,
+                            &mut carry,
+                        );
 
                         assert!(res_ref.stats(base2k, j).std().log2() - (k as f64) <= (k * base2k) as f64);
                         assert!(res_test.stats(base2k, j).std().log2() - (k as f64) <= (k * base2k) as f64);

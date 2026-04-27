@@ -5,8 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToBackendMut,
-    GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GLWEInfos, LWEInfos,
-    Rank, TorusPrecision,
+    GGLWECompressedToBackendRef, GGLWEDecompress, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use std::fmt;
 
@@ -81,7 +80,7 @@ impl<D: HostDataRef> fmt::Display for GLWETensorKeyCompressed<D> {
 }
 
 impl GLWETensorKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -95,7 +94,7 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
         )
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
         GLWETensorKeyCompressed(GGLWECompressed::alloc(n, base2k, k, Rank(pairs), rank, dnum, dsize))
     }
@@ -150,24 +149,6 @@ where
 impl<B: Backend> GLWETensorKeyDecompress for Module<B> where Self: GGLWEDecompress {}
 
 // module-only API: decompression is provided by `GLWETensorKeyDecompress` on `Module`.
-
-impl<D: HostDataMut> GGLWECompressedToMut for GLWETensorKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToMut,
-{
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        self.0.to_mut()
-    }
-}
-
-impl<D: HostDataRef> GGLWECompressedToRef for GLWETensorKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToRef,
-{
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        self.0.to_ref()
-    }
-}
 
 impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWETensorKeyCompressed<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {

@@ -1,6 +1,9 @@
 use poulpy_core::{
     GLWECopy, GLWEPacking, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEToBackendMut, GetGaloisElement},
+    layouts::{
+        GGLWEInfos, GGLWEPreparedToBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEToBackendMut, GetGaloisElement,
+        ModuleCoreAlloc,
+    },
 };
 use poulpy_hal::{
     api::ModuleLogN,
@@ -22,7 +25,7 @@ impl<BE: Backend<OwnedBuf = Vec<u8>>> ExecuteBDDCircuit1WTo1W<BE> for Module<BE>
 /// [`GLWEPacking`].
 pub trait ExecuteBDDCircuit1WTo1W<BE: Backend<OwnedBuf = Vec<u8>>>
 where
-    Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy<BE>,
+    Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     fn execute_bdd_circuit_1w_to_1w<C, K, H, T>(
         &self,
@@ -64,7 +67,7 @@ where
     {
         // TODO(device): this wrapper still repacks through host-owned
         // temporary GLWEs before the final backend-generic packing step.
-        let mut out_bits: Vec<GLWE<Vec<u8>>> = (0..T::BITS as usize).map(|_| GLWE::alloc_from_infos(out)).collect();
+        let mut out_bits: Vec<GLWE<BE::OwnedBuf>> = (0..T::BITS as usize).map(|_| self.glwe_alloc_from_infos(out)).collect();
         let mut scratch_1 = scratch.borrow();
 
         // Evaluates out[i] = circuit[i](a, b)

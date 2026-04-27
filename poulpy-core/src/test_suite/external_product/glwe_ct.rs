@@ -10,7 +10,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GGSW, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory,
-        GLWEToBackendMut, GLWEToBackendRef,
+        GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -20,6 +20,7 @@ use crate::{
 pub fn test_glwe_external_product<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
@@ -72,12 +73,12 @@ where
             })
             .unwrap();
 
-            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
-            let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-            let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-            let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
-            let mut pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_apply_infos);
+            let mut glwe_in: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+            let mut glwe_out: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+            let mut pt_ggsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+            let mut pt_in: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_in_infos);
+            let mut pt_out: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -103,7 +104,7 @@ where
                     | module.glwe_external_product_tmp_bytes(&glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
@@ -190,6 +191,7 @@ where
 pub fn test_glwe_external_product_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWPreparedFactory<BE>
@@ -233,10 +235,10 @@ where
             })
             .unwrap();
 
-            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
-            let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-            let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_apply_infos);
+            let mut glwe_out: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+            let mut pt_ggsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+            let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -262,7 +264,7 @@ where
                     | module.glwe_external_product_tmp_bytes(&glwe_out_infos, &glwe_out_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());

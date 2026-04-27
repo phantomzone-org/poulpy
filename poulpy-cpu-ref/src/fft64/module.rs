@@ -51,6 +51,9 @@ impl Backend for FFT64Ref {
     fn alloc_bytes(len: usize) -> Self::OwnedBuf {
         alloc_aligned::<u8>(len)
     }
+    fn alloc_zeroed_bytes(len: usize) -> Self::OwnedBuf {
+        alloc_aligned::<u8>(len)
+    }
     fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {
         let mut buf = alloc_aligned::<u8>(bytes.len());
         buf.copy_from_slice(bytes);

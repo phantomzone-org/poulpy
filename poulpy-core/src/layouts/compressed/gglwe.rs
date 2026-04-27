@@ -1,8 +1,8 @@
 use poulpy_hal::{
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxToBackendMut, MatZnxToBackendRef,
-        MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos, mat_znx_at_backend_mut_from_mut,
-        mat_znx_at_backend_ref_from_ref, mat_znx_backend_mut_from_mut, mat_znx_backend_ref_from_mut,
+        Module, ReaderFrom, WriterTo, mat_znx_at_backend_mut_from_mut, mat_znx_at_backend_ref_from_ref,
+        mat_znx_backend_mut_from_mut, mat_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -122,7 +122,7 @@ impl<D: HostDataRef> fmt::Display for GGLWECompressed<D> {
 
 impl GGLWECompressed<Vec<u8>> {
     /// Allocates a new compressed GGLWE by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -138,7 +138,15 @@ impl GGLWECompressed<Vec<u8>> {
     }
 
     /// Allocates a new compressed GGLWE with the given parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -154,7 +162,20 @@ impl GGLWECompressed<Vec<u8>> {
         );
 
         GGLWECompressed {
-            data: MatZnx::alloc(n.into(), dnum.into(), rank_in.into(), 1, k.0.div_ceil(base2k.0) as usize),
+            data: MatZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(MatZnx::<Vec<u8>>::bytes_of(
+                    n.into(),
+                    dnum.into(),
+                    rank_in.into(),
+                    1,
+                    size,
+                )),
+                n.into(),
+                dnum.into(),
+                rank_in.into(),
+                1,
+                size,
+            ),
             k,
             base2k,
             dsize,
@@ -264,25 +285,6 @@ where
 impl<B: Backend> GGLWEDecompress for Module<B> where Self: GLWEDecompress {}
 
 // module-only API: decompression is provided by `GGLWEDecompress` on `Module`.
-
-/// Converts a compressed GGLWE to a mutably-borrowed variant.
-pub trait GGLWECompressedToMut {
-    /// Returns a mutably-borrowed view of this compressed GGLWE.
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]>;
-}
-
-impl<D: HostDataMut> GGLWECompressedToMut for GGLWECompressed<D> {
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        GGLWECompressed {
-            k: self.max_k(),
-            base2k: self.base2k(),
-            dsize: self.dsize(),
-            seed: self.seed.clone(),
-            rank_out: self.rank_out,
-            data: self.data.to_mut(),
-        }
-    }
-}
 
 pub trait GGLWECompressedToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> GGLWECompressedBackendRef<'_, BE>;
@@ -410,24 +412,5 @@ pub fn gglwe_compressed_at_backend_ref_from_ref<'a, 'b, BE: Backend>(
         rank: gglwe.rank_out,
         data: mat_znx_at_backend_ref_from_ref::<BE>(&gglwe.data, row, col),
         seed: gglwe.seed[rank_in * row + col],
-    }
-}
-
-/// Converts a compressed GGLWE to an immutably-borrowed variant.
-pub trait GGLWECompressedToRef {
-    /// Returns an immutably-borrowed view of this compressed GGLWE.
-    fn to_ref(&self) -> GGLWECompressed<&[u8]>;
-}
-
-impl<D: HostDataRef> GGLWECompressedToRef for GGLWECompressed<D> {
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        GGLWECompressed {
-            k: self.max_k(),
-            base2k: self.base2k(),
-            dsize: self.dsize(),
-            seed: self.seed.clone(),
-            rank_out: self.rank_out,
-            data: self.data.to_ref(),
-        }
     }
 }

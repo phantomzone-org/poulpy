@@ -1,7 +1,7 @@
 use poulpy_hal::{
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxAtBackendRef, MatZnxToBackendMut,
-        MatZnxToBackendRef, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, TransferFrom, WriterTo, ZnxInfos,
+        MatZnxToBackendRef, Module, ReaderFrom, TransferFrom, WriterTo,
     },
     source::Source,
 };
@@ -267,8 +267,9 @@ impl<D: Data> GGSW<D> {
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl GGSW<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGSWInfos,
     {
@@ -282,7 +283,7 @@ impl GGSW<Vec<u8>> {
         )
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
             size as u32 > dsize.0,
@@ -298,12 +299,19 @@ impl GGSW<Vec<u8>> {
         );
 
         GGSW {
-            data: MatZnx::alloc(
+            data: MatZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(MatZnx::<Vec<u8>>::bytes_of(
+                    n.into(),
+                    dnum.into(),
+                    (rank + 1).into(),
+                    (rank + 1).into(),
+                    size,
+                )),
                 n.into(),
                 dnum.into(),
                 (rank + 1).into(),
                 (rank + 1).into(),
-                k.0.div_ceil(base2k.0) as usize,
+                size,
             ),
             base2k,
             dsize,
@@ -367,21 +375,36 @@ impl<D: HostDataRef> WriterTo for GGSW<D> {
     }
 }
 
-pub trait GGSWToMut {
-    fn to_mut(&mut self) -> GGSW<&mut [u8]>;
-}
-
 pub trait GGSWToBackendMut<BE: Backend>: GGSWToBackendRef<BE> {
     fn to_backend_mut(&mut self) -> GGSWBackendMut<'_, BE>;
 }
 
-impl<BE: Backend> GGSWToBackendMut<BE> for GGSW<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGSWToBackendMut<BE> for GGSW<D>
+where
+    MatZnx<D>: MatZnxToBackendRef<BE> + MatZnxToBackendMut<BE>,
+{
     fn to_backend_mut(&mut self) -> GGSWBackendMut<'_, BE> {
         GGSW {
             dsize: self.dsize,
             base2k: self.base2k,
-            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+            data: self.data.to_backend_mut(),
         }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGSWToBackendRef<BE> for &mut GGSW<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GGSWBackendRef<'_, BE> {
+        GGSW {
+            dsize: self.dsize,
+            base2k: self.base2k,
+            data: poulpy_hal::layouts::mat_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GGSWToBackendMut<BE> for &mut GGSW<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GGSWBackendMut<'_, BE> {
+        ggsw_backend_mut_from_mut::<BE>(self)
     }
 }
 
@@ -393,56 +416,19 @@ pub fn ggsw_backend_mut_from_mut<'a, 'b, BE: Backend>(ggsw: &'a mut GGSW<BE::Buf
     }
 }
 
-impl<D: HostDataMut> GGSWToMut for GGSW<D> {
-    fn to_mut(&mut self) -> GGSW<&mut [u8]> {
-        GGSW {
-            dsize: self.dsize,
-            base2k: self.base2k,
-            data: self.data.to_mut(),
-        }
-    }
-}
-
-pub trait GGSWToRef {
-    fn to_ref(&self) -> GGSW<&[u8]>;
-}
-
 pub trait GGSWToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> GGSWBackendRef<'_, BE>;
 }
 
-impl<BE: Backend> GGSWToBackendRef<BE> for GGSW<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGSWToBackendRef<BE> for GGSW<D>
+where
+    MatZnx<D>: MatZnxToBackendRef<BE>,
+{
     fn to_backend_ref(&self) -> GGSWBackendRef<'_, BE> {
         GGSW {
             dsize: self.dsize,
             base2k: self.base2k,
-            data: <MatZnx<BE::OwnedBuf> as MatZnxToBackendRef<BE>>::to_backend_ref(&self.data),
-        }
-    }
-}
-
-pub fn ggsw_backend_ref_from_ref<'a, 'b, BE: Backend>(ggsw: &'a GGSW<BE::BufRef<'b>>) -> GGSWBackendRef<'a, BE> {
-    GGSW {
-        dsize: ggsw.dsize,
-        base2k: ggsw.base2k,
-        data: poulpy_hal::layouts::mat_znx_backend_ref_from_ref::<BE>(&ggsw.data),
-    }
-}
-
-pub fn ggsw_backend_ref_from_mut<'a, 'b, BE: Backend>(ggsw: &'a GGSW<BE::BufMut<'b>>) -> GGSWBackendRef<'a, BE> {
-    GGSW {
-        dsize: ggsw.dsize,
-        base2k: ggsw.base2k,
-        data: poulpy_hal::layouts::mat_znx_backend_ref_from_mut::<BE>(&ggsw.data),
-    }
-}
-
-impl<D: HostDataRef> GGSWToRef for GGSW<D> {
-    fn to_ref(&self) -> GGSW<&[u8]> {
-        GGSW {
-            dsize: self.dsize,
-            base2k: self.base2k,
-            data: self.data.to_ref(),
+            data: self.data.to_backend_ref(),
         }
     }
 }

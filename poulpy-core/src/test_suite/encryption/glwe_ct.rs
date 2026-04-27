@@ -11,7 +11,7 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPreparedFactory, GLWEPublicKey, GLWEPublicKeyPreparedFactory,
-        GLWESecret, GLWESecretPreparedFactory,
+        GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc, ModuleCoreCompressedAlloc,
         compressed::{GLWECompressed, GLWEDecompress},
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
     },
@@ -20,6 +20,7 @@ use crate::{
 pub fn test_glwe_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>:
         GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniformSourceBackend<BE> + GLWESub<BE>,
@@ -47,8 +48,8 @@ where
             k: k_pt.into(),
         };
 
-        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&pt_infos);
+        let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&pt_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -60,7 +61,7 @@ where
                 .max(module.glwe_noise_tmp_bytes(&glwe_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
@@ -94,6 +95,7 @@ where
 pub fn test_glwe_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWECompressedEncryptSk<BE>
         + GLWENoise<BE>
@@ -124,9 +126,9 @@ where
             k: k_pt.into(),
         };
 
-        let mut ct_compressed: GLWECompressed<Vec<u8>> = GLWECompressed::alloc_from_infos(&glwe_infos);
+        let mut ct_compressed: GLWECompressed<Vec<u8>> = module.glwe_compressed_alloc_from_infos(&glwe_infos);
 
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&pt_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&pt_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -138,7 +140,7 @@ where
                 .max(module.glwe_noise_tmp_bytes(&glwe_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
@@ -158,7 +160,7 @@ where
             &mut scratch.borrow(),
         );
 
-        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
+        let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
         module.decompress_glwe(&mut ct, &ct_compressed);
 
         let noise_have: f64 = module
@@ -176,6 +178,7 @@ where
 pub fn test_glwe_encrypt_zero_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>:
         GLWEEncryptSk<BE> + GLWENoise<BE> + GLWESecretPreparedFactory<BE> + VecZnxFillUniformSourceBackend<BE> + GLWESub<BE>,
@@ -196,7 +199,7 @@ where
         })
         .unwrap();
 
-        let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
+        let pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([1u8; 32]);
@@ -208,13 +211,13 @@ where
                 .max((module).glwe_encrypt_sk_tmp_bytes(&glwe_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
+        let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
 
         module.glwe_encrypt_zero_sk(
             &mut ct,
@@ -237,6 +240,7 @@ where
 pub fn test_glwe_encrypt_pk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptPk<BE>
         + GLWEPublicKeyPreparedFactory<BE>
@@ -262,8 +266,8 @@ where
         })
         .unwrap();
 
-        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
+        let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -276,13 +280,13 @@ where
                 .max(module.glwe_encrypt_pk_tmp_bytes(&glwe_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-        let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(&glwe_infos);
+        let mut pk: GLWEPublicKey<Vec<u8>> = module.glwe_public_key_alloc_from_infos(&glwe_infos);
         module.glwe_public_key_generate(&mut pk, &sk_prepared, &glwe_infos, &mut source_xe, &mut source_xa);
 
         module.vec_znx_fill_uniform_source_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut source_xa);

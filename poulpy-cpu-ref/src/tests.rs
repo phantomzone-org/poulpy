@@ -1,5 +1,4 @@
 use poulpy_hal::{
-    api::ModuleNew,
     layouts::Module,
     test_suite::convolution::{test_convolution, test_convolution_by_const, test_convolution_pairwise},
 };

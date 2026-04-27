@@ -5,8 +5,8 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToBackendMut,
-    GGLWECompressedToBackendRef, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GLWEDecompress,
-    GLWEInfos, GetGaloisElement, LWEInfos, Rank, SetGaloisElement, TorusPrecision,
+    GGLWECompressedToBackendRef, GGLWEDecompress, GGLWEInfos, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank,
+    SetGaloisElement, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -84,7 +84,7 @@ impl<D: HostDataRef> fmt::Display for GLWEAutomorphismKeyCompressed<D> {
 }
 
 impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -98,7 +98,7 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
         )
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWEAutomorphismKeyCompressed {
             key: GGLWECompressed::alloc(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
@@ -155,18 +155,6 @@ where
 impl<B: Backend> GLWEAutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
 
 // module-only API: decompression is provided by `GLWEAutomorphismKeyDecompress` on `Module`.
-
-impl<D: HostDataRef> GGLWECompressedToRef for GLWEAutomorphismKeyCompressed<D> {
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        self.key.to_ref()
-    }
-}
-
-impl<D: HostDataMut> GGLWECompressedToMut for GLWEAutomorphismKeyCompressed<D> {
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        self.key.to_mut()
-    }
-}
 
 impl<BE: Backend> GGLWECompressedToBackendRef<BE> for GLWEAutomorphismKeyCompressed<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {

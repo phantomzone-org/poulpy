@@ -1,6 +1,6 @@
 use poulpy_core::{
     GLWEAdd, GLWEMulPlain, GLWENormalize, GLWESub,
-    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+    layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, ModuleCoreAlloc},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -17,9 +17,9 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let b: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
 
     let group_name = format!("glwe_add_into::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -39,8 +39,8 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let b: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
 
     let group_name = format!("glwe_add_assign::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -62,9 +62,9 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let b: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
 
     let group_name = format!("glwe_sub::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -84,8 +84,8 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let b: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
 
     let group_name = format!("glwe_sub_assign::{label}");
     let mut group = c.benchmark_group(group_name);
@@ -108,8 +108,8 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_normalize_tmp_bytes());
 
     let group_name = format!("glwe_normalize::{label}");
@@ -134,7 +134,7 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_normalize_tmp_bytes());
 
     let group_name = format!("glwe_normalize_assign::{label}");
@@ -158,9 +158,9 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
+    let mut ct_out: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let ct_in: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain::{label}");
@@ -191,8 +191,8 @@ where
     let n: usize = infos.n().into();
     let module: Module<BE> = Module::<BE>::new(n as u64);
 
-    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
-    let pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(infos);
+    let mut ct: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
+    let pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(infos);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.glwe_mul_plain_tmp_bytes(infos, infos, infos));
 
     let group_name = format!("glwe_mul_plain_assign::{label}");

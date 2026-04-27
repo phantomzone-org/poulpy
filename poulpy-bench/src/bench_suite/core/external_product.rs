@@ -2,12 +2,13 @@ use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct,
     layouts::{
         GGSW, GGSWInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
+        ModuleCoreAlloc,
         prepared::{GGSWPrepared, GGSWPreparedFactory, GLWESecretPrepared},
     },
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, NoiseInfos, ScalarZnx, ScratchOwned},
+    layouts::{Backend, Module, NoiseInfos, ScratchOwned},
     source::Source,
 };
 use std::hint::black_box;
@@ -37,16 +38,16 @@ pub fn bench_glwe_external_product<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(ggsw_infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(ggsw_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(ggsw_infos.rank());
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    let pt = ScalarZnx::alloc(n, 1);
-    let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(ggsw_infos);
-    let mut ct_glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
-    let mut ct_glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(glwe_infos);
+    let pt = module.scalar_znx_alloc(1);
+    let mut ct_ggsw: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(ggsw_infos);
+    let mut ct_glwe_in: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(glwe_infos);
+    let mut ct_glwe_out: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(glwe_infos);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module.ggsw_encrypt_sk_tmp_bytes(ggsw_infos)
@@ -74,7 +75,6 @@ pub fn bench_glwe_external_product<BE: Backend<OwnedBuf = Vec<u8>>>(
         &mut source_xa,
         &mut scratch.borrow(),
     );
-
     let mut ggsw_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&ct_ggsw);
     module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, &mut scratch.borrow());
 
@@ -118,15 +118,15 @@ pub fn bench_glwe_external_product_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(infos);
+    let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(infos.rank());
     module.glwe_secret_prepare(&mut sk_prepared, &sk);
 
-    let pt = ScalarZnx::alloc(n, 1);
-    let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(infos);
-    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(infos);
+    let pt = module.scalar_znx_alloc(1);
+    let mut ct_ggsw: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(infos);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module.ggsw_encrypt_sk_tmp_bytes(infos)
@@ -153,7 +153,6 @@ pub fn bench_glwe_external_product_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(
         &mut source_xa,
         &mut scratch.borrow(),
     );
-
     let mut ggsw_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&ct_ggsw);
     module.ggsw_prepare(&mut ggsw_prepared, &ct_ggsw, &mut scratch.borrow());
 

@@ -1,11 +1,16 @@
 use std::ptr::NonNull;
 
-use poulpy_hal::layouts::{Backend, DataViewMut, Host, Module, SvpPPol, VecZnxDft, VmpPMat};
+use poulpy_hal::{
+    layouts::{Backend, DataViewMut, Host, Module, SvpPPol, VecZnxDft, VmpPMat},
+    oep::HalModuleImpl,
+};
 
 use crate::{
     api::ModuleTransfer,
     dist::Distribution,
-    layouts::{Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEPrepared, GLWE, GLWEPrepared, GLWESecretPrepared, Rank, TorusPrecision},
+    layouts::{
+        Base2K, Dnum, Dsize, GGLWE, GGLWEPrepared, GLWE, GLWEPrepared, GLWESecretPrepared, ModuleCoreAlloc, Rank, TorusPrecision,
+    },
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -115,6 +120,13 @@ impl Backend for SrcBackend {
     unsafe fn destroy(_: NonNull<Self::Handle>) {}
 }
 
+unsafe impl HalModuleImpl<SrcBackend> for SrcBackend {
+    fn new(n: u64) -> Module<SrcBackend> {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
+        unsafe { Module::from_nonnull(NonNull::dangling(), n) }
+    }
+}
+
 impl Backend for DstBackend {
     type ScalarBig = i64;
     type ScalarPrep = f64;
@@ -212,6 +224,13 @@ impl Backend for DstBackend {
     unsafe fn destroy(_: NonNull<Self::Handle>) {}
 }
 
+unsafe impl HalModuleImpl<DstBackend> for DstBackend {
+    fn new(n: u64) -> Module<DstBackend> {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
+        unsafe { Module::from_nonnull(NonNull::dangling(), n) }
+    }
+}
+
 fn fill_bytes(buf: &mut [u8]) {
     for (i, byte) in buf.iter_mut().enumerate() {
         *byte = (i as u8).wrapping_mul(17).wrapping_add(3);
@@ -220,9 +239,9 @@ fn fill_bytes(buf: &mut [u8]) {
 
 #[test]
 fn module_transfer_glwe_roundtrip() {
-    let src_module: Module<SrcBackend> = Module::new_marker(64);
-    let dst_module: Module<DstBackend> = Module::new_marker(64);
-    let mut src: GLWE<Vec<u8>> = GLWE::alloc(Degree(64), Base2K(12), TorusPrecision(33), Rank(2));
+    let src_module: Module<SrcBackend> = Module::new(64);
+    let dst_module: Module<DstBackend> = Module::new(64);
+    let mut src: GLWE<Vec<u8>> = src_module.glwe_alloc(Base2K(12), TorusPrecision(33), Rank(2));
     fill_bytes(&mut src.data.data);
 
     let uploaded = dst_module.upload_glwe::<SrcBackend>(&src);
@@ -235,17 +254,9 @@ fn module_transfer_glwe_roundtrip() {
 
 #[test]
 fn module_transfer_gglwe_roundtrip() {
-    let src_module: Module<SrcBackend> = Module::new_marker(64);
-    let dst_module: Module<DstBackend> = Module::new_marker(64);
-    let mut src: GGLWE<Vec<u8>> = GGLWE::alloc(
-        Degree(64),
-        Base2K(12),
-        TorusPrecision(33),
-        Rank(1),
-        Rank(2),
-        Dnum(3),
-        Dsize(1),
-    );
+    let src_module: Module<SrcBackend> = Module::new(64);
+    let dst_module: Module<DstBackend> = Module::new(64);
+    let mut src: GGLWE<Vec<u8>> = src_module.gglwe_alloc(Base2K(12), TorusPrecision(33), Rank(1), Rank(2), Dnum(3), Dsize(1));
     fill_bytes(src.data.data_mut());
 
     let uploaded = dst_module.upload_gglwe::<SrcBackend>(&src);
@@ -258,8 +269,8 @@ fn module_transfer_gglwe_roundtrip() {
 
 #[test]
 fn module_transfer_glwe_prepared_roundtrip() {
-    let src_module: Module<SrcBackend> = Module::new_marker(64);
-    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let src_module: Module<SrcBackend> = Module::new(64);
+    let dst_module: Module<DstBackend> = Module::new(64);
     let mut src: GLWEPrepared<Vec<u8>, SrcBackend> = GLWEPrepared {
         data: VecZnxDft::from_data(host_alloc(173), 64, 3, 3),
         base2k: Base2K(12),
@@ -274,8 +285,8 @@ fn module_transfer_glwe_prepared_roundtrip() {
 
 #[test]
 fn module_transfer_gglwe_prepared_roundtrip() {
-    let src_module: Module<SrcBackend> = Module::new_marker(64);
-    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let src_module: Module<SrcBackend> = Module::new(64);
+    let dst_module: Module<DstBackend> = Module::new(64);
     let mut src: GGLWEPrepared<Vec<u8>, SrcBackend> = GGLWEPrepared {
         data: VmpPMat::from_data(host_alloc(347), 64, 3, 2, 4, 5),
         base2k: Base2K(10),
@@ -291,8 +302,8 @@ fn module_transfer_gglwe_prepared_roundtrip() {
 
 #[test]
 fn module_transfer_glwe_secret_prepared_roundtrip() {
-    let src_module: Module<SrcBackend> = Module::new_marker(64);
-    let dst_module: Module<DstBackend> = Module::new_marker(64);
+    let src_module: Module<SrcBackend> = Module::new(64);
+    let dst_module: Module<DstBackend> = Module::new(64);
     let mut src: GLWESecretPrepared<Vec<u8>, SrcBackend> = GLWESecretPrepared {
         data: SvpPPol::from_data(host_alloc(131), 64, 3),
         dist: Distribution::BinaryBlock(8),
@@ -303,7 +314,7 @@ fn module_transfer_glwe_secret_prepared_roundtrip() {
     let downloaded = src_module.download_glwe_secret_prepared::<DstBackend>(&uploaded);
 
     assert_eq!(downloaded.dist, src.dist);
-    assert_eq!(downloaded.data.n, src.data.n);
-    assert_eq!(downloaded.data.cols, src.data.cols);
+    assert_eq!(downloaded.data.n(), src.data.n());
+    assert_eq!(downloaded.data.cols(), src.data.cols());
     assert_eq!(downloaded.data.data, src.data.data);
 }

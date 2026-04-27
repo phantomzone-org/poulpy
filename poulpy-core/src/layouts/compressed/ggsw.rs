@@ -1,8 +1,8 @@
 use poulpy_hal::{
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, MatZnx, MatZnxAtBackendMut, MatZnxToBackendMut, MatZnxToBackendRef,
-        MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos, mat_znx_at_backend_mut_from_mut,
-        mat_znx_at_backend_ref_from_ref, mat_znx_backend_mut_from_mut, mat_znx_backend_ref_from_mut,
+        Module, ReaderFrom, WriterTo, mat_znx_at_backend_mut_from_mut, mat_znx_at_backend_ref_from_ref,
+        mat_znx_backend_mut_from_mut, mat_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -109,7 +109,7 @@ impl<D: HostDataMut> FillUniform for GGSWCompressed<D> {
 
 impl GGSWCompressed<Vec<u8>> {
     /// Allocates a new compressed GGSW by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGSWInfos,
     {
@@ -124,7 +124,7 @@ impl GGSWCompressed<Vec<u8>> {
     }
 
     /// Allocates a new compressed GGSW with the given parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
             size as u32 > dsize.0,
@@ -140,7 +140,20 @@ impl GGSWCompressed<Vec<u8>> {
         );
 
         GGSWCompressed {
-            data: MatZnx::alloc(n.into(), dnum.into(), (rank + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
+            data: MatZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(MatZnx::<Vec<u8>>::bytes_of(
+                    n.into(),
+                    dnum.into(),
+                    (rank + 1).into(),
+                    1,
+                    size,
+                )),
+                n.into(),
+                dnum.into(),
+                (rank + 1).into(),
+                1,
+                size,
+            ),
             k,
             base2k,
             dsize,
@@ -276,25 +289,6 @@ impl<B: Backend> GGSWDecompress for Module<B> where Self: GLWEDecompress {}
 
 // module-only API: decompression is provided by `GGSWDecompress` on `Module`.
 
-/// Converts a compressed GGSW to a mutably-borrowed variant.
-pub trait GGSWCompressedToMut {
-    /// Returns a mutably-borrowed view of this compressed GGSW.
-    fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]>;
-}
-
-impl<D: HostDataMut> GGSWCompressedToMut for GGSWCompressed<D> {
-    fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]> {
-        GGSWCompressed {
-            k: self.max_k(),
-            base2k: self.base2k(),
-            dsize: self.dsize(),
-            rank: self.rank(),
-            seed: self.seed.clone(),
-            data: self.data.to_mut(),
-        }
-    }
-}
-
 pub trait GGSWCompressedToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> GGSWCompressedBackendRef<'_, BE>;
 }
@@ -421,24 +415,5 @@ pub fn ggsw_compressed_at_backend_ref_from_ref<'a, 'b, BE: Backend>(
         base2k: ggsw.base2k,
         rank: ggsw.rank,
         seed: ggsw.seed[row * (rank + 1) + col],
-    }
-}
-
-/// Converts a compressed GGSW to an immutably-borrowed variant.
-pub trait GGSWCompressedToRef {
-    /// Returns an immutably-borrowed view of this compressed GGSW.
-    fn to_ref(&self) -> GGSWCompressed<&[u8]>;
-}
-
-impl<D: HostDataRef> GGSWCompressedToRef for GGSWCompressed<D> {
-    fn to_ref(&self) -> GGSWCompressed<&[u8]> {
-        GGSWCompressed {
-            k: self.max_k(),
-            base2k: self.base2k(),
-            dsize: self.dsize(),
-            rank: self.rank(),
-            seed: self.seed.clone(),
-            data: self.data.to_ref(),
-        }
     }
 }

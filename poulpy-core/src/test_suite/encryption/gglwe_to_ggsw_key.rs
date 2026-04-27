@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, ScalarZnx, ScratchOwned},
+    layouts::{Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -11,8 +11,8 @@ use crate::{
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
         Dsize, GGLWE, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyDecompress,
-        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
-        prepared::GLWESecretPrepared,
+        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, ModuleCoreAlloc,
+        ModuleCoreCompressedAlloc, prepared::GLWESecretPrepared,
     },
     vec_znx_host_ops::vec_znx_copy,
 };
@@ -20,6 +20,7 @@ use crate::{
 pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGLWEToGGSWKeyEncryptSk<BE>
         + GLWESecretTensorFactory<BE>
@@ -46,7 +47,7 @@ where
         })
         .unwrap();
 
-        let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
+        let mut key: GGLWEToGGSWKey<Vec<u8>> = module.gglwe_to_ggsw_key_alloc_from_infos(&key_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -58,7 +59,7 @@ where
                 .max(module.gglwe_noise_tmp_bytes(&key_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
@@ -73,12 +74,12 @@ where
             &mut crate::test_suite::scratch_host_arena(&mut scratch),
         );
 
-        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
+        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = module.glwe_secret_tensor_alloc_from_infos(&sk);
         module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, &mut crate::test_suite::scratch_host_arena(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
-        let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), rank);
+        let mut pt_want: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(rank);
 
         for i in 0..rank {
             for j in 0..rank {
@@ -89,7 +90,16 @@ where
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
                     let noise_have = ksk
-                        .noise(module, row, col, &pt_want.to_ref(), &sk_prepared, &mut scratch.borrow())
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<poulpy_hal::layouts::HostBytesBackend>>::to_backend_ref(
+                                &pt_want,
+                            ),
+                            &sk_prepared,
+                            &mut scratch.borrow(),
+                        )
                         .std()
                         .log2();
                     assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")
@@ -102,6 +112,7 @@ where
 pub fn test_gglwe_to_ggsw_compressed_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGLWEToGGSWKeyCompressedEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
@@ -131,7 +142,8 @@ where
         })
         .unwrap();
 
-        let mut key_compressed: GGLWEToGGSWKeyCompressed<Vec<u8>> = GGLWEToGGSWKeyCompressed::alloc_from_infos(&key_infos);
+        let mut key_compressed: GGLWEToGGSWKeyCompressed<Vec<u8>> =
+            module.gglwe_to_ggsw_key_compressed_alloc_from_infos(&key_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
@@ -142,7 +154,7 @@ where
                 .max(module.gglwe_noise_tmp_bytes(&key_infos)),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&key_infos);
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
         module.glwe_secret_prepare(&mut sk_prepared, &sk);
@@ -159,15 +171,15 @@ where
             &mut crate::test_suite::scratch_host_arena(&mut scratch),
         );
 
-        let mut key: GGLWEToGGSWKey<Vec<u8>> = GGLWEToGGSWKey::alloc_from_infos(&key_infos);
+        let mut key: GGLWEToGGSWKey<Vec<u8>> = module.gglwe_to_ggsw_key_alloc_from_infos(&key_infos);
         module.decompress_gglwe_to_ggsw_key(&mut key, &key_compressed);
 
-        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
+        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = module.glwe_secret_tensor_alloc_from_infos(&sk);
         module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, &mut crate::test_suite::scratch_host_arena(&mut scratch));
 
         let max_noise = DEFAULT_SIGMA_XE.log2() + 0.5 - (k as f64);
 
-        let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), rank);
+        let mut pt_want: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(rank);
 
         for i in 0..rank {
             for j in 0..rank {
@@ -178,7 +190,16 @@ where
             for row in 0..ksk.dnum().as_usize() {
                 for col in 0..ksk.rank_in().as_usize() {
                     let noise_have = ksk
-                        .noise(module, row, col, &pt_want.to_ref(), &sk_prepared, &mut scratch.borrow())
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<poulpy_hal::layouts::HostBytesBackend>>::to_backend_ref(
+                                &pt_want,
+                            ),
+                            &sk_prepared,
+                            &mut scratch.borrow(),
+                        )
                         .std()
                         .log2();
                     assert!(noise_have <= max_noise, "noise_have: {noise_have} > max_noise: {max_noise}")

@@ -5,9 +5,12 @@ pub use cggi::*;
 use itertools::izip;
 use poulpy_core::{
     ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWEInfos, GLWEToBackendMut, GLWEToMut, LWE, LWEInfos, LWEToRef},
+    layouts::{GGSWInfos, GLWEInfos, GLWEToBackendMut, LWE, LWEInfos, LWEToBackendRef, ModuleCoreAlloc},
 };
-use poulpy_hal::layouts::{Backend, Data, ScratchArena, ZnxView};
+use poulpy_hal::{
+    api::ModuleN,
+    layouts::{Backend, Data, HostDataRef, ScratchArena, ZnxView},
+};
 
 use crate::blind_rotation::{
     BlindRotationKey, BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable,
@@ -20,8 +23,10 @@ use crate::blind_rotation::{
 /// usage at the type level.  Currently the only implementation is [`CGGI`].
 pub trait BlindRotationAlgo: Sync {
     /// Allocates a zero-filled [`BlindRotationKey`] from a dimension descriptor.
-    fn alloc_key<A: BlindRotationKeyInfos>(infos: &A) -> BlindRotationKey<Vec<u8>, Self>
+    fn alloc_key<M, A>(module: &M, infos: &A) -> BlindRotationKey<M::OwnedBuf, Self>
     where
+        M: ModuleCoreAlloc + ModuleN,
+        A: BlindRotationKeyInfos,
         Self: Sized;
 }
 
@@ -68,11 +73,11 @@ pub trait BlindRotationExecute<BRA: BlindRotationAlgo, BE: Backend> {
         brk: &BlindRotationKeyPrepared<BE::OwnedBuf, BRA, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        // TODO: drop `GLWEToMut` once blind rotation no longer relies on
+        // TODO: drop `GLWEToBackendMut` once blind rotation no longer relies on
         // host-visible GLWE staging for the standard CGGI path.
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         DL: Data,
-        LWE<DL>: LWEToRef,
+        LWE<DL>: LWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 }
@@ -93,9 +98,9 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         M: BlindRotationExecute<BRA, BE>,
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         DI: Data,
-        LWE<DI>: LWEToRef,
+        LWE<DI>: LWEToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
@@ -142,7 +147,13 @@ impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<BE::OwnedBuf,
 /// - `res`: Output slice of length `lwe.n() + 1` (b, a_0, …, a_{n-1}).
 /// - `lwe`: The LWE ciphertext to switch.
 /// - `rot_dir`: Rotation sign convention.
-pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWE<&[u8]>, rot_dir: LookUpTableRotationDirection) {
+pub fn mod_switch_2n<BE, A>(n: usize, res: &mut [i64], lwe: &A, rot_dir: LookUpTableRotationDirection)
+where
+    BE: Backend,
+    A: LWEToBackendRef<BE> + LWEInfos,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+{
+    let lwe = lwe.to_backend_ref();
     let base2k: usize = lwe.base2k().into();
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;

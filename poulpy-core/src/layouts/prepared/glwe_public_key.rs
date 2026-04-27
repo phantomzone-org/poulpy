@@ -8,8 +8,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedBackendMut, GLWEPreparedBackendRef, GLWEPreparedFactory,
-        GLWEPreparedToBackendMut, GLWEPreparedToBackendRef, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToBackendRef, GetDegree,
-        LWEInfos, Rank, TorusPrecision,
+        GLWEPreparedToBackendMut, GLWEPreparedToBackendRef, GLWEToBackendRef, GetDegree, LWEInfos, Rank, TorusPrecision,
     },
 };
 
@@ -105,24 +104,6 @@ impl<B: Backend> GLWEPublicKeyPreparedFactory<B> for Module<B> where Self: VecZn
 // module-only API: allocation, sizing, and preparation are provided by
 // `GLWEPublicKeyPreparedFactory` on `Module`.
 
-impl<D: HostDataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPublicKeyPrepared<D, B>
-where
-    GLWEPrepared<D, B>: GLWEPreparedToMut<B>,
-{
-    fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B> {
-        self.key.to_mut()
-    }
-}
-
-impl<D: HostDataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPublicKeyPrepared<D, B>
-where
-    GLWEPrepared<D, B>: GLWEPreparedToRef<B>,
-{
-    fn to_ref(&self) -> GLWEPrepared<&[u8], B> {
-        self.key.to_ref()
-    }
-}
-
 pub type GLWEPublicKeyPreparedBackendRef<'a, B> = GLWEPublicKeyPrepared<<B as Backend>::BufRef<'a>, B>;
 pub type GLWEPublicKeyPreparedBackendMut<'a, B> = GLWEPublicKeyPrepared<<B as Backend>::BufMut<'a>, B>;
 
@@ -130,7 +111,10 @@ pub trait GLWEPublicKeyPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWEPublicKeyPreparedBackendRef<'_, B>;
 }
 
-impl<B: Backend> GLWEPublicKeyPreparedToBackendRef<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEPublicKeyPreparedToBackendRef<B> for GLWEPublicKeyPrepared<D, B>
+where
+    GLWEPrepared<D, B>: GLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GLWEPublicKeyPreparedBackendRef<'_, B> {
         GLWEPublicKeyPrepared {
             key: self.key.to_backend_ref(),
@@ -143,7 +127,10 @@ pub trait GLWEPublicKeyPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWEPublicKeyPreparedBackendMut<'_, B>;
 }
 
-impl<B: Backend> GLWEPublicKeyPreparedToBackendMut<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEPublicKeyPreparedToBackendMut<B> for GLWEPublicKeyPrepared<D, B>
+where
+    GLWEPrepared<D, B>: GLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GLWEPublicKeyPreparedBackendMut<'_, B> {
         GLWEPublicKeyPrepared {
             key: self.key.to_backend_mut(),
@@ -152,13 +139,19 @@ impl<B: Backend> GLWEPublicKeyPreparedToBackendMut<B> for GLWEPublicKeyPrepared<
     }
 }
 
-impl<B: Backend> GLWEPreparedToBackendMut<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEPreparedToBackendMut<B> for GLWEPublicKeyPrepared<D, B>
+where
+    GLWEPrepared<D, B>: GLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B> {
         self.key.to_backend_mut()
     }
 }
 
-impl<B: Backend> GLWEPreparedToBackendRef<B> for GLWEPublicKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GLWEPreparedToBackendRef<B> for GLWEPublicKeyPrepared<D, B>
+where
+    GLWEPrepared<D, B>: GLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GLWEPreparedBackendRef<'_, B> {
         self.key.to_backend_ref()
     }

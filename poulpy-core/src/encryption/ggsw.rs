@@ -83,7 +83,7 @@ where
 
         assert_eq!(res.rank(), sk_ref.rank());
         assert_eq!(res.n(), self.n() as u32);
-        assert_eq!(pt_backend.n, self.n());
+        assert_eq!(pt_backend.n(), self.n());
         assert_eq!(sk_ref.n(), self.n() as u32);
         assert!(
             scratch.available() >= <Module<BE> as GGSWEncryptSkDefault<BE>>::ggsw_encrypt_sk_tmp_bytes(self, res),

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchArenaTakeBasic, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
+    layouts::{Backend, HostBytesBackend, ScratchOwned, VecZnx, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
 };
 
 use crate::{CudaBufRef, CudaGpuBackend};
@@ -20,7 +20,12 @@ fn is_cuda_unavailable(msg: &str) -> bool {
 
 fn sized_sample_vec_znx(n: usize, cols: usize, size: usize, modulus: i64, bias: i64, scale: i64) -> VecZnx<Vec<u8>> {
     // Build a host-owned VecZnx filled with a deterministic coefficient pattern.
-    let mut v = VecZnx::alloc(n, cols, size);
+    let mut v = VecZnx::from_data(
+        HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(n, cols, size)),
+        n,
+        cols,
+        size,
+    );
     for (i, coeff) in bytemuck::cast_slice_mut::<u8, i64>(&mut v.data).iter_mut().enumerate() {
         // Reinterpret the backing bytes as i64 coefficients and fill them.
         *coeff = ((i as i64 % modulus) - bias) * scale;
@@ -129,20 +134,20 @@ fn cuda_scratch_vec_znx_supports_backend_reborrows() {
 
     let backend_ref: VecZnx<CudaBufRef<'_>> =
         <VecZnx<crate::CudaBufMut<'_>> as VecZnxReborrowBackendRef<CudaGpuBackend>>::reborrow_backend_ref(&vec);
-    assert_eq!(backend_ref.n, n);
-    assert_eq!(backend_ref.cols, cols);
-    assert_eq!(backend_ref.size, size);
-    assert_eq!(backend_ref.max_size, size);
+    assert_eq!(backend_ref.n(), n);
+    assert_eq!(backend_ref.cols(), cols);
+    assert_eq!(backend_ref.size(), size);
+    assert_eq!(backend_ref.max_size(), size);
     assert_eq!(backend_ref.data.ptr, raw_ptr);
     assert_eq!(backend_ref.data.len, raw_len);
     assert_eq!(vec_range_cuda_ref(&backend_ref), raw_range);
 
     let backend_mut: VecZnx<crate::CudaBufMut<'_>> =
         <VecZnx<crate::CudaBufMut<'_>> as VecZnxReborrowBackendMut<CudaGpuBackend>>::reborrow_backend_mut(&mut vec);
-    assert_eq!(backend_mut.n, n);
-    assert_eq!(backend_mut.cols, cols);
-    assert_eq!(backend_mut.size, size);
-    assert_eq!(backend_mut.max_size, size);
+    assert_eq!(backend_mut.n(), n);
+    assert_eq!(backend_mut.cols(), cols);
+    assert_eq!(backend_mut.size(), size);
+    assert_eq!(backend_mut.max_size(), size);
     assert_eq!(backend_mut.data.ptr, raw_ptr);
     assert_eq!(backend_mut.data.len, raw_len);
     assert_eq!(vec_range_cuda(&backend_mut), raw_range);

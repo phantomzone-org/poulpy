@@ -6,7 +6,7 @@ use crate::{
 };
 use poulpy_core::GGSWNoise;
 
-use poulpy_core::layouts::{Base2K, Dnum, Dsize, Rank, TorusPrecision};
+use poulpy_core::layouts::{Base2K, Dnum, Dsize, ModuleCoreAlloc, Rank, TorusPrecision};
 use poulpy_core::layouts::{GGSW, GLWESecretPreparedToBackendRef, LWE};
 use poulpy_core::{
     LWEFromGLWE, ScratchArenaTakeCore,
@@ -15,7 +15,8 @@ use poulpy_core::{
 
 use poulpy_hal::api::ModuleN;
 use poulpy_hal::layouts::{
-    Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScratchArena, Stats, ZnxZero,
+    Backend, Data, HostBackend, HostBytesBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef,
+    ScratchArena, Stats, ZnxZero,
 };
 
 /// A debug variant of `FheUintPrepared` that stores per-bit GGSW ciphertexts
@@ -35,10 +36,10 @@ pub struct FheUintPreparedDebug<D: Data, T: UnsignedInteger> {
     pub(crate) _phantom: PhantomData<T>,
 }
 
-impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
+impl<D: Data, T: UnsignedInteger> FheUintPreparedDebug<D, T> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
-        M: ModuleN,
+        M: ModuleN + ModuleCoreAlloc<OwnedBuf = D>,
         A: GGSWInfos,
     {
         Self::alloc(
@@ -53,11 +54,11 @@ impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
-        M: ModuleN,
+        M: ModuleN + ModuleCoreAlloc<OwnedBuf = D>,
     {
         Self {
             bits: (0..T::BITS)
-                .map(|_| GGSW::alloc(module.n().into(), base2k, k, rank, dnum, dsize))
+                .map(|_| module.ggsw_alloc(base2k, k, rank, dnum, dsize))
                 .collect(),
             _phantom: PhantomData,
         }
@@ -108,16 +109,22 @@ impl<T: UnsignedInteger + ToBits> FheUintPreparedDebug<Vec<u8>, T> {
         S: GLWESecretPreparedToBackendRef<BE>,
         M: GGSWNoise<BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + HostBackend,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> BE::BufMut<'a>: AsMut<[u8]> + AsRef<[u8]> + Sync,
     {
         let mut stats = Vec::new();
         for (i, ggsw) in self.bits.iter().enumerate() {
             use poulpy_hal::layouts::ZnxViewMut;
-            let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(self.n().into(), 1);
+            let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::from_data(
+                HostBytesBackend::alloc_bytes(ScalarZnx::<Vec<u8>>::bytes_of(usize::from(self.n()), 1)),
+                usize::from(self.n()),
+                1,
+            );
             pt_want.zero();
             pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
             let mut scratch_bit = scratch.borrow();
-            stats.push(ggsw.noise(module, row, col, &pt_want.to_ref(), sk, &mut scratch_bit));
+            let pt_ref = <ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<HostBytesBackend>>::to_backend_ref(&pt_want);
+            stats.push(ggsw.noise(module, row, col, &pt_ref, sk, &mut scratch_bit));
         }
         stats
     }
@@ -138,7 +145,7 @@ where
         key: &BDDKeyPrepared<BE::OwnedBuf, BRA, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) {
-        let mut tmp_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits);
+        let mut tmp_lwe: LWE<Vec<u8>> = self.lwe_alloc_from_infos(bits);
         let mut scratch_1 = scratch.borrow();
         for (bit, dst) in res.bits.iter_mut().enumerate() {
             let mut scratch_bit = scratch_1.borrow();

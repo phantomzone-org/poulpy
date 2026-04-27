@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use poulpy_core::{
     GLWECopy, ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef},
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc},
 };
 use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxZero};
 
@@ -28,19 +28,20 @@ use crate::bdd_arithmetic::{Cmux, Cswap, GetGGSWBit};
 /// All methods that require scratch space accept a mutable `ScratchArena<BE>` arena.
 /// The required size is returned by
 /// [`retrieve_tmp_bytes`][GLWEBlindRetriever::retrieve_tmp_bytes].
-pub struct GLWEBlindRetriever {
-    accumulators: Vec<Accumulator>,
+pub struct GLWEBlindRetriever<D: poulpy_hal::layouts::Data = Vec<u8>> {
+    accumulators: Vec<Accumulator<D>>,
     counter: usize,
 }
 
-impl GLWEBlindRetriever {
-    pub fn alloc<A>(infos: &A, size: usize) -> Self
+impl GLWEBlindRetriever<Vec<u8>> {
+    pub fn alloc<A, M>(module: &M, infos: &A, size: usize) -> Self
     where
+        M: ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
         A: GLWEInfos,
     {
         let bit_size: usize = (u32::BITS - (size as u32 - 1).leading_zeros()) as usize;
         Self {
-            accumulators: (0..bit_size).map(|_| Accumulator::alloc(infos)).collect_vec(),
+            accumulators: (0..bit_size).map(|_| Accumulator::alloc(module, infos)).collect_vec(),
             counter: 0,
         }
     }
@@ -66,8 +67,8 @@ impl GLWEBlindRetriever {
     ) where
         M: GLWECopy<BE> + Cmux<BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + 'static,
-        R: GLWEToBackendMut<BE> + GLWEToMut,
-        A: GLWEToBackendRef<BE> + GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         S: GetGGSWBit<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -82,7 +83,7 @@ impl GLWEBlindRetriever {
 
     pub fn add<A, S, M, BE>(&mut self, module: &M, a: &A, selector: &S, offset: usize, scratch: &mut ScratchArena<'_, BE>)
     where
-        A: GLWEToBackendRef<BE> + GLWEToRef,
+        A: GLWEToBackendRef<BE>,
         S: GetGGSWBit<BE>,
         M: GLWECopy<BE> + Cmux<BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + 'static,
@@ -102,7 +103,7 @@ impl GLWEBlindRetriever {
 
     pub fn flush<R, M, S, BE>(&mut self, module: &M, res: &mut R, selector: &S, offset: usize, scratch: &mut ScratchArena<'_, BE>)
     where
-        R: GLWEToBackendMut<BE> + GLWEToMut,
+        R: GLWEToBackendMut<BE>,
         S: GetGGSWBit<BE>,
         M: GLWECopy<BE> + Cmux<BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + 'static,
@@ -111,7 +112,7 @@ impl GLWEBlindRetriever {
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
         if self.counter == 0 {
-            res.to_mut().data_mut().zero();
+            res.to_backend_mut().data_mut().zero();
             self.reset();
             return;
         }
@@ -124,7 +125,7 @@ impl GLWEBlindRetriever {
         }
         module.glwe_copy(
             &mut res.to_backend_mut(),
-            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&self.accumulators.last().unwrap().data),
+            &<GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&self.accumulators.last().unwrap().data),
         );
         self.reset()
     }
@@ -137,18 +138,19 @@ impl GLWEBlindRetriever {
     }
 }
 
-struct Accumulator {
-    data: GLWE<Vec<u8>>,
+struct Accumulator<D: poulpy_hal::layouts::Data> {
+    data: GLWE<D>,
     num: usize, // Number of accumulated values
 }
 
-impl Accumulator {
-    pub fn alloc<A>(infos: &A) -> Self
+impl Accumulator<Vec<u8>> {
+    pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
+        M: ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
         A: GLWEInfos,
     {
         Self {
-            data: GLWE::alloc_from_infos(infos),
+            data: module.glwe_alloc_from_infos(infos),
             num: 0,
         }
     }
@@ -157,13 +159,13 @@ impl Accumulator {
 fn add_core<A, S, M, BE>(
     module: &M,
     a: &A,
-    accumulators: &mut [Accumulator],
+    accumulators: &mut [Accumulator<Vec<u8>>],
     i: usize,
     selector: &S,
     offset: usize,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    A: GLWEToBackendRef<BE> + GLWEToRef,
+    A: GLWEToBackendRef<BE>,
     S: GetGGSWBit<BE>,
     M: GLWECopy<BE> + Cmux<BE>,
     BE: Backend<OwnedBuf = Vec<u8>> + 'static,
@@ -177,7 +179,7 @@ fn add_core<A, S, M, BE>(
     match acc_prev[0].num {
         0 => {
             module.glwe_copy(
-                &mut <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut acc_prev[0].data),
+                &mut <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut acc_prev[0].data),
                 &a.to_backend_ref(),
             );
             acc_prev[0].num = 1;
@@ -239,7 +241,7 @@ where
         bit_mask: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GetGGSWBit<BE>,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -271,7 +273,7 @@ where
         bit_mask: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToMut + GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GetGGSWBit<BE>,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

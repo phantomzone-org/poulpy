@@ -3,7 +3,7 @@ use std::fmt;
 use poulpy_hal::{
     layouts::{
         Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, TransferFrom, VecZnx, VecZnxToBackendMut,
-        VecZnxToBackendRef, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        VecZnxToBackendRef, WriterTo,
     },
     source::Source,
 };
@@ -142,14 +142,10 @@ impl<D: Data> LWE<D> {
     where
         To: Backend<OwnedBuf = D>,
     {
+        let shape = self.data.shape();
+        let data = self.data.data;
         LWE {
-            data: VecZnx::from_data_with_max_size(
-                self.data.data,
-                self.data.n,
-                self.data.cols,
-                self.data.size,
-                self.data.max_size,
-            ),
+            data: VecZnx::from_data_with_max_size(data, shape.n(), shape.cols(), shape.size(), shape.max_size()),
             base2k: self.base2k,
         }
     }
@@ -176,9 +172,10 @@ where
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl LWE<Vec<u8>> {
     /// Allocates a new [`LWE`] with the given parameters.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: LWEInfos,
     {
@@ -190,9 +187,15 @@ impl LWE<Vec<u8>> {
     /// * `n` -- ring degree (LWE dimension).
     /// * `base2k` -- base-2-log of the limb width.
     /// * `k` -- torus precision.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
         LWE {
-            data: VecZnx::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of((n + 1).into(), 1, size)),
+                (n + 1).into(),
+                1,
+                size,
+            ),
             base2k,
         }
     }
@@ -215,21 +218,34 @@ impl LWE<Vec<u8>> {
     }
 }
 
-/// Trait for borrowing an [`LWE`] as an immutable reference.
-pub trait LWEToRef {
-    /// Borrows the data as `&[u8]`.
-    fn to_ref(&self) -> LWE<&[u8]>;
-}
-
 pub trait LWEToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> LWEBackendRef<'_, BE>;
 }
 
-impl<BE: Backend> LWEToBackendRef<BE> for LWE<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> LWEToBackendRef<BE> for LWE<D>
+where
+    VecZnx<D>: VecZnxToBackendRef<BE>,
+{
     fn to_backend_ref(&self) -> LWEBackendRef<'_, BE> {
         LWE {
             base2k: self.base2k,
-            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
+            data: self.data.to_backend_ref(),
+        }
+    }
+}
+
+pub trait LWEToBackendMut<BE: Backend>: LWEToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE>;
+}
+
+impl<BE: Backend, D: Data> LWEToBackendMut<BE> for LWE<D>
+where
+    VecZnx<D>: VecZnxToBackendRef<BE> + VecZnxToBackendMut<BE>,
+{
+    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE> {
+        LWE {
+            base2k: self.base2k,
+            data: self.data.to_backend_mut(),
         }
     }
 }
@@ -243,49 +259,11 @@ impl<'b, BE: Backend + 'b> LWEToBackendRef<BE> for &mut LWE<BE::BufMut<'b>> {
     }
 }
 
-impl<D: HostDataRef> LWEToRef for LWE<D> {
-    fn to_ref(&self) -> LWE<&[u8]> {
-        LWE {
-            base2k: self.base2k,
-            data: self.data.to_ref(),
-        }
-    }
-}
-
-/// Trait for borrowing an [`LWE`] as a mutable reference.
-pub trait LWEToMut {
-    /// Borrows the data as `&mut [u8]`.
-    #[allow(dead_code)]
-    fn to_mut(&mut self) -> LWE<&mut [u8]>;
-}
-
-pub trait LWEToBackendMut<BE: Backend>: LWEToBackendRef<BE> {
-    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE>;
-}
-
-impl<BE: Backend> LWEToBackendMut<BE> for LWE<BE::OwnedBuf> {
-    fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE> {
-        LWE {
-            base2k: self.base2k,
-            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
-        }
-    }
-}
-
 impl<'b, BE: Backend + 'b> LWEToBackendMut<BE> for &mut LWE<BE::BufMut<'b>> {
     fn to_backend_mut(&mut self) -> LWEBackendMut<'_, BE> {
         LWE {
             base2k: self.base2k,
             data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
-        }
-    }
-}
-
-impl<D: HostDataMut> LWEToMut for LWE<D> {
-    fn to_mut(&mut self) -> LWE<&mut [u8]> {
-        LWE {
-            base2k: self.base2k,
-            data: self.data.to_mut(),
         }
     }
 }

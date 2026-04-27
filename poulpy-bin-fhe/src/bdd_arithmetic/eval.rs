@@ -5,7 +5,7 @@ use poulpy_core::{
     GLWECopy, GLWENormalize, GLWESub, ScratchArenaTakeCore,
     api::GLWEExternalProductInternal,
     layouts::{
-        GGSWInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, GLWEToRef, LWEInfos,
+        GGSWInfos, GLWE, GLWEInfos, GLWELayout, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, ModuleCoreAlloc,
         glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGSWPreparedToBackendRef,
     },
 };
@@ -130,6 +130,7 @@ pub trait ExecuteBDDCircuit<BE: Backend<OwnedBuf = Vec<u8>>> {
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
         O: HostDataMut,
+        GLWE<O>: GLWEToBackendMut<BE>,
     {
         self.execute_bdd_circuit_multi_thread(1, out, inputs, circuit, scratch);
     }
@@ -154,7 +155,8 @@ pub trait ExecuteBDDCircuit<BE: Backend<OwnedBuf = Vec<u8>>> {
     ) where
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
-        O: HostDataMut;
+        O: HostDataMut,
+        GLWE<O>: GLWEToBackendMut<BE>;
 }
 
 pub trait BitSize {
@@ -188,6 +190,7 @@ where
         G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo,
         O: HostDataMut,
+        GLWE<O>: GLWEToBackendMut<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -213,7 +216,8 @@ where
             if state_size == 0 {
                 out_i.data_mut().zero();
             } else {
-                eval_level(self, out_i, inputs, nodes, state_size, &mut scratch.borrow());
+                let mut out_i_backend = <GLWE<O> as GLWEToBackendMut<BE>>::to_backend_mut(out_i);
+                eval_level(self, &mut out_i_backend, inputs, nodes, state_size, &mut scratch.borrow());
             }
         }
 
@@ -223,29 +227,27 @@ where
     }
 }
 
-fn eval_level<M, R, G, BE>(
+fn eval_level<M, G, BE>(
     module: &M,
-    res: &mut R,
+    mut res: &mut GLWE<BE::BufMut<'_>>,
     inputs: &G,
     nodes: &[Node],
     state_size: usize,
     scratch: &mut ScratchArena<'_, BE>,
 ) where
-    M: Cmux<BE> + GLWECopy<BE>,
+    M: Cmux<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
     BE: Backend<OwnedBuf = Vec<u8>> + 'static,
-    R: GLWEToMut,
     G: GetGGSWBit<BE> + BitSize,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
     for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
 {
     assert!(nodes.len().is_multiple_of(state_size));
-    let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
     // TODO(device): the current BDD evaluator still uses host-owned temporary
     // levels because the node execution logic performs host-visible zero/one
     // initialization over the intermediate GLWEs.
-    let mut level: Vec<GLWE<Vec<u8>>> = (0..state_size * 2).map(|_| GLWE::alloc_from_infos(res)).collect();
+    let mut level: Vec<GLWE<Vec<u8>>> = (0..state_size * 2).map(|_| module.glwe_alloc_from_infos(res)).collect();
     let mut scratch_1 = scratch.borrow();
 
     level.iter_mut().for_each(|ct| ct.data_mut().zero());
@@ -286,7 +288,7 @@ fn eval_level<M, R, G, BE>(
     match &last[0] {
         Node::Cmux(in_idx, hi_idx, lo_idx) => {
             module.cmux(
-                res,
+                &mut res,
                 prev_level[*hi_idx],
                 prev_level[*lo_idx],
                 inputs.get_bit(*in_idx),
@@ -684,17 +686,17 @@ where
     // res = (t - f) * s + f
     fn cmux<R, T, F, S>(&self, res: &mut R, t: &T, f: &F, s: &S, scratch: &mut ScratchArena<'_, BE>)
     where
-        R: GLWEToMut,
-        T: GLWEToRef,
-        F: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        T: GLWEToBackendRef<BE>,
+        F: GLWEToBackendRef<BE>,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let f: GLWE<&[u8]> = f.to_ref();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_backend_mut();
+        let f: GLWE<&[u8]> = f.to_backend_ref();
 
         let scratch = scratch.borrow();
         let res_base2k: usize = res.base2k().into();
@@ -702,7 +704,7 @@ where
 
         self.glwe_sub_backend(
             &mut glwe_backend_mut_from_mut::<BE>(res),
-            &glwe_backend_ref_from_ref::<BE>(&t.to_ref()),
+            &glwe_backend_ref_from_ref::<BE>(&t.to_backend_ref()),
             &glwe_backend_ref_from_ref::<BE>(&f),
         );
         let cols: usize = (res.rank() + 1).into();
@@ -754,16 +756,16 @@ where
     // res = (a - res) * s + res
     fn cmux_inplace_neg<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_backend_mut();
+        let a: &GLWE<&[u8]> = &a.to_backend_ref();
 
         assert_eq!(res.base2k(), a.base2k());
 
@@ -829,16 +831,16 @@ where
     // res = (res - a) * s + a
     fn cmux_inplace<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         S: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut + AsMut<[u8]> + AsRef<[u8]> + Sync,
         for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: GLWE<&[u8]> = a.to_ref();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_backend_mut();
+        let a: GLWE<&[u8]> = a.to_backend_ref();
         let scratch = scratch.borrow();
         let res_base2k: usize = res.base2k().into();
         let ggsw_base2k: usize = s.base2k().into();

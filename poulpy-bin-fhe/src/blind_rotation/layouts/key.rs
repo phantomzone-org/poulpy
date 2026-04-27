@@ -1,4 +1,5 @@
 use poulpy_hal::{
+    api::ModuleN,
     layouts::{Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
@@ -7,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 
 use poulpy_core::{
     DeclaredK, Distribution, EncryptionLayout,
-    layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, ModuleCoreAlloc, Rank, TorusPrecision},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -152,9 +153,13 @@ pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
-impl<BRA: BlindRotationAlgo> BlindRotationKey<Vec<u8>, BRA> {
-    pub fn alloc<A: BlindRotationKeyInfos>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA> {
-        BRA::alloc_key(infos)
+impl<D: Data, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
+    pub fn alloc<M, A>(module: &M, infos: &A) -> BlindRotationKey<D, BRA>
+    where
+        M: ModuleCoreAlloc<OwnedBuf = D> + ModuleN,
+        A: BlindRotationKeyInfos,
+    {
+        BRA::alloc_key(module, infos)
     }
 }
 

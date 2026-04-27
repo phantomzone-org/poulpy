@@ -5,8 +5,8 @@ use poulpy_hal::api::VecZnxBigAlloc;
 use crate::{
     api::VecZnxBigAddNormal,
     layouts::{
-        Backend, Module, NoiseInfos, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxView,
-        ZnxViewMut,
+        Backend, HostDataMut, HostDataRef, Module, NoiseInfos, VecZnx, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef,
+        VecZnxToBackendMut, VecZnxToBackendRef, ZnxView, ZnxViewMut,
     },
     reference::{
         vec_znx::{
@@ -24,117 +24,76 @@ use crate::{
     source::Source,
 };
 
+fn big_as_vec_znx_mut<'a, BE>(v: VecZnxBig<BE::BufMut<'a>, BE>) -> VecZnx<BE::BufMut<'a>>
+where
+    BE: Backend,
+{
+    let shape = v.shape();
+    VecZnx::from_data_with_max_size(v.data, shape.n(), shape.cols(), shape.size(), shape.max_size())
+}
+
+fn big_as_vec_znx_ref<'a, BE>(v: VecZnxBig<BE::BufRef<'a>, BE>) -> VecZnx<BE::BufRef<'a>>
+where
+    BE: Backend,
+{
+    let shape = v.shape();
+    VecZnx::from_data_with_max_size(v.data, shape.n(), shape.cols(), shape.size(), shape.max_size())
+}
+
 pub fn vec_znx_big_add_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxAdd + ZnxCopy + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxBigToRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    let b_vznx: VecZnx<&[u8]> = VecZnx {
-        data: b.data,
-        n: b.n,
-        cols: b.cols,
-        size: b.size,
-        max_size: b.max_size,
-    };
-
-    vec_znx_add_into::<_, _, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    let b_vznx = big_as_vec_znx_ref::<BE>(b.to_backend_ref());
+    vec_znx_add_into::<BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
 }
 
 pub fn vec_znx_big_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_add_assign::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    vec_znx_add_assign::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 pub fn vec_znx_big_add_small_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxAdd + ZnxCopy + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxToRef,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_add_into::<_, _, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col, b, b_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    let b_ref = b.to_backend_ref();
+    vec_znx_add_into::<BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_ref, b_col);
 }
 
 pub fn vec_znx_big_add_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    vec_znx_add_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_ref = a.to_backend_ref();
+    vec_znx_add_assign::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
 }
 
 pub fn vec_znx_big_automorphism_assign_tmp_bytes(n: usize) -> usize {
@@ -144,93 +103,47 @@ pub fn vec_znx_big_automorphism_assign_tmp_bytes(n: usize) -> usize {
 pub fn vec_znx_big_automorphism<R, A, BE>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxAutomorphism + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], _> = res.to_mut();
-    let a: VecZnxBig<&[u8], _> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_automorphism::<_, _, BE>(p, &mut res_vznx, res_col, &a_vznx, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    vec_znx_automorphism::<BE>(p, &mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 pub fn vec_znx_big_automorphism_assign<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     BE: Backend<ScalarBig = i64> + ZnxAutomorphism + ZnxCopy,
-    R: VecZnxBigToMut<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    R: VecZnxBigToBackendMut<BE>,
 {
-    let res: VecZnxBig<&mut [u8], _> = res.to_mut();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    vec_znx_automorphism_assign::<_, BE>(p, &mut res_vznx, res_col, tmp);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    vec_znx_automorphism_inplace::<BE>(p, &mut res_vznx, res_col, tmp);
 }
 
 pub fn vec_znx_big_negate<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxNegate + ZnxZero,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], _> = res.to_mut();
-    let a: VecZnxBig<&[u8], _> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_negate::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    vec_znx_negate::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 pub fn vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxNegateAssign,
-    R: VecZnxBigToMut<BE>,
+    BE: Backend<ScalarBig = i64> + ZnxNegateInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    R: VecZnxBigToBackendMut<BE>,
 {
-    let res: VecZnxBig<&mut [u8], _> = res.to_mut();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    vec_znx_negate_assign::<_, BE>(&mut res_vznx, res_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    vec_znx_negate_inplace::<BE>(&mut res_vznx, res_col);
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
@@ -248,8 +161,8 @@ pub fn vec_znx_big_normalize<R, A, BE>(
     a_col: usize,
     carry: &mut [i64],
 ) where
-    R: VecZnxToMut,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
     BE: Backend<ScalarBig = i64>
         + ZnxZero
         + ZnxCopy
@@ -262,27 +175,23 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
         + ZnxNormalizeDigit
-        + ZnxNormalizeMiddleStepAssign
-        + ZnxNormalizeFinalStepAssign,
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
 {
-    let a: VecZnxBig<&[u8], _> = a.to_ref();
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_normalize::<_, _, BE>(res, res_base2k, res_offset, res_col, &a_vznx, a_base2k, a_col, carry);
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    let mut res_ref = res.to_backend_mut();
+    vec_znx_normalize::<BE>(&mut res_ref, res_base2k, res_offset, res_col, &a_vznx, a_base2k, a_col, carry);
 }
 
 pub fn vec_znx_big_add_normal_ref<R, B>(base2k: usize, res: &mut R, res_col: usize, noise_infos: NoiseInfos, source: &mut Source)
 where
     B: Backend<ScalarBig = i64>,
-    R: VecZnxBigToMut<B>,
+    for<'a> B::BufMut<'a>: HostDataMut,
+    R: VecZnxBigToBackendMut<B>,
 {
-    let mut res: VecZnxBig<&mut [u8], B> = res.to_mut();
+    let mut res = res.to_backend_mut();
     assert!(
         (noise_infos.bound.log2().ceil() as i64) < 64,
         "invalid bound: ceil(log2(bound))={} > 63",
@@ -302,8 +211,9 @@ pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     B: Backend<ScalarBig = i64> + 'static,
     B::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> B::BufMut<'a>: HostDataMut,
+    for<'a> B::BufRef<'a>: HostDataRef,
     Module<B>: VecZnxBigAddNormal<B>,
-    for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
@@ -316,9 +226,11 @@ where
     let sqrt2: f64 = SQRT_2;
     (0..cols).for_each(|col_i| {
         let mut a: VecZnxBig<B::OwnedBuf, B> = module.vec_znx_big_alloc(cols, size);
-        let mut a_ref = a.to_mut();
-        module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
-        module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
+        {
+            let mut a_ref = a.to_backend_mut();
+            module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
+            module.vec_znx_big_add_normal(base2k, &mut a_ref, col_i, noise_infos, &mut source);
+        }
         (0..cols).for_each(|col_j| {
             if col_j != col_i {
                 (0..size).for_each(|limb_i| {
@@ -341,195 +253,102 @@ where
 pub fn vec_znx_big_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSub + ZnxNegate + ZnxZero + ZnxCopy,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxBigToRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    let b_vznx: VecZnx<&[u8]> = VecZnx {
-        data: b.data,
-        n: b.n,
-        cols: b.cols,
-        size: b.size,
-        max_size: b.max_size,
-    };
-
-    vec_znx_sub::<_, _, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    let b_vznx = big_as_vec_znx_ref::<BE>(b.to_backend_ref());
+    vec_znx_sub::<BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
 }
 
 /// R <- A - B
 pub fn vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_sub_assign::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    vec_znx_sub_inplace::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- B - A
 pub fn vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_sub_negate_assign::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    vec_znx_sub_negate_inplace::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- A - B
 pub fn vec_znx_big_sub_small_a<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSub + ZnxNegate + ZnxZero + ZnxCopy,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
-    B: VecZnxBigToRef<BE>,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef<BE>,
+    B: VecZnxBigToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let b_vznx: VecZnx<&[u8]> = VecZnx {
-        data: b.data,
-        n: b.n,
-        cols: b.cols,
-        size: b.size,
-        max_size: b.max_size,
-    };
-
-    vec_znx_sub::<_, _, _, BE>(&mut res_vznx, res_col, a, a_col, &b_vznx, b_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let b_vznx = big_as_vec_znx_ref::<BE>(b.to_backend_ref());
+    let a_ref = a.to_backend_ref();
+    vec_znx_sub::<BE>(&mut res_vznx, res_col, &a_ref, a_col, &b_vznx, b_col);
 }
 
 /// R <- A - B
 pub fn vec_znx_big_sub_small_b<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64> + ZnxSub + ZnxNegate + ZnxZero + ZnxCopy,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxToRef,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    let a_vznx: VecZnx<&[u8]> = VecZnx {
-        data: a.data,
-        n: a.n,
-        cols: a.cols,
-        size: a.size,
-        max_size: a.max_size,
-    };
-
-    vec_znx_sub::<_, _, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col, b, b_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
+    let b_ref = b.to_backend_ref();
+    vec_znx_sub::<BE>(&mut res_vznx, res_col, &a_vznx, a_col, &b_ref, b_col);
 }
 
 ///  R <- R - A
 pub fn vec_znx_big_sub_small_a_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    vec_znx_sub_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_ref = a.to_backend_ref();
+    vec_znx_sub_inplace::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
 }
 
 /// R <- A - R
 pub fn vec_znx_big_sub_small_b_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef<BE>,
 {
-    let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-
-    let mut res_vznx: VecZnx<&mut [u8]> = VecZnx {
-        data: res.data,
-        n: res.n,
-        cols: res.cols,
-        size: res.size,
-        max_size: res.max_size,
-    };
-
-    vec_znx_sub_negate_assign::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
+    let a_ref = a.to_backend_ref();
+    vec_znx_sub_negate_inplace::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
 }

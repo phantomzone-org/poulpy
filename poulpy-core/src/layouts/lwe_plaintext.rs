@@ -1,8 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::layouts::{
-    Backend, Data, HostDataMut, HostDataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, VecZnxToMut,
-    VecZnxToRef, ZnxInfos,
+    Backend, Data, HostDataMut, HostDataRef, Module, TransferFrom, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef,
 };
 
 use crate::api::ModuleTransfer;
@@ -75,30 +74,33 @@ impl<D: Data> LWEPlaintext<D> {
     where
         To: Backend<OwnedBuf = D>,
     {
+        let shape = self.data.shape();
+        let data = self.data.data;
         LWEPlaintext {
-            data: VecZnx::from_data_with_max_size(
-                self.data.data,
-                self.data.n,
-                self.data.cols,
-                self.data.size,
-                self.data.max_size,
-            ),
+            data: VecZnx::from_data_with_max_size(data, shape.n(), shape.cols(), shape.size(), shape.max_size()),
             base2k: self.base2k,
         }
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl LWEPlaintext<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: LWEInfos,
     {
         Self::alloc(infos.base2k(), infos.max_k())
     }
 
-    pub fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
+    pub(crate) fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
         LWEPlaintext {
-            data: VecZnx::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, size)),
+                1,
+                1,
+                size,
+            ),
             base2k,
         }
     }
@@ -127,11 +129,6 @@ impl<D: HostDataRef> fmt::Display for LWEPlaintext<D> {
     }
 }
 
-pub trait LWEPlaintextToRef {
-    #[allow(dead_code)]
-    fn to_ref(&self) -> LWEPlaintext<&[u8]>;
-}
-
 pub trait LWEPlaintextToBackendRef<BE: Backend> {
     fn to_backend_ref(&self) -> LWEPlaintextBackendRef<'_, BE>;
 }
@@ -145,18 +142,34 @@ impl<BE: Backend> LWEPlaintextToBackendRef<BE> for LWEPlaintext<BE::OwnedBuf> {
     }
 }
 
-impl<D: HostDataRef> LWEPlaintextToRef for LWEPlaintext<D> {
-    fn to_ref(&self) -> LWEPlaintext<&[u8]> {
+impl<'b, BE: Backend + 'b> LWEPlaintextToBackendRef<BE> for &LWEPlaintext<BE::BufRef<'b>> {
+    fn to_backend_ref(&self) -> LWEPlaintextBackendRef<'_, BE> {
         LWEPlaintext {
-            data: self.data.to_ref(),
+            data: VecZnx::from_data_with_max_size(
+                BE::view_ref(&self.data.data),
+                self.data.n(),
+                self.data.cols(),
+                self.data.size(),
+                self.data.max_size(),
+            ),
             base2k: self.base2k,
         }
     }
 }
 
-pub trait LWEPlaintextToMut {
-    #[allow(dead_code)]
-    fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]>;
+impl<'b, BE: Backend + 'b> LWEPlaintextToBackendRef<BE> for &mut LWEPlaintext<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> LWEPlaintextBackendRef<'_, BE> {
+        LWEPlaintext {
+            data: VecZnx::from_data_with_max_size(
+                BE::view_ref_mut(&self.data.data),
+                self.data.n(),
+                self.data.cols(),
+                self.data.size(),
+                self.data.max_size(),
+            ),
+            base2k: self.base2k,
+        }
+    }
 }
 
 pub trait LWEPlaintextToBackendMut<BE: Backend>: LWEPlaintextToBackendRef<BE> {
@@ -172,10 +185,17 @@ impl<BE: Backend> LWEPlaintextToBackendMut<BE> for LWEPlaintext<BE::OwnedBuf> {
     }
 }
 
-impl<D: HostDataMut> LWEPlaintextToMut for LWEPlaintext<D> {
-    fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]> {
+impl<'b, BE: Backend + 'b> LWEPlaintextToBackendMut<BE> for &mut LWEPlaintext<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> LWEPlaintextBackendMut<'_, BE> {
+        let shape = self.data.shape();
         LWEPlaintext {
-            data: self.data.to_mut(),
+            data: VecZnx::from_data_with_max_size(
+                BE::view_mut_ref(&mut self.data.data),
+                shape.n(),
+                shape.cols(),
+                shape.size(),
+                shape.max_size(),
+            ),
             base2k: self.base2k,
         }
     }

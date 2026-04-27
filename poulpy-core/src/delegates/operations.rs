@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
 
 use crate::{
     api::{
@@ -56,19 +56,17 @@ impl_operations_delegate!(
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
     },
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: HostDataMut,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
+        R: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
     {
         BE::glwe_mul_const_assign(self, cnv_offset, res, b, scratch)
     }
@@ -96,13 +94,12 @@ impl_operations_delegate!(
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     },
@@ -115,11 +112,10 @@ impl_operations_delegate!(
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>,
+        R: Data,
+        A: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_mul_plain_assign(self, cnv_offset, res, res_effective_k, a, a_effective_k, scratch)
     }
@@ -154,13 +150,12 @@ impl_operations_delegate!(
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
         GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_apply(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     },
@@ -172,11 +167,10 @@ impl_operations_delegate!(
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_square_apply(self, cnv_offset, res, a, a_effective_k, scratch)
     },
@@ -188,13 +182,12 @@ impl_operations_delegate!(
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut,
     {
         BE::glwe_tensor_relinearize(self, res, a, tsk, tsk_size, scratch)
     },
@@ -433,7 +426,6 @@ impl_operations_delegate!(
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
     {
         BE::glwe_pack(self, res, a, log_gap_out, keys, scratch)
@@ -446,7 +438,7 @@ impl_operations_delegate!(
     GLWEPackerOpsDefault<BE>,
     fn packer_add<'s, A, K, H>(
         &self,
-        packer: &mut crate::GLWEPacker,
+        packer: &mut crate::GLWEPacker<BE::OwnedBuf>,
         a: Option<&A>,
         i: usize,
         auto_keys: &H,
@@ -456,7 +448,7 @@ impl_operations_delegate!(
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        crate::layouts::BackendGLWE<BE>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
     {
         BE::packer_add(self, packer, a, i, auto_keys, scratch)

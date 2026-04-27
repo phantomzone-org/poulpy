@@ -34,7 +34,8 @@ use rand_distr::{Distribution, Normal};
 
 use crate::{
     layouts::{
-        Backend, NoiseInfos, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, HostDataMut, HostDataRef, NoiseInfos, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxToBackendMut,
+        VecZnxToBackendRef, ZnxView, ZnxViewMut,
     },
     reference::znx::{get_carry_i128, get_digit_i128},
     source::Source,
@@ -373,12 +374,14 @@ fn ntt120_vec_znx_big_normalize_inter<R, A, BE>(
     a_col: usize,
     carry: &mut [i128],
 ) where
-    R: VecZnxToMut,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxToBackendMut,
+    A: VecZnxBigToBackendRef<BE>,
     BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
 
     let n = res.n();
     let res_size = res.size();
@@ -460,12 +463,14 @@ fn ntt120_vec_znx_big_normalize_cross<R, A, BE>(
     a_col: usize,
     carry: &mut [i128], // 3 * n elements
 ) where
-    R: VecZnxToMut,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxToBackendMut,
+    A: VecZnxBigToBackendRef<BE>,
     BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
 
     let n = res.n();
     let res_size = res.size();
@@ -1036,13 +1041,15 @@ pub fn ntt120_vec_znx_big_automorphism_assign_tmp_bytes(n: usize) -> usize {
 pub fn ntt120_vec_znx_big_add_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
+    let b = b.to_backend_ref();
 
     let res_size = res.size();
     let a_size = a.size();
@@ -1079,11 +1086,13 @@ where
 pub fn ntt120_vec_znx_big_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
         BE::i128_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
@@ -1095,13 +1104,15 @@ where
 pub fn ntt120_vec_znx_big_add_small_into<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b = b.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
+    let b = b.to_backend_ref();
 
     let res_size = res.size();
     let a_size = a.size();
@@ -1128,11 +1139,12 @@ where
 pub fn ntt120_vec_znx_big_add_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
         BE::i128_add_small_assign(res.at_mut(res_col, j), a.at(a_col, j));
@@ -1143,13 +1155,15 @@ where
 pub fn ntt120_vec_znx_big_sub<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
+    let b = b.to_backend_ref();
 
     let res_size = res.size();
     let a_size = a.size();
@@ -1183,11 +1197,13 @@ where
 pub fn ntt120_vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
         BE::i128_sub_assign(res.at_mut(res_col, j), a.at(a_col, j));
@@ -1198,11 +1214,13 @@ where
 pub fn ntt120_vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let res_size = res.size();
     let sum_size = res_size.min(a.size());
 
@@ -1218,13 +1236,15 @@ where
 pub fn ntt120_vec_znx_big_sub_small_a<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
-    B: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef,
+    B: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
-    let b: VecZnxBig<&[u8], BE> = b.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
+    let b = b.to_backend_ref();
 
     let res_size = res.size();
     let a_size = a.size();
@@ -1253,13 +1273,15 @@ where
 pub fn ntt120_vec_znx_big_sub_small_b<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
-    B: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    B: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
-    let b = b.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
+    let b = b.to_backend_ref();
 
     let res_size = res.size();
     let a_size = a.size();
@@ -1286,11 +1308,12 @@ where
 pub fn ntt120_vec_znx_big_sub_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let sum_size = res.size().min(a.size());
     for j in 0..sum_size {
         BE::i128_sub_small_assign(res.at_mut(res_col, j), a.at(a_col, j));
@@ -1301,11 +1324,12 @@ where
 pub fn ntt120_vec_znx_big_sub_small_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let res_size = res.size();
     let sum_size = res_size.min(a.size());
 
@@ -1321,11 +1345,13 @@ where
 pub fn ntt120_vec_znx_big_negate<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
 
     let res_size = res.size();
     let cpy_size = a.size().min(res_size);
@@ -1342,9 +1368,10 @@ where
 pub fn ntt120_vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
+    let mut res = res.to_backend_mut();
     for j in 0..res.size() {
         BE::i128_negate_assign(res.at_mut(res_col, j));
     }
@@ -1356,11 +1383,12 @@ where
 pub fn ntt120_vec_znx_big_from_small<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128> + I128BigOps,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxToRef,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxToBackendRef,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
     let res_size = res.size();
     let min_size = res_size.min(a.size());
 
@@ -1390,9 +1418,11 @@ pub fn ntt120_vec_znx_big_normalize<R, A, BE>(
     a_col: usize,
     carry: &mut [i128],
 ) where
-    R: VecZnxToMut,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxToBackendMut,
+    A: VecZnxBigToBackendRef<BE>,
     BE: Backend<ScalarBig = i128> + I128NormalizeOps,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
     if res_base2k == a_base2k {
         ntt120_vec_znx_big_normalize_inter(res_base2k, res, res_offset, res_col, a, a_col, carry);
@@ -1466,11 +1496,13 @@ pub fn ntt120_vec_znx_big_normalize_sub_assign<R, A, BE>(
 pub fn ntt120_vec_znx_big_automorphism<R, A, BE>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i128>,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxBigToRef<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    A: VecZnxBigToBackendRef<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
+    for<'x> BE::BufRef<'x>: HostDataRef,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxBig<&[u8], BE> = a.to_ref();
+    let mut res = res.to_backend_mut();
+    let a = a.to_backend_ref();
 
     let n = res.n();
     let size = res.size().min(a.size());
@@ -1504,9 +1536,10 @@ where
 pub fn ntt120_vec_znx_big_automorphism_assign<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i128])
 where
     BE: Backend<ScalarBig = i128>,
-    R: VecZnxBigToMut<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
+    let mut res = res.to_backend_mut();
     let n = res.n();
     let size = res.size();
     let mask = 2 * n - 1;
@@ -1542,9 +1575,10 @@ pub fn ntt120_vec_znx_big_add_normal_ref<R, BE>(
     source: &mut Source,
 ) where
     BE: Backend<ScalarBig = i128>,
-    R: VecZnxBigToMut<BE>,
+    R: VecZnxBigToBackendMut<BE>,
+    for<'x> BE::BufMut<'x>: HostDataMut,
 {
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
+    let mut res = res.to_backend_mut();
     assert!(
         (noise_infos.bound.log2().ceil() as i64) < 64,
         "invalid bound: ceil(log2(bound))={} > 63",

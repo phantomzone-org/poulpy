@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
-    layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
+    layouts::{Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
 };
@@ -9,7 +9,7 @@ use crate::{
     EncryptionLayout, GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
     layouts::{
-        GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -19,6 +19,7 @@ use crate::{
 pub fn test_ggsw_external_product<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
@@ -76,11 +77,11 @@ where
             })
             .unwrap();
 
-            let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_infos);
-            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
-            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
-            let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let mut ggsw_in: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_in_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_apply_infos);
+            let mut pt_in: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+            let mut pt_apply: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -90,7 +91,7 @@ where
 
             let k: usize = 1;
 
-            pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
+            pt_apply.raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_apply_infos)
@@ -98,7 +99,7 @@ where
                     | module.ggsw_external_product_tmp_bytes(&ggsw_out_infos, &ggsw_in_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
@@ -129,12 +130,10 @@ where
 
             module.ggsw_external_product(&mut ggsw_out, &ggsw_in, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_inplace_backend(
-                k as i64,
-                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
-                0,
-                &mut scratch.borrow(),
-            );
+            {
+                let mut pt_in_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_in);
+                module.vec_znx_rotate_inplace_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
+            }
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
@@ -162,7 +161,16 @@ where
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     let noise = ggsw_out
-                        .noise(module, row, col, &pt_in.to_ref(), &sk_prepared, &mut scratch.borrow())
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<poulpy_hal::layouts::HostBytesBackend>>::to_backend_ref(
+                                &pt_in,
+                            ),
+                            &sk_prepared,
+                            &mut scratch.borrow(),
+                        )
                         .std()
                         .log2();
                     let max_noise = max_noise(col);
@@ -177,6 +185,7 @@ where
 pub fn test_ggsw_external_product_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
@@ -222,11 +231,11 @@ where
             })
             .unwrap();
 
-            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
-            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = module.ggsw_alloc_from_infos(&ggsw_apply_infos);
 
-            let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let mut pt_in: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+            let mut pt_apply: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -236,7 +245,7 @@ where
 
             let k: usize = 1;
 
-            pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
+            pt_apply.raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 (module).ggsw_encrypt_sk_tmp_bytes(&ggsw_apply_infos)
@@ -244,7 +253,7 @@ where
                     | module.ggsw_external_product_tmp_bytes(&ggsw_out_infos, &ggsw_out_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let mut sk_prepared: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc(rank.into());
@@ -275,12 +284,10 @@ where
 
             module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, &mut scratch.borrow());
 
-            module.vec_znx_rotate_inplace_backend(
-                k as i64,
-                &mut <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_in),
-                0,
-                &mut scratch.borrow(),
-            );
+            {
+                let mut pt_in_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_in);
+                module.vec_znx_rotate_inplace_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
+            }
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
             let var_gct_err_rhs: f64 = 0f64;
@@ -308,7 +315,16 @@ where
             for row in 0..ggsw_out.dnum().as_usize() {
                 for col in 0..ggsw_out.rank().as_usize() + 1 {
                     let noise = ggsw_out
-                        .noise(module, row, col, &pt_in.to_ref(), &sk_prepared, &mut scratch.borrow())
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &<ScalarZnx<Vec<u8>> as ScalarZnxToBackendRef<poulpy_hal::layouts::HostBytesBackend>>::to_backend_ref(
+                                &pt_in,
+                            ),
+                            &sk_prepared,
+                            &mut scratch.borrow(),
+                        )
                         .std()
                         .log2();
                     let max_noise = max_noise(col);

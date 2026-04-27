@@ -9,7 +9,7 @@ use poulpy_hal::{
         VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
         VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, Data, GaloisElement, HostDataMut, HostDataRef, ScratchArena},
+    layouts::{Backend, Data, GaloisElement, ScratchArena},
 };
 
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
         GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
-        LWEInfos, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
+        LWEInfos, ModuleCoreAlloc, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
         glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
         prepared::GLWETensorKeyPreparedToBackendRef,
     },
@@ -73,7 +73,6 @@ pub trait GLWEPacking<BE: Backend> {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's;
 }
 
@@ -81,6 +80,7 @@ pub trait GLWEPackerOps<BE: Backend>
 where
     Self: Sized
         + ModuleLogN
+        + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
         + GLWEAutomorphism<BE>
         + GaloisElement
         + GLWERotate<BE>
@@ -92,7 +92,7 @@ where
 {
     fn packer_add<'s, A, K, H>(
         &self,
-        packer: &mut GLWEPacker,
+        packer: &mut GLWEPacker<BE::OwnedBuf>,
         a: Option<&A>,
         i: usize,
         auto_keys: &H,
@@ -102,7 +102,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        GLWE<Vec<u8>>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        crate::layouts::BackendGLWE<BE>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
         BE: 's,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
@@ -123,17 +123,15 @@ pub trait GLWEMulConst<BE: Backend> {
         b: &[i64],
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<A>: GLWEToBackendRef<BE>;
 
     fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
-        R: HostDataMut,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        R: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
 }
 
 pub trait GLWEMulPlain<BE: Backend> {
@@ -154,13 +152,12 @@ pub trait GLWEMulPlain<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
-        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_inplace<'s, R, A>(
@@ -172,11 +169,10 @@ pub trait GLWEMulPlain<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        R: Data,
+        A: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 }
 
 pub trait GLWETensoring<BE: Backend> {
@@ -205,13 +201,12 @@ pub trait GLWETensoring<BE: Backend> {
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
-        B: HostDataRef,
+        R: Data,
+        A: Data,
+        B: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply<'s, R, A>(
@@ -222,11 +217,10 @@ pub trait GLWETensoring<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize<'s, R, A, B>(
         &self,
@@ -236,13 +230,12 @@ pub trait GLWETensoring<BE: Backend> {
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: HostDataMut,
-        A: HostDataRef,
+        R: Data,
+        A: Data,
         B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
-        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
-        for<'x> BE::BufMut<'x>: HostDataMut;
+        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
     where

@@ -3,21 +3,14 @@
 //! This crate is intentionally narrow and is meant to document the smallest
 //! useful pattern for an external device backend:
 //! - a distinct `Device` backend type
-//! - an owned buffer type that keeps device memory plus a host mirror
+//! - an owned buffer type that keeps device memory only
 //! - explicit CPU/CUDA transfers
 //! - backend-native scratch allocation and typed arena carving
-//!
-//! The host mirror is still present because large parts of the current HAL
-//! surface remain host-readable. The current CUDA slice focuses on owned
-//! buffers plus `ScratchArena` carving over CUDA-backed storage.
 
 use std::{
     fmt,
     ptr::NonNull,
-    sync::{
-        Arc, Mutex, OnceLock,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use cudarc::driver::{CudaContext, CudaSlice, CudaStream};
@@ -31,6 +24,7 @@ use poulpy_hal::{
 };
 
 mod hal_impl;
+pub mod ntt120;
 
 #[cfg(test)]
 mod tests;
@@ -51,21 +45,16 @@ pub struct CudaFft64Handle {
 }
 
 /// Backend-owned byte buffer for CUDA layouts.
-///
-/// `host` remains the source of truth for host-readable HAL paths. `device`
-/// holds the CUDA allocation mirrored by backend-native scratch/storage.
 pub struct CudaBuf {
-    host: Vec<u8>,
+    len: usize,
     device: Mutex<Option<CudaSlice<u8>>>,
-    device_stale: AtomicBool,
 }
 
 impl Default for CudaBuf {
     fn default() -> Self {
         Self {
-            host: Vec::new(),
+            len: 0,
             device: Mutex::new(None),
-            device_stale: AtomicBool::new(false),
         }
     }
 }
@@ -141,62 +130,67 @@ impl<'a> Eq for CudaBufMut<'a> {}
 impl fmt::Debug for CudaBuf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CudaBuf")
-            .field("len", &self.host.len())
+            .field("len", &self.len)
             .field("device_allocated", &self.device.lock().unwrap().is_some())
-            .field("device_stale", &self.device_stale.load(Ordering::Relaxed))
             .finish()
     }
 }
 
 impl PartialEq for CudaBuf {
     fn eq(&self, other: &Self) -> bool {
-        self.host == other.host
+        self.len == other.len && self.to_host_vec() == other.to_host_vec()
     }
 }
 
 impl Eq for CudaBuf {}
 
 impl CudaBuf {
-    /// Allocates device memory and uploads the aligned host bytes.
-    fn with_aligned_host(host: Vec<u8>) -> Self {
-        let device = if host.is_empty() {
+    fn alloc_device(len: usize) -> Self {
+        let device = if len == 0 {
             None
         } else {
-            Some(
-                cuda_stream()
-                    .clone_htod(host.as_slice())
-                    .expect("failed to upload host bytes into CUDA device buffer"),
-            )
+            Some(unsafe { cuda_stream().alloc::<u8>(len).expect("failed to allocate CUDA device buffer") })
+        };
+
+        Self { len, device: Mutex::new(device) }
+    }
+
+    fn alloc_zeroed_device(len: usize) -> Self {
+        let device = if len == 0 {
+            None
+        } else {
+            Some(cuda_stream().alloc_zeros::<u8>(len).expect("failed to allocate zeroed CUDA device buffer"))
+        };
+
+        Self { len, device: Mutex::new(device) }
+    }
+
+    fn from_host_bytes(bytes: &[u8]) -> Self {
+        let device = if bytes.is_empty() {
+            None
+        } else {
+            Some(cuda_stream().clone_htod(bytes).expect("failed to upload host bytes into CUDA device buffer"))
         };
 
         Self {
-            host,
+            len: bytes.len(),
             device: Mutex::new(device),
-            device_stale: AtomicBool::new(false),
         }
     }
 
-    fn aligned_clone(bytes: &[u8]) -> Vec<u8> {
-        let mut host = alloc_aligned::<u8>(bytes.len());
-        host.copy_from_slice(bytes);
-        host
-    }
-
-    /// Pushes the host mirror to CUDA when a host-side mutation made it stale.
-    fn ensure_device_current(&self) {
-        if self.device_stale.swap(false, Ordering::AcqRel) && !self.host.is_empty() {
-            let stream = cuda_stream();
-            let mut device = self.device.lock().unwrap();
-            stream
-                .memcpy_htod(self.host.as_slice(), device.as_mut().expect("missing CUDA device buffer"))
-                .expect("failed to copy host bytes to CUDA device buffer");
-        }
+    /// Returns the raw `CUdeviceptr` (as `u64`) plus `offset` for this buffer.
+    pub(crate) fn raw_device_ptr(&self, offset: usize) -> u64 {
+        use cudarc::driver::DevicePtr;
+        let device = self.device.lock().unwrap();
+        let slice = device.as_ref().expect("no device buffer");
+        let stream = cuda_stream();
+        let (ptr, _guard) = slice.device_ptr(&stream);
+        ptr + offset as u64
     }
 
     /// Downloads the current CUDA buffer into a fresh aligned host vector.
     fn to_host_vec(&self) -> Vec<u8> {
-        self.ensure_device_current();
-        let mut host = alloc_aligned::<u8>(self.host.len());
+        let mut host = alloc_aligned::<u8>(self.len);
         if !host.is_empty() {
             let device = self.device.lock().unwrap();
             cuda_stream()
@@ -232,20 +226,19 @@ impl Backend for CudaGpuBackend {
     type Location = Device;
 
     fn alloc_bytes(len: usize) -> Self::OwnedBuf {
-        CudaBuf::with_aligned_host(alloc_aligned::<u8>(len))
+        CudaBuf::alloc_device(len)
+    }
+
+    fn alloc_zeroed_bytes(len: usize) -> Self::OwnedBuf {
+        CudaBuf::alloc_zeroed_device(len)
     }
 
     fn from_host_bytes(bytes: &[u8]) -> Self::OwnedBuf {
-        CudaBuf::with_aligned_host(CudaBuf::aligned_clone(bytes))
+        CudaBuf::from_host_bytes(bytes)
     }
 
     fn from_bytes(bytes: Vec<u8>) -> Self::OwnedBuf {
-        let host = if bytes.is_empty() || poulpy_hal::is_aligned(bytes.as_ptr()) {
-            bytes
-        } else {
-            CudaBuf::aligned_clone(&bytes)
-        };
-        CudaBuf::with_aligned_host(host)
+        CudaBuf::from_host_bytes(&bytes)
     }
 
     fn to_host_bytes(buf: &Self::OwnedBuf) -> Vec<u8> {
@@ -253,8 +246,7 @@ impl Backend for CudaGpuBackend {
     }
 
     fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
-        assert_eq!(dst.len(), buf.host.len());
-        buf.ensure_device_current();
+        assert_eq!(dst.len(), buf.len);
         if !dst.is_empty() {
             let device = buf.device.lock().unwrap();
             cuda_stream()
@@ -264,9 +256,7 @@ impl Backend for CudaGpuBackend {
     }
 
     fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
-        assert_eq!(src.len(), buf.host.len());
-        buf.host.copy_from_slice(src);
-        buf.device_stale.store(false, Ordering::Release);
+        assert_eq!(src.len(), buf.len);
         if !src.is_empty() {
             let mut device = buf.device.lock().unwrap();
             cuda_stream()
@@ -276,14 +266,14 @@ impl Backend for CudaGpuBackend {
     }
 
     fn len_bytes(buf: &Self::OwnedBuf) -> usize {
-        buf.host.len()
+        buf.len
     }
 
     fn view(buf: &Self::OwnedBuf) -> Self::BufRef<'_> {
         CudaBufRef {
             ptr: NonNull::from(buf),
             offset: 0,
-            len: buf.host.len(),
+            len: buf.len,
             _marker: std::marker::PhantomData,
         }
     }
@@ -328,7 +318,7 @@ impl Backend for CudaGpuBackend {
         CudaBufMut {
             ptr: NonNull::from(&mut *buf),
             offset: 0,
-            len: buf.host.len(),
+            len: buf.len,
             _marker: std::marker::PhantomData,
         }
     }

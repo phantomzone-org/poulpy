@@ -3,7 +3,7 @@ use bytemuck::cast_slice_mut;
 use crate::{
     layouts::{
         Backend, HostDataMut, HostDataRef, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut, VecZnxDftBackendRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+        ZnxView, ZnxViewMut,
     },
     reference::{
         fft64::reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},

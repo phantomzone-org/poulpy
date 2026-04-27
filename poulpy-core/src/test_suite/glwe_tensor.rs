@@ -14,13 +14,15 @@ use crate::{
     layouts::{
         Dsize, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
         GLWESecretTensorPrepared, GLWESecretTensorPreparedFactory, GLWETensor, GLWETensorKey, GLWETensorKeyLayout,
-        GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, TorusPrecision, prepared::GLWESecretPrepared,
+        GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, ModuleCoreAlloc, TorusPrecision,
+        prepared::GLWESecretPrepared,
     },
 };
 
 pub fn test_glwe_tensoring<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
@@ -70,14 +72,14 @@ where
         })
         .unwrap();
 
-        let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-        let mut b: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-        let mut res_tensor: GLWETensor<Vec<u8>> = GLWETensor::alloc_from_infos(&glwe_out_infos);
-        let mut res_relin: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+        let mut b: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+        let mut res_tensor: GLWETensor<Vec<u8>> = module.glwe_tensor_alloc_from_infos(&glwe_out_infos);
+        let mut res_relin: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let mut pt_in: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_in_infos);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             (module)
@@ -92,20 +94,20 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
         module.glwe_secret_prepare(&mut sk_dft, &sk);
 
-        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc(module.n().into(), rank.into());
+        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = module.glwe_secret_tensor_alloc(rank.into());
         module.glwe_secret_tensor_prepare(&mut sk_tensor, &sk, &mut crate::test_suite::scratch_host_arena(&mut scratch));
 
         let mut sk_tensor_prep: GLWESecretTensorPrepared<BE::OwnedBuf, BE> =
             module.glwe_secret_tensor_prepared_alloc(rank.into());
         module.glwe_secret_tensor_prepared_prepare(&mut sk_tensor_prep, &sk_tensor);
 
-        let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
+        let mut tsk: GLWETensorKey<Vec<u8>> = module.glwe_tensor_key_alloc_from_infos(&tsk_infos);
         module.glwe_tensor_key_encrypt_sk(
             &mut tsk,
             &sk,
@@ -127,8 +129,8 @@ where
 
         pt_in.encode_vec_i64(&data, TorusPrecision(scale as u32));
 
-        let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_in.size());
-        bivariate_convolution_naive::<_, _, _, _, BE>(
+        let mut pt_want_base2k_in: VecZnx<Vec<u8>> = module.vec_znx_alloc(1, pt_in.size());
+        bivariate_convolution_naive::<_, BE>(
             module,
             in_base2k,
             2,
@@ -288,6 +290,7 @@ where
 pub fn test_glwe_tensor_square<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWETensoring<BE>
         + GLWEEncryptSk<BE>
@@ -334,15 +337,15 @@ where
             dsize: Dsize(1),
         };
 
-        let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-        let mut res_square: GLWETensor<Vec<u8>> = GLWETensor::alloc_from_infos(&glwe_out_infos);
-        let mut res_tensor: GLWETensor<Vec<u8>> = GLWETensor::alloc_from_infos(&glwe_out_infos);
-        let mut res_relin_square: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut res_relin_tensor: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+        let mut res_square: GLWETensor<Vec<u8>> = module.glwe_tensor_alloc_from_infos(&glwe_out_infos);
+        let mut res_tensor: GLWETensor<Vec<u8>> = module.glwe_tensor_alloc_from_infos(&glwe_out_infos);
+        let mut res_relin_square: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let mut res_relin_tensor: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let mut pt_in: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_in_infos);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             (module)
@@ -359,7 +362,7 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
@@ -367,7 +370,7 @@ where
 
         let tsk_enc_infos = EncryptionLayout::new_from_default_sigma(tsk_infos).unwrap();
         let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_in_infos).unwrap();
-        let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tsk_infos);
+        let mut tsk: GLWETensorKey<Vec<u8>> = module.glwe_tensor_key_alloc_from_infos(&tsk_infos);
         module.glwe_tensor_key_encrypt_sk(
             &mut tsk,
             &sk,
@@ -452,6 +455,7 @@ where
 pub fn test_glwe_mul_plain<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -486,13 +490,13 @@ where
             rank: rank.into(),
         };
 
-        let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-        let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut pt_a: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
-        let mut pt_b: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module.n().into(), in_base2k.into(), (2 * in_base2k).into());
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+        let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let mut pt_a: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_in_infos);
+        let mut pt_b: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc(in_base2k.into(), (2 * in_base2k).into());
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             (module)
@@ -504,7 +508,7 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
@@ -515,7 +519,7 @@ where
         pt_b.data_mut().fill_uniform(17, &mut source_xa);
         pt_a.data_mut().fill_uniform(17, &mut source_xa);
 
-        let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_a.size() + pt_b.size());
+        let mut pt_want_base2k_in: VecZnx<Vec<u8>> = module.vec_znx_alloc(1, pt_a.size() + pt_b.size());
         bivariate_convolution_naive(
             module,
             in_base2k,
@@ -583,6 +587,7 @@ where
 pub fn test_glwe_mul_const<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
 where
     BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
     for<'a> BE::BufMut<'a>: poulpy_hal::layouts::HostDataMut,
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
@@ -618,13 +623,13 @@ where
             rank: rank.into(),
         };
 
-        let mut a: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
-        let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
-        let mut pt_a: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
-        let mut pt_b: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module.n().into(), in_base2k.into(), (2 * in_base2k).into());
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
-        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut a: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_in_infos);
+        let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_out_infos);
+        let mut pt_a: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_in_infos);
+        let mut pt_b: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc(in_base2k.into(), (2 * in_base2k).into());
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
+        let mut pt_tmp: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_out_infos);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             (module)
@@ -637,7 +642,7 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
+        let mut sk: GLWESecret<Vec<u8>> = module.glwe_secret_alloc(rank.into());
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_dft: GLWESecretPrepared<BE::OwnedBuf, BE> = module.glwe_secret_prepared_alloc_from_infos(&sk);
@@ -655,7 +660,7 @@ where
             pt_b.data_mut().at_mut(0, j)[0] = *x
         }
 
-        let mut pt_want_base2k_in = VecZnx::alloc(n, 1, pt_a.size() + pt_b.size());
+        let mut pt_want_base2k_in: VecZnx<Vec<u8>> = module.vec_znx_alloc(1, pt_a.size() + pt_b.size());
         bivariate_convolution_naive(
             module,
             in_base2k,

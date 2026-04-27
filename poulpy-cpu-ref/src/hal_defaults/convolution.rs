@@ -31,8 +31,9 @@ use crate::reference::{
 use poulpy_hal::{
     api::{HostBufMut, ModuleN, VecZnxDftBytesOf},
     layouts::{
-        Backend, CnvPVecL, CnvPVecLBackendRef, CnvPVecLToMut, CnvPVecR, CnvPVecRBackendRef, CnvPVecRToMut, HostDataRef, Module,
-        ScratchArena, VecZnxBackendRef, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftToMut, ZnxInfos,
+        Backend, CnvPVecLBackendMut, CnvPVecLBackendRef, CnvPVecRBackendMut, CnvPVecRBackendRef, HostDataRef, Module,
+        ScratchArena, VecZnxBackendRef, VecZnxBigToBackendMut, VecZnxDft, VecZnxDftToBackendMut,
+        vec_znx_dft_backend_mut_from_mut,
     },
 };
 
@@ -66,9 +67,9 @@ where
         BE::bytes_of_vec_znx_dft(module.n(), 1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_left_default<'s, R>(
+    fn cnv_prepare_left_default<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut CnvPVecLBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -77,13 +78,12 @@ where
         BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: CnvPVecLToMut<BE>,
     {
-        let mut res: CnvPVecL<&mut [u8], BE> = res.to_mut();
         let tmp_size = res.size().min(a.size());
         let (tmp_bytes, _) = take_host_typed::<BE, u8>(scratch.borrow(), BE::bytes_of_vec_znx_dft(module.n(), 1, tmp_size));
         let mut tmp = VecZnxDft::from_data(tmp_bytes, module.n(), 1, tmp_size);
-        convolution_prepare_left(module.get_fft_table(), &mut res, a, mask, &mut tmp);
+        let mut tmp_ref = vec_znx_dft_backend_mut_from_mut::<BE>(&mut tmp);
+        convolution_prepare_left(module.get_fft_table(), res, a, mask, &mut tmp_ref);
     }
 
     fn cnv_prepare_right_tmp_bytes_default(module: &Module<BE>, res_size: usize, a_size: usize) -> usize
@@ -93,9 +93,9 @@ where
         BE::bytes_of_vec_znx_dft(module.n(), 1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_right_default<'s, R>(
+    fn cnv_prepare_right_default<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut CnvPVecRBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -104,13 +104,12 @@ where
         BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: CnvPVecRToMut<BE>,
     {
-        let mut res: CnvPVecR<&mut [u8], BE> = res.to_mut();
         let tmp_size = res.size().min(a.size());
         let (tmp_bytes, _) = take_host_typed::<BE, u8>(scratch.borrow(), BE::bytes_of_vec_znx_dft(module.n(), 1, tmp_size));
         let mut tmp = VecZnxDft::from_data(tmp_bytes, module.n(), 1, tmp_size);
-        convolution_prepare_right(module.get_fft_table(), &mut res, a, mask, &mut tmp);
+        let mut tmp_ref = vec_znx_dft_backend_mut_from_mut::<BE>(&mut tmp);
+        convolution_prepare_right(module.get_fft_table(), res, a, mask, &mut tmp_ref);
     }
 
     fn cnv_apply_dft_tmp_bytes_default(
@@ -152,13 +151,14 @@ where
     ) where
         BE: Backend<ScalarBig = i64> + I64Ops + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: VecZnxBigToMut<BE>,
+        R: VecZnxBigToBackendMut<BE>,
     {
-        let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-        let bytes = convolution_by_const_apply_tmp_bytes(res.size(), a.size(), b.len());
+        let mut res_ref = res.to_backend_mut();
+        let bytes = convolution_by_const_apply_tmp_bytes(res_ref.size(), a.size(), b.len());
         let (tmp, _) = take_host_typed::<BE, i64>(scratch.borrow(), bytes / size_of::<i64>());
-        convolution_by_const_apply(cnv_offset, &mut res, res_col, a, a_col, b, tmp);
+        convolution_by_const_apply(cnv_offset, &mut res_ref, res_col, a, a_col, b, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -176,12 +176,13 @@ where
         BE: Backend<ScalarPrep = f64> + Reim4BlkMatVec + Reim4Convolution,
         BE::BufMut<'s>: HostBufMut<'s>,
         for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
+        R: VecZnxDftToBackendMut<BE>,
     {
-        let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-        let bytes = convolution_apply_dft_tmp_bytes(res.size(), a.size(), b.size());
+        let mut res_ref = res.to_backend_mut();
+        let bytes = convolution_apply_dft_tmp_bytes(res_ref.size(), a.size(), b.size());
         let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
-        convolution_apply_dft(cnv_offset, &mut res, res_col, a, a_col, b, b_col, tmp);
+        convolution_apply_dft(cnv_offset, &mut res_ref, res_col, a, a_col, b, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
@@ -212,12 +213,13 @@ where
         BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + Reim4Convolution,
         BE::BufMut<'s>: HostBufMut<'s>,
         for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
+        R: VecZnxDftToBackendMut<BE>,
     {
-        let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-        let bytes = convolution_pairwise_apply_dft_tmp_bytes(res.size(), a.size(), b.size());
+        let mut res_ref = res.to_backend_mut();
+        let bytes = convolution_pairwise_apply_dft_tmp_bytes(res_ref.size(), a.size(), b.size());
         let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
-        convolution_pairwise_apply_dft(cnv_offset, &mut res, res_col, a, b, i, j, tmp);
+        convolution_pairwise_apply_dft(cnv_offset, &mut res_ref, res_col, a, b, i, j, tmp);
     }
 
     fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, res_size: usize, a_size: usize) -> usize
@@ -227,10 +229,10 @@ where
         BE::bytes_of_vec_znx_dft(module.n(), 1, res_size.min(a_size))
     }
 
-    fn cnv_prepare_self_default<'s, L, R>(
+    fn cnv_prepare_self_default<'s, 'l, 'r>(
         module: &Module<BE>,
-        left: &mut L,
-        right: &mut R,
+        left: &mut CnvPVecLBackendMut<'l, BE>,
+        right: &mut CnvPVecRBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -239,15 +241,12 @@ where
         BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        L: CnvPVecLToMut<BE>,
-        R: CnvPVecRToMut<BE>,
     {
-        let mut left: CnvPVecL<&mut [u8], BE> = left.to_mut();
-        let mut right: CnvPVecR<&mut [u8], BE> = right.to_mut();
         let tmp_size = left.size().min(a.size());
         let (tmp_bytes, _) = take_host_typed::<BE, u8>(scratch.borrow(), BE::bytes_of_vec_znx_dft(module.n(), 1, tmp_size));
         let mut tmp = VecZnxDft::from_data(tmp_bytes, module.n(), 1, tmp_size);
-        convolution_prepare_self(module.get_fft_table(), &mut left, &mut right, a, mask, &mut tmp);
+        let mut tmp_ref = vec_znx_dft_backend_mut_from_mut::<BE>(&mut tmp);
+        convolution_prepare_self(module.get_fft_table(), left, right, a, mask, &mut tmp_ref);
     }
 }
 
@@ -265,9 +264,9 @@ where
         ntt120_cnv_prepare_left_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_left_default<'s, R>(
+    fn cnv_prepare_left_default<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut CnvPVecLBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -276,11 +275,10 @@ where
         BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: CnvPVecLToMut<BE>,
     {
         let bytes = ntt120_cnv_prepare_left_tmp_bytes(module.n());
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_prepare_left::<R, BE>(module, res, a, mask, tmp);
+        ntt120_cnv_prepare_left::<BE>(module, res, a, mask, tmp);
     }
 
     fn cnv_prepare_right_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
@@ -290,9 +288,9 @@ where
         ntt120_cnv_prepare_right_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_right_default<'s, R>(
+    fn cnv_prepare_right_default<'s, 'r>(
         module: &Module<BE>,
-        res: &mut R,
+        res: &mut CnvPVecRBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -301,11 +299,10 @@ where
         BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: CnvPVecRToMut<BE>,
     {
         let bytes = ntt120_cnv_prepare_right_tmp_bytes(module.n());
         let (tmp, _) = take_host_typed::<BE, u64>(scratch.borrow(), bytes / size_of::<u64>());
-        ntt120_cnv_prepare_right::<R, BE>(module, res, a, mask, tmp);
+        ntt120_cnv_prepare_right::<BE>(module, res, a, mask, tmp);
     }
 
     fn cnv_apply_dft_tmp_bytes_default(
@@ -347,12 +344,14 @@ where
     ) where
         BE: Backend<ScalarBig = i128, ScalarPrep = Q120bScalar> + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8]>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: VecZnxBigToMut<BE>,
+        R: VecZnxBigToBackendMut<BE>,
     {
+        let mut res_ref = res.to_backend_mut();
         let bytes = ntt120_cnv_by_const_apply_tmp_bytes(0, 0, 0);
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_by_const_apply::<R, BE>(cnv_offset, res, res_col, a, a_col, b, tmp);
+        ntt120_cnv_by_const_apply::<BE>(cnv_offset, &mut res_ref, res_col, a, a_col, b, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -376,12 +375,13 @@ where
             + NttPackRight1BlkX2,
         BE::BufMut<'s>: HostBufMut<'s>,
         for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
+        R: VecZnxDftToBackendMut<BE>,
     {
-        let mut res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let mut res_ref = res.to_backend_mut();
         let bytes = ntt120_cnv_apply_dft_tmp_bytes(res_ref.size(), a.size(), b.size());
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_apply_dft::<_, BE>(module, cnv_offset, &mut res_ref, res_col, a, a_col, b, b_col, tmp);
+        ntt120_cnv_apply_dft::<BE>(module, cnv_offset, &mut res_ref, res_col, a, a_col, b, b_col, tmp);
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes_default(
@@ -420,12 +420,13 @@ where
             + NttPairwisePackRight1BlkX2,
         BE::BufMut<'s>: HostBufMut<'s>,
         for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
-        R: VecZnxDftToMut<BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: poulpy_hal::layouts::HostDataMut,
+        R: VecZnxDftToBackendMut<BE>,
     {
-        let res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
+        let mut res_ref = res.to_backend_mut();
         let bytes = ntt120_cnv_pairwise_apply_dft_tmp_bytes(res_ref.size(), a.size(), b.size());
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_pairwise_apply_dft::<R, BE>(module, cnv_offset, res, res_col, a, b, i, j, tmp);
+        ntt120_cnv_pairwise_apply_dft::<BE>(module, cnv_offset, &mut res_ref, res_col, a, b, i, j, tmp);
     }
 
     fn cnv_prepare_self_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
@@ -435,10 +436,10 @@ where
         ntt120_cnv_prepare_self_tmp_bytes(module.n())
     }
 
-    fn cnv_prepare_self_default<'s, L, R>(
+    fn cnv_prepare_self_default<'s, 'l, 'r>(
         module: &Module<BE>,
-        left: &mut L,
-        right: &mut R,
+        left: &mut CnvPVecLBackendMut<'l, BE>,
+        right: &mut CnvPVecRBackendMut<'r, BE>,
         a: &VecZnxBackendRef<'_, BE>,
         mask: i64,
         scratch: &'s mut ScratchArena<'s, BE>,
@@ -447,12 +448,10 @@ where
         BE: Backend<ScalarPrep = Q120bScalar> + NttFromZnx64 + NttDFTExecute<NttTable<Primes30>> + NttCFromB + 'static,
         for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
         BE::BufMut<'s>: HostBufMut<'s>,
-        L: CnvPVecLToMut<BE>,
-        R: CnvPVecRToMut<BE>,
     {
         let bytes = ntt120_cnv_prepare_self_tmp_bytes(module.n());
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_prepare_self::<L, R, BE>(module, left, right, a, mask, tmp);
+        ntt120_cnv_prepare_self::<BE>(module, left, right, a, mask, tmp);
     }
 }
 

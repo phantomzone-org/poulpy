@@ -7,7 +7,7 @@ use crate::{
     DeclaredK,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
-        GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+        GLWEInfos, LWEInfos, Rank, TorusPrecision,
     },
 };
 
@@ -145,9 +145,10 @@ impl<D: HostDataRef> fmt::Display for GLWETensorKey<D> {
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl GLWETensorKey<Vec<u8>> {
     /// Allocates a new [`GLWETensorKey`] with the given parameters.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -162,7 +163,7 @@ impl GLWETensorKey<Vec<u8>> {
     }
 
     /// Allocates a new [`GLWETensorKey`] with the given parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         GLWETensorKey(GGLWE::alloc(n, base2k, k, Rank(pairs), rank, dnum, dsize))
     }
@@ -203,33 +204,21 @@ impl<D: HostDataRef> WriterTo for GLWETensorKey<D> {
     }
 }
 
-impl<D: HostDataRef> GGLWEToRef for GLWETensorKey<D>
+impl<BE: Backend, D: Data> GGLWEToBackendRef<BE> for GLWETensorKey<D>
 where
-    GGLWE<D>: GGLWEToRef,
+    GGLWE<D>: GGLWEToBackendRef<BE>,
 {
-    fn to_ref(&self) -> GGLWE<&[u8]> {
-        self.0.to_ref()
-    }
-}
-
-impl<D: HostDataMut> GGLWEToMut for GLWETensorKey<D>
-where
-    GGLWE<D>: GGLWEToMut,
-{
-    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
-        self.0.to_mut()
-    }
-}
-
-impl<BE: Backend> GGLWEToBackendRef<BE> for GLWETensorKey<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
-        <GGLWE<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.0)
+        self.0.to_backend_ref()
     }
 }
 
-impl<BE: Backend> GGLWEToBackendMut<BE> for GLWETensorKey<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGLWEToBackendMut<BE> for GLWETensorKey<D>
+where
+    GGLWE<D>: GGLWEToBackendMut<BE>,
+{
     fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
-        <GGLWE<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.0)
+        self.0.to_backend_mut()
     }
 }
 

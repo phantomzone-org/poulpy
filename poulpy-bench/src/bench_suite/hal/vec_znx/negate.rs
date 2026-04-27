@@ -3,9 +3,8 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxNegate, VecZnxNegateAssign},
-    layouts::{Backend, FillUniform, Module, VecZnx},
-    source::Source,
+    api::{ModuleNew, VecZnxNegateBackend, VecZnxNegateInplaceBackend},
+    layouts::{Backend, Module},
 };
 
 pub fn bench_vec_znx_negate<B: Backend>(c: &mut Criterion, label: &str)
@@ -26,16 +25,15 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut source: Source = Source::new([0u8; 32]);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
-        b.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let a = crate::upload_host_vec_znx::<B>(&a);
+        let mut b = module.vec_znx_alloc(cols, size);
 
         move || {
+            let a = crate::vec_znx_backend_ref::<B>(&a);
+            let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
                 module.vec_znx_negate(&mut b, i, &a, i);
             }
@@ -52,7 +50,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_negate_assign<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxNegateAssign + ModuleNew<B>,
 {
@@ -70,13 +68,12 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let mut source: Source = Source::new([0u8; 32]);
+        let mut source = poulpy_hal::source::Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(50, &mut source);
+        let a = crate::random_host_vec_znx(module.n(), cols, size, &mut source);
+        let mut a = crate::upload_host_vec_znx::<B>(&a);
         move || {
+            let mut a = crate::vec_znx_backend_mut::<B>(&mut a);
             for i in 0..cols {
                 module.vec_znx_negate_assign(&mut a, i);
             }

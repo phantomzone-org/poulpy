@@ -647,9 +647,11 @@ name = "poulpy-gpu-cuda"
 version = "0.5.0"
 dependencies = [
  "bytemuck",
+ "cc",
  "cudarc",
  "poulpy-cpu-ref",
  "poulpy-hal",
+ "rand_distr",
 ]
 
 [[package]]

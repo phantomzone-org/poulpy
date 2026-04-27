@@ -4,9 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWECompressedToMut,
-    GGLWECompressedToRef, GGLWEInfos, GLWEInfos, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank,
-    TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWEInfos, GLWEInfos,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 use std::fmt;
@@ -85,7 +84,7 @@ impl<D: HostDataRef> WriterTo for LWESwitchingKeyCompressed<D> {
 }
 
 impl LWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -103,7 +102,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
         Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.dnum())
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
         LWESwitchingKeyCompressed(GLWESwitchingKeyCompressed::alloc(
             n,
             base2k,
@@ -154,18 +153,6 @@ where
 impl<B: Backend> LWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
 // module-only API: decompression is provided by `LWESwitchingKeyDecompress` on `Module`.
-
-impl<D: HostDataRef> GGLWECompressedToRef for LWESwitchingKeyCompressed<D> {
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        self.0.to_ref()
-    }
-}
-
-impl<D: HostDataMut> GGLWECompressedToMut for LWESwitchingKeyCompressed<D> {
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        self.0.to_mut()
-    }
-}
 
 impl<BE: Backend> crate::layouts::compressed::GGLWECompressedToBackendRef<BE> for LWESwitchingKeyCompressed<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {

@@ -86,10 +86,10 @@ where
 
         assert_eq!(
             res.rank_in(),
-            pt_backend.cols as u32,
+            pt_backend.cols() as u32,
             "res.rank_in(): {} != pt.cols(): {}",
             res.rank_in(),
-            pt_backend.cols
+            pt_backend.cols()
         );
         assert_eq!(
             res.rank_out(),
@@ -99,7 +99,7 @@ where
             sk_ref.rank()
         );
         assert_eq!(res.n(), sk_ref.n());
-        assert_eq!(pt_backend.n as u32, sk_ref.n());
+        assert_eq!(pt_backend.n() as u32, sk_ref.n());
         assert!(
             scratch.available() >= <Module<BE> as GGLWEEncryptSkDefault<BE>>::gglwe_encrypt_sk_tmp_bytes(self, res),
             "scratch.available(): {} < GGLWEEncryptSk::gglwe_encrypt_sk_tmp_bytes: {}",

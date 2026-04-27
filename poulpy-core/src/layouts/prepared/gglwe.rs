@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena, VmpPMat, VmpPMatToBackendMut, VmpPMatToBackendRef,
-        VmpPMatToMut, VmpPMatToRef, ZnxInfos,
+        Backend, Data, Module, ScratchArena, VmpPMat, VmpPMatReborrowBackendRef, VmpPMatToBackendMut, VmpPMatToBackendRef,
+        vmp_pmat_backend_mut_from_mut, vmp_pmat_backend_ref_from_ref,
     },
 };
 
@@ -219,38 +219,6 @@ impl<BE: Backend> GGLWEPreparedFactory<BE> for Module<BE> where
 
 // module-only API: preparation is provided by `GGLWEPreparedFactory` on `Module`.
 
-/// Conversion trait for obtaining a mutable borrowed [`GGLWEPrepared`].
-pub trait GGLWEPreparedToMut<B: Backend> {
-    /// Returns a [`GGLWEPrepared`] with a mutable borrow of the underlying data.
-    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B>;
-}
-
-impl<D: HostDataMut, B: Backend> GGLWEPreparedToMut<B> for GGLWEPrepared<D, B> {
-    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
-        GGLWEPrepared {
-            base2k: self.base2k,
-            dsize: self.dsize,
-            data: self.data.to_mut(),
-        }
-    }
-}
-
-/// Conversion trait for obtaining an immutably borrowed [`GGLWEPrepared`].
-pub trait GGLWEPreparedToRef<B: Backend> {
-    /// Returns a [`GGLWEPrepared`] with an immutable borrow of the underlying data.
-    fn to_ref(&self) -> GGLWEPrepared<&[u8], B>;
-}
-
-impl<D: HostDataRef, B: Backend> GGLWEPreparedToRef<B> for GGLWEPrepared<D, B> {
-    fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
-        GGLWEPrepared {
-            base2k: self.base2k,
-            dsize: self.dsize,
-            data: self.data.to_ref(),
-        }
-    }
-}
-
 pub trait GGLWEPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B>;
 }
@@ -265,6 +233,26 @@ impl<B: Backend> GGLWEPreparedToBackendRef<B> for GGLWEPrepared<B::OwnedBuf, B> 
     }
 }
 
+impl<'b, B: Backend + 'b> GGLWEPreparedToBackendRef<B> for &GGLWEPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
+        GGLWEPrepared {
+            base2k: self.base2k,
+            dsize: self.dsize,
+            data: vmp_pmat_backend_ref_from_ref::<B>(&self.data),
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> GGLWEPreparedToBackendRef<B> for &mut GGLWEPrepared<B::BufMut<'b>, B> {
+    fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
+        GGLWEPrepared {
+            base2k: self.base2k,
+            dsize: self.dsize,
+            data: self.data.reborrow_backend_ref(),
+        }
+    }
+}
+
 pub trait GGLWEPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B>;
 }
@@ -275,6 +263,16 @@ impl<B: Backend> GGLWEPreparedToBackendMut<B> for GGLWEPrepared<B::OwnedBuf, B> 
             base2k: self.base2k,
             dsize: self.dsize,
             data: self.data.to_backend_mut(),
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> GGLWEPreparedToBackendMut<B> for &mut GGLWEPrepared<B::BufMut<'b>, B> {
+    fn to_backend_mut(&mut self) -> GGLWEPreparedBackendMut<'_, B> {
+        GGLWEPrepared {
+            base2k: self.base2k,
+            dsize: self.dsize,
+            data: vmp_pmat_backend_mut_from_mut::<B>(&mut self.data),
         }
     }
 }

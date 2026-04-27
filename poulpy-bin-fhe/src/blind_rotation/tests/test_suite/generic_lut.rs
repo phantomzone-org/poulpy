@@ -1,12 +1,13 @@
 use std::vec;
 
+use poulpy_core::layouts::ModuleCoreAlloc;
 use poulpy_hal::api::ModuleN;
 
 use crate::blind_rotation::{DivRound, LookUpTableLayout, LookupTable, LookupTableFactory};
 
 pub fn test_lut_standard<M>(module: &M)
 where
-    M: LookupTableFactory + ModuleN,
+    M: LookupTableFactory + ModuleN + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;
@@ -25,7 +26,7 @@ where
         base2k: base2k.into(),
     };
 
-    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
+    let mut lut: LookupTable = LookupTable::alloc(module, &lut_infos);
     lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
@@ -45,7 +46,7 @@ where
 
 pub fn test_lut_extended<M>(module: &M)
 where
-    M: LookupTableFactory + ModuleN,
+    M: LookupTableFactory + ModuleN + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;
@@ -64,7 +65,7 @@ where
         base2k: base2k.into(),
     };
 
-    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
+    let mut lut: LookupTable = LookupTable::alloc(module, &lut_infos);
     lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;

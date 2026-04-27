@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_core::{
     GLWECopy, GLWEDecrypt, ScratchArenaTakeCore,
-    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GLWEToMut, glwe_backend_mut_from_mut},
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc, glwe_backend_mut_from_mut},
 };
 use poulpy_hal::layouts::{Backend, HostDataMut, Module, ScratchArena, ZnxZero};
 
@@ -28,7 +28,7 @@ impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GLWEBlindSelection<T, 
 /// zero.
 pub trait GLWEBlindSelection<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
-    Self: GLWECopy<BE> + Cmux<BE> + GLWEDecrypt<BE>,
+    Self: GLWECopy<BE> + Cmux<BE> + GLWEDecrypt<BE> + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     /// Returns the minimum scratch-space size in bytes required by
     /// [`glwe_blind_selection`][Self::glwe_blind_selection].
@@ -50,8 +50,8 @@ where
         bit_mask: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToMut,
-        A: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEToMut,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         K: GetGGSWBit<BE>,
         BE: 'static,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -60,7 +60,7 @@ where
     {
         assert!(bit_rsh + bit_mask <= T::BITS as usize);
 
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_backend_mut();
 
         for i in 0..bit_mask {
             let t: usize = 1 << (bit_mask - i - 1);
@@ -78,19 +78,19 @@ where
                     }
 
                     (Some(lo), None) => {
-                        let mut zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+                        let mut zero: GLWE<BE::OwnedBuf> = self.glwe_alloc_from_infos(res);
                         zero.data_mut().zero();
                         self.cmux_inplace(lo, &zero, bit, scratch);
                         a.insert(j, lo);
                     }
 
                     (None, Some(hi)) => {
-                        let mut zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+                        let mut zero: GLWE<BE::OwnedBuf> = self.glwe_alloc_from_infos(res);
                         zero.data_mut().zero();
                         self.cmux_inplace(&mut zero, hi, bit, scratch);
                         self.glwe_copy(
                             &mut hi.to_backend_mut(),
-                            &<GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&zero),
+                            &<GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&zero),
                         );
                         a.insert(j, hi);
                     }

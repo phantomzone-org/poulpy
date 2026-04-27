@@ -8,9 +8,8 @@ use poulpy_hal::{
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
-        GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank,
-        TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
+        GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     },
 };
 
@@ -107,8 +106,9 @@ impl<D: Data> GGLWEInfos for LWESwitchingKey<D> {
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -118,7 +118,7 @@ impl LWESwitchingKey<Vec<u8>> {
         Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.dnum())
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
         LWESwitchingKey(GLWESwitchingKey::alloc(n, base2k, k, Rank(1), Rank(1), dnum, Dsize(1)))
     }
 
@@ -167,21 +167,12 @@ impl<D: HostDataRef> WriterTo for LWESwitchingKey<D> {
     }
 }
 
-impl<D: HostDataRef> GGLWEToRef for LWESwitchingKey<D> {
-    fn to_ref(&self) -> GGLWE<&[u8]> {
-        self.0.to_ref()
-    }
-}
-
-impl<D: HostDataMut> GGLWEToMut for LWESwitchingKey<D> {
-    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
-        self.0.to_mut()
-    }
-}
-
-impl<BE: Backend> GGLWEToBackendRef<BE> for LWESwitchingKey<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGLWEToBackendRef<BE> for LWESwitchingKey<D>
+where
+    GLWESwitchingKey<D>: GGLWEToBackendRef<BE>,
+{
     fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
-        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.0)
+        self.0.to_backend_ref()
     }
 }
 

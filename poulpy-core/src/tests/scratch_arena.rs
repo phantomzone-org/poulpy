@@ -3,6 +3,7 @@ use std::{marker::PhantomData, ptr::NonNull};
 use poulpy_hal::{
     api::ScratchArenaTakeBasic,
     layouts::{Backend, DataViewMut, Host, Module, ScratchOwned, VecZnx},
+    oep::HalModuleImpl,
 };
 
 use crate::{
@@ -111,9 +112,16 @@ impl Backend for TestBackend {
     unsafe fn destroy(_: NonNull<Self::Handle>) {}
 }
 
+unsafe impl HalModuleImpl<TestBackend> for TestBackend {
+    fn new(n: u64) -> Module<TestBackend> {
+        assert!(n.is_power_of_two(), "n must be a power of two, got {n}");
+        unsafe { Module::from_nonnull(NonNull::dangling(), n) }
+    }
+}
+
 #[test]
 fn scratch_arena_take_core_returns_disjoint_backend_regions() {
-    let module: Module<TestBackend> = Module::new_marker(64);
+    let module: Module<TestBackend> = Module::new(64);
     let glwe_infos = GLWELayout {
         n: Degree(64),
         base2k: Base2K(8),

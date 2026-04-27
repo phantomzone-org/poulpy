@@ -4,7 +4,7 @@ use poulpy_core::{
     EncryptionLayout, GGSWEncryptSk, GLWEDecrypt, GLWEEncryptSk,
     layouts::{
         Base2K, Dnum, Dsize, GGSWLayout, GGSWPreparedFactory, GLWE, GLWELayout, GLWEPlaintext, GLWESecretPrepared,
-        GLWESecretPreparedFactory, Rank, TorusPrecision,
+        GLWESecretPreparedFactory, ModuleCoreAlloc, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -69,7 +69,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
+    let mut res: GLWE<Vec<u8>> = module.glwe_alloc_from_infos(&glwe_infos);
 
     let k: u32 = source.next_u32();
 
@@ -98,14 +98,14 @@ where
     data.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
 
     for _ in 0..32_usize.div_ceil(digit) {
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
+        let mut pt: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&glwe_infos);
 
         let mut cts_map: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
         let mut cts: Vec<GLWE<Vec<u8>>> = Vec::new();
 
         for value in data.iter().take(1 << digit) {
             pt.encode_coeff_i64(*value, TorusPrecision(base2k.as_u32()), 0);
-            let mut ct = GLWE::alloc_from_infos(&glwe_infos);
+            let mut ct = module.glwe_alloc_from_infos(&glwe_infos);
             module.glwe_encrypt_sk(
                 &mut ct,
                 &pt,

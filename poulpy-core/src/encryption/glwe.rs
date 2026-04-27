@@ -9,7 +9,7 @@ use poulpy_hal::{
     },
     layouts::{
         Backend, Module, ScalarZnx, ScratchArena, SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut,
-        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef, ZnxInfos,
+        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
         scalar_znx_as_vec_znx_backend_mut_from_mut,
     },
     source::Source,
@@ -411,11 +411,7 @@ where
                 }
             }
 
-            let u_backend_ref = ScalarZnx {
-                data: BE::view_ref_mut(&u_backend.data),
-                n: u_backend.n,
-                cols: u_backend.cols,
-            };
+            let u_backend_ref = ScalarZnx::from_data(BE::view_ref_mut(&u_backend.data), u_backend.n(), u_backend.cols());
             self.svp_prepare(&mut u_dft, 0, &u_backend_ref, 0);
             scratch_1 = scratch_2;
         }

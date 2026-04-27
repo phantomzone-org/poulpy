@@ -1,7 +1,7 @@
 use poulpy_core::ScratchArenaTakeCore;
 use poulpy_core::{
     EncryptionInfos, GetDistribution,
-    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecretToRef},
+    layouts::{GGSWInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos, LWESecretToBackendRef},
 };
 use poulpy_hal::{
     layouts::{Backend, ScratchArena},
@@ -45,7 +45,7 @@ pub trait BlindRotationKeyCompressedEncryptSk<B: Backend, BRA: BlindRotationAlgo
     ) where
         S0: GLWESecretPreparedToBackendRef<B> + GLWEInfos,
         E: EncryptionInfos,
-        S1: LWESecretToRef + LWEInfos + GetDistribution,
+        S1: LWESecretToBackendRef<B> + LWEInfos + GetDistribution,
         B: 's,
         ScratchArena<'s, B>: ScratchArenaTakeCore<'s, B>;
 }

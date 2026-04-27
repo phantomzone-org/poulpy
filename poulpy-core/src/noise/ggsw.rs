@@ -4,13 +4,13 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
-        VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut,
+        Backend, DataView, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
+        VecZnx, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut,
         VecZnxReborrowBackendRef, ZnxZero,
     },
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GGSWToBackendRef, GGSWToRef, LWEInfos};
+use crate::layouts::{GGSW, GGSWInfos, GGSWToBackendRef, GLWE, LWEInfos};
 use crate::noise::glwe::glwe_noise_backend_inner;
 use crate::{
     GLWENormalize,
@@ -35,6 +35,7 @@ impl<D: HostDataRef> GGSW<D> {
         S: GLWESecretPreparedToBackendRef<BE>,
         M: GGSWNoise<BE>,
         BE: HostBackend,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -57,6 +58,8 @@ where
         + GLWEDecryptDefault<BE>
         + GLWENormalize<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+    for<'a> BE::BufMut<'a>: HostDataMut,
 {
     fn ggsw_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -84,13 +87,25 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) -> Stats
     where
-        R: GGSWToRef + GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendRef<BE> + GGSWInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: HostBackend,
+        for<'a> BE::BufRef<'a>: HostDataRef,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
-        let res_ref = res.to_ref();
         let res_backend = res.to_backend_ref();
+        let res_ref = GGSW {
+            dsize: res_backend.dsize,
+            base2k: res_backend.base2k,
+            data: poulpy_hal::layouts::MatZnx::from_data(
+                res_backend.data.data().as_ref(),
+                res_backend.data.n(),
+                res_backend.data.rows(),
+                res_backend.data.cols_in(),
+                res_backend.data.cols_out(),
+                res_backend.data.size(),
+            ),
+        };
         let sk_backend = sk_prepared.to_backend_ref();
 
         let base2k: usize = res_ref.base2k().into();
@@ -105,7 +120,7 @@ where
         let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_ref);
         pt.data_mut().zero();
         let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
-            ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n, pt_want.cols);
+            ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n(), pt_want.cols());
         {
             let mut pt_data =
                 <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut pt.data);
@@ -156,6 +171,16 @@ where
 
         let res_at_ref = res_ref.at(res_row, res_col);
         let res_at_backend = ggsw_at_backend_ref_from_ref::<BE>(&res_backend, res_row, res_col);
-        glwe_noise_backend_inner(self, &res_at_ref, &res_at_backend, &pt, &sk_backend, &mut scratch_1)
+        let pt_ref = GLWE {
+            base2k: pt.base2k,
+            data: VecZnx::from_data_with_max_size(
+                pt.data.data().as_ref(),
+                pt.data.n(),
+                pt.data.cols(),
+                pt.data.size(),
+                pt.data.max_size(),
+            ),
+        };
+        glwe_noise_backend_inner(self, &res_at_ref, &res_at_backend, &pt_ref, &sk_backend, &mut scratch_1)
     }
 }

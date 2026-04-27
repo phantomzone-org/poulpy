@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VecZnxDftToMut,
-        VecZnxDftToRef, ZnxInfos,
+        Backend, Data, Module, VecZnxDft, VecZnxDftReborrowBackendRef, VecZnxDftToBackendMut, VecZnxDftToBackendRef,
+        vec_znx_dft_backend_mut_from_mut,
     },
 };
 
@@ -99,32 +99,6 @@ impl<B: Backend> GLWEPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc
 
 // module-only API: preparation is provided by `GLWEPreparedFactory` on `Module`.
 
-pub trait GLWEPreparedToMut<B: Backend> {
-    fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B>;
-}
-
-impl<D: HostDataMut, B: Backend> GLWEPreparedToMut<B> for GLWEPrepared<D, B> {
-    fn to_mut(&mut self) -> GLWEPrepared<&mut [u8], B> {
-        GLWEPrepared {
-            base2k: self.base2k,
-            data: self.data.to_mut(),
-        }
-    }
-}
-
-pub trait GLWEPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> GLWEPrepared<&[u8], B>;
-}
-
-impl<D: HostDataRef, B: Backend> GLWEPreparedToRef<B> for GLWEPrepared<D, B> {
-    fn to_ref(&self) -> GLWEPrepared<&[u8], B> {
-        GLWEPrepared {
-            data: self.data.to_ref(),
-            base2k: self.base2k,
-        }
-    }
-}
-
 pub trait GLWEPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GLWEPreparedBackendRef<'_, B>;
 }
@@ -138,6 +112,30 @@ impl<B: Backend> GLWEPreparedToBackendRef<B> for GLWEPrepared<B::OwnedBuf, B> {
     }
 }
 
+impl<'b, B: Backend + 'b> GLWEPreparedToBackendRef<B> for &GLWEPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GLWEPreparedBackendRef<'_, B> {
+        GLWEPrepared {
+            data: VecZnxDft::from_data_with_max_size(
+                B::view_ref(&self.data.data),
+                self.data.n(),
+                self.data.cols(),
+                self.data.size(),
+                self.data.max_size(),
+            ),
+            base2k: self.base2k,
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> GLWEPreparedToBackendRef<B> for &mut GLWEPrepared<B::BufMut<'b>, B> {
+    fn to_backend_ref(&self) -> GLWEPreparedBackendRef<'_, B> {
+        GLWEPrepared {
+            data: self.data.reborrow_backend_ref(),
+            base2k: self.base2k,
+        }
+    }
+}
+
 pub trait GLWEPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B>;
 }
@@ -146,6 +144,15 @@ impl<B: Backend> GLWEPreparedToBackendMut<B> for GLWEPrepared<B::OwnedBuf, B> {
     fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B> {
         GLWEPrepared {
             data: self.data.to_backend_mut(),
+            base2k: self.base2k,
+        }
+    }
+}
+
+impl<'b, B: Backend + 'b> GLWEPreparedToBackendMut<B> for &mut GLWEPrepared<B::BufMut<'b>, B> {
+    fn to_backend_mut(&mut self) -> GLWEPreparedBackendMut<'_, B> {
+        GLWEPrepared {
+            data: vec_znx_dft_backend_mut_from_mut::<B>(&mut self.data),
             base2k: self.base2k,
         }
     }

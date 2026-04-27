@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::{ScratchAvailable, VmpPrepare},
-    layouts::{Backend, Data, HostDataMut, HostDataRef, Module, ScratchArena},
+    layouts::{Backend, Data, HostDataMut, Module, ScratchArena},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef,
-    GGLWEToGGSWKeyToBackendRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEToGGSWKeyToBackendRef, GLWEInfos,
+    LWEInfos, Rank, TorusPrecision,
 };
 
 /// DFT-domain (prepared) variant of [`GGLWEToGGSWKey`].
@@ -101,7 +101,7 @@ pub trait GGLWEToGGSWKeyPreparedFactory<BE: Backend> {
     /// Iterates over each key element and prepares it individually.
     fn gglwe_to_ggsw_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToGGSWKeyPreparedToMut<BE> + GGLWEToGGSWKeyPreparedToBackendMut<BE>,
+        R: GGLWEToGGSWKeyPreparedToBackendMut<BE>,
         O: GGLWEToGGSWKeyToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchAvailable;
 }
@@ -163,16 +163,19 @@ where
 
     fn gglwe_to_ggsw_key_prepare<'s, R, O>(&self, res: &mut R, other: &O, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GGLWEToGGSWKeyPreparedToMut<BE> + GGLWEToGGSWKeyPreparedToBackendMut<BE>,
+        R: GGLWEToGGSWKeyPreparedToBackendMut<BE>,
         O: GGLWEToGGSWKeyToBackendRef<BE>,
         ScratchArena<'s, BE>: ScratchAvailable,
     {
-        let res_infos = res.to_mut();
+        let needed = {
+            let res_infos = res.to_backend_mut();
+            self.gglwe_to_ggsw_key_prepare_tmp_bytes(&res_infos)
+        };
         assert!(
-            scratch.available() >= self.gglwe_to_ggsw_key_prepare_tmp_bytes(&res_infos),
+            scratch.available() >= needed,
             "scratch.available(): {} < GGLWEToGGSWKeyPreparedFactory::gglwe_to_ggsw_key_prepare_tmp_bytes: {}",
             scratch.available(),
-            self.gglwe_to_ggsw_key_prepare_tmp_bytes(&res_infos)
+            needed
         );
 
         let mut res = res.to_backend_mut();
@@ -208,40 +211,6 @@ impl<D: Data, BE: Backend> GGLWEToGGSWKeyPrepared<D, BE> {
     }
 }
 
-/// Conversion trait for obtaining an immutably borrowed [`GGLWEToGGSWKeyPrepared`].
-pub trait GGLWEToGGSWKeyPreparedToRef<BE: Backend> {
-    /// Returns a [`GGLWEToGGSWKeyPrepared`] with immutable borrows of the underlying data.
-    fn to_ref(&self) -> GGLWEToGGSWKeyPrepared<&[u8], BE>;
-}
-
-impl<D: HostDataRef, BE: Backend> GGLWEToGGSWKeyPreparedToRef<BE> for GGLWEToGGSWKeyPrepared<D, BE>
-where
-    GGLWEPrepared<D, BE>: GGLWEPreparedToRef<BE>,
-{
-    fn to_ref(&self) -> GGLWEToGGSWKeyPrepared<&[u8], BE> {
-        GGLWEToGGSWKeyPrepared {
-            keys: self.keys.iter().map(|c| c.to_ref()).collect(),
-        }
-    }
-}
-
-/// Conversion trait for obtaining a mutably borrowed [`GGLWEToGGSWKeyPrepared`].
-pub trait GGLWEToGGSWKeyPreparedToMut<BE: Backend> {
-    /// Returns a [`GGLWEToGGSWKeyPrepared`] with mutable borrows of the underlying data.
-    fn to_mut(&mut self) -> GGLWEToGGSWKeyPrepared<&mut [u8], BE>;
-}
-
-impl<D: HostDataMut, BE: Backend> GGLWEToGGSWKeyPreparedToMut<BE> for GGLWEToGGSWKeyPrepared<D, BE>
-where
-    GGLWEPrepared<D, BE>: GGLWEPreparedToMut<BE>,
-{
-    fn to_mut(&mut self) -> GGLWEToGGSWKeyPrepared<&mut [u8], BE> {
-        GGLWEToGGSWKeyPrepared {
-            keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
-        }
-    }
-}
-
 pub type GGLWEToGGSWKeyPreparedBackendRef<'a, B> = GGLWEToGGSWKeyPrepared<<B as Backend>::BufRef<'a>, B>;
 pub type GGLWEToGGSWKeyPreparedBackendMut<'a, B> = GGLWEToGGSWKeyPrepared<<B as Backend>::BufMut<'a>, B>;
 
@@ -249,7 +218,10 @@ pub trait GGLWEToGGSWKeyPreparedToBackendRef<B: Backend> {
     fn to_backend_ref(&self) -> GGLWEToGGSWKeyPreparedBackendRef<'_, B>;
 }
 
-impl<B: Backend> GGLWEToGGSWKeyPreparedToBackendRef<B> for GGLWEToGGSWKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEToGGSWKeyPreparedToBackendRef<B> for GGLWEToGGSWKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
+{
     fn to_backend_ref(&self) -> GGLWEToGGSWKeyPreparedBackendRef<'_, B> {
         GGLWEToGGSWKeyPrepared {
             keys: self.keys.iter().map(|c| c.to_backend_ref()).collect(),
@@ -261,7 +233,10 @@ pub trait GGLWEToGGSWKeyPreparedToBackendMut<B: Backend> {
     fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyPreparedBackendMut<'_, B>;
 }
 
-impl<B: Backend> GGLWEToGGSWKeyPreparedToBackendMut<B> for GGLWEToGGSWKeyPrepared<B::OwnedBuf, B> {
+impl<D: Data, B: Backend> GGLWEToGGSWKeyPreparedToBackendMut<B> for GGLWEToGGSWKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToBackendMut<B>,
+{
     fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyPreparedBackendMut<'_, B> {
         GGLWEToGGSWKeyPrepared {
             keys: self.keys.iter_mut().map(|c| c.to_backend_mut()).collect(),

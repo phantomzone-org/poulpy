@@ -4,7 +4,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena, ScratchOwned, Stats},
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ScratchOwned, Stats},
     source::Source,
 };
 use rand::Rng;
@@ -36,6 +36,7 @@ pub fn test_bdd_prepare<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> 
         + GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
@@ -55,7 +56,7 @@ pub fn test_bdd_prepare<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>> 
     let glwe_enc_infos = EncryptionLayout::new_from_default_sigma(glwe_infos).unwrap();
 
     // GLWE(value)
-    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
+    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(module, &glwe_infos);
     let value: u32 = source.next_u32();
     c_enc.encrypt_sk(
         module,

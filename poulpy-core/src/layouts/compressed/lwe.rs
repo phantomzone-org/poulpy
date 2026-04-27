@@ -3,13 +3,14 @@ use std::fmt;
 use poulpy_hal::{
     api::VecZnxFillUniformSourceBackend,
     layouts::{
-        Backend, Data, DataView, DataViewMut, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, VecZnx,
-        VecZnxToBackendMut, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, Data, DataView, DataViewMut, FillUniform, HostBytesBackend, HostDataMut, HostDataRef, Module, ReaderFrom,
+        VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, WriterTo, ZnxView, ZnxViewMut, vec_znx_backend_mut_from_mut,
+        vec_znx_backend_ref_from_mut, vec_znx_backend_ref_from_ref,
     },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, LWE, LWEInfos, LWEToMut, TorusPrecision};
+use crate::layouts::{Base2K, Degree, LWE, LWEInfos, LWEToBackendMut, TorusPrecision};
 
 /// Seed-compressed LWE ciphertext layout.
 ///
@@ -23,6 +24,9 @@ pub struct LWECompressed<D: Data> {
     pub(crate) base2k: Base2K,
     pub(crate) seed: [u8; 32],
 }
+
+pub type LWECompressedBackendRef<'a, BE> = LWECompressed<<BE as Backend>::BufRef<'a>>;
+pub type LWECompressedBackendMut<'a, BE> = LWECompressed<<BE as Backend>::BufMut<'a>>;
 
 impl<D: Data> LWEInfos for LWECompressed<D> {
     fn base2k(&self) -> Base2K {
@@ -65,7 +69,7 @@ impl<D: HostDataMut> FillUniform for LWECompressed<D> {
 
 impl LWECompressed<Vec<u8>> {
     /// Allocates a new compressed LWE by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: LWEInfos,
     {
@@ -76,9 +80,15 @@ impl LWECompressed<Vec<u8>> {
     ///
     /// The ring degree is fixed to 1 (scalar LWE). The number of limbs
     /// is `ceil(k / base2k)`.
-    pub fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
+    pub(crate) fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
         LWECompressed {
-            data: VecZnx::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, size)),
+                1,
+                1,
+                size,
+            ),
             k,
             base2k,
             seed: [0u8; 32],
@@ -125,11 +135,12 @@ where
 
     fn decompress_lwe<R, O>(&self, res: &mut R, other: &O)
     where
-        R: LWEToMut,
-        O: LWECompressedToRef,
+        R: LWEToBackendMut<HostBytesBackend>,
+        O: LWECompressedToBackendRef<HostBytesBackend>,
     {
-        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
-        let other: &LWECompressed<&[u8]> = &other.to_ref();
+        let mut res_ref = res.to_backend_mut();
+        let res: &mut LWE<&mut [u8]> = &mut res_ref;
+        let other = other.to_backend_ref();
 
         assert_eq!(res.lwe_layout(), other.lwe_layout());
 
@@ -163,32 +174,65 @@ where
 
 // module-only API: decompression is provided by `LWEDecompress` on `Module`.
 
-pub trait LWECompressedToRef {
-    fn to_ref(&self) -> LWECompressed<&[u8]>;
+pub trait LWECompressedToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> LWECompressedBackendRef<'_, BE>;
 }
 
-impl<D: HostDataRef> LWECompressedToRef for LWECompressed<D> {
-    fn to_ref(&self) -> LWECompressed<&[u8]> {
+impl<BE: Backend> LWECompressedToBackendRef<BE> for LWECompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> LWECompressedBackendRef<'_, BE> {
         LWECompressed {
             k: self.k,
             base2k: self.base2k,
             seed: self.seed,
-            data: self.data.to_ref(),
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendRef<BE>>::to_backend_ref(&self.data),
         }
     }
 }
 
-pub trait LWECompressedToMut {
-    fn to_mut(&mut self) -> LWECompressed<&mut [u8]>;
-}
-
-impl<D: HostDataMut> LWECompressedToMut for LWECompressed<D> {
-    fn to_mut(&mut self) -> LWECompressed<&mut [u8]> {
+impl<'b, BE: Backend + 'b> LWECompressedToBackendRef<BE> for &LWECompressed<BE::BufRef<'b>> {
+    fn to_backend_ref(&self) -> LWECompressedBackendRef<'_, BE> {
         LWECompressed {
             k: self.k,
             base2k: self.base2k,
             seed: self.seed,
-            data: self.data.to_mut(),
+            data: vec_znx_backend_ref_from_ref::<BE>(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> LWECompressedToBackendRef<BE> for &mut LWECompressed<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> LWECompressedBackendRef<'_, BE> {
+        LWECompressed {
+            k: self.k,
+            base2k: self.base2k,
+            seed: self.seed,
+            data: vec_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
+pub trait LWECompressedToBackendMut<BE: Backend>: LWECompressedToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> LWECompressedBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> LWECompressedToBackendMut<BE> for LWECompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> LWECompressedBackendMut<'_, BE> {
+        LWECompressed {
+            k: self.k,
+            base2k: self.base2k,
+            seed: self.seed,
+            data: <VecZnx<BE::OwnedBuf> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> LWECompressedToBackendMut<BE> for &mut LWECompressed<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> LWECompressedBackendMut<'_, BE> {
+        LWECompressed {
+            k: self.k,
+            base2k: self.base2k,
+            seed: self.seed,
+            data: vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
         }
     }
 }

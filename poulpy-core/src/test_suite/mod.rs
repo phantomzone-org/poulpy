@@ -22,10 +22,18 @@ use crate::oep::{
     GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWETensoringImpl, GLWETraceImpl,
     LWEKeyswitchImpl,
 };
+use crate::{
+    api::ModuleTransfer,
+    layouts::{GGLWE, GGLWEToGGSWKey, GGSW, GLWE, GLWEAutomorphismKey, GLWEPlaintext, GLWESecret},
+};
 use poulpy_hal::{
     api::ScratchOwnedBorrow,
-    layouts::{Backend, HostBackend, HostDataMut, ScratchArena, ScratchOwned},
+    layouts::{
+        Backend, DataView, HostBackend, HostBytesBackend as HB, HostDataMut, HostDataRef, Module, ScalarZnx,
+        ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchArena, ScratchOwned, VecZnxBackendMut, VecZnxBackendRef,
+    },
     test_suite::TestBackend as HalTestBackend,
+    test_suite::{download_scalar_znx as hal_download_scalar_znx, upload_scalar_znx as hal_upload_scalar_znx},
 };
 
 use crate::ScratchArenaTakeCore;
@@ -53,12 +61,14 @@ pub trait TestBackend:
     + ConversionImpl<Self>
     + AutomorphismImpl<Self>
 where
-    Self: HostBackend,
-    Self::OwnedBuf: HostDataMut,
+    Self: HostBackend<OwnedBuf = Vec<u8>>,
+    for<'a> Self::BufRef<'a>: HostDataRef,
     for<'a> Self::BufMut<'a>: HostDataMut,
     for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
 {
 }
+
+type HostModule = Module<HB>;
 
 impl<BE> TestBackend for BE
 where
@@ -83,18 +93,162 @@ where
         + DecryptionImpl<BE>
         + ConversionImpl<BE>
         + AutomorphismImpl<BE>,
-    BE: HostBackend,
-    BE::OwnedBuf: HostDataMut,
+    BE: HostBackend<OwnedBuf = Vec<u8>>,
+    for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
 }
 
-pub fn scratch_host_arena<BE: Backend<OwnedBuf = Vec<u8>>>(scratch: &mut ScratchOwned<BE>) -> ScratchArena<'_, BE>
+pub fn scratch_host_arena<BE: Backend>(scratch: &mut ScratchOwned<BE>) -> ScratchArena<'_, BE>
 where
     ScratchOwned<BE>: ScratchOwnedBorrow<BE>,
 {
     scratch.borrow()
+}
+
+pub fn upload_scalar_znx<BE: Backend>(
+    src: &poulpy_hal::layouts::ScalarZnx<Vec<u8>>,
+) -> poulpy_hal::layouts::ScalarZnx<BE::OwnedBuf> {
+    hal_upload_scalar_znx::<BE>(src)
+}
+
+pub fn download_scalar_znx<BE: Backend>(
+    src: &poulpy_hal::layouts::ScalarZnx<BE::OwnedBuf>,
+) -> poulpy_hal::layouts::ScalarZnx<Vec<u8>> {
+    hal_download_scalar_znx::<BE>(src)
+}
+
+pub fn scalar_znx_as_vec_znx_backend_ref<BE: Backend>(src: &ScalarZnx<BE::OwnedBuf>) -> VecZnxBackendRef<'_, BE> {
+    <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(src)
+}
+
+pub fn scalar_znx_as_vec_znx_backend_mut<BE: Backend>(src: &mut ScalarZnx<BE::OwnedBuf>) -> VecZnxBackendMut<'_, BE> {
+    <ScalarZnx<BE::OwnedBuf> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(src)
+}
+
+pub fn upload_glwe<BE: HostBackend<OwnedBuf = Vec<u8>>>(module: &Module<BE>, src: &GLWE<Vec<u8>>) -> GLWE<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    module.upload_glwe::<HB>(src)
+}
+
+pub fn download_glwe<BE: HostBackend<OwnedBuf = Vec<u8>>>(_module: &Module<BE>, src: &GLWE<BE::OwnedBuf>) -> GLWE<Vec<u8>>
+where
+    HostModule: ModuleTransfer<HB>,
+    HB: poulpy_hal::layouts::TransferFrom<BE>,
+{
+    let shape = src.data.shape();
+    GLWE {
+        data: poulpy_hal::layouts::VecZnx::from_data_with_max_size(
+            BE::to_host_bytes(&src.data.data),
+            shape.n(),
+            shape.cols(),
+            shape.size(),
+            shape.max_size(),
+        ),
+        base2k: src.base2k,
+    }
+}
+
+pub fn upload_glwe_plaintext<BE: HostBackend<OwnedBuf = Vec<u8>>>(
+    module: &Module<BE>,
+    src: &GLWEPlaintext<Vec<u8>>,
+) -> GLWEPlaintext<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    module.upload_glwe_plaintext::<HB>(src)
+}
+
+pub fn download_glwe_plaintext<BE: HostBackend<OwnedBuf = Vec<u8>>>(
+    _module: &Module<BE>,
+    src: &GLWEPlaintext<BE::OwnedBuf>,
+) -> GLWEPlaintext<Vec<u8>>
+where
+    HostModule: ModuleTransfer<HB>,
+    HB: poulpy_hal::layouts::TransferFrom<BE>,
+{
+    let shape = src.data.shape();
+    GLWEPlaintext {
+        data: poulpy_hal::layouts::VecZnx::from_data_with_max_size(
+            BE::to_host_bytes(&src.data.data),
+            shape.n(),
+            shape.cols(),
+            shape.size(),
+            shape.max_size(),
+        ),
+        base2k: src.base2k,
+    }
+}
+
+pub fn upload_glwe_secret<BE: HostBackend<OwnedBuf = Vec<u8>>>(
+    module: &Module<BE>,
+    src: &GLWESecret<Vec<u8>>,
+) -> GLWESecret<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    module.upload_glwe_secret::<HB>(src)
+}
+
+pub fn upload_gglwe<BE: HostBackend<OwnedBuf = Vec<u8>>>(module: &Module<BE>, src: &GGLWE<Vec<u8>>) -> GGLWE<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    module.upload_gglwe::<HB>(src)
+}
+
+pub fn upload_ggsw<BE: HostBackend<OwnedBuf = Vec<u8>>>(module: &Module<BE>, src: &GGSW<Vec<u8>>) -> GGSW<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    module.upload_ggsw::<HB>(src)
+}
+
+pub fn download_ggsw<BE: HostBackend<OwnedBuf = Vec<u8>>>(_module: &Module<BE>, src: &GGSW<BE::OwnedBuf>) -> GGSW<Vec<u8>>
+where
+    HostModule: ModuleTransfer<HB>,
+    HB: poulpy_hal::layouts::TransferFrom<BE>,
+{
+    GGSW {
+        data: poulpy_hal::layouts::MatZnx::from_data(
+            BE::to_host_bytes(src.data.data()),
+            src.data.n(),
+            src.data.rows(),
+            src.data.cols_in(),
+            src.data.cols_out(),
+            src.data.size(),
+        ),
+        base2k: src.base2k,
+        dsize: src.dsize,
+    }
+}
+
+pub fn upload_glwe_automorphism_key<BE: HostBackend<OwnedBuf = Vec<u8>>>(
+    module: &Module<BE>,
+    src: &GLWEAutomorphismKey<Vec<u8>>,
+) -> GLWEAutomorphismKey<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    GLWEAutomorphismKey {
+        key: upload_gglwe(module, &src.key),
+        p: src.p,
+    }
+}
+
+pub fn upload_gglwe_to_ggsw_key<BE: HostBackend<OwnedBuf = Vec<u8>>>(
+    module: &Module<BE>,
+    src: &GGLWEToGGSWKey<Vec<u8>>,
+) -> GGLWEToGGSWKey<BE::OwnedBuf>
+where
+    Module<BE>: ModuleTransfer<BE>,
+{
+    GGLWEToGGSWKey {
+        keys: src.keys.iter().map(|key| upload_gglwe(module, key)).collect(),
+    }
 }
 
 #[macro_export]

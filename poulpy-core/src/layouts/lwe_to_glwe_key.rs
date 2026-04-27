@@ -8,9 +8,8 @@ use poulpy_hal::{
 use crate::{
     DeclaredK,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
-        GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank,
-        TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWEBackendMut, GGLWEBackendRef, GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef,
+        GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     },
 };
 
@@ -137,8 +136,9 @@ impl<D: HostDataRef> WriterTo for LWEToGLWEKey<D> {
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl LWEToGLWEKey<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -148,7 +148,7 @@ impl LWEToGLWEKey<Vec<u8>> {
         Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank_out(), infos.dnum())
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {
         LWEToGLWEKey(GLWESwitchingKey::alloc(n, base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
     }
 
@@ -166,27 +166,21 @@ impl LWEToGLWEKey<Vec<u8>> {
     }
 }
 
-impl<D: HostDataRef> GGLWEToRef for LWEToGLWEKey<D> {
-    fn to_ref(&self) -> GGLWE<&[u8]> {
-        self.0.to_ref()
-    }
-}
-
-impl<D: HostDataMut> GGLWEToMut for LWEToGLWEKey<D> {
-    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
-        self.0.to_mut()
-    }
-}
-
-impl<BE: Backend> GGLWEToBackendRef<BE> for LWEToGLWEKey<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGLWEToBackendRef<BE> for LWEToGLWEKey<D>
+where
+    GLWESwitchingKey<D>: GGLWEToBackendRef<BE>,
+{
     fn to_backend_ref(&self) -> GGLWEBackendRef<'_, BE> {
-        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendRef<BE>>::to_backend_ref(&self.0)
+        self.0.to_backend_ref()
     }
 }
 
-impl<BE: Backend> GGLWEToBackendMut<BE> for LWEToGLWEKey<BE::OwnedBuf> {
+impl<BE: Backend, D: Data> GGLWEToBackendMut<BE> for LWEToGLWEKey<D>
+where
+    GLWESwitchingKey<D>: GGLWEToBackendMut<BE>,
+{
     fn to_backend_mut(&mut self) -> GGLWEBackendMut<'_, BE> {
-        <GLWESwitchingKey<BE::OwnedBuf> as GGLWEToBackendMut<BE>>::to_backend_mut(&mut self.0)
+        self.0.to_backend_mut()
     }
 }
 

@@ -4,9 +4,7 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftZero, VecZnxIdftApply,
         VecZnxIdftApplyTmpBytes, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDftBackendRef, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{
-        Backend, Module, ScratchArena, VecZnxBig, VecZnxBigReborrowBackendRef, VecZnxDft, VecZnxDftReborrowBackendRef, ZnxInfos,
-    },
+    layouts::{Backend, Module, ScratchArena, VecZnxBig, VecZnxBigReborrowBackendRef, VecZnxDft, VecZnxDftReborrowBackendRef},
 };
 
 pub use crate::api::GLWEExternalProduct;
@@ -49,8 +47,8 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
         }
 
         if dsize == 1 {
-            a_dft.size = a_size;
-            res_dft.size = ggsw.size();
+            a_dft.set_size(a_size);
+            res_dft.set_size(ggsw.size());
             for j in 0..cols {
                 module.vec_znx_dft_apply(1, 0, &mut a_dft, j, &a.data, j);
             }
@@ -60,8 +58,8 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
             let (mut res_dft_tmp, mut scratch_2) = scratch_1.take_vec_znx_dft(module, res_dft.cols(), ggsw.size());
 
             for di in 0..dsize {
-                a_dft.size = (a.size() + di) / dsize;
-                res_dft.size = ggsw.size() - ((dsize - di) as isize - 2).max(0) as usize;
+                a_dft.set_size((a.size() + di) / dsize);
+                res_dft.set_size(ggsw.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
                     module.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &a.data, j);
@@ -71,7 +69,7 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
                     let a_dft_ref = a_dft.reborrow_backend_ref();
                     module.vmp_apply_dft_to_dft_backend_ref(res_dft, &a_dft_ref, &ggsw.data, 0, &mut scratch_2.borrow());
                 } else {
-                    res_dft_tmp.size = res_dft.size();
+                    res_dft_tmp.set_size(res_dft.size());
                     let a_dft_ref = a_dft.reborrow_backend_ref();
                     module.vmp_apply_dft_to_dft_backend_ref(
                         &mut res_dft_tmp,
@@ -88,6 +86,7 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
             }
         }
     });
+    res_dft.set_size(res_dft.max_size());
 }
 
 fn glwe_external_product_internal_fill<'s, 'r, 'b, 'a, BE, M>(
@@ -252,7 +251,7 @@ where
             );
         }
 
-        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size);
+        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size());
         let res_dft_ref = res_dft.reborrow_backend_ref();
         for col in 0..cols {
             self.vec_znx_idft_apply(&mut res_big, col, &res_dft_ref, col, &mut scratch.borrow());
@@ -325,7 +324,7 @@ where
             glwe_external_product_dft_fill(self, &mut res_dft, a, &ggsw, &mut scratch.borrow());
         }
 
-        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size);
+        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size());
         let res_dft_ref = res_dft.reborrow_backend_ref();
         for col in 0..cols {
             self.vec_znx_idft_apply(&mut res_big, col, &res_dft_ref, col, &mut scratch.borrow());

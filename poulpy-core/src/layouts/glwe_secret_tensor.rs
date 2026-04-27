@@ -1,13 +1,13 @@
 use poulpy_hal::{
     api::{
-        ModuleN, SvpApplyDftToDft, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
+        ModuleN, SvpApplyDftToDft, SvpPrepare, VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
-        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScalarZnxToMut, ScratchArena,
-        ScratchOwned, SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef, VecZnxBig, VecZnxBigToBackendMut,
-        VecZnxBigToBackendRef, VecZnxDft, VecZnxDftToBackendMut, VecZnxDftToBackendRef, ZnxInfos, ZnxView, ZnxViewMut,
-        scalar_znx_as_vec_znx_backend_mut_from_mut, scalar_znx_as_vec_znx_backend_ref_from_ref,
+        Backend, Data, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, ScratchOwned,
+        SvpPPolReborrowBackendMut, SvpPPolReborrowBackendRef, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDft,
+        VecZnxDftToBackendMut, VecZnxDftToBackendRef, ZnxView, ZnxViewMut, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        scalar_znx_as_vec_znx_backend_ref_from_ref,
     },
 };
 
@@ -16,7 +16,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretBackendMut, GLWESecretBackendRef, GLWESecretPreparedFactory,
-        GLWESecretToBackendMut, GLWESecretToBackendRef, GLWESecretToMut, GLWESecretToRef, LWEInfos, Rank,
+        GLWESecretToBackendMut, GLWESecretToBackendRef, LWEInfos, Rank,
     },
 };
 
@@ -78,11 +78,11 @@ impl<D: HostDataRef> GLWESecretTensor<D> {
             std::mem::swap(&mut i, &mut j);
         };
         let rank: usize = self.rank().into();
-        ScalarZnx {
-            data: bytemuck::cast_slice(self.data.at(i * rank + j - (i * (i + 1) / 2), 0)),
-            n: self.n().into(),
-            cols: 1,
-        }
+        ScalarZnx::from_data(
+            bytemuck::cast_slice(self.data.at(i * rank + j - (i * (i + 1) / 2), 0)),
+            self.n().into(),
+            1,
+        )
     }
 }
 
@@ -92,11 +92,12 @@ impl<D: HostDataMut> GLWESecretTensor<D> {
             std::mem::swap(&mut i, &mut j);
         };
         let rank: usize = self.rank().into();
-        ScalarZnx {
-            n: self.n().into(),
-            data: bytemuck::cast_slice_mut(self.data.at_mut(i * rank + j - (i * (i + 1) / 2), 0)),
-            cols: 1,
-        }
+        let n = self.n().into();
+        ScalarZnx::from_data(
+            bytemuck::cast_slice_mut(self.data.at_mut(i * rank + j - (i * (i + 1) / 2), 0)),
+            n,
+            1,
+        )
     }
 }
 
@@ -112,24 +113,6 @@ impl<D: Data> GLWEInfos for &mut GLWESecretTensor<D> {
     }
 }
 
-impl<D: HostDataRef> GLWESecretToRef for GLWESecretTensor<D> {
-    fn to_ref(&self) -> GLWESecret<&[u8]> {
-        GLWESecret {
-            data: self.data.to_ref(),
-            dist: self.dist,
-        }
-    }
-}
-
-impl<D: HostDataMut> GLWESecretToMut for GLWESecretTensor<D> {
-    fn to_mut(&mut self) -> GLWESecret<&mut [u8]> {
-        GLWESecret {
-            dist: self.dist,
-            data: self.data.to_mut(),
-        }
-    }
-}
-
 impl<BE: Backend> GLWESecretToBackendRef<BE> for GLWESecretTensor<BE::OwnedBuf> {
     fn to_backend_ref(&self) -> GLWESecretBackendRef<'_, BE> {
         GLWESecret {
@@ -142,11 +125,7 @@ impl<BE: Backend> GLWESecretToBackendRef<BE> for GLWESecretTensor<BE::OwnedBuf> 
 impl<'b, BE: Backend + 'b> GLWESecretToBackendRef<BE> for &mut GLWESecretTensor<BE::BufMut<'b>> {
     fn to_backend_ref(&self) -> GLWESecretBackendRef<'_, BE> {
         GLWESecret {
-            data: ScalarZnx {
-                data: BE::view_ref_mut(&self.data.data),
-                n: self.data.n,
-                cols: self.data.cols,
-            },
+            data: ScalarZnx::from_data(BE::view_ref_mut(&self.data.data), self.data.n(), self.data.cols()),
             dist: self.dist,
         }
     }
@@ -163,28 +142,34 @@ impl<BE: Backend> GLWESecretToBackendMut<BE> for GLWESecretTensor<BE::OwnedBuf> 
 
 impl<'b, BE: Backend + 'b> GLWESecretToBackendMut<BE> for &mut GLWESecretTensor<BE::BufMut<'b>> {
     fn to_backend_mut(&mut self) -> GLWESecretBackendMut<'_, BE> {
+        let n = self.data.n();
+        let cols = self.data.cols();
         GLWESecret {
-            data: ScalarZnx {
-                data: BE::view_mut_ref(&mut self.data.data),
-                n: self.data.n,
-                cols: self.data.cols,
-            },
+            data: ScalarZnx::from_data(BE::view_mut_ref(&mut self.data.data), n, cols),
             dist: self.dist,
         }
     }
 }
 
+#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
 impl GLWESecretTensor<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GLWEInfos,
     {
         Self::alloc(infos.n(), infos.rank())
     }
 
-    pub fn alloc(n: Degree, rank: Rank) -> Self {
+    pub(crate) fn alloc(n: Degree, rank: Rank) -> Self {
         GLWESecretTensor {
-            data: ScalarZnx::alloc(n.into(), Self::pairs(rank.into())),
+            data: ScalarZnx::from_data(
+                poulpy_hal::layouts::HostBytesBackend::alloc_bytes(ScalarZnx::<Vec<u8>>::bytes_of(
+                    n.into(),
+                    Self::pairs(rank.into()),
+                )),
+                n.into(),
+                Self::pairs(rank.into()),
+            ),
             rank,
             dist: Distribution::NONE,
         }
@@ -274,7 +259,7 @@ where
 
         let mut a_ij_dft = VecZnxDft::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
         let a_prepared_backend_ref = a_prepared.data.reborrow_backend_ref();
-        let mut a_ij_big_backend = VecZnxBig::<BE::OwnedBuf, BE>::alloc(self.n(), 1, 1);
+        let mut a_ij_big_backend = self.vec_znx_big_alloc(1, 1);
         let mut norm_scratch = ScratchOwned {
             data: BE::alloc_bytes(self.vec_znx_big_normalize_tmp_bytes()),
             _phantom: std::marker::PhantomData,

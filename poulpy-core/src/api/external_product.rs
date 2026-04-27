@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::ModuleN,
     api::VecZnxZeroBackend,
-    layouts::{Backend, ScratchArena, VecZnxDft, ZnxInfos},
+    layouts::{Backend, ScratchArena, VecZnxDft},
 };
 
 use crate::{

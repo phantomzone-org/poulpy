@@ -5,7 +5,7 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
-        GLWESecretPreparedFactory, GLWESecretToBackendRef, LWEInfos, LWESecretToBackendRef, LWESecretToRef,
+        GLWESecretPreparedFactory, GLWESecretToBackendRef, LWEInfos, LWESecretToBackendRef, ModuleCoreAlloc,
         prepared::GLWESecretPrepared,
     },
     trace_galois_elements,
@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use poulpy_hal::{
-    api::ScratchOwnedAlloc,
+    api::{ModuleN, ScratchOwnedAlloc},
     layouts::{
         Backend, Data, HostBackend, HostDataMut, HostDataRef, Module, NoiseInfos, ReaderFrom, ScratchArena, ScratchOwned,
         WriterTo,
@@ -137,13 +137,16 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         BE: 's;
 }
 
-impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
-    pub fn alloc_from_infos<A: CircuitBootstrappingKeyInfos>(infos: &A) -> Self {
+impl<D: Data, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
+    pub fn alloc_from_infos<M, A: CircuitBootstrappingKeyInfos>(module: &M, infos: &A) -> Self
+    where
+        M: ModuleCoreAlloc<OwnedBuf = D> + ModuleN,
+    {
         let atk_infos: &GLWEAutomorphismKeyLayout = &infos.atk_infos();
         let brk_infos: &BlindRotationKeyLayout = &infos.brk_infos();
         let trk_infos: &GGLWEToGGSWKeyLayout = &infos.tsk_infos();
@@ -156,15 +159,15 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         );
 
         Self {
-            brk: BRA::alloc_key(brk_infos),
+            brk: BRA::alloc_key(module, brk_infos),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {
-                    let key = GLWEAutomorphismKey::alloc_from_infos(atk_infos);
+                    let key = module.glwe_automorphism_key_alloc_from_infos(atk_infos);
                     (gal_el, key)
                 })
                 .collect(),
-            tsk: GGLWEToGGSWKey::alloc_from_infos(trk_infos),
+            tsk: module.gglwe_to_ggsw_key_alloc_from_infos(trk_infos),
         }
     }
 }
@@ -189,8 +192,8 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
 /// 3. Prepare with `CircuitBootstrappingKeyPrepared::prepare`.
 pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
     pub(crate) brk: BlindRotationKey<D, BRA>,
-    pub(crate) tsk: GGLWEToGGSWKey<Vec<u8>>,
-    pub(crate) atk: HashMap<i64, GLWEAutomorphismKey<Vec<u8>>>,
+    pub(crate) tsk: GGLWEToGGSWKey<D>,
+    pub(crate) atk: HashMap<i64, GLWEAutomorphismKey<D>>,
 }
 
 impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
@@ -205,7 +208,7 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         M: CircuitBootstrappingKeyEncryptSk<BRA, BE>,
         BE: Backend<OwnedBuf = Vec<u8>> + HostBackend + 's,
@@ -243,7 +246,7 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        S0: LWESecretToBackendRef<BE> + LWESecretToRef + GetDistribution + LWEInfos,
+        S0: LWESecretToBackendRef<BE> + GetDistribution + LWEInfos,
         S1: GLWESecretToBackendRef<BE> + GLWEInfos + GetDistribution,
         BE: 's,
     {

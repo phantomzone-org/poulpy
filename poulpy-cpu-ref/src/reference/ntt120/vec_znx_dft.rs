@@ -27,7 +27,7 @@ use bytemuck::{cast_slice, cast_slice_mut};
 use crate::{
     layouts::{
         Backend, HostDataMut, HostDataRef, Module, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDft, VecZnxDftBackendMut,
-        VecZnxDftBackendRef, ZnxInfos, ZnxView, ZnxViewMut,
+        VecZnxDftBackendRef, ZnxView, ZnxViewMut,
     },
     reference::ntt120::{
         NttAdd, NttAddAssign, NttCopy, NttDFTExecute, NttFromZnx64, NttNegate, NttNegateAssign, NttSub, NttSubAssign,

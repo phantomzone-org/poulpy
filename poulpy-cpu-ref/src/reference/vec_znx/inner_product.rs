@@ -1,4 +1,4 @@
-use crate::layouts::{ScalarZnx, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut};
+use crate::layouts::{ScalarZnx, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, ZnxView, ZnxViewMut};
 
 #[allow(clippy::too_many_arguments)]
 pub fn vec_znx_sub_inner_product_assign<R, A>(
@@ -15,11 +15,11 @@ pub fn vec_znx_sub_inner_product_assign<R, A>(
     b_offset: usize,
     len: usize,
 ) where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
+    R: VecZnxToBackendMut,
+    A: VecZnxToBackendRef,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
+    let mut res: VecZnx<&mut [u8]> = res.to_backend_mut();
+    let a: VecZnx<&[u8]> = a.to_backend_ref();
 
     assert!(res_limb < res.size());
     assert!(res_offset < res.n());
