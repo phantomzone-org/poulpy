@@ -51,12 +51,11 @@ pub(crate) use error::{checked_log_budget_sub, checked_mul_ct_log_budget, ensure
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
 ///
 /// `log_delta` is the scaling precision of the encoded value and
-/// `log_budget` is the remaining homomorphic headroom available before the
-/// value must be rescaled or truncated.
+/// `log_budget` is the remaining homomorphic headroom available above `log_delta`.
 pub struct CKKSMeta {
     /// Base 2 logarithm of the decimal precision.
     pub log_delta: usize,
-    /// Base 2 logarithm of the Remaining homomorphic capacity.
+    /// Base 2 logarithm of the remaining homomorphic capacity.
     pub log_budget: usize,
 }
 

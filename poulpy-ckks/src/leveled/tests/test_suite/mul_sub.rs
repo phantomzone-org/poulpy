@@ -25,7 +25,7 @@ use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVec
 
 const CONST_RE: f64 = 0.2718281828459045;
 const CONST_IM: f64 = -0.1414213562373095;
-const DELTA_LOG_DECIMAL: usize = 8;
+const DELTA_LOG_DELTA: usize = 8;
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
     let ct_infos = ctx.params.glwe_layout();
@@ -143,7 +143,7 @@ pub fn test_mul_sub_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestCon
 pub fn test_mul_sub_pt_vec_znx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let dst_re = scaled(&ctx.re1, half);
     let dst_im = scaled(&ctx.im1, half);
@@ -261,7 +261,7 @@ pub fn test_mul_sub_pt_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestSca
     let dst_meta = dst.meta();
     let cst_rnx = ctx.const_rnx(None, None);
     let cst_znx = cst_rnx
-        .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DECIMAL))
+        .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DELTA))
         .unwrap();
     ctx.module
         .ckks_mul_sub_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
@@ -288,7 +288,7 @@ pub fn test_mul_sub_pt_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestSca
             &mut dst,
             &a,
             &cst,
-            ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DECIMAL),
+            ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DELTA),
             scratch.borrow(),
         )
         .unwrap();

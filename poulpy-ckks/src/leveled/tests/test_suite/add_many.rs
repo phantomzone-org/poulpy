@@ -16,7 +16,7 @@ use crate::{CKKSInfos, leveled::api::CKKSAddManyOps, leveled::tests::test_suite:
 
 use super::helpers::{TestAddBackend as Backend, TestContext, TestScalar, TestVector};
 
-const DELTA_LOG_DECIMAL: usize = 12;
+const DELTA_LOG_DELTA: usize = 12;
 const N: usize = 5;
 
 type Terms<F> = (Vec<(Vec<F>, Vec<F>)>, Vec<F>, Vec<F>);
@@ -100,7 +100,7 @@ pub fn test_add_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &Test
 /// bounded by the least precise summand.
 pub fn test_add_many_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (hi_re, hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (lo_re, lo_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
@@ -117,7 +117,7 @@ pub fn test_add_many_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestConte
 
     // First term at the low precision, rest at the high precision.
     let ct_low = ctx.encrypt_with_prec(
-        ctx.max_k() - DELTA_LOG_DECIMAL,
+        ctx.max_k() - DELTA_LOG_DELTA,
         &lo_scaled.0,
         &lo_scaled.1,
         low_prec,

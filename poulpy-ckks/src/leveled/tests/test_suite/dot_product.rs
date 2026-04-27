@@ -29,7 +29,7 @@ use crate::{
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};
 
 const N: usize = 3;
-const DELTA_LOG_DECIMAL: usize = 8;
+const DELTA_LOG_DELTA: usize = 8;
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
     let ct_infos = ctx.params.glwe_layout();
@@ -204,7 +204,7 @@ pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestCon
 pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let half = F::from_f64(0.5).unwrap();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (a_hi_re, a_hi_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (b_hi_re, b_hi_im) = ctx.quantized_vector(TestVector::Second, ctx.meta().log_delta);
@@ -240,7 +240,7 @@ pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &Tes
         .collect();
     let mut b_cts: Vec<_> = Vec::with_capacity(N);
     b_cts.push(ctx.encrypt_with_prec(
-        ctx.max_k() - DELTA_LOG_DECIMAL,
+        ctx.max_k() - DELTA_LOG_DELTA,
         &b_vecs[0].0,
         &b_vecs[0].1,
         low_prec,

@@ -50,7 +50,7 @@ use poulpy_hal::api::ScratchOwnedBorrow;
 
 const CONST_RE: f64 = 0.314_159_265_358_979_3;
 const CONST_IM: f64 = -0.271_828_182_845_904_5;
-const DELTA_LOG_DECIMAL: usize = 12;
+const DELTA_LOG_DELTA: usize = 12;
 
 // ─── ct+ct out-of-place (GLWE<_, CKKS>::add) ────────────────────────────────
 
@@ -103,12 +103,12 @@ pub fn test_add_ct_delta_a_gt_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE
 /// ct+ct out-of-place with aligned homomorphic capacity but different log_delta.
 pub fn test_add_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
     let ct1 = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
-    let ct2 = ctx.encrypt_with_prec(ctx.max_k() - DELTA_LOG_DECIMAL, &b_re, &b_im, low_prec, scratch.borrow());
+    let ct2 = ctx.encrypt_with_prec(ctx.max_k() - DELTA_LOG_DELTA, &b_re, &b_im, low_prec, scratch.borrow());
     let (want_re, want_im) = ctx.want_add_from(&a_re, &a_im, &b_re, &b_im);
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module.ckks_add_into(&mut ct_res, &ct1, &ct2, scratch.borrow()).unwrap();
@@ -224,7 +224,7 @@ pub fn test_add_pt_vec_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestCo
 /// ct + ZNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
 pub fn test_add_pt_vec_znx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
@@ -280,7 +280,7 @@ pub fn test_add_pt_vec_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestCo
 /// ct + RNX plaintext, out-of-place, plaintext encoded at lower decimal precision.
 pub fn test_add_pt_vec_rnx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (b_re, b_im) = ctx.quantized_vector(TestVector::Second, low_log_delta);
@@ -336,7 +336,7 @@ pub fn test_add_const_rnx_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<B
 /// ct + complex constant, out-of-place, constant encoded at lower decimal precision.
 pub fn test_add_const_rnx_into_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DECIMAL;
+    let low_log_delta = ctx.meta().log_delta - DELTA_LOG_DELTA;
     let low_prec = ctx.precision_at(low_log_delta);
     let (a_re, a_im) = ctx.quantized_vector(TestVector::First, ctx.meta().log_delta);
     let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, low_log_delta);
