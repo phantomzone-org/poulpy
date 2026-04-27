@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use poulpy_schemes::bin_fhe::blind_rotation::CGGI;
+use poulpy_bin_fhe::blind_rotation::CGGI;
 
 fn bench_blind_rotate(c: &mut Criterion) {
     poulpy_bench::bench_suite::schemes::blind_rotation::bench_blind_rotate::<poulpy_cpu_ref::FFT64Ref, CGGI>(c, "fft64-ref");

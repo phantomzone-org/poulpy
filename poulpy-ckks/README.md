@@ -59,8 +59,8 @@ RNS CKKS libraries.
 
 Each ciphertext carries CKKS metadata:
 
-- `log_delta`: base-2 logarithm of the plaintext scaling factor (precision)
-- `log_budget`: remaining homomorphic headroom
+- `log_delta`: base-2 logarithm of the plaintext precision
+- `log_budget`: remaining homomorphic capacity
 
 That metadata is part of the evaluator state. User code should treat it as
 scheme-managed information: encryption, rescale, multiplication, addition, and

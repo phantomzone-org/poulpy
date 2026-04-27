@@ -30,7 +30,7 @@ use poulpy_hal::{
 const N: usize = 1 << 15;
 const BASE2K: usize = 52;
 const K: usize = 728;
-const LOG_DECIMAL: usize = 40;
+const LOG_DELTA: usize = 40;
 const DSIZE: usize = 1;
 const MANY_TERMS: usize = 8;
 const ROTATION: i64 = 1;
@@ -106,8 +106,8 @@ fn ckks_layout() -> GLWELayout {
 
 fn ckks_meta() -> CKKSMeta {
     CKKSMeta {
-        log_delta: LOG_DECIMAL,
-        log_budget: K - LOG_DECIMAL,
+        log_delta: LOG_DELTA,
+        log_budget: K - LOG_DELTA,
     }
 }
 
