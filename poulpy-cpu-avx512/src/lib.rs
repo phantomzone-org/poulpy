@@ -96,7 +96,9 @@
 //! ## Safety invariants
 //!
 //! Many functions are marked `unsafe` and require:
-//! - CPU features (AVX-512F / AVX-512-IFMA / AVX-512VL) are present (verified at module creation)
+//! - CPU features required by the selected backend are present
+//!   (`FFT64Avx512` / `NTT120Avx512`: AVX-512F; `NTT120Ifma`: AVX-512F + AVX-512-IFMA + AVX-512VL),
+//!   verified at module creation
 //! - Input slices have matching lengths where documented
 //! - Input values satisfy documented bounds (e.g., `|x| < 2^50` for IEEE 754 conversions,
 //!   limb residues `< 2^52` for IFMA `vpmadd52` accumulators)
@@ -165,9 +167,12 @@
 //!
 //! # Platform support
 //!
-//! - **Required**: x86-64 architecture with AVX-512F + AVX-512VL (and AVX-512-IFMA for `NTT120Ifma`).
-//! - **Tested on**: Linux (x86_64) on Ice Lake / Tiger Lake / Sapphire Rapids and later.
-//! - **Not supported**: ARM, RISC-V, pre-Ice-Lake x86-64, or other architectures.
+//! - **Required**: x86-64 architecture.
+//! - **For `FFT64Avx512` / `NTT120Avx512`**: AVX-512F.
+//! - **For `NTT120Ifma`**: AVX-512F + AVX-512-IFMA + AVX-512VL.
+//! - **Tested on**: Linux (x86_64) on AVX-512-capable Intel and AMD CPUs.
+//! - **Not supported**: ARM, RISC-V, non-x86_64 targets, or x86_64 CPUs lacking the
+//!   required AVX-512 features for the selected backend.
 //!
 //! # Threat model
 //!
