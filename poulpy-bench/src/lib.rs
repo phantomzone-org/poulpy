@@ -74,7 +74,7 @@ macro_rules! for_each_fft_backend_family {
         #[cfg(all(feature = "enable-avx512f", target_arch = "x86_64"))]
         {
             use $fn as __f;
-            __f::<poulpy_cpu_ifma::FFT64Ifma>($($arg,)* $c, "fft64-ifma");
+            __f::<poulpy_cpu_avx512::FFT64Avx512>($($arg,)* $c, "fft64-ifma");
         }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::FFT64GPU>($($arg,)* $c, "fft64-gpu"); }
@@ -109,7 +109,7 @@ macro_rules! for_each_ntt_backend_family {
         #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
         {
             use $fn as __f;
-            __f::<poulpy_cpu_ifma::NTTIfma>($($arg,)* $c, "ntt-ifma");
+            __f::<poulpy_cpu_avx512::NTT120Ifma>($($arg,)* $c, "ntt-ifma");
         }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::NTT120GPU>($($arg,)* $c, "ntt120-gpu"); }

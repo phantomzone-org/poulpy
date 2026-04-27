@@ -87,7 +87,7 @@ jobs:
         RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
         cargo test --workspace --features enable-avx,enable-ifma
 
-    # Build / lint / test WITH AVX-512F only (FFT64Ifma without NTTIfma).
+    # Build / lint / test WITH AVX-512F only (FFT64Avx512 without NTT120Ifma).
     # Active when the runner has AVX-512F but not IFMA (e.g. Skylake-X / Cascade Lake / KNL).
     - name: Build (AVX + AVX-512F enabled, no IFMA)
       if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'

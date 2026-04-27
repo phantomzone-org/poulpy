@@ -397,7 +397,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120VecZnxDftDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
+pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
     fn vec_znx_dft_apply_default<R, A>(
         module: &Module<BE>,
         step: usize,
@@ -565,4 +565,4 @@ pub trait NTTIfmaVecZnxDftDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTTIfmaVecZnxDftDefaults<BE> for BE {}
+impl<BE: Backend> NTT120IfmaVecZnxDftDefaults<BE> for BE {}

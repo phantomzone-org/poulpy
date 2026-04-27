@@ -380,7 +380,7 @@ fn bench_bdd_arithmetic(c: &mut Criterion) {
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
     benc_bdd_arithmetic::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
     #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
-    benc_bdd_arithmetic::<poulpy_cpu_ifma::FFT64Ifma, CGGI>(c, "fft64-ifma");
+    benc_bdd_arithmetic::<poulpy_cpu_avx512::FFT64Avx512, CGGI>(c, "fft64-ifma");
 }
 
 criterion_group! {

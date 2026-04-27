@@ -535,7 +535,7 @@ dependencies = [
  "poulpy-ckks",
  "poulpy-core",
  "poulpy-cpu-avx",
- "poulpy-cpu-ifma",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "poulpy-schemes",
@@ -553,7 +553,7 @@ dependencies = [
  "f128",
  "poulpy-core",
  "poulpy-cpu-avx",
- "poulpy-cpu-ifma",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
@@ -594,7 +594,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy-cpu-ifma"
+name = "poulpy-cpu-avx512"
 version = "0.5.0"
 dependencies = [
  "bytemuck",
@@ -657,7 +657,7 @@ dependencies = [
  "paste",
  "poulpy-core",
  "poulpy-cpu-avx",
- "poulpy-cpu-ifma",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",

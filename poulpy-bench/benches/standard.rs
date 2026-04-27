@@ -173,7 +173,10 @@ fn std_blind_rotate(c: &mut Criterion) {
     #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
     poulpy_bench::bench_suite::schemes::blind_rotation::bench_blind_rotate::<poulpy_cpu_avx::FFT64Avx, CGGI>(c, "fft64-avx");
     #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
-    poulpy_bench::bench_suite::schemes::blind_rotation::bench_blind_rotate::<poulpy_cpu_ifma::FFT64Ifma, CGGI>(c, "fft64-ifma");
+    poulpy_bench::bench_suite::schemes::blind_rotation::bench_blind_rotate::<poulpy_cpu_avx512::FFT64Avx512, CGGI>(
+        c,
+        "fft64-ifma",
+    );
 }
 
 fn std_circuit_bootstrapping(c: &mut Criterion) {
@@ -187,7 +190,7 @@ fn std_circuit_bootstrapping(c: &mut Criterion) {
         "fft64-avx",
     );
     #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
-    poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_ifma::FFT64Ifma, CGGI>(
+    poulpy_bench::bench_suite::schemes::circuit_bootstrapping::bench_circuit_bootstrapping::<poulpy_cpu_avx512::FFT64Avx512, CGGI>(
         c,
         "fft64-ifma",
     );

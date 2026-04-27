@@ -123,7 +123,7 @@ fn bench_ntt_ifma(_c: &mut Criterion) {
 ))]
 pub fn bench_ntt_ifma(c: &mut Criterion) {
     use criterion::BenchmarkId;
-    use poulpy_cpu_ifma::NTTIfma;
+    use poulpy_cpu_avx512::NTT120Ifma;
     use poulpy_cpu_ref::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTable, primes::Primes40};
     use std::hint::black_box;
 
@@ -136,7 +136,7 @@ pub fn bench_ntt_ifma(c: &mut Criterion) {
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
         let table: NttIfmaTable<Primes40> = NttIfmaTable::<Primes40>::new(n);
         move || {
-            NTTIfma::ntt_ifma_dft_execute(&table, &mut values);
+            NTT120Ifma::ntt_ifma_dft_execute(&table, &mut values);
             black_box(());
         }
     }
@@ -170,7 +170,7 @@ fn bench_intt_ifma(_c: &mut Criterion) {
 ))]
 pub fn bench_intt_ifma(c: &mut Criterion) {
     use criterion::BenchmarkId;
-    use poulpy_cpu_ifma::NTTIfma;
+    use poulpy_cpu_avx512::NTT120Ifma;
     use poulpy_cpu_ref::reference::ntt_ifma::{NttIfmaDFTExecute, ntt::NttIfmaTableInv, primes::Primes40};
     use std::hint::black_box;
 
@@ -183,7 +183,7 @@ pub fn bench_intt_ifma(c: &mut Criterion) {
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as u64);
         let table: NttIfmaTableInv<Primes40> = NttIfmaTableInv::<Primes40>::new(n);
         move || {
-            NTTIfma::ntt_ifma_dft_execute(&table, &mut values);
+            NTT120Ifma::ntt_ifma_dft_execute(&table, &mut values);
             black_box(());
         }
     }

@@ -146,7 +146,7 @@ fn bench_fft_ifma(_c: &mut Criterion) {
 
 #[cfg(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",))]
 pub fn bench_fft_ifma(c: &mut Criterion) {
-    use poulpy_cpu_ifma::ReimFFTIfma;
+    use poulpy_cpu_avx512::ReimFFTAvx512;
 
     let group_name: String = "fft_avx512".to_string();
     let mut group = c.benchmark_group(group_name);
@@ -157,7 +157,7 @@ pub fn bench_fft_ifma(c: &mut Criterion) {
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
         let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
         move || {
-            ReimFFTIfma::reim_dft_execute(&table, &mut values);
+            ReimFFTAvx512::reim_dft_execute(&table, &mut values);
             black_box(());
         }
     }
@@ -178,7 +178,7 @@ fn bench_ifft_ifma(_c: &mut Criterion) {
 
 #[cfg(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",))]
 pub fn bench_ifft_ifma(c: &mut Criterion) {
-    use poulpy_cpu_ifma::ReimIFFTIfma;
+    use poulpy_cpu_avx512::ReimIFFTAvx512;
 
     let group_name: String = "ifft_avx512".to_string();
     let mut group = c.benchmark_group(group_name);
@@ -189,7 +189,7 @@ pub fn bench_ifft_ifma(c: &mut Criterion) {
         values.iter_mut().enumerate().for_each(|(i, x)| *x = (i + 1) as f64 * scale);
         let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
         move || {
-            ReimIFFTIfma::reim_dft_execute(&table, &mut values);
+            ReimIFFTAvx512::reim_dft_execute(&table, &mut values);
             black_box(());
         }
     }

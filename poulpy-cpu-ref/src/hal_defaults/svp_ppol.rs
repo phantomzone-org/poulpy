@@ -145,7 +145,7 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120SvpDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTTIfmaSvpDefaults<BE: Backend>: Backend {
+pub trait NTT120IfmaSvpDefaults<BE: Backend>: Backend {
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         Module<BE>: NttIfmaModuleHandle,
@@ -205,4 +205,4 @@ pub trait NTTIfmaSvpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTTIfmaSvpDefaults<BE> for BE {}
+impl<BE: Backend> NTT120IfmaSvpDefaults<BE> for BE {}

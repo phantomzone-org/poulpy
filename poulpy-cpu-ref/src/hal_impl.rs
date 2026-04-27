@@ -2,9 +2,10 @@ use crate::{
     FFT64Ref, NTT120Ref, NTTIfmaRef,
     hal_defaults::{
         FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
-        FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120ModuleDefaults,
-        NTT120SvpDefaults, NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults, NTT120VmpDefaults, NTTIfmaConvolutionDefaults,
-        NTTIfmaModuleDefaults, NTTIfmaSvpDefaults, NTTIfmaVecZnxBigDefaults, NTTIfmaVecZnxDftDefaults, NTTIfmaVmpDefaults,
+        FFT64VmpDefaults, HalScratchDefaults, HalVecZnxDefaults, NTT120ConvolutionDefaults, NTT120IfmaConvolutionDefaults,
+        NTT120IfmaModuleDefaults, NTT120IfmaSvpDefaults, NTT120IfmaVecZnxBigDefaults, NTT120IfmaVecZnxDftDefaults,
+        NTT120IfmaVmpDefaults, NTT120ModuleDefaults, NTT120SvpDefaults, NTT120VecZnxBigDefaults, NTT120VecZnxDftDefaults,
+        NTT120VmpDefaults,
     },
 };
 use poulpy_hal::{

@@ -24,4 +24,4 @@ mod fft64_avx;
 
 #[cfg(test)]
 #[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f"))]
-mod fft64_ifma;
+mod fft64_avx512;

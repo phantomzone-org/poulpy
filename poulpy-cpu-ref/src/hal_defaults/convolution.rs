@@ -436,7 +436,7 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120ConvolutionDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
+pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
     fn cnv_prepare_left_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
     where
         BE: Backend<ScalarPrep = Q120bScalar>,
@@ -613,4 +613,4 @@ pub trait NTTIfmaConvolutionDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTTIfmaConvolutionDefaults<BE> for BE {}
+impl<BE: Backend> NTT120IfmaConvolutionDefaults<BE> for BE {}

@@ -1,6 +1,6 @@
 //! NTT-domain ring element vector operations for [`NTTIfmaRef`](crate::NTTIfmaRef).
 //!
-//! The `HalImpl` DFT-domain methods are now provided by the shared `NTTIfmaVecZnxDftDefaults`
+//! The `HalImpl` DFT-domain methods are now provided by the shared `NTT120IfmaVecZnxDftDefaults`
 //! and the `hal_impl_vec_znx_dft_ntt_ifma!()` macro. This module retains the
 //! in-place CRT compaction helper (`compact_all_blocks`) and the consume entry
 //! point needed by the macro for `vec_znx_idft_apply_consume`.

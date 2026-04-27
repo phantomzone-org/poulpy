@@ -277,7 +277,7 @@ pub trait NTT120VmpDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120VmpDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTTIfmaVmpDefaults<BE: Backend>: Backend {
+pub trait NTT120IfmaVmpDefaults<BE: Backend>: Backend {
     fn vmp_prepare_tmp_bytes_default(module: &Module<BE>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize
     where
         BE: Backend<ScalarPrep = Q120bScalar>,
@@ -391,4 +391,4 @@ pub trait NTTIfmaVmpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTTIfmaVmpDefaults<BE> for BE {}
+impl<BE: Backend> NTT120IfmaVmpDefaults<BE> for BE {}
