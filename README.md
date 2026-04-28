@@ -7,7 +7,7 @@
 
 [![CI](https://github.com/poulpy-fhe/poulpy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/poulpy-fhe/poulpy/actions/workflows/ci.yml)
 
-**Poulpy** is a **fast & modular** FHE library that implements Ring-Learning-With-Errors based homomorphic encryption over the Torus. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771) to represent Torus polynomials. In addition to simpler and more efficient arithmetic than the residue number system (RNS), this representation provides a **common plaintext space** for all schemes and native bridges between any two schemes. Poulpy also decouples scheme implementations from the polynomial arithmetic backend by being built from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). Leveraging the HAL, users can develop applications generic over the backend and choose a backend at runtime.
+**Poulpy** is a **fast and modular** FHE library that implements Ring-Learning-With-Errors based homomorphic encryption over the Torus. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771) to represent Torus polynomials. Compared with the residue number system (RNS), this representation provides simpler and more reusable arithmetic, a **common plaintext space** for all schemes, and native bridges between schemes. Poulpy also decouples scheme implementations from the polynomial arithmetic backend by being built from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). Leveraging the HAL, users can develop applications generic over the backend and choose a backend at runtime.
 
 <p align="center">
 <img src="docs/lib_diagram.png" />
@@ -16,43 +16,61 @@
 ## Library Crates
 
 - **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations other than the layouts (e.g. `VecZnx`, `VmpPmat`).
-- **`poulpy-core`**: a backend-agnostic crate implementing scheme-agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. It can be instantiated with any backend crate (e.g. `poulpy-cpu-ref`, `poulpy-cpu-avx`).
-- **`poulpy-ckks`**: a backend-agnostic leveled CKKS implementation built on **`poulpy-core`** and **`poulpy-hal`**.
-- **`poulpy-schemes`**: higher-level scheme implementations currently focused on bin-FHE building blocks built on **`poulpy-core`** and **`poulpy-hal`**.
+- **`poulpy-core`**: a backend-agnostic crate implementing scheme-agnostic RLWE arithmetic for LWE, GLWE, GGLWE, and GGSW ciphertexts using **`poulpy-hal`**. It can be instantiated with any backend crate (e.g. `poulpy-cpu-ref`, `poulpy-cpu-avx`).
+- **`poulpy-ckks`**: a backend-agnostic leveled CKKS implementation built on **`poulpy-core`** and **`poulpy-hal`**. This is the first iteration of the CKKS crate: the evaluator is functional and tested, but the public API is still subject to change.
+- **`poulpy-bin-fhe`**: a backend-agnostic binary/gate-level FHE crate built on **`poulpy-core`** and **`poulpy-hal`**. This replaces the former `poulpy-schemes` crate.
 - **`poulpy-cpu-ref`**: the reference CPU implementation of **`poulpy-hal`**.
-- **`poulpy-cpu-avx`**: an AVX accelerated CPU implementation of **`poulpy-hal`**.
+- **`poulpy-cpu-avx`**: an AVX2/FMA accelerated CPU implementation of **`poulpy-hal`**. Enable it with the `enable-avx` feature on crates that expose that feature.
+- **`poulpy-bench`**: the consolidated Criterion benchmark suite for the workspace. It is an internal workspace crate and is not published to crates.io.
 
 ## Bivariate Polynomial Representation
 
-Existing FHE implementations (such as [Lattigo](https://github.com/tuneinsight/lattigo) or [OpenFHE](https://github.com/openfheorg/openfhe-development)) use the [residue-number-system](https://en.wikipedia.org/wiki/Residue_number_system) (RNS) to represent large integers. Although the parallelism and carry-less arithmetic offered by the RNS representation provides a very efficient modular arithmetic over large-integers, it suffers from various drawbacks when used in the context of FHE. The main idea behind the bivariate representation is to decouple the cyclotomic arithmetic from the large number arithmetic. Instead of using the RNS representation for large integer, integers are decomposed in base $2^{-K}$ over the Torus $\mathbb{T}_{N}[X]$. 
+Existing FHE implementations (such as [Lattigo](https://github.com/tuneinsight/lattigo) or [OpenFHE](https://github.com/openfheorg/openfhe-development)) use the [residue number system](https://en.wikipedia.org/wiki/Residue_number_system) (RNS) to represent large integers. Although the parallelism and carry-less arithmetic offered by the RNS representation provide efficient modular arithmetic over large integers, RNS also has drawbacks in the context of FHE. The main idea behind the bivariate representation is to decouple cyclotomic arithmetic from large-number arithmetic. Instead of using the RNS representation for large integers, integers are decomposed in base $2^{-K}$ over the Torus $\mathbb{T}_{N}[X]$.
 
 This provides the following benefits:
 
-- **Intuitive, efficient and reusable parameterization & instances:** Only the bit-size of the modulus is required from the user (i.e. Torus precision). As such, parameterization is natural and generic, and instances can be reused for any circuit consuming the same homomorphic capacity, without loss of efficiency. With the RNS representation, individual NTT friendly primes need to be specified for each level, making the parameterization not user friendly and circuit-specific.
+- **Intuitive, efficient, and reusable parameterization and instances:** Only the bit size of the modulus is required from the user (i.e. Torus precision). Parameterization is therefore natural and generic, and instances can be reused for any circuit consuming the same homomorphic capacity without loss of efficiency. With the RNS representation, individual NTT-friendly primes need to be specified for each level, making parameterization less user friendly and more circuit specific.
 
-- **Optimal and granular rescaling:** Ciphertext rescaling is carried out with bit-shifting, enabling a bit-level granular rescaling and optimal noise/homomorphic capacity management. In the RNS representation, ciphertext division can only be done by one of the primes composing the modulus, leading to difficult scaling management and frequent inefficient noise/homomorphic capacity management.
+- **Optimal and granular rescaling:** Ciphertext rescaling is carried out with bit shifts, enabling bit-level rescaling and precise noise/homomorphic-capacity management. In the RNS representation, ciphertext division can only be done by one of the primes composing the modulus, making scale management more difficult and often less efficient.
 
-- **Linear number of DFT in the half external product:** The bivariate representation of the coefficients implicitly provides the digit decomposition, as such the number of DFT is linear in the number of limbs, contrary to the RNS representation where it is quadratic due to the RNS basis conversion. This enables a much more efficient key-switching, which is the **most used and expensive** FHE operation. 
+- **Linear number of DFTs in the half external product:** The bivariate representation of the coefficients implicitly provides the digit decomposition. As a result, the number of DFTs is linear in the number of limbs, unlike in the RNS representation where it is quadratic due to RNS basis conversion. This enables much more efficient key switching, which is one of the **most used and expensive** FHE operations.
 
-- **Unified plaintext space:** The bivariate polynomial representation is, by essence, a high precision discretized representation of the Torus $\mathbb{T}_{N}[X]$. Using the Torus as the common plaintext space for all schemes achieves the vision of [CHIMERA: Combining Ring-LWE-based Fully Homomorphic Encryption Schemes](https://eprint.iacr.org/2018/758) which is to unify all RLWE-based FHE schemes (TFHE, FHEW, BGV, BFV, CLPX, GBFV, CKKS, ...) under a single scheme with different encodings, enabling native and efficient scheme-switching functionalities.
+- **Unified plaintext space:** The bivariate polynomial representation is, by nature, a high-precision discretized representation of the Torus $\mathbb{T}_{N}[X]$. Using the Torus as the common plaintext space for all schemes follows the vision of [CHIMERA: Combining Ring-LWE-based Fully Homomorphic Encryption Schemes](https://eprint.iacr.org/2018/758): unifying RLWE-based FHE schemes (TFHE, FHEW, BGV, BFV, CLPX, GBFV, CKKS, ...) under a single scheme with different encodings, enabling native and efficient scheme switching.
 
-- **Simpler implementation**: Since the cyclotomic arithmetic is decoupled from the coefficient representation, the same pipeline (including DFT) can be reused for all limbs (unlike in the RNS representation). The bivariate representation also has straight forward flat, aligned & vectorized memory layout. All these aspects make this representation a prime target for hardware acceleration.
+- **Simpler implementation:** Since cyclotomic arithmetic is decoupled from the coefficient representation, the same pipeline (including DFT) can be reused for all limbs, unlike in the RNS representation. The bivariate representation also has a straightforward flat, aligned, and vectorized memory layout. These properties make it a strong target for hardware acceleration.
 
-- **Deterministic computation**: Although it is defined on the Torus, bivariate arithmetic remains integer polynomial arithmetic, ensuring all computations are deterministic. The only requirement is that outputs are reproducible and identical, regardless of the backend or hardware.
+- **Deterministic computation:** Although it is defined on the Torus, bivariate arithmetic remains integer polynomial arithmetic, ensuring all computations are deterministic. Outputs are reproducible and identical regardless of the backend or hardware.
 
 ## Installation
 
 - **`poulpy-hal`**: https://crates.io/crates/poulpy-hal
 - **`poulpy-core`**: https://crates.io/crates/poulpy-core
 - **`poulpy-ckks`**: https://crates.io/crates/poulpy-ckks
-- **`poulpy-schemes`** (bin-FHE): https://crates.io/crates/poulpy-schemes
+- **`poulpy-bin-fhe`**: https://crates.io/crates/poulpy-bin-fhe
 - **`poulpy-cpu-ref`**: https://crates.io/crates/poulpy-cpu-ref
 - **`poulpy-cpu-avx`**: https://crates.io/crates/poulpy-cpu-avx
 
+For example, a CKKS application can depend on:
+
+```toml
+[dependencies]
+poulpy-ckks = "0.5"
+poulpy-cpu-ref = "0.5"
+```
+
+For binary FHE:
+
+```toml
+[dependencies]
+poulpy-bin-fhe = "0.5"
+poulpy-cpu-ref = "0.5"
+```
+
 ## Documentation
 
-* Full `cargo doc` documentation is coming soon.
-* Architecture diagrams and design notes will be added in the [`/docs`](./docs) folder.
+* Crate package pages and generated Rust documentation are linked from the crates.io entries above.
+* Architecture diagrams and design notes live in the [`/docs`](./docs) folder.
+* Crate-specific READMEs provide more focused usage notes, especially [`poulpy-ckks`](./poulpy-ckks/README.md) and [`poulpy-bench`](./poulpy-bench/README.md).
 
 ## Contributing
 
@@ -66,12 +84,12 @@ Please see [SECURITY](./SECURITY.md).
 
 Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICENSE](./LICENSE).
 
-## Acknowledgement
+## Acknowledgements
 
 **Poulpy** was incubated by [PhantomZone](https://phantom.zone/) with grants from [Ethereum Foundation](https://ethereum.foundation/) and [ENS Foundation](https://docs.ens.domains/dao/foundation/).
 
 ## Citing
-Please use the following BibTex entry for citing Poulpy
+Please use the following BibTeX entry for citing Poulpy:
 
     @misc{poulpy,
 	    title = {Poulpy v0.5.0},
