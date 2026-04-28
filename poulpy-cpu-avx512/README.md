@@ -14,7 +14,8 @@ This crate implements the Poulpy HAL extension traits and can be used by:
 
 - [`poulpy-hal`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-hal)
 - [`poulpy-core`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-core)
-- [`poulpy-schemes` (CKKS, bin-FHE)](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-schemes)
+- [`poulpy-ckks`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-ckks)
+- [`poulpy-bin-fhe`](https://github.com/poulpy-fhe/poulpy/tree/main/poulpy-bin-fhe)
 
 ## 🚩 Safety and Requirements
 
@@ -84,7 +85,7 @@ let module: Module<NTT120Avx512> = Module::<NTT120Avx512>::new(1 << log_n);
 let module: Module<NTT120Ifma> = Module::<NTT120Ifma>::new(1 << log_n);
 ```
 
-Each backend is usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-schemes`).
+Each backend is usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-ckks`, `poulpy-bin-fhe`).
 
 ## 🤝 Contributors
 
@@ -98,7 +99,8 @@ Your backend will automatically integrate with:
 
 * `poulpy-hal`
 * `poulpy-core`
-* `poulpy-schemes` (CKKS, bin-FHE)
+* `poulpy-ckks`
+* `poulpy-bin-fhe`
 
 No modifications to those crates are required — the HAL provides the extension points.
 

@@ -184,7 +184,7 @@
 //!
 //! This crate exports three public types — `FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma` —
 //! used as type parameters to the HAL generic types. Application code typically does not
-//! import this crate directly, but instead uses it via `poulpy_core` or `poulpy_schemes`
+//! import this crate directly, but instead uses it via `poulpy_core`, `poulpy_ckks` or `poulpy_bin_fhe`
 //! with runtime backend selection.
 //!
 //! # Versioning and stability

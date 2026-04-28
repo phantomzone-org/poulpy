@@ -12,7 +12,8 @@ This backend integrates transparently with:
 
 - `poulpy-hal`
 - `poulpy-core`
-- `poulpy-schemes` (CKKS, bin-FHE)
+- `poulpy-ckks`
+- `poulpy-bin-fhe`
 
 ---
 
@@ -91,7 +92,8 @@ Your backend will automatically integrate with:
 
 * `poulpy-hal`
 * `poulpy-core`
-* `poulpy-schemes` (CKKS, bin-FHE)
+* `poulpy-ckks`
+* `poulpy-bin-fhe`
 
 No modifications to those crates are necessary — the HAL provides the extension points.
 
