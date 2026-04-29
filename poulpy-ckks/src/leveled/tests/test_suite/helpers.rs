@@ -13,7 +13,7 @@ use crate::{
     layouts::{
         CKKSCiphertext,
         ciphertext::CKKSOffset,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, alloc_pt_znx},
+        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, alloc_pt_vec_znx},
     },
     leveled::api::{CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt},
     oep::CKKSImpl,
@@ -432,7 +432,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
 
         self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
 
-        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
+        let mut pt_znx = alloc_pt_vec_znx(self.degree(), self.base2k(), prec);
         pt_rnx.to_znx(&mut pt_znx).unwrap();
 
         let mut ct = self.alloc_ct(k);
@@ -492,7 +492,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         Module<BE>: CKKSDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let mut pt_znx = alloc_pt_znx(self.degree(), ct.base2k(), prec);
+        let mut pt_znx = alloc_pt_vec_znx(self.degree(), ct.base2k(), prec);
         self.module.ckks_decrypt(&mut pt_znx, ct, &self.sk, scratch)?;
         Ok(pt_znx)
     }
@@ -677,7 +677,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
 
     pub fn encode_pt_znx_with_prec(&self, re: &[F], im: &[F], prec: CKKSMeta) -> CKKSPlaintextZnx<Vec<u8>> {
         let pt_rnx = self.encode_pt_rnx(re, im);
-        let mut pt_znx = alloc_pt_znx(self.degree(), self.base2k(), prec);
+        let mut pt_znx = alloc_pt_vec_znx(self.degree(), self.base2k(), prec);
         pt_rnx.to_znx(&mut pt_znx).unwrap();
         pt_znx
     }
@@ -871,7 +871,7 @@ pub fn assert_binary_output_meta(
     assert_ct_meta(
         label,
         ct,
-        a.log_delta().max(b.log_delta()),
+        a.log_delta().min(b.log_delta()),
         a.log_budget().min(b.log_budget()) - ct.offset_binary(a, b),
     );
 }

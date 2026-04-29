@@ -113,6 +113,12 @@ where
     M: GLWEShift<BE> + GLWETensoring<BE> + CKKSMulOps<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
+    // TODO: at some point we might want to accept any scaling there.
+    anyhow::ensure!(
+        inputs.iter().all(|c| c.log_delta() == inputs[0].log_delta()),
+        "ckks_mul_many: all inputs must have the same log_delta"
+    );
+
     match inputs.len() {
         1 => {
             let offset = dst.offset_unary(inputs[0]);
@@ -230,7 +236,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_const_tmp_bytes(res, a, b).max(self.ckks_add_tmp_bytes())
     }
 
-    fn ckks_mul_add_ct(
+    fn ckks_mul_add_ct_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -247,7 +253,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_pt_vec_znx(
+    fn ckks_mul_add_pt_vec_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -263,7 +269,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_pt_vec_rnx<F>(
+    fn ckks_mul_add_pt_vec_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -281,7 +287,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_pt_const_znx(
+    fn ckks_mul_add_pt_const_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -301,7 +307,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulAddOps<BE> for Module<BE> {
         self.ckks_add_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_add_pt_const_rnx<F>(
+    fn ckks_mul_add_pt_const_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -363,7 +369,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         GLWE::<Vec<u8>>::bytes_of_from_infos(res) + self.ckks_mul_pt_const_tmp_bytes(res, a, b).max(self.ckks_sub_tmp_bytes())
     }
 
-    fn ckks_mul_sub_ct(
+    fn ckks_mul_sub_ct_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -380,7 +386,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_pt_vec_znx(
+    fn ckks_mul_sub_pt_vec_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -396,7 +402,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_pt_vec_rnx<F>(
+    fn ckks_mul_sub_pt_vec_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -414,7 +420,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_pt_const_znx(
+    fn ckks_mul_sub_pt_const_znx_into(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,
@@ -434,7 +440,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSMulSubOps<BE> for Module<BE> {
         self.ckks_sub_assign(dst, &tmp, scratch_r)
     }
 
-    fn ckks_mul_sub_pt_const_rnx<F>(
+    fn ckks_mul_sub_pt_const_rnx_into<F>(
         &self,
         dst: &mut CKKSCiphertext<impl DataMut>,
         a: &CKKSCiphertext<impl DataRef>,

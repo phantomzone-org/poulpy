@@ -171,7 +171,7 @@ let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into()
 unsafe {
     module.ckks_add_pt_const_rnx_unsafe(&mut poly, &right_branch, &cst_a, PREC_PT, scratch.borrow())?;
 }
-module.ckks_mul_add_pt_const_rnx(&mut poly, &ct_x, &cst_b, PREC_PT, scratch.borrow())?;
+module.ckks_mul_add_pt_const_rnx_into(&mut poly, &ct_x, &cst_b, PREC_PT, scratch.borrow())?;
 ```
 
 That example is meant to showcase the intended user workflow end to end:

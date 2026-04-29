@@ -1,6 +1,6 @@
 use crate::{
     CKKSCompositionError, CKKSInfos,
-    layouts::{ciphertext::CKKSMaintainOps, plaintext::alloc_pt_znx},
+    layouts::{ciphertext::CKKSMaintainOps, plaintext::alloc_pt_vec_znx},
     leveled::api::{CKKSAddOps, CKKSDotProductOps},
 };
 use poulpy_core::layouts::LWEInfos;
@@ -50,7 +50,7 @@ pub fn test_add_pt_vec_znx_alignment_error<BE: Backend, F: TestScalar>(ctx: &Tes
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
     ct.meta.log_budget = 0;
-    let pt_znx = alloc_pt_znx(ctx.degree(), ctx.base2k(), ctx.meta());
+    let pt_znx = alloc_pt_vec_znx(ctx.degree(), ctx.base2k(), ctx.meta());
     let err = ctx
         .module
         .ckks_add_pt_vec_znx_assign(&mut ct, &pt_znx, scratch.borrow())

@@ -5,7 +5,7 @@ use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     layouts::{
         CKKSCiphertext,
-        plaintext::{CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx, alloc_pt_znx},
+        plaintext::{CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx, alloc_pt_vec_znx},
     },
     leveled::api::{
         CKKSAddManyOps, CKKSAddOps, CKKSConjugateOps, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulOps,
@@ -137,7 +137,7 @@ fn atk_layout() -> EncryptionLayout<GLWEAutomorphismKeyLayout> {
 
 fn reset_dst(dst: &mut CKKSCiphertext<Vec<u8>>) {
     dst.data_mut().raw_mut().fill(0);
-    dst.meta = ckks_meta();
+    dst.set_meta_checked(ckks_meta()).unwrap();
 }
 
 fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
@@ -150,11 +150,11 @@ fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
     let mut ct_a = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
     let mut ct_b = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
     let mut ct_dst = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
-    ct_a.meta = meta;
-    ct_b.meta = meta;
-    ct_dst.meta = meta;
+    ct_a.set_meta_checked(meta).unwrap();
+    ct_b.set_meta_checked(meta).unwrap();
+    ct_dst.set_meta_checked(meta).unwrap();
 
-    let pt_znx = alloc_pt_znx(Degree(N as u32), Base2K(BASE2K as u32), meta);
+    let pt_znx = alloc_pt_vec_znx(Degree(N as u32), Base2K(BASE2K as u32), meta);
     let pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N).unwrap();
     let cst_rnx = CKKSPlaintextCstRnx::new(Some(1.25), Some(-0.5));
     let cst_znx = CKKSPlaintextCstZnx::new(
@@ -567,7 +567,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_ct(
+                .ckks_mul_add_ct_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.ct_b),
@@ -581,7 +581,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_ct(
+                .ckks_mul_sub_ct_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.ct_b),
@@ -595,7 +595,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_pt_vec_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
+                .ckks_mul_add_pt_vec_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -603,7 +603,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_pt_vec_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
+                .ckks_mul_sub_pt_vec_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.pt_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -611,7 +611,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_pt_vec_rnx(
+                .ckks_mul_add_pt_vec_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.pt_rnx),
@@ -625,7 +625,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_pt_vec_rnx(
+                .ckks_mul_sub_pt_vec_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.pt_rnx),
@@ -639,7 +639,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_add_pt_const_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -647,7 +647,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_pt_const_znx(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
+                .ckks_mul_sub_pt_const_znx_into(&mut s.ct_dst, black_box(&s.ct_a), black_box(&s.cst_znx), s.scratch.borrow())
                 .unwrap();
         })
     });
@@ -655,7 +655,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_add_pt_const_rnx(
+                .ckks_mul_add_pt_const_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),
@@ -669,7 +669,7 @@ pub fn bench_ckks_composite<BE: CkksBenchBackend>(c: &mut Criterion, label: &str
         b.iter(|| {
             reset_dst(&mut s.ct_dst);
             s.module
-                .ckks_mul_sub_pt_const_rnx(
+                .ckks_mul_sub_pt_const_rnx_into(
                     &mut s.ct_dst,
                     black_box(&s.ct_a),
                     black_box(&s.cst_rnx),

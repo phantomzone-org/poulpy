@@ -97,7 +97,7 @@ pub const FFT64_PARAMS_F64: CKKSTestParams = CKKSTestParams {
     k: 8 * 19,
     prec: CKKSMeta {
         log_delta: 30,
-        log_budget: 0,
+        log_budget: 10,
     },
     hw: 192,
     dsize: 1,

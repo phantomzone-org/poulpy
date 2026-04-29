@@ -23,9 +23,9 @@ pub struct CKKSPlaintextVecRnx<F>(Vec<F>);
 /// CKKS plaintext in the ZNX (torus) domain.
 pub struct CKKSPlaintextVecZnx<D: Data> {
     /// Raw GLWE plaintext limb storage.
-    pub inner: GLWEPlaintext<D>,
+    pub(crate) inner: GLWEPlaintext<D>,
     /// Semantic CKKS metadata associated with `inner`.
-    pub meta: CKKSMeta,
+    pub(crate) meta: CKKSMeta,
 }
 
 impl<D: Data> CKKSPlaintextVecZnx<D> {
@@ -41,6 +41,25 @@ impl<D: Data> CKKSPlaintextVecZnx<D> {
             },
             meta,
         )
+    }
+
+    /// Replaces the semantic metadata after checking that the current storage
+    /// can represent it.
+    ///
+    /// This is intended for callers that build plaintext buffers manually.
+    /// Normal CKKS operations update metadata themselves.
+    pub fn set_meta_checked(&mut self, meta: CKKSMeta) -> Result<()> {
+        anyhow::ensure!(
+            meta.effective_k() <= self.max_k().as_usize(),
+            crate::CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
+                max_k: self.max_k().as_usize(),
+                log_delta: meta.log_delta(),
+                base2k: self.base2k().as_usize(),
+                requested_limbs: self.size(),
+            }
+        );
+        self.meta = meta;
+        Ok(())
     }
 }
 
@@ -70,13 +89,6 @@ impl CKKSPlaintextVecZnx<Vec<u8>> {
 /// Allocates an owned CKKS vector plaintext in ZNX form.
 pub fn alloc_pt_vec_znx(n: Degree, base2k: Base2K, prec: CKKSMeta) -> CKKSPlaintextVecZnx<Vec<u8>> {
     CKKSPlaintextVecZnx::alloc(n, base2k, prec)
-}
-
-/// Allocates an owned CKKS plaintext in ZNX form.
-///
-/// This is the conventional alias used throughout the crate.
-pub fn alloc_pt_znx(n: Degree, base2k: Base2K, prec: CKKSMeta) -> CKKSPlaintextVecZnx<Vec<u8>> {
-    alloc_pt_vec_znx(n, base2k, prec)
 }
 
 impl<D: Data> Deref for CKKSPlaintextVecZnx<D> {
@@ -314,7 +326,7 @@ mod tests {
         let mut rnx = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
         rnx.0.copy_from_slice(&values);
 
-        let mut znx = alloc_pt_znx(n.into(), base2k.into(), prec);
+        let mut znx = alloc_pt_vec_znx(n.into(), base2k.into(), prec);
         rnx.to_znx(&mut znx).unwrap();
 
         let mut rnx_out = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
@@ -363,10 +375,10 @@ mod tests {
 
         let mut rnx = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
         rnx.0.copy_from_slice(&values);
-        let mut full_pt = alloc_pt_znx(n.into(), base2k.into(), prec);
+        let mut full_pt = alloc_pt_vec_znx(n.into(), base2k.into(), prec);
         rnx.to_znx(&mut full_pt).unwrap();
 
-        let mut pt_out = alloc_pt_znx(n.into(), base2k.into(), prec);
+        let mut pt_out = alloc_pt_vec_znx(n.into(), base2k.into(), prec);
         module
             .ckks_extract_pt_znx(&mut pt_out, &full_pt.inner, &prec, scratch.borrow())
             .unwrap();

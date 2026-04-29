@@ -86,7 +86,7 @@ pub fn test_mul_add_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE,
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let b = ctx.encrypt(ctx.max_k(), &b_re, &b_im, scratch.borrow());
     ctx.module
-        .ckks_mul_add_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
+        .ckks_mul_add_ct_into(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_ct_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -112,7 +112,7 @@ pub fn test_mul_add_ct_unaligned_dst<BE: Backend, F: TestScalar>(ctx: &TestConte
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let b = ctx.encrypt(ctx.max_k(), &b_re, &b_im, scratch.borrow());
     ctx.module
-        .ckks_mul_add_ct(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
+        .ckks_mul_add_ct_into(&mut dst, &a, &b, ctx.tsk(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_ct_unaligned_dst", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -135,7 +135,7 @@ pub fn test_mul_add_pt_vec_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &Te
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_znx(&b_re, &b_im);
     ctx.module
-        .ckks_mul_add_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
+        .ckks_mul_add_pt_vec_znx_into(&mut dst, &a, &pt, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_pt_vec_znx_into_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -162,7 +162,7 @@ pub fn test_mul_add_pt_vec_znx_into_delta_log_delta<BE: Backend, F: TestScalar>(
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_znx_with_prec(&b_re, &b_im, low_prec);
     ctx.module
-        .ckks_mul_add_pt_vec_znx(&mut dst, &a, &pt, scratch.borrow())
+        .ckks_mul_add_pt_vec_znx_into(&mut dst, &a, &pt, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision_at_log_delta(
         "mul_add_pt_vec_znx_into_delta_log_delta",
@@ -192,7 +192,7 @@ pub fn test_mul_add_pt_vec_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &Te
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let pt = ctx.encode_pt_rnx(&b_re, &b_im);
     ctx.module
-        .ckks_mul_add_pt_vec_rnx(&mut dst, &a, &pt, ctx.meta(), scratch.borrow())
+        .ckks_mul_add_pt_vec_rnx_into(&mut dst, &a, &pt, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_pt_vec_rnx_into_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -215,7 +215,7 @@ pub fn test_mul_add_const_znx_into_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
     let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     let cst_znx = cst_rnx.to_znx(ctx.base2k(), ctx.meta()).unwrap();
     ctx.module
-        .ckks_mul_add_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .ckks_mul_add_pt_const_znx_into(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_const_znx_into_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -237,7 +237,7 @@ pub fn test_mul_add_const_rnx_into_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
     let a = ctx.encrypt(ctx.max_k(), &a_re, &a_im, scratch.borrow());
     let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
     ctx.module
-        .ckks_mul_add_pt_const_rnx(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
+        .ckks_mul_add_pt_const_rnx_into(&mut dst, &a, &cst, ctx.meta(), scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision("mul_add_const_rnx_into_aligned", &dst, &want_re, &want_im, scratch.borrow());
 }
@@ -258,7 +258,7 @@ pub fn test_mul_add_const_znx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
         .to_znx(ctx.base2k(), ctx.precision_at(ctx.meta().log_delta - DELTA_LOG_DELTA))
         .unwrap();
     ctx.module
-        .ckks_mul_add_pt_const_znx(&mut dst, &a, &cst_znx, scratch.borrow())
+        .ckks_mul_add_pt_const_znx_into(&mut dst, &a, &cst_znx, scratch.borrow())
         .unwrap();
 
     assert_ct_meta("mul_add_const_znx_zero", &dst, dst_meta.log_delta, dst_meta.log_budget);
@@ -278,7 +278,7 @@ pub fn test_mul_add_const_rnx_zero_preserves_dst_meta<BE: Backend, F: TestScalar
     let dst_meta = dst.meta();
     let cst = ctx.const_rnx(None, None);
     ctx.module
-        .ckks_mul_add_pt_const_rnx(
+        .ckks_mul_add_pt_const_rnx_into(
             &mut dst,
             &a,
             &cst,

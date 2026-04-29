@@ -32,8 +32,8 @@ where
     /// Errors:
     /// - returns an error if `m == 0` or if `m` is not a power of two
     pub fn new(m: usize) -> Result<Self> {
-        anyhow::ensure!(m.is_power_of_two(), "m must be a power of two, got {m}");
         anyhow::ensure!(m > 0, "m must be > 0, got {m}");
+        anyhow::ensure!(m.is_power_of_two(), "m must be a power of two, got {m}");
         let two_n = 4 * m;
         let log_n = (2 * m).trailing_zeros();
         let mut slot_map = Vec::with_capacity(m);

@@ -13,7 +13,7 @@
 //! | [`test_decrypt_extract_base2k_mismatch_error`] | plaintext/ciphertext `base2k` mismatch |
 
 use super::helpers::{TestCiphertextBackend as Backend, TestContext, TestScalar, assert_ckks_error, assert_ct_meta};
-use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::plaintext::alloc_pt_znx, leveled::api::CKKSDecrypt};
+use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::plaintext::alloc_pt_vec_znx, leveled::api::CKKSDecrypt};
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
@@ -125,7 +125,7 @@ pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>
     let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
-    let mut pt = alloc_pt_znx(
+    let mut pt = alloc_pt_vec_znx(
         ctx.degree(),
         ctx.base2k(),
         CKKSMeta {
@@ -151,7 +151,7 @@ pub fn test_decrypt_extract_base2k_mismatch_error<BE: Backend, F: TestScalar>(ct
     let mut scratch = ctx.alloc_scratch();
     let ct = extract_fixture(ctx, scratch.borrow());
     let mismatched_base2k = (ctx.base2k().as_usize() / 2).into();
-    let mut pt = alloc_pt_znx(ctx.degree(), mismatched_base2k, src_prec);
+    let mut pt = alloc_pt_vec_znx(ctx.degree(), mismatched_base2k, src_prec);
     let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
     assert_ckks_error(
         "decrypt_extract_base2k_mismatch",
