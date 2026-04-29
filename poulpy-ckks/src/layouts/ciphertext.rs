@@ -17,14 +17,33 @@ use crate::{CKKSInfos, CKKSMeta, error::CKKSCompositionError};
 /// semantic decimal scaling and remaining homomorphic capacity of the value.
 pub struct CKKSCiphertext<D: Data> {
     /// Raw GLWE ciphertext storage.
-    pub inner: GLWE<D>,
+    pub(crate) inner: GLWE<D>,
     /// Semantic CKKS metadata associated with `inner`.
-    pub meta: CKKSMeta,
+    pub(crate) meta: CKKSMeta,
 }
 
 impl<D: Data> CKKSCiphertext<D> {
     pub(crate) fn from_inner(inner: GLWE<D>, meta: CKKSMeta) -> Self {
         Self { inner, meta }
+    }
+
+    /// Replaces the semantic metadata after checking that the current storage
+    /// can represent it.
+    ///
+    /// This is intended for callers that build ciphertext buffers manually.
+    /// Normal CKKS operations update metadata themselves.
+    pub fn set_meta_checked(&mut self, meta: CKKSMeta) -> Result<()> {
+        anyhow::ensure!(
+            meta.effective_k() <= self.max_k().as_usize(),
+            CKKSCompositionError::LimbReallocationShrinksBelowMetadata {
+                max_k: self.max_k().as_usize(),
+                log_delta: meta.log_delta(),
+                base2k: self.base2k().as_usize(),
+                requested_limbs: self.size(),
+            }
+        );
+        self.meta = meta;
+        Ok(())
     }
 }
 

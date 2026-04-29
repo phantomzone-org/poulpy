@@ -12,8 +12,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, CKKSMeta, checked_log_budget_sub, checked_mul_ct_log_budget,
-    error::checked_mul_pt_log_budget,
+    CKKSInfos, CKKSMeta, checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget,
     layouts::{
         CKKSCiphertext,
         plaintext::{

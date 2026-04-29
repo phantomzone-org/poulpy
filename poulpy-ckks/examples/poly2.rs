@@ -340,7 +340,7 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 ///   steps; limbs are only K-normalized at the final step or just before a
 ///   ct-ct multiply that requires normalized inputs
 /// - `glwe_normalize` is applied before ct-ct multiplication
-/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_rnx`, which
+/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_rnx_into`, which
 ///   normalizes the output as the last operation
 fn evaluation(
     setup: &mut SetupArtifacts,
@@ -412,7 +412,7 @@ fn evaluation(
     print_ct_meta("right_branch + a (not normalized)", &poly);
     setup
         .module
-        .ckks_mul_add_pt_const_rnx(&mut poly, &encryption.ct_x, &encoding.cst_b, PREC_PT, setup.scratch.borrow())?;
+        .ckks_mul_add_pt_const_rnx_into(&mut poly, &encryption.ct_x, &encoding.cst_b, PREC_PT, setup.scratch.borrow())?;
     print_ct_meta("final polynomial", &poly);
 
     Ok(EvaluationArtifacts { poly })

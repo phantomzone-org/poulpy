@@ -99,7 +99,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         }
 
         let log_budget = checked_log_budget_sub("sub", a.log_budget().min(b.log_budget()), offset)?;
-        dst.meta.log_delta = a.log_delta().max(b.log_delta());
+        dst.meta.log_delta = a.log_delta().min(b.log_delta());
         dst.meta.log_budget = log_budget;
         Ok(())
     }
@@ -141,6 +141,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         }
 
         dst.meta.log_budget = dst_log_budget.min(a.log_budget());
+        dst.meta.log_delta = dst.log_delta().min(a.log_delta());
         Ok(())
     }
 
@@ -416,7 +417,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
             dst.base2k(),
             res_log_budget
                 .checked_add(prec.log_delta)
-                .expect("aligned precision overflow"),
+                .ok_or_else(|| anyhow::anyhow!("sub_pt_const_rnx: aligned precision overflow"))?,
             prec.log_delta,
         )?;
         self.ckks_sub_pt_const_znx_into_unsafe_default(dst, a, &cst_znx, scratch)
@@ -458,7 +459,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
             dst.base2k(),
             dst.log_budget()
                 .checked_add(prec.log_delta)
-                .expect("aligned precision overflow"),
+                .ok_or_else(|| anyhow::anyhow!("sub_pt_const_rnx_assign: aligned precision overflow"))?,
             prec.log_delta,
         )?;
         self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, &cst_znx, scratch)

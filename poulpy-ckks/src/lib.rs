@@ -45,7 +45,9 @@ pub mod layouts;
 pub mod leveled;
 pub mod oep;
 pub use error::CKKSCompositionError;
-pub(crate) use error::{checked_log_budget_sub, checked_mul_ct_log_budget, ensure_base2k_match, ensure_plaintext_alignment};
+pub(crate) use error::{
+    checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget, ensure_base2k_match, ensure_plaintext_alignment,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.

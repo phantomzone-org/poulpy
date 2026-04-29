@@ -69,6 +69,7 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
         self.glwe_lsh(dst, src, offset, scratch);
         dst.meta = src.meta();
         dst.meta.log_budget = checked_log_budget_sub("div_pow2", dst.log_budget(), bits + offset)?;
+        dst.meta.log_delta += bits;
         Ok(())
     }
 

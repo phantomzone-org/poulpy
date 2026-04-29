@@ -105,7 +105,7 @@ pub fn test_div_pow2_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     ctx.module
         .ckks_div_pow2_into(&mut ct_res, &ct, SHIFT_BITS, scratch.borrow())
         .unwrap();
-    assert_ct_meta("div_pow2", &ct_res, ct.log_delta(), ct.log_budget() - SHIFT_BITS);
+    assert_ct_meta("div_pow2", &ct_res, ct.log_delta() + SHIFT_BITS, ct.log_budget() - SHIFT_BITS);
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, scratch.borrow());
 }
 
@@ -122,7 +122,7 @@ pub fn test_div_pow2_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContex
     assert_ct_meta(
         "div_pow2 smaller_output",
         &ct_res,
-        ct.log_delta(),
+        ct.log_delta() + SHIFT_BITS,
         ct.log_budget() - SHIFT_BITS - offset,
     );
     ctx.assert_decrypt_precision("div_pow2", &ct_res, &want_re, &want_im, scratch.borrow());

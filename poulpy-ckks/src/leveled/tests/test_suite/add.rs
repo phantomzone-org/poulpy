@@ -37,7 +37,7 @@
 
 use crate::{
     CKKSCompositionError, CKKSInfos,
-    layouts::plaintext::{CKKSConstPlaintextConversion, alloc_pt_znx},
+    layouts::plaintext::{CKKSConstPlaintextConversion, alloc_pt_vec_znx},
     leveled::api::CKKSAddOps,
 };
 
@@ -434,7 +434,7 @@ pub fn test_add_pt_vec_rnx_into_smaller_output<BE: Backend, F: TestScalar>(ctx: 
 pub fn test_add_pt_vec_znx_base2k_mismatch_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
-    let pt_znx = alloc_pt_znx(ctx.degree(), Base2K((ctx.base2k().as_usize() / 2) as u32), ctx.meta());
+    let pt_znx = alloc_pt_vec_znx(ctx.degree(), Base2K((ctx.base2k().as_usize() / 2) as u32), ctx.meta());
     let err = ctx
         .module
         .ckks_add_pt_vec_znx_assign(&mut ct, &pt_znx, scratch.borrow())
