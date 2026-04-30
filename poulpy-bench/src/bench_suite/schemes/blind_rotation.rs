@@ -14,7 +14,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_schemes::bin_fhe::blind_rotation::{
+use poulpy_bin_fhe::blind_rotation::{
     BlindRotationAlgo, BlindRotationExecute, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyLayout,
     BlindRotationKeyPrepared, BlindRotationKeyPreparedFactory, LookUpTableLayout, LookupTable, LookupTableFactory,
 };

@@ -10,18 +10,18 @@ use poulpy_core::{
     },
 };
 
-use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
-    source::Source,
-};
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::{
     bdd_arithmetic::{
         BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint,
         FheUintPrepare, FheUintPrepared,
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout},
+};
+use poulpy_hal::{
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, DeviceBuf, Module, Scratch, ScratchOwned},
+    source::Source,
 };
 
 pub fn benc_bdd_prepare<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
