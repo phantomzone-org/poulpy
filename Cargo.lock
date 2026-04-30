@@ -552,7 +552,6 @@ version = "0.5.0"
 dependencies = [
  "criterion",
  "poulpy-bin-fhe",
- "poulpy-ckks",
  "poulpy-core",
  "poulpy-cpu-avx",
  "poulpy-cpu-ref",
@@ -575,21 +574,6 @@ dependencies = [
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
-]
-
-[[package]]
-name = "poulpy-ckks"
-version = "0.5.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "f128",
- "poulpy-core",
- "poulpy-cpu-avx",
- "poulpy-cpu-ref",
- "poulpy-hal",
- "rand",
- "rand_distr",
 ]
 
 [[package]]

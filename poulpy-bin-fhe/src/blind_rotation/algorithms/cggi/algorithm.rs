@@ -22,7 +22,7 @@ use poulpy_core::{
     },
 };
 
-use crate::bin_fhe::blind_rotation::{
+use crate::blind_rotation::{
     BlindRotationExecute, BlindRotationKeyInfos, BlindRotationKeyPrepared, CGGI, LookupTable, mod_switch_2n,
 };
 

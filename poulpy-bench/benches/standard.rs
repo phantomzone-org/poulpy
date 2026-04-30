@@ -17,6 +17,7 @@ use poulpy_bin_fhe::blind_rotation::CGGI;
 use poulpy_core::layouts::{
     Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESwitchingKeyLayout, Rank, TorusPrecision,
 };
+use poulpy_bin_fhe::blind_rotation::CGGI;
 
 fn p() -> &'static poulpy_bench::params::BenchParams {
     poulpy_bench::params::BenchParams::get()

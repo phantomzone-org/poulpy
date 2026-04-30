@@ -16,12 +16,12 @@ use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, 
 
 use poulpy_hal::{api::ModuleN, layouts::ScratchArena, source::Source};
 
-use crate::bin_fhe::bdd_arithmetic::{
+use crate::bdd_arithmetic::{
     BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, BitSize, FheUint, ToBits,
 };
-use crate::bin_fhe::bdd_arithmetic::{Cmux, FromBits, UnsignedInteger};
-use crate::bin_fhe::blind_rotation::BlindRotationAlgo;
-use crate::bin_fhe::circuit_bootstrapping::{CircuitBootstrappingExecute, CircuitBootstrappingKeyInfos};
+use crate::bdd_arithmetic::{Cmux, FromBits, UnsignedInteger};
+use crate::blind_rotation::BlindRotationAlgo;
+use crate::circuit_bootstrapping::{CircuitBootstrappingExecute, CircuitBootstrappingKeyInfos};
 
 /// A DFT-prepared FHE ciphertext encoding each bit of a [`UnsignedInteger`]
 /// as a separate GGSW ciphertext.

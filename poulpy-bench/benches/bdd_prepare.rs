@@ -15,7 +15,7 @@ use poulpy_hal::{
     layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchOwned},
     source::Source,
 };
-use poulpy_schemes::bin_fhe::{
+use poulpy_bin_fhe::{
     bdd_arithmetic::{
         BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint,
         FheUintPrepare, FheUintPrepared,
