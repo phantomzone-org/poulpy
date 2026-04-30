@@ -38,7 +38,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 
 **Fused kernels.** Inner loops for composite operations use fused `VecZnxBig` normalize-add / normalize-sub primitives to reduce the number of normalization passes in tree-reductions and dot products.
 
-**Backends.** Tested against `NTT120Ref` and `FFT64Ref`; naturally all backends implementing poulpy-hal will enable the full capabilities of the scheme by the default dispatches.
+**Backends.** Tested against `NTT120Ref`, `FFT64Ref`, `NTT120Avx`, `FFT64Avx`, `NTT120Avx512`, `FFT64Avx512`, and `NTT120Ifma` (gated on the matching `enable-avx` / `enable-avx512f` / `enable-ifma` features). All other backends implementing `poulpy-hal` enable the full capabilities of the scheme through the default dispatches.
 
 **Test coverage.** 439 unit and integration tests covering all operation families, plaintext types, alignment edge cases, capacity exhaustion, and composite helpers.
 
@@ -77,6 +77,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 - **Breaking:** Remove `ReaderFrom` / `WriterTo` for `LWESecret` and `GLWESecret`; secret material should use seeds or application-level transfer, not library binary I/O.
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx`
+- Add `NTTIfmaRef` — scalar Q120 NTT reference backend with CRT over three ~40-bit primes, mirroring the prime layout of the `NTT120Ifma` AVX-512 backend. Acts as the conformance reference for `NTT120Ifma` and ships full `HalImpl` / `CoreImpl` coverage across `VecZnx`, `VecZnxBig`, `VecZnxDft`, `SvpPPol`, `VmpPMat`, and convolution.
 - **Breaking:** Rename all in-place internal helpers from `_assign` to `_assign` (e.g. `vec_znx_sub_assign`, `reim_sub_assign`, `ntt_negate_assign`, `svp_apply_dft_to_dft_assign`) to match the workspace-wide naming convention. Internal NTT120 normalization helpers that previously used `_assign` to denote a generic out-of-place write are renamed to `_into` (`nfc_middle_step_into`, `nfc_final_step_into`) to restore the distinction.
 - Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
 - Optimize NTT120 convolution on the AVX backend by wiring the prep paths to backend-specific kernels and restructuring `cnv_apply_dft` / `cnv_pairwise_apply_dft` around prepacked x2 blocks, substantially reducing GLWE tensoring time on large `ntt120-avx` workloads.
@@ -85,6 +86,18 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 - Update FFT64/NTT120 reference kernels, normalization, and shift helpers to keep behavior aligned with the new dispatch path.
 - Flatten AVX test module paths to remove redundant crate prefixes.
 - Split backend code into family-specific `hal_impl/*` modules (module/scratch/vec_znx/vmp/svp/convolution) for clearer override points.
+
+### `poulpy-cpu-avx512` (new crate)
+
+`poulpy-cpu-avx512` is a new optional backend crate exposing **three AVX-512-accelerated CPU backends** for `poulpy-hal`. Building this crate requires AVX-512 capable hardware and is gated behind two layered Cargo features (`enable-avx512f`, `enable-ifma`). When neither feature is enabled the crate remains in the workspace but compiles to an empty shell, and Poulpy falls back to `poulpy-cpu-ref`/`poulpy-cpu-avx`, so non-AVX-512 hosts (incl. macOS ARM) keep building cleanly.
+
+- Add `FFT64Avx512` — f64 complex-FFT backend (REIM/REIM4 AVX-512F kernels); gated on `enable-avx512f`. Conformance-tested against `FFT64Ref`.
+- Add `NTT120Avx512` — Q120 NTT backend with CRT over four ~30-bit primes; gated on `enable-avx512f`. Targets AVX-512F-capable CPUs without IFMA (Skylake-X, Cascade Lake, KNL).
+  - 512-bit NTT butterflies with `nn=4` cross-block pair-pack and 2× unrolled NTT / mat-vec kernels.
+  - Conformance-tested against `NTT120Ref` across `VecZnx`, `VecZnxBig`, `VecZnxDft`, `SvpPPol`, `VmpPMat`, and convolution.
+- Add `NTT120Ifma` — Q120 NTT backend with CRT over three ~40-bit primes, using `VPMADD52` for the modular multiply path; gated on `enable-ifma` (which implies `enable-avx512f`). Requires `AVX512F + AVX512IFMA + AVX512VL`. Conformance-tested against `NTTIfmaRef` across all HAL families.
+- Add a shared `znx_avx512` AVX-512F primitive layer (add/sub/neg/mul/normalization/automorphism/switch_ring) reused by `FFT64Avx512`, `NTT120Avx512`, and `NTT120Ifma`.
+- Build configuration: `enable-avx512f` and `enable-ifma` fail the build immediately with a clear `compile_error!` if the requested CPU target features (`avx512f`, `avx512ifma`, `avx512vl`) are not enabled, rather than emitting binaries that SIGILL at runtime.
 
 ### `poulpy-bin-fhe`
 - **Breaking:** Remove the former `poulpy-schemes` crate and move its bin-FHE implementation into the standalone `poulpy-bin-fhe` crate. Downstream users should depend on `poulpy-bin-fhe` and import it as `poulpy_bin_fhe`.
@@ -97,6 +110,10 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 ### `poulpy-bench`
 - Update core and HAL convolution benchmarks to the new convolution API.
 - Align benchmark suites with the new HAL/core APIs and update parameter examples.
+- Add CKKS benchmark suite covering composite operations, ciphertext-ciphertext / ciphertext-plaintext add/sub/mul, unary ops (negate, conjugate), and slot automorphisms.
+- Add `glwe_tensor` benchmark targeting the GLWE tensoring + relinearization path used by CKKS multiplication.
+- Add `enable-avx512f` and `enable-ifma` feature flags that wire the AVX-512 backends through the entire benchmark workspace; an additional `ntt120_avx_vs_avx512` bench compares the AVX2 and AVX-512 NTT120 paths side by side.
+- Refresh HAL `vec_znx` benches to cover the per-op family modules (add/sub/negate/normalize/rotate/shift/automorphism/mul_xp_minus_one).
 
 ### Build & Docs
 - Refresh root and crate READMEs (naming, examples, and links); update docs references to reduce drift after the refactor.

@@ -775,7 +775,10 @@ unsafe fn intt_iter(nn: usize, begin: *mut __m256i, end: *const __m256i, meta: &
                     _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, bo0));
                     _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, bo1));
                     _mm512_storeu_si512(ptr2 as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), bo0));
-                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1));
+                    _mm512_storeu_si512(
+                        ptr2.add(2) as *mut __m512i,
+                        _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1),
+                    );
                     ptr1 = ptr1.add(4);
                     ptr2 = ptr2.add(4);
                     po_ptr = po_ptr.add(4);
@@ -879,7 +882,10 @@ unsafe fn intt_iter_red(
                     _mm512_storeu_si512(ptr1 as *mut __m512i, _mm512_add_epi64(a0, bo0));
                     _mm512_storeu_si512(ptr1.add(2) as *mut __m512i, _mm512_add_epi64(a1, bo1));
                     _mm512_storeu_si512(ptr2 as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a0, vq2bs_512), bo0));
-                    _mm512_storeu_si512(ptr2.add(2) as *mut __m512i, _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1));
+                    _mm512_storeu_si512(
+                        ptr2.add(2) as *mut __m512i,
+                        _mm512_sub_epi64(_mm512_add_epi64(a1, vq2bs_512), bo1),
+                    );
                     ptr1 = ptr1.add(4);
                     ptr2 = ptr2.add(4);
                     po_ptr = po_ptr.add(4);
