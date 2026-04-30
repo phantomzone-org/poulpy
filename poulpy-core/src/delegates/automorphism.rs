@@ -48,7 +48,7 @@ impl_automorphism_delegate!(
         BE::glwe_automorphism(self, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_inplace<'s, 'r, K>(
+    fn glwe_automorphism_assign<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -75,7 +75,7 @@ impl_automorphism_delegate!(
         BE::glwe_automorphism_add(self, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_add_inplace<'s, 'r, K>(
+    fn glwe_automorphism_add_assign<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -116,7 +116,7 @@ impl_automorphism_delegate!(
         BE::glwe_automorphism_sub_negate(self, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_sub_inplace<'s, 'r, K>(
+    fn glwe_automorphism_sub_assign<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -129,7 +129,7 @@ impl_automorphism_delegate!(
         BE::glwe_automorphism_sub_assign(self, res, key, scratch)
     }
 
-    fn glwe_automorphism_sub_negate_inplace<'s, 'r, K>(
+    fn glwe_automorphism_sub_negate_assign<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -172,7 +172,7 @@ impl_automorphism_delegate!(
         BE::ggsw_automorphism(self, res, a, key, tsk, scratch)
     }
 
-    fn ggsw_automorphism_inplace<'s, 'r, K, T>(
+    fn ggsw_automorphism_assign<'s, 'r, K, T>(
         &self,
         res: &mut GGSWBackendMut<'r, BE>,
         key: &K,
@@ -215,7 +215,7 @@ impl_automorphism_delegate!(
         BE::glwe_automorphism_key_automorphism(self, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(
+    fn glwe_automorphism_key_automorphism_assign<'s, R, K>(
         &self,
         res: &mut R,
         key: &K,

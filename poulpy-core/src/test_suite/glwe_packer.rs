@@ -142,7 +142,7 @@ where
 
         {
             let mut pt_backend = <GLWEPlaintext<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut pt);
-            module.glwe_rotate_inplace(-(1 << log_batch), &mut pt_backend, &mut scratch.borrow()); // X^-batch * pt
+            module.glwe_rotate_assign(-(1 << log_batch), &mut pt_backend, &mut scratch.borrow()); // X^-batch * pt
         }
 
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {

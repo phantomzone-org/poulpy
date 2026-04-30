@@ -192,7 +192,7 @@ where
         lvl_0.next_multiple_of(align) + lvl_1.max(lvl_2)
     }
 
-    fn glwe_external_product_inplace_default<'s, 'r, D>(
+    fn glwe_external_product_assign_default<'s, 'r, D>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         ggsw: &D,

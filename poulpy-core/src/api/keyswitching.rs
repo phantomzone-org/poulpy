@@ -31,7 +31,7 @@ pub trait GLWEKeyswitch<BE: Backend> {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_keyswitch_inplace<'s, 'r, K>(&self, res: &mut GLWEBackendMut<'r, BE>, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_keyswitch_assign<'s, 'r, K>(&self, res: &mut GLWEBackendMut<'r, BE>, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
@@ -104,7 +104,7 @@ where
         }
     }
 
-    fn gglwe_keyswitch_inplace<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_keyswitch_assign<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -129,7 +129,7 @@ where
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
-                self.glwe_keyswitch_inplace(&mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col), a, scratch);
+                self.glwe_keyswitch_assign(&mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col), a, scratch);
             }
         }
     }
@@ -155,7 +155,7 @@ where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn ggsw_keyswitch_inplace<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_keyswitch_assign<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,

@@ -3,7 +3,7 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
-    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
+    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxDftAlloc},
     layouts::{
         Backend, Module, SvpPPol, SvpPPolToBackendMut, SvpPPolToBackendRef, VecZnxDft, VecZnxDftToBackendMut,
         VecZnxDftToBackendRef,
@@ -166,7 +166,7 @@ where
         move || {
             let svp = svp.to_backend_ref();
             for j in 0..cols {
-                module.svp_apply_dft_to_dft_inplace(&mut res.to_backend_mut(), j, &svp, j);
+                module.svp_apply_dft_to_dft_assign(&mut res.to_backend_mut(), j, &svp, j);
             }
             black_box(());
         }

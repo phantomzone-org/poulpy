@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
     layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
@@ -45,7 +45,7 @@ where
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxZeroBackend<BE>,

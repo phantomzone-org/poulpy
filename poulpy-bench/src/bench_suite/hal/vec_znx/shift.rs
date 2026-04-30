@@ -5,15 +5,15 @@ use criterion::{BenchmarkId, Criterion};
 use poulpy_cpu_ref::reference::vec_znx::{vec_znx_lsh_tmp_bytes, vec_znx_rsh_tmp_bytes};
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxRshBackend,
-        VecZnxRshInplaceBackend,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxRshBackend,
+        VecZnxRshAssignBackend,
     },
     layouts::{Backend, Module, ScratchOwned},
 };
 
-pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_lsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxLshAssign<B>,
+    Module<B>: ModuleNew<B> + VecZnxLshAssignBackend<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh_assign::{label}");
@@ -22,7 +22,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxLshAssign<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshAssignBackend<B> + ModuleNew<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -43,7 +43,7 @@ where
         move || {
             let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
-                module.vec_znx_lsh_assign(base2k, base2k - 1, &mut b, i, scratch.borrow());
+                module.vec_znx_lsh_assign_backend(base2k, base2k - 1, &mut b, i, &mut scratch.borrow());
             }
             black_box(());
         }
@@ -107,9 +107,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_rsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRshAssign<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh_assign::{label}");
@@ -118,7 +118,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRshAssign<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -139,7 +139,7 @@ where
         move || {
             let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
-                module.vec_znx_rsh_assign(base2k, base2k - 1, &mut b, i, scratch.borrow());
+                module.vec_znx_rsh_assign_backend(base2k, base2k - 1, &mut b, i, &mut scratch.borrow());
             }
             black_box(());
         }

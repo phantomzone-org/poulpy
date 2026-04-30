@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismAssign},
     layouts::{HostBytesBackend, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -184,7 +184,7 @@ where
             {
                 let mut pt_scalar_backend_as_vec =
                     crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_scalar_backend);
-                module.vec_znx_automorphism_inplace(p, &mut pt_scalar_backend_as_vec, 0, &mut scratch.borrow());
+                module.vec_znx_automorphism_assign(p, &mut pt_scalar_backend_as_vec, 0, &mut scratch.borrow());
             }
             let pt_scalar_noise = download_scalar_znx::<BE>(&pt_scalar_backend);
 
@@ -360,13 +360,13 @@ where
 
             {
                 let mut ct_backend = <GGSW<BE::OwnedBuf> as GGSWToBackendMut<BE>>::to_backend_mut(&mut ct);
-                module.ggsw_automorphism_inplace(&mut ct_backend, &auto_key_prepared, &tsk_prepared, &mut scratch.borrow());
+                module.ggsw_automorphism_assign(&mut ct_backend, &auto_key_prepared, &tsk_prepared, &mut scratch.borrow());
             }
 
             {
                 let mut pt_scalar_backend_as_vec =
                     crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_scalar_backend);
-                module.vec_znx_automorphism_inplace(p, &mut pt_scalar_backend_as_vec, 0, &mut scratch.borrow());
+                module.vec_znx_automorphism_assign(p, &mut pt_scalar_backend_as_vec, 0, &mut scratch.borrow());
             }
             let pt_scalar_noise = download_scalar_znx::<BE>(&pt_scalar_backend);
 

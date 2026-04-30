@@ -278,7 +278,7 @@ unsafe impl HalSvpImpl<CudaNtt120Backend> for CudaNtt120Backend {
     }
 
     /// Pointwise multiply `res[res_col]` in-place by `a[a_col]`.
-    fn svp_apply_dft_to_dft_inplace(
+    fn svp_apply_dft_to_dft_assign(
         module: &Module<CudaNtt120Backend>,
         res: &mut VecZnxDftBackendMut<'_, CudaNtt120Backend>,
         res_col: usize,

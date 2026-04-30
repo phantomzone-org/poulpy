@@ -63,7 +63,7 @@ impl_operations_delegate!(
     {
         BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
     },
-    fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: Data,
         GLWE<R>: GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
@@ -103,7 +103,7 @@ impl_operations_delegate!(
     {
         BE::glwe_mul_plain(self, cnv_offset, res, a, a_effective_k, b, b_effective_k, scratch)
     },
-    fn glwe_mul_plain_inplace<'s, R, A>(
+    fn glwe_mul_plain_assign<'s, R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -211,11 +211,11 @@ impl_operations_delegate!(
     fn glwe_rotate<'r, 'a>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, a: &GLWEBackendRef<'a, BE>) {
         BE::glwe_rotate(self, k, res, a)
     },
-    fn glwe_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_rotate_assign<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
-        BE::glwe_rotate_inplace(self, k, res, scratch);
+        BE::glwe_rotate_assign(self, k, res, scratch);
     }
 );
 
@@ -234,7 +234,7 @@ impl_operations_delegate!(
     ) {
         BE::ggsw_rotate(self, k, res, a)
     },
-    fn ggsw_rotate_inplace<'s, 'r>(
+    fn ggsw_rotate_assign<'s, 'r>(
         &self,
         k: i64,
         res: &mut crate::layouts::GGSWBackendMut<'r, BE>,
@@ -257,7 +257,7 @@ impl_operations_delegate!(
     {
         BE::glwe_mul_xp_minus_one(self, k, res, a)
     },
-    fn glwe_mul_xp_minus_one_inplace<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_xp_minus_one_assign<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE>,
     {
@@ -279,12 +279,12 @@ impl_operations_delegate!(
     {
         BE::glwe_rsh(self, k, res, scratch)
     },
-    fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_lsh_assign<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
-        BE::glwe_lsh_inplace(self, res, k, scratch)
+        BE::glwe_lsh_assign(self, res, k, scratch)
     },
     fn glwe_lsh<'s, R, A>(&self, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
@@ -353,7 +353,7 @@ impl_operations_delegate!(
     {
         BE::glwe_normalize(self, res, a, scratch)
     },
-    fn glwe_normalize_inplace<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_normalize_assign<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {
@@ -387,7 +387,7 @@ impl_operations_delegate!(
     {
         BE::glwe_trace(self, res, skip, a, keys, scratch)
     },
-    fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_trace_assign<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,

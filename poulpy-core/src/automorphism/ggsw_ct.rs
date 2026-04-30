@@ -61,7 +61,7 @@ where
         self.ggsw_expand_row(res, tsk, scratch)
     }
 
-    fn ggsw_automorphism_inplace_default<'s, 'r, K, T>(
+    fn ggsw_automorphism_assign_default<'s, 'r, K, T>(
         &self,
         res: &mut GGSWBackendMut<'r, BE>,
         key: &K,
@@ -80,7 +80,7 @@ where
         );
 
         for row in 0..res.dnum().as_usize() {
-            self.glwe_automorphism_inplace(
+            self.glwe_automorphism_assign(
                 &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, 0),
                 key,
                 &mut scratch.borrow(),

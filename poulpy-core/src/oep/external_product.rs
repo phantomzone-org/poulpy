@@ -32,7 +32,7 @@ pub unsafe trait GLWEExternalProductImpl<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_external_product_inplace<'s, 'r, G>(
+    fn glwe_external_product_assign<'s, 'r, G>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         ggsw: &G,
@@ -63,7 +63,7 @@ pub unsafe trait GGLWEExternalProductImpl<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -91,7 +91,7 @@ pub unsafe trait GGSWExternalProductImpl<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -118,7 +118,7 @@ pub trait GLWEExternalProductDefaults<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_external_product_inplace<'s, 'r, G>(
+    fn glwe_external_product_assign<'s, 'r, G>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         ggsw: &G,
@@ -145,7 +145,7 @@ pub trait GGLWEExternalProductDefaults<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -169,7 +169,7 @@ pub trait GGSWExternalProductDefaults<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -206,7 +206,7 @@ where
         <Module<BE> as GLWEExternalProductDefault<BE>>::glwe_external_product_default(module, res, a, ggsw, scratch)
     }
 
-    fn glwe_external_product_inplace<'s, 'r, G>(
+    fn glwe_external_product_assign<'s, 'r, G>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         ggsw: &G,
@@ -246,7 +246,7 @@ where
         <Module<BE> as GGLWEExternalProductDefault<BE>>::gglwe_external_product_default(module, res, a, b, scratch)
     }
 
-    fn gglwe_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -283,7 +283,7 @@ where
         <Module<BE> as GGSWExternalProductDefault<BE>>::ggsw_external_product_default(module, res, a, b, scratch)
     }
 
-    fn ggsw_external_product_inplace<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_external_product_assign<'s, R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,

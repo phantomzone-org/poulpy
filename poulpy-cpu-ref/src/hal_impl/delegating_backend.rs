@@ -24,13 +24,13 @@ use crate::{
             reim::{ReimArith, ReimFFTExecute, ReimFFTTable, ReimIFFTTable},
             reim4::{Reim4BlkMatVec, Reim4Convolution},
         },
-        vec_znx::{vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_inplace},
+        vec_znx::{vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_assign},
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
-            ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-            ZnxNormalizeFinalStepInplace, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-            ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-            ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
+            ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
+            ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
+            ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+            ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign,
+            ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxSwitchRing, ZnxZero,
         },
     },
 };
@@ -63,17 +63,17 @@ macro_rules! impl_forward_znx_const_trait {
 }
 
 impl_forward_znx_trait!(ZnxAdd, znx_add(res: &mut [i64], a: &[i64], b: &[i64]));
-impl_forward_znx_trait!(ZnxAddInplace, znx_add_inplace(res: &mut [i64], a: &[i64]));
+impl_forward_znx_trait!(ZnxAddAssign, znx_add_assign(res: &mut [i64], a: &[i64]));
 impl_forward_znx_trait!(ZnxSub, znx_sub(res: &mut [i64], a: &[i64], b: &[i64]));
-impl_forward_znx_trait!(ZnxSubInplace, znx_sub_inplace(res: &mut [i64], a: &[i64]));
-impl_forward_znx_trait!(ZnxSubNegateInplace, znx_sub_negate_inplace(res: &mut [i64], a: &[i64]));
+impl_forward_znx_trait!(ZnxSubAssign, znx_sub_assign(res: &mut [i64], a: &[i64]));
+impl_forward_znx_trait!(ZnxSubNegateAssign, znx_sub_negate_assign(res: &mut [i64], a: &[i64]));
 impl_forward_znx_trait!(ZnxMulAddPowerOfTwo, znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]));
 impl_forward_znx_trait!(ZnxMulPowerOfTwo, znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]));
-impl_forward_znx_trait!(ZnxMulPowerOfTwoInplace, znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]));
+impl_forward_znx_trait!(ZnxMulPowerOfTwoAssign, znx_mul_power_of_two_assign(k: i64, res: &mut [i64]));
 impl_forward_znx_trait!(ZnxAutomorphism, znx_automorphism(p: i64, res: &mut [i64], a: &[i64]));
 impl_forward_znx_trait!(ZnxCopy, znx_copy(res: &mut [i64], a: &[i64]));
 impl_forward_znx_trait!(ZnxNegate, znx_negate(res: &mut [i64], src: &[i64]));
-impl_forward_znx_trait!(ZnxNegateInplace, znx_negate_inplace(res: &mut [i64]));
+impl_forward_znx_trait!(ZnxNegateAssign, znx_negate_assign(res: &mut [i64]));
 impl_forward_znx_trait!(ZnxRotate, znx_rotate(p: i64, res: &mut [i64], src: &[i64]));
 impl_forward_znx_trait!(ZnxZero, znx_zero(res: &mut [i64]));
 impl_forward_znx_trait!(ZnxSwitchRing, znx_switch_ring(res: &mut [i64], a: &[i64]));
@@ -94,16 +94,16 @@ impl_forward_znx_trait!(
     znx_normalize_first_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
-    ZnxNormalizeFirstStepInplace,
-    znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
+    ZnxNormalizeFirstStepAssign,
+    znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
     ZnxNormalizeMiddleStepCarryOnly,
     znx_normalize_middle_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
-    ZnxNormalizeMiddleStepInplace,
-    znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
+    ZnxNormalizeMiddleStepAssign,
+    znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
     ZnxNormalizeMiddleStepSub,
@@ -114,8 +114,8 @@ impl_forward_znx_trait!(
     znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
-    ZnxNormalizeFinalStepInplace,
-    znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
+    ZnxNormalizeFinalStepAssign,
+    znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64])
 );
 impl_forward_znx_trait!(
     ZnxExtractDigitAddMul,
@@ -188,7 +188,7 @@ unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
         }
     }
 
-    fn glwe_mul_xp_minus_one_inplace<'s, R>(
+    fn glwe_mul_xp_minus_one_assign<'s, R>(
         module: &Module<DelegatingFFT64Ref>,
         k: i64,
         res: &mut R,
@@ -202,7 +202,7 @@ unsafe impl GLWEMulXpMinusOneImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
 
         let mut tmp = vec![0i64; module.n()];
         for i in 0..res.rank().as_usize() + 1 {
-            vec_znx_mul_xp_minus_one_inplace::<DelegatingFFT64Ref>(k, res.data_mut(), i, &mut tmp);
+            vec_znx_mul_xp_minus_one_assign::<DelegatingFFT64Ref>(k, res.data_mut(), i, &mut tmp);
         }
     }
 }
@@ -223,7 +223,7 @@ unsafe impl GLWERotateImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
         <Module<FFT64Ref> as GLWERotate<FFT64Ref>>::glwe_rotate(&delegate, k, res, a);
     }
 
-    fn glwe_rotate_inplace<'s, 'r>(
+    fn glwe_rotate_assign<'s, 'r>(
         module: &Module<DelegatingFFT64Ref>,
         k: i64,
         res: &mut GLWEBackendMut<'r, DelegatingFFT64Ref>,
@@ -245,7 +245,7 @@ unsafe impl GLWERotateImpl<DelegatingFFT64Ref> for DelegatingFFT64Ref {
                 &mut res_delegate,
             );
 
-        <Module<FFT64Ref> as GLWERotate<FFT64Ref>>::glwe_rotate_inplace(
+        <Module<FFT64Ref> as GLWERotate<FFT64Ref>>::glwe_rotate_assign(
             &delegate,
             k,
             &mut res_delegate_backend,

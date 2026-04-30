@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, ScratchAvailable, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftZero,
-        VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VmpApplyDftToDftBackendRef,
+        VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxNormalize, VecZnxNormalizeAssignBackend, VmpApplyDftToDftBackendRef,
         VmpApplyDftToDftTmpBytes,
     },
     layouts::{
@@ -62,7 +62,7 @@ pub(crate) trait GLWEKeyswitchDefault<BE: Backend>:
     + VecZnxIdftApply<BE>
     + VecZnxIdftApplyTmpBytes
     + VecZnxNormalize<BE>
-    + VecZnxNormalizeInplaceBackend<BE>
+    + VecZnxNormalizeAssignBackend<BE>
     + GLWENormalize<BE>
 where
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -212,7 +212,7 @@ where
         }
     }
 
-    fn glwe_keyswitch_inplace_default<'s, 'r, K>(
+    fn glwe_keyswitch_assign_default<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -331,7 +331,7 @@ where
         + VecZnxIdftApply<BE>
         + VecZnxIdftApplyTmpBytes
         + VecZnxNormalize<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + GLWENormalize<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {

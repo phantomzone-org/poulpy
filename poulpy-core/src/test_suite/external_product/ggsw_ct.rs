@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssignBackend},
     layouts::{Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::TestParams,
@@ -25,7 +25,7 @@ where
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxRotateInplaceBackend<BE>
+        + VecZnxRotateAssignBackend<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -132,7 +132,7 @@ where
 
             {
                 let mut pt_in_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_in);
-                module.vec_znx_rotate_inplace_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
+                module.vec_znx_rotate_assign_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
             }
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;
@@ -191,7 +191,7 @@ where
         + GGSWExternalProduct<BE>
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
-        + VecZnxRotateInplaceBackend<BE>
+        + VecZnxRotateAssignBackend<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -282,11 +282,11 @@ where
             let mut ct_rhs_prepared: GGSWPrepared<BE::OwnedBuf, BE> = module.ggsw_prepared_alloc_from_infos(&ggsw_apply);
             module.ggsw_prepare(&mut ct_rhs_prepared, &ggsw_apply, &mut scratch.borrow());
 
-            module.ggsw_external_product_inplace(&mut ggsw_out, &ct_rhs_prepared, &mut scratch.borrow());
+            module.ggsw_external_product_assign(&mut ggsw_out, &ct_rhs_prepared, &mut scratch.borrow());
 
             {
                 let mut pt_in_as_vec = crate::test_suite::scalar_znx_as_vec_znx_backend_mut::<BE>(&mut pt_in);
-                module.vec_znx_rotate_inplace_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
+                module.vec_znx_rotate_assign_backend(k as i64, &mut pt_in_as_vec, 0, &mut scratch.borrow());
             }
 
             let var_gct_err_lhs: f64 = DEFAULT_SIGMA_XE * DEFAULT_SIGMA_XE;

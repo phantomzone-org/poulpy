@@ -63,8 +63,8 @@ pub trait VecZnxNormalize<B: Backend> {
     );
 }
 
-pub trait VecZnxNormalizeInplaceBackend<B: Backend> {
-    fn vec_znx_normalize_inplace_backend<'s, 'r>(
+pub trait VecZnxNormalizeAssignBackend<B: Backend> {
+    fn vec_znx_normalize_assign_backend<'s, 'r>(
         &self,
         base2k: usize,
         a: &mut VecZnxBackendMut<'r, B>,
@@ -133,8 +133,8 @@ pub trait VecZnxSubBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxSubInplaceBackend<B: Backend> {
-    fn vec_znx_sub_inplace_backend<'r, 'a>(
+pub trait VecZnxSubAssignBackend<B: Backend> {
+    fn vec_znx_sub_assign_backend<'r, 'a>(
         &self,
         res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
@@ -143,8 +143,8 @@ pub trait VecZnxSubInplaceBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxSubNegateInplaceBackend<B: Backend> {
-    fn vec_znx_sub_negate_inplace_backend<'r, 'a>(
+pub trait VecZnxSubNegateAssignBackend<B: Backend> {
+    fn vec_znx_sub_negate_assign_backend<'r, 'a>(
         &self,
         res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
@@ -167,8 +167,8 @@ pub trait VecZnxSubScalarBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxSubScalarInplaceBackend<B: Backend> {
-    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+pub trait VecZnxSubScalarAssignBackend<B: Backend> {
+    fn vec_znx_sub_scalar_assign_backend<'r, 'a>(
         &self,
         res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
@@ -188,8 +188,8 @@ pub trait VecZnxNegateBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxNegateInplaceBackend<B: Backend> {
-    fn vec_znx_negate_inplace_backend(&self, a: &mut VecZnxBackendMut<'_, B>, a_col: usize);
+pub trait VecZnxNegateAssignBackend<B: Backend> {
+    fn vec_znx_negate_assign_backend(&self, a: &mut VecZnxBackendMut<'_, B>, a_col: usize);
 }
 
 /// Returns scratch bytes required for left-shift operations.
@@ -292,9 +292,9 @@ pub trait VecZnxRshSubBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxLshInplaceBackend<B: Backend> {
+pub trait VecZnxLshAssignBackend<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace_backend<'s, 'r>(
+    fn vec_znx_lsh_assign_backend<'s, 'r>(
         &self,
         base2k: usize,
         k: usize,
@@ -304,9 +304,9 @@ pub trait VecZnxLshInplaceBackend<B: Backend> {
     );
 }
 
-pub trait VecZnxRshInplaceBackend<B: Backend> {
+pub trait VecZnxRshAssignBackend<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace_backend<'s, 'r>(
+    fn vec_znx_rsh_assign_backend<'s, 'r>(
         &self,
         base2k: usize,
         k: usize,
@@ -332,9 +332,9 @@ pub trait VecZnxRotateAssignTmpBytes {
     fn vec_znx_rotate_assign_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxRotateInplaceBackend<B: Backend> {
+pub trait VecZnxRotateAssignBackend<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace_backend<'s, 'r>(
+    fn vec_znx_rotate_assign_backend<'s, 'r>(
         &self,
         p: i64,
         a: &mut VecZnxBackendMut<'r, B>,
@@ -361,7 +361,7 @@ pub trait VecZnxAutomorphismAssignTmpBytes {
 
 pub trait VecZnxAutomorphismAssign<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace<'s, 'r>(
+    fn vec_znx_automorphism_assign<'s, 'r>(
         &self,
         k: i64,
         res: &mut VecZnxBackendMut<'r, B>,
@@ -386,8 +386,8 @@ pub trait VecZnxMulXpMinusOneAssignTmpBytes {
     fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxMulXpMinusOneInplaceBackend<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
+pub trait VecZnxMulXpMinusOneAssignBackend<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_assign_backend<'s>(
         &self,
         p: i64,
         res: &mut VecZnxBackendMut<'_, B>,

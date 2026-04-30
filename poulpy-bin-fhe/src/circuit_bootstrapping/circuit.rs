@@ -402,7 +402,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
 
         if i + 1 < dnum_res {
             let mut atk_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_glwe_atk_layout);
-            module.glwe_rotate_inplace(-(gap as i64), &mut atk_backend, &mut scratch_1.borrow());
+            module.glwe_rotate_assign(-(gap as i64), &mut atk_backend, &mut scratch_1.borrow());
         }
     }
 
@@ -457,7 +457,7 @@ fn post_process<'s, A, M, H, K, BE>(
         for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             if i != 0 {
                 let mut a_trace_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut a_trace);
-                module.glwe_rotate_inplace(-(1 << log_gap_in), &mut a_trace_backend, &mut scratch.borrow());
+                module.glwe_rotate_assign(-(1 << log_gap_in), &mut a_trace_backend, &mut scratch.borrow());
             }
 
             module.glwe_copy(

@@ -2,7 +2,7 @@ use itertools::izip;
 use poulpy_hal::{
     api::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDft, VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace, VecZnxDftZero,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubAssign, VecZnxDftZero,
         VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotateBackend, VecZnxZeroBackend, VmpApplyDftToDft,
         VmpApplyDftToDftTmpBytes,
     },
@@ -270,7 +270,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                             let vmp_res_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[j]);
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[j], i, &vmp_xai_ref, 0);
-                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[j], i, &vmp_res_ref, i);
+                            module.vec_znx_dft_sub_assign(&mut acc_add_dft[j], i, &vmp_res_ref, i);
                         }
                     }
                 }
@@ -293,7 +293,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             let vmp_res_i_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[i]);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[i], k, &vmp_xai_ref, 0);
-                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[i], k, &vmp_res_i_ref, k);
+                            module.vec_znx_dft_sub_assign(&mut acc_add_dft[i], k, &vmp_res_i_ref, k);
                         }
                     }
                 }
@@ -312,7 +312,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                             let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                             let vmp_res_i_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res[i]);
                             module.vec_znx_dft_add_assign(&mut acc_add_dft[i], k, &vmp_xai_ref, 0);
-                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[i], k, &vmp_res_i_ref, k);
+                            module.vec_znx_dft_sub_assign(&mut acc_add_dft[i], k, &vmp_res_i_ref, k);
                         }
                     }
                 }
@@ -456,7 +456,7 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
                 let vmp_res_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_res);
                 let vmp_xai_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&vmp_xai);
                 module.vec_znx_dft_add_assign(&mut acc_add_dft, i, &vmp_xai_ref, 0);
-                module.vec_znx_dft_sub_inplace(&mut acc_add_dft, i, &vmp_res_ref, i);
+                module.vec_znx_dft_sub_assign(&mut acc_add_dft, i, &vmp_res_ref, i);
             }
         }
 
@@ -583,7 +583,7 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
         let mut acc_tmp_ref = &mut acc_tmp;
-        module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp_ref, &mut scratch_1.borrow());
+        module.glwe_mul_xp_minus_one_assign(*ai, &mut acc_tmp_ref, &mut scratch_1.borrow());
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
@@ -595,7 +595,7 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     // on top of each others, thus ~ 2^{63-base2k} additions are supported before overflow.
     {
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
-        module.glwe_normalize_inplace(&mut out_backend, &mut scratch_1.borrow());
+        module.glwe_normalize_assign(&mut out_backend, &mut scratch_1.borrow());
     }
     module.glwe_copy(
         &mut res.to_backend_mut(),

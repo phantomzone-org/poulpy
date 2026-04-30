@@ -143,7 +143,7 @@ pub fn ntt120_svp_apply_dft_to_dft<'r, 'a, 'b, BE>(
 ///
 /// Processes each q120b coefficient by copying it (since [`Q120bScalar`] is
 /// `Copy`) before overwriting to avoid aliasing conflicts.
-pub fn ntt120_svp_apply_dft_to_dft_inplace<'r, 'a, BE>(
+pub fn ntt120_svp_apply_dft_to_dft_assign<'r, 'a, BE>(
     module: &impl NttModuleHandle,
     res: &mut VecZnxDftBackendMut<'r, BE>,
     res_col: usize,

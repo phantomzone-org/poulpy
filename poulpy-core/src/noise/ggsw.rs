@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchArenaTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarAssignBackend, VecZnxBigBytesOf, VecZnxBigNormalize,
+        ScratchArenaTakeBasic, SvpApplyDftToDftAssign, VecZnxAddScalarAssignBackend, VecZnxBigBytesOf, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
     layouts::{
@@ -47,7 +47,7 @@ impl<BE: Backend + HostBackend> GGSWNoise<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarAssignBackend<BE>
         + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
+        + SvpApplyDftToDftAssign<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigBytesOf
         + VecZnxDftBytesOf
@@ -147,7 +147,7 @@ where
             );
             {
                 let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
-                self.svp_apply_dft_to_dft_inplace(&mut pt_dft_backend, 0, &sk_backend.data, res_col - 1);
+                self.svp_apply_dft_to_dft_assign(&mut pt_dft_backend, 0, &sk_backend.data, res_col - 1);
             }
             let (mut pt_big, mut scratch_3) = scratch_2.take_vec_znx_big(self, 1, res_ref.size());
             {

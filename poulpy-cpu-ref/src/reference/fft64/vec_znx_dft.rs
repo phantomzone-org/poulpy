@@ -290,7 +290,7 @@ where
     for i in 0..res.cols() {
         for j in 0..res.size() {
             BE::reim_dft_execute(table, res.at_mut(i, j));
-            BE::reim_to_znx_inplace(res.at_mut(i, j), divisor);
+            BE::reim_to_znx_assign(res.at_mut(i, j), divisor);
         }
     }
 
@@ -352,7 +352,7 @@ pub fn vec_znx_dft_sub<BE>(
     }
 }
 
-pub fn vec_znx_dft_sub_inplace<BE>(
+pub fn vec_znx_dft_sub_assign<BE>(
     res: &mut VecZnxDftBackendMut<'_, BE>,
     res_col: usize,
     a: &VecZnxDftBackendRef<'_, BE>,
@@ -377,7 +377,7 @@ pub fn vec_znx_dft_sub_inplace<BE>(
     }
 }
 
-pub fn vec_znx_dft_sub_negate_inplace<BE>(
+pub fn vec_znx_dft_sub_negate_assign<BE>(
     res: &mut VecZnxDftBackendMut<'_, BE>,
     res_col: usize,
     a: &VecZnxDftBackendRef<'_, BE>,

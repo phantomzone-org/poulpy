@@ -6,7 +6,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::{VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend},
+    api::{VecZnxAddScalarAssignBackend, VecZnxNormalizeAssignBackend},
     layouts::{Backend, HostDataMut, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, VecZnxToBackendMut, ZnxZero},
 };
 
@@ -14,7 +14,7 @@ use crate::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssignBackend<BE> + VecZnxNormalizeInplaceBackend<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarAssignBackend<BE> + VecZnxNormalizeAssignBackend<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     for<'a> BE::BufMut<'a>: HostDataMut,
 {
@@ -34,7 +34,7 @@ pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend<OwnedBuf = Vec<u8>>>
 where
     Self: GLWEBlindRotation<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + ModuleCoreAlloc<OwnedBuf = Vec<u8>>,
 {
     /// Returns the minimum scratch-space size in bytes required by
@@ -73,7 +73,7 @@ where
             for row in 0..res.dnum().into() {
                 let mut res_at = res.at_mut(row, col);
                 let mut res_at_backend = glwe_backend_mut_from_mut::<BE>(&mut res_at);
-                self.glwe_blind_rotation_inplace(&mut res_at_backend, fhe_uint, sign, bit_rsh, bit_mask, bit_lsh, scratch);
+                self.glwe_blind_rotation_assign(&mut res_at_backend, fhe_uint, sign, bit_rsh, bit_mask, bit_lsh, scratch);
             }
         }
     }
@@ -177,7 +177,7 @@ where
                         &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&test_vector_backend),
                         0,
                     );
-                    self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_glwe_data, col, &mut scratch_1.borrow());
+                    self.vec_znx_normalize_assign_backend(base2k, &mut tmp_glwe_data, col, &mut scratch_1.borrow());
                 }
 
                 let mut res_at = res.at_mut(row, col);
@@ -231,7 +231,7 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_blind_rotation_inplace<K>(
+    fn glwe_blind_rotation_assign<K>(
         &self,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
         value: &K,
@@ -273,7 +273,7 @@ where
                 }
 
                 let bit = value.get_bit(i + bit_rsh);
-                self.cmux_inplace(&mut tmp_res, &res_cur, bit, &mut scratch_1.borrow());
+                self.cmux_assign(&mut tmp_res, &res_cur, bit, &mut scratch_1.borrow());
             } else {
                 let tmp_res_ref = <GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_res);
                 let mut res_cur_backend = <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_cur);
@@ -283,7 +283,7 @@ where
                 }
 
                 let bit = value.get_bit(i + bit_rsh);
-                self.cmux_inplace(&mut res_cur, &tmp_res, bit, &mut scratch_1.borrow());
+                self.cmux_assign(&mut res_cur, &tmp_res, bit, &mut scratch_1.borrow());
             }
 
             // ping-pong roles for next iter

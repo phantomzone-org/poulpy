@@ -2,7 +2,7 @@
 
 use poulpy_hal::{
     api::{
-        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
     layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
@@ -48,7 +48,7 @@ where
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxAddScalarAssignBackend<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxZeroBackend<BE>,
@@ -155,7 +155,7 @@ where
                             <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
                                 &mut tmp_pt.data,
                             );
-                        self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_pt_data, 0, scratch)
+                        self.vec_znx_normalize_assign_backend(base2k, &mut tmp_pt_data, 0, scratch)
                     });
 
                     let (seed, mut source_xa_tmp) = source_xa.branch();

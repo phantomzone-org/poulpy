@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniformSourceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismAssign, VecZnxFillUniformSourceBackend},
     layouts::{Module, ScratchOwned},
     source::Source,
     test_suite::TestParams,
@@ -157,7 +157,7 @@ where
                 let mut pt_out_backend = <GLWEPlaintext<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut pt_out);
                 module.glwe_normalize(&mut pt_out_backend, &pt_in_backend, &mut scratch.borrow());
             }
-            module.vec_znx_automorphism_inplace(p, &mut vec_znx_backend_mut::<BE>(&mut pt_out.data), 0, &mut scratch.borrow());
+            module.vec_znx_automorphism_assign(p, &mut vec_znx_backend_mut::<BE>(&mut pt_out.data), 0, &mut scratch.borrow());
 
             assert!(
                 module
@@ -274,7 +274,7 @@ where
 
             {
                 let mut ct_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct);
-                module.glwe_automorphism_inplace(&mut ct_backend, &autokey_prepared, &mut scratch.borrow());
+                module.glwe_automorphism_assign(&mut ct_backend, &autokey_prepared, &mut scratch.borrow());
             }
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
@@ -293,7 +293,7 @@ where
             .sqrt()
             .log2();
 
-            module.vec_znx_automorphism_inplace(p, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut scratch.borrow());
+            module.vec_znx_automorphism_assign(p, &mut vec_znx_backend_mut::<BE>(&mut pt_want.data), 0, &mut scratch.borrow());
 
             assert!(
                 module

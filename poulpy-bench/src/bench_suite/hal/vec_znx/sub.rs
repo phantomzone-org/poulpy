@@ -4,7 +4,7 @@ use criterion::{BenchmarkId, Criterion};
 use rand::Rng;
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxSubBackend, VecZnxSubInplaceBackend, VecZnxSubNegateInplaceBackend},
+    api::{ModuleNew, VecZnxSubBackend, VecZnxSubAssignBackend, VecZnxSubNegateAssignBackend},
     layouts::{Backend, DataViewMut, Module, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef},
     source::Source,
 };
@@ -62,7 +62,7 @@ where
 pub fn bench_vec_znx_sub_assign<B>(c: &mut Criterion, label: &str)
 where
     B: Backend,
-    Module<B>: VecZnxSubInplaceBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxSubAssignBackend<B> + ModuleNew<B>,
     B::OwnedBuf: AsMut<[u8]>,
 {
     let group_name: String = format!("vec_znx_sub_assign::{label}");
@@ -71,7 +71,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxSubAssignBackend<B> + ModuleNew<B>,
         B::OwnedBuf: AsMut<[u8]>,
     {
         let n: usize = 1 << params[0];
@@ -91,7 +91,7 @@ where
             let a = <VecZnx<B::OwnedBuf> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
             let mut b = <VecZnx<B::OwnedBuf> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b);
             for i in 0..cols {
-                module.vec_znx_sub_assign(&mut b, i, &a, i);
+                module.vec_znx_sub_assign_backend(&mut b, i, &a, i);
             }
             black_box(());
         }
@@ -109,7 +109,7 @@ where
 pub fn bench_vec_znx_sub_negate_assign<B>(c: &mut Criterion, label: &str)
 where
     B: Backend,
-    Module<B>: VecZnxSubNegateInplaceBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxSubNegateAssignBackend<B> + ModuleNew<B>,
     B::OwnedBuf: AsMut<[u8]>,
 {
     let group_name: String = format!("vec_znx_sub_negate_assign::{label}");
@@ -118,7 +118,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubNegateInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxSubNegateAssignBackend<B> + ModuleNew<B>,
         B::OwnedBuf: AsMut<[u8]>,
     {
         let n: usize = 1 << params[0];
@@ -138,7 +138,7 @@ where
             let a = <VecZnx<B::OwnedBuf> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
             let mut b = <VecZnx<B::OwnedBuf> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b);
             for i in 0..cols {
-                module.vec_znx_sub_negate_assign(&mut b, i, &a, i);
+                module.vec_znx_sub_negate_assign_backend(&mut b, i, &a, i);
             }
             black_box(());
         }

@@ -96,7 +96,7 @@ pub fn bench_glwe_external_product<BE: Backend<OwnedBuf = Vec<u8>>>(
     group.finish();
 }
 
-pub fn bench_glwe_external_product_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(
+pub fn bench_glwe_external_product_assign<BE: Backend<OwnedBuf = Vec<u8>>>(
     infos: &impl GGSWInfos,
     c: &mut Criterion,
     label: &str,
@@ -161,7 +161,7 @@ pub fn bench_glwe_external_product_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-            module.glwe_external_product_inplace(&mut ct_glwe_backend, &ggsw_prepared, &mut scratch.borrow());
+            module.glwe_external_product_assign(&mut ct_glwe_backend, &ggsw_prepared, &mut scratch.borrow());
             black_box(());
         })
     });

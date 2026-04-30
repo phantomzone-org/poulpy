@@ -3,7 +3,7 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxNegateBackend, VecZnxNegateInplaceBackend},
+    api::{ModuleNew, VecZnxNegateBackend, VecZnxNegateAssignBackend},
     layouts::{Backend, Module},
 };
 
@@ -50,9 +50,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_negate_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxNegateAssign + ModuleNew<B>,
+    Module<B>: VecZnxNegateAssignBackend<B> + ModuleNew<B>,
 {
     let group_name: String = format!("vec_znx_negate_assign::{label}");
 
@@ -60,7 +60,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxNegateAssign + ModuleNew<B>,
+        Module<B>: VecZnxNegateAssignBackend<B> + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -75,7 +75,7 @@ where
         move || {
             let mut a = crate::vec_znx_backend_mut::<B>(&mut a);
             for i in 0..cols {
-                module.vec_znx_negate_assign(&mut a, i);
+                module.vec_znx_negate_assign_backend(&mut a, i);
             }
             black_box(());
         }

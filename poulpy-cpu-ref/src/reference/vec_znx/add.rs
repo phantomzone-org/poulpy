@@ -1,7 +1,6 @@
 use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxAdd, ZnxAddInplace, ZnxCopy, ZnxZero},
-    source::Source,
+    reference::znx::{ZnxAdd, ZnxAddAssign, ZnxCopy, ZnxZero},
 };
 
 pub fn vec_znx_add_into<'r, 'a, BE>(
@@ -65,7 +64,7 @@ pub fn vec_znx_add_assign<'r, 'a, BE>(
     a: &VecZnxBackendRef<'a, BE>,
     a_col: usize,
 ) where
-    BE: Backend + ZnxAddInplace,
+    BE: Backend + ZnxAddAssign,
     BE::BufMut<'r>: HostDataMut,
     BE::BufRef<'a>: HostDataRef,
 {
@@ -77,7 +76,7 @@ pub fn vec_znx_add_assign<'r, 'a, BE>(
     let sum_size: usize = a.size().min(res.size());
 
     for j in 0..sum_size {
-        BE::znx_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::znx_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 

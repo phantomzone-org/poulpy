@@ -6,9 +6,9 @@ use rand::Rng;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAddAssign, VecZnxBigAddInto, VecZnxBigAddSmallAssign,
-        VecZnxBigAddSmallIntoBackend, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
-        VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallABackend,
+        VecZnxBigAddSmallIntoBackend, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismAssign,
+        VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigNegate, VecZnxBigNegateAssign, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubAssign, VecZnxBigSubNegateAssign, VecZnxBigSubSmallABackend,
         VecZnxBigSubSmallBBackend,
     },
     layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnxBig, VecZnxBigToBackendMut, VecZnxBigToBackendRef},
@@ -295,7 +295,7 @@ where
         move || {
             let mut res = res.to_backend_mut();
             for i in 0..cols {
-                module.vec_znx_big_automorphism_inplace(-7, &mut res, i, &mut scratch.borrow());
+                module.vec_znx_big_automorphism_assign(-7, &mut res, i, &mut scratch.borrow());
             }
             black_box(());
         }
@@ -359,7 +359,7 @@ where
 
 pub fn bench_vec_znx_big_negate_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxBigNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigNegateAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("vec_znx_negate_big_assign::{label}");
@@ -368,7 +368,7 @@ where
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigNegateAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << sweep[0]);
@@ -719,7 +719,7 @@ where
 
 pub fn bench_vec_znx_big_sub_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("vec_znx_big_sub_assign::{label}");
@@ -728,7 +728,7 @@ where
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << sweep[0]);
@@ -766,7 +766,7 @@ where
 
 pub fn bench_vec_znx_big_sub_negate_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubNegateAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
 {
     let group_name: String = format!("vec_znx_big_sub_assign::{label}");
@@ -775,7 +775,7 @@ where
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubNegateAssign<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
         B::OwnedBuf: AsRef<[u8]> + AsMut<[u8]>,
     {
         let module: Module<B> = Module::<B>::new(1 << sweep[0]);

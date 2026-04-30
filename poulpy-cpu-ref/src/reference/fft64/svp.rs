@@ -77,7 +77,7 @@ pub fn svp_apply_dft_to_dft<'r, 'a, BE>(
     }
 }
 
-pub fn svp_apply_dft_to_dft_inplace<'r, 'a, BE>(
+pub fn svp_apply_dft_to_dft_assign<'r, 'a, BE>(
     res: &mut VecZnxDftBackendMut<'r, BE>,
     res_col: usize,
     a: &SvpPPolBackendRef<'a, BE>,

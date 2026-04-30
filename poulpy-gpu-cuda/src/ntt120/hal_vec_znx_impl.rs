@@ -52,13 +52,13 @@ unsafe extern "C" {
 
     fn ntt120_vec_znx_sub_into(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, b: *const i64, len: std::ffi::c_int);
 
-    fn ntt120_vec_znx_sub_inplace(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, len: std::ffi::c_int);
+    fn ntt120_vec_znx_sub_assign(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, len: std::ffi::c_int);
 
-    fn ntt120_vec_znx_sub_negate_inplace(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, len: std::ffi::c_int);
+    fn ntt120_vec_znx_sub_negate_assign(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, len: std::ffi::c_int);
 
     fn ntt120_vec_znx_negate(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, len: std::ffi::c_int);
 
-    fn ntt120_vec_znx_negate_inplace(stream: *mut std::ffi::c_void, res: *mut i64, len: std::ffi::c_int);
+    fn ntt120_vec_znx_negate_assign(stream: *mut std::ffi::c_void, res: *mut i64, len: std::ffi::c_int);
 
     fn ntt120_vec_znx_add_scalar_assign(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, n: std::ffi::c_int);
 
@@ -78,7 +78,7 @@ unsafe extern "C" {
         n: std::ffi::c_int,
     );
 
-    fn ntt120_vec_znx_sub_scalar_inplace(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, n: std::ffi::c_int);
+    fn ntt120_vec_znx_sub_scalar_assign(stream: *mut std::ffi::c_void, res: *mut i64, a: *const i64, n: std::ffi::c_int);
 
     fn ntt120_vec_znx_rotate(
         stream: *mut std::ffi::c_void,
@@ -145,7 +145,7 @@ unsafe extern "C" {
         res_offset: i64,
     );
 
-    fn ntt120_vec_znx_normalize_inplace(
+    fn ntt120_vec_znx_normalize_assign(
         stream: *mut std::ffi::c_void,
         a: *mut i64,
         n: std::ffi::c_int,
@@ -153,7 +153,7 @@ unsafe extern "C" {
         base2k: std::ffi::c_int,
     );
 
-    fn ntt120_vec_znx_rsh_inplace(
+    fn ntt120_vec_znx_rsh_assign(
         stream: *mut std::ffi::c_void,
         a: *mut i64,
         n: std::ffi::c_int,
@@ -163,7 +163,7 @@ unsafe extern "C" {
         lsh: std::ffi::c_int,
     );
 
-    fn ntt120_vec_znx_lsh_inplace(
+    fn ntt120_vec_znx_lsh_assign(
         stream: *mut std::ffi::c_void,
         a: *mut i64,
         n: std::ffi::c_int,
@@ -436,7 +436,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_normalize_inplace_backend<'s, 'r>(
+    fn vec_znx_normalize_assign_backend<'s, 'r>(
         module: &Module<CudaNtt120Backend>,
         base2k: usize,
         a: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
@@ -452,7 +452,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *mut i64;
         unsafe {
-            ntt120_vec_znx_normalize_inplace(stream_raw, a_ptr, n as i32, a.size() as i32, base2k as i32);
+            ntt120_vec_znx_normalize_assign(stream_raw, a_ptr, n as i32, a.size() as i32, base2k as i32);
         }
     }
 
@@ -594,7 +594,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_sub_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_assign_backend<'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
@@ -613,11 +613,11 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_ptr = vec_znx_col_ptr(res_buf, res.data.offset, res_col, res.size(), n) as *mut i64;
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *const i64;
         unsafe {
-            ntt120_vec_znx_sub_inplace(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+            ntt120_vec_znx_sub_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
         }
     }
 
-    fn vec_znx_sub_negate_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_negate_assign_backend<'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
@@ -634,14 +634,14 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *const i64;
         if min_size > 0 {
             unsafe {
-                ntt120_vec_znx_sub_negate_inplace(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+                ntt120_vec_znx_sub_negate_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
             }
         }
         // limbs in res beyond min_size are negated (res = a - res; a=0 there means res = 0 - res = -res)
         if res.size() > min_size {
             let extra_ptr = unsafe { res_ptr.add(min_size * n) };
             unsafe {
-                ntt120_vec_znx_negate_inplace(stream_raw, extra_ptr, ((res.size() - min_size) * n) as i32);
+                ntt120_vec_znx_negate_assign(stream_raw, extra_ptr, ((res.size() - min_size) * n) as i32);
             }
         }
     }
@@ -672,7 +672,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_scalar_assign_backend<'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
@@ -689,7 +689,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_ptr = buf_device_ptr(res_buf, res_limb_offset) as *mut i64;
         let a_ptr = scalar_znx_col_ptr(a_buf, a.data.offset, a_col, n) as *const i64;
         unsafe {
-            ntt120_vec_znx_sub_scalar_inplace(stream_raw, res_ptr, a_ptr, n as i32);
+            ntt120_vec_znx_sub_scalar_assign(stream_raw, res_ptr, a_ptr, n as i32);
         }
     }
 
@@ -723,7 +723,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_negate_inplace_backend(
+    fn vec_znx_negate_assign_backend(
         module: &Module<CudaNtt120Backend>,
         a: &mut VecZnxBackendMut<'_, CudaNtt120Backend>,
         a_col: usize,
@@ -737,7 +737,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *mut i64;
         unsafe {
-            ntt120_vec_znx_negate_inplace(stream_raw, a_ptr, (a.size() * n) as i32);
+            ntt120_vec_znx_negate_assign(stream_raw, a_ptr, (a.size() * n) as i32);
         }
     }
 
@@ -973,7 +973,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_rsh_inplace_backend<'s, 'r>(
+    fn vec_znx_rsh_assign_backend<'s, 'r>(
         module: &Module<CudaNtt120Backend>,
         base2k: usize,
         k: usize,
@@ -996,7 +996,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *mut i64;
         unsafe {
-            ntt120_vec_znx_rsh_inplace(
+            ntt120_vec_znx_rsh_assign(
                 stream_raw,
                 a_ptr,
                 n as i32,
@@ -1008,7 +1008,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_lsh_inplace_backend<'s, 'r>(
+    fn vec_znx_lsh_assign_backend<'s, 'r>(
         module: &Module<CudaNtt120Backend>,
         base2k: usize,
         k: usize,
@@ -1027,7 +1027,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *mut i64;
         unsafe {
-            ntt120_vec_znx_lsh_inplace(
+            ntt120_vec_znx_lsh_assign(
                 stream_raw,
                 a_ptr,
                 n as i32,
@@ -1070,11 +1070,11 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_rotate_inplace_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
+    fn vec_znx_rotate_assign_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
         0
     }
 
-    fn vec_znx_rotate_inplace_backend<'s, 'r>(
+    fn vec_znx_rotate_assign_backend<'s, 'r>(
         module: &Module<CudaNtt120Backend>,
         k: i64,
         a: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
@@ -1107,7 +1107,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
         stream
             .synchronize()
-            .expect("CUDA sync failed in vec_znx_rotate_inplace_backend");
+            .expect("CUDA sync failed in vec_znx_rotate_assign_backend");
         drop(tmp);
     }
 
@@ -1142,11 +1142,11 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_automorphism_inplace_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
+    fn vec_znx_automorphism_assign_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
         0
     }
 
-    fn vec_znx_automorphism_inplace<'s, 'r>(
+    fn vec_znx_automorphism_assign<'s, 'r>(
         module: &Module<CudaNtt120Backend>,
         k: i64,
         res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
@@ -1178,7 +1178,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
         stream
             .synchronize()
-            .expect("CUDA sync failed in vec_znx_automorphism_inplace");
+            .expect("CUDA sync failed in vec_znx_automorphism_assign");
         drop(tmp);
     }
 
@@ -1213,11 +1213,11 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
+    fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
         0
     }
 
-    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
+    fn vec_znx_mul_xp_minus_one_assign_backend<'s>(
         module: &Module<CudaNtt120Backend>,
         k: i64,
         res: &mut VecZnxBackendMut<'_, CudaNtt120Backend>,
@@ -1250,7 +1250,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
         stream
             .synchronize()
-            .expect("CUDA sync failed in vec_znx_mul_xp_minus_one_inplace_backend");
+            .expect("CUDA sync failed in vec_znx_mul_xp_minus_one_assign_backend");
         drop(tmp);
     }
 

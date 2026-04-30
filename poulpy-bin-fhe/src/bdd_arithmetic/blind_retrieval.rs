@@ -186,7 +186,7 @@ fn add_core<A, S, M, BE>(
         }
         1 => {
             let selector_bit = selector.get_bit(i + offset);
-            module.cmux_inplace_neg(&mut acc_prev[0].data, a, selector_bit, scratch);
+            module.cmux_assign_neg(&mut acc_prev[0].data, a, selector_bit, scratch);
 
             if !acc_next.is_empty() {
                 add_core(module, &acc_prev[0].data, acc_next, i + 1, selector, offset, scratch);

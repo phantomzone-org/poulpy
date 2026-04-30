@@ -33,13 +33,13 @@ __global__ void vec_znx_sub_into_kernel(int64_t* res, const int64_t* a, const in
 }
 
 // res -= a
-__global__ void vec_znx_sub_inplace_kernel(int64_t* res, const int64_t* a, int len) {
+__global__ void vec_znx_sub_assign_kernel(int64_t* res, const int64_t* a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < len) res[i] -= a[i];
 }
 
 // res = a - res
-__global__ void vec_znx_sub_negate_inplace_kernel(int64_t* res, const int64_t* a, int len) {
+__global__ void vec_znx_sub_negate_assign_kernel(int64_t* res, const int64_t* a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < len) res[i] = a[i] - res[i];
 }
@@ -51,7 +51,7 @@ __global__ void vec_znx_negate_kernel(int64_t* res, const int64_t* a, int len) {
 }
 
 // res = -res
-__global__ void vec_znx_negate_inplace_kernel(int64_t* res, int len) {
+__global__ void vec_znx_negate_assign_kernel(int64_t* res, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < len) res[i] = -res[i];
 }
@@ -75,7 +75,7 @@ __global__ void vec_znx_sub_scalar_into_kernel(int64_t* res, const int64_t* a, c
 }
 
 // res[res_limb] -= a  (ScalarZnx sub inplace: a is ScalarZnx, res is one limb)
-__global__ void vec_znx_sub_scalar_inplace_kernel(int64_t* res, const int64_t* a, int n) {
+__global__ void vec_znx_sub_scalar_assign_kernel(int64_t* res, const int64_t* a, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) res[i] -= a[i];
 }
@@ -191,20 +191,20 @@ void ntt120_vec_znx_sub_into(
     vec_znx_sub_into_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, b, len);
 }
 
-void ntt120_vec_znx_sub_inplace(
+void ntt120_vec_znx_sub_assign(
     void* stream, int64_t* res, const int64_t* a, int len)
 {
     if (len <= 0) return;
     int grid = (len + BLOCK - 1) / BLOCK;
-    vec_znx_sub_inplace_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, len);
+    vec_znx_sub_assign_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, len);
 }
 
-void ntt120_vec_znx_sub_negate_inplace(
+void ntt120_vec_znx_sub_negate_assign(
     void* stream, int64_t* res, const int64_t* a, int len)
 {
     if (len <= 0) return;
     int grid = (len + BLOCK - 1) / BLOCK;
-    vec_znx_sub_negate_inplace_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, len);
+    vec_znx_sub_negate_assign_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, len);
 }
 
 void ntt120_vec_znx_negate(
@@ -215,12 +215,12 @@ void ntt120_vec_znx_negate(
     vec_znx_negate_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, len);
 }
 
-void ntt120_vec_znx_negate_inplace(
+void ntt120_vec_znx_negate_assign(
     void* stream, int64_t* res, int len)
 {
     if (len <= 0) return;
     int grid = (len + BLOCK - 1) / BLOCK;
-    vec_znx_negate_inplace_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, len);
+    vec_znx_negate_assign_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, len);
 }
 
 void ntt120_vec_znx_add_scalar_assign(
@@ -247,12 +247,12 @@ void ntt120_vec_znx_sub_scalar_into(
     vec_znx_sub_scalar_into_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, b, n);
 }
 
-void ntt120_vec_znx_sub_scalar_inplace(
+void ntt120_vec_znx_sub_scalar_assign(
     void* stream, int64_t* res, const int64_t* a, int n)
 {
     if (n <= 0) return;
     int grid = (n + BLOCK - 1) / BLOCK;
-    vec_znx_sub_scalar_inplace_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, n);
+    vec_znx_sub_scalar_assign_kernel<<<grid, BLOCK, 0, (cudaStream_t)stream>>>(res, a, n);
 }
 
 void ntt120_vec_znx_rotate(

@@ -248,7 +248,7 @@ __global__ static void vec_znx_normalize_kernel(
 // Carry propagates from limb 0 upward (low to high), since overflow from limb j
 // spills into limb j+1.
 
-__global__ static void vec_znx_normalize_inplace_kernel(
+__global__ static void vec_znx_normalize_assign_kernel(
     int64_t *a, int n, int size, int base2k)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -268,7 +268,7 @@ __global__ static void vec_znx_normalize_inplace_kernel(
 
 // ── RSH inplace kernel ────────────────────────────────────────────────────────
 
-__global__ static void vec_znx_rsh_inplace_kernel(
+__global__ static void vec_znx_rsh_assign_kernel(
     int64_t *a, int n, int size, int base2k, int steps, int lsh)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -315,7 +315,7 @@ __global__ static void vec_znx_rsh_inplace_kernel(
 
 // ── LSH inplace kernel ────────────────────────────────────────────────────────
 
-__global__ static void vec_znx_lsh_inplace_kernel(
+__global__ static void vec_znx_lsh_assign_kernel(
     int64_t *a, int n, int size, int base2k, int steps, int k_rem)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -450,31 +450,31 @@ void ntt120_vec_znx_normalize(
     check_shift("ntt120_vec_znx_normalize");
 }
 
-void ntt120_vec_znx_normalize_inplace(
+void ntt120_vec_znx_normalize_assign(
     void *stream, int64_t *a, int n, int size, int base2k)
 {
     if (n <= 0 || size <= 0) return;
-    vec_znx_normalize_inplace_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
+    vec_znx_normalize_assign_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
         a, n, size, base2k);
-    check_shift("ntt120_vec_znx_normalize_inplace");
+    check_shift("ntt120_vec_znx_normalize_assign");
 }
 
-void ntt120_vec_znx_rsh_inplace(
+void ntt120_vec_znx_rsh_assign(
     void *stream, int64_t *a, int n, int size, int base2k, int steps, int lsh)
 {
     if (n <= 0 || size <= 0) return;
-    vec_znx_rsh_inplace_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
+    vec_znx_rsh_assign_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
         a, n, size, base2k, steps, lsh);
-    check_shift("ntt120_vec_znx_rsh_inplace");
+    check_shift("ntt120_vec_znx_rsh_assign");
 }
 
-void ntt120_vec_znx_lsh_inplace(
+void ntt120_vec_znx_lsh_assign(
     void *stream, int64_t *a, int n, int size, int base2k, int steps, int k_rem)
 {
     if (n <= 0 || size <= 0) return;
-    vec_znx_lsh_inplace_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
+    vec_znx_lsh_assign_kernel<<<(n + kShiftBlock - 1) / kShiftBlock, kShiftBlock, 0, (cudaStream_t)stream>>>(
         a, n, size, base2k, steps, k_rem);
-    check_shift("ntt120_vec_znx_lsh_inplace");
+    check_shift("ntt120_vec_znx_lsh_assign");
 }
 
 void ntt120_vec_znx_split_ring(

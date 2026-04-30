@@ -280,7 +280,7 @@ where
 
             {
                 let mut glwe_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut glwe_out);
-                module.glwe_keyswitch_inplace(&mut glwe_out_backend, &ksk_prepared, &mut scratch.borrow());
+                module.glwe_keyswitch_assign(&mut glwe_out_backend, &ksk_prepared, &mut scratch.borrow());
             }
 
             let noise_max: f64 = var_noise_gglwe_product_v2(

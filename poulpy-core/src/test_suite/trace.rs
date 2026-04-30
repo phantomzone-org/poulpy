@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeAssignBackend},
     layouts::{Module, ScratchOwned, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
@@ -18,7 +18,7 @@ use crate::{
     },
     noise::var_noise_gglwe_product,
     test_suite::{download_glwe_plaintext, upload_glwe, upload_glwe_automorphism_key, upload_glwe_plaintext, upload_glwe_secret},
-    vec_znx_host_ops::vec_znx_sub_inplace,
+    vec_znx_host_ops::vec_znx_sub_assign,
 };
 
 pub fn test_glwe_trace_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
@@ -32,7 +32,7 @@ where
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalizeInplaceBackend<BE>,
+        + VecZnxNormalizeAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -130,14 +130,14 @@ where
             auto_keys.insert(*gal_el, atk_prepared);
         });
 
-        module.glwe_trace_inplace(&mut glwe_out, 0, &auto_keys, &mut scratch.borrow());
+        module.glwe_trace_assign(&mut glwe_out, 0, &auto_keys, &mut scratch.borrow());
         let mut pt_have_backend = upload_glwe_plaintext(module, &pt_template);
         module.glwe_decrypt(&glwe_out, &mut pt_have_backend, &sk_dft, &mut scratch.borrow());
         let pt_have: GLWEPlaintext<Vec<u8>> = download_glwe_plaintext(module, &pt_have_backend);
 
-        vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
+        vec_znx_sub_assign(&mut pt_want.data, 0, &pt_have.data, 0);
         let mut pt_noise = upload_glwe_plaintext(module, &pt_want);
-        module.vec_znx_normalize_inplace_backend(
+        module.vec_znx_normalize_assign_backend(
             pt_noise.base2k().as_usize(),
             &mut vec_znx_backend_mut::<BE>(&mut pt_noise.data),
             0,

@@ -38,7 +38,7 @@ pub fn vec_znx_automorphism<'r, 'a, BE>(
     }
 }
 
-pub fn vec_znx_automorphism_inplace<'r, BE>(p: i64, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_automorphism_assign<'r, BE>(p: i64, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, tmp: &mut [i64])
 where
     BE: Backend + ZnxAutomorphism + ZnxCopy,
     BE::BufMut<'r>: HostDataMut,

@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VecZnxDftAddAssign, VecZnxDftAddInto, VecZnxDftAddScaledAssign, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero,
+        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubAssign, VecZnxDftSubNegateAssign, VecZnxDftZero,
         VecZnxIdftApply, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
@@ -147,28 +147,28 @@ impl_vec_znx_dft_delegate!(
 );
 
 impl_vec_znx_dft_delegate!(
-    VecZnxDftSubInplace<B>,
-    fn vec_znx_dft_sub_inplace(
+    VecZnxDftSubAssign<B>,
+    fn vec_znx_dft_sub_assign(
         &self,
         res: &mut VecZnxDftBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxDftBackendRef<'_, B>,
         a_col: usize,
     ) {
-        <B as HalVecZnxDftImpl<B>>::vec_znx_dft_sub_inplace(self, res, res_col, a, a_col);
+        <B as HalVecZnxDftImpl<B>>::vec_znx_dft_sub_assign(self, res, res_col, a, a_col);
     }
 );
 
 impl_vec_znx_dft_delegate!(
-    VecZnxDftSubNegateInplace<B>,
-    fn vec_znx_dft_sub_negate_inplace(
+    VecZnxDftSubNegateAssign<B>,
+    fn vec_znx_dft_sub_negate_assign(
         &self,
         res: &mut VecZnxDftBackendMut<'_, B>,
         res_col: usize,
         a: &VecZnxDftBackendRef<'_, B>,
         a_col: usize,
     ) {
-        <B as HalVecZnxDftImpl<B>>::vec_znx_dft_sub_negate_inplace(self, res, res_col, a, a_col);
+        <B as HalVecZnxDftImpl<B>>::vec_znx_dft_sub_negate_assign(self, res, res_col, a, a_col);
     }
 );
 

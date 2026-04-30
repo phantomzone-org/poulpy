@@ -17,9 +17,9 @@ use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormalSourceBackend,
-        VecZnxBigAddSmallAssign, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
-        VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalizeInplaceBackend,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxAddNormalSourceBackend,
+        VecZnxBigAddSmallAssign, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateAssign,
+        VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniformSourceBackend, VecZnxIdftApplyTmpA, VecZnxNormalizeAssignBackend,
     },
     layouts::{
         Backend, Module, NoiseInfos, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned, SvpPPolToBackendMut, SvpPPolToBackendRef,
@@ -78,7 +78,7 @@ fn main() {
     module.vec_znx_dft_apply(1, 0, &mut buf_dft.to_backend_mut(), 0, &ct_backend, 1);
 
     // Applies DFT(ct[1]) * DFT(s)
-    module.svp_apply_dft_to_dft_inplace(
+    module.svp_apply_dft_to_dft_assign(
         &mut buf_dft.to_backend_mut(), // DFT(ct[1] * s)
         0,                             // Selects the first column of res
         &s_dft.to_backend_ref(),       // DFT(s)
@@ -99,7 +99,7 @@ fn main() {
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut().for_each(|x| *x = source.next_u64n(16, 15) as i64);
     m.encode_vec_i64(base2k, 0, log_scale, &want);
-    module.vec_znx_normalize_inplace_backend(
+    module.vec_znx_normalize_assign_backend(
         base2k,
         &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<BackendImpl>>::to_backend_mut(&mut m),
         0,
@@ -107,7 +107,7 @@ fn main() {
     );
 
     // m - BIG(ct[1] * s)
-    module.vec_znx_big_sub_small_negate_inplace(
+    module.vec_znx_big_sub_small_negate_assign(
         &mut buf_big.to_backend_mut(),
         0, // Selects the first column of the receiver
         &<VecZnx<Vec<u8>> as VecZnxToBackendRef<BackendImpl>>::to_backend_ref(&m),
@@ -146,7 +146,7 @@ fn main() {
     // DFT(ct[1] * s)
     let ct_backend = <VecZnx<Vec<u8>> as VecZnxToBackendRef<BackendImpl>>::to_backend_ref(&ct);
     module.vec_znx_dft_apply(1, 0, &mut buf_dft.to_backend_mut(), 0, &ct_backend, 1);
-    module.svp_apply_dft_to_dft_inplace(
+    module.svp_apply_dft_to_dft_assign(
         &mut buf_dft.to_backend_mut(),
         0, // Selects the first column of res.
         &s_dft.to_backend_ref(),

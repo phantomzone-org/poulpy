@@ -48,7 +48,7 @@ impl_keyswitching_delegate!(
         BE::glwe_keyswitch(self, res, a, key, scratch)
     }
 
-    fn glwe_keyswitch_inplace<'s, 'r, K>(
+    fn glwe_keyswitch_assign<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -85,7 +85,7 @@ impl_keyswitching_delegate!(
         BE::gglwe_keyswitch(self, res, a, b, scratch)
     }
 
-    fn gglwe_keyswitch_inplace<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_keyswitch_assign<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -128,7 +128,7 @@ impl_keyswitching_delegate!(
         BE::ggsw_keyswitch(self, res, a, key, tsk, scratch)
     }
 
-    fn ggsw_keyswitch_inplace<'s, R, K, T>(
+    fn ggsw_keyswitch_assign<'s, R, K, T>(
         &self,
         res: &mut R,
         key: &K,

@@ -11,14 +11,14 @@ use crate::{
         ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
         ScalarZnxFillTernaryProbSourceBackend, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
         VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend,
-        VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
+        VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
         VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend,
-        VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
-        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegateBackend,
-        VecZnxNegateInplaceBackend, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
-        VecZnxRotateInplaceBackend, VecZnxRotateInplaceTmpBytes, VecZnxRshBackend, VecZnxRshInplaceBackend, VecZnxRshTmpBytes,
-        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxSubScalarBackend, VecZnxSubScalarInplaceBackend, VecZnxSwitchRingBackend,
+        VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneAssignTmpBytes, VecZnxNegateBackend,
+        VecZnxNegateAssignBackend, VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
+        VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes, VecZnxRshBackend, VecZnxRshAssignBackend, VecZnxRshTmpBytes,
+        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubAssignBackend,
+        VecZnxSubNegateAssignBackend, VecZnxSubScalarBackend, VecZnxSubScalarAssignBackend, VecZnxSwitchRingBackend,
         VecZnxZeroBackend,
     },
     layouts::{
@@ -470,7 +470,7 @@ pub fn test_vec_znx_automorphism<BR: crate::test_suite::TestBackend<OwnedBuf = V
     }
 }
 
-pub fn test_vec_znx_automorphism_inplace<
+pub fn test_vec_znx_automorphism_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -478,9 +478,9 @@ pub fn test_vec_znx_automorphism_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxAutomorphismInplace<BR> + VecZnxAutomorphismInplaceTmpBytes,
+    Module<BR>: VecZnxAutomorphismAssign<BR> + VecZnxAutomorphismAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxAutomorphismInplace<BT> + VecZnxAutomorphismInplaceTmpBytes,
+    Module<BT>: VecZnxAutomorphismAssign<BT> + VecZnxAutomorphismAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -506,13 +506,13 @@ pub fn test_vec_znx_automorphism_inplace<
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_automorphism_inplace(
+            module_ref.vec_znx_automorphism_assign(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_automorphism_inplace(
+            module_test.vec_znx_automorphism_assign(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -529,13 +529,13 @@ pub fn test_vec_znx_automorphism_inplace<
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_automorphism_inplace(
+            module_ref.vec_znx_automorphism_assign(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_automorphism_inplace(
+            module_test.vec_znx_automorphism_assign(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -861,7 +861,7 @@ pub fn test_vec_znx_mul_xp_minus_one<BR: crate::test_suite::TestBackend<OwnedBuf
     }
 }
 
-pub fn test_vec_znx_mul_xp_minus_one_inplace<
+pub fn test_vec_znx_mul_xp_minus_one_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -869,9 +869,9 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxMulXpMinusOneInplaceBackend<BR> + VecZnxMulXpMinusOneInplaceTmpBytes,
+    Module<BR>: VecZnxMulXpMinusOneAssignBackend<BR> + VecZnxMulXpMinusOneAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxMulXpMinusOneInplaceBackend<BT> + VecZnxMulXpMinusOneInplaceTmpBytes,
+    Module<BT>: VecZnxMulXpMinusOneAssignBackend<BT> + VecZnxMulXpMinusOneAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -896,13 +896,13 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<
         let p: i64 = -7;
 
         for i in 0..cols {
-            module_ref.vec_znx_mul_xp_minus_one_inplace_backend(
+            module_ref.vec_znx_mul_xp_minus_one_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_mul_xp_minus_one_inplace_backend(
+            module_test.vec_znx_mul_xp_minus_one_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -918,13 +918,13 @@ pub fn test_vec_znx_mul_xp_minus_one_inplace<
         let p: i64 = 7;
 
         for i in 0..cols {
-            module_ref.vec_znx_mul_xp_minus_one_inplace_backend(
+            module_ref.vec_znx_mul_xp_minus_one_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_mul_xp_minus_one_inplace_backend(
+            module_test.vec_znx_mul_xp_minus_one_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -1044,13 +1044,13 @@ pub fn test_vec_znx_negate_backend_matches_wrapper<
     }
 }
 
-pub fn test_vec_znx_negate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_negate_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxNegateInplaceBackend<BR>,
-    Module<BT>: VecZnxNegateInplaceBackend<BT>,
+    Module<BR>: VecZnxNegateAssignBackend<BR>,
+    Module<BT>: VecZnxNegateAssignBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -1068,8 +1068,8 @@ pub fn test_vec_znx_negate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf =
         let mut res_test_backend = upload_vec_znx::<BT>(&res_test);
 
         for i in 0..cols {
-            module_ref.vec_znx_negate_inplace_backend(&mut vec_znx_backend_mut::<BR>(&mut res_ref_backend), i);
-            module_test.vec_znx_negate_inplace_backend(&mut vec_znx_backend_mut::<BT>(&mut res_test_backend), i);
+            module_ref.vec_znx_negate_assign_backend(&mut vec_znx_backend_mut::<BR>(&mut res_ref_backend), i);
+            module_test.vec_znx_negate_assign_backend(&mut vec_znx_backend_mut::<BT>(&mut res_test_backend), i);
         }
 
         assert_eq!(
@@ -1079,7 +1079,7 @@ pub fn test_vec_znx_negate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf =
     }
 }
 
-pub fn test_vec_znx_negate_inplace_backend_matches_wrapper<
+pub fn test_vec_znx_negate_assign_backend_matches_wrapper<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -1087,7 +1087,7 @@ pub fn test_vec_znx_negate_inplace_backend_matches_wrapper<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BT>: VecZnxNegateInplaceBackend<BT>,
+    Module<BT>: VecZnxNegateAssignBackend<BT>,
 {
     let base2k = params.base2k;
     let _n: usize = module_test.n();
@@ -1103,8 +1103,8 @@ pub fn test_vec_znx_negate_inplace_backend_matches_wrapper<
             let mut wrapper_backend = upload_vec_znx::<BT>(&wrapper);
             let mut backend_backend = upload_vec_znx::<BT>(&backend);
 
-            module_test.vec_znx_negate_inplace_backend(&mut vec_znx_backend_mut::<BT>(&mut wrapper_backend), col_i);
-            module_test.vec_znx_negate_inplace_backend(&mut vec_znx_backend_mut::<BT>(&mut backend_backend), col_i);
+            module_test.vec_znx_negate_assign_backend(&mut vec_znx_backend_mut::<BT>(&mut wrapper_backend), col_i);
+            module_test.vec_znx_negate_assign_backend(&mut vec_znx_backend_mut::<BT>(&mut backend_backend), col_i);
 
             assert_eq!(
                 download_vec_znx::<BT>(&wrapper_backend),
@@ -1185,7 +1185,7 @@ pub fn test_vec_znx_normalize<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<
     }
 }
 
-pub fn test_vec_znx_normalize_inplace<
+pub fn test_vec_znx_normalize_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -1193,9 +1193,9 @@ pub fn test_vec_znx_normalize_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxNormalizeInplaceBackend<BR> + VecZnxNormalizeTmpBytes,
+    Module<BR>: VecZnxNormalizeAssignBackend<BR> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxNormalizeInplaceBackend<BT> + VecZnxNormalizeTmpBytes,
+    Module<BT>: VecZnxNormalizeAssignBackend<BT> + VecZnxNormalizeTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1218,13 +1218,13 @@ pub fn test_vec_znx_normalize_inplace<
 
         // Reference
         for i in 0..cols {
-            module_ref.vec_znx_normalize_inplace_backend(
+            module_ref.vec_znx_normalize_assign_backend(
                 base2k,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_normalize_inplace_backend(
+            module_test.vec_znx_normalize_assign_backend(
                 base2k,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -1321,14 +1321,14 @@ pub fn test_vec_znx_rotate<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>
     }
 }
 
-pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_rotate_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxRotateInplaceBackend<BR> + VecZnxRotateInplaceTmpBytes,
+    Module<BR>: VecZnxRotateAssignBackend<BR> + VecZnxRotateAssignTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxRotateInplaceBackend<BT> + VecZnxRotateInplaceTmpBytes,
+    Module<BT>: VecZnxRotateAssignBackend<BT> + VecZnxRotateAssignTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1354,13 +1354,13 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf =
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_rotate_inplace_backend(
+            module_ref.vec_znx_rotate_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_rotate_inplace_backend(
+            module_test.vec_znx_rotate_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -1377,13 +1377,13 @@ pub fn test_vec_znx_rotate_inplace<BR: crate::test_suite::TestBackend<OwnedBuf =
 
         // Normalize on c
         for i in 0..cols {
-            module_ref.vec_znx_rotate_inplace_backend(
+            module_ref.vec_znx_rotate_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                 i,
                 &mut scratch_ref.arena(),
             );
-            module_test.vec_znx_rotate_inplace_backend(
+            module_test.vec_znx_rotate_assign_backend(
                 p,
                 &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                 i,
@@ -1794,14 +1794,14 @@ pub fn test_vec_znx_lsh<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, 
     }
 }
 
-pub fn test_vec_znx_lsh_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_lsh_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxLshInplaceBackend<BR> + VecZnxLshTmpBytes,
+    Module<BR>: VecZnxLshAssignBackend<BR> + VecZnxLshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxLshInplaceBackend<BT> + VecZnxLshTmpBytes,
+    Module<BT>: VecZnxLshAssignBackend<BT> + VecZnxLshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1824,14 +1824,14 @@ pub fn test_vec_znx_lsh_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Ve
             let mut res_test_backend = upload_vec_znx::<BT>(&res_test);
 
             for i in 0..cols {
-                module_ref.vec_znx_lsh_inplace_backend(
+                module_ref.vec_znx_lsh_assign_backend(
                     base2k,
                     k,
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                     i,
                     &mut scratch_ref.arena(),
                 );
-                module_test.vec_znx_lsh_inplace_backend(
+                module_test.vec_znx_lsh_assign_backend(
                     base2k,
                     k,
                     &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
@@ -1917,14 +1917,14 @@ pub fn test_vec_znx_rsh<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, 
     }
 }
 
-pub fn test_vec_znx_rsh_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_rsh_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxRshInplaceBackend<BR> + VecZnxRshTmpBytes,
+    Module<BR>: VecZnxRshAssignBackend<BR> + VecZnxRshTmpBytes,
     ScratchOwned<BR>: ScratchOwnedAlloc<BR>,
-    Module<BT>: VecZnxRshInplaceBackend<BT> + VecZnxRshTmpBytes,
+    Module<BT>: VecZnxRshAssignBackend<BT> + VecZnxRshTmpBytes,
     ScratchOwned<BT>: ScratchOwnedAlloc<BT>,
 {
     let base2k = params.base2k;
@@ -1947,14 +1947,14 @@ pub fn test_vec_znx_rsh_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Ve
             let mut res_test_backend = upload_vec_znx::<BT>(&res_test);
 
             for i in 0..cols {
-                module_ref.vec_znx_rsh_inplace_backend(
+                module_ref.vec_znx_rsh_assign_backend(
                     base2k,
                     k,
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                     i,
                     &mut scratch_ref.arena(),
                 );
-                module_test.vec_znx_rsh_inplace_backend(
+                module_test.vec_znx_rsh_assign_backend(
                     base2k,
                     k,
                     &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
@@ -2108,7 +2108,7 @@ pub fn test_vec_znx_sub_scalar<BR: crate::test_suite::TestBackend<OwnedBuf = Vec
     }
 }
 
-pub fn test_vec_znx_sub_scalar_inplace<
+pub fn test_vec_znx_sub_scalar_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -2116,8 +2116,8 @@ pub fn test_vec_znx_sub_scalar_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxSubScalarInplaceBackend<BR>,
-    Module<BT>: VecZnxSubScalarInplaceBackend<BT>,
+    Module<BR>: VecZnxSubScalarAssignBackend<BR>,
+    Module<BT>: VecZnxSubScalarAssignBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -2141,14 +2141,14 @@ pub fn test_vec_znx_sub_scalar_inplace<
         let mut res_1_backend = upload_vec_znx::<BT>(&res_1);
 
         for i in 0..cols {
-            module_ref.vec_znx_sub_scalar_inplace_backend(
+            module_ref.vec_znx_sub_scalar_assign_backend(
                 &mut vec_znx_backend_mut::<BR>(&mut res_0_backend),
                 i,
                 res_size - 1,
                 &scalar_znx_backend_ref::<BR>(&a_ref),
                 i,
             );
-            module_test.vec_znx_sub_scalar_inplace_backend(
+            module_test.vec_znx_sub_scalar_assign_backend(
                 &mut vec_znx_backend_mut::<BT>(&mut res_1_backend),
                 i,
                 res_size - 1,
@@ -2232,13 +2232,13 @@ pub fn test_vec_znx_sub<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, 
     }
 }
 
-pub fn test_vec_znx_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_sub_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxSubInplaceBackend<BR>,
-    Module<BT>: VecZnxSubInplaceBackend<BT>,
+    Module<BR>: VecZnxSubAssignBackend<BR>,
+    Module<BT>: VecZnxSubAssignBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -2263,13 +2263,13 @@ pub fn test_vec_znx_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Ve
             let mut res_test_backend = upload_vec_znx::<BT>(&res_test);
 
             for i in 0..cols {
-                module_test.vec_znx_sub_inplace_backend(
+                module_test.vec_znx_sub_assign_backend(
                     &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                     i,
                     &vec_znx_backend_ref::<BT>(&a_test),
                     i,
                 );
-                module_ref.vec_znx_sub_inplace_backend(
+                module_ref.vec_znx_sub_assign_backend(
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                     i,
                     &vec_znx_backend_ref::<BR>(&a_ref),
@@ -2286,7 +2286,7 @@ pub fn test_vec_znx_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Ve
     }
 }
 
-pub fn test_vec_znx_sub_negate_inplace<
+pub fn test_vec_znx_sub_negate_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -2294,8 +2294,8 @@ pub fn test_vec_znx_sub_negate_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxSubNegateInplaceBackend<BR>,
-    Module<BT>: VecZnxSubNegateInplaceBackend<BT>,
+    Module<BR>: VecZnxSubNegateAssignBackend<BR>,
+    Module<BT>: VecZnxSubNegateAssignBackend<BT>,
 {
     let base2k = params.base2k;
     assert_eq!(module_ref.n(), module_test.n());
@@ -2320,13 +2320,13 @@ pub fn test_vec_znx_sub_negate_inplace<
             let mut res_test_backend = upload_vec_znx::<BT>(&res_test);
 
             for i in 0..cols {
-                module_test.vec_znx_sub_negate_inplace_backend(
+                module_test.vec_znx_sub_negate_assign_backend(
                     &mut vec_znx_backend_mut::<BT>(&mut res_test_backend),
                     i,
                     &vec_znx_backend_ref::<BT>(&a_test),
                     i,
                 );
-                module_ref.vec_znx_sub_negate_inplace_backend(
+                module_ref.vec_znx_sub_negate_assign_backend(
                     &mut vec_znx_backend_mut::<BR>(&mut res_ref_backend),
                     i,
                     &vec_znx_backend_ref::<BR>(&a_ref),

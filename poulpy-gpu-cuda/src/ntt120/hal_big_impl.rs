@@ -34,14 +34,14 @@ unsafe extern "C" {
     fn ntt120_big_add_small_into(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, b: *const i64, len: i32);
     fn ntt120_big_add_small_assign(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, len: i32);
     fn ntt120_big_sub_into(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, b: *const u32, len: i32);
-    fn ntt120_big_sub_inplace(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, len: i32);
-    fn ntt120_big_sub_negate_inplace(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, len: i32);
+    fn ntt120_big_sub_assign(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, len: i32);
+    fn ntt120_big_sub_negate_assign(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, len: i32);
     fn ntt120_big_sub_small_a(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, b: *const u32, len: i32);
     fn ntt120_big_sub_small_b(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, b: *const i64, len: i32);
-    fn ntt120_big_sub_small_inplace(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, len: i32);
-    fn ntt120_big_sub_small_negate_inplace(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, len: i32);
+    fn ntt120_big_sub_small_assign(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, len: i32);
+    fn ntt120_big_sub_small_negate_assign(stream: *mut std::ffi::c_void, res: *mut u32, a: *const i64, len: i32);
     fn ntt120_big_negate_into(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, len: i32);
-    fn ntt120_big_negate_inplace(stream: *mut std::ffi::c_void, res: *mut u32, len: i32);
+    fn ntt120_big_negate_assign(stream: *mut std::ffi::c_void, res: *mut u32, len: i32);
     fn ntt120_big_automorphism(stream: *mut std::ffi::c_void, res: *mut u32, a: *const u32, n: i32, nlimbs: i32, p: i64);
 
     fn cudaMemsetAsync(
@@ -415,7 +415,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_big_sub_inplace(
+    fn vec_znx_big_sub_assign(
         _module: &Module<CudaNtt120Backend>,
         res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, CudaNtt120Backend>,
         res_col: usize,
@@ -434,11 +434,11 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_ptr = big_col_ptr_mut(res_buf, res.data.offset, res_col, res.size(), n);
         let a_ptr = big_col_ptr(a_buf, a.data.offset, a_col, a.size(), n);
         unsafe {
-            ntt120_big_sub_inplace(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+            ntt120_big_sub_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
         }
     }
 
-    fn vec_znx_big_sub_negate_inplace(
+    fn vec_znx_big_sub_negate_assign(
         _module: &Module<CudaNtt120Backend>,
         res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, CudaNtt120Backend>,
         res_col: usize,
@@ -458,14 +458,14 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
             let res_ptr = big_col_ptr_mut(res_buf, res.data.offset, res_col, res_size, n);
             let a_ptr = big_col_ptr(a_buf, a.data.offset, a_col, a_size, n);
             unsafe {
-                ntt120_big_sub_negate_inplace(stream_raw, res_ptr, a_ptr, (sum_size * n) as i32);
+                ntt120_big_sub_negate_assign(stream_raw, res_ptr, a_ptr, (sum_size * n) as i32);
             }
         }
         // Extra res limbs (beyond a): negate
         if res_size > a_size {
             let extra_ptr = big_limb_ptr_mut(res_buf, res.data.offset, res_col, res_size, n, a_size);
             unsafe {
-                ntt120_big_negate_inplace(stream_raw, extra_ptr, ((res_size - a_size) * n) as i32);
+                ntt120_big_negate_assign(stream_raw, extra_ptr, ((res_size - a_size) * n) as i32);
             }
         }
     }
@@ -529,7 +529,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_big_sub_small_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_assign<'r, 'a>(
         _module: &Module<CudaNtt120Backend>,
         res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
@@ -548,7 +548,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_ptr = big_col_ptr_mut(res_buf, res.data.offset, res_col, res.size(), n);
         let a_ptr = vec_znx_limb_ptr(a_buf, a.data.offset, a_col, a.size(), n, 0);
         unsafe {
-            ntt120_big_sub_small_inplace(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+            ntt120_big_sub_small_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
         }
     }
 
@@ -601,10 +601,10 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         if b_cpy > a_cpy {
             let res_ptr = big_limb_ptr_mut(res_buf, res.data.offset, res_col, res_size, n, a_cpy);
             let b_ptr = vec_znx_limb_ptr(b_buf, b.data.offset, b_col, b_size, n, a_cpy);
-            // res = -b (sign-extend then negate): use from_small then negate_inplace
+            // res = -b (sign-extend then negate): use from_small then negate_assign
             unsafe {
                 ntt120_big_from_small(stream_raw, res_ptr, b_ptr, ((b_cpy - a_cpy) * n) as i32);
-                ntt120_big_negate_inplace(stream_raw, res_ptr, ((b_cpy - a_cpy) * n) as i32);
+                ntt120_big_negate_assign(stream_raw, res_ptr, ((b_cpy - a_cpy) * n) as i32);
             }
         }
         let zero_start = a_cpy.max(b_cpy);
@@ -616,7 +616,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_big_sub_small_negate_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_negate_assign<'r, 'a>(
         _module: &Module<CudaNtt120Backend>,
         res: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
@@ -635,14 +635,14 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
             let res_ptr = big_col_ptr_mut(res_buf, res.data.offset, res_col, res_size, n);
             let a_ptr = vec_znx_limb_ptr(a_buf, a.data.offset, a_col, a.size(), n, 0);
             unsafe {
-                ntt120_big_sub_small_negate_inplace(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+                ntt120_big_sub_small_negate_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
             }
         }
         // Extra res limbs (beyond a): negate
         if res_size > min_size {
             let extra_ptr = big_limb_ptr_mut(res_buf, res.data.offset, res_col, res_size, n, min_size);
             unsafe {
-                ntt120_big_negate_inplace(stream_raw, extra_ptr, ((res_size - min_size) * n) as i32);
+                ntt120_big_negate_assign(stream_raw, extra_ptr, ((res_size - min_size) * n) as i32);
             }
         }
     }
@@ -676,7 +676,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_big_negate_inplace(
+    fn vec_znx_big_negate_assign(
         _module: &Module<CudaNtt120Backend>,
         a: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, CudaNtt120Backend>,
         a_col: usize,
@@ -690,7 +690,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
         let a_ptr = big_col_ptr_mut(a_buf, a.data.offset, a_col, a.size(), n);
         unsafe {
-            ntt120_big_negate_inplace(stream_raw, a_ptr, (a.size() * n) as i32);
+            ntt120_big_negate_assign(stream_raw, a_ptr, (a.size() * n) as i32);
         }
     }
 
@@ -770,11 +770,11 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
-    fn vec_znx_big_automorphism_inplace_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
+    fn vec_znx_big_automorphism_assign_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
         0
     }
 
-    fn vec_znx_big_automorphism_inplace<'s>(
+    fn vec_znx_big_automorphism_assign<'s>(
         _module: &Module<CudaNtt120Backend>,
         k: i64,
         a: &mut poulpy_hal::layouts::VecZnxBigBackendMut<'_, CudaNtt120Backend>,
@@ -800,7 +800,7 @@ unsafe impl HalVecZnxBigImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
         stream
             .synchronize()
-            .expect("CUDA sync failed in vec_znx_big_automorphism_inplace");
+            .expect("CUDA sync failed in vec_znx_big_automorphism_assign");
         drop(tmp);
     }
 }

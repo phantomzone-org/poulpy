@@ -960,9 +960,9 @@ pub fn znx_normalize_final_step_sub_avx(base2k: usize, lsh: usize, x: &mut [i64]
 
 mod tests {
     use poulpy_cpu_ref::reference::znx::{
-        get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref, znx_normalize_final_step_assign_ref,
-        znx_normalize_final_step_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
-        znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
+        get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref,
+        znx_normalize_final_step_assign_ref, znx_normalize_final_step_ref, znx_normalize_first_step_assign_ref,
+        znx_normalize_first_step_ref, znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
     };
 
     use super::*;

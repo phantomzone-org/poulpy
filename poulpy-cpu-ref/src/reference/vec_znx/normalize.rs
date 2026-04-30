@@ -6,8 +6,8 @@ use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
     reference::znx::{
         ZnxAddAssign, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-        ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly,
-        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly, ZnxZero,
+        ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign,
+        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign, ZnxZero,
     },
 };
 
@@ -79,8 +79,8 @@ fn vec_znx_normalize_inter_base2k<'r, 'a, BE>(
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
-        + ZnxNormalizeFinalStepInplace
-        + ZnxNormalizeMiddleStepInplace,
+        + ZnxNormalizeFinalStepAssign
+        + ZnxNormalizeMiddleStepAssign,
     BE::BufMut<'r>: HostDataMut,
     BE::BufRef<'a>: HostDataRef,
 {
@@ -152,9 +152,9 @@ fn vec_znx_normalize_inter_base2k<'r, 'a, BE>(
     for j in 0..res_end {
         BE::znx_zero(res.at_mut(res_col, res_end - j - 1));
         if j == res_end - 1 {
-            BE::znx_normalize_final_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::znx_normalize_final_step_assign(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         } else {
-            BE::znx_normalize_middle_step_inplace(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
+            BE::znx_normalize_middle_step_assign(base2k, lsh_pos, res.at_mut(res_col, res_end - j - 1), carry);
         }
     }
 }
@@ -295,7 +295,7 @@ fn vec_znx_normalize_cross_base2k<'r, 'a, BE>(
             // res: [x  x  x  x  x  x][x  x  x  x  x  x][x  x  x  x  x  x]
             if !(a_tot_bits - a_start_bit).is_multiple_of(a_base2k) {
                 let take: usize = (a_tot_bits - a_start_bit) % a_base2k;
-                BE::znx_mul_power_of_two_inplace(-(take as i64), a_norm);
+                BE::znx_mul_power_of_two_assign(-(take as i64), a_norm);
                 a_take_left -= take;
             // Case where `res` has more precision than `a` (after taking into account the offset)
             //
@@ -339,7 +339,7 @@ fn vec_znx_normalize_cross_base2k<'r, 'a, BE>(
                 // are in the MSB of `res` instead of being discarded.
                 if a_limb == 0 && a_take_left == 0 {
                     // TODO: prove no overflow can happen here (should not intuitively)
-                    BE::znx_add_inplace(a_carry, a_norm);
+                    BE::znx_add_assign(a_carry, a_norm);
 
                     // Usual case where for example
                     // a:   [     overflow     ][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x][x  x  x  x  x]
@@ -357,11 +357,11 @@ fn vec_znx_normalize_cross_base2k<'r, 'a, BE>(
                         BE::znx_extract_digit_addmul(res_acc_left, scale, res_slice, a_carry);
                     }
 
-                    BE::znx_normalize_middle_step_inplace(res_base2k, 0, res_slice, res_carry);
+                    BE::znx_normalize_middle_step_assign(res_base2k, 0, res_slice, res_carry);
 
                     // Previous step might not consume all bits of a_carry
                     // TODO: prove no overflow can happen here
-                    BE::znx_add_inplace(res_carry, a_carry);
+                    BE::znx_add_assign(res_carry, a_carry);
 
                     // We are done, so breaks out of the loop (yes we are at a[0], but
                     // this avoids possible over/under flows of tracking variables)
@@ -379,7 +379,7 @@ fn vec_znx_normalize_cross_base2k<'r, 'a, BE>(
 
             // If a_norm is exhausted, breaks the inner loop.
             if a_take_left == 0 {
-                BE::znx_add_inplace(a_carry, a_norm);
+                BE::znx_add_assign(a_carry, a_norm);
                 break 'inner;
             }
         }
@@ -406,17 +406,17 @@ fn vec_znx_normalize_cross_base2k<'r, 'a, BE>(
 
         for j in 0..res_end {
             if j == res_end - 1 {
-                BE::znx_normalize_final_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::znx_normalize_final_step_assign(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             } else {
-                BE::znx_normalize_middle_step_inplace(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
+                BE::znx_normalize_middle_step_assign(res_base2k, 0, res.at_mut(res_col, res_end - j - 1), carry_to_use);
             }
         }
     }
 }
 
-pub fn vec_znx_normalize_inplace<'r, BE>(base2k: usize, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, carry: &mut [i64])
+pub fn vec_znx_normalize_assign<'r, BE>(base2k: usize, res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, carry: &mut [i64])
 where
-    BE: Backend + ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
+    BE: Backend + ZnxNormalizeFirstStepAssign + ZnxNormalizeMiddleStepAssign + ZnxNormalizeFinalStepAssign,
     BE::BufMut<'r>: HostDataMut,
 {
     #[cfg(debug_assertions)]
@@ -428,11 +428,11 @@ where
 
     for j in (0..res_size).rev() {
         if j == res_size - 1 {
-            BE::znx_normalize_first_step_inplace(base2k, 0, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_first_step_assign(base2k, 0, res.at_mut(res_col, j), carry);
         } else if j == 0 {
-            BE::znx_normalize_final_step_inplace(base2k, 0, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_final_step_assign(base2k, 0, res.at_mut(res_col, j), carry);
         } else {
-            BE::znx_normalize_middle_step_inplace(base2k, 0, res.at_mut(res_col, j), carry);
+            BE::znx_normalize_middle_step_assign(base2k, 0, res.at_mut(res_col, j), carry);
         }
     }
 }

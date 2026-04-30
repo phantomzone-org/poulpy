@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxCopyBackend,
-        VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshInplaceBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneInplaceBackend, VecZnxNegateBackend, VecZnxNegateInplaceBackend,
-        VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateInplaceBackend,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplaceBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubInplaceBackend,
-        VecZnxSubNegateInplaceBackend, VecZnxZeroBackend,
+        VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
+        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneAssignBackend, VecZnxNegateBackend, VecZnxNegateAssignBackend,
+        VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateAssignBackend,
+        VecZnxRotateAssignTmpBytes, VecZnxRshAssignBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubAssignBackend,
+        VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
     },
     layouts::{Backend, Data, GaloisElement, ScratchArena},
 };
@@ -43,7 +43,7 @@ pub trait GLWETrace<BE: Backend> {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_trace_inplace<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_trace_assign<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -128,7 +128,7 @@ pub trait GLWEMulConst<BE: Backend> {
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>;
 
-    fn glwe_mul_const_inplace<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
     where
         R: Data,
         GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
@@ -160,7 +160,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_inplace<'s, R, A>(
+    fn glwe_mul_plain_assign<'s, R, A>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -320,7 +320,7 @@ where
 
 pub trait GLWENegate<BE: Backend>
 where
-    Self: VecZnxNegateBackend<BE> + VecZnxNegateInplaceBackend<BE> + ModuleN,
+    Self: VecZnxNegateBackend<BE> + VecZnxNegateAssignBackend<BE> + ModuleN,
 {
     fn glwe_negate(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(a.n(), self.n() as u32);
@@ -333,11 +333,11 @@ where
         res.base2k = a.base2k;
     }
 
-    fn glwe_negate_inplace(&self, res: &mut GLWEBackendMut<'_, BE>) {
+    fn glwe_negate_assign(&self, res: &mut GLWEBackendMut<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         let cols = res.rank().as_usize() + 1;
         for i in 0..cols {
-            self.vec_znx_negate_inplace_backend(&mut res.data, i);
+            self.vec_znx_negate_assign_backend(&mut res.data, i);
         }
     }
 }
@@ -346,8 +346,8 @@ pub trait GLWESub<BE: Backend>
 where
     Self: ModuleN
         + VecZnxSubBackend<BE>
-        + VecZnxSubInplaceBackend<BE>
-        + VecZnxSubNegateInplaceBackend<BE>
+        + VecZnxSubAssignBackend<BE>
+        + VecZnxSubNegateAssignBackend<BE>
         + VecZnxCopyBackend<BE>
         + VecZnxNegateBackend<BE>
         + VecZnxZeroBackend<BE>,
@@ -403,14 +403,14 @@ where
         self.glwe_sub_backend(&mut res, &a, &b);
     }
 
-    fn glwe_sub_inplace_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+    fn glwe_sub_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
         assert!(res.rank() == a.rank() || a.rank() == 0);
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_inplace_backend(&mut res.data, i, &a.data, i);
+            self.vec_znx_sub_assign_backend(&mut res.data, i, &a.data, i);
         }
     }
 
@@ -419,17 +419,17 @@ where
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>,
     {
-        self.glwe_sub_inplace_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
+        self.glwe_sub_assign_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
     }
 
-    fn glwe_sub_negate_inplace_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+    fn glwe_sub_negate_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(res.base2k(), a.base2k());
         assert!(res.rank() == a.rank() || a.rank() == 0);
 
         for i in 0..(a.rank() + 1).into() {
-            self.vec_znx_sub_negate_inplace_backend(&mut res.data, i, &a.data, i);
+            self.vec_znx_sub_negate_assign_backend(&mut res.data, i, &a.data, i);
         }
     }
 
@@ -438,14 +438,14 @@ where
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>,
     {
-        self.glwe_sub_negate_inplace_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
+        self.glwe_sub_negate_assign_backend(&mut res.to_backend_mut(), &a.to_backend_ref());
     }
 }
 
 pub trait GLWERotate<BE: Backend>
 where
     Self:
-        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateInplaceBackend<BE> + VecZnxRotateInplaceTmpBytes + VecZnxZeroBackend<BE>,
+        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()
@@ -467,7 +467,7 @@ where
         }
     }
 
-    fn glwe_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_rotate_assign<'s, 'r>(&self, k: i64, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
@@ -479,7 +479,7 @@ where
         );
 
         for i in 0..(res.rank() + 1).into() {
-            self.vec_znx_rotate_inplace_backend(k, &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_rotate_assign_backend(k, &mut res.data, i, &mut scratch.borrow());
         }
     }
 }
@@ -510,7 +510,7 @@ where
         }
     }
 
-    fn ggsw_rotate_inplace<'s, 'r>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_rotate_assign<'s, 'r>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE> + ScratchAvailable,
     {
@@ -527,7 +527,7 @@ where
         let mut scratch = scratch.borrow();
         for row in 0..rows {
             for col in 0..cols {
-                self.glwe_rotate_inplace(k, &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col), &mut scratch);
+                self.glwe_rotate_assign(k, &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col), &mut scratch);
             }
         }
     }
@@ -535,7 +535,7 @@ where
 
 pub trait GLWEMulXpMinusOne<BE: Backend>
 where
-    Self: ModuleN + VecZnxMulXpMinusOneBackend<BE> + VecZnxMulXpMinusOneInplaceBackend<BE>,
+    Self: ModuleN + VecZnxMulXpMinusOneBackend<BE> + VecZnxMulXpMinusOneAssignBackend<BE>,
 {
     fn glwe_mul_xp_minus_one<R, A>(&self, k: i64, res: &mut R, a: &A)
     where
@@ -554,7 +554,7 @@ where
         }
     }
 
-    fn glwe_mul_xp_minus_one_inplace<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_xp_minus_one_assign<'s, R>(&self, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE>,
     {
@@ -563,7 +563,7 @@ where
         assert_eq!(res.n(), self.n() as u32);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_mul_xp_minus_one_inplace_backend(k, &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_mul_xp_minus_one_assign_backend(k, &mut res.data, i, &mut scratch.borrow());
         }
     }
 }
@@ -592,12 +592,12 @@ where
 pub trait GLWEShift<BE: Backend>
 where
     Self: ModuleN
-        + VecZnxRshInplaceBackend<BE>
+        + VecZnxRshAssignBackend<BE>
         + VecZnxLshAddIntoBackend<BE>
         + VecZnxLshSubBackend<BE>
         + VecZnxRshTmpBytes
         + VecZnxLshTmpBytes
-        + VecZnxLshInplaceBackend<BE>
+        + VecZnxLshAssignBackend<BE>
         + VecZnxLshBackend<BE>,
 {
     fn glwe_shift_tmp_bytes(&self) -> usize {
@@ -618,11 +618,11 @@ where
         );
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_rsh_inplace_backend(base2k, k, &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_rsh_assign_backend(base2k, k, &mut res.data, i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_lsh_inplace<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_lsh_assign<'s, R>(&self, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -638,7 +638,7 @@ where
 
         let base2k: usize = res.base2k().into();
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_lsh_inplace_backend(base2k, k, &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_lsh_assign_backend(base2k, k, &mut res.data, i, &mut scratch.borrow());
         }
     }
 
@@ -723,7 +723,7 @@ where
 
 pub trait GLWENormalize<BE: Backend>
 where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplaceBackend<BE> + VecZnxNormalizeTmpBytes,
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeAssignBackend<BE> + VecZnxNormalizeTmpBytes,
 {
     fn glwe_normalize_tmp_bytes(&self) -> usize {
         self.vec_znx_normalize_tmp_bytes()
@@ -819,7 +819,7 @@ where
         }
     }
 
-    fn glwe_normalize_inplace<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_normalize_assign<'s, 'r>(&self, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
     {
@@ -830,7 +830,7 @@ where
             self.glwe_normalize_tmp_bytes()
         );
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_normalize_inplace_backend(res.base2k().into(), &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_normalize_assign_backend(res.base2k().into(), &mut res.data, i, &mut scratch.borrow());
         }
     }
 }

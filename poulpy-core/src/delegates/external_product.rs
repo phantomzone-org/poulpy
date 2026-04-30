@@ -33,7 +33,7 @@ impl_external_product_delegate!(
         BE::glwe_external_product_tmp_bytes(self, res_infos, a_infos, b_infos)
     }
 
-    fn glwe_external_product_inplace<'s, 'r, D>(
+    fn glwe_external_product_assign<'s, 'r, D>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         rhs: &D,
@@ -92,7 +92,7 @@ impl_external_product_delegate!(
         BE::gglwe_external_product(self, res, a, b, scratch)
     }
 
-    fn gglwe_external_product_inplace<'s, R, A>(
+    fn gglwe_external_product_assign<'s, R, A>(
         &self,
         res: &mut R,
         a: &A,
@@ -137,7 +137,7 @@ impl_external_product_delegate!(
         BE::ggsw_external_product(self, res, a, b, scratch)
     }
 
-    fn ggsw_external_product_inplace<'s, R, A>(
+    fn ggsw_external_product_assign<'s, R, A>(
         &self,
         res: &mut R,
         a: &A,

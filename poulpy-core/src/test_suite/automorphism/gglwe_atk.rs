@@ -202,7 +202,7 @@ pub fn test_gglwe_automorphism_key_automorphism<BE: crate::test_suite::TestBacke
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
+pub fn test_gglwe_automorphism_key_automorphism_assign<BE: crate::test_suite::TestBackend + Backend<OwnedBuf = Vec<u8>>>(
     params: &TestParams,
     module: &Module<BE>,
 ) where
@@ -302,7 +302,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: crate::test_suite::T
             module.glwe_automorphism_key_prepare(&mut auto_key_apply_prepared, &auto_key_apply, &mut scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-            module.glwe_automorphism_key_automorphism_inplace(&mut auto_key, &auto_key_apply_prepared, &mut scratch.borrow());
+            module.glwe_automorphism_key_automorphism_assign(&mut auto_key, &auto_key_apply_prepared, &mut scratch.borrow());
 
             let mut sk_auto: GLWESecret<Vec<u8>> = module.glwe_secret_alloc_from_infos(&auto_key);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk

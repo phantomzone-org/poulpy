@@ -315,24 +315,24 @@ unsafe impl HalVecZnxDftImpl<CudaNtt120Backend> for CudaNtt120Backend {
         unimplemented!("vec_znx_dft_sub: not yet implemented")
     }
 
-    fn vec_znx_dft_sub_inplace(
+    fn vec_znx_dft_sub_assign(
         _module: &Module<CudaNtt120Backend>,
         _res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, CudaNtt120Backend>,
         _res_col: usize,
         _a: &poulpy_hal::layouts::VecZnxDftBackendRef<'_, CudaNtt120Backend>,
         _a_col: usize,
     ) {
-        unimplemented!("vec_znx_dft_sub_inplace: not yet implemented")
+        unimplemented!("vec_znx_dft_sub_assign: not yet implemented")
     }
 
-    fn vec_znx_dft_sub_negate_inplace(
+    fn vec_znx_dft_sub_negate_assign(
         _module: &Module<CudaNtt120Backend>,
         _res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, CudaNtt120Backend>,
         _res_col: usize,
         _a: &poulpy_hal::layouts::VecZnxDftBackendRef<'_, CudaNtt120Backend>,
         _a_col: usize,
     ) {
-        unimplemented!("vec_znx_dft_sub_negate_inplace: not yet implemented")
+        unimplemented!("vec_znx_dft_sub_negate_assign: not yet implemented")
     }
 
     fn vec_znx_dft_copy(

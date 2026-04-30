@@ -8,7 +8,7 @@ use poulpy_core::{
 use poulpy_hal::{
     api::{
         CnvPVecAlloc, Convolution, ModuleNew, ScratchArenaTakeBasic, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize,
-        VecZnxIdftApplyTmpA, VecZnxSubInplaceBackend,
+        VecZnxIdftApplyTmpA, VecZnxSubAssignBackend,
     },
     layouts::{
         Backend, CnvPVecLToBackendMut, CnvPVecLToBackendRef, CnvPVecRToBackendMut, CnvPVecRToBackendRef, HostDataMut, Module,
@@ -253,7 +253,7 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
         + CnvPVecAlloc<BE>
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
-        + VecZnxSubInplaceBackend<BE>,
+        + VecZnxSubAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'x> BE::BufMut<'x>: HostDataMut + AsRef<[u8]> + AsMut<[u8]> + Sync,
     for<'x> BE::BufRef<'x>: AsRef<[u8]> + Send,
@@ -394,8 +394,8 @@ pub fn bench_glwe_tensor_pairwise_lane<BE: Backend<OwnedBuf = Vec<u8>>>(
             let mut tmp_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp);
             let diag_terms_ref =
                 <VecZnx<BE::OwnedBuf> as poulpy_hal::layouts::VecZnxToBackendRef<BE>>::to_backend_ref(&diag_terms);
-            module.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, 0);
-            module.vec_znx_sub_inplace_backend(&mut tmp_mut, 0, &diag_terms_ref, 1);
+            module.vec_znx_sub_assign_backend(&mut tmp_mut, 0, &diag_terms_ref, 0);
+            module.vec_znx_sub_assign_backend(&mut tmp_mut, 0, &diag_terms_ref, 1);
             black_box(());
         })
     });

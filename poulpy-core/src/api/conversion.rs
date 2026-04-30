@@ -116,7 +116,7 @@ where
         self.glwe_keyswitch(&mut tmp_glwe_rank_1, &a_backend, key, &mut scratch_1);
         if a_idx != 0 {
             let mut tmp_glwe_rank_1_backend = glwe_backend_mut_from_mut::<BE>(&mut tmp_glwe_rank_1);
-            self.glwe_rotate_inplace(-(a_idx as i64), &mut tmp_glwe_rank_1_backend, &mut scratch_1);
+            self.glwe_rotate_assign(-(a_idx as i64), &mut tmp_glwe_rank_1_backend, &mut scratch_1);
         }
 
         let tmp_glwe_rank_1_ref = crate::layouts::glwe_backend_ref_from_mut::<BE>(&tmp_glwe_rank_1);

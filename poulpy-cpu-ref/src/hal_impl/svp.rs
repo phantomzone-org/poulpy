@@ -45,14 +45,14 @@ macro_rules! hal_impl_svp {
             <Self as $defaults<Self>>::svp_apply_dft_to_dft_default(module, res, res_col, &a, a_col, b, b_col)
         }
 
-        fn svp_apply_dft_to_dft_inplace(
+        fn svp_apply_dft_to_dft_assign(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::SvpPPolBackendRef<'_, Self>,
             a_col: usize,
         ) {
-            <Self as $defaults<Self>>::svp_apply_dft_to_dft_inplace_default(module, res, res_col, &a, a_col)
+            <Self as $defaults<Self>>::svp_apply_dft_to_dft_assign_default(module, res, res_col, &a, a_col)
         }
     };
 }

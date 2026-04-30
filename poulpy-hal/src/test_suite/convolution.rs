@@ -5,7 +5,7 @@ use crate::{
     api::{
         CnvPVecAlloc, Convolution, ModuleN, ScratchOwnedAlloc, VecZnxAddIntoBackend, VecZnxAlloc, VecZnxBigAlloc,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeInplaceBackend,
+        VecZnxNormalizeAssignBackend,
     },
     layouts::{
         Backend, CnvPVecL, CnvPVecLToBackendMut, CnvPVecLToBackendRef, CnvPVecR, CnvPVecRToBackendMut, CnvPVecRToBackendRef,
@@ -27,7 +27,7 @@ where
         + VecZnxAlloc<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxBigAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
@@ -116,7 +116,7 @@ where
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxBigAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
@@ -231,7 +231,7 @@ where
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxBigAlloc<BE>
         + VecZnxAddIntoBackend<BE>
         + VecZnxCopyBackend<BE>,
@@ -388,7 +388,7 @@ pub fn bivariate_convolution_naive<'s, M, BE: crate::test_suite::TestBackend>(
     b_col: usize,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    M: VecZnxNormalizeInplaceBackend<BE>,
+    M: VecZnxNormalizeAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE>,
 {
     for j in 0..res.size() {
@@ -418,7 +418,7 @@ pub fn bivariate_convolution_naive<'s, M, BE: crate::test_suite::TestBackend>(
     }
 
     let mut res_backend = upload_vec_znx::<BE>(res);
-    module.vec_znx_normalize_inplace_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut res_backend), res_col, scratch);
+    module.vec_znx_normalize_assign_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut res_backend), res_col, scratch);
     *res = download_vec_znx::<BE>(&res_backend);
 }
 
@@ -431,7 +431,7 @@ fn bivariate_tensoring_naive<'s, M, BE: crate::test_suite::TestBackend>(
     b: &VecZnx<Vec<u8>>,
     scratch: &mut ScratchArena<'s, BE>,
 ) where
-    M: VecZnxNormalizeInplaceBackend<BE>,
+    M: VecZnxNormalizeAssignBackend<BE>,
 {
     let cols = res.cols();
 
@@ -475,7 +475,7 @@ fn bivariate_tensoring_naive<'s, M, BE: crate::test_suite::TestBackend>(
 
     let mut res_backend = upload_vec_znx::<BE>(res);
     for i in 0..cols {
-        module.vec_znx_normalize_inplace_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut res_backend), i, scratch);
+        module.vec_znx_normalize_assign_backend(base2k, &mut vec_znx_backend_mut::<BE>(&mut res_backend), i, scratch);
     }
     *res = download_vec_znx::<BE>(&res_backend);
 }

@@ -16,7 +16,7 @@ use crate::reference::{
         NttCFromB, NttDFTExecute, NttFromZnx64, NttMulBbc, NttZero,
         ntt::NttTable,
         primes::Primes30,
-        svp::{ntt120_svp_apply_dft_to_dft_inplace, ntt120_svp_prepare},
+        svp::{ntt120_svp_apply_dft_to_dft_assign, ntt120_svp_prepare},
         types::Q120bScalar,
         vec_znx_dft::NttModuleHandle,
     },
@@ -99,7 +99,7 @@ where
         fft64_svp_apply_dft_to_dft::<BE>(res, res_col, &a_ref, a_col, b, b_col);
     }
 
-    fn svp_apply_dft_to_dft_inplace_default<'r, A>(
+    fn svp_apply_dft_to_dft_assign_default<'r, A>(
         _module: &Module<BE>,
         res: &mut VecZnxDftBackendMut<'r, BE>,
         res_col: usize,
@@ -112,7 +112,7 @@ where
         A: SvpPPolToBackendRef<BE>,
     {
         let a_ref = a.to_backend_ref();
-        fft64_svp_apply_dft_to_dft_inplace::<BE>(res, res_col, &a_ref, a_col);
+        fft64_svp_apply_dft_to_dft_assign::<BE>(res, res_col, &a_ref, a_col);
     }
 }
 
@@ -236,7 +236,7 @@ where
         }
     }
 
-    fn svp_apply_dft_to_dft_inplace_default<'r, A>(
+    fn svp_apply_dft_to_dft_assign_default<'r, A>(
         module: &Module<BE>,
         res: &mut VecZnxDftBackendMut<'r, BE>,
         res_col: usize,
@@ -250,7 +250,7 @@ where
         A: SvpPPolToBackendRef<BE>,
     {
         let a_ref = a.to_backend_ref();
-        ntt120_svp_apply_dft_to_dft_inplace::<BE>(module, res, res_col, &a_ref, a_col);
+        ntt120_svp_apply_dft_to_dft_assign::<BE>(module, res, res_col, &a_ref, a_col);
     }
 }
 

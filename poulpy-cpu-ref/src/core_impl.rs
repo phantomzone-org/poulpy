@@ -258,7 +258,7 @@ external_helper! {
         BE: 's,
     ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product(module, res, a, ggsw, scratch);
 
-    fn external_glwe_external_product_inplace ['s, 'r, BE, G] (
+    fn external_glwe_external_product_assign ['s, 'r, BE, G] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'r, BE>,
         ggsw: &G,
@@ -269,7 +269,7 @@ external_helper! {
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-    ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product_inplace(module, res, ggsw, scratch);
+    ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product_assign(module, res, ggsw, scratch);
 
     fn external_gglwe_external_product_tmp_bytes [BE, R, A, B] (
         module: &Module<BE>,
@@ -296,7 +296,7 @@ external_helper! {
         BE: 's,
     ] => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product(module, res, a, b, scratch);
 
-    fn external_gglwe_external_product_inplace ['s, BE, R, A] (
+    fn external_gglwe_external_product_assign ['s, BE, R, A] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -308,7 +308,7 @@ external_helper! {
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-    ] => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product_inplace(module, res, a, scratch);
+    ] => [GGLWEExternalProductDefaults<BE>]::gglwe_external_product_assign(module, res, a, scratch);
 
     fn external_ggsw_external_product_tmp_bytes [BE, R, A, B] (
         module: &Module<BE>,
@@ -335,7 +335,7 @@ external_helper! {
         BE: 's,
     ] => [GGSWExternalProductDefaults<BE>]::ggsw_external_product(module, res, a, b, scratch);
 
-    fn external_ggsw_external_product_inplace ['s, BE, R, A] (
+    fn external_ggsw_external_product_assign ['s, BE, R, A] (
         module: &Module<BE>,
         res: &mut R,
         a: &A,
@@ -347,7 +347,7 @@ external_helper! {
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
-    ] => [GGSWExternalProductDefaults<BE>]::ggsw_external_product_inplace(module, res, a, scratch);
+    ] => [GGSWExternalProductDefaults<BE>]::ggsw_external_product_assign(module, res, a, scratch);
 }
 
 macro_rules! keyswitch_helper {
@@ -395,7 +395,7 @@ keyswitch_helper! {
         BE: 's,
     ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch(module, res, a, key, scratch);
 
-    fn keyswitch_glwe_keyswitch_inplace ['s, BE, K] (
+    fn keyswitch_glwe_keyswitch_assign ['s, BE, K] (
         module: &Module<BE>,
         res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
         key: &K,
@@ -405,7 +405,7 @@ keyswitch_helper! {
         BE: Backend + GLWEKeyswitchDefaults<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-    ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_inplace(module, res, key, scratch);
+    ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_assign(module, res, key, scratch);
 
     fn keyswitch_gglwe_keyswitch_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
@@ -431,7 +431,7 @@ keyswitch_helper! {
         BE: 's,
     ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch(module, res, a, key, scratch);
 
-    fn keyswitch_gglwe_keyswitch_inplace ['s, BE, R, K] (
+    fn keyswitch_gglwe_keyswitch_assign ['s, BE, R, K] (
         module: &Module<BE>,
         res: &mut R,
         key: &K,
@@ -442,7 +442,7 @@ keyswitch_helper! {
         R: poulpy_core::layouts::GGLWEToBackendMut<BE> + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-    ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch_inplace(module, res, key, scratch);
+    ] => [GGLWEKeyswitchDefaults<BE>]::gglwe_keyswitch_assign(module, res, key, scratch);
 
     fn keyswitch_ggsw_keyswitch_tmp_bytes [BE, R, A, K, T] (
         module: &Module<BE>,
@@ -471,7 +471,7 @@ keyswitch_helper! {
         BE: 's,
     ] => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch(module, res, a, key, tsk, scratch);
 
-    fn keyswitch_ggsw_keyswitch_inplace ['s, BE, R, K, T] (
+    fn keyswitch_ggsw_keyswitch_assign ['s, BE, R, K, T] (
         module: &Module<BE>,
         res: &mut R,
         key: &K,
@@ -484,7 +484,7 @@ keyswitch_helper! {
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
-    ] => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch_inplace(module, res, key, tsk, scratch);
+    ] => [GGSWKeyswitchDefaults<BE>]::ggsw_keyswitch_assign(module, res, key, tsk, scratch);
 
     fn keyswitch_lwe_keyswitch_tmp_bytes [BE, R, A, K] (
         module: &Module<BE>,
@@ -728,7 +728,7 @@ macro_rules! impl_external_product_via_helpers {
                 $($helpers)*::external_glwe_external_product(module, res, a, ggsw, scratch)
             }
 
-            fn glwe_external_product_inplace<'s, 'r, G>(
+            fn glwe_external_product_assign<'s, 'r, G>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 ggsw: &G,
@@ -739,7 +739,7 @@ macro_rules! impl_external_product_via_helpers {
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
             {
-                $($helpers)*::external_glwe_external_product_inplace(module, res, ggsw, scratch)
+                $($helpers)*::external_glwe_external_product_assign(module, res, ggsw, scratch)
             }
         }
 
@@ -770,7 +770,7 @@ macro_rules! impl_external_product_via_helpers {
                 $($helpers)*::external_gglwe_external_product(module, res, a, b, scratch)
             }
 
-            fn gglwe_external_product_inplace<'s, R, A>(
+            fn gglwe_external_product_assign<'s, R, A>(
                 module: &Module<Self>,
                 res: &mut R,
                 a: &A,
@@ -782,7 +782,7 @@ macro_rules! impl_external_product_via_helpers {
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
             {
-                $($helpers)*::external_gglwe_external_product_inplace(module, res, a, scratch)
+                $($helpers)*::external_gglwe_external_product_assign(module, res, a, scratch)
             }
         }
 
@@ -813,7 +813,7 @@ macro_rules! impl_external_product_via_helpers {
                 $($helpers)*::external_ggsw_external_product(module, res, a, b, scratch)
             }
 
-            fn ggsw_external_product_inplace<'s, R, A>(
+            fn ggsw_external_product_assign<'s, R, A>(
                 module: &Module<Self>,
                 res: &mut R,
                 a: &A,
@@ -825,7 +825,7 @@ macro_rules! impl_external_product_via_helpers {
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
             {
-                $($helpers)*::external_ggsw_external_product_inplace(module, res, a, scratch)
+                $($helpers)*::external_ggsw_external_product_assign(module, res, a, scratch)
             }
         }
     };
@@ -858,7 +858,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 $($helpers)*::keyswitch_glwe_keyswitch(module, res, a, key, scratch)
             }
 
-            fn glwe_keyswitch_inplace<'s, K>(
+            fn glwe_keyswitch_assign<'s, K>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'_, Self>,
                 key: &K,
@@ -868,7 +868,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                $($helpers)*::keyswitch_glwe_keyswitch_inplace(module, res, key, scratch)
+                $($helpers)*::keyswitch_glwe_keyswitch_assign(module, res, key, scratch)
             }
         }
 
@@ -898,7 +898,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 $($helpers)*::keyswitch_gglwe_keyswitch(module, res, a, key, scratch)
             }
 
-            fn gglwe_keyswitch_inplace<'s, R, K>(
+            fn gglwe_keyswitch_assign<'s, R, K>(
                 module: &Module<Self>,
                 res: &mut R,
                 key: &K,
@@ -909,7 +909,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                $($helpers)*::keyswitch_gglwe_keyswitch_inplace(module, res, key, scratch)
+                $($helpers)*::keyswitch_gglwe_keyswitch_assign(module, res, key, scratch)
             }
         }
 
@@ -948,7 +948,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 $($helpers)*::keyswitch_ggsw_keyswitch(module, res, a, key, tsk, scratch)
             }
 
-            fn ggsw_keyswitch_inplace<'s, R, K, T>(
+            fn ggsw_keyswitch_assign<'s, R, K, T>(
                 module: &Module<Self>,
                 res: &mut R,
                 key: &K,
@@ -961,7 +961,7 @@ macro_rules! impl_keyswitching_via_helpers {
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                $($helpers)*::keyswitch_ggsw_keyswitch_inplace(module, res, key, tsk, scratch)
+                $($helpers)*::keyswitch_ggsw_keyswitch_assign(module, res, key, tsk, scratch)
             }
         }
 
@@ -1029,7 +1029,7 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_inplace<'s, 'r, K>(
+            fn glwe_automorphism_assign<'s, 'r, K>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 key: &K,
@@ -1038,7 +1038,7 @@ macro_rules! impl_automorphism_via_defaults {
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_inplace_default(module, res, key, scratch)
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_assign_default(module, res, key, scratch)
             }
 
             fn glwe_automorphism_add<'s, 'r, 'a, K>(
@@ -1054,7 +1054,7 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_add_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_add_inplace<'s, 'r, K>(
+            fn glwe_automorphism_add_assign<'s, 'r, K>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 key: &K,
@@ -1063,7 +1063,7 @@ macro_rules! impl_automorphism_via_defaults {
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_add_inplace_default(module, res, key, scratch)
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_add_assign_default(module, res, key, scratch)
             }
 
             fn glwe_automorphism_sub<'s, 'r, 'a, K>(
@@ -1092,7 +1092,7 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_negate_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_sub_inplace<'s, 'r, K>(
+            fn glwe_automorphism_sub_assign<'s, 'r, K>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 key: &K,
@@ -1101,10 +1101,10 @@ macro_rules! impl_automorphism_via_defaults {
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_inplace_default(module, res, key, scratch)
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_assign_default(module, res, key, scratch)
             }
 
-            fn glwe_automorphism_sub_negate_inplace<'s, 'r, K>(
+            fn glwe_automorphism_sub_negate_assign<'s, 'r, K>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 key: &K,
@@ -1113,7 +1113,7 @@ macro_rules! impl_automorphism_via_defaults {
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_negate_inplace_default(module, res, key, scratch)
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_negate_assign_default(module, res, key, scratch)
             }
 
             fn ggsw_automorphism_tmp_bytes<R, A, K, T>(
@@ -1149,7 +1149,7 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::ggsw_automorphism_default(module, res, a, key, tsk, scratch)
             }
 
-            fn ggsw_automorphism_inplace<'s, 'r, K, T>(
+            fn ggsw_automorphism_assign<'s, 'r, K, T>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GGSWBackendMut<'r, Self>,
                 key: &K,
@@ -1160,7 +1160,7 @@ macro_rules! impl_automorphism_via_defaults {
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: AutomorphismImpl<Self> + poulpy_core::oep::ConversionImpl<Self>,
             {
-                <Self as AutomorphismDefaults<Self>>::ggsw_automorphism_inplace_default(module, res, key, tsk, scratch)
+                <Self as AutomorphismDefaults<Self>>::ggsw_automorphism_assign_default(module, res, key, tsk, scratch)
             }
 
             fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(
@@ -1193,7 +1193,7 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(
+            fn glwe_automorphism_key_automorphism_assign<'s, R, K>(
                 module: &Module<Self>,
                 res: &mut R,
                 key: &K,
@@ -1205,7 +1205,7 @@ macro_rules! impl_automorphism_via_defaults {
                     + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_inplace_default(
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_assign_default(
                     module, res, key, scratch,
                 )
             }
@@ -1241,7 +1241,7 @@ macro_rules! impl_operations_via_defaults {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, scratch)
             }
 
-            fn glwe_mul_const_inplace<'s, R>(
+            fn glwe_mul_const_assign<'s, R>(
                 module: &Module<Self>,
                 cnv_offset: usize,
                 res: &mut poulpy_core::layouts::GLWE<R>,
@@ -1252,7 +1252,7 @@ macro_rules! impl_operations_via_defaults {
                 poulpy_core::layouts::GLWE<R>:
                     poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_const_inplace_default(module, cnv_offset, res, b, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_mul_const_assign_default(module, cnv_offset, res, b, scratch)
             }
         }
 
@@ -1295,7 +1295,7 @@ macro_rules! impl_operations_via_defaults {
                 )
             }
 
-            fn glwe_mul_plain_inplace<'s, R, A>(
+            fn glwe_mul_plain_assign<'s, R, A>(
                 module: &Module<Self>,
                 cnv_offset: usize,
                 res: &mut poulpy_core::layouts::GLWE<R>,
@@ -1310,7 +1310,7 @@ macro_rules! impl_operations_via_defaults {
                     poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self>,
                 poulpy_core::layouts::GLWEPlaintext<A>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_plain_inplace_default(
+                <Self as OperationsDefaults<Self>>::glwe_mul_plain_assign_default(
                     module,
                     cnv_offset,
                     res,
@@ -1433,13 +1433,13 @@ macro_rules! impl_operations_via_defaults {
             ) {
                 <Self as OperationsDefaults<Self>>::glwe_rotate_default(module, k, res, a)
             }
-            fn glwe_rotate_inplace<'s, 'r>(
+            fn glwe_rotate_assign<'s, 'r>(
                 module: &Module<Self>,
                 k: i64,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 scratch: &mut ScratchArena<'s, Self>,
             ) {
-                <Self as OperationsDefaults<Self>>::glwe_rotate_inplace_default(module, k, res, scratch);
+                <Self as OperationsDefaults<Self>>::glwe_rotate_assign_default(module, k, res, scratch);
             }
         }
 
@@ -1455,7 +1455,7 @@ macro_rules! impl_operations_via_defaults {
             ) {
                 <Self as OperationsDefaults<Self>>::ggsw_rotate_default(module, k, res, a)
             }
-            fn ggsw_rotate_inplace<'s, 'r>(
+            fn ggsw_rotate_assign<'s, 'r>(
                 module: &Module<Self>,
                 k: i64,
                 res: &mut poulpy_core::layouts::GGSWBackendMut<'r, Self>,
@@ -1463,7 +1463,7 @@ macro_rules! impl_operations_via_defaults {
             ) where
                 ScratchArena<'s, Self>: poulpy_hal::api::ScratchAvailable,
             {
-                <Self as OperationsDefaults<Self>>::ggsw_rotate_inplace_default(module, k, res, scratch)
+                <Self as OperationsDefaults<Self>>::ggsw_rotate_assign_default(module, k, res, scratch)
             }
         }
 
@@ -1475,7 +1475,7 @@ macro_rules! impl_operations_via_defaults {
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_xp_minus_one_default(module, k, res, a)
             }
-            fn glwe_mul_xp_minus_one_inplace<'s, R>(
+            fn glwe_mul_xp_minus_one_assign<'s, R>(
                 module: &Module<Self>,
                 k: i64,
                 res: &mut R,
@@ -1483,7 +1483,7 @@ macro_rules! impl_operations_via_defaults {
             ) where
                 R: GLWEToBackendMut<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_xp_minus_one_inplace_default(module, k, res, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_mul_xp_minus_one_assign_default(module, k, res, scratch)
             }
         }
 
@@ -1498,11 +1498,11 @@ macro_rules! impl_operations_via_defaults {
             {
                 <Self as OperationsDefaults<Self>>::glwe_rsh_default(module, k, res, scratch)
             }
-            fn glwe_lsh_inplace<'s, R>(module: &Module<Self>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, Self>)
+            fn glwe_lsh_assign<'s, R>(module: &Module<Self>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
                 R: GLWEToBackendMut<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_lsh_inplace_default(module, res, k, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_lsh_assign_default(module, res, k, scratch)
             }
             fn glwe_lsh<'s, R, A>(module: &Module<Self>, res: &mut R, a: &A, k: usize, scratch: &mut ScratchArena<'s, Self>)
             where
@@ -1580,12 +1580,12 @@ macro_rules! impl_operations_via_defaults {
             {
                 <Self as OperationsDefaults<Self>>::glwe_normalize_default(module, res, a, scratch)
             }
-            fn glwe_normalize_inplace<'s, 'r>(
+            fn glwe_normalize_assign<'s, 'r>(
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
                 scratch: &mut ScratchArena<'s, Self>,
             ) {
-                <Self as OperationsDefaults<Self>>::glwe_normalize_inplace_default(module, res, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_normalize_assign_default(module, res, scratch)
             }
         }
 
@@ -1619,7 +1619,7 @@ macro_rules! impl_operations_via_defaults {
             {
                 <Self as OperationsDefaults<Self>>::glwe_trace_default(module, res, skip, a, keys, scratch)
             }
-            fn glwe_trace_inplace<'s, R, K, H>(
+            fn glwe_trace_assign<'s, R, K, H>(
                 module: &Module<Self>,
                 res: &mut R,
                 skip: usize,
@@ -1633,7 +1633,7 @@ macro_rules! impl_operations_via_defaults {
                 for<'x> ScratchArena<'x, Self>: ScratchArenaTakeCore<'x, Self>,
                 for<'x> Self: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_trace_inplace_default(module, res, skip, keys, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_trace_assign_default(module, res, skip, keys, scratch)
             }
         }
 

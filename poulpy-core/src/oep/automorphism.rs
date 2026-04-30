@@ -32,7 +32,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_inplace<'s, 'r, K>(
+    fn glwe_automorphism_assign<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -51,7 +51,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_add_inplace<'s, 'r, K>(
+    fn glwe_automorphism_add_assign<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -80,7 +80,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_sub_inplace<'s, 'r, K>(
+    fn glwe_automorphism_sub_assign<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -89,7 +89,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_sub_negate_inplace<'s, 'r, K>(
+    fn glwe_automorphism_sub_negate_assign<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -124,7 +124,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: AutomorphismImpl<BE> + crate::oep::ConversionImpl<BE>;
 
-    fn ggsw_automorphism_inplace<'s, 'r, K, T>(
+    fn ggsw_automorphism_assign<'s, 'r, K, T>(
         module: &Module<BE>,
         res: &mut GGSWBackendMut<'r, BE>,
         key: &K,
@@ -157,7 +157,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
         A: GGLWEToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 
-    fn glwe_automorphism_key_automorphism_inplace<'s, R, K>(
+    fn glwe_automorphism_key_automorphism_assign<'s, R, K>(
         module: &Module<BE>,
         res: &mut R,
         key: &K,
@@ -185,7 +185,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -204,7 +204,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_add_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_add_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -233,7 +233,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_sub_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -242,7 +242,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_automorphism_sub_negate_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_negate_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -280,7 +280,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         BE: 's,
         Module<BE>: GGSWAutomorphismDefault<BE>;
 
-    fn ggsw_automorphism_inplace_default<'s, 'r, K, T>(
+    fn ggsw_automorphism_assign_default<'s, 'r, K, T>(
         module: &Module<BE>,
         res: &mut GGSWBackendMut<'r, BE>,
         key: &K,
@@ -317,7 +317,7 @@ pub trait AutomorphismDefaults<BE: Backend>: Backend {
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         Module<BE>: GLWEAutomorphismKeyAutomorphismDefault<BE>;
 
-    fn glwe_automorphism_key_automorphism_inplace_default<'s, R, K>(
+    fn glwe_automorphism_key_automorphism_assign_default<'s, R, K>(
         module: &Module<BE>,
         res: &mut R,
         key: &K,
@@ -341,7 +341,7 @@ fn glwe_automorphism_add_default_forward<'s, 'r, 'a, BE: Backend + 's, K>(
     <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_add_default(module, res, a, key, scratch)
 }
 
-fn glwe_automorphism_add_inplace_default_forward<'s, 'r, BE: Backend + 's, K>(
+fn glwe_automorphism_add_assign_default_forward<'s, 'r, BE: Backend + 's, K>(
     module: &Module<BE>,
     res: &mut GLWEBackendMut<'r, BE>,
     key: &K,
@@ -350,7 +350,7 @@ fn glwe_automorphism_add_inplace_default_forward<'s, 'r, BE: Backend + 's, K>(
     K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
     Module<BE>: GLWEAutomorphismDefault<BE>,
 {
-    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_add_inplace_default(module, res, key, scratch)
+    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_add_assign_default(module, res, key, scratch)
 }
 
 fn glwe_automorphism_sub_default_forward<'s, 'r, 'a, BE: Backend + 's, K>(
@@ -379,7 +379,7 @@ fn glwe_automorphism_sub_negate_default_forward<'s, 'r, 'a, BE: Backend + 's, K>
     <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_negate_default(module, res, a, key, scratch)
 }
 
-fn glwe_automorphism_sub_inplace_default_forward<'s, 'r, BE: Backend + 's, K>(
+fn glwe_automorphism_sub_assign_default_forward<'s, 'r, BE: Backend + 's, K>(
     module: &Module<BE>,
     res: &mut GLWEBackendMut<'r, BE>,
     key: &K,
@@ -388,10 +388,10 @@ fn glwe_automorphism_sub_inplace_default_forward<'s, 'r, BE: Backend + 's, K>(
     K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
     Module<BE>: GLWEAutomorphismDefault<BE>,
 {
-    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_inplace_default(module, res, key, scratch)
+    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_assign_default(module, res, key, scratch)
 }
 
-fn glwe_automorphism_sub_negate_inplace_default_forward<'s, 'r, BE: Backend + 's, K>(
+fn glwe_automorphism_sub_negate_assign_default_forward<'s, 'r, BE: Backend + 's, K>(
     module: &Module<BE>,
     res: &mut GLWEBackendMut<'r, BE>,
     key: &K,
@@ -400,7 +400,7 @@ fn glwe_automorphism_sub_negate_inplace_default_forward<'s, 'r, BE: Backend + 's
     K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
     Module<BE>: GLWEAutomorphismDefault<BE>,
 {
-    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_negate_inplace_default(module, res, key, scratch)
+    <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_negate_assign_default(module, res, key, scratch)
 }
 
 impl<BE: Backend> AutomorphismDefaults<BE> for BE
@@ -430,7 +430,7 @@ where
         <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_default(module, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -455,7 +455,7 @@ where
         glwe_automorphism_add_default_forward(module, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_add_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_add_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -464,7 +464,7 @@ where
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
-        glwe_automorphism_add_inplace_default_forward(module, res, key, scratch)
+        glwe_automorphism_add_assign_default_forward(module, res, key, scratch)
     }
 
     fn glwe_automorphism_sub_default<'s, 'r, 'a, K>(
@@ -493,7 +493,7 @@ where
         glwe_automorphism_sub_negate_default_forward(module, res, a, key, scratch)
     }
 
-    fn glwe_automorphism_sub_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -502,10 +502,10 @@ where
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
-        glwe_automorphism_sub_inplace_default_forward(module, res, key, scratch)
+        glwe_automorphism_sub_assign_default_forward(module, res, key, scratch)
     }
 
-    fn glwe_automorphism_sub_negate_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_negate_assign_default<'s, 'r, K>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -514,7 +514,7 @@ where
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
-        glwe_automorphism_sub_negate_inplace_default_forward(module, res, key, scratch)
+        glwe_automorphism_sub_negate_assign_default_forward(module, res, key, scratch)
     }
 
     fn ggsw_automorphism_tmp_bytes_default<R, A, K, T>(
@@ -554,7 +554,7 @@ where
         <Module<BE> as GGSWAutomorphismDefault<BE>>::ggsw_automorphism_default(module, res, a, key, tsk, scratch)
     }
 
-    fn ggsw_automorphism_inplace_default<'s, 'r, K, T>(
+    fn ggsw_automorphism_assign_default<'s, 'r, K, T>(
         module: &Module<BE>,
         res: &mut GGSWBackendMut<'r, BE>,
         key: &K,
@@ -604,7 +604,7 @@ where
         )
     }
 
-    fn glwe_automorphism_key_automorphism_inplace_default<'s, R, K>(
+    fn glwe_automorphism_key_automorphism_assign_default<'s, R, K>(
         module: &Module<BE>,
         res: &mut R,
         key: &K,

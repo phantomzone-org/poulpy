@@ -352,7 +352,7 @@ fn combine<B, K, H, M, BE: Backend>(
 
             // a = a * X^-t
             let mut scratch_local = scratch.borrow();
-            module.glwe_rotate_inplace(-t, &mut a.to_backend_mut(), &mut scratch_local);
+            module.glwe_rotate_assign(-t, &mut a.to_backend_mut(), &mut scratch_local);
 
             // tmp_b = a * X^-t - b
             module.glwe_sub(&mut tmp, a, b);
@@ -368,7 +368,7 @@ fn combine<B, K, H, M, BE: Backend>(
             {
                 let mut tmp_backend: crate::layouts::GLWEBackendMut<'_, BE> =
                     <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp);
-                module.glwe_normalize_inplace(&mut tmp_backend, &mut scratch_local);
+                module.glwe_normalize_assign(&mut tmp_backend, &mut scratch_local);
             }
 
             // tmp_b = phi(a * X^-t - b)
@@ -376,14 +376,14 @@ fn combine<B, K, H, M, BE: Backend>(
                 {
                     let mut tmp_backend: crate::layouts::GLWEBackendMut<'_, BE> =
                         <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp);
-                    module.glwe_automorphism_inplace(&mut tmp_backend, auto_key, &mut scratch_local);
+                    module.glwe_automorphism_assign(&mut tmp_backend, auto_key, &mut scratch_local);
                 }
                 // a = a * X^-t + b - phi(a * X^-t - b)
-                module.glwe_sub_inplace(a, &tmp);
-                module.glwe_normalize_inplace(&mut a.to_backend_mut(), &mut scratch_local);
+                module.glwe_sub_assign(a, &tmp);
+                module.glwe_normalize_assign(&mut a.to_backend_mut(), &mut scratch_local);
 
                 // a = a + b * X^t - phi(a * X^-t - b) * X^t
-                module.glwe_rotate_inplace(t, &mut a.to_backend_mut(), &mut scratch_local);
+                module.glwe_rotate_assign(t, &mut a.to_backend_mut(), &mut scratch_local);
             } else {
                 panic!("auto_key[{gal_el}] not found");
             }
@@ -392,7 +392,7 @@ fn combine<B, K, H, M, BE: Backend>(
             module.glwe_rsh(1, a, &mut scratch);
             // a = a + phi(a)
             if let Some(auto_key) = auto_keys.get_automorphism_key(gal_el) {
-                module.glwe_automorphism_add_inplace(&mut a.to_backend_mut(), auto_key, &mut scratch);
+                module.glwe_automorphism_add_assign(&mut a.to_backend_mut(), auto_key, &mut scratch);
             } else {
                 panic!("auto_key[{gal_el}] not found");
             }

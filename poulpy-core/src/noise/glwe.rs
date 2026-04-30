@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{
     Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, Stats, vec_znx_host_backend_ref,
 };
 
-use crate::vec_znx_host_ops::vec_znx_sub_inplace;
+use crate::vec_znx_host_ops::vec_znx_sub_assign;
 use crate::{
     GLWENormalize, ScratchArenaTakeCore,
     api::GLWENoise,
@@ -37,13 +37,13 @@ where
 
     let (mut pt_have, mut scratch_1) = scratch.borrow().take_glwe_plaintext(res_ref);
     glwe_decrypt_backend_inner(module, res_backend, &mut pt_have, sk_backend, &mut scratch_1);
-    vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want_ref.data, 0);
+    vec_znx_sub_assign(&mut pt_have.data, 0, &pt_want_ref.data, 0);
     let pt_base2k = pt_have.base2k();
     let mut pt_have_backend = GLWE {
         base2k: pt_have.base2k,
         data: pt_have.data,
     };
-    module.glwe_normalize_inplace(&mut pt_have_backend, &mut scratch_1);
+    module.glwe_normalize_assign(&mut pt_have_backend, &mut scratch_1);
     pt_have_backend.data.stats(pt_base2k.into(), 0)
 }
 

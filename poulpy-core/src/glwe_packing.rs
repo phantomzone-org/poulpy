@@ -14,25 +14,25 @@ use crate::{
     },
 };
 
-fn glwe_rotate_inplace_on<'s, M, A, BE: Backend + 's>(module: &M, k: i64, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
+fn glwe_rotate_assign_on<'s, M, A, BE: Backend + 's>(module: &M, k: i64, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
 where
     M: GLWERotate<BE> + ?Sized,
     A: GLWEToBackendMut<BE>,
 {
     let mut a_backend = a.to_backend_mut();
-    module.glwe_rotate_inplace(k, &mut a_backend, scratch);
+    module.glwe_rotate_assign(k, &mut a_backend, scratch);
 }
 
-fn glwe_normalize_inplace_on<'s, M, A, BE: Backend + 's>(module: &M, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
+fn glwe_normalize_assign_on<'s, M, A, BE: Backend + 's>(module: &M, a: &mut A, scratch: &mut ScratchArena<'s, BE>)
 where
     M: GLWENormalize<BE> + ?Sized,
     A: GLWEToBackendMut<BE>,
 {
     let mut a_backend = a.to_backend_mut();
-    module.glwe_normalize_inplace(&mut a_backend, scratch)
+    module.glwe_normalize_assign(&mut a_backend, scratch)
 }
 
-fn glwe_automorphism_add_inplace_on<'s, M, A, K, BE: Backend + 's>(
+fn glwe_automorphism_add_assign_on<'s, M, A, K, BE: Backend + 's>(
     module: &M,
     a: &mut A,
     key: &K,
@@ -43,7 +43,7 @@ fn glwe_automorphism_add_inplace_on<'s, M, A, K, BE: Backend + 's>(
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
 {
     let mut a_backend = a.to_backend_mut();
-    module.glwe_automorphism_add_inplace(&mut a_backend, key, scratch)
+    module.glwe_automorphism_add_assign(&mut a_backend, key, scratch)
 }
 
 #[allow(dead_code)]
@@ -102,7 +102,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
             let a_layout = a.glwe_layout();
             let mut tmp_b = module.glwe_alloc_from_infos(&a_layout);
 
-            glwe_rotate_inplace_on(module, -t, a, scratch);
+            glwe_rotate_assign_on(module, -t, a, scratch);
 
             module.glwe_sub(&mut tmp_b, a, b);
             module.glwe_rsh(1, &mut tmp_b, scratch);
@@ -117,23 +117,23 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
             {
                 let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
                     <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
-                module.glwe_normalize_inplace(&mut tmp_b_backend, scratch);
+                module.glwe_normalize_assign(&mut tmp_b_backend, scratch);
             }
 
             {
                 let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
                     <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
-                module.glwe_automorphism_inplace(&mut tmp_b_backend, auto_key, scratch);
+                module.glwe_automorphism_assign(&mut tmp_b_backend, auto_key, scratch);
             }
 
-            module.glwe_sub_inplace(a, &tmp_b);
-            glwe_normalize_inplace_on(module, a, scratch);
+            module.glwe_sub_assign(a, &tmp_b);
+            glwe_normalize_assign_on(module, a, scratch);
 
-            glwe_rotate_inplace_on(module, t, a, scratch)
+            glwe_rotate_assign_on(module, t, a, scratch)
         } else {
             module.glwe_rsh(1, a, scratch);
             // a = a + phi(a)
-            glwe_automorphism_add_inplace_on(module, a, auto_key, scratch);
+            glwe_automorphism_add_assign_on(module, a, auto_key, scratch);
         }
     } else if let Some(b) = b.as_deref_mut() {
         let t: i64 = 1 << (b.n().log2() - i - 1);

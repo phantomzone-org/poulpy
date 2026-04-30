@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeInplaceBackend, VecZnxZeroBackend},
+    api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeAssignBackend, VecZnxZeroBackend},
     layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
     source::Source,
 };
@@ -46,7 +46,7 @@ where
         + GGSWEncryptSk<BE>
         + GGSWNoise<BE>
         + VecZnxAddScalarAssignBackend<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxZeroBackend<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -120,7 +120,7 @@ where
                         <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
                             &mut tmp_pt.data,
                         );
-                    self.vec_znx_normalize_inplace_backend(base2k, &mut tmp_pt_data, 0, scratch)
+                    self.vec_znx_normalize_assign_backend(base2k, &mut tmp_pt_data, 0, scratch)
                 });
 
                 for col_j in 0..rank + 1 {

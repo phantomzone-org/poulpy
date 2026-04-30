@@ -1,6 +1,6 @@
 use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, ScalarZnxBackendRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxSub, ZnxSubInplace, ZnxZero},
+    reference::znx::{ZnxSub, ZnxSubAssign, ZnxZero},
 };
 
 pub fn vec_znx_sub_scalar<'r, 'a, BE>(
@@ -36,14 +36,14 @@ pub fn vec_znx_sub_scalar<'r, 'a, BE>(
     }
 }
 
-pub fn vec_znx_sub_scalar_inplace<'r, 'a, BE>(
+pub fn vec_znx_sub_scalar_assign<'r, 'a, BE>(
     res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
     res_limb: usize,
     a: &ScalarZnxBackendRef<'a, BE>,
     a_col: usize,
 ) where
-    BE: Backend + ZnxSubInplace,
+    BE: Backend + ZnxSubAssign,
     BE::BufMut<'r>: HostDataMut,
     BE::BufRef<'a>: HostDataRef,
 {
@@ -52,5 +52,5 @@ pub fn vec_znx_sub_scalar_inplace<'r, 'a, BE>(
         assert!(res_limb < res.size());
     }
 
-    BE::znx_sub_inplace(res.at_mut(res_col, res_limb), a.at(a_col, 0));
+    BE::znx_sub_assign(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }

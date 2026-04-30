@@ -322,7 +322,7 @@ where
                     gglwe_s1s2_prepared.max_k(),
                     gglwe_s1s2_prepared.size()
                 );
-                module.gglwe_keyswitch_inplace(&mut gglwe_s0s1, &gglwe_s1s2_prepared, &mut scratch_apply.borrow());
+                module.gglwe_keyswitch_assign(&mut gglwe_s0s1, &gglwe_s1s2_prepared, &mut scratch_apply.borrow());
 
                 let gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = gglwe_s0s1;
 

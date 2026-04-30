@@ -18,7 +18,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_sub_inplace<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub(crate) fn vec_znx_sub_assign<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: ZnxViewMut<Scalar = i64> + ZnxInfos,
     A: ZnxView<Scalar = i64> + ZnxInfos,

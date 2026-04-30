@@ -77,7 +77,7 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_sub_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_sub_assign<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWESub<BE>,
 {
@@ -125,7 +125,7 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_normalize_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_normalize_assign<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWENormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -142,7 +142,7 @@ where
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
             let mut res_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res);
-            module.glwe_normalize_inplace(&mut res_backend, &mut scratch.borrow());
+            module.glwe_normalize_assign(&mut res_backend, &mut scratch.borrow());
             black_box(());
         })
     });
@@ -182,7 +182,7 @@ where
     group.finish();
 }
 
-pub fn bench_glwe_mul_plain_inplace<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
+pub fn bench_glwe_mul_plain_assign<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GLWEInfos, c: &mut Criterion, label: &str)
 where
     Module<BE>: ModuleNew<BE> + GLWEMulPlain<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

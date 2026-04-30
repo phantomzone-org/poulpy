@@ -1,5 +1,5 @@
 use crate::{
-    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPPolCopyBackend, SvpPrepare},
+    api::{SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPPolBytesOf, SvpPPolCopyBackend, SvpPrepare},
     layouts::{
         Backend, Module, ScalarZnxBackendRef, SvpPPolBackendMut, SvpPPolBackendRef, SvpPPolOwned, VecZnxBackendRef,
         VecZnxDftBackendMut, VecZnxDftBackendRef,
@@ -81,14 +81,14 @@ impl_svp_delegate!(
 );
 
 impl_svp_delegate!(
-    SvpApplyDftToDftInplace<B>,
-    fn svp_apply_dft_to_dft_inplace(
+    SvpApplyDftToDftAssign<B>,
+    fn svp_apply_dft_to_dft_assign(
         &self,
         res: &mut VecZnxDftBackendMut<'_, B>,
         res_col: usize,
         a: &SvpPPolBackendRef<'_, B>,
         a_col: usize,
     ) {
-        <B as HalSvpImpl<B>>::svp_apply_dft_to_dft_inplace(self, res, res_col, a, a_col);
+        <B as HalSvpImpl<B>>::svp_apply_dft_to_dft_assign(self, res, res_col, a, a_col);
     }
 );

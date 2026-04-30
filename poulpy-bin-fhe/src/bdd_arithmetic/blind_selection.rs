@@ -80,14 +80,14 @@ where
                     (Some(lo), None) => {
                         let mut zero: GLWE<BE::OwnedBuf> = self.glwe_alloc_from_infos(res);
                         zero.data_mut().zero();
-                        self.cmux_inplace(lo, &zero, bit, scratch);
+                        self.cmux_assign(lo, &zero, bit, scratch);
                         a.insert(j, lo);
                     }
 
                     (None, Some(hi)) => {
                         let mut zero: GLWE<BE::OwnedBuf> = self.glwe_alloc_from_infos(res);
                         zero.data_mut().zero();
-                        self.cmux_inplace(&mut zero, hi, bit, scratch);
+                        self.cmux_assign(&mut zero, hi, bit, scratch);
                         self.glwe_copy(
                             &mut hi.to_backend_mut(),
                             &<GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&zero),

@@ -3,7 +3,7 @@ use super::{TestParams, download_vec_znx, upload_vec_znx};
 use crate::{
     api::{
         ScratchOwnedAlloc, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddAssign, VecZnxDftAddInto,
-        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace,
+        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubAssign, VecZnxDftSubNegateAssign,
         VecZnxIdftApply, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
@@ -529,12 +529,12 @@ pub fn test_vec_znx_dft_sub<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8
     }
 }
 
-pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+pub fn test_vec_znx_dft_sub_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxDftSubInplace<BR>
+    Module<BR>: VecZnxDftSubAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxBigAlloc<BR>
@@ -572,8 +572,8 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf 
             let mut res_dft_test = dft_of_uploaded_vec_znx(module_test, &res, 1, 0);
 
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_inplace(&mut res_dft_ref.to_backend_mut(), i, &a_dft_ref.to_backend_ref(), i);
-                module_test.vec_znx_dft_sub_inplace(&mut res_dft_test.to_backend_mut(), i, &a_dft_test.to_backend_ref(), i);
+                module_ref.vec_znx_dft_sub_assign(&mut res_dft_ref.to_backend_mut(), i, &a_dft_ref.to_backend_ref(), i);
+                module_test.vec_znx_dft_sub_assign(&mut res_dft_test.to_backend_mut(), i, &a_dft_test.to_backend_ref(), i);
             }
 
             let res_ref = idft_tmpa_to_host(module_ref, base2k, &mut res_dft_ref, &mut scratch_ref);
@@ -583,7 +583,7 @@ pub fn test_vec_znx_dft_sub_inplace<BR: crate::test_suite::TestBackend<OwnedBuf 
     }
 }
 
-pub fn test_vec_znx_dft_sub_negate_inplace<
+pub fn test_vec_znx_dft_sub_negate_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -591,7 +591,7 @@ pub fn test_vec_znx_dft_sub_negate_inplace<
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxDftSubNegateInplace<BR>
+    Module<BR>: VecZnxDftSubNegateAssign<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxBigAlloc<BR>
@@ -629,8 +629,8 @@ pub fn test_vec_znx_dft_sub_negate_inplace<
             let mut res_dft_test = dft_of_uploaded_vec_znx(module_test, &res, 1, 0);
 
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_negate_inplace(&mut res_dft_ref.to_backend_mut(), i, &a_dft_ref.to_backend_ref(), i);
-                module_test.vec_znx_dft_sub_negate_inplace(
+                module_ref.vec_znx_dft_sub_negate_assign(&mut res_dft_ref.to_backend_mut(), i, &a_dft_ref.to_backend_ref(), i);
+                module_test.vec_znx_dft_sub_negate_assign(
                     &mut res_dft_test.to_backend_mut(),
                     i,
                     &a_dft_test.to_backend_ref(),

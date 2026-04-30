@@ -69,7 +69,7 @@ where
         let mut scratch = ScratchOwned::<BE>::alloc(cols * module.glwe_rotate_tmp_bytes());
         {
             let mut inplace_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut inplace);
-            module.glwe_rotate_inplace(shift, &mut inplace_backend, &mut scratch.borrow());
+            module.glwe_rotate_assign(shift, &mut inplace_backend, &mut scratch.borrow());
         }
 
         for col in 0..cols {

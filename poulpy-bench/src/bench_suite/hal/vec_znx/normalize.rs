@@ -5,7 +5,7 @@ use rand::Rng;
 
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplaceBackend, VecZnxNormalizeTmpBytes,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef},
     source::Source,
@@ -63,9 +63,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_normalize_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_normalize_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxNormalizeAssign<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxNormalizeAssignBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     B::OwnedBuf: AsMut<[u8]>,
 {
@@ -75,7 +75,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxNormalizeAssign<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxNormalizeAssignBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
         B::OwnedBuf: AsMut<[u8]>,
     {
@@ -97,7 +97,7 @@ where
         move || {
             let mut a = <VecZnx<B::OwnedBuf> as VecZnxToBackendMut<B>>::to_backend_mut(&mut a);
             for i in 0..cols {
-                module.vec_znx_normalize_assign(base2k, &mut a, i, scratch.borrow());
+                module.vec_znx_normalize_assign_backend(base2k, &mut a, i, &mut scratch.borrow());
             }
             black_box(());
         }

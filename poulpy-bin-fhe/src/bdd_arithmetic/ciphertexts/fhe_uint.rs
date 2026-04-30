@@ -364,12 +364,12 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         }
 
         // Zeroes all other bytes
-        module.glwe_trace_inplace(&mut tmp_fhe_uint_byte, trace_start, keys, &mut scratch_1);
+        module.glwe_trace_assign(&mut tmp_fhe_uint_byte, trace_start, keys, &mut scratch_1);
 
         // Moves back self[0] to self[byte_tg]
         {
             let mut tmp_backend = <FheUint<BE::OwnedBuf, T> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_fhe_uint_byte);
-            module.glwe_rotate_inplace(rot, &mut tmp_backend, &mut scratch_1);
+            module.glwe_rotate_assign(rot, &mut tmp_backend, &mut scratch_1);
         }
 
         // Add self[0] += a[0]
@@ -489,7 +489,7 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
             let mut res_backend = res.to_backend_mut();
             module.glwe_rotate(-rot, &mut res_backend, &self_backend);
         }
-        module.glwe_trace_inplace(res, 0, keys, scratch);
+        module.glwe_trace_assign(res, 0, keys, scratch);
     }
 
     pub fn get_byte<'s, R, K, M, H, BE>(&self, module: &M, byte: usize, res: &mut R, keys: &H, scratch: &mut ScratchArena<'s, BE>)
@@ -512,7 +512,7 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
             let mut res_backend = res.to_backend_mut();
             module.glwe_rotate(-rot, &mut res_backend, &self_backend);
         }
-        module.glwe_trace_inplace(res, trace_start, keys, scratch);
+        module.glwe_trace_assign(res, trace_start, keys, scratch);
     }
 }
 
@@ -567,7 +567,7 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         // Move a to self and align byte
         {
             let mut self_backend = <FheUint<D, T> as GLWEToBackendMut<BE>>::to_backend_mut(self);
-            module.glwe_rotate_inplace(-rot, &mut self_backend, scratch);
+            module.glwe_rotate_assign(-rot, &mut self_backend, scratch);
         }
 
         // Stores this byte (everything else zeroed) into tmp_trace
@@ -578,12 +578,12 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         {
             let mut self_backend = <FheUint<D, T> as GLWEToBackendMut<BE>>::to_backend_mut(self);
             let tmp_trace_ref = <GLWE<BE::OwnedBuf> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_trace);
-            module.glwe_sub_inplace_backend(&mut self_backend, &tmp_trace_ref);
+            module.glwe_sub_assign_backend(&mut self_backend, &tmp_trace_ref);
         }
 
         // Move a to self and align byte
         let mut self_backend = <FheUint<D, T> as GLWEToBackendMut<BE>>::to_backend_mut(self);
-        module.glwe_rotate_inplace(rot, &mut self_backend, scratch);
+        module.glwe_rotate_assign(rot, &mut self_backend, scratch);
     }
 
     pub fn sext<'s, M, H, K, BE>(&mut self, module: &M, byte: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
@@ -612,7 +612,7 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
             let mut sext_backend = <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut sext);
             module.glwe_rotate(-rot, &mut sext_backend, &self_backend);
         }
-        module.glwe_trace_inplace(&mut sext, 0, keys, &mut scratch_1.borrow());
+        module.glwe_trace_assign(&mut sext, 0, keys, &mut scratch_1.borrow());
 
         // Replicates MSB in byte
         for i in 0..3 {

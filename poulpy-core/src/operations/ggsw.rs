@@ -36,7 +36,7 @@ where
         }
     }
 
-    fn ggsw_rotate_inplace_default<'s, 'r>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_rotate_assign_default<'s, 'r>(&self, k: i64, res: &mut GGSWBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>)
     where
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE> + ScratchAvailable,
     {
@@ -53,7 +53,7 @@ where
         for row in 0..rows {
             for col in 0..cols {
                 let mut scratch_iter = scratch.borrow();
-                self.glwe_rotate_inplace(k, &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col), &mut scratch_iter);
+                self.glwe_rotate_assign(k, &mut ggsw_at_backend_mut_from_mut::<BE>(res, row, col), &mut scratch_iter);
             }
         }
     }

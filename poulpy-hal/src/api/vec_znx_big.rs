@@ -131,7 +131,7 @@ pub trait VecZnxBigSub<B: Backend> {
 
 pub trait VecZnxBigSubAssign<B: Backend> {
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_inplace(
+    fn vec_znx_big_sub_assign(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
@@ -142,7 +142,7 @@ pub trait VecZnxBigSubAssign<B: Backend> {
 
 pub trait VecZnxBigSubNegateAssign<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_negate_inplace(
+    fn vec_znx_big_sub_negate_assign(
         &self,
         res: &mut VecZnxBigBackendMut<'_, B>,
         res_col: usize,
@@ -166,7 +166,7 @@ pub trait VecZnxBigSubSmallABackend<B: Backend> {
 
 pub trait VecZnxBigSubSmallAssign<B: Backend> {
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_assign<'r, 'a>(
         &self,
         res: &mut VecZnxBigBackendMut<'r, B>,
         res_col: usize,
@@ -190,7 +190,7 @@ pub trait VecZnxBigSubSmallBBackend<B: Backend> {
 
 pub trait VecZnxBigSubSmallNegateAssign<B: Backend> {
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_negate_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_negate_assign<'r, 'a>(
         &self,
         res: &mut VecZnxBigBackendMut<'r, B>,
         res_col: usize,
@@ -211,8 +211,8 @@ pub trait VecZnxBigNegate<B: Backend> {
 }
 
 /// Negates the selected column of `res` in-place.
-pub trait VecZnxBigNegateInplace<B: Backend> {
-    fn vec_znx_big_negate_inplace(&self, res: &mut VecZnxBigBackendMut<'_, B>, res_col: usize);
+pub trait VecZnxBigNegateAssign<B: Backend> {
+    fn vec_znx_big_negate_assign(&self, res: &mut VecZnxBigBackendMut<'_, B>, res_col: usize);
 }
 
 /// Returns scratch bytes required for [`VecZnxBigNormalize`].
@@ -256,7 +256,7 @@ pub trait VecZnxBigAutomorphism<B: Backend> {
 
 pub trait VecZnxBigAutomorphismAssign<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace<'s>(
+    fn vec_znx_big_automorphism_assign<'s>(
         &self,
         p: i64,
         res: &mut VecZnxBigBackendMut<'_, B>,

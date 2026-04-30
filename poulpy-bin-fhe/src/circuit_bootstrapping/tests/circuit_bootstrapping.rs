@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{ModuleN, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplaceBackend},
+    api::{ModuleN, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssignBackend},
     layouts::{Backend, HostBackend, HostDataMut, HostDataRef, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
@@ -44,7 +44,7 @@ pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + 
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
         + ScalarZnxAlloc<BE>
-        + VecZnxRotateInplaceBackend<BE>,
+        + VecZnxRotateAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
@@ -224,7 +224,7 @@ pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + 
 
     {
         let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-        module.glwe_external_product_inplace(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+        module.glwe_external_product_assign(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
     }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ggsw_infos);
@@ -251,7 +251,7 @@ pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + 
         + GGSWNoise<BE>
         + GLWEEncryptSk<BE>
         + ScalarZnxAlloc<BE>
-        + VecZnxRotateInplaceBackend<BE>,
+        + VecZnxRotateAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     BE::OwnedBuf: HostDataRef + HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
@@ -422,7 +422,7 @@ pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + 
 
     {
         let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-        module.glwe_external_product_inplace(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+        module.glwe_external_product_assign(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
     }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ggsw_infos);

@@ -38,7 +38,7 @@ where
             .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos))
     }
 
-    fn ggsw_keyswitch_inplace_default<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_keyswitch_assign_default<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
@@ -55,7 +55,7 @@ where
         );
 
         for row in 0..res.dnum().into() {
-            self.glwe_keyswitch_inplace(
+            self.glwe_keyswitch_assign(
                 &mut ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, 0),
                 key,
                 &mut scratch.borrow(),

@@ -1,7 +1,6 @@
 use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero},
-    source::Source,
+    reference::znx::{ZnxCopy, ZnxNegate, ZnxNegateAssign, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero},
 };
 
 pub fn vec_znx_sub<'r, 'a, BE>(
@@ -59,13 +58,13 @@ pub fn vec_znx_sub<'r, 'a, BE>(
     }
 }
 
-pub fn vec_znx_sub_inplace<'r, 'a, BE>(
+pub fn vec_znx_sub_assign<'r, 'a, BE>(
     res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
     a: &VecZnxBackendRef<'a, BE>,
     a_col: usize,
 ) where
-    BE: Backend + ZnxSubInplace,
+    BE: Backend + ZnxSubAssign,
     BE::BufMut<'r>: HostDataMut,
     BE::BufRef<'a>: HostDataRef,
 {
@@ -80,17 +79,17 @@ pub fn vec_znx_sub_inplace<'r, 'a, BE>(
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        BE::znx_sub_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::znx_sub_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
-pub fn vec_znx_sub_negate_inplace<'r, 'a, BE>(
+pub fn vec_znx_sub_negate_assign<'r, 'a, BE>(
     res: &mut VecZnxBackendMut<'r, BE>,
     res_col: usize,
     a: &VecZnxBackendRef<'a, BE>,
     a_col: usize,
 ) where
-    BE: Backend + ZnxSubNegateInplace + ZnxNegateInplace,
+    BE: Backend + ZnxSubNegateAssign + ZnxNegateAssign,
     BE::BufMut<'r>: HostDataMut,
     BE::BufRef<'a>: HostDataRef,
 {
@@ -105,11 +104,11 @@ pub fn vec_znx_sub_negate_inplace<'r, 'a, BE>(
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        BE::znx_sub_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::znx_sub_negate_assign(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in sum_size..res_size {
-        BE::znx_negate_inplace(res.at_mut(res_col, j));
+        BE::znx_negate_assign(res.at_mut(res_col, j));
     }
 }
 

@@ -754,7 +754,7 @@ where
     }
 
     // res = (a - res) * s + res
-    fn cmux_inplace_neg<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
+    fn cmux_assign_neg<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
     where
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>,
@@ -829,7 +829,7 @@ where
     }
 
     // res = (res - a) * s + a
-    fn cmux_inplace<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
+    fn cmux_assign<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut ScratchArena<'_, BE>)
     where
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>,
@@ -844,7 +844,7 @@ where
         let scratch = scratch.borrow();
         let res_base2k: usize = res.base2k().into();
         let ggsw_base2k: usize = s.base2k().into();
-        self.glwe_sub_inplace_backend(
+        self.glwe_sub_assign_backend(
             &mut glwe_backend_mut_from_mut::<BE>(res),
             &glwe_backend_ref_from_ref::<BE>(&a),
         );

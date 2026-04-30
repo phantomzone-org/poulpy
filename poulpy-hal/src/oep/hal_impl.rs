@@ -97,7 +97,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_normalize_inplace_backend<'s, 'r>(
+    fn vec_znx_normalize_assign_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         a: &mut VecZnxBackendMut<'r, BE>,
@@ -154,7 +154,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn vec_znx_sub_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_assign_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
@@ -162,7 +162,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_sub_negate_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_negate_assign_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
@@ -182,7 +182,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         b_limb: usize,
     );
 
-    fn vec_znx_sub_scalar_inplace_backend<'r, 'a>(
+    fn vec_znx_sub_scalar_assign_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,
         res_col: usize,
@@ -199,7 +199,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_negate_inplace_backend(module: &Module<BE>, a: &mut VecZnxBackendMut<'_, BE>, a_col: usize);
+    fn vec_znx_negate_assign_backend(module: &Module<BE>, a: &mut VecZnxBackendMut<'_, BE>, a_col: usize);
 
     fn vec_znx_rsh_tmp_bytes(module: &Module<BE>) -> usize;
 
@@ -271,7 +271,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_rsh_inplace_backend<'s, 'r>(
+    fn vec_znx_rsh_assign_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -280,7 +280,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn vec_znx_lsh_inplace_backend<'s, 'r>(
+    fn vec_znx_lsh_assign_backend<'s, 'r>(
         module: &Module<BE>,
         base2k: usize,
         k: usize,
@@ -300,7 +300,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 
     fn vec_znx_rotate_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_rotate_inplace_backend<'s, 'r>(
+    fn vec_znx_rotate_assign_backend<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         a: &mut VecZnxBackendMut<'r, BE>,
@@ -319,7 +319,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 
     fn vec_znx_automorphism_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_automorphism_inplace<'s, 'r>(
+    fn vec_znx_automorphism_assign<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut VecZnxBackendMut<'r, BE>,
@@ -338,7 +338,7 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
 
     fn vec_znx_mul_xp_minus_one_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_mul_xp_minus_one_inplace_backend<'s>(
+    fn vec_znx_mul_xp_minus_one_assign_backend<'s>(
         module: &Module<BE>,
         k: i64,
         res: &mut VecZnxBackendMut<'_, BE>,
@@ -503,7 +503,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn vec_znx_big_sub_inplace(
+    fn vec_znx_big_sub_assign(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
@@ -511,7 +511,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_big_sub_negate_inplace(
+    fn vec_znx_big_sub_negate_assign(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
         res_col: usize,
@@ -529,7 +529,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn vec_znx_big_sub_small_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_assign<'r, 'a>(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'r, BE>,
         res_col: usize,
@@ -547,7 +547,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn vec_znx_big_sub_small_negate_inplace<'r, 'a>(
+    fn vec_znx_big_sub_small_negate_assign<'r, 'a>(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxBigBackendMut<'r, BE>,
         res_col: usize,
@@ -563,7 +563,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_big_negate_inplace(module: &Module<BE>, a: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>, a_col: usize);
+    fn vec_znx_big_negate_assign(module: &Module<BE>, a: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>, a_col: usize);
 
     fn vec_znx_big_normalize_tmp_bytes(module: &Module<BE>) -> usize;
 
@@ -591,7 +591,7 @@ pub unsafe trait HalVecZnxBigImpl<BE: Backend>: Backend {
 
     fn vec_znx_big_automorphism_assign_tmp_bytes(module: &Module<BE>) -> usize;
 
-    fn vec_znx_big_automorphism_inplace<'s>(
+    fn vec_znx_big_automorphism_assign<'s>(
         module: &Module<BE>,
         k: i64,
         a: &mut crate::layouts::VecZnxBigBackendMut<'_, BE>,
@@ -672,7 +672,7 @@ pub unsafe trait HalVecZnxDftImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn vec_znx_dft_sub_inplace(
+    fn vec_znx_dft_sub_assign(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
@@ -680,7 +680,7 @@ pub unsafe trait HalVecZnxDftImpl<BE: Backend>: Backend {
         a_col: usize,
     );
 
-    fn vec_znx_dft_sub_negate_inplace(
+    fn vec_znx_dft_sub_negate_assign(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,
@@ -743,7 +743,7 @@ pub unsafe trait HalSvpImpl<BE: Backend>: Backend {
         b_col: usize,
     );
 
-    fn svp_apply_dft_to_dft_inplace(
+    fn svp_apply_dft_to_dft_assign(
         module: &Module<BE>,
         res: &mut crate::layouts::VecZnxDftBackendMut<'_, BE>,
         res_col: usize,

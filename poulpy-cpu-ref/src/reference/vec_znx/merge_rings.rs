@@ -38,8 +38,8 @@ pub fn vec_znx_merge_rings<'r, 'a, BE>(
 
     a.iter().for_each(|ai| {
         vec_znx_switch_ring::<BE>(res, res_col, ai, a_col);
-        vec_znx_rotate_inplace::<BE>(-1, res, res_col, tmp);
+        vec_znx_rotate_assign::<BE>(-1, res, res_col, tmp);
     });
 
-    vec_znx_rotate_inplace::<BE>(a.len() as i64, res, res_col, tmp);
+    vec_znx_rotate_assign::<BE>(a.len() as i64, res, res_col, tmp);
 }

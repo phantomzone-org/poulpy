@@ -5,7 +5,7 @@ use super::{
 
 use crate::{
     api::{
-        ScratchOwnedAlloc, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxBigAlloc,
+        ScratchOwnedAlloc, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxBigAlloc,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA,
     },
     layouts::{
@@ -304,7 +304,7 @@ pub fn test_svp_apply_dft_to_dft<BR: crate::test_suite::TestBackend<OwnedBuf = V
     }
 }
 
-pub fn test_svp_apply_dft_to_dft_inplace<
+pub fn test_svp_apply_dft_to_dft_assign<
     BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
     BT: crate::test_suite::TestBackend,
 >(
@@ -395,8 +395,8 @@ pub fn test_svp_apply_dft_to_dft_inplace<
         }
 
         for j in 0..cols {
-            module_ref.svp_apply_dft_to_dft_inplace(&mut res_dft_ref.to_backend_mut(), j, &svp_ref.to_backend_ref(), j);
-            module_test.svp_apply_dft_to_dft_inplace(&mut res_dft_test.to_backend_mut(), j, &svp_test.to_backend_ref(), j);
+            module_ref.svp_apply_dft_to_dft_assign(&mut res_dft_ref.to_backend_mut(), j, &svp_ref.to_backend_ref(), j);
+            module_test.svp_apply_dft_to_dft_assign(&mut res_dft_test.to_backend_mut(), j, &svp_test.to_backend_ref(), j);
         }
 
         let res_big_ref = idft_into_alloc(module_ref, &mut res_dft_ref);

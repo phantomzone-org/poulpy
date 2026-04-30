@@ -1,7 +1,6 @@
 use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxNegate, ZnxNegateInplace, ZnxZero},
-    source::Source,
+    reference::znx::{ZnxNegate, ZnxNegateAssign, ZnxZero},
 };
 
 pub fn vec_znx_negate<'r, 'a, BE>(res: &mut VecZnxBackendMut<'r, BE>, res_col: usize, a: &VecZnxBackendRef<'a, BE>, a_col: usize)
@@ -26,13 +25,13 @@ where
     }
 }
 
-pub fn vec_znx_negate_inplace<'r, BE>(res: &mut VecZnxBackendMut<'r, BE>, res_col: usize)
+pub fn vec_znx_negate_assign<'r, BE>(res: &mut VecZnxBackendMut<'r, BE>, res_col: usize)
 where
-    BE: Backend + ZnxNegateInplace,
+    BE: Backend + ZnxNegateAssign,
     BE::BufMut<'r>: HostDataMut,
 {
     for j in 0..res.size() {
-        BE::znx_negate_inplace(res.at_mut(res_col, j));
+        BE::znx_negate_assign(res.at_mut(res_col, j));
     }
 }
 

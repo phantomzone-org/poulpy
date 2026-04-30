@@ -91,7 +91,7 @@ where
         }
     }
 
-    fn gglwe_external_product_inplace_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_external_product_assign_default<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -117,7 +117,7 @@ where
         let mut res = res.to_backend_mut();
         for row in 0..res_dnum {
             for col in 0..res_rank_in {
-                self.glwe_external_product_inplace(
+                self.glwe_external_product_assign(
                     &mut crate::layouts::gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     a,
                     &mut scratch.borrow(),

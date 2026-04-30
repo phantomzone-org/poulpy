@@ -44,7 +44,7 @@ pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
         .collect()
 }
 
-fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
+fn trace_assign_internal<'s, 'r, M, K, H, BE: Backend + 's>(
     module: &M,
     res: &mut GLWEBackendMut<'r, BE>,
     skip: usize,
@@ -73,10 +73,10 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
     assert_eq!(ksk_infos.rank_in(), res.rank());
     assert_eq!(ksk_infos.rank_out(), res.rank());
     assert!(
-        scratch.available() >= module.glwe_trace_inplace_tmp_bytes_default(res, ksk_infos),
-        "scratch.available(): {} < GLWETrace::glwe_trace_inplace_tmp_bytes: {}",
+        scratch.available() >= module.glwe_trace_assign_tmp_bytes_default(res, ksk_infos),
+        "scratch.available(): {} < GLWETrace::glwe_trace_assign_tmp_bytes: {}",
         scratch.available(),
-        module.glwe_trace_inplace_tmp_bytes_default(res, ksk_infos)
+        module.glwe_trace_assign_tmp_bytes_default(res, ksk_infos)
     );
 
     if res.base2k() != ksk_infos.base2k() {
@@ -97,7 +97,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         {
             let mut res_conv_backend = glwe_backend_mut_from_mut::<BE>(&mut res_conv);
             scratch_1 = scratch_1.apply_mut(|scratch| {
-                trace_inplace_internal::<M, K, H, BE>(module, &mut res_conv_backend, skip, keys, scratch);
+                trace_assign_internal::<M, K, H, BE>(module, &mut res_conv_backend, skip, keys, scratch);
             });
         }
 
@@ -112,7 +112,7 @@ fn trace_inplace_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         let mut res_backend = &mut *res;
         module.glwe_rsh(1, &mut res_backend, scratch);
         if let Some(key) = keys.get_automorphism_key(p) {
-            module.glwe_automorphism_add_inplace(res, key, scratch);
+            module.glwe_automorphism_add_assign(res, key, scratch);
         } else {
             panic!("keys[{p}] is empty")
         }
@@ -124,7 +124,7 @@ pub trait GLWETraceDefault<BE: Backend>
 where
     Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy<BE> + CyclotomicOrder + GLWENormalize<BE>,
 {
-    fn glwe_trace_inplace_tmp_bytes_default<A, K>(&self, a_infos: &A, key_infos: &K) -> usize
+    fn glwe_trace_assign_tmp_bytes_default<A, K>(&self, a_infos: &A, key_infos: &K) -> usize
     where
         A: GLWEInfos,
         K: GGLWEInfos,
@@ -142,7 +142,7 @@ where
             let lvl_0: usize = GLWE::<Vec<u8>>::bytes_of_from_infos(&a_conv_infos);
             let lvl_1: usize = self
                 .glwe_normalize_tmp_bytes()
-                .max(self.glwe_trace_inplace_tmp_bytes_default(&a_conv_infos, key_infos));
+                .max(self.glwe_trace_assign_tmp_bytes_default(&a_conv_infos, key_infos));
             return lvl_0 + lvl_1;
         }
 
@@ -176,7 +176,7 @@ where
         } else {
             self.glwe_normalize_tmp_bytes()
         };
-        let lvl_2: usize = self.glwe_trace_inplace_tmp_bytes_default(&tmp_infos, key_infos);
+        let lvl_2: usize = self.glwe_trace_assign_tmp_bytes_default(&tmp_infos, key_infos);
         let lvl_3: usize = if res_infos.base2k() == key_infos.base2k() {
             0
         } else {
@@ -224,7 +224,7 @@ where
         {
             let mut tmp_backend = glwe_backend_mut_from_mut::<BE>(&mut tmp);
             scratch_1 = scratch_1.apply_mut(|scratch| {
-                trace_inplace_internal::<Self, K, H, BE>(self, &mut tmp_backend, skip, keys, scratch);
+                trace_assign_internal::<Self, K, H, BE>(self, &mut tmp_backend, skip, keys, scratch);
             });
         }
 
@@ -242,7 +242,7 @@ where
         }
     }
 
-    fn glwe_trace_inplace_default<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_trace_assign_default<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -252,7 +252,7 @@ where
     {
         {
             let mut res_backend = res.to_backend_mut();
-            trace_inplace_internal::<Self, K, H, BE>(self, &mut res_backend, skip, keys, scratch)
+            trace_assign_internal::<Self, K, H, BE>(self, &mut res_backend, skip, keys, scratch)
         };
     }
 }

@@ -286,7 +286,7 @@ mod tests {
     };
     use poulpy_hal::{
         api::{
-            SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxDftAddAssign, VecZnxDftAlloc,
+            SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAssign, SvpPPolAlloc, SvpPrepare, VecZnxDftAddAssign, VecZnxDftAlloc,
             VecZnxDftApply, VecZnxDftCopy, VecZnxDftZero,
         },
         layouts::{
@@ -968,7 +968,7 @@ mod tests {
     }
 
     /// Verify that GPU `svp_prepare` + `svp_apply_dft` / `svp_apply_dft_to_dft` /
-    /// `svp_apply_dft_to_dft_inplace` all match the CPU reference (NTT120Ref).
+    /// `svp_apply_dft_to_dft_assign` all match the CPU reference (NTT120Ref).
     ///
     /// Comparison is residue-by-residue: for each limb, coefficient j, and prime k,
     /// `gpu_i32[(limb * 4 + k) * N + j]` must equal
@@ -1031,7 +1031,7 @@ mod tests {
             );
         }
 
-        // svp_apply_dft_to_dft_inplace: cpu_dft2 *= scalar.
+        // svp_apply_dft_to_dft_assign: cpu_dft2 *= scalar.
         let mut cpu_dft3: VecZnxDft<Vec<u8>, NTT120Ref> = module_cpu.vec_znx_dft_alloc(COLS, SIZE);
         for col in 0..COLS {
             module_cpu.vec_znx_dft_copy(
@@ -1042,7 +1042,7 @@ mod tests {
                 &<VecZnxDft<Vec<u8>, NTT120Ref> as VecZnxDftToBackendRef<NTT120Ref>>::to_backend_ref(&cpu_dft2),
                 col,
             );
-            module_cpu.svp_apply_dft_to_dft_inplace(&mut cpu_dft3.to_backend_mut(), col, &svp_cpu.to_backend_ref(), 0);
+            module_cpu.svp_apply_dft_to_dft_assign(&mut cpu_dft3.to_backend_mut(), col, &svp_cpu.to_backend_ref(), 0);
         }
 
         // ── GPU ───────────────────────────────────────────────────────────────
@@ -1123,7 +1123,7 @@ mod tests {
             }
             compare_dft(&gpu_dft2, &cpu_dft2, "svp_apply_dft_to_dft");
 
-            // svp_apply_dft_to_dft_inplace parity.
+            // svp_apply_dft_to_dft_assign parity.
             let mut gpu_dft3: VecZnxDft<CudaBuf, CudaNtt120Backend> = module_gpu.vec_znx_dft_alloc(COLS, SIZE);
             for col in 0..COLS {
                 module_gpu.vec_znx_dft_copy(
@@ -1136,9 +1136,9 @@ mod tests {
                     ),
                     col,
                 );
-                module_gpu.svp_apply_dft_to_dft_inplace(&mut gpu_dft3.to_backend_mut(), col, &svp_gpu.to_backend_ref(), 0);
+                module_gpu.svp_apply_dft_to_dft_assign(&mut gpu_dft3.to_backend_mut(), col, &svp_gpu.to_backend_ref(), 0);
             }
-            compare_dft(&gpu_dft3, &cpu_dft3, "svp_apply_dft_to_dft_inplace");
+            compare_dft(&gpu_dft3, &cpu_dft3, "svp_apply_dft_to_dft_assign");
         }));
 
         match result {

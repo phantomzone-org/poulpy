@@ -19,7 +19,7 @@ pub trait GLWEExternalProduct<BE: Backend> {
         A: GLWEInfos,
         B: GGSWInfos;
 
-    fn glwe_external_product_inplace<'s, 'r, D>(
+    fn glwe_external_product_assign<'s, 'r, D>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         a: &D,
@@ -153,7 +153,7 @@ where
         }
     }
 
-    fn gglwe_external_product_inplace<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn gglwe_external_product_assign<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGLWEToBackendMut<BE> + GGLWEInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -179,7 +179,7 @@ where
         let mut res = res.to_backend_mut();
         for row in 0..res_dnum {
             for col in 0..res_rank_in {
-                self.glwe_external_product_inplace(
+                self.glwe_external_product_assign(
                     &mut crate::layouts::gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     a,
                     &mut scratch.borrow(),
@@ -252,7 +252,7 @@ where
         }
     }
 
-    fn ggsw_external_product_inplace<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
+    fn ggsw_external_product_assign<'s, R, A>(&self, res: &mut R, a: &A, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         A: GGSWPreparedToBackendRef<BE> + GGSWInfos,
@@ -274,7 +274,7 @@ where
         let mut res = res.to_backend_mut();
         for row in 0..res_dnum {
             for col in 0..res_rank {
-                self.glwe_external_product_inplace(
+                self.glwe_external_product_assign(
                     &mut crate::layouts::ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     a,
                     &mut scratch.borrow(),

@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchArenaTakeBasic, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxBigAddSmallAssign,
-        VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxDftBytesOf, VecZnxIdftApply,
+        ScratchArenaTakeBasic, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxBigAddSmallAssign,
+        VecZnxBigAutomorphismAssign, VecZnxBigAutomorphismAssignTmpBytes, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallAssign, VecZnxBigSubSmallNegateAssign, VecZnxDftBytesOf, VecZnxIdftApply,
         VecZnxIdftApplyTmpBytes, VecZnxNormalize,
     },
     layouts::{Backend, Module, ScratchArena, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendRef},
@@ -22,13 +22,13 @@ pub(crate) trait GLWEAutomorphismDefault<BE: Backend>:
     + GLWEKeyswitch<BE>
     + GLWEKeySwitchInternal<BE>
     + VecZnxNormalize<BE>
-    + VecZnxAutomorphismInplace<BE>
-    + VecZnxAutomorphismInplaceTmpBytes
-    + VecZnxBigAutomorphismInplace<BE>
-    + VecZnxBigAutomorphismInplaceTmpBytes
+    + VecZnxAutomorphismAssign<BE>
+    + VecZnxAutomorphismAssignTmpBytes
+    + VecZnxBigAutomorphismAssign<BE>
+    + VecZnxBigAutomorphismAssignTmpBytes
     + VecZnxBigBytesOf
-    + VecZnxBigSubSmallInplace<BE>
-    + VecZnxBigSubSmallNegateInplace<BE>
+    + VecZnxBigSubSmallAssign<BE>
+    + VecZnxBigSubSmallNegateAssign<BE>
     + VecZnxBigAddSmallAssign<BE>
     + VecZnxBigNormalize<BE>
     + VecZnxBigNormalizeTmpBytes
@@ -56,13 +56,13 @@ where
         };
         let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
         let cols: usize = res_infos.rank().as_usize() + 1;
-        let lvl_1: usize = self.vec_znx_automorphism_inplace_tmp_bytes();
+        let lvl_1: usize = self.vec_znx_automorphism_assign_tmp_bytes();
         let lvl_2: usize = lvl_conv
             + self.bytes_of_vec_znx_dft(cols, key_infos.size())
             + self.bytes_of_vec_znx_big(cols, key_infos.size())
             + self
                 .vec_znx_idft_apply_tmp_bytes()
-                .max(self.vec_znx_big_automorphism_inplace_tmp_bytes())
+                .max(self.vec_znx_big_automorphism_assign_tmp_bytes())
                 .max(self.vec_znx_big_normalize_tmp_bytes());
 
         lvl_0.max(lvl_1).max(lvl_2)
@@ -88,11 +88,11 @@ where
         self.glwe_keyswitch(res, a, key, scratch);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_automorphism_inplace(key.p(), &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_automorphism_assign(key.p(), &mut res.data, i, &mut scratch.borrow());
         }
     }
 
-    fn glwe_automorphism_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_assign_default<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -111,7 +111,7 @@ where
         self.glwe_keyswitch_assign(res, key, scratch);
 
         for i in 0..res.rank().as_usize() + 1 {
-            self.vec_znx_automorphism_inplace(key.p(), &mut res.data, i, &mut scratch.borrow());
+            self.vec_znx_automorphism_assign(key.p(), &mut res.data, i, &mut scratch.borrow());
         }
     }
 
@@ -153,7 +153,7 @@ where
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &a_norm.data, 0);
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &a_norm.data, i);
             }
 
@@ -173,7 +173,7 @@ where
         }
     }
 
-    fn glwe_automorphism_add_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_add_assign_default<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -214,7 +214,7 @@ where
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &res_norm.data, 0);
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &res_norm.data, i);
             }
 
@@ -271,8 +271,8 @@ where
             }
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
-                self.vec_znx_big_sub_small_inplace(&mut res_big, i, &a_norm.data, i);
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
+                self.vec_znx_big_sub_small_assign(&mut res_big, i, &a_norm.data, i);
             }
 
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -328,8 +328,8 @@ where
             }
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
-                self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &a_norm.data, i);
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
+                self.vec_znx_big_sub_small_negate_assign(&mut res_big, i, &a_norm.data, i);
             }
 
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -348,7 +348,7 @@ where
         }
     }
 
-    fn glwe_automorphism_sub_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_assign_default<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -388,8 +388,8 @@ where
             }
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
-                self.vec_znx_big_sub_small_inplace(&mut res_big, i, &res_norm.data, i);
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
+                self.vec_znx_big_sub_small_assign(&mut res_big, i, &res_norm.data, i);
             }
 
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -408,7 +408,7 @@ where
         }
     }
 
-    fn glwe_automorphism_sub_negate_inplace_default<'s, 'r, K>(
+    fn glwe_automorphism_sub_negate_assign_default<'s, 'r, K>(
         &self,
         res: &mut GLWEBackendMut<'r, BE>,
         key: &K,
@@ -448,8 +448,8 @@ where
             }
 
             for i in 0..cols {
-                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch));
-                self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &res_norm.data, i);
+                scratch = scratch.apply_mut(|scratch| self.vec_znx_big_automorphism_assign(key.p(), &mut res_big, i, scratch));
+                self.vec_znx_big_sub_small_negate_assign(&mut res_big, i, &res_norm.data, i);
             }
 
             let res_big_ref = res_big.reborrow_backend_ref();
@@ -475,13 +475,13 @@ where
         + GLWEKeyswitch<BE>
         + GLWEKeySwitchInternal<BE>
         + VecZnxNormalize<BE>
-        + VecZnxAutomorphismInplace<BE>
-        + VecZnxAutomorphismInplaceTmpBytes
-        + VecZnxBigAutomorphismInplace<BE>
-        + VecZnxBigAutomorphismInplaceTmpBytes
+        + VecZnxAutomorphismAssign<BE>
+        + VecZnxAutomorphismAssignTmpBytes
+        + VecZnxBigAutomorphismAssign<BE>
+        + VecZnxBigAutomorphismAssignTmpBytes
         + VecZnxBigBytesOf
-        + VecZnxBigSubSmallInplace<BE>
-        + VecZnxBigSubSmallNegateInplace<BE>
+        + VecZnxBigSubSmallAssign<BE>
+        + VecZnxBigSubSmallNegateAssign<BE>
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes

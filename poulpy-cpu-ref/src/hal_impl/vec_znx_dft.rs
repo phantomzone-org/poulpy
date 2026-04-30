@@ -84,24 +84,24 @@ macro_rules! hal_impl_vec_znx_dft {
             <Self as $defaults<Self>>::vec_znx_dft_sub_default(module, res, res_col, a, a_col, b, b_col)
         }
 
-        fn vec_znx_dft_sub_inplace(
+        fn vec_znx_dft_sub_assign(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::VecZnxDftBackendRef<'_, Self>,
             a_col: usize,
         ) {
-            <Self as $defaults<Self>>::vec_znx_dft_sub_inplace_default(module, res, res_col, a, a_col)
+            <Self as $defaults<Self>>::vec_znx_dft_sub_assign_default(module, res, res_col, a, a_col)
         }
 
-        fn vec_znx_dft_sub_negate_inplace(
+        fn vec_znx_dft_sub_negate_assign(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxDftBackendMut<'_, Self>,
             res_col: usize,
             a: &poulpy_hal::layouts::VecZnxDftBackendRef<'_, Self>,
             a_col: usize,
         ) {
-            <Self as $defaults<Self>>::vec_znx_dft_sub_negate_inplace_default(module, res, res_col, a, a_col)
+            <Self as $defaults<Self>>::vec_znx_dft_sub_negate_assign_default(module, res, res_col, a, a_col)
         }
 
         fn vec_znx_dft_copy(

@@ -17,8 +17,8 @@ use crate::{
         znx::{
             ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate,
             ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep,
-            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
-            ZnxNormalizeMiddleStepCarryOnly, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_add_normal_f64_ref,
+            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+            ZnxNormalizeMiddleStepAssign, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -57,7 +57,7 @@ where
 
 pub fn vec_znx_big_add_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -85,7 +85,7 @@ where
 
 pub fn vec_znx_big_add_small_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxAddInplace,
+    BE: Backend<ScalarBig = i64> + ZnxAddAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -120,7 +120,7 @@ where
     R: VecZnxBigToBackendMut<BE>,
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
-    vec_znx_automorphism_inplace::<BE>(p, &mut res_vznx, res_col, tmp);
+    vec_znx_automorphism_assign::<BE>(p, &mut res_vznx, res_col, tmp);
 }
 
 pub fn vec_znx_big_negate<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -138,12 +138,12 @@ where
 
 pub fn vec_znx_big_negate_assign<R, BE>(res: &mut R, res_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxNegateAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     R: VecZnxBigToBackendMut<BE>,
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
-    vec_znx_negate_inplace::<BE>(&mut res_vznx, res_col);
+    vec_znx_negate_assign::<BE>(&mut res_vznx, res_col);
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
@@ -175,8 +175,8 @@ pub fn vec_znx_big_normalize<R, A, BE>(
         + ZnxNormalizeFirstStep
         + ZnxExtractDigitAddMul
         + ZnxNormalizeDigit
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxNormalizeMiddleStepAssign
+        + ZnxNormalizeFinalStepAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
 {
@@ -268,7 +268,7 @@ where
 /// R <- A - B
 pub fn vec_znx_big_sub_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -276,13 +276,13 @@ where
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
     let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
-    vec_znx_sub_inplace::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_assign::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- B - A
 pub fn vec_znx_big_sub_negate_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -290,7 +290,7 @@ where
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
     let a_vznx = big_as_vec_znx_ref::<BE>(a.to_backend_ref());
-    vec_znx_sub_negate_inplace::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_negate_assign::<BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- A - B
@@ -328,7 +328,7 @@ where
 ///  R <- R - A
 pub fn vec_znx_big_sub_small_a_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -336,13 +336,13 @@ where
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
     let a_ref = a.to_backend_ref();
-    vec_znx_sub_inplace::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
+    vec_znx_sub_assign::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
 }
 
 /// R <- A - R
 pub fn vec_znx_big_sub_small_b_assign<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateAssign + ZnxNegateAssign,
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     R: VecZnxBigToBackendMut<BE>,
@@ -350,5 +350,5 @@ where
 {
     let mut res_vznx = big_as_vec_znx_mut::<BE>(res.to_backend_mut());
     let a_ref = a.to_backend_ref();
-    vec_znx_sub_negate_inplace::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
+    vec_znx_sub_negate_assign::<BE>(&mut res_vznx, res_col, &a_ref, a_col);
 }

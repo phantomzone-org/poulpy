@@ -42,7 +42,7 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>;
 
-    fn glwe_mul_const_inplace<'s, R>(
+    fn glwe_mul_const_assign<'s, R>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -83,7 +83,7 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         GLWE<A>: GLWEToBackendRef<BE>,
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
-    fn glwe_mul_plain_inplace<'s, R, A>(
+    fn glwe_mul_plain_assign<'s, R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -178,7 +178,7 @@ pub unsafe trait GLWERotateImpl<BE: Backend>: Backend {
 
     fn glwe_rotate<'r, 'a>(module: &Module<BE>, k: i64, res: &mut GLWEBackendMut<'r, BE>, a: &GLWEBackendRef<'a, BE>);
 
-    fn glwe_rotate_inplace<'s, 'r>(
+    fn glwe_rotate_assign<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GLWEBackendMut<'r, BE>,
@@ -196,7 +196,7 @@ pub unsafe trait GGSWRotateImpl<BE: Backend>: Backend {
 
     fn ggsw_rotate<'r, 'a>(module: &Module<BE>, k: i64, res: &mut GGSWBackendMut<'r, BE>, a: &GGSWBackendRef<'a, BE>);
 
-    fn ggsw_rotate_inplace<'s, 'r>(
+    fn ggsw_rotate_assign<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GGSWBackendMut<'r, BE>,
@@ -216,7 +216,7 @@ pub unsafe trait GLWEMulXpMinusOneImpl<BE: Backend>: Backend {
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>;
 
-    fn glwe_mul_xp_minus_one_inplace<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_xp_minus_one_assign<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE>;
 }
@@ -234,7 +234,7 @@ pub unsafe trait GLWEShiftImpl<BE: Backend>: Backend {
         R: crate::layouts::GLWEToBackendMut<BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
-    fn glwe_lsh_inplace<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_lsh_assign<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE>;
 
@@ -293,7 +293,7 @@ pub unsafe trait GLWENormalizeImpl<BE: Backend>: Backend {
     ) where
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 
-    fn glwe_normalize_inplace<'s, 'r>(module: &Module<BE>, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>);
+    fn glwe_normalize_assign<'s, 'r>(module: &Module<BE>, res: &mut GLWEBackendMut<'r, BE>, scratch: &mut ScratchArena<'s, BE>);
 }
 
 /// Backend-provided GLWE trace operations.
@@ -325,7 +325,7 @@ pub unsafe trait GLWETraceImpl<BE: Backend>: Backend {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_trace_inplace<'s, R, K, H>(
+    fn glwe_trace_assign<'s, R, K, H>(
         module: &Module<BE>,
         res: &mut R,
         skip: usize,
@@ -402,7 +402,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>;
 
-    fn glwe_mul_const_inplace_default<'s, R>(
+    fn glwe_mul_const_assign_default<'s, R>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -437,7 +437,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
-    fn glwe_mul_plain_inplace_default<'s, R, A>(
+    fn glwe_mul_plain_assign_default<'s, R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -519,7 +519,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn glwe_rotate_default<'r, 'a>(module: &Module<BE>, k: i64, res: &mut GLWEBackendMut<'r, BE>, a: &GLWEBackendRef<'a, BE>);
 
-    fn glwe_rotate_inplace_default<'s, 'r>(
+    fn glwe_rotate_assign_default<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GLWEBackendMut<'r, BE>,
@@ -530,7 +530,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
 
     fn ggsw_rotate_default<'r, 'a>(module: &Module<BE>, k: i64, res: &mut GGSWBackendMut<'r, BE>, a: &GGSWBackendRef<'a, BE>);
 
-    fn ggsw_rotate_inplace_default<'s, 'r>(
+    fn ggsw_rotate_assign_default<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GGSWBackendMut<'r, BE>,
@@ -543,7 +543,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         R: GLWEToBackendMut<BE>,
         A: GLWEToBackendRef<BE>;
 
-    fn glwe_mul_xp_minus_one_inplace_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_xp_minus_one_assign_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE>;
 
@@ -553,7 +553,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
     where
         R: crate::layouts::GLWEToBackendMut<BE>;
 
-    fn glwe_lsh_inplace_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_lsh_assign_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE>;
 
@@ -597,7 +597,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         scratch: &mut ScratchArena<'s, BE>,
     );
 
-    fn glwe_normalize_inplace_default<'s, 'r>(
+    fn glwe_normalize_assign_default<'s, 'r>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         scratch: &mut ScratchArena<'s, BE>,
@@ -626,7 +626,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>;
 
-    fn glwe_trace_inplace_default<'s, R, K, H>(
+    fn glwe_trace_assign_default<'s, R, K, H>(
         module: &Module<BE>,
         res: &mut R,
         skip: usize,
@@ -715,7 +715,7 @@ where
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
     }
 
-    fn glwe_mul_const_inplace_default<'s, R>(
+    fn glwe_mul_const_assign_default<'s, R>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -766,7 +766,7 @@ where
         )
     }
 
-    fn glwe_mul_plain_inplace_default<'s, R, A>(
+    fn glwe_mul_plain_assign_default<'s, R, A>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
@@ -888,13 +888,13 @@ where
         <Module<BE> as GLWERotateDefault<BE>>::glwe_rotate(module, k, res, a)
     }
 
-    fn glwe_rotate_inplace_default<'s, 'r>(
+    fn glwe_rotate_assign_default<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GLWEBackendMut<'r, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) {
-        <Module<BE> as GLWERotateDefault<BE>>::glwe_rotate_inplace(module, k, res, scratch)
+        <Module<BE> as GLWERotateDefault<BE>>::glwe_rotate_assign(module, k, res, scratch)
     }
 
     fn ggsw_rotate_tmp_bytes_default(module: &Module<BE>) -> usize {
@@ -905,7 +905,7 @@ where
         <Module<BE> as GGSWRotateDefault<BE>>::ggsw_rotate_default(module, k, res, a)
     }
 
-    fn ggsw_rotate_inplace_default<'s, 'r>(
+    fn ggsw_rotate_assign_default<'s, 'r>(
         module: &Module<BE>,
         k: i64,
         res: &mut GGSWBackendMut<'r, BE>,
@@ -924,7 +924,7 @@ where
         <Module<BE> as GLWEMulXpMinusOneDefault<BE>>::glwe_mul_xp_minus_one(module, k, res, a)
     }
 
-    fn glwe_mul_xp_minus_one_inplace_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_mul_xp_minus_one_assign_default<'s, R>(module: &Module<BE>, k: i64, res: &mut R, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE>,
     {
@@ -942,7 +942,7 @@ where
         <Module<BE> as GLWEShiftDefault<BE>>::glwe_rsh(module, k, res, scratch)
     }
 
-    fn glwe_lsh_inplace_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
+    fn glwe_lsh_assign_default<'s, R>(module: &Module<BE>, res: &mut R, k: usize, scratch: &mut ScratchArena<'s, BE>)
     where
         R: crate::layouts::GLWEToBackendMut<BE>,
     {
@@ -1018,12 +1018,12 @@ where
         <Module<BE> as GLWENormalizeDefault<BE>>::glwe_normalize(module, res, a, scratch)
     }
 
-    fn glwe_normalize_inplace_default<'s, 'r>(
+    fn glwe_normalize_assign_default<'s, 'r>(
         module: &Module<BE>,
         res: &mut GLWEBackendMut<'r, BE>,
         scratch: &mut ScratchArena<'s, BE>,
     ) {
-        <Module<BE> as GLWENormalizeDefault<BE>>::glwe_normalize_inplace(module, res, scratch)
+        <Module<BE> as GLWENormalizeDefault<BE>>::glwe_normalize_assign(module, res, scratch)
     }
 
     fn glwe_trace_galois_elements_default(module: &Module<BE>) -> Vec<i64> {
@@ -1058,7 +1058,7 @@ where
         <Module<BE> as GLWETraceDefault<BE>>::glwe_trace_default(module, res, skip, a, keys, &mut scratch_local)
     }
 
-    fn glwe_trace_inplace_default<'s, R, K, H>(
+    fn glwe_trace_assign_default<'s, R, K, H>(
         module: &Module<BE>,
         res: &mut R,
         skip: usize,
@@ -1072,7 +1072,7 @@ where
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
     {
         let mut scratch_local = scratch.borrow();
-        <Module<BE> as GLWETraceDefault<BE>>::glwe_trace_inplace_default(module, res, skip, keys, &mut scratch_local)
+        <Module<BE> as GLWETraceDefault<BE>>::glwe_trace_assign_default(module, res, skip, keys, &mut scratch_local)
     }
 
     fn glwe_pack_galois_elements_default(module: &Module<BE>) -> Vec<i64> {
@@ -1181,7 +1181,7 @@ macro_rules! impl_glwe_rotate_impl_from {
                     .expect("failed to write delegated GLWE rotate result back");
             }
 
-            fn glwe_rotate_inplace<'s, R>(
+            fn glwe_rotate_assign<'s, R>(
                 module: &poulpy_hal::layouts::Module<$be>,
                 k: i64,
                 res: &mut R,
@@ -1207,7 +1207,7 @@ macro_rules! impl_glwe_rotate_impl_from {
                         &mut scratch_owned,
                     );
 
-                <poulpy_hal::layouts::Module<$from> as $crate::api::GLWERotate<$from>>::glwe_rotate_inplace(
+                <poulpy_hal::layouts::Module<$from> as $crate::api::GLWERotate<$from>>::glwe_rotate_assign(
                     &delegate,
                     k,
                     &mut res_delegate,

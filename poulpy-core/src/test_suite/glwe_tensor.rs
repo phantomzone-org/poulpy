@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplaceBackend},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeAssignBackend},
     layouts::{FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
     test_suite::convolution::bivariate_convolution_naive,
@@ -29,7 +29,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + GLWESecretTensorFactory<BE>
         + VecZnxNormalize<BE>
         + GLWETensorKeyEncryptSk<BE>
@@ -186,7 +186,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace_backend(
+            module.vec_znx_normalize_assign_backend(
                 pt_tmp.base2k().as_usize(),
                 &mut vec_znx_backend_mut::<BE>(&mut pt_tmp.data),
                 0,
@@ -202,7 +202,7 @@ where
             module.glwe_decrypt(&res_relin, &mut pt_have, &sk_dft, &mut scratch.borrow());
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace_backend(
+            module.vec_znx_normalize_assign_backend(
                 pt_tmp.base2k().as_usize(),
                 &mut vec_znx_backend_mut::<BE>(&mut pt_tmp.data),
                 0,
@@ -297,7 +297,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + GLWESecretTensorFactory<BE>
         + VecZnxNormalize<BE>
         + GLWETensorKeyEncryptSk<BE>
@@ -440,7 +440,7 @@ where
             module.glwe_decrypt(&res_relin_square, &mut pt_have, &sk_dft, &mut scratch.borrow());
             module.glwe_decrypt(&res_relin_tensor, &mut pt_want, &sk_dft, &mut scratch.borrow());
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace_backend(
+            module.vec_znx_normalize_assign_backend(
                 pt_tmp.base2k().as_usize(),
                 &mut vec_znx_backend_mut::<BE>(&mut pt_tmp.data),
                 0,
@@ -461,7 +461,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxNormalize<BE>
         + GLWEMulPlain<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -569,7 +569,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace_backend(
+            module.vec_znx_normalize_assign_backend(
                 pt_tmp.base2k().as_usize(),
                 &mut vec_znx_backend_mut::<BE>(&mut pt_tmp.data),
                 0,
@@ -593,7 +593,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESub<BE>
-        + VecZnxNormalizeInplaceBackend<BE>
+        + VecZnxNormalizeAssignBackend<BE>
         + VecZnxNormalize<BE>
         + GLWEMulConst<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -700,7 +700,7 @@ where
             );
 
             module.glwe_sub(&mut pt_tmp, &pt_have, &pt_want);
-            module.vec_znx_normalize_inplace_backend(
+            module.vec_znx_normalize_assign_backend(
                 pt_tmp.base2k().as_usize(),
                 &mut vec_znx_backend_mut::<BE>(&mut pt_tmp.data),
                 0,

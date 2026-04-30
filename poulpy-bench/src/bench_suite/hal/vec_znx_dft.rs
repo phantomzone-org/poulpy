@@ -274,7 +274,7 @@ where
 
 pub fn bench_vec_znx_dft_sub_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftSubInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftSubAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
     let group_name: String = format!("vec_znx_dft_sub_assign::{label}");
 
@@ -282,7 +282,7 @@ where
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftSubInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftSubAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];
@@ -316,7 +316,7 @@ where
 
 pub fn bench_vec_znx_dft_sub_negate_assign<B: Backend>(params: &crate::params::HalSweepParams, c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftSubNegateInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftSubNegateAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
     let group_name: String = format!("vec_znx_dft_sub_negate_assign::{label}");
 
@@ -324,7 +324,7 @@ where
 
     fn runner<B: Backend>(sweep: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftSubNegateInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftSubNegateAssign<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = 1 << sweep[0];
         let cols: usize = sweep[1];

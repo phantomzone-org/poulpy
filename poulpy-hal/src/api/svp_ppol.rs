@@ -56,8 +56,8 @@ pub trait SvpApplyDftToDft<B: Backend> {
 }
 
 /// Apply a scalar-vector product between `res[res_col]` and `a[a_col]` and stores the result on `res[res_col]`.
-pub trait SvpApplyDftToDftInplace<B: Backend> {
-    fn svp_apply_dft_to_dft_inplace(
+pub trait SvpApplyDftToDftAssign<B: Backend> {
+    fn svp_apply_dft_to_dft_assign(
         &self,
         res: &mut VecZnxDftBackendMut<'_, B>,
         res_col: usize,

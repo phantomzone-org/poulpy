@@ -78,14 +78,14 @@ __global__ static void big_sub_into_kernel(uint32_t *res, const uint32_t *a, con
 }
 
 // res[i] -= a[i]
-__global__ static void big_sub_inplace_kernel(uint32_t *res, const uint32_t *a, int len) {
+__global__ static void big_sub_assign_kernel(uint32_t *res, const uint32_t *a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= len) return;
     store_i128(res + 4 * i, load_i128(res + 4 * i) - load_i128(a + 4 * i));
 }
 
 // res[i] = a[i] - res[i]
-__global__ static void big_sub_negate_inplace_kernel(uint32_t *res, const uint32_t *a, int len) {
+__global__ static void big_sub_negate_assign_kernel(uint32_t *res, const uint32_t *a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= len) return;
     store_i128(res + 4 * i, load_i128(a + 4 * i) - load_i128(res + 4 * i));
@@ -99,7 +99,7 @@ __global__ static void big_negate_into_kernel(uint32_t *res, const uint32_t *a, 
 }
 
 // res[i] = -res[i]
-__global__ static void big_negate_inplace_kernel(uint32_t *res, int len) {
+__global__ static void big_negate_assign_kernel(uint32_t *res, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= len) return;
     store_i128(res + 4 * i, -load_i128(res + 4 * i));
@@ -120,14 +120,14 @@ __global__ static void big_sub_small_b_kernel(uint32_t *res, const uint32_t *a, 
 }
 
 // res[i] -= (int128)a[i]   (a: i64)
-__global__ static void big_sub_small_inplace_kernel(uint32_t *res, const int64_t *a, int len) {
+__global__ static void big_sub_small_assign_kernel(uint32_t *res, const int64_t *a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= len) return;
     store_i128(res + 4 * i, load_i128(res + 4 * i) - (__int128)a[i]);
 }
 
 // res[i] = (int128)a[i] - res[i]   (a: i64)
-__global__ static void big_sub_small_negate_inplace_kernel(uint32_t *res, const int64_t *a, int len) {
+__global__ static void big_sub_small_negate_assign_kernel(uint32_t *res, const int64_t *a, int len) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= len) return;
     store_i128(res + 4 * i, (__int128)a[i] - load_i128(res + 4 * i));
@@ -202,16 +202,16 @@ void ntt120_big_sub_into(void *stream, uint32_t *res, const uint32_t *a, const u
     check_big("ntt120_big_sub_into");
 }
 
-void ntt120_big_sub_inplace(void *stream, uint32_t *res, const uint32_t *a, int len) {
+void ntt120_big_sub_assign(void *stream, uint32_t *res, const uint32_t *a, int len) {
     if (len <= 0) return;
-    big_sub_inplace_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
-    check_big("ntt120_big_sub_inplace");
+    big_sub_assign_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
+    check_big("ntt120_big_sub_assign");
 }
 
-void ntt120_big_sub_negate_inplace(void *stream, uint32_t *res, const uint32_t *a, int len) {
+void ntt120_big_sub_negate_assign(void *stream, uint32_t *res, const uint32_t *a, int len) {
     if (len <= 0) return;
-    big_sub_negate_inplace_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
-    check_big("ntt120_big_sub_negate_inplace");
+    big_sub_negate_assign_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
+    check_big("ntt120_big_sub_negate_assign");
 }
 
 void ntt120_big_negate_into(void *stream, uint32_t *res, const uint32_t *a, int len) {
@@ -220,10 +220,10 @@ void ntt120_big_negate_into(void *stream, uint32_t *res, const uint32_t *a, int 
     check_big("ntt120_big_negate_into");
 }
 
-void ntt120_big_negate_inplace(void *stream, uint32_t *res, int len) {
+void ntt120_big_negate_assign(void *stream, uint32_t *res, int len) {
     if (len <= 0) return;
-    big_negate_inplace_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, len);
-    check_big("ntt120_big_negate_inplace");
+    big_negate_assign_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, len);
+    check_big("ntt120_big_negate_assign");
 }
 
 void ntt120_big_sub_small_a(void *stream, uint32_t *res, const int64_t *a, const uint32_t *b, int len) {
@@ -238,16 +238,16 @@ void ntt120_big_sub_small_b(void *stream, uint32_t *res, const uint32_t *a, cons
     check_big("ntt120_big_sub_small_b");
 }
 
-void ntt120_big_sub_small_inplace(void *stream, uint32_t *res, const int64_t *a, int len) {
+void ntt120_big_sub_small_assign(void *stream, uint32_t *res, const int64_t *a, int len) {
     if (len <= 0) return;
-    big_sub_small_inplace_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
-    check_big("ntt120_big_sub_small_inplace");
+    big_sub_small_assign_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
+    check_big("ntt120_big_sub_small_assign");
 }
 
-void ntt120_big_sub_small_negate_inplace(void *stream, uint32_t *res, const int64_t *a, int len) {
+void ntt120_big_sub_small_negate_assign(void *stream, uint32_t *res, const int64_t *a, int len) {
     if (len <= 0) return;
-    big_sub_small_negate_inplace_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
-    check_big("ntt120_big_sub_small_negate_inplace");
+    big_sub_small_negate_assign_kernel<<<(len + kBigBlock - 1) / kBigBlock, kBigBlock, 0, (cudaStream_t)stream>>>(res, a, len);
+    check_big("ntt120_big_sub_small_negate_assign");
 }
 
 void ntt120_big_from_small(void *stream, uint32_t *res, const int64_t *a, int len) {
