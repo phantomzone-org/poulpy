@@ -88,6 +88,15 @@ Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICEN
 
 **Poulpy** was incubated by [PhantomZone](https://phantom.zone/) with grants from [Ethereum Foundation](https://ethereum.foundation/) and [ENS Foundation](https://docs.ens.domains/dao/foundation/).
 
+
+## Contact
+
+Consider joining our [telegram](https://t.me/+uy7_HADsdN1jNmU1) group for any questions or discussions.
+
+## Funding
+
+Team behind poulpy accepts financial contributions over various platforms. Please see [funding.json](./funding.json) for funding.
+
 ## Citing
 Please use the following BibTeX entry for citing Poulpy:
 
