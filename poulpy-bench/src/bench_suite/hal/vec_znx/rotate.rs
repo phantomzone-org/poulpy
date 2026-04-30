@@ -5,8 +5,8 @@ use rand::Rng;
 
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateBackend, VecZnxRotateAssignBackend,
-        VecZnxRotateAssignTmpBytes,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes,
+        VecZnxRotateBackend,
     },
     layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef},
     source::Source,
@@ -43,7 +43,7 @@ where
             let a = <VecZnx<B::OwnedBuf> as VecZnxToBackendRef<B>>::to_backend_ref(&a);
             let mut res = <VecZnx<B::OwnedBuf> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res);
             for i in 0..cols {
-                module.vec_znx_rotate(-7, &mut res, i, &a, i);
+                module.vec_znx_rotate_backend(-7, &mut res, i, &a, i);
             }
             black_box(());
         }

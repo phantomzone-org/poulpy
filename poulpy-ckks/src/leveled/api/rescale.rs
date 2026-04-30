@@ -1,6 +1,6 @@
 use anyhow::Result;
-use poulpy_core::{GLWEShift, ScratchTakeCore};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
+use poulpy_core::{GLWEShift, ScratchArenaTakeCore};
+use poulpy_hal::layouts::{Backend, Data, ScratchArena};
 
 use crate::layouts::CKKSCiphertext;
 
@@ -19,38 +19,48 @@ pub trait CKKSRescaleOps<BE: Backend> {
     ///
     /// Errors include `InsufficientHomomorphicCapacity` if `k` exceeds the
     /// available `log_budget`.
-    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertext<impl DataMut>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_rescale_assign<D: Data>(
+        &self,
+        ct: &mut CKKSCiphertext<D>,
+        k: usize,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<D>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     /// Computes a rescaled copy of `src` into `dst`.
     ///
     /// Errors include `InsufficientHomomorphicCapacity`.
-    fn ckks_rescale_into(
+    fn ckks_rescale_into<Dst: Data, Src: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         k: usize,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        src: &CKKSCiphertext<Src>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     /// Rescales either `a` or `b` in place so both ciphertexts end up with the
     /// same `log_budget`.
     ///
     /// Errors propagate from the underlying rescale operation.
-    fn ckks_align_assign(
+    fn ckks_align_assign<A: Data, B: Data>(
         &self,
-        a: &mut CKKSCiphertext<impl DataMut>,
-        b: &mut CKKSCiphertext<impl DataMut>,
-        scratch: &mut Scratch<BE>,
+        a: &mut CKKSCiphertext<A>,
+        b: &mut CKKSCiphertext<B>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<B>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     /// Returns scratch bytes required by [`Self::ckks_align_assign`].
     fn ckks_align_tmp_bytes(&self) -> usize

@@ -11,6 +11,7 @@ readme = "README.md"
 
 [features]
 enable-avx = ["dep:poulpy-cpu-avx", "poulpy-cpu-avx/enable-avx", "poulpy-core/enable-avx", "poulpy-bin-fhe/enable-avx"]
+ckks-bench = ["dep:poulpy-ckks"]
 # enable-gpu = ["dep:poulpy-gpu", "poulpy-gpu/enable-gpu"]
 
 [dependencies]
@@ -21,6 +22,7 @@ serde_json = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 poulpy-bin-fhe = {workspace = true}
+poulpy-ckks = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-cpu-avx = {workspace = true, optional = true}
 # poulpy-gpu = {workspace = true, optional = true}
@@ -80,26 +82,32 @@ harness = false
 [[bench]]
 name = "ckks_composite"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "ckks_add"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "ckks_sub"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "ckks_unary"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "ckks_mul"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "ckks_automorphism"
 harness = false
+required-features = ["ckks-bench"]
 
 [[bench]]
 name = "automorphism"

@@ -630,12 +630,7 @@ pub fn test_vec_znx_dft_sub_negate_assign<
 
             for i in 0..cols {
                 module_ref.vec_znx_dft_sub_negate_assign(&mut res_dft_ref.to_backend_mut(), i, &a_dft_ref.to_backend_ref(), i);
-                module_test.vec_znx_dft_sub_negate_assign(
-                    &mut res_dft_test.to_backend_mut(),
-                    i,
-                    &a_dft_test.to_backend_ref(),
-                    i,
-                );
+                module_test.vec_znx_dft_sub_negate_assign(&mut res_dft_test.to_backend_mut(), i, &a_dft_test.to_backend_ref(), i);
             }
 
             let res_ref = idft_tmpa_to_host(module_ref, base2k, &mut res_dft_ref, &mut scratch_ref);

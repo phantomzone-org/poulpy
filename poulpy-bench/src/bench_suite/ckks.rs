@@ -4,7 +4,7 @@ use criterion::Criterion;
 use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     layouts::{
-        CKKSCiphertext,
+        CKKSCiphertext, CKKSModuleAlloc,
         plaintext::{CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx, alloc_pt_vec_znx},
     },
     leveled::api::{
@@ -147,14 +147,14 @@ fn setup<BE: CkksBenchBackend>() -> CkksBenchSetup<BE> {
     let atk_layout = atk_layout();
     let meta = ckks_meta();
 
-    let mut ct_a = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
-    let mut ct_b = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
-    let mut ct_dst = CKKSCiphertext::alloc_from_infos(&ct_layout).unwrap();
+    let mut ct_a = module.ckks_ciphertext_alloc_from_infos(&ct_layout);
+    let mut ct_b = module.ckks_ciphertext_alloc_from_infos(&ct_layout);
+    let mut ct_dst = module.ckks_ciphertext_alloc_from_infos(&ct_layout);
     ct_a.set_meta_checked(meta).unwrap();
     ct_b.set_meta_checked(meta).unwrap();
     ct_dst.set_meta_checked(meta).unwrap();
 
-    let pt_znx = alloc_pt_vec_znx(Degree(N as u32), Base2K(BASE2K as u32), meta);
+    let pt_znx = module.ckks_pt_vec_znx_alloc(Base2K(BASE2K as u32), meta);
     let pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N).unwrap();
     let cst_rnx = CKKSPlaintextCstRnx::new(Some(1.25), Some(-0.5));
     let cst_znx = CKKSPlaintextCstZnx::new(

@@ -3,17 +3,18 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWENegate, GLWERotate, GLWEShift, GLWESub, GLWETensoring,
-    ScratchTakeCore,
+    ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWEPlaintext,
+        GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWEPlaintext,
         GLWETensorKeyPrepared, GetGaloisElement,
     },
 };
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshSub, VecZnxRshTmpBytes,
+        ModuleN, ScratchAvailable, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend,
+        VecZnxRshSubBackend, VecZnxRshTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, HostBackend, Module, ScratchArena},
 };
 
 use crate::{
@@ -42,142 +43,165 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     where
         Module<BE>: VecZnxLshTmpBytes + VecZnxRshTmpBytes;
 
-    fn ckks_extract_pt_znx<S: CKKSInfos>(
+    fn ckks_extract_pt_znx<Dst: Data, Src: Data, S: CKKSInfos>(
         module: &Module<BE>,
-        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        src: &GLWEPlaintext<impl DataRef>,
+        dst: &mut CKKSPlaintextVecZnx<Dst>,
+        src: &GLWEPlaintext<Src>,
         src_meta: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Module<BE>: VecZnxLsh<BE> + VecZnxRsh<BE>;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Module<BE>: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
+        CKKSPlaintextVecZnx<Dst>: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE>,
+        GLWEPlaintext<Src>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>;
 
     fn ckks_add_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_add_into(
+    fn ckks_add_into<Dst: Data, A: Data, B: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        b: &CKKSCiphertext<B>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWEAdd<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        CKKSCiphertext<B>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_add_assign(
+    fn ckks_add_assign<Dst: Data, A: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWEAdd<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_add_pt_vec_znx_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_add_pt_vec_znx_into(
+    fn ckks_add_pt_vec_znx_into<Dst: Data, A: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshAddInto<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: VecZnxRshAddIntoBackend<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_add_pt_vec_znx_assign(
+    fn ckks_add_pt_vec_znx_assign<Dst: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshAddInto<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: VecZnxRshAddIntoBackend<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_add_pt_vec_rnx_tmp_bytes<R: GLWEInfos, A: GLWEInfos>(module: &Module<BE>, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         Module<BE>: ModuleN + GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_add_pt_vec_rnx_into<F>(
+    fn ckks_add_pt_vec_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + VecZnxRshAddInto<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: ModuleN + VecZnxRshAddIntoBackend<BE> + GLWEShift<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_add_pt_vec_rnx_assign<F>(
+    fn ckks_add_pt_vec_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + VecZnxRshAddInto<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: ModuleN + VecZnxRshAddIntoBackend<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
     fn ckks_add_pt_const_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_add_pt_const_znx_into(
+    fn ckks_add_pt_const_znx_into<Dst: Data, A: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_add_pt_const_znx_assign(
+    fn ckks_add_pt_const_znx_assign<Dst: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_add_pt_const_rnx_into<F>(
+    fn ckks_add_pt_const_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
-    fn ckks_add_pt_const_rnx_assign<F>(
+    fn ckks_add_pt_const_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
     fn ckks_sub_tmp_bytes(module: &Module<BE>) -> usize
@@ -188,240 +212,277 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     where
         Module<BE>: GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_sub_into(
+    fn ckks_sub_into<Dst: Data, A: Data, B: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        b: &CKKSCiphertext<B>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWESub + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWESub<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        CKKSCiphertext<B>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_sub_assign(
+    fn ckks_sub_assign<Dst: Data, A: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWESub + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWESub<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_sub_pt_vec_znx_into(
+    fn ckks_sub_pt_vec_znx_into<Dst: Data, A: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshSub<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: VecZnxRshSubBackend<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_sub_pt_vec_znx_assign(
+    fn ckks_sub_pt_vec_znx_assign<Dst: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: VecZnxRshSub<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: VecZnxRshSubBackend<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_sub_pt_vec_rnx_tmp_bytes<R: GLWEInfos, A: GLWEInfos>(module: &Module<BE>, res: &R, a: &A, b: &CKKSMeta) -> usize
     where
         Module<BE>: ModuleN + GLWEShift<BE> + VecZnxRshTmpBytes;
 
-    fn ckks_sub_pt_vec_rnx_into<F>(
+    fn ckks_sub_pt_vec_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: ModuleN + VecZnxRshSubBackend<BE> + GLWEShift<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
-    fn ckks_sub_pt_vec_rnx_assign<F>(
+    fn ckks_sub_pt_vec_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + VecZnxRshSub<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: ModuleN + VecZnxRshSubBackend<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
 
     fn ckks_sub_pt_const_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_sub_pt_const_znx_into(
+    fn ckks_sub_pt_const_znx_into<Dst: Data, A: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_sub_pt_const_znx_assign(
+    fn ckks_sub_pt_const_znx_assign<Dst: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_sub_pt_const_rnx_into<F>(
+    fn ckks_sub_pt_const_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
-    fn ckks_sub_pt_const_rnx_assign<F>(
+    fn ckks_sub_pt_const_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
     fn ckks_neg_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_neg_into(
+    fn ckks_neg_into<Dst: Data, Src: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWENegate + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWENegate<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_neg_assign(module: &Module<BE>, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
+    fn ckks_neg_assign<Dst: Data>(module: &Module<BE>, dst: &mut CKKSCiphertext<Dst>) -> Result<()>
     where
-        Module<BE>: GLWENegate;
+        Module<BE>: GLWENegate<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>;
 
     fn ckks_mul_pow2_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_mul_pow2_into(
+    fn ckks_mul_pow2_into<Dst: Data, Src: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
         bits: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pow2_assign(
+    fn ckks_mul_pow2_assign<Dst: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         bits: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_div_pow2_tmp_bytes(module: &Module<BE>) -> usize
     where
         Module<BE>: GLWEShift<BE>;
 
-    fn ckks_div_pow2_into(
+    fn ckks_div_pow2_into<Dst: Data, Src: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
         bits: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEShift<BE> + GLWECopy,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Module<BE>: GLWEShift<BE> + GLWECopy<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_div_pow2_assign(module: &Module<BE>, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()>;
+    fn ckks_div_pow2_assign<Dst: Data>(module: &Module<BE>, dst: &mut CKKSCiphertext<Dst>, bits: usize) -> Result<()>;
 
     fn ckks_rotate_tmp_bytes<C: GLWEInfos, K: GGLWEInfos>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
     where
         Module<BE>: GLWEAutomorphism<BE>;
 
-    fn ckks_rotate_into<H, K>(
+    fn ckks_rotate_into<Dst: Data, Src: Data, H, K>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_rotate_assign<H, K>(
+    fn ckks_rotate_assign<Dst: Data, H, K>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_conjugate_tmp_bytes<C: GLWEInfos, K: GGLWEInfos>(module: &Module<BE>, ct_infos: &C, key_infos: &K) -> usize
     where
         Module<BE>: GLWEAutomorphism<BE>;
 
-    fn ckks_conjugate_into(
+    fn ckks_conjugate_into<Dst: Data, Src: Data, K: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
+        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        GLWEAutomorphismKeyPrepared<K, BE>: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_conjugate_assign(
+    fn ckks_conjugate_assign<Dst: Data, K: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Module<BE>: GLWEAutomorphism<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        GLWEAutomorphismKeyPrepared<K, BE>: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
     fn ckks_mul_tmp_bytes<R: GLWEInfos, T: GGLWEInfos>(module: &Module<BE>, res: &R, tsk: &T) -> usize
     where
@@ -443,140 +504,198 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     where
         Module<BE>: GLWEMulConst<BE> + GLWERotate<BE>;
 
-    fn ckks_mul_into(
+    fn ckks_mul_into<Dst: Data, A: Data, B: Data, T: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        b: &CKKSCiphertext<B>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWETensoring<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE> + GLWETensoring<BE> + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<B>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: poulpy_core::layouts::prepared::GLWETensorKeyPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_assign(
+    fn ckks_mul_assign<Dst: Data, A: Data, T: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWETensoring<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE> + GLWETensoring<BE> + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: poulpy_core::layouts::prepared::GLWETensorKeyPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_square_into(
+    fn ckks_square_into<Dst: Data, A: Data, T: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWETensoring<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE> + GLWETensoring<BE> + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: poulpy_core::layouts::prepared::GLWETensorKeyPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_square_assign(
+    fn ckks_square_assign<Dst: Data, T: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWETensoring<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE> + GLWETensoring<BE> + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: poulpy_core::layouts::prepared::GLWETensorKeyPreparedToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_vec_znx_into(
+    fn ckks_mul_pt_vec_znx_into<Dst: Data, A: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEMulPlain<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE>
+            + GLWEMulPlain<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+            + poulpy_hal::api::VecZnxCopyBackend<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_vec_znx_assign(
+    fn ckks_mul_pt_vec_znx_assign<Dst: Data, P: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        pt_znx: &CKKSPlaintextVecZnx<P>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEMulPlain<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWECopy<BE>
+            + GLWEMulPlain<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+            + poulpy_hal::api::VecZnxCopyBackend<BE>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSPlaintextVecZnx<P>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_vec_rnx_into<F>(
+    fn ckks_mul_pt_vec_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + GLWEMulPlain<BE>,
+        Module<BE>: GLWECopy<BE>
+            + GLWEMulPlain<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+            + ModuleN
+            + poulpy_hal::api::VecZnxCopyBackend<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_vec_rnx_assign<F>(
+    fn ckks_mul_pt_vec_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         pt_rnx: &CKKSPlaintextVecRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: ModuleN + GLWEMulPlain<BE>,
+        Module<BE>: GLWECopy<BE>
+            + GLWEMulPlain<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+            + ModuleN
+            + poulpy_hal::api::VecZnxCopyBackend<BE>,
+        BE: HostBackend<OwnedBuf = Vec<u8>>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_const_znx_into(
+    fn ckks_mul_pt_const_znx_into<Dst: Data, A: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWEAdd<BE>
+            + GLWECopy<BE>
+            + GLWEMulConst<BE>
+            + GLWERotate<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_const_znx_assign(
+    fn ckks_mul_pt_const_znx_assign<Dst: Data>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Module<BE>: GLWEAdd<BE>
+            + GLWECopy<BE>
+            + GLWEMulConst<BE>
+            + GLWERotate<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_mul_pt_const_rnx_into<F>(
+    fn ckks_mul_pt_const_rnx_into<Dst: Data, A: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: GLWEAdd<BE>
+            + GLWECopy<BE>
+            + GLWEMulConst<BE>
+            + GLWERotate<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 
-    fn ckks_mul_pt_const_rnx_assign<F>(
+    fn ckks_mul_pt_const_rnx_assign<Dst: Data, F>(
         module: &Module<BE>,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         cst_rnx: &CKKSPlaintextCstRnx<F>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Module<BE>: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Module<BE>: GLWEAdd<BE>
+            + GLWECopy<BE>
+            + GLWEMulConst<BE>
+            + GLWERotate<BE>
+            + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE> + poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
         CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
 }
 

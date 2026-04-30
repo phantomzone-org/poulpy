@@ -2,12 +2,11 @@ use poulpy_hal::{
     api::{
         CnvPVecBytesOf, Convolution, ModuleN, ScratchArenaTakeBasic, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
         VecZnxBigAddSmallAssign, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopyBackend,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxLshAddIntoBackend, VecZnxLshBackend,
-        VecZnxLshAssignBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes, VecZnxMulXpMinusOneBackend,
-        VecZnxMulXpMinusOneAssignBackend, VecZnxNegateBackend, VecZnxNegateAssignBackend, VecZnxNormalize,
-        VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateAssignBackend,
-        VecZnxRotateAssignTmpBytes, VecZnxRshAssignBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubAssignBackend,
-        VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxLshAddIntoBackend, VecZnxLshAssignBackend, VecZnxLshBackend,
+        VecZnxLshSubBackend, VecZnxLshTmpBytes, VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneBackend,
+        VecZnxNegateAssignBackend, VecZnxNegateBackend, VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
+        VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes, VecZnxRotateBackend, VecZnxRshAssignBackend, VecZnxRshTmpBytes,
+        VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
     },
     layouts::{
         Backend, CnvPVecLReborrowBackendRef, CnvPVecRReborrowBackendRef, Data, Module, ScratchArena, VecZnx,
@@ -1146,7 +1145,6 @@ where
             }
         }
     }
-
 }
 
 #[inline]
@@ -1207,16 +1205,14 @@ impl<BE: Backend> GLWESub<BE> for Module<BE> where
 impl<BE: Backend> GLWENegate<BE> for Module<BE> where Self: VecZnxNegateBackend<BE> + VecZnxNegateAssignBackend<BE> + ModuleN {}
 
 impl<BE: Backend> GLWERotateDefault<BE> for Module<BE> where
-    Self:
-        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>
+    Self: ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>
 {
 }
 
 #[doc(hidden)]
 pub trait GLWERotateDefault<BE: Backend>
 where
-    Self:
-        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>,
+    Self: ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()

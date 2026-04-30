@@ -172,7 +172,10 @@ where
     }
 }
 
-#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
+#[expect(
+    dead_code,
+    reason = "host-owned constructors are kept for serialization and host-only staging"
+)]
 impl LWE<Vec<u8>> {
     /// Allocates a new [`LWE`] with the given parameters.
     pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self

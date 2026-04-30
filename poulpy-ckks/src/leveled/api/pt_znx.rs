@@ -1,8 +1,8 @@
 use anyhow::Result;
-use poulpy_core::{ScratchTakeCore, layouts::GLWEPlaintext};
+use poulpy_core::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
 use poulpy_hal::{
-    api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Scratch},
+    api::{VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshTmpBytes},
+    layouts::{Backend, Data, ScratchArena},
 };
 
 use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
@@ -12,15 +12,17 @@ pub trait CKKSPlaintextZnxOps<BE: Backend + CKKSImpl<BE>> {
     where
         Self: VecZnxLshTmpBytes + VecZnxRshTmpBytes;
 
-    fn ckks_extract_pt_znx<S>(
+    fn ckks_extract_pt_znx<Dst: Data, Src: Data, S>(
         &self,
-        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        src: &GLWEPlaintext<impl DataRef>,
+        dst: &mut CKKSPlaintextVecZnx<Dst>,
+        src: &GLWEPlaintext<Src>,
         src_meta: &S,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         S: CKKSInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxLsh<BE> + VecZnxRsh<BE>;
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
+        CKKSPlaintextVecZnx<Dst>: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE>,
+        GLWEPlaintext<Src>: poulpy_core::layouts::GLWEPlaintextToBackendRef<BE>;
 }

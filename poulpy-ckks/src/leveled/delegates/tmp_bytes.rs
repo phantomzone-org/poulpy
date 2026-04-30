@@ -12,7 +12,10 @@ use poulpy_core::{
     layouts::{GGLWEInfos, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWETensorKeyPreparedFactory},
 };
 use poulpy_hal::{
-    api::{ModuleN, VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshSub, VecZnxRshTmpBytes},
+    api::{
+        ModuleN, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshSubBackend,
+        VecZnxRshTmpBytes,
+    },
     layouts::{Backend, Module},
 };
 
@@ -39,11 +42,11 @@ where
         + GLWETensoring<BE>
         + GLWETensorKeyEncryptSk<BE>
         + GLWETensorKeyPreparedFactory<BE>
-        + VecZnxLsh<BE>
+        + VecZnxLshBackend<BE>
         + VecZnxLshTmpBytes
-        + VecZnxRsh<BE>
-        + VecZnxRshAddInto<BE>
-        + VecZnxRshSub<BE>
+        + VecZnxRshBackend<BE>
+        + VecZnxRshAddIntoBackend<BE>
+        + VecZnxRshSubBackend<BE>
         + VecZnxRshTmpBytes,
 {
     fn ckks_all_ops_tmp_bytes<C, T>(&self, ct_infos: &C, tsk_infos: &T, pt_prec: &CKKSMeta) -> usize

@@ -296,6 +296,10 @@ pub fn glwe_backend_ref_from_mut<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufMut<
     }
 }
 
+pub fn glwe_backend_data_ref<'a, BE: Backend>(glwe: &'a GLWEBackendRef<'_, BE>) -> poulpy_hal::layouts::VecZnxBackendRef<'a, BE> {
+    poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&glwe.data)
+}
+
 pub trait GLWEToBackendMut<BE: Backend>: GLWEToBackendRef<BE> {
     fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE>;
 }
@@ -329,4 +333,10 @@ pub fn glwe_backend_mut_from_mut<'a, 'b, BE: Backend>(glwe: &'a mut GLWE<BE::Buf
         base2k: glwe.base2k,
         data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut glwe.data),
     }
+}
+
+pub fn glwe_backend_data_mut<'a, BE: Backend>(
+    glwe: &'a mut GLWEBackendMut<'_, BE>,
+) -> poulpy_hal::layouts::VecZnxBackendMut<'a, BE> {
+    poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut glwe.data)
 }

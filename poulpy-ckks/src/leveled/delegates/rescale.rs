@@ -1,6 +1,9 @@
 use anyhow::Result;
-use poulpy_core::{GLWEShift, ScratchTakeCore};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_core::{
+    GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEToBackendMut, GLWEToBackendRef},
+};
+use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
 
 use crate::{
     layouts::CKKSCiphertext,
@@ -18,37 +21,42 @@ where
         self.ckks_rescale_tmp_bytes_default()
     }
 
-    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertext<impl DataMut>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_rescale_assign<D: Data>(&self, ct: &mut CKKSCiphertext<D>, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        CKKSCiphertext<D>: GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_rescale_assign_default(ct, k, scratch)
     }
 
-    fn ckks_rescale_into(
+    fn ckks_rescale_into<Dst: Data, Src: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         k: usize,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        src: &CKKSCiphertext<Src>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_rescale_into_default(dst, k, src, scratch)
     }
 
-    fn ckks_align_assign(
+    fn ckks_align_assign<A: Data, B: Data>(
         &self,
-        a: &mut CKKSCiphertext<impl DataMut>,
-        b: &mut CKKSCiphertext<impl DataMut>,
-        scratch: &mut Scratch<BE>,
+        a: &mut CKKSCiphertext<A>,
+        b: &mut CKKSCiphertext<B>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        CKKSCiphertext<A>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<B>: GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_align_assign_default(a, b, scratch)
     }

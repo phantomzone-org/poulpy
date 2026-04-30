@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use crate::{
     layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef},
     reference::{

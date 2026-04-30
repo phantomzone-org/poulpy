@@ -184,7 +184,8 @@ pub trait ModuleCoreAlloc {
     ) -> GLWETensorKey<Self::OwnedBuf>;
 
     fn glwe_to_lwe_key_alloc_from_infos<A: GGLWEInfos>(&self, infos: &A) -> GLWEToLWEKey<Self::OwnedBuf>;
-    fn glwe_to_lwe_key_alloc(&self, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> GLWEToLWEKey<Self::OwnedBuf>;
+    fn glwe_to_lwe_key_alloc(&self, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum)
+    -> GLWEToLWEKey<Self::OwnedBuf>;
 
     fn gglwe_to_ggsw_key_alloc_from_infos<A: GGLWEInfos>(&self, infos: &A) -> GGLWEToGGSWKey<Self::OwnedBuf>;
     fn gglwe_to_ggsw_key_alloc(
@@ -205,7 +206,13 @@ pub trait ModuleCoreAlloc {
     fn lwe_secret_alloc(&self, n: Degree) -> LWESecret<Self::OwnedBuf>;
 
     fn lwe_switching_key_alloc_from_infos<A: GGLWEInfos>(&self, infos: &A) -> LWESwitchingKey<Self::OwnedBuf>;
-    fn lwe_switching_key_alloc(&self, n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> LWESwitchingKey<Self::OwnedBuf>;
+    fn lwe_switching_key_alloc(
+        &self,
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        dnum: Dnum,
+    ) -> LWESwitchingKey<Self::OwnedBuf>;
 
     fn lwe_to_glwe_key_alloc_from_infos<A: GGLWEInfos>(&self, infos: &A) -> LWEToGLWEKey<Self::OwnedBuf>;
     fn lwe_to_glwe_key_alloc(
@@ -580,12 +587,7 @@ impl<B: Backend> ModuleCoreAlloc for Module<B> {
     fn lwe_plaintext_alloc_from_infos<A: LWEInfos>(&self, infos: &A) -> LWEPlaintext<B::OwnedBuf> {
         let size = infos.max_k().as_usize().div_ceil(infos.base2k().as_usize());
         LWEPlaintext {
-            data: VecZnx::from_data(
-                B::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, size)),
-                1,
-                1,
-                size,
-            ),
+            data: VecZnx::from_data(B::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, size)), 1, 1, size),
             base2k: infos.base2k(),
         }
     }

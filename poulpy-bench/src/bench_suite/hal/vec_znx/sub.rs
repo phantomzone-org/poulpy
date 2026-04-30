@@ -4,7 +4,7 @@ use criterion::{BenchmarkId, Criterion};
 use rand::Rng;
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxSubBackend, VecZnxSubAssignBackend, VecZnxSubNegateAssignBackend},
+    api::{ModuleNew, VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubNegateAssignBackend},
     layouts::{Backend, DataViewMut, Module, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef},
     source::Source,
 };
@@ -44,7 +44,7 @@ where
             let b = <VecZnx<B::OwnedBuf> as VecZnxToBackendRef<B>>::to_backend_ref(&b);
             let mut c = <VecZnx<B::OwnedBuf> as VecZnxToBackendMut<B>>::to_backend_mut(&mut c);
             for i in 0..cols {
-                module.vec_znx_sub(&mut c, i, &a, i, &b, i);
+                module.vec_znx_sub_backend(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }

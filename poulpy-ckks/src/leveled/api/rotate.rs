@@ -1,9 +1,9 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
+    GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
+use poulpy_hal::layouts::{Backend, Data, ScratchArena};
 
 use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
 
@@ -14,30 +14,33 @@ pub trait CKKSRotateOps<BE: Backend + CKKSImpl<BE>> {
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
-    fn ckks_rotate_into<H, K>(
+    fn ckks_rotate_into<Dst: Data, Src: Data, H, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_rotate_assign<H, K>(
+    fn ckks_rotate_assign<Dst: Data, H, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }

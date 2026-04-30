@@ -1,26 +1,28 @@
-use std::hint::black_box;
+use std::{hint::black_box, mem::size_of};
 
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxNormalize, VecZnxNormalizeAssignBackend,
+        VecZnxNormalizeTmpBytes,
+    },
+    layouts::{
+        Backend, FillUniform, HostDataMut, HostDataRef, Module, ScratchOwned, VecZnx, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToBackendMut, VecZnxToBackendRef, ZnxView, ZnxViewMut,
+    },
     reference::znx::{
         ZnxAddAssign, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-        ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign,
-        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign, ZnxZero,
+        ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly,
+        ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly, ZnxZero,
     },
-};
-
-#[cfg(test)]
-use crate::{
-    layouts::{FillUniform, HostBytesBackend, VecZnx},
     source::Source,
 };
 
 #[cfg(test)]
 fn alloc_host_vec_znx(n: usize, cols: usize, size: usize) -> VecZnx<Vec<u8>> {
-    VecZnx::from_data(
-        HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(n, cols, size)),
+    crate::layouts::VecZnx::from_data(
+        crate::layouts::HostBytesBackend::alloc_bytes(VecZnx::<Vec<u8>>::bytes_of(n, cols, size)),
         n,
         cols,
         size,
@@ -669,8 +671,8 @@ fn test_vec_znx_normalize_inter_base2k() {
 }
 pub fn bench_vec_znx_normalize<B>(c: &mut Criterion, label: &str)
 where
-    B: Backend + 'static,
-    Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    B: Backend<OwnedBuf = Vec<u8>> + 'static,
+    Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
@@ -680,8 +682,8 @@ where
 
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
-        B: Backend + 'static,
-        Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+        B: Backend<OwnedBuf = Vec<u8>> + 'static,
+        Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     {
@@ -695,8 +697,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -706,9 +708,16 @@ where
         let res_offset: i64 = 0;
         move || {
             for i in 0..cols {
-                let mut res_ref = res.to_mut();
-                let a_ref = a.to_ref();
-                module.vec_znx_normalize(&mut res_ref, base2k, res_offset, i, &a_ref, base2k, i, &mut scratch.borrow());
+                module.vec_znx_normalize(
+                    &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res),
+                    base2k,
+                    res_offset,
+                    i,
+                    &<VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a),
+                    base2k,
+                    i,
+                    &mut scratch.borrow(),
+                );
             }
             black_box(());
         }
@@ -726,7 +735,7 @@ where
 pub fn bench_vec_znx_normalize_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxNormalizeAssignBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_normalize_inplace::{label}");
@@ -736,7 +745,7 @@ where
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
-        Module<B>: VecZnxNormalizeInplaceBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxNormalizeAssignBackend<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -749,7 +758,7 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -758,7 +767,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize_inplace_backend(
+                module.vec_znx_normalize_assign_backend(
                     base2k,
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut a),
                     i,

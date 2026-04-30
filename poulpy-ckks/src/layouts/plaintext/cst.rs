@@ -1,5 +1,5 @@
 use anyhow::Result;
-use poulpy_core::layouts::{Base2K, LWEInfos, LWEPlaintext};
+use poulpy_core::layouts::{Base2K, Degree, GLWEPlaintext, LWEInfos};
 use poulpy_hal::layouts::ZnxView;
 use rand_distr::num_traits::{Float, FromPrimitive, ToPrimitive};
 
@@ -142,14 +142,14 @@ where
 }
 
 fn encode_const_coeff_i64(base2k: Base2K, k: usize, value: i64) -> Vec<i64> {
-    let mut pt = LWEPlaintext::alloc(base2k, k.into());
-    pt.encode_i64(value, k.into());
+    let mut pt = GLWEPlaintext::alloc_with_meta(Degree(1), base2k, k.into());
+    pt.encode_coeff_i64(value, k.into(), 0);
     (0..pt.size()).map(|limb| pt.data().at(0, limb)[0]).collect()
 }
 
 fn encode_const_coeff_i128(base2k: Base2K, k: usize, value: i128) -> Vec<i64> {
-    let mut pt = LWEPlaintext::alloc(base2k, k.into());
-    pt.encode_i128(value, k.into());
+    let mut pt = GLWEPlaintext::alloc_with_meta(Degree(1), base2k, k.into());
+    pt.encode_vec_i128(&[value], k.into());
     (0..pt.size()).map(|limb| pt.data().at(0, limb)[0]).collect()
 }
 

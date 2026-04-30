@@ -20,14 +20,6 @@ use poulpy_hal::{
     layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ScratchOwned},
     source::Source,
 };
-use poulpy_bin_fhe::{
-    bdd_arithmetic::{
-        Add, BDDEncryptionInfos, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory,
-        ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare, FheUintPrepared, GLWEBlindSelection, Xor,
-    },
-    blind_rotation::{BlindRotationAlgo, BlindRotationKeyLayout, CGGI},
-    circuit_bootstrapping::CircuitBootstrappingKeyLayout,
-};
 use rand::RngExt;
 
 #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]

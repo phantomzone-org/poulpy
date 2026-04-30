@@ -9,6 +9,7 @@ poulpy-core = {path = "poulpy-core"}
 poulpy-cpu-avx = {path = "poulpy-cpu-avx"}
 poulpy-cpu-ref = {path = "poulpy-cpu-ref"}
 poulpy-bin-fhe = {path = "poulpy-bin-fhe"}
+poulpy-ckks = {path = "poulpy-ckks"}
 dashu-float = "0.4"
 rand = "0.10.1"
 rand_chacha = "0.10.0"

@@ -83,7 +83,10 @@ impl<D: Data> LWEPlaintext<D> {
     }
 }
 
-#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
+#[expect(
+    dead_code,
+    reason = "host-owned constructors are kept for serialization and host-only staging"
+)]
 impl LWEPlaintext<Vec<u8>> {
     pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where

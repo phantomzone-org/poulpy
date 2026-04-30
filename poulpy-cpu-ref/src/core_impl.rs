@@ -1205,9 +1205,7 @@ macro_rules! impl_automorphism_via_defaults {
                     + GGLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + poulpy_core::layouts::GetGaloisElement + GGLWEInfos,
             {
-                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_assign_default(
-                    module, res, key, scratch,
-                )
+                <Self as AutomorphismDefaults<Self>>::glwe_automorphism_key_automorphism_assign_default(module, res, key, scratch)
             }
         }
     };

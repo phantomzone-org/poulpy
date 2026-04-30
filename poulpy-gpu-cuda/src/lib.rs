@@ -152,24 +152,38 @@ impl CudaBuf {
             Some(unsafe { cuda_stream().alloc::<u8>(len).expect("failed to allocate CUDA device buffer") })
         };
 
-        Self { len, device: Mutex::new(device) }
+        Self {
+            len,
+            device: Mutex::new(device),
+        }
     }
 
     fn alloc_zeroed_device(len: usize) -> Self {
         let device = if len == 0 {
             None
         } else {
-            Some(cuda_stream().alloc_zeros::<u8>(len).expect("failed to allocate zeroed CUDA device buffer"))
+            Some(
+                cuda_stream()
+                    .alloc_zeros::<u8>(len)
+                    .expect("failed to allocate zeroed CUDA device buffer"),
+            )
         };
 
-        Self { len, device: Mutex::new(device) }
+        Self {
+            len,
+            device: Mutex::new(device),
+        }
     }
 
     fn from_host_bytes(bytes: &[u8]) -> Self {
         let device = if bytes.is_empty() {
             None
         } else {
-            Some(cuda_stream().clone_htod(bytes).expect("failed to upload host bytes into CUDA device buffer"))
+            Some(
+                cuda_stream()
+                    .clone_htod(bytes)
+                    .expect("failed to upload host bytes into CUDA device buffer"),
+            )
         };
 
         Self {

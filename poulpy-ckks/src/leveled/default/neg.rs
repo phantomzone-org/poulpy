@@ -1,8 +1,11 @@
 use anyhow::Result;
-use poulpy_core::{GLWENegate, GLWEShift, ScratchTakeCore};
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEToBackendMut, GLWEToBackendRef},
+};
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Data, Module, ScratchArena},
 };
 
 use crate::{
@@ -18,34 +21,48 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
         self.glwe_shift_tmp_bytes()
     }
 
-    fn ckks_neg_into_default(
+    fn ckks_neg_into_default<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWENegate + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Dst: Data,
+        Src: Data,
+        Self: GLWENegate<BE> + GLWEShift<BE>,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let offset = dst.offset_unary(src);
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
             dst.meta = src.meta();
             dst.meta.log_budget = checked_log_budget_sub("neg", src.log_budget(), offset)?;
-            self.glwe_negate_assign(dst);
+            {
+                let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+                self.glwe_negate_assign(&mut dst_ref);
+            }
         } else {
-            self.glwe_negate(dst, src);
+            {
+                let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+                let src_ref = GLWEToBackendRef::<BE>::to_backend_ref(src);
+                self.glwe_negate(&mut dst_ref, &src_ref);
+            }
             dst.meta = src.meta();
         }
         Ok(())
     }
 
-    fn ckks_neg_assign_default(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
+    fn ckks_neg_assign_default<Dst>(&self, dst: &mut CKKSCiphertext<Dst>) -> Result<()>
     where
-        Self: GLWENegate,
+        Dst: Data,
+        Self: GLWENegate<BE>,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
     {
-        self.glwe_negate_assign(dst);
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        self.glwe_negate_assign(&mut dst_ref);
         Ok(())
     }
 }

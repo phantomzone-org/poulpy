@@ -153,11 +153,25 @@ impl Backend for HostBytesBackend {
     }
 
     fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
-        dst.copy_from_slice(buf);
+        assert!(
+            buf.len() >= dst.len(),
+            "backend buffer length {} is smaller than destination host slice length {}",
+            buf.len(),
+            dst.len()
+        );
+        dst.copy_from_slice(&buf[..dst.len()]);
     }
 
     fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
-        buf.copy_from_slice(src);
+        assert!(
+            buf.len() >= src.len(),
+            "backend buffer length {} is smaller than source host slice length {}",
+            buf.len(),
+            src.len()
+        );
+        let src_len = src.len();
+        buf[..src_len].copy_from_slice(src);
+        buf[src_len..].fill(0);
     }
 
     fn len_bytes(buf: &Self::OwnedBuf) -> usize {

@@ -3,21 +3,21 @@
 use std::mem::size_of;
 
 use crate::reference::vec_znx::{
-    vec_znx_add_into, vec_znx_add_normal_ref, vec_znx_add_scalar_assign, vec_znx_add_scalar_into, vec_znx_automorphism,
-    vec_znx_automorphism_assign, vec_znx_automorphism_assign_tmp_bytes, vec_znx_copy, vec_znx_fill_normal_ref,
-    vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_assign, vec_znx_lsh_sub, vec_znx_lsh_tmp_bytes, vec_znx_merge_rings,
-    vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one, vec_znx_mul_xp_minus_one_assign,
-    vec_znx_mul_xp_minus_one_assign_tmp_bytes, vec_znx_negate, vec_znx_negate_assign, vec_znx_normalize,
-    vec_znx_normalize_assign, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_assign,
-    vec_znx_rotate_assign_tmp_bytes, vec_znx_rsh, vec_znx_rsh_assign, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes,
-    vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_assign, vec_znx_sub_negate_assign,
-    vec_znx_sub_scalar, vec_znx_sub_scalar_assign, vec_znx_switch_ring, vec_znx_zero,
+    vec_znx_add_const_assign, vec_znx_add_const_into, vec_znx_add_into, vec_znx_add_normal_ref, vec_znx_add_scalar_assign,
+    vec_znx_add_scalar_into, vec_znx_automorphism, vec_znx_automorphism_assign, vec_znx_automorphism_assign_tmp_bytes,
+    vec_znx_copy, vec_znx_fill_normal_ref, vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_assign, vec_znx_lsh_sub,
+    vec_znx_lsh_tmp_bytes, vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one,
+    vec_znx_mul_xp_minus_one_assign, vec_znx_mul_xp_minus_one_assign_tmp_bytes, vec_znx_negate, vec_znx_negate_assign,
+    vec_znx_normalize, vec_znx_normalize_assign, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_assign,
+    vec_znx_rotate_assign_tmp_bytes, vec_znx_rsh, vec_znx_rsh_assign, vec_znx_rsh_sub, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
+    vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_assign, vec_znx_sub_negate_assign, vec_znx_sub_scalar,
+    vec_znx_sub_scalar_assign, vec_znx_switch_ring, vec_znx_zero,
 };
 use crate::reference::znx::{
     ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign,
     ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
-    ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-    ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign,
+    ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
+    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign,
     ZnxSwitchRing, ZnxZero,
 };
 use poulpy_hal::{
@@ -264,6 +264,37 @@ where
         for j in 0..sum_size {
             BE::znx_add_assign(res.at_mut(res_col, j), a.at(a_col, j));
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_const_into_backend_default<'r, 'a>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) where
+        BE: ZnxCopy + ZnxZero,
+        BE::BufMut<'r>: HostDataMut,
+        BE::BufRef<'a>: poulpy_hal::layouts::HostDataRef,
+    {
+        vec_znx_add_const_into::<BE>(res, res_col, a, a_col, cnst, res_limb, res_coeff);
+    }
+
+    fn vec_znx_add_const_assign_backend_default<'r>(
+        _module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) where
+        BE::BufMut<'r>: HostDataMut,
+    {
+        vec_znx_add_const_assign::<BE>(res, res_col, cnst, res_limb, res_coeff);
     }
 
     #[allow(clippy::too_many_arguments)]

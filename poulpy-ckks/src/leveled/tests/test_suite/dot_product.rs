@@ -100,20 +100,20 @@ pub fn test_dot_product_ct_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let b_cts: Vec<_> = b_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
     let b_refs: Vec<&_> = b_cts.iter().collect();
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_ct_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("dot_product_ct_aligned", &ct_res, &want_re, &want_im, &mut scratch.borrow());
 }
 
 /// One of the `a`-side ciphertexts is encrypted at a lower `log_budget`.
@@ -142,21 +142,21 @@ pub fn test_dot_product_ct_unaligned<BE: Backend, F: TestScalar>(ctx: &TestConte
         .enumerate()
         .map(|(i, (re, im))| {
             let k = if i == 1 { smaller_k } else { ctx.max_k() };
-            ctx.encrypt(k, re, im, scratch.borrow())
+            ctx.encrypt(k, re, im, &mut scratch.borrow())
         })
         .collect();
     let b_cts: Vec<_> = b_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
     let b_refs: Vec<&_> = b_cts.iter().collect();
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_ct_unaligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("dot_product_ct_unaligned", &ct_res, &want_re, &want_im, &mut scratch.borrow());
 }
 
 pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -181,14 +181,14 @@ pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestCon
     let smaller_k = ctx.max_k() - ctx.base2k().as_usize() + 1;
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let b_cts: Vec<_> = b_vecs
         .iter()
         .enumerate()
         .map(|(i, (re, im))| {
             let k = if i == 1 { smaller_k } else { ctx.max_k() };
-            ctx.encrypt(k, re, im, scratch.borrow())
+            ctx.encrypt(k, re, im, &mut scratch.borrow())
         })
         .collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
@@ -196,9 +196,15 @@ pub fn test_dot_product_ct_unaligned_b<BE: Backend, F: TestScalar>(ctx: &TestCon
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_ct_unaligned_b", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "dot_product_ct_unaligned_b",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }
 
 pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -236,7 +242,7 @@ pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &Tes
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let mut b_cts: Vec<_> = Vec::with_capacity(N);
     b_cts.push(ctx.encrypt_with_prec(
@@ -244,17 +250,17 @@ pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &Tes
         &b_vecs[0].0,
         &b_vecs[0].1,
         low_prec,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     ));
     for (re, im) in &b_vecs[1..] {
-        b_cts.push(ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()));
+        b_cts.push(ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()));
     }
     let a_refs: Vec<&_> = a_cts.iter().collect();
     let b_refs: Vec<&_> = b_cts.iter().collect();
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision_at_log_delta(
         "dot_product_ct_delta_log_delta",
@@ -262,7 +268,7 @@ pub fn test_dot_product_ct_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &Tes
         &want_re,
         &want_im,
         low_log_delta,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -287,20 +293,26 @@ pub fn test_dot_product_ct_smaller_output<BE: Backend, F: TestScalar>(ctx: &Test
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let b_cts: Vec<_> = b_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
     let b_refs: Vec<&_> = b_cts.iter().collect();
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ctx.module
-        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), scratch.borrow())
+        .ckks_dot_product_ct(&mut ct_res, &a_refs, &b_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_ct smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "dot_product_ct smaller_output",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }
 
 pub fn test_dot_product_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -324,7 +336,7 @@ pub fn test_dot_product_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let pts: Vec<_> = b_vecs.iter().map(|(re, im)| ctx.encode_pt_znx(re, im)).collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
@@ -332,14 +344,14 @@ pub fn test_dot_product_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_pt_vec_znx(&mut ct_res, &a_refs, &pt_refs, scratch.borrow())
+        .ckks_dot_product_pt_vec_znx(&mut ct_res, &a_refs, &pt_refs, &mut scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision(
         "dot_product_pt_vec_znx_aligned",
         &ct_res,
         &want_re,
         &want_im,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -364,7 +376,7 @@ pub fn test_dot_product_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let pts: Vec<_> = b_vecs.iter().map(|(re, im)| ctx.encode_pt_rnx(re, im)).collect();
     let a_refs: Vec<&_> = a_cts.iter().collect();
@@ -372,14 +384,14 @@ pub fn test_dot_product_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_pt_vec_rnx(&mut ct_res, &a_refs, &pt_refs, ctx.meta(), scratch.borrow())
+        .ckks_dot_product_pt_vec_rnx(&mut ct_res, &a_refs, &pt_refs, ctx.meta(), &mut scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision(
         "dot_product_pt_vec_rnx_aligned",
         &ct_res,
         &want_re,
         &want_im,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -409,7 +421,7 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let cst_rnxs: Vec<CKKSPlaintextCstRnx<F>> = const_pairs.iter().map(|(r, i)| ctx.const_rnx(Some(*r), Some(*i))).collect();
     let cst_znxs: Vec<CKKSPlaintextCstZnx> = cst_rnxs.iter().map(|c| c.to_znx(ctx.base2k(), ctx.meta()).unwrap()).collect();
@@ -419,9 +431,15 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_pt_const_znx(&mut ct_res, &a_refs, &cst_refs, scratch.borrow())
+        .ckks_dot_product_pt_const_znx(&mut ct_res, &a_refs, &cst_refs, &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_const_znx_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "dot_product_const_znx_aligned",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }
 
 pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -450,7 +468,7 @@ pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let a_cts: Vec<_> = a_vecs
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let csts: Vec<CKKSPlaintextCstRnx<F>> = const_pairs.iter().map(|(r, i)| ctx.const_rnx(Some(*r), Some(*i))).collect();
 
@@ -459,7 +477,13 @@ pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_dot_product_pt_const_rnx(&mut ct_res, &a_refs, &cst_refs, ctx.meta(), scratch.borrow())
+        .ckks_dot_product_pt_const_rnx(&mut ct_res, &a_refs, &cst_refs, ctx.meta(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("dot_product_const_rnx_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "dot_product_const_rnx_aligned",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }

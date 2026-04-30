@@ -8,16 +8,18 @@ macro_rules! impl_ckks_pt_znx_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::pt_znx::CKKSPlaintextZnxDefault<$backend>>::ckks_extract_pt_znx_tmp_bytes_default(module)
         }
 
-        fn ckks_extract_pt_znx<S: $crate::CKKSInfos>(
+        fn ckks_extract_pt_znx<Dst: poulpy_hal::layouts::Data, Src: poulpy_hal::layouts::Data, S: $crate::CKKSInfos>(
             module: &poulpy_hal::layouts::Module<$backend>,
-            dst: &mut $crate::layouts::plaintext::CKKSPlaintextVecZnx<impl poulpy_hal::layouts::DataMut>,
-            src: &poulpy_core::layouts::GLWEPlaintext<impl poulpy_hal::layouts::DataRef>,
+            dst: &mut $crate::layouts::plaintext::CKKSPlaintextVecZnx<Dst>,
+            src: &poulpy_core::layouts::GLWEPlaintext<Src>,
             src_meta: &S,
-            scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
+            scratch: &mut poulpy_hal::layouts::ScratchArena<'_, $backend>,
         ) -> anyhow::Result<()>
         where
-            poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
-            poulpy_hal::layouts::Module<$backend>: poulpy_hal::api::VecZnxLsh<$backend> + poulpy_hal::api::VecZnxRsh<$backend>,
+            for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
+            poulpy_hal::layouts::Module<$backend>: poulpy_hal::api::VecZnxLshBackend<$backend> + poulpy_hal::api::VecZnxRshBackend<$backend>,
+            $crate::layouts::plaintext::CKKSPlaintextVecZnx<Dst>: poulpy_core::layouts::GLWEPlaintextToBackendMut<$backend>,
+            poulpy_core::layouts::GLWEPlaintext<Src>: poulpy_core::layouts::GLWEPlaintextToBackendRef<$backend>,
         {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::pt_znx::CKKSPlaintextZnxDefault<$backend>>::ckks_extract_pt_znx_default(module, dst, src, src_meta, scratch)
         }

@@ -101,13 +101,8 @@ pub unsafe trait GGSWKeyswitchImpl<BE: Backend>: Backend {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn ggsw_keyswitch_assign<'s, R, K, T>(
-        module: &Module<BE>,
-        res: &mut R,
-        key: &K,
-        tsk: &T,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn ggsw_keyswitch_assign<'s, R, K, T>(module: &Module<BE>, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
@@ -213,13 +208,8 @@ pub trait GGSWKeyswitchDefaults<BE: Backend>: Backend {
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn ggsw_keyswitch_assign<'s, R, K, T>(
-        module: &Module<BE>,
-        res: &mut R,
-        key: &K,
-        tsk: &T,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn ggsw_keyswitch_assign<'s, R, K, T>(module: &Module<BE>, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    where
         R: GGSWToBackendMut<BE> + GGSWInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,

@@ -1,8 +1,8 @@
 use crate::reference::znx::{
     ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign,
-    ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign,
-    ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepSub, ZnxRotate,
+    ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly,
+    ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepSub, ZnxRotate,
     ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxSwitchRing, ZnxZero,
     add::{znx_add_assign_ref, znx_add_ref},
     automorphism::znx_automorphism_ref,
@@ -10,8 +10,8 @@ use crate::reference::znx::{
     neg::{znx_negate_assign_ref, znx_negate_ref},
     normalization::{
         znx_normalize_final_step_assign_ref, znx_normalize_final_step_ref, znx_normalize_final_step_sub_ref,
-        znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_assign_ref, znx_normalize_first_step_ref,
-        znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_ref,
+        znx_normalize_first_step_assign_ref, znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_ref,
+        znx_normalize_middle_step_assign_ref, znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_ref,
         znx_normalize_middle_step_sub_ref,
     },
     sub::{znx_sub_assign_ref, znx_sub_negate_assign_ref, znx_sub_ref},

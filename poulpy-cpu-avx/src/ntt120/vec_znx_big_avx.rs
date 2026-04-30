@@ -28,10 +28,7 @@
 use std::arch::x86_64::*;
 
 use itertools::izip;
-use poulpy_cpu_ref::reference::{
-    ntt120::vec_znx_big::AssignOp,
-    znx::{get_carry_i128, get_digit_i128},
-};
+use poulpy_cpu_ref::reference::znx::{get_carry_i128, get_digit_i128};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Scalar fallback helpers (used as tails in AVX2 kernels)
@@ -99,22 +96,6 @@ pub(super) fn nfc_final_step_assign_scalar(base2k: usize, lsh: usize, res: &mut 
         res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
             let ri = *r as i128;
             *r = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, ri) << lsh) + *c) as i64;
-        });
-    }
-}
-
-#[inline(always)]
-pub(super) fn nfc_final_step_into_scalar<O: AssignOp>(base2k: usize, lsh: usize, res: &mut [i64], carry: &mut [i128]) {
-    if lsh == 0 {
-        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
-            let out = get_digit_i128(base2k, get_digit_i128(base2k, *r as i128) + *c);
-            *r = O::apply_i64(*r, out as i64);
-        });
-    } else {
-        let base2k_lsh = base2k - lsh;
-        res.iter_mut().zip(carry.iter_mut()).for_each(|(r, c)| {
-            let out = get_digit_i128(base2k, (get_digit_i128(base2k_lsh, *r as i128) << lsh) + *c);
-            *r = O::apply_i64(*r, out as i64);
         });
     }
 }
@@ -888,8 +869,8 @@ pub(super) unsafe fn vi128_neg_from_small_avx2(n: usize, res: &mut [i128], a: &[
 #[cfg(all(test, target_feature = "avx2"))]
 mod tests {
     use super::{
-        nfc_final_step_assign_avx2, nfc_final_step_assign_scalar, nfc_middle_step_avx2, nfc_middle_step_assign_avx2,
-        nfc_middle_step_assign_scalar, nfc_middle_step_scalar, vi128_add_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2,
+        nfc_final_step_assign_avx2, nfc_final_step_assign_scalar, nfc_middle_step_assign_avx2, nfc_middle_step_assign_scalar,
+        nfc_middle_step_avx2, nfc_middle_step_scalar, vi128_add_avx2, vi128_from_small_avx2, vi128_neg_from_small_avx2,
         vi128_negate_avx2, vi128_sub_avx2,
     };
 

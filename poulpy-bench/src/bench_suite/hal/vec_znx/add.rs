@@ -3,13 +3,13 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use poulpy_hal::{
-    api::{ModuleNew, VecZnxAddAssignBackend, VecZnxAddIntoBackend},
+    api::{ModuleNew, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAlloc},
     layouts::{Backend, Module},
 };
 
 pub fn bench_vec_znx_add_into<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxAddInto + ModuleNew<B>,
+    Module<B>: VecZnxAddIntoBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
 {
     let group_name: String = format!("vec_znx_add_into::{label}");
 
@@ -17,7 +17,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxAddInto + ModuleNew<B>,
+        Module<B>: VecZnxAddIntoBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -38,7 +38,7 @@ where
             let b = crate::vec_znx_backend_ref::<B>(&b);
             let mut c = crate::vec_znx_backend_mut::<B>(&mut c);
             for i in 0..cols {
-                module.vec_znx_add_into(&mut c, i, &a, i, &b, i);
+                module.vec_znx_add_into_backend(&mut c, i, &a, i, &b, i);
             }
             black_box(());
         }
@@ -55,7 +55,7 @@ where
 
 pub fn bench_vec_znx_add_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxAddAssign + ModuleNew<B>,
+    Module<B>: VecZnxAddAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
 {
     let group_name: String = format!("vec_znx_add_assign::{label}");
 
@@ -63,7 +63,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxAddAssign + ModuleNew<B>,
+        Module<B>: VecZnxAddAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -81,7 +81,7 @@ where
             let a = crate::vec_znx_backend_ref::<B>(&a);
             let mut b = crate::vec_znx_backend_mut::<B>(&mut b);
             for i in 0..cols {
-                module.vec_znx_add_assign(&mut b, i, &a, i);
+                module.vec_znx_add_assign_backend(&mut b, i, &a, i);
             }
             black_box(());
         }

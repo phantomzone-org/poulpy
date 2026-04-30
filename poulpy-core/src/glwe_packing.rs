@@ -9,8 +9,8 @@ pub use crate::api::GLWEPacking;
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
-        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut,
-        GLWEToBackendRef, GetGaloisElement, ModuleCoreAlloc, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
+        GetGaloisElement, ModuleCoreAlloc, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -142,8 +142,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
         let mut tmp_b = module.glwe_alloc_from_infos(&b_layout);
         {
             let b_backend = b.to_backend_ref();
-            let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
-                <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
+            let mut tmp_b_backend: GLWEBackendMut<'_, BE> = <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
             module.glwe_rotate(t, &mut tmp_b_backend, &b_backend);
         }
         module.glwe_rsh(1, &mut tmp_b, scratch);

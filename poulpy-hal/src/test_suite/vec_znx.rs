@@ -9,17 +9,17 @@ use crate::{
         ModuleNew, ScalarZnxFillBinaryBlockBackend, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwBackend,
         ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbBackend, ScalarZnxFillBinaryProbSourceBackend,
         ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
-        ScalarZnxFillTernaryProbSourceBackend, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddIntoBackend,
-        VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend,
-        VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
-        VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend,
-        VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
-        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneAssignTmpBytes, VecZnxNegateBackend,
-        VecZnxNegateAssignBackend, VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend,
-        VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes, VecZnxRshBackend, VecZnxRshAssignBackend, VecZnxRshTmpBytes,
-        VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubAssignBackend,
-        VecZnxSubNegateAssignBackend, VecZnxSubScalarBackend, VecZnxSubScalarAssignBackend, VecZnxSwitchRingBackend,
-        VecZnxZeroBackend,
+        ScalarZnxFillTernaryProbSourceBackend, ScratchOwnedAlloc, VecZnxAddAssignBackend, VecZnxAddConstAssignBackend,
+        VecZnxAddConstIntoBackend, VecZnxAddIntoBackend, VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend,
+        VecZnxAddScalarIntoBackend, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxAutomorphismBackend,
+        VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend,
+        VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshAssignBackend, VecZnxLshBackend, VecZnxLshTmpBytes,
+        VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneAssignTmpBytes,
+        VecZnxMulXpMinusOneBackend, VecZnxNegateAssignBackend, VecZnxNegateBackend, VecZnxNormalize,
+        VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes,
+        VecZnxRotateBackend, VecZnxRshAssignBackend, VecZnxRshBackend, VecZnxRshTmpBytes, VecZnxSplitRingBackend,
+        VecZnxSplitRingTmpBytes, VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubNegateAssignBackend,
+        VecZnxSubScalarAssignBackend, VecZnxSubScalarBackend, VecZnxSwitchRingBackend, VecZnxZeroBackend,
     },
     layouts::{
         DigestU64, FillUniform, Module, NoiseInfos, ScalarZnx, ScalarZnxToBackendMut, ScratchOwned, VecZnx, ZnxView, ZnxViewMut,
@@ -207,6 +207,121 @@ pub fn test_vec_znx_add_scalar_assign<
         assert_eq!(
             download_vec_znx::<BR>(&rest_ref_backend),
             download_vec_znx::<BT>(&res_test_backend)
+        );
+    }
+}
+
+pub fn test_vec_znx_add_const_into<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxAddConstIntoBackend<BR>,
+    Module<BT>: VecZnxAddConstIntoBackend<BT>,
+{
+    let base2k = params.base2k;
+    let n = module_ref.n();
+    assert_eq!(n, module_test.n());
+
+    let cols: usize = 2;
+    let mut source = Source::new([17u8; 32]);
+    let cnst: [i64; 3] = [11, -7, 23];
+    let res_coeffs = [0usize, 1usize.min(n - 1), (n / 2).min(n - 1)];
+
+    for a_size in [1, 2, 3, 4] {
+        let mut a: VecZnx<Vec<u8>> = module_ref.vec_znx_alloc(cols, a_size);
+        a.fill_uniform(base2k, &mut source);
+        let a_digest = a.digest_u64();
+        let a_ref = upload_vec_znx::<BR>(&a);
+        let a_test = upload_vec_znx::<BT>(&a);
+
+        for res_size in [1, 2, 3, 4] {
+            let mut expected: VecZnx<Vec<u8>> = module_ref.vec_znx_alloc(cols, res_size);
+            let mut actual: VecZnx<Vec<u8>> = module_ref.vec_znx_alloc(cols, res_size);
+            expected.fill_uniform(base2k, &mut source);
+            actual.data.copy_from_slice(&expected.data);
+            let mut expected_backend = upload_vec_znx::<BR>(&expected);
+            let mut actual_backend = upload_vec_znx::<BT>(&actual);
+
+            for col_i in 0..cols {
+                let res_limb = col_i.min(res_size - 1);
+                let res_coeff = res_coeffs[col_i % res_coeffs.len()];
+                module_ref.vec_znx_add_const_into_backend(
+                    &mut vec_znx_backend_mut::<BR>(&mut expected_backend),
+                    col_i,
+                    &vec_znx_backend_ref::<BR>(&a_ref),
+                    col_i,
+                    &cnst,
+                    res_limb,
+                    res_coeff,
+                );
+                module_test.vec_znx_add_const_into_backend(
+                    &mut vec_znx_backend_mut::<BT>(&mut actual_backend),
+                    col_i,
+                    &vec_znx_backend_ref::<BT>(&a_test),
+                    col_i,
+                    &cnst,
+                    res_limb,
+                    res_coeff,
+                );
+            }
+
+            assert_eq!(a.digest_u64(), a_digest);
+            assert_eq!(
+                download_vec_znx::<BR>(&expected_backend),
+                download_vec_znx::<BT>(&actual_backend)
+            );
+        }
+    }
+}
+
+pub fn test_vec_znx_add_const_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
+    params: &TestParams,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxAddConstAssignBackend<BR>,
+    Module<BT>: VecZnxAddConstAssignBackend<BT>,
+{
+    let base2k = params.base2k;
+    let n = module_ref.n();
+    assert_eq!(n, module_test.n());
+
+    let cols: usize = 2;
+    let mut source = Source::new([19u8; 32]);
+    let cnst: [i64; 4] = [5, -3, 9, 17];
+    let res_coeffs = [0usize, 1usize.min(n - 1), (n / 2).min(n - 1)];
+
+    for res_size in [1, 2, 3, 4] {
+        let mut expected: VecZnx<Vec<u8>> = module_ref.vec_znx_alloc(cols, res_size);
+        let mut actual: VecZnx<Vec<u8>> = module_ref.vec_znx_alloc(cols, res_size);
+        expected.fill_uniform(base2k, &mut source);
+        actual.data.copy_from_slice(&expected.data);
+        let mut expected_backend = upload_vec_znx::<BR>(&expected);
+        let mut actual_backend = upload_vec_znx::<BT>(&actual);
+
+        for col_i in 0..cols {
+            let res_limb = col_i.min(res_size - 1);
+            let res_coeff = res_coeffs[col_i % res_coeffs.len()];
+            module_ref.vec_znx_add_const_assign_backend(
+                &mut vec_znx_backend_mut::<BR>(&mut expected_backend),
+                col_i,
+                &cnst,
+                res_limb,
+                res_coeff,
+            );
+            module_test.vec_znx_add_const_assign_backend(
+                &mut vec_znx_backend_mut::<BT>(&mut actual_backend),
+                col_i,
+                &cnst,
+                res_limb,
+                res_coeff,
+            );
+        }
+
+        assert_eq!(
+            download_vec_znx::<BR>(&expected_backend),
+            download_vec_znx::<BT>(&actual_backend)
         );
     }
 }
@@ -1185,10 +1300,7 @@ pub fn test_vec_znx_normalize<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<
     }
 }
 
-pub fn test_vec_znx_normalize_assign<
-    BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>,
-    BT: crate::test_suite::TestBackend,
->(
+pub fn test_vec_znx_normalize_assign<BR: crate::test_suite::TestBackend<OwnedBuf = Vec<u8>>, BT: crate::test_suite::TestBackend>(
     params: &TestParams,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,

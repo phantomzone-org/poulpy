@@ -10,8 +10,8 @@ use poulpy_cpu_ref::reference::{
     znx::{
         ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
         ZnxMulPowerOfTwoAssign, ZnxNegate, ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
-        ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-        ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign,
+        ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepAssign,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly,
         ZnxNormalizeMiddleStepSub, ZnxRotate, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxSwitchRing, ZnxZero, znx_copy_ref,
         znx_rotate, znx_zero_ref,
     },
@@ -29,10 +29,10 @@ use crate::{
             i64_save_1blk_contiguous_avx,
         },
         reim::{
-            ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_assign_avx2_fma, reim_addmul_avx2_fma,
-            reim_from_znx_i64_bnd50_fma, reim_from_znx_i64_masked_bnd50_fma, reim_mul_avx2_fma, reim_mul_assign_avx2_fma,
-            reim_negate_avx2_fma, reim_negate_assign_avx2_fma, reim_sub_avx2_fma, reim_sub_assign_avx2_fma,
-            reim_sub_negate_assign_avx2_fma, reim_to_znx_i64_bnd63_avx2_fma, reim_to_znx_i64_assign_bnd63_avx2_fma,
+            ReimFFTAvx, ReimIFFTAvx, reim_add_assign_avx2_fma, reim_add_avx2_fma, reim_addmul_avx2_fma,
+            reim_from_znx_i64_bnd50_fma, reim_from_znx_i64_masked_bnd50_fma, reim_mul_assign_avx2_fma, reim_mul_avx2_fma,
+            reim_negate_assign_avx2_fma, reim_negate_avx2_fma, reim_sub_assign_avx2_fma, reim_sub_avx2_fma,
+            reim_sub_negate_assign_avx2_fma, reim_to_znx_i64_assign_bnd63_avx2_fma, reim_to_znx_i64_bnd63_avx2_fma,
         },
         reim4::{
             reim4_convolution_1coeff_avx, reim4_convolution_2coeffs_avx, reim4_convolution_by_real_const_1coeff_avx,
@@ -42,12 +42,12 @@ use crate::{
         },
     },
     znx_avx::{
-        znx_add_avx, znx_add_assign_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
-        znx_mul_power_of_two_avx, znx_mul_power_of_two_assign_avx, znx_negate_avx, znx_negate_assign_avx,
-        znx_normalize_digit_avx, znx_normalize_final_step_avx, znx_normalize_final_step_assign_avx,
-        znx_normalize_final_step_sub_avx, znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx,
-        znx_normalize_first_step_assign_avx, znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx,
-        znx_normalize_middle_step_assign_avx, znx_normalize_middle_step_sub_avx, znx_sub_avx, znx_sub_assign_avx,
+        znx_add_assign_avx, znx_add_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
+        znx_mul_power_of_two_assign_avx, znx_mul_power_of_two_avx, znx_negate_assign_avx, znx_negate_avx,
+        znx_normalize_digit_avx, znx_normalize_final_step_assign_avx, znx_normalize_final_step_avx,
+        znx_normalize_final_step_sub_avx, znx_normalize_first_step_assign_avx, znx_normalize_first_step_avx,
+        znx_normalize_first_step_carry_only_avx, znx_normalize_middle_step_assign_avx, znx_normalize_middle_step_avx,
+        znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_sub_avx, znx_sub_assign_avx, znx_sub_avx,
         znx_sub_negate_assign_avx, znx_switch_ring_avx,
     },
 };
@@ -104,10 +104,14 @@ impl Backend for FFT64Avx {
         buf.clone()
     }
     fn copy_to_host(buf: &Self::OwnedBuf, dst: &mut [u8]) {
-        dst.copy_from_slice(buf);
+        assert!(buf.len() >= dst.len());
+        dst.copy_from_slice(&buf[..dst.len()]);
     }
     fn copy_from_host(buf: &mut Self::OwnedBuf, src: &[u8]) {
-        buf.copy_from_slice(src);
+        assert!(buf.len() >= src.len());
+        let src_len = src.len();
+        buf[..src_len].copy_from_slice(src);
+        buf[src_len..].fill(0);
     }
     fn len_bytes(buf: &Self::OwnedBuf) -> usize {
         buf.len()

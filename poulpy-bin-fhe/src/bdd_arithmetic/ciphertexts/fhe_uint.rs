@@ -303,7 +303,13 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         B: GLWEToBackendRef<BE> + GLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos + GetGaloisElement,
-        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + GLWERotate<BE> + GLWETrace<BE> + GLWESub<BE> + GLWEAdd<BE> + GLWECopy<BE>,
+        M: ModuleLogN
+            + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
+            + GLWERotate<BE>
+            + GLWETrace<BE>
+            + GLWESub<BE>
+            + GLWEAdd<BE>
+            + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeBDD<'a, T, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -334,7 +340,13 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         B: GLWEToBackendRef<BE> + GLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos + GetGaloisElement,
-        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + GLWERotate<BE> + GLWETrace<BE> + GLWESub<BE> + GLWEAdd<BE> + GLWECopy<BE>,
+        M: ModuleLogN
+            + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
+            + GLWERotate<BE>
+            + GLWETrace<BE>
+            + GLWESub<BE>
+            + GLWEAdd<BE>
+            + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeBDD<'a, T, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -556,7 +568,13 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         Self: GLWEToBackendMut<BE>,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos + GetGaloisElement,
-        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + GLWERotate<BE> + GLWETrace<BE> + GLWESub<BE> + GLWEAdd<BE> + GLWECopy<BE>,
+        M: ModuleLogN
+            + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
+            + GLWERotate<BE>
+            + GLWETrace<BE>
+            + GLWESub<BE>
+            + GLWEAdd<BE>
+            + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeBDD<'a, T, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -593,7 +611,13 @@ impl<D: HostDataMut, T: UnsignedInteger> FheUint<D, T> {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos + GetGaloisElement,
         BE: Backend<OwnedBuf = Vec<u8>>,
-        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + GLWERotate<BE> + GLWETrace<BE> + GLWEAdd<BE> + GLWESub<BE> + GLWECopy<BE>,
+        M: ModuleLogN
+            + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
+            + GLWERotate<BE>
+            + GLWETrace<BE>
+            + GLWEAdd<BE>
+            + GLWESub<BE>
+            + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeBDD<'a, T, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
         BE: 's,

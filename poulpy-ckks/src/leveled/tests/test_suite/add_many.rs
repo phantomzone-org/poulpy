@@ -50,29 +50,33 @@ pub fn test_add_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
     let (terms, want_re, want_im) = build_terms(ctx, N);
     let cts: Vec<_> = terms
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_add_many(&mut ct_res, &ct_refs, &mut scratch.borrow())
+        .unwrap();
     let expected_log_delta: usize = cts.iter().map(|c| c.log_delta()).max().unwrap();
     let expected_log_budget: usize = cts.iter().map(|c| c.log_budget()).min().unwrap();
     assert_ct_meta("add_many_aligned", &ct_res, expected_log_delta, expected_log_budget);
-    ctx.assert_decrypt_precision("add_many_aligned", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision("add_many_aligned", &ct_res, &want_re, &want_im, &mut scratch.borrow());
 }
 
 pub fn test_add_many_single_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
     let ct_refs = vec![&ct];
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_add_many(&mut ct_res, &ct_refs, &mut scratch.borrow())
+        .unwrap();
     ctx.assert_decrypt_precision(
         "add_many_single_smaller_output",
         &ct_res,
         &ctx.re1,
         &ctx.im1,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -87,13 +91,21 @@ pub fn test_add_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &Test
         .enumerate()
         .map(|(i, (re, im))| {
             let k = if i == 1 { smaller_k } else { ctx.max_k() };
-            ctx.encrypt(k, re, im, scratch.borrow())
+            ctx.encrypt(k, re, im, &mut scratch.borrow())
         })
         .collect();
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    ctx.assert_decrypt_precision("add_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.module
+        .ckks_add_many(&mut ct_res, &ct_refs, &mut scratch.borrow())
+        .unwrap();
+    ctx.assert_decrypt_precision(
+        "add_many unaligned_log_budget",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }
 
 /// One input encoded at a lower `log_delta`. The sum's precision is
@@ -121,10 +133,10 @@ pub fn test_add_many_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestConte
         &lo_scaled.0,
         &lo_scaled.1,
         low_prec,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
     let cts_hi: Vec<_> = (0..N - 1)
-        .map(|_| ctx.encrypt(ctx.max_k(), &hi_scaled.0, &hi_scaled.1, scratch.borrow()))
+        .map(|_| ctx.encrypt(ctx.max_k(), &hi_scaled.0, &hi_scaled.1, &mut scratch.borrow()))
         .collect();
     let mut ct_refs: Vec<&_> = Vec::with_capacity(N);
     ct_refs.push(&ct_low);
@@ -141,14 +153,16 @@ pub fn test_add_many_delta_log_delta<BE: Backend, F: TestScalar>(ctx: &TestConte
     }
 
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
+    ctx.module
+        .ckks_add_many(&mut ct_res, &ct_refs, &mut scratch.borrow())
+        .unwrap();
     ctx.assert_decrypt_precision_at_log_delta(
         "add_many delta_log_delta",
         &ct_res,
         &want_re,
         &want_im,
         low_log_delta,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -158,10 +172,12 @@ pub fn test_add_many_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContex
     let (terms, want_re, want_im) = build_terms(ctx, N);
     let cts: Vec<_> = terms
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
-    ctx.module.ckks_add_many(&mut ct_res, &ct_refs, scratch.borrow()).unwrap();
-    ctx.assert_decrypt_precision("add_many smaller_output", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.module
+        .ckks_add_many(&mut ct_res, &ct_refs, &mut scratch.borrow())
+        .unwrap();
+    ctx.assert_decrypt_precision("add_many smaller_output", &ct_res, &want_re, &want_im, &mut scratch.borrow());
 }

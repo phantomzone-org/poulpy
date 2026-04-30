@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxAutomorphismBackend, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes},
+    api::{VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxAutomorphismBackend},
     layouts::{Backend, CyclotomicOrder, GaloisElement, Module, ScratchArena},
 };
 

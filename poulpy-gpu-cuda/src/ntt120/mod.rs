@@ -20,7 +20,10 @@ use std::{mem::size_of, ptr::NonNull};
 use cudarc::driver::CudaSlice;
 
 use crate::{CudaBuf, CudaBufMut, CudaBufRef, cuda_stream};
-use poulpy_hal::{layouts::{Backend, Device, Module}, oep::HalModuleImpl};
+use poulpy_hal::{
+    layouts::{Backend, Device, Module},
+    oep::HalModuleImpl,
+};
 use types::Big32;
 
 /// NTT120 CUDA backend marker type.

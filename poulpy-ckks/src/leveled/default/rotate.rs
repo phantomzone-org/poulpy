@@ -1,9 +1,12 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
+    GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
+    layouts::{
+        GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
+        GetGaloisElement,
+    },
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
 
 use crate::{
     CKKSCompositionError, CKKSInfos, checked_log_budget_sub,
@@ -20,19 +23,24 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         self.glwe_automorphism_tmp_bytes(ct_infos, ct_infos, key_infos)
     }
 
-    fn ckks_rotate_into_default<H, K>(
+    fn ckks_rotate_into_default<'s, Dst, Src, H, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut CKKSCiphertext<Dst>,
+        src: &CKKSCiphertext<Src>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
+        Dst: Data,
+        Src: Data,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         let key = keys
             .get_automorphism_key(k)
@@ -45,9 +53,12 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
 
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
-            self.glwe_automorphism_assign(dst, key, scratch);
+            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+            self.glwe_automorphism_assign(&mut dst_ref, key, scratch);
         } else {
-            self.glwe_automorphism(dst, src, key, scratch);
+            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+            let src_ref = GLWEToBackendRef::<BE>::to_backend_ref(src);
+            self.glwe_automorphism(&mut dst_ref, &src_ref, key, scratch);
         }
 
         dst.meta = src.meta();
@@ -55,18 +66,21 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_rotate_assign_default<H, K>(
+    fn ckks_rotate_assign_default<'s, Dst, H, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
+        Dst: Data,
         Self: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
+        BE: 's,
     {
         let key = keys
             .get_automorphism_key(k)
@@ -74,7 +88,8 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
                 op: "rotate_assign",
                 rotation: k,
             })?;
-        self.glwe_automorphism_assign(dst, key, scratch);
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        self.glwe_automorphism_assign(&mut dst_ref, key, scratch);
         Ok(())
     }
 }

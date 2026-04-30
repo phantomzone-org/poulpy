@@ -21,7 +21,10 @@ pub struct LWESecret<D: Data> {
 pub type LWESecretBackendRef<'a, BE> = LWESecret<<BE as Backend>::BufRef<'a>>;
 pub type LWESecretBackendMut<'a, BE> = LWESecret<<BE as Backend>::BufMut<'a>>;
 
-#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
+#[expect(
+    dead_code,
+    reason = "host-owned constructors are kept for serialization and host-only staging"
+)]
 impl LWESecret<Vec<u8>> {
     pub(crate) fn alloc(n: Degree) -> Self {
         LWESecret {

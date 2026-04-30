@@ -188,7 +188,10 @@ impl<D: HostDataMut> FillUniform for GLWESwitchingKey<D> {
     }
 }
 
-#[expect(dead_code, reason = "host-owned constructors are kept for serialization and host-only staging")]
+#[expect(
+    dead_code,
+    reason = "host-owned constructors are kept for serialization and host-only staging"
+)]
 impl GLWESwitchingKey<Vec<u8>> {
     /// Allocates a new [`GLWESwitchingKey`] with the given parameters.
     pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self

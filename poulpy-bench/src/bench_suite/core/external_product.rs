@@ -96,11 +96,8 @@ pub fn bench_glwe_external_product<BE: Backend<OwnedBuf = Vec<u8>>>(
     group.finish();
 }
 
-pub fn bench_glwe_external_product_assign<BE: Backend<OwnedBuf = Vec<u8>>>(
-    infos: &impl GGSWInfos,
-    c: &mut Criterion,
-    label: &str,
-) where
+pub fn bench_glwe_external_product_assign<BE: Backend<OwnedBuf = Vec<u8>>>(infos: &impl GGSWInfos, c: &mut Criterion, label: &str)
+where
     Module<BE>: ModuleNew<BE>
         + GLWEExternalProduct<BE>
         + GGSWEncryptSk<BE>

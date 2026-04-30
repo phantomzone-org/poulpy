@@ -124,6 +124,27 @@ pub unsafe trait HalVecZnxImpl<BE: Backend>: Backend {
     );
 
     #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_const_into_backend<'r, 'a>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, BE>,
+        a_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    );
+
+    fn vec_znx_add_const_assign_backend<'r>(
+        module: &Module<BE>,
+        res: &mut VecZnxBackendMut<'r, BE>,
+        res_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    );
+
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_into_backend<'r, 'a>(
         module: &Module<BE>,
         res: &mut VecZnxBackendMut<'r, BE>,

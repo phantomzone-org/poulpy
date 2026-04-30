@@ -229,6 +229,11 @@ fn scalar_znx_col_ptr(buf: &CudaBuf, offset: usize, col: usize, n: usize) -> u64
 }
 
 #[inline]
+fn vec_znx_coeff_ptr(buf: &CudaBuf, offset: usize, col: usize, size: usize, limb: usize, coeff: usize, n: usize) -> u64 {
+    buf_device_ptr(buf, offset + ((col * size + limb) * n + coeff) * size_of::<i64>())
+}
+
+#[inline]
 fn alloc_host_scalar_znx(n: usize, cols: usize) -> ScalarZnx<Vec<u8>> {
     ScalarZnx::from_data(
         HostBytesBackend::alloc_bytes(ScalarZnx::<Vec<u8>>::bytes_of(n, cols)),
@@ -510,6 +515,87 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n) as *const i64;
         unsafe {
             ntt120_vec_znx_add_assign(stream_raw, res_ptr, a_ptr, (min_size * n) as i32);
+        }
+    }
+
+    fn vec_znx_add_const_into_backend<'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) {
+        let n = module.n();
+        let min_size = res.size().min(a.size());
+        let stream = cuda_stream();
+        let stream_raw = stream.cu_stream() as *mut std::ffi::c_void;
+        let res_buf: &CudaBuf = unsafe { res.data.ptr.as_ref() };
+        let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
+        let res_ptr = vec_znx_col_ptr(res_buf, res.data.offset, res_col, res.size(), n);
+        let a_ptr = vec_znx_col_ptr(a_buf, a.data.offset, a_col, a.size(), n);
+        if min_size > 0 {
+            let copy_bytes = min_size * n * size_of::<i64>();
+            unsafe {
+                cudaMemcpyAsync(
+                    res_ptr as *mut std::ffi::c_void,
+                    a_ptr as *const std::ffi::c_void,
+                    copy_bytes,
+                    3, /*DeviceToDevice*/
+                    stream_raw,
+                );
+            }
+        }
+        if res.size() > min_size {
+            let zero_ptr = (res_ptr as usize + min_size * n * size_of::<i64>()) as *mut std::ffi::c_void;
+            unsafe {
+                cudaMemsetAsync(zero_ptr, 0, (res.size() - min_size) * n * size_of::<i64>(), stream_raw);
+            }
+        }
+        Self::vec_znx_add_const_assign_backend(module, res, res_col, cnst, res_limb, res_coeff);
+    }
+
+    fn vec_znx_add_const_assign_backend<'r>(
+        module: &Module<CudaNtt120Backend>,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) {
+        let n = module.n();
+        if res_coeff >= n || res_limb >= res.size() || cnst.is_empty() {
+            return;
+        }
+        let res_buf: &CudaBuf = unsafe { res.data.ptr.as_ref() };
+        let stream = cuda_stream();
+        stream
+            .synchronize()
+            .expect("CUDA sync failed in vec_znx_add_const_assign_backend");
+        let digit_count = cnst.len().min(res.size() - res_limb);
+        for (idx, digit) in cnst[..digit_count].iter().enumerate() {
+            let dev_ptr =
+                vec_znx_coeff_ptr(res_buf, res.data.offset, res_col, res.size(), res_limb + idx, res_coeff, n) as *mut i64;
+            let mut coeff = 0i64;
+            unsafe {
+                cudaMemcpy(
+                    (&mut coeff as *mut i64).cast(),
+                    dev_ptr.cast(),
+                    size_of::<i64>(),
+                    2, /*D2H*/
+                );
+            }
+            coeff += *digit;
+            unsafe {
+                cudaMemcpy(
+                    dev_ptr.cast(),
+                    (&coeff as *const i64).cast(),
+                    size_of::<i64>(),
+                    1, /*H2D*/
+                );
+            }
         }
     }
 
@@ -1176,9 +1262,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                 stream_raw,
             );
         }
-        stream
-            .synchronize()
-            .expect("CUDA sync failed in vec_znx_automorphism_assign");
+        stream.synchronize().expect("CUDA sync failed in vec_znx_automorphism_assign");
         drop(tmp);
     }
 

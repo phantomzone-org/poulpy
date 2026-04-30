@@ -1,9 +1,8 @@
+use poulpy_hal::{backend_test_suite, cross_backend_test_suite};
 use poulpy_hal::{
-    api::ModuleNew,
     layouts::Module,
     test_suite::convolution::{test_convolution, test_convolution_by_const, test_convolution_pairwise},
 };
-use poulpy_hal::{backend_test_suite, cross_backend_test_suite};
 
 use crate::NTT120Avx;
 

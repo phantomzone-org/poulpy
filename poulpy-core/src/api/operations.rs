@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxCopyBackend,
-        VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
-        VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneAssignBackend, VecZnxNegateBackend, VecZnxNegateAssignBackend,
-        VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateAssignBackend,
-        VecZnxRotateAssignTmpBytes, VecZnxRshAssignBackend, VecZnxRshTmpBytes, VecZnxSubBackend, VecZnxSubAssignBackend,
-        VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
+        VecZnxLshAddIntoBackend, VecZnxLshAssignBackend, VecZnxLshBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
+        VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneBackend, VecZnxNegateAssignBackend, VecZnxNegateBackend,
+        VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateAssignBackend,
+        VecZnxRotateAssignTmpBytes, VecZnxRotateBackend, VecZnxRshAssignBackend, VecZnxRshTmpBytes, VecZnxSubAssignBackend,
+        VecZnxSubBackend, VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
     },
     layouts::{Backend, Data, GaloisElement, ScratchArena},
 };
@@ -444,8 +444,7 @@ where
 
 pub trait GLWERotate<BE: Backend>
 where
-    Self:
-        ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>,
+    Self: ModuleN + VecZnxRotateBackend<BE> + VecZnxRotateAssignBackend<BE> + VecZnxRotateAssignTmpBytes + VecZnxZeroBackend<BE>,
 {
     fn glwe_rotate_tmp_bytes(&self) -> usize {
         self.vec_znx_rotate_assign_tmp_bytes()

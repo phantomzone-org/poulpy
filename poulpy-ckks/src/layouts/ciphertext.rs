@@ -6,10 +6,10 @@
 use std::ops::{Deref, DerefMut};
 
 use anyhow::Result;
-use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, Rank, TorusPrecision};
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module};
+use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank};
+use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataRef, Module};
 
-use crate::{CKKSInfos, CKKSMeta, error::CKKSCompositionError};
+use crate::{CKKSInfos, CKKSMeta, error::CKKSCompositionError, layouts::CKKSModuleAlloc};
 
 /// CKKS ciphertext storage plus semantic precision metadata.
 ///
@@ -25,6 +25,20 @@ pub struct CKKSCiphertext<D: Data> {
 impl<D: Data> CKKSCiphertext<D> {
     pub(crate) fn from_inner(inner: GLWE<D>, meta: CKKSMeta) -> Self {
         Self { inner, meta }
+    }
+
+    pub fn to_ref<BE: Backend>(&self) -> GLWE<BE::BufRef<'_>>
+    where
+        GLWE<D>: GLWEToBackendRef<BE>,
+    {
+        GLWEToBackendRef::to_backend_ref(&self.inner)
+    }
+
+    pub fn to_mut<BE: Backend>(&mut self) -> GLWE<BE::BufMut<'_>>
+    where
+        GLWE<D>: GLWEToBackendMut<BE>,
+    {
+        GLWEToBackendMut::to_backend_mut(&mut self.inner)
     }
 
     /// Replaces the semantic metadata after checking that the current storage
@@ -95,51 +109,21 @@ impl<D: Data> CKKSInfos for CKKSCiphertext<D> {
     }
 }
 
-impl<D: DataRef> GLWEToRef for CKKSCiphertext<D> {
-    fn to_ref(&self) -> GLWE<&[u8]> {
-        self.inner.to_ref()
+impl<BE: Backend, D: Data> GLWEToBackendRef<BE> for CKKSCiphertext<D>
+where
+    GLWE<D>: GLWEToBackendRef<BE>,
+{
+    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
+        GLWEToBackendRef::to_backend_ref(&self.inner)
     }
 }
 
-impl<D: DataMut> GLWEToMut for CKKSCiphertext<D> {
-    fn to_mut(&mut self) -> GLWE<&mut [u8]> {
-        self.inner.to_mut()
-    }
-}
-
-impl CKKSCiphertext<Vec<u8>> {
-    /// Allocates an owned ciphertext buffer with zeroed metadata.
-    ///
-    /// Inputs:
-    /// - `n`: polynomial degree
-    /// - `k`: torus storage precision in bits
-    /// - `base2k`: limb radix
-    ///
-    /// Output:
-    /// - a rank-1 ciphertext buffer ready to be populated by encryption or
-    ///   evaluation code
-    pub fn alloc(n: Degree, k: TorusPrecision, base2k: Base2K) -> Self {
-        Self::from_inner(GLWE::alloc(n, base2k, k, Rank(1)), CKKSMeta::default())
-    }
-
-    /// Allocates an owned ciphertext from an existing GLWE layout descriptor.
-    ///
-    /// Inputs:
-    /// - `infos`: degree, rank, `base2k`, and `max_k` of the target buffer
-    ///
-    /// Output:
-    /// - a fresh ciphertext buffer with default metadata
-    ///
-    /// Errors:
-    /// - propagates allocation/layout errors from the underlying GLWE type
-    pub fn alloc_from_infos<A>(infos: &A) -> Result<Self>
-    where
-        A: GLWEInfos,
-    {
-        Ok(Self::from_inner(
-            GLWE::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.rank()),
-            CKKSMeta::default(),
-        ))
+impl<BE: Backend, D: Data> GLWEToBackendMut<BE> for CKKSCiphertext<D>
+where
+    GLWE<D>: GLWEToBackendMut<BE>,
+{
+    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
+        GLWEToBackendMut::to_backend_mut(&mut self.inner)
     }
 }
 
@@ -192,7 +176,7 @@ pub trait CKKSMaintainOps {
     /// - propagates allocation failures from the underlying GLWE type
     fn ckks_compact_limbs_copy<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
     where
-        D: DataRef;
+        D: HostDataRef;
 }
 
 #[doc(hidden)]
@@ -218,25 +202,14 @@ pub trait CKKSMaintainOpsDefault {
         self.ckks_reallocate_limbs_checked_default(ct, size)?;
         Ok(())
     }
-
-    fn ckks_compact_limbs_copy_default<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
-    where
-        D: DataRef,
-    {
-        let size = ct.effective_k().div_ceil(ct.base2k().as_usize());
-        let mut compact = CKKSCiphertext::alloc(ct.n(), (size * ct.base2k().as_usize()).into(), ct.base2k());
-        compact.meta = ct.meta();
-        let dst_len = compact.data().data.len();
-        compact.data_mut().data[..].copy_from_slice(&ct.data().data.as_ref()[..dst_len]);
-        Ok(compact)
-    }
 }
 
 impl<BE: Backend> CKKSMaintainOpsDefault for Module<BE> {}
 
 impl<BE: Backend> CKKSMaintainOps for Module<BE>
 where
-    Module<BE>: CKKSMaintainOpsDefault,
+    BE: HostBackend<OwnedBuf = Vec<u8>>,
+    Module<BE>: CKKSMaintainOpsDefault + CKKSModuleAlloc<BE>,
 {
     fn ckks_reallocate_limbs_checked(&self, ct: &mut CKKSCiphertext<Vec<u8>>, size: usize) -> Result<()> {
         self.ckks_reallocate_limbs_checked_default(ct, size)
@@ -248,9 +221,15 @@ where
 
     fn ckks_compact_limbs_copy<D>(&self, ct: &CKKSCiphertext<D>) -> Result<CKKSCiphertext<Vec<u8>>>
     where
-        D: DataRef,
+        D: HostDataRef,
     {
-        self.ckks_compact_limbs_copy_default(ct)
+        let size = ct.effective_k().div_ceil(ct.base2k().as_usize());
+        let mut compact = self.ckks_ciphertext_alloc_from_infos(ct);
+        compact.meta = ct.meta();
+        self.ckks_reallocate_limbs_checked_default(&mut compact, size)?;
+        let dst_len = compact.data().data.len();
+        compact.data_mut().data.copy_from_slice(&ct.data().data.as_ref()[..dst_len]);
+        Ok(compact)
     }
 }
 

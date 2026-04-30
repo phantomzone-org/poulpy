@@ -1,12 +1,24 @@
+use std::{hint::black_box, mem::size_of};
+
+use criterion::{BenchmarkId, Criterion};
+
 use dashu_float::ops::DivRemEuclid;
 
 use crate::{
-    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxLshAssignBackend, VecZnxLshBackend,
+        VecZnxRshAssignBackend, VecZnxRshBackend,
+    },
+    layouts::{
+        Backend, FillUniform, HostDataMut, HostDataRef, Module, ScratchOwned, VecZnx, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToBackendMut, VecZnxToBackendRef, ZnxView, ZnxViewMut,
+    },
     reference::znx::{
         ZnxCopy, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFinalStepSub, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepAssign, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-        ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepSub, ZnxZero,
+        ZnxNormalizeFirstStepAssign, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign,
+        ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepSub, ZnxZero,
     },
+    source::Source,
 };
 
 pub fn vec_znx_lsh_tmp_bytes(n: usize) -> usize {
@@ -418,7 +430,7 @@ pub fn vec_znx_rsh_sub<'r, 'a, BE>(
 
 pub fn bench_vec_znx_lsh_inplace<B: Backend<OwnedBuf = Vec<u8>>>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxLshInplaceBackend<B>,
+    Module<B>: ModuleNew<B> + VecZnxLshAssignBackend<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh_inplace_backend::{label}");
@@ -427,7 +439,7 @@ where
 
     fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxLshInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -440,8 +452,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut b: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
@@ -451,7 +463,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_lsh_inplace_backend(
+                module.vec_znx_lsh_assign_backend(
                     base2k,
                     base2k - 1,
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b),
@@ -475,7 +487,7 @@ where
 pub fn bench_vec_znx_lsh<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxLshBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxLshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh::{label}");
@@ -485,7 +497,7 @@ where
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
-        Module<B>: VecZnxLshBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -498,8 +510,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_lsh_tmp_bytes(n));
 
@@ -528,7 +540,7 @@ where
 
 pub fn bench_vec_znx_rsh_inplace<B: Backend<OwnedBuf = Vec<u8>>>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRshInplaceBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh_inplace_backend::{label}");
@@ -537,7 +549,7 @@ where
 
     fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRshInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -550,8 +562,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut b: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 
@@ -561,7 +573,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_rsh_inplace_backend(
+                module.vec_znx_rsh_assign_backend(
                     base2k,
                     base2k - 1,
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b),
@@ -585,7 +597,7 @@ where
 pub fn bench_vec_znx_rsh<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxRshBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh::{label}");
@@ -595,7 +607,7 @@ where
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>>,
-        Module<B>: VecZnxRshBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -608,8 +620,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(vec_znx_rsh_tmp_bytes(n));
 

@@ -1,10 +1,18 @@
-use std::hint::black_box;
+use std::{hint::black_box, mem::size_of};
 
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes,
+        VecZnxRotateBackend,
+    },
+    layouts::{
+        Backend, FillUniform, HostDataMut, HostDataRef, Module, ScratchOwned, VecZnx, VecZnxBackendMut, VecZnxBackendRef,
+        VecZnxToBackendMut, VecZnxToBackendRef, ZnxView, ZnxViewMut,
+    },
     reference::znx::{ZnxCopy, ZnxRotate, ZnxZero},
+    source::Source,
 };
 
 pub fn vec_znx_rotate_assign_tmp_bytes(n: usize) -> usize {
@@ -59,7 +67,7 @@ where
 pub fn bench_vec_znx_rotate<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>> + 'static,
-    Module<B>: VecZnxRotateBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxRotateBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
     let group_name: String = format!("vec_znx_rotate::{label}");
@@ -69,7 +77,7 @@ where
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>> + 'static,
-        Module<B>: VecZnxRotateBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxRotateBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     {
         let n: usize = 1 << params[0];
@@ -80,8 +88,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut res: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -113,7 +121,7 @@ where
 pub fn bench_vec_znx_rotate_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>> + 'static,
-    Module<B>: VecZnxRotateInplaceBackend<B> + VecZnxRotateInplaceTmpBytes + ModuleNew<B>,
+    Module<B>: VecZnxRotateAssignBackend<B> + VecZnxRotateAssignTmpBytes + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
 {
@@ -124,7 +132,7 @@ where
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         B: Backend<OwnedBuf = Vec<u8>> + 'static,
-        Module<B>: VecZnxRotateInplaceBackend<B> + ModuleNew<B> + VecZnxRotateInplaceTmpBytes,
+        Module<B>: VecZnxRotateAssignBackend<B> + ModuleNew<B> + VecZnxRotateAssignTmpBytes + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
         for<'x> B: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
     {
@@ -136,16 +144,16 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut res: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
-        let mut scratch = ScratchOwned::alloc(module.vec_znx_rotate_inplace_tmp_bytes());
+        let mut scratch = ScratchOwned::alloc(module.vec_znx_rotate_assign_tmp_bytes());
 
         // Fill a with random i64
         res.fill_uniform(50, &mut source);
 
         move || {
             for i in 0..cols {
-                module.vec_znx_rotate_inplace_backend(
+                module.vec_znx_rotate_assign_backend(
                     -7,
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut res),
                     i,

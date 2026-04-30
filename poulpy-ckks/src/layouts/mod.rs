@@ -13,9 +13,11 @@
 //! | `CKKSPlaintextCstZnx` | Quantized constant CKKS plaintext in the torus / ZNX domain |
 //! | `CKKSPlaintextCstRnx<F>` | Floating-point constant CKKS plaintext in the RNX domain |
 
+mod alloc;
 pub mod ciphertext;
 pub mod plaintext;
 
+pub use alloc::CKKSModuleAlloc;
 pub use ciphertext::{CKKSCiphertext, CKKSMaintainOps};
 pub use plaintext::{
     CKKSConstPlaintextConversion, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx,

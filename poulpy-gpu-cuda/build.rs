@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::env;
 
 fn nvcc_available() -> bool {
     std::process::Command::new("nvcc")
@@ -22,17 +22,10 @@ fn main() {
         return;
     }
 
-    let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let cheddar_include = manifest.join("../../cheddar-fhe/include");
-
     println!("cargo:rerun-if-env-changed=CUDA_ARCH");
 
     let mut build = cc::Build::new();
-    build
-        .cuda(true)
-        .include(&cheddar_include)
-        .flag("-std=c++17")
-        .flag("--expt-relaxed-constexpr");
+    build.cuda(true).flag("-std=c++17").flag("--expt-relaxed-constexpr");
 
     match env::var("CUDA_ARCH") {
         Ok(arch) => {

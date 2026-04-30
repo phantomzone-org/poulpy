@@ -16,9 +16,7 @@ use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataMut, HostDataRef, 
 
 use poulpy_hal::{api::ModuleN, layouts::ScratchArena, source::Source};
 
-use crate::bdd_arithmetic::{
-    BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, BitSize, FheUint, ToBits,
-};
+use crate::bdd_arithmetic::{BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, BitSize, FheUint, ToBits};
 use crate::bdd_arithmetic::{Cmux, FromBits, UnsignedInteger};
 use crate::blind_rotation::BlindRotationAlgo;
 use crate::circuit_bootstrapping::{CircuitBootstrappingExecute, CircuitBootstrappingKeyInfos};

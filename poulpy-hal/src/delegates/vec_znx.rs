@@ -3,18 +3,19 @@ use crate::{
         ScalarZnxFillBinaryBlockBackend, ScalarZnxFillBinaryBlockSourceBackend, ScalarZnxFillBinaryHwBackend,
         ScalarZnxFillBinaryHwSourceBackend, ScalarZnxFillBinaryProbBackend, ScalarZnxFillBinaryProbSourceBackend,
         ScalarZnxFillTernaryHwBackend, ScalarZnxFillTernaryHwSourceBackend, ScalarZnxFillTernaryProbBackend,
-        ScalarZnxFillTernaryProbSourceBackend, VecZnxAddAssignBackend, VecZnxAddIntoBackend, VecZnxAddNormalBackend,
-        VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend, VecZnxAddScalarIntoBackend, VecZnxAutomorphismBackend,
-        VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxCopyBackend, VecZnxCopyRangeBackend,
-        VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend, VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend,
-        VecZnxLshAddIntoBackend, VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes,
-        VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOneBackend, VecZnxMulXpMinusOneAssignBackend,
-        VecZnxMulXpMinusOneAssignTmpBytes, VecZnxNegateBackend, VecZnxNegateAssignBackend, VecZnxNormalize,
-        VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxRotateBackend, VecZnxRotateAssignBackend,
-        VecZnxRotateAssignTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshAssignBackend, VecZnxRshSubBackend,
-        VecZnxRshTmpBytes, VecZnxSplitRingBackend, VecZnxSplitRingTmpBytes, VecZnxSubBackend, VecZnxSubInnerProductAssignBackend,
-        VecZnxSubAssignBackend, VecZnxSubNegateAssignBackend, VecZnxSubScalarBackend, VecZnxSubScalarAssignBackend,
-        VecZnxSwitchRingBackend, VecZnxZeroBackend,
+        ScalarZnxFillTernaryProbSourceBackend, VecZnxAddAssignBackend, VecZnxAddConstAssignBackend, VecZnxAddConstIntoBackend,
+        VecZnxAddIntoBackend, VecZnxAddNormalBackend, VecZnxAddNormalSourceBackend, VecZnxAddScalarAssignBackend,
+        VecZnxAddScalarIntoBackend, VecZnxAutomorphismAssign, VecZnxAutomorphismAssignTmpBytes, VecZnxAutomorphismBackend,
+        VecZnxCopyBackend, VecZnxCopyRangeBackend, VecZnxFillNormalBackend, VecZnxFillNormalSourceBackend,
+        VecZnxFillUniformBackend, VecZnxFillUniformSourceBackend, VecZnxLshAddIntoBackend, VecZnxLshAssignBackend,
+        VecZnxLshBackend, VecZnxLshSubBackend, VecZnxLshTmpBytes, VecZnxMergeRingsBackend, VecZnxMergeRingsTmpBytes,
+        VecZnxMulXpMinusOneAssignBackend, VecZnxMulXpMinusOneAssignTmpBytes, VecZnxMulXpMinusOneBackend,
+        VecZnxNegateAssignBackend, VecZnxNegateBackend, VecZnxNormalize, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
+        VecZnxRotateAssignBackend, VecZnxRotateAssignTmpBytes, VecZnxRotateBackend, VecZnxRshAddIntoBackend,
+        VecZnxRshAssignBackend, VecZnxRshBackend, VecZnxRshSubBackend, VecZnxRshTmpBytes, VecZnxSplitRingBackend,
+        VecZnxSplitRingTmpBytes, VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubInnerProductAssignBackend,
+        VecZnxSubNegateAssignBackend, VecZnxSubScalarAssignBackend, VecZnxSubScalarBackend, VecZnxSwitchRingBackend,
+        VecZnxZeroBackend,
     },
     layouts::{
         Backend, Module, NoiseInfos, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnxBackendMut, VecZnxBackendRef,
@@ -122,6 +123,36 @@ impl_vec_znx_delegate!(
         len: usize,
     ) {
         B::vec_znx_copy_range_backend(self, res, res_col, res_limb, res_offset, a, a_col, a_limb, a_offset, len)
+    }
+);
+
+impl_vec_znx_delegate!(
+    VecZnxAddConstIntoBackend<B>,
+    fn vec_znx_add_const_into_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) {
+        B::vec_znx_add_const_into_backend(self, res, res_col, a, a_col, cnst, res_limb, res_coeff)
+    }
+);
+
+impl_vec_znx_delegate!(
+    VecZnxAddConstAssignBackend<B>,
+    fn vec_znx_add_const_assign_backend<'r>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    ) {
+        B::vec_znx_add_const_assign_backend(self, res, res_col, cnst, res_limb, res_coeff)
     }
 );
 

@@ -28,15 +28,15 @@ use crate::reference::{
         ntt120_vec_znx_big_add_normal_ref, ntt120_vec_znx_big_add_small_assign, ntt120_vec_znx_big_add_small_into,
         ntt120_vec_znx_big_automorphism, ntt120_vec_znx_big_automorphism_assign,
         ntt120_vec_znx_big_automorphism_assign_tmp_bytes, ntt120_vec_znx_big_from_small, ntt120_vec_znx_big_negate,
-        ntt120_vec_znx_big_negate_assign, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_tmp_bytes,
-        ntt120_vec_znx_big_sub, ntt120_vec_znx_big_sub_assign, ntt120_vec_znx_big_sub_negate_assign,
-        ntt120_vec_znx_big_sub_small_a, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_assign,
-        ntt120_vec_znx_big_sub_small_negate_assign,
+        ntt120_vec_znx_big_negate_assign, ntt120_vec_znx_big_normalize, ntt120_vec_znx_big_normalize_add_assign,
+        ntt120_vec_znx_big_normalize_sub_assign, ntt120_vec_znx_big_normalize_tmp_bytes, ntt120_vec_znx_big_sub,
+        ntt120_vec_znx_big_sub_assign, ntt120_vec_znx_big_sub_negate_assign, ntt120_vec_znx_big_sub_small_a,
+        ntt120_vec_znx_big_sub_small_assign, ntt120_vec_znx_big_sub_small_b, ntt120_vec_znx_big_sub_small_negate_assign,
     },
     znx::{
         ZnxAdd, ZnxAddAssign, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoAssign, ZnxNegate,
         ZnxNegateAssign, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepAssign, ZnxNormalizeFirstStep,
-        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepAssign,
+        ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepAssign, ZnxNormalizeMiddleStepCarryOnly,
         ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero, znx_copy_ref, znx_zero_ref,
     },
 };
@@ -638,7 +638,7 @@ where
     ) where
         BE: Backend<ScalarBig = i128> + I128NormalizeOps,
         BE::BufMut<'s>: HostBufMut<'s>,
-        R: VecZnxToBackendMut,
+        R: VecZnxToBackendMut<BE>,
         A: VecZnxBigToBackendRef<BE>,
     {
         let (carry, _) = take_host_typed::<BE, i128>(
@@ -648,7 +648,7 @@ where
         ntt120_vec_znx_big_normalize(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
-    fn vec_znx_big_normalize_add_assign_default<R, A>(
+    fn vec_znx_big_normalize_add_assign_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut R,
         res_base2k: usize,
@@ -657,18 +657,21 @@ where
         a: &A,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128NormalizeOps,
-        Scratch<BE>: TakeSlice,
-        R: VecZnxToMut,
-        A: VecZnxBigToRef<BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
+        R: VecZnxToBackendMut<BE>,
+        A: VecZnxBigToBackendRef<BE>,
     {
-        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        let (carry, _) = take_host_typed::<BE, i128>(
+            scratch.borrow(),
+            ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>(),
+        );
         ntt120_vec_znx_big_normalize_add_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 
-    fn vec_znx_big_normalize_sub_assign_default<R, A>(
+    fn vec_znx_big_normalize_sub_assign_default<'s, R, A>(
         module: &Module<BE>,
         res: &mut R,
         res_base2k: usize,
@@ -677,14 +680,17 @@ where
         a: &A,
         a_base2k: usize,
         a_col: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128> + I128NormalizeOps,
-        Scratch<BE>: TakeSlice,
-        R: VecZnxToMut,
-        A: VecZnxBigToRef<BE>,
+        BE::BufMut<'s>: HostBufMut<'s>,
+        R: VecZnxToBackendMut<BE>,
+        A: VecZnxBigToBackendRef<BE>,
     {
-        let (carry, _) = scratch.take_slice(ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>());
+        let (carry, _) = take_host_typed::<BE, i128>(
+            scratch.borrow(),
+            ntt120_vec_znx_big_normalize_tmp_bytes(module.n()) / size_of::<i128>(),
+        );
         ntt120_vec_znx_big_normalize_sub_assign(res, res_base2k, res_offset, res_col, a, a_base2k, a_col, carry);
     }
 

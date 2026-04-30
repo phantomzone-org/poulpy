@@ -143,6 +143,35 @@ macro_rules! hal_impl_vec_znx {
             <Self as HalVecZnxDefaults<Self>>::vec_znx_add_assign_backend_default(module, res, res_col, a, a_col)
         }
 
+        #[allow(clippy::too_many_arguments)]
+        fn vec_znx_add_const_into_backend<'r, 'a>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            a: &poulpy_hal::layouts::VecZnxBackendRef<'a, Self>,
+            a_col: usize,
+            cnst: &[i64],
+            res_limb: usize,
+            res_coeff: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_add_const_into_backend_default(
+                module, res, res_col, a, a_col, cnst, res_limb, res_coeff,
+            )
+        }
+
+        fn vec_znx_add_const_assign_backend<'r>(
+            module: &Module<Self>,
+            res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
+            res_col: usize,
+            cnst: &[i64],
+            res_limb: usize,
+            res_coeff: usize,
+        ) {
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_add_const_assign_backend_default(
+                module, res, res_col, cnst, res_limb, res_coeff,
+            )
+        }
+
         fn vec_znx_add_scalar_into_backend<'r, 'a>(
             module: &Module<Self>,
             res: &mut poulpy_hal::layouts::VecZnxBackendMut<'r, Self>,
@@ -224,9 +253,7 @@ macro_rules! hal_impl_vec_znx {
             a: &poulpy_hal::layouts::ScalarZnxBackendRef<'a, Self>,
             a_col: usize,
         ) {
-            <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_assign_backend_default(
-                module, res, res_col, res_limb, a, a_col,
-            )
+            <Self as HalVecZnxDefaults<Self>>::vec_znx_sub_scalar_assign_backend_default(module, res, res_col, res_limb, a, a_col)
         }
 
         fn vec_znx_negate_backend(

@@ -5,15 +5,15 @@ use criterion::{BenchmarkId, Criterion};
 use poulpy_cpu_ref::reference::vec_znx::{vec_znx_lsh_tmp_bytes, vec_znx_rsh_tmp_bytes};
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLshBackend, VecZnxLshAssignBackend, VecZnxRshBackend,
-        VecZnxRshAssignBackend,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxLshAssignBackend, VecZnxLshBackend,
+        VecZnxRshAssignBackend, VecZnxRshBackend,
     },
     layouts::{Backend, Module, ScratchOwned},
 };
 
 pub fn bench_vec_znx_lsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxLshAssignBackend<B>,
+    Module<B>: ModuleNew<B> + VecZnxLshAssignBackend<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh_assign::{label}");
@@ -22,7 +22,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxLshAssignBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -60,7 +60,7 @@ where
 
 pub fn bench_vec_znx_lsh<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxLsh<B> + ModuleNew<B>,
+    Module<B>: VecZnxLshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh::{label}");
@@ -69,7 +69,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxLsh<B> + ModuleNew<B>,
+        Module<B>: VecZnxLshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -92,7 +92,7 @@ where
             let a = crate::vec_znx_backend_ref::<B>(&a);
             let mut res = crate::vec_znx_backend_mut::<B>(&mut res);
             for i in 0..cols {
-                module.vec_znx_lsh(base2k, base2k - 1, &mut res, i, &a, i, scratch.borrow());
+                module.vec_znx_lsh_backend(base2k, base2k - 1, &mut res, i, &a, i, &mut scratch.borrow());
             }
             black_box(());
         }
@@ -109,7 +109,7 @@ where
 
 pub fn bench_vec_znx_rsh_assign<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh_assign::{label}");
@@ -118,7 +118,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -156,7 +156,7 @@ where
 
 pub fn bench_vec_znx_rsh<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRsh<B> + ModuleNew<B>,
+    Module<B>: VecZnxRshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh::{label}");
@@ -165,7 +165,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRsh<B> + ModuleNew<B>,
+        Module<B>: VecZnxRshBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let n: usize = 1 << params[0];
@@ -188,7 +188,7 @@ where
             let a = crate::vec_znx_backend_ref::<B>(&a);
             let mut res = crate::vec_znx_backend_mut::<B>(&mut res);
             for i in 0..cols {
-                module.vec_znx_rsh(base2k, base2k - 1, &mut res, i, &a, i, scratch.borrow());
+                module.vec_znx_rsh_backend(base2k, base2k - 1, &mut res, i, &a, i, &mut scratch.borrow());
             }
             black_box(());
         }

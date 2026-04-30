@@ -96,6 +96,32 @@ pub trait VecZnxAddAssignBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxAddConstIntoBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_const_into_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    );
+}
+
+pub trait VecZnxAddConstAssignBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_const_assign_backend<'r>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        cnst: &[i64],
+        res_limb: usize,
+        res_coeff: usize,
+    );
+}
+
 pub trait VecZnxAddScalarIntoBackend<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_into_backend<'r, 'a>(

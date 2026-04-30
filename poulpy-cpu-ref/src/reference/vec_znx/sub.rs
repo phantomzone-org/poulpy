@@ -1,6 +1,15 @@
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion};
+
 use crate::{
-    layouts::{Backend, HostDataMut, HostDataRef, VecZnxBackendMut, VecZnxBackendRef, ZnxView, ZnxViewMut},
+    api::{ModuleNew, VecZnxAlloc, VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubNegateAssignBackend},
+    layouts::{
+        Backend, FillUniform, HostDataMut, HostDataRef, Module, VecZnx, VecZnxBackendMut, VecZnxBackendRef, VecZnxToBackendMut,
+        VecZnxToBackendRef, ZnxView, ZnxViewMut,
+    },
     reference::znx::{ZnxCopy, ZnxNegate, ZnxNegateAssign, ZnxSub, ZnxSubAssign, ZnxSubNegateAssign, ZnxZero},
+    source::Source,
 };
 
 pub fn vec_znx_sub<'r, 'a, BE>(
@@ -115,7 +124,7 @@ pub fn vec_znx_sub_negate_assign<'r, 'a, BE>(
 pub fn bench_vec_znx_sub<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxSubBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxSubBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
 {
     let group_name: String = format!("vec_znx_sub::{label}");
 
@@ -123,7 +132,7 @@ where
 
     fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxSubBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -133,9 +142,9 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut c: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut b: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut c: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -168,7 +177,7 @@ where
 pub fn bench_vec_znx_sub_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxSubInplaceBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxSubAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
 {
     let group_name: String = format!("vec_znx_sub_inplace::{label}");
 
@@ -176,7 +185,7 @@ where
 
     fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxSubAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -186,8 +195,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut b: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -195,7 +204,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_inplace_backend(
+                module.vec_znx_sub_assign_backend(
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b),
                     i,
                     &<VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a),
@@ -218,7 +227,7 @@ where
 pub fn bench_vec_znx_sub_negate_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend<OwnedBuf = Vec<u8>>,
-    Module<B>: VecZnxSubNegateInplaceBackend<B> + ModuleNew<B>,
+    Module<B>: VecZnxSubNegateAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
 {
     let group_name: String = format!("vec_znx_sub_negate_inplace::{label}");
 
@@ -226,7 +235,7 @@ where
 
     fn runner<B: Backend<OwnedBuf = Vec<u8>>>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubNegateInplaceBackend<B> + ModuleNew<B>,
+        Module<B>: VecZnxSubNegateAssignBackend<B> + ModuleNew<B> + VecZnxAlloc<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -236,8 +245,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, size);
+        let mut a: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
+        let mut b: VecZnx<Vec<u8>> = module.vec_znx_alloc(cols, size);
 
         // Fill a with random i64
         a.fill_uniform(50, &mut source);
@@ -245,7 +254,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_negate_inplace_backend(
+                module.vec_znx_sub_negate_assign_backend(
                     &mut <VecZnx<Vec<u8>> as VecZnxToBackendMut<B>>::to_backend_mut(&mut b),
                     i,
                     &<VecZnx<Vec<u8>> as VecZnxToBackendRef<B>>::to_backend_ref(&a),

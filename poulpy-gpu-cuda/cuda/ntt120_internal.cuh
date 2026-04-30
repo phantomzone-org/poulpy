@@ -1,15 +1,62 @@
 // Self-contained NTT120 device helpers.
 //
 // Extracts pieces from Cheddar's NTTUtils.cuh (butterfly radix routines,
-// NTTLaunchConfig, element functions) without including core/NTT.h, which
-// drags in core/DeviceVector.h -> Thrust/RMM. Only common/Basic.cuh (which
-// depends solely on stdlib) is included from Cheddar.
+// NTTLaunchConfig, element functions) and the tiny subset of Basic.cuh they
+// depend on, without pulling in the rest of the Cheddar tree.
 
 #pragma once
 
-#include "common/Basic.cuh"
+#include <cstdint>
+#include <type_traits>
+
+template <typename word>
+using make_signed_t = typename std::make_signed<word>::type;
 
 namespace cheddar {
+namespace basic {
+
+template <typename T>
+__device__ __forceinline__ T StreamingLoad(const T* ptr) {
+  return *ptr;
+}
+
+template <typename T>
+__device__ __forceinline__ T StreamingLoadConst(const T* ptr) {
+  return *ptr;
+}
+
+template <typename T, int size>
+__device__ __forceinline__ void VectorizedMove(T* dst, const T* src) {
+#pragma unroll
+  for (int i = 0; i < size; i++) {
+    dst[i] = src[i];
+  }
+}
+
+namespace detail {
+
+template <typename word>
+__device__ __forceinline__ make_signed_t<word> __mult_montgomery_lazy(
+    make_signed_t<word> a, make_signed_t<word> b,
+    word prime, make_signed_t<word> q_inv) {
+  static_assert(sizeof(word) == sizeof(uint32_t),
+                "NTT120 Montgomery helpers only support 32-bit words");
+
+  using signed_word = make_signed_t<word>;
+  using wide_word = int64_t;
+  using unsigned_word = uint32_t;
+  using unsigned_wide_word = uint64_t;
+
+  wide_word x = static_cast<wide_word>(a) * static_cast<wide_word>(b);
+  unsigned_word m = static_cast<unsigned_word>(x) *
+                    static_cast<unsigned_word>(q_inv);
+  wide_word reduced =
+      (x - static_cast<wide_word>(static_cast<unsigned_wide_word>(m) * prime)) >> 32;
+  return static_cast<signed_word>(reduced);
+}
+
+} // namespace detail
+} // namespace basic
 
 // ── Enums from core/NTT.h ────────────────────────────────────────────────────
 
