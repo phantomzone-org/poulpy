@@ -730,14 +730,14 @@ mod tests {
     use poulpy_cpu_ref::reference::ntt_ifma::{
         arithmetic::b_ifma_from_znx64_ref,
         ntt::{NttIfmaTable, NttIfmaTableInv, intt_ifma_ref, ntt_ifma_ref},
-        primes::Primes40,
+        primes::Primes42,
     };
 
     #[test]
     fn harvey_modmul_simd_vs_scalar() {
         use poulpy_cpu_ref::reference::ntt_ifma::ntt::{harvey_modmul, harvey_quotient};
 
-        let q_arr = Primes40::Q;
+        let q_arr = Primes42::Q;
         for &q in &q_arr {
             let omega = q / 2; // arbitrary twiddle
             let oq = harvey_quotient(omega, q);
@@ -778,7 +778,7 @@ mod tests {
     fn ntt_avx512_vs_ref() {
         for log_n in 1..=10usize {
             let n = 1 << log_n;
-            let fwd = NttIfmaTable::<Primes40>::new(n);
+            let fwd = NttIfmaTable::<Primes42>::new(n);
 
             let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
 
@@ -787,8 +787,8 @@ mod tests {
             b_ifma_from_znx64_ref(n, &mut data_avx, &coeffs);
             b_ifma_from_znx64_ref(n, &mut data_ref, &coeffs);
 
-            unsafe { ntt_avx512::<Primes40>(&fwd, &mut data_avx) };
-            ntt_ifma_ref::<Primes40>(&fwd, &mut data_ref);
+            unsafe { ntt_avx512::<Primes42>(&fwd, &mut data_avx) };
+            ntt_ifma_ref::<Primes42>(&fwd, &mut data_ref);
 
             for i in 0..4 * n {
                 assert_eq!(
@@ -804,19 +804,19 @@ mod tests {
     fn intt_avx512_vs_ref() {
         for log_n in 1..=10usize {
             let n = 1 << log_n;
-            let fwd = NttIfmaTable::<Primes40>::new(n);
-            let inv = NttIfmaTableInv::<Primes40>::new(n);
+            let fwd = NttIfmaTable::<Primes42>::new(n);
+            let inv = NttIfmaTableInv::<Primes42>::new(n);
 
             let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
             let mut data = vec![0u64; 4 * n];
             b_ifma_from_znx64_ref(n, &mut data, &coeffs);
-            ntt_ifma_ref::<Primes40>(&fwd, &mut data);
+            ntt_ifma_ref::<Primes42>(&fwd, &mut data);
 
             let mut data_avx = data.clone();
             let mut data_ref = data.clone();
 
-            unsafe { intt_avx512::<Primes40>(&inv, &mut data_avx) };
-            intt_ifma_ref::<Primes40>(&inv, &mut data_ref);
+            unsafe { intt_avx512::<Primes42>(&inv, &mut data_avx) };
+            intt_ifma_ref::<Primes42>(&inv, &mut data_ref);
 
             for i in 0..4 * n {
                 assert_eq!(
@@ -832,8 +832,8 @@ mod tests {
     fn ntt_intt_avx512_roundtrip() {
         for log_n in 1..=10usize {
             let n = 1 << log_n;
-            let fwd = NttIfmaTable::<Primes40>::new(n);
-            let inv = NttIfmaTableInv::<Primes40>::new(n);
+            let fwd = NttIfmaTable::<Primes42>::new(n);
+            let inv = NttIfmaTableInv::<Primes42>::new(n);
 
             let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
             let mut data = vec![0u64; 4 * n];
@@ -841,14 +841,14 @@ mod tests {
             let orig = data.clone();
 
             unsafe {
-                ntt_avx512::<Primes40>(&fwd, &mut data);
-                intt_avx512::<Primes40>(&inv, &mut data);
+                ntt_avx512::<Primes42>(&fwd, &mut data);
+                intt_avx512::<Primes42>(&inv, &mut data);
             }
 
             for i in 0..n {
                 for k in 0..3 {
-                    let o = orig[4 * i + k] % Primes40::Q[k];
-                    let g = data[4 * i + k] % Primes40::Q[k];
+                    let o = orig[4 * i + k] % Primes42::Q[k];
+                    let g = data[4 * i + k] % Primes42::Q[k];
                     assert_eq!(o, g, "n={n} i={i} k={k}: roundtrip mismatch");
                 }
             }

@@ -38,7 +38,7 @@ pub trait NTT120ModuleDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120ModuleDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTT120IfmaModuleDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaModuleDefaults<BE: Backend>: Backend {
     fn module_new_default(n: u64) -> Module<BE>
     where
         BE::Handle: NttIfmaHandleFactory,
@@ -50,4 +50,4 @@ pub trait NTT120IfmaModuleDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaModuleDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaModuleDefaults<BE> for BE {}

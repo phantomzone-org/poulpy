@@ -599,12 +599,12 @@ pub trait NTT120VecZnxBigDefaults<BE: Backend>: Backend {
 
 impl<BE: Backend> NTT120VecZnxBigDefaults<BE> for BE {}
 
-/// NTT120Ifma uses the same `ScalarBig = i128` representation as NTT120, so the
+/// NTT126Ifma uses the same `ScalarBig = i128` representation as NTT120, so the
 /// big-coefficient operations are identical.  This trait simply re-exports the
 /// NTT120 implementations under an IFMA-specific name so that backend wiring
-/// can reference `NTT120IfmaVecZnxBigDefaults` explicitly.
+/// can reference `NTT126IfmaVecZnxBigDefaults` explicitly.
 #[doc(hidden)]
-pub trait NTT120IfmaVecZnxBigDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaVecZnxBigDefaults<BE: Backend>: Backend {
     fn vec_znx_big_from_small_default<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         BE: Backend<ScalarBig = i128> + I128BigOps,
@@ -883,4 +883,4 @@ pub trait NTT120IfmaVecZnxBigDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaVecZnxBigDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaVecZnxBigDefaults<BE> for BE {}

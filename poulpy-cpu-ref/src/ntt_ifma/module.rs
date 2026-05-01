@@ -18,7 +18,7 @@ use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 use crate::reference::ntt_ifma::{
     mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
-    primes::Primes40,
+    primes::Primes42,
     vec_znx_dft::{NttIfmaHandleFactory, NttIfmaHandleProvider},
 };
 use crate::reference::ntt120::types::Q120bScalar;
@@ -35,9 +35,9 @@ use crate::NTTIfmaRef;
 /// `Module<NTTIfmaRef>` is dropped (via [`Backend::destroy`]).
 #[repr(C)]
 pub struct NTTIfmaRefHandle {
-    table_ntt: NttIfmaTable<Primes40>,
-    table_intt: NttIfmaTableInv<Primes40>,
-    meta_bbc: BbcIfmaMeta<Primes40>,
+    table_ntt: NttIfmaTable<Primes42>,
+    table_intt: NttIfmaTableInv<Primes42>,
+    meta_bbc: BbcIfmaMeta<Primes42>,
 }
 
 impl Backend for NTTIfmaRef {
@@ -78,15 +78,15 @@ unsafe impl NttIfmaHandleFactory for NTTIfmaRefHandle {
 /// The returned references are valid for the lifetime of `&self`.
 /// All fields are fully initialised in [`NttIfmaHandleFactory::create_ntt_ifma_handle`].
 unsafe impl NttIfmaHandleProvider for NTTIfmaRefHandle {
-    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40> {
+    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes42> {
         &self.table_ntt
     }
 
-    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40> {
+    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes42> {
         &self.table_intt
     }
 
-    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40> {
+    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes42> {
         &self.meta_bbc
     }
 }

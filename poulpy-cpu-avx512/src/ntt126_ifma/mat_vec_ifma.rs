@@ -23,7 +23,7 @@
 //! - `acc_lo += (x[51:0] * y[51:0])[51:0]` — low 52 bits
 //! - `acc_hi += (x[51:0] * y[51:0])[103:52]` — high 52 bits
 //!
-//! Since x < 2^41 (values in [0, 2q)) and y < 2^40 (reduced mod Q), both
+//! Since x < 2^44 (values in [0, 2q)) and y < 2^43 (reduced mod Q), both
 //! fit within the 52-bit input window. After `ell` iterations, `acc_lo < ell × 2^52`
 //! which fits in u64 for ell < 4096.
 
@@ -38,14 +38,14 @@ use super::kernels::{cond_sub_2q_si256, cond_sub_2q_si512, harvey_modmul_si256, 
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
     mat_vec::BbcIfmaMeta,
-    primes::{PrimeSetIfma, Primes40},
+    primes::{PrimeSetIfma, Primes42},
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants for SIMD reduction
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Q_IFMA: [u64; 3] = <Primes40 as PrimeSetIfma>::Q;
+const Q_IFMA: [u64; 3] = <Primes42 as PrimeSetIfma>::Q;
 
 /// Q vector: `[Q[0], Q[1], Q[2], 0]`.
 const Q_VEC: [u64; 4] = [Q_IFMA[0], Q_IFMA[1], Q_IFMA[2], 0];
@@ -53,11 +53,11 @@ const Q_VEC: [u64; 4] = [Q_IFMA[0], Q_IFMA[1], Q_IFMA[2], 0];
 /// 2Q vector: `[2*Q[0], 2*Q[1], 2*Q[2], 0]`.
 const Q2_VEC: [u64; 4] = [2 * Q_IFMA[0], 2 * Q_IFMA[1], 2 * Q_IFMA[2], 0];
 
-/// `2^40 mod Q[k]` — for two-pass modular reduction of wide values.
-/// Since Q[k] < 2^40, this equals `2^40 - Q[k]` (small, < 2^22).
-const POW40_MOD_Q: [u64; 4] = {
-    let pow40 = 1u64 << 40;
-    [pow40 - Q_IFMA[0], pow40 - Q_IFMA[1], pow40 - Q_IFMA[2], 0]
+/// `2^42 mod Q[k]` — for two-pass modular reduction of wide values.
+/// Since Q[k] < 2^42, this equals `2^42 - Q[k]` (small, < 2^22).
+const POW42_MOD_Q: [u64; 4] = {
+    let pow42 = 1u64 << 42;
+    [pow42 - Q_IFMA[0], pow42 - Q_IFMA[1], pow42 - Q_IFMA[2], 0]
 };
 
 /// `2^52 mod Q[k]` — value of the 52-bit accumulator boundary mod Q.
@@ -101,12 +101,12 @@ const Q2_VEC_512: [u64; 8] = [
     0,
 ];
 
-/// `2^40 mod Q[k]` duplicated for 512-bit.
-const POW40_MOD_Q_512: [u64; 8] = {
-    let pow40 = 1u64 << 40;
-    let a = pow40 - Q_IFMA[0];
-    let b = pow40 - Q_IFMA[1];
-    let c = pow40 - Q_IFMA[2];
+/// `2^42 mod Q[k]` duplicated for 512-bit.
+const POW42_MOD_Q_512: [u64; 8] = {
+    let pow42 = 1u64 << 42;
+    let a = pow42 - Q_IFMA[0];
+    let b = pow42 - Q_IFMA[1];
+    let c = pow42 - Q_IFMA[2];
     [a, b, c, 0, a, b, c, 0]
 };
 
@@ -140,29 +140,29 @@ const POW52_MOD_Q_QUOT_512: [u64; 8] = {
 
 /// Reduce a wide u64 value (< ell × 2^52) to [0, Q) per lane, fully in SIMD.
 ///
-/// Uses two-pass split at bit 40: since Q ≈ 2^40, `2^40 mod Q` is small (< 2^22),
-/// so `hi * POW40_MOD_Q + lo` rapidly converges to a value < 2Q.
+/// Uses two-pass split at bit 42: since Q ≈ 2^43, `2^42 mod Q` is small (< 2^22),
+/// so `hi * POW42_MOD_Q + lo` rapidly converges to a value < 2Q.
 ///
 /// Valid for values up to ~2^64 (ell < 4096).
 #[inline]
 #[target_feature(enable = "avx512vl")]
 unsafe fn reduce_wide_mod_q(x: __m256i) -> __m256i {
     unsafe {
-        let mask40 = _mm256_set1_epi64x((1i64 << 40) - 1);
-        let pow40 = _mm256_loadu_si256(POW40_MOD_Q.as_ptr() as *const __m256i);
+        let mask42 = _mm256_set1_epi64x((1i64 << 42) - 1);
+        let pow42 = _mm256_loadu_si256(POW42_MOD_Q.as_ptr() as *const __m256i);
         let q = _mm256_loadu_si256(Q_VEC.as_ptr() as *const __m256i);
 
-        // Pass 1: split at bit 40
-        let hi = _mm256_srli_epi64::<40>(x); // < 2^24 (for x < 2^64)
-        let lo = _mm256_and_si256(x, mask40); // < 2^40
-        // y = hi * POW40_MOD_Q + lo < 2^24 * 2^22 + 2^40 < 2^47
-        let y = _mm256_add_epi64(_mm256_mul_epu32(hi, pow40), lo);
+        // Pass 1: split at bit 42
+        let hi = _mm256_srli_epi64::<42>(x); // < 2^21 (for x < 2^64)
+        let lo = _mm256_and_si256(x, mask42); // < 2^43
+        // y = hi * POW42_MOD_Q + lo < 2^21 * 2^23 + 2^43 < 2^45
+        let y = _mm256_add_epi64(_mm256_mul_epu32(hi, pow42), lo);
 
-        // Pass 2: split at bit 40 again
-        let hi2 = _mm256_srli_epi64::<40>(y); // < 2^7
-        let lo2 = _mm256_and_si256(y, mask40);
-        // z = hi2 * POW40_MOD_Q + lo2 < 2^7 * 2^22 + 2^40 < 2^41 < 2Q
-        let z = _mm256_add_epi64(_mm256_mul_epu32(hi2, pow40), lo2);
+        // Pass 2: split at bit 42 again
+        let hi2 = _mm256_srli_epi64::<42>(y); // < 2^2
+        let lo2 = _mm256_and_si256(y, mask42);
+        // z = hi2 * POW42_MOD_Q + lo2 < 2^2 * 2^23 + 2^43 < 2^44 < 2Q
+        let z = _mm256_add_epi64(_mm256_mul_epu32(hi2, pow42), lo2);
 
         // Final cond_sub: [0, 2Q) → [0, Q)
         cond_sub_2q_si256(z, q)
@@ -172,7 +172,7 @@ unsafe fn reduce_wide_mod_q(x: __m256i) -> __m256i {
 /// Collapse MADD52 accumulators `(acc_lo, acc_hi)` into a q120b `__m256i`, fully in SIMD.
 ///
 /// Computes `(acc_lo + acc_hi × 2^52) mod Q` per lane using:
-/// 1. Two-pass reduction of `acc_lo` via POW40 → `lo_red ∈ [0, Q)`
+/// 1. Two-pass reduction of `acc_lo` via POW42 → `lo_red ∈ [0, Q)`
 /// 2. Harvey modular multiply of `acc_hi × POW52_MOD_Q` → `hi_red ∈ [0, 2Q)`
 /// 3. Add + two conditional subtracts → `[0, Q)`
 ///
@@ -182,7 +182,7 @@ unsafe fn reduce_wide_mod_q(x: __m256i) -> __m256i {
 ///
 /// Valid for `ell < 4096`:
 /// - `acc_lo < ell × 2^52 < 2^64`
-/// - `acc_hi < ell × 2^29 < 2^41 < 2Q` (required by Harvey modmul)
+/// - `acc_hi < ell × 2^35 < 2^47 ≈ 16Q < 2^52` (required by Harvey modmul)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn reduce_bbc_ifma_simd(acc_lo: __m256i, acc_hi: __m256i) -> __m256i {
@@ -217,17 +217,17 @@ pub(crate) unsafe fn reduce_bbc_ifma_simd(acc_lo: __m256i, acc_hi: __m256i) -> _
 #[target_feature(enable = "avx512f")]
 unsafe fn reduce_wide_mod_q_512(x: __m512i) -> __m512i {
     unsafe {
-        let mask40 = _mm512_set1_epi64((1i64 << 40) - 1);
-        let pow40 = _mm512_loadu_si512(POW40_MOD_Q_512.as_ptr() as *const __m512i);
+        let mask42 = _mm512_set1_epi64((1i64 << 42) - 1);
+        let pow42 = _mm512_loadu_si512(POW42_MOD_Q_512.as_ptr() as *const __m512i);
         let q = _mm512_loadu_si512(Q_VEC_512.as_ptr() as *const __m512i);
 
-        let hi = _mm512_srli_epi64::<40>(x);
-        let lo = _mm512_and_si512(x, mask40);
-        let y = _mm512_add_epi64(_mm512_mul_epu32(hi, pow40), lo);
+        let hi = _mm512_srli_epi64::<42>(x);
+        let lo = _mm512_and_si512(x, mask42);
+        let y = _mm512_add_epi64(_mm512_mul_epu32(hi, pow42), lo);
 
-        let hi2 = _mm512_srli_epi64::<40>(y);
-        let lo2 = _mm512_and_si512(y, mask40);
-        let z = _mm512_add_epi64(_mm512_mul_epu32(hi2, pow40), lo2);
+        let hi2 = _mm512_srli_epi64::<42>(y);
+        let lo2 = _mm512_and_si512(y, mask42);
+        let z = _mm512_add_epi64(_mm512_mul_epu32(hi2, pow42), lo2);
 
         cond_sub_2q_si512(z, q)
     }
@@ -268,20 +268,20 @@ pub(crate) unsafe fn reduce_bbc_single_prime_512(
     acc_hi: __m512i,
     q: __m512i,
     q2: __m512i,
-    pow40: __m512i,
+    pow42: __m512i,
     pow52: __m512i,
     pow52_quot: __m512i,
 ) -> __m512i {
     unsafe {
-        let mask40 = _mm512_set1_epi64((1i64 << 40) - 1);
+        let mask42 = _mm512_set1_epi64((1i64 << 42) - 1);
 
-        // reduce_wide: two-pass POW40 fold
-        let hi1 = _mm512_srli_epi64::<40>(acc_lo);
-        let lo1 = _mm512_and_si512(acc_lo, mask40);
-        let y = _mm512_add_epi64(_mm512_mul_epu32(hi1, pow40), lo1);
-        let hi2 = _mm512_srli_epi64::<40>(y);
-        let lo2 = _mm512_and_si512(y, mask40);
-        let z = _mm512_add_epi64(_mm512_mul_epu32(hi2, pow40), lo2);
+        // reduce_wide: two-pass POW42 fold
+        let hi1 = _mm512_srli_epi64::<42>(acc_lo);
+        let lo1 = _mm512_and_si512(acc_lo, mask42);
+        let y = _mm512_add_epi64(_mm512_mul_epu32(hi1, pow42), lo1);
+        let hi2 = _mm512_srli_epi64::<42>(y);
+        let lo2 = _mm512_and_si512(y, mask42);
+        let z = _mm512_add_epi64(_mm512_mul_epu32(hi2, pow42), lo2);
         let lo_red = cond_sub_2q_si512(z, q);
 
         // Harvey modmul: acc_hi * POW52_MOD_Q mod Q
@@ -296,7 +296,7 @@ pub(crate) unsafe fn reduce_bbc_single_prime_512(
 pub(crate) struct PrimeConsts512 {
     pub q: __m512i,
     pub q2: __m512i,
-    pub pow40: __m512i,
+    pub pow42: __m512i,
     pub pow52: __m512i,
     pub pow52_quot: __m512i,
 }
@@ -308,7 +308,7 @@ impl PrimeConsts512 {
         Self {
             q: _mm512_set1_epi64(q_val as i64),
             q2: _mm512_set1_epi64((2 * q_val) as i64),
-            pow40: _mm512_set1_epi64(((1u64 << 40) - q_val) as i64),
+            pow42: _mm512_set1_epi64(((1u64 << 42) - q_val) as i64),
             pow52: _mm512_set1_epi64(((1u64 << 52) % q_val) as i64),
             pow52_quot: _mm512_set1_epi64((((1u64 << 52) % q_val) as u128 * (1u128 << 52) / q_val as u128) as i64),
         }
@@ -331,7 +331,7 @@ impl PrimeConsts512 {
 /// satisfy `x.len() >= 8 * ell`, `y.len() >= 8 * ell`, `res.len() >= 4`.
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn vec_mat1col_product_bbc_ifma(
-    _meta: &BbcIfmaMeta<Primes40>,
+    _meta: &BbcIfmaMeta<Primes42>,
     ell: usize,
     res: &mut [u64],
     x: &[u32],
@@ -431,7 +431,7 @@ pub(crate) unsafe fn vec_mat1col_product_bbc_ifma(
 /// matrix cache lines.
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma<const NT_STORE: bool>(
-    _meta: &BbcIfmaMeta<Primes40>,
+    _meta: &BbcIfmaMeta<Primes42>,
     ell: usize,
     res: &mut [u64],
     x: &[u32],
@@ -504,7 +504,7 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_ifma<const NT_STORE: bool>(
 /// satisfy `x.len() >= 16 * ell`, `y.len() >= 32 * ell`, `res.len() >= 16`.
 #[target_feature(enable = "avx512ifma,avx512vl")]
 pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_ifma(
-    _meta: &BbcIfmaMeta<Primes40>,
+    _meta: &BbcIfmaMeta<Primes42>,
     ell: usize,
     res: &mut [u64],
     x: &[u32],
@@ -592,7 +592,7 @@ mod tests {
             BbcIfmaMeta, vec_mat1col_product_bbc_ifma_ref, vec_mat1col_product_x2_bbc_ifma_ref,
             vec_mat2cols_product_x2_bbc_ifma_ref,
         },
-        primes::Primes40,
+        primes::Primes42,
     };
 
     /// Build q120b slice (as u32 view) from small i64 coefficients.
@@ -618,7 +618,7 @@ mod tests {
     #[test]
     fn vec_mat1col_product_bbc_ifma_vs_ref() {
         let ell = 8usize;
-        let meta = BbcIfmaMeta::<Primes40>::new();
+        let meta = BbcIfmaMeta::<Primes42>::new();
 
         let x = make_q120b_u32(ell, 7);
         let y = make_q120c_u32(ell, 13);
@@ -636,7 +636,7 @@ mod tests {
     #[test]
     fn vec_mat1col_product_bbc_ifma_vs_ref_large_ell() {
         let ell = 64usize;
-        let meta = BbcIfmaMeta::<Primes40>::new();
+        let meta = BbcIfmaMeta::<Primes42>::new();
 
         let x = make_q120b_u32(ell, 3);
         let y = make_q120c_u32(ell, 17);
@@ -654,7 +654,7 @@ mod tests {
     #[test]
     fn vec_mat1col_product_x2_bbc_ifma_vs_ref() {
         let ell = 8usize;
-        let meta = BbcIfmaMeta::<Primes40>::new();
+        let meta = BbcIfmaMeta::<Primes42>::new();
 
         // x: 2 interleaved q120b (16 u32 per row)
         let x: Vec<u32> = {
@@ -686,7 +686,7 @@ mod tests {
     #[test]
     fn vec_mat2cols_product_x2_bbc_ifma_vs_ref() {
         let ell = 8usize;
-        let meta = BbcIfmaMeta::<Primes40>::new();
+        let meta = BbcIfmaMeta::<Primes42>::new();
 
         // x: 2 interleaved q120b (16 u32 per row)
         let x: Vec<u32> = {

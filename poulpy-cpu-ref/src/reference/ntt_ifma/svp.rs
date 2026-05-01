@@ -11,14 +11,14 @@ use crate::{
 };
 
 use super::{
-    NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaMulBbc, NttIfmaZero, ntt::NttIfmaTable, primes::Primes40,
+    NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaMulBbc, NttIfmaZero, ntt::NttIfmaTable, primes::Primes42,
     vec_znx_dft::NttIfmaModuleHandle,
 };
 
 /// Encode a scalar polynomial into IFMA prepared format.
 pub fn ntt_ifma_svp_prepare<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaCFromB,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaCFromB,
     R: SvpPPolToMut<BE>,
     A: ScalarZnxToRef,
 {

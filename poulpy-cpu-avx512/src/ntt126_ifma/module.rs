@@ -1,14 +1,14 @@
-//! Backend handle and module initialisation for [`NTT120Ifma`](super::NTT120Ifma).
+//! Backend handle and module initialisation for [`NTT126Ifma`](super::NTT126Ifma).
 //!
 //! This module defines:
 //!
-//! - [`NTT120IfmaHandle`]: the opaque handle stored inside a `Module<NTT120Ifma>`,
+//! - [`NTT126IfmaHandle`]: the opaque handle stored inside a `Module<NTT126Ifma>`,
 //!   holding precomputed NTT and iNTT twiddle-factor tables and multiply-accumulate metadata.
 //! - The [`Backend`] trait implementation, which defines scalar types and the
 //!   handle destruction path.
 //! - The [`NttIfmaHandleFactory`] implementation, which allocates the handle on the heap
 //!   and verifies AVX512-IFMA availability at runtime.
-//! - The [`NttIfmaHandleProvider`] impl for [`NTT120IfmaHandle`], wiring the handle into
+//! - The [`NttIfmaHandleProvider`] impl for [`NTT126IfmaHandle`], wiring the handle into
 //!   the blanket `NttIfmaModuleHandle` impl provided by `poulpy-cpu-ref`.
 
 use std::ptr::NonNull;
@@ -16,33 +16,33 @@ use std::ptr::NonNull;
 use poulpy_cpu_ref::reference::ntt_ifma::{
     mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
-    primes::Primes40,
+    primes::Primes42,
     vec_znx_dft::{NttIfmaHandleFactory, NttIfmaHandleProvider},
 };
 use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
 use poulpy_hal::{alloc_aligned, assert_alignment, layouts::Backend};
 
-use crate::NTT120Ifma;
+use crate::NTT126Ifma;
 
-/// Opaque handle for the [`NTT120Ifma`](super::NTT120Ifma) backend.
+/// Opaque handle for the [`NTT126Ifma`](super::NTT126Ifma) backend.
 ///
 /// Holds precomputed twiddle-factor tables for the forward NTT and inverse NTT
 /// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` products.
 ///
 /// This struct is heap-allocated during module creation and freed when the
-/// `Module<NTT120Ifma>` is dropped (via [`Backend::destroy`]).
+/// `Module<NTT126Ifma>` is dropped (via [`Backend::destroy`]).
 #[repr(C)]
-pub struct NTT120IfmaHandle {
-    table_ntt: NttIfmaTable<Primes40>,
-    table_intt: NttIfmaTableInv<Primes40>,
-    meta_bbc: BbcIfmaMeta<Primes40>,
+pub struct NTT126IfmaHandle {
+    table_ntt: NttIfmaTable<Primes42>,
+    table_intt: NttIfmaTableInv<Primes42>,
+    meta_bbc: BbcIfmaMeta<Primes42>,
 }
 
-impl Backend for NTT120Ifma {
+impl Backend for NTT126Ifma {
     type ScalarPrep = Q120bScalar;
     type ScalarBig = i128;
     type OwnedBuf = Vec<u8>;
-    type Handle = NTT120IfmaHandle;
+    type Handle = NTT126IfmaHandle;
     fn alloc_bytes(len: usize) -> Self::OwnedBuf {
         alloc_aligned::<u8>(len)
     }
@@ -71,9 +71,9 @@ impl Backend for NTT120Ifma {
 /// # Panics
 ///
 /// Panics if the runtime CPU does not support the AVX512-IFMA instruction set.
-unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
+unsafe impl NttIfmaHandleFactory for NTT126IfmaHandle {
     fn create_ntt_ifma_handle(n: usize) -> Self {
-        NTT120IfmaHandle {
+        NTT126IfmaHandle {
             table_ntt: NttIfmaTable::new(n),
             table_intt: NttIfmaTableInv::new(n),
             meta_bbc: BbcIfmaMeta::new(),
@@ -84,18 +84,18 @@ unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
         #[cfg(target_arch = "x86_64")]
         {
             if !std::arch::is_x86_feature_detected!("avx512f") {
-                panic!("NTT120Ifma requires x86_64 with AVX512-F support");
+                panic!("NTT126Ifma requires x86_64 with AVX512-F support");
             }
             if !std::arch::is_x86_feature_detected!("avx512ifma") {
-                panic!("NTT120Ifma requires x86_64 with AVX512-IFMA support");
+                panic!("NTT126Ifma requires x86_64 with AVX512-IFMA support");
             }
             if !std::arch::is_x86_feature_detected!("avx512vl") {
-                panic!("NTT120Ifma requires x86_64 with AVX512-VL support");
+                panic!("NTT126Ifma requires x86_64 with AVX512-VL support");
             }
         }
 
         #[cfg(not(target_arch = "x86_64"))]
-        panic!("NTT120Ifma requires x86_64 with AVX512-F + AVX512-IFMA + AVX512-VL support");
+        panic!("NTT126Ifma requires x86_64 with AVX512-F + AVX512-IFMA + AVX512-VL support");
     }
 }
 
@@ -103,16 +103,16 @@ unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
 ///
 /// The returned references are valid for the lifetime of `&self`.
 /// All fields are fully initialised in [`NttIfmaHandleFactory::create_ntt_ifma_handle`].
-unsafe impl NttIfmaHandleProvider for NTT120IfmaHandle {
-    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40> {
+unsafe impl NttIfmaHandleProvider for NTT126IfmaHandle {
+    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes42> {
         &self.table_ntt
     }
 
-    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40> {
+    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes42> {
         &self.table_intt
     }
 
-    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40> {
+    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes42> {
         &self.meta_bbc
     }
 }

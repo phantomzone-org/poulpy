@@ -1,7 +1,7 @@
 //! AVX512-IFMA accelerated NTT CPU backend for the Poulpy lattice cryptography library.
 //!
-//! This module provides [`NTT120Ifma`], an AVX512-IFMA accelerated backend implementation for
-//! [`poulpy_hal`] that uses IFMA NTT arithmetic (CRT over three ~40-bit primes). It
+//! This module provides [`NTT126Ifma`], an AVX512-IFMA accelerated backend implementation for
+//! [`poulpy_hal`] that uses IFMA NTT arithmetic (CRT over three ~42-bit primes). It
 //! mirrors the structure of the scalar [`poulpy_cpu_ref::NTTIfmaRef`] backend, with
 //! AVX512-IFMA accelerated kernels substituted where available.
 //!
@@ -17,7 +17,7 @@
 //!
 //! # Scalar types
 //!
-//! - `ScalarPrep = Q120bScalar` — NTT-domain coefficients (4 × u64, 32 bytes/coeff).
+//! - `ScalarPrep = Q120bScalar` — NTT-domain coefficients (4 × u64 storage: three active residues plus padding).
 //! - `ScalarBig  = i128` — CRT-reconstructed large coefficients.
 
 pub(crate) mod convolution;
@@ -35,16 +35,16 @@ mod tests;
 
 /// AVX512-IFMA accelerated NTT CPU backend for Poulpy HAL.
 ///
-/// `NTT120Ifma` is a zero-sized marker type that selects the AVX512-IFMA accelerated NTT backend
+/// `NTT126Ifma` is a zero-sized marker type that selects the AVX512-IFMA accelerated NTT backend
 /// when used as the type parameter `B` in [`poulpy_hal::layouts::Module<B>`](poulpy_hal::layouts::Module)
 /// and related HAL types. It implements all open extension point (OEP) traits from
 /// `poulpy_hal::oep`.
 ///
 /// # Backend characteristics
 ///
-/// - **ScalarPrep**: `Q120bScalar` — NTT-domain coefficients stored as 4 × u64 CRT residues.
+/// - **ScalarPrep**: `Q120bScalar` — NTT-domain coefficients stored as three CRT residues plus one padding lane.
 /// - **ScalarBig**: `i128` — large-coefficient ring elements use 128-bit signed integers.
-/// - **Prime set**: `Primes40` (three ~40-bit primes, Q ≈ 2^120).
+/// - **Prime set**: `Primes42` (three ~42-bit primes, Q ≈ 2^126).
 ///
 /// # CPU feature requirements
 ///
@@ -53,9 +53,9 @@ mod tests;
 ///
 /// # Thread safety
 ///
-/// `NTT120Ifma` is `Send + Sync` (derived from being a zero-sized, field-less struct).
+/// `NTT126Ifma` is `Send + Sync` (derived from being a zero-sized, field-less struct).
 #[derive(Debug, Clone, Copy)]
-pub struct NTT120Ifma;
+pub struct NTT126Ifma;
 
 use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps, vec_znx_big::AssignOp};
 
@@ -70,7 +70,7 @@ use crate::vec_znx_big_avx512::{
     vi128_sub_small_assign_avx512, vi128_sub_small_b_avx512, vi128_sub_small_negate_assign_avx512,
 };
 
-impl I128BigOps for NTT120Ifma {
+impl I128BigOps for NTT126Ifma {
     #[inline(always)]
     fn i128_add(res: &mut [i128], a: &[i128], b: &[i128]) {
         unsafe { vi128_add_avx512(res.len(), res, a, b) }
@@ -133,7 +133,7 @@ impl I128BigOps for NTT120Ifma {
     }
 }
 
-impl I128NormalizeOps for NTT120Ifma {
+impl I128NormalizeOps for NTT126Ifma {
     #[inline(always)]
     fn nfc_middle_step(base2k: usize, lsh: usize, res: &mut [i64], a: &[i128], carry: &mut [i128]) {
         if base2k <= 64 && res.len() >= 8 {

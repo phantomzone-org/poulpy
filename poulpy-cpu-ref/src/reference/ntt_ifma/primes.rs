@@ -1,12 +1,13 @@
 /// Selects a set of three NTT-friendly primes and their associated
 /// constants for the IFMA CRT representation.
 ///
-/// The product `Q = Q[0]·Q[1]·Q[2]` is approximately 2^120.
+/// The product `Q = Q[0]·Q[1]·Q[2]` is approximately 2^126 (fits in `i128`
+/// with two bits of margin).
 /// All three primes support a primitive `2^17`-th root of unity, so
 /// NTT sizes up to `2^16` are supported.
 ///
 /// Unlike [`super::super::ntt120::primes::PrimeSet`] which uses `[u32; 4]`
-/// for ~30-bit primes, this trait uses `[u64; 3]` for ~40-bit primes
+/// for ~30-bit primes, this trait uses `[u64; 3]` for ~42-bit primes
 /// that fit within IFMA52's 52-bit input window.
 pub trait PrimeSetIfma: Sized + Sync + Send + 'static {
     /// The three NTT-friendly primes `[Q0, Q1, Q2]`.
@@ -33,26 +34,26 @@ pub trait PrimeSetIfma: Sized + Sync + Send + 'static {
     const LOG_Q: u64;
 }
 
-/// 40-bit NTT-friendly primes with `2·2^16`-th roots of unity.
+/// 42-bit NTT-friendly primes with `2·2^16`-th roots of unity.
 ///
-/// - `Q ≈ 2^120`
-/// - Each prime is of the form `c·2^17 + 1` with `c·2^17 + 1 < 2^40`.
-/// - Designed for use with AVX512-IFMA52 instructions (primes < 2^50).
-pub struct Primes40;
+/// - `Q ≈ 2^126` (product fits in `i128` with two bits of margin).
+/// - Each prime is of the form `c·2^17 + 1` with `c·2^17 + 1 < 2^42`.
+/// - Designed for use with AVX512-IFMA52 instructions (primes < 2^49).
+pub struct Primes42;
 
-impl PrimeSetIfma for Primes40 {
+impl PrimeSetIfma for Primes42 {
     const Q: [u64; 3] = [
-        1_099_510_054_913, // 8388596 * 2^17 + 1
-        1_099_507_695_617, // 8388578 * 2^17 + 1
-        1_099_506_515_969, // 8388569 * 2^17 + 1
+        4_398_044_938_241, // 33554420 * 2^17 + 1
+        4_398_043_496_449, // 33554409 * 2^17 + 1
+        4_398_042_972_161, // 33554405 * 2^17 + 1
     ];
-    const OMEGA: [u64; 3] = [58_415_410_147, 699_776_532_486, 111_593_367_472];
+    const OMEGA: [u64; 3] = [178_422_821_038, 2_962_575_618_789, 4_244_078_245_315];
     // Garner CRT constants:
     // CRT_CST[0] = inv(Q[0], Q[1])
     // CRT_CST[1] = inv(Q[0]*Q[1], Q[2])
     // CRT_CST[2] = unused
-    const CRT_CST: [u64; 3] = [610_837_142_644, 647_033_352_384, 0];
-    const LOG_Q: u64 = 40;
+    const CRT_CST: [u64; 3] = [399_819_085_640, 806_292_778_743, 0];
+    const LOG_Q: u64 = 42;
 }
 
 /// Computes `x^n mod q` using square-and-multiply with 128-bit intermediates.
@@ -81,17 +82,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn primes40_are_prime() {
-        for &q in &Primes40::Q {
+    fn primes42_are_prime() {
+        for &q in &Primes42::Q {
             assert!(is_prime(q), "{q} is not prime");
         }
     }
 
     #[test]
-    fn primes40_omega_are_primitive_roots() {
+    fn primes42_omega_are_primitive_roots() {
         for k in 0..3 {
-            let q = Primes40::Q[k];
-            let omega = Primes40::OMEGA[k];
+            let q = Primes42::Q[k];
+            let omega = Primes42::OMEGA[k];
             // omega^(2^17) == 1 mod q
             assert_eq!(modq_pow64(omega, 1 << 17, q), 1, "omega[{k}]^(2^17) != 1");
             // omega^(2^16) != 1 mod q (primitive, not a 2^16-th root)
@@ -100,8 +101,8 @@ mod tests {
     }
 
     #[test]
-    fn primes40_crt_roundtrip() {
-        let q = Primes40::Q;
+    fn primes42_crt_roundtrip() {
+        let q = Primes42::Q;
         let q01 = q[0] as u128 * q[1] as u128;
         let big_q = q01 * q[2] as u128;
 
@@ -113,8 +114,8 @@ mod tests {
             ];
 
             // Garner reconstruction
-            let inv01 = <Primes40 as PrimeSetIfma>::CRT_CST[0];
-            let inv012 = <Primes40 as PrimeSetIfma>::CRT_CST[1];
+            let inv01 = <Primes42 as PrimeSetIfma>::CRT_CST[0];
+            let inv012 = <Primes42 as PrimeSetIfma>::CRT_CST[1];
 
             let v0 = r[0] as u128;
             // Modular subtraction: (r[1] - v0) mod q[1]

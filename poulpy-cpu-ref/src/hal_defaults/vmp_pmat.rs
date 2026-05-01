@@ -18,7 +18,7 @@ use crate::reference::{
         NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64, NttIfmaMulBbc1ColX2,
         NttIfmaMulBbc2ColsX2,
         ntt::NttIfmaTable,
-        primes::Primes40,
+        primes::Primes42,
         vec_znx_dft::NttIfmaModuleHandle,
         vmp::{
             ntt_ifma_vmp_apply_dft_to_dft, ntt_ifma_vmp_apply_dft_to_dft_tmp_bytes, ntt_ifma_vmp_prepare,
@@ -277,7 +277,7 @@ pub trait NTT120VmpDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120VmpDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTT120IfmaVmpDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaVmpDefaults<BE: Backend>: Backend {
     fn vmp_prepare_tmp_bytes_default(module: &Module<BE>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize
     where
         BE: Backend<ScalarPrep = Q120bScalar>,
@@ -288,7 +288,7 @@ pub trait NTT120IfmaVmpDefaults<BE: Backend>: Backend {
     fn vmp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaCFromB,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaCFromB,
         Scratch<BE>: TakeSlice,
         R: VmpPMatToMut<BE>,
         A: MatZnxToRef,
@@ -391,4 +391,4 @@ pub trait NTT120IfmaVmpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaVmpDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaVmpDefaults<BE> for BE {}

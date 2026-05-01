@@ -24,7 +24,7 @@ use super::{
     NttIfmaSub, NttIfmaSubAssign, NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
     mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
-    primes::Primes40,
+    primes::Primes42,
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -33,9 +33,9 @@ use super::{
 
 /// Access to precomputed NTT/iNTT tables for the IFMA backend.
 pub trait NttIfmaModuleHandle {
-    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40>;
-    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40>;
-    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40>;
+    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes42>;
+    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes42>;
+    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes42>;
 }
 
 /// Implemented by backend `Handle` types that store IFMA NTT tables.
@@ -45,9 +45,9 @@ pub trait NttIfmaModuleHandle {
 /// Implementors must ensure the returned references are valid for the
 /// lifetime of `&self` and that the tables were fully initialised.
 pub unsafe trait NttIfmaHandleProvider {
-    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40>;
-    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40>;
-    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40>;
+    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes42>;
+    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes42>;
+    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes42>;
 }
 
 /// Blanket impl: any `Module<B>` whose handle implements `NttIfmaHandleProvider`
@@ -57,13 +57,13 @@ where
     B: Backend,
     B::Handle: NttIfmaHandleProvider,
 {
-    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40> {
+    fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes42> {
         unsafe { (&*self.ptr()).get_ntt_ifma_table() }
     }
-    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40> {
+    fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes42> {
         unsafe { (&*self.ptr()).get_intt_ifma_table() }
     }
-    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40> {
+    fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes42> {
         unsafe { (&*self.ptr()).get_bbc_ifma_meta() }
     }
 }
@@ -104,7 +104,7 @@ pub fn ntt_ifma_vec_znx_dft_apply<R, A, BE>(
     a: &A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaZero,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaZero,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
 {
@@ -155,7 +155,7 @@ pub fn ntt_ifma_vec_znx_idft_apply<R, A, BE>(
     tmp: &mut [u64],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>
-        + NttIfmaDFTExecute<NttIfmaTableInv<Primes40>>
+        + NttIfmaDFTExecute<NttIfmaTableInv<Primes42>>
         + NttIfmaToZnx128
         + NttIfmaCopy,
     R: VecZnxBigToMut<BE>,
@@ -191,7 +191,7 @@ pub fn ntt_ifma_vec_znx_idft_apply_tmpa<R, A, BE>(
     a: &mut A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttIfmaDFTExecute<NttIfmaTableInv<Primes40>> + NttIfmaToZnx128,
+    BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttIfmaDFTExecute<NttIfmaTableInv<Primes42>> + NttIfmaToZnx128,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToMut<BE>,
 {

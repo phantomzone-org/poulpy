@@ -1,8 +1,8 @@
 //! IFMA NTT reference implementation.
 //!
-//! This module provides a 3-prime CRT NTT backend using ~40-bit primes
+//! This module provides a 3-prime CRT NTT backend using ~42-bit primes
 //! designed for hardware acceleration via AVX512-IFMA52 instructions.
-//! The composite modulus `Q = Q₀·Q₁·Q₂ ≈ 2^120` matches the existing
+//! The composite modulus `Q = Q₀·Q₁·Q₂ ≈ 2^126` matches the existing
 //! NTT120 backend's modulus size but uses 3 larger primes instead of 4
 //! smaller ones, yielding a 25% reduction in per-coefficient work.
 //!
@@ -20,7 +20,7 @@
 //!
 //! # Submodules
 //!
-//! - [`primes`]: [`PrimeSetIfma`] trait and [`Primes40`] implementation.
+//! - [`primes`]: [`PrimeSetIfma`] trait and [`Primes42`] implementation.
 //! - [`types`]: Scalar type aliases and lazy-reduction constants.
 //! - [`ntt`]: NTT precomputation tables and reference execution.
 //! - [`arithmetic`]: Element-wise CRT conversions (i64 ↔ CRT, CRT → prepared).
@@ -141,7 +141,7 @@ pub trait NttIfmaCopy {
 ///
 /// `ntt_coeff` is in b format (as u32 view), `prepared` is in Harvey-prepared c format.
 pub trait NttIfmaMulBbc {
-    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]);
+    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]);
 }
 
 /// Convert b → c (Harvey-prepared form).
@@ -151,12 +151,12 @@ pub trait NttIfmaCFromB {
 
 /// x2-block 1-column bbc product.
 pub trait NttIfmaMulBbc1ColX2 {
-    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
 }
 
 /// x2-block 2-column bbc product.
 pub trait NttIfmaMulBbc2ColsX2 {
-    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
+    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]);
 }
 
 /// Extract one x2-block from contiguous array.

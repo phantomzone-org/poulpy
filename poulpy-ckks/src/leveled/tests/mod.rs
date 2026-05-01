@@ -44,4 +44,4 @@ pub mod ntt120_avx512;
     target_feature = "avx512ifma",
     target_feature = "avx512vl"
 ))]
-pub mod ntt120_ifma;
+pub mod ntt126_ifma;

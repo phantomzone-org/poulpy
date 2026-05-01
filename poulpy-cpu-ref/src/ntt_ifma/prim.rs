@@ -19,7 +19,7 @@ use crate::reference::ntt_ifma::{
         vec_mat1col_product_x2_bbc_ifma_ref, vec_mat2cols_product_x2_bbc_ifma_ref,
     },
     ntt::{NttIfmaTable, NttIfmaTableInv, intt_ifma_ref, ntt_ifma_ref},
-    primes::Primes40,
+    primes::Primes42,
     types::Q_SHIFTED_IFMA,
 };
 
@@ -33,17 +33,17 @@ use crate::NTTIfmaRef;
 // IFMA NTT execution
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaDFTExecute<NttIfmaTable<Primes40>> for NTTIfmaRef {
+impl NttIfmaDFTExecute<NttIfmaTable<Primes42>> for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_dft_execute(table: &NttIfmaTable<Primes40>, data: &mut [u64]) {
-        ntt_ifma_ref::<Primes40>(table, data);
+    fn ntt_ifma_dft_execute(table: &NttIfmaTable<Primes42>, data: &mut [u64]) {
+        ntt_ifma_ref::<Primes42>(table, data);
     }
 }
 
-impl NttIfmaDFTExecute<NttIfmaTableInv<Primes40>> for NTTIfmaRef {
+impl NttIfmaDFTExecute<NttIfmaTableInv<Primes42>> for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_dft_execute(table: &NttIfmaTableInv<Primes40>, data: &mut [u64]) {
-        intt_ifma_ref::<Primes40>(table, data);
+    fn ntt_ifma_dft_execute(table: &NttIfmaTableInv<Primes42>, data: &mut [u64]) {
+        intt_ifma_ref::<Primes42>(table, data);
     }
 }
 
@@ -192,7 +192,7 @@ impl NttIfmaCopy for NTTIfmaRef {
 
 impl NttIfmaMulBbc for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
+    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
         vec_mat1col_product_bbc_ifma_ref(meta, ell, res, ntt_coeff, prepared);
     }
 }
@@ -214,14 +214,14 @@ impl NttIfmaCFromB for NTTIfmaRef {
 
 impl NttIfmaMulBbc1ColX2 for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
+    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         vec_mat1col_product_x2_bbc_ifma_ref(meta, ell, res, a, b);
     }
 }
 
 impl NttIfmaMulBbc2ColsX2 for NTTIfmaRef {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
+    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         vec_mat2cols_product_x2_bbc_ifma_ref(meta, ell, res, a, b);
     }
 }

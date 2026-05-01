@@ -3,7 +3,7 @@
 
 use std::marker::PhantomData;
 
-use super::primes::{PrimeSetIfma, Primes40};
+use super::primes::{PrimeSetIfma, Primes42};
 
 /// Metadata for `b × c → b` (BBC) lazy multiply-accumulate (3-prime variant).
 pub struct BbcIfmaMeta<P: PrimeSetIfma> {
@@ -16,9 +16,9 @@ pub struct BbcIfmaMeta<P: PrimeSetIfma> {
     _phantom: PhantomData<P>,
 }
 
-impl BbcIfmaMeta<Primes40> {
+impl BbcIfmaMeta<Primes42> {
     pub fn new() -> Self {
-        let q = Primes40::Q;
+        let q = Primes42::Q;
         let h = 32u64;
         let mut s2l = [0u64; 4];
         let mut s2h = [0u64; 4];
@@ -35,7 +35,7 @@ impl BbcIfmaMeta<Primes40> {
     }
 }
 
-impl Default for BbcIfmaMeta<Primes40> {
+impl Default for BbcIfmaMeta<Primes42> {
     fn default() -> Self {
         Self::new()
     }
@@ -46,8 +46,8 @@ impl Default for BbcIfmaMeta<Primes40> {
 /// Both `x` and `y` are in `[u32]` view but actually contain u64 data
 /// (each pair of u32s forms one u64). The data layout is 4 u64 per
 /// coefficient (3 active + 1 padding).
-pub fn vec_mat1col_product_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    let q = <Primes40 as PrimeSetIfma>::Q;
+pub fn vec_mat1col_product_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
+    let q = <Primes42 as PrimeSetIfma>::Q;
     // Reinterpret u32 slices as u64
     let x_u64: &[u64] = unsafe { std::slice::from_raw_parts(x.as_ptr() as *const u64, x.len() / 2) };
     let y_u64: &[u64] = unsafe { std::slice::from_raw_parts(y.as_ptr() as *const u64, y.len() / 2) };
@@ -67,8 +67,8 @@ pub fn vec_mat1col_product_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes40>, ell: usiz
 }
 
 /// Reference x2-block 1-column BBC product.
-pub fn vec_mat1col_product_x2_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    let q = <Primes40 as PrimeSetIfma>::Q;
+pub fn vec_mat1col_product_x2_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
+    let q = <Primes42 as PrimeSetIfma>::Q;
     let x_u64: &[u64] = unsafe { std::slice::from_raw_parts(x.as_ptr() as *const u64, x.len() / 2) };
     let y_u64: &[u64] = unsafe { std::slice::from_raw_parts(y.as_ptr() as *const u64, y.len() / 2) };
 
@@ -98,8 +98,8 @@ pub fn vec_mat1col_product_x2_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes40>, ell: u
 }
 
 /// Reference x2-block 2-column BBC product.
-pub fn vec_mat2cols_product_x2_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
-    let q = <Primes40 as PrimeSetIfma>::Q;
+pub fn vec_mat2cols_product_x2_bbc_ifma_ref(_meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
+    let q = <Primes42 as PrimeSetIfma>::Q;
     let x_u64: &[u64] = unsafe { std::slice::from_raw_parts(x.as_ptr() as *const u64, x.len() / 2) };
     let y_u64: &[u64] = unsafe { std::slice::from_raw_parts(y.as_ptr() as *const u64, y.len() / 2) };
 

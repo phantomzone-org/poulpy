@@ -1,11 +1,11 @@
-//! NTT-domain SIMD helpers for [`NTT120Ifma`](crate::NTT120Ifma).
+//! NTT-domain SIMD helpers for [`NTT126Ifma`](crate::NTT126Ifma).
 //!
 //! SIMD Garner reconstruction for the consume path.
 
 use bytemuck::cast_slice_mut;
 use poulpy_cpu_ref::reference::ntt_ifma::{
     ntt::NttIfmaTableInv,
-    primes::{PrimeSetIfma, Primes40},
+    primes::{PrimeSetIfma, Primes42},
     vec_znx_dft::NttIfmaModuleHandle,
 };
 use poulpy_hal::layouts::{Data, Module, VecZnxBig, VecZnxDft, VecZnxDftToMut, ZnxInfos, ZnxViewMut};
@@ -19,9 +19,9 @@ use core::arch::x86_64::{
 
 // 3-prime CRT -> i128 reconstruction helpers.
 
-const Q: [u64; 3] = Primes40::Q;
-const INV01: u64 = Primes40::CRT_CST[0];
-const INV012: u64 = Primes40::CRT_CST[1];
+const Q: [u64; 3] = Primes42::Q;
+const INV01: u64 = Primes42::CRT_CST[0];
+const INV012: u64 = Primes42::CRT_CST[1];
 const Q0: u64 = Q[0];
 const Q1: u64 = Q[1];
 const Q2: u64 = Q[2];
@@ -269,7 +269,7 @@ pub(crate) unsafe fn simd_b_ifma_to_znx128(nn: usize, res: &mut [i128], a: &[u64
 /// - The backing allocation must be at least 16-byte aligned (guaranteed by `DEFAULTALIGN = 64`).
 /// - No other references to the same memory may be live during this call.
 #[target_feature(enable = "avx512ifma,avx512vl")]
-unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttIfmaTableInv<Primes40>) {
+unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttIfmaTableInv<Primes42>) {
     unsafe {
         // Per-prime Q vector for AoS cond_sub: [Q0, Q1, Q2, 0]
         let q_vec = _mm256_set_epi64x(0, Q2 as i64, Q1 as i64, Q0 as i64);
@@ -291,7 +291,7 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
             // Step 1: inverse NTT in-place.
             {
                 let blk = std::slice::from_raw_parts_mut(u64_ptr.add(src_start), 4 * n);
-                intt_avx512::<Primes40>(table, blk);
+                intt_avx512::<Primes42>(table, blk);
             }
 
             // Step 2: Garner CRT-compact 4n u64s → n i128s.
@@ -336,22 +336,22 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
     }
 }
 
-/// AVX512-accelerated `vec_znx_idft_apply_consume` for [`NTT120Ifma`](crate::NTT120Ifma).
+/// AVX512-accelerated `vec_znx_idft_apply_consume` for [`NTT126Ifma`](crate::NTT126Ifma).
 ///
 /// Converts the DFT-domain `VecZnxDft` into a `VecZnxBig` by applying inverse NTT
 /// and in-place CRT compaction (q120b 32 bytes/coeff → i128 16 bytes/coeff) for
 /// each block, then reinterpreting the buffer.
 pub(crate) fn vec_znx_idft_apply_consume<D: Data>(
-    module: &Module<crate::NTT120Ifma>,
-    mut a: VecZnxDft<D, crate::NTT120Ifma>,
-) -> VecZnxBig<D, crate::NTT120Ifma>
+    module: &Module<crate::NTT126Ifma>,
+    mut a: VecZnxDft<D, crate::NTT126Ifma>,
+) -> VecZnxBig<D, crate::NTT126Ifma>
 where
-    VecZnxDft<D, crate::NTT120Ifma>: VecZnxDftToMut<crate::NTT120Ifma>,
+    VecZnxDft<D, crate::NTT126Ifma>: VecZnxDftToMut<crate::NTT126Ifma>,
 {
     let table = module.get_intt_ifma_table();
 
     let (n, n_blocks, u64_ptr) = {
-        let mut a_mut: VecZnxDft<&mut [u8], crate::NTT120Ifma> = a.to_mut();
+        let mut a_mut: VecZnxDft<&mut [u8], crate::NTT126Ifma> = a.to_mut();
         let n = a_mut.n();
         let n_blocks = a_mut.cols() * a_mut.size();
         let ptr: *mut u64 = {

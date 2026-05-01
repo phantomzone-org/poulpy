@@ -5,13 +5,13 @@
 //! - `b_ifma_to_znx128_ref`: 3-prime CRT → i128 via Garner's algorithm
 //! - `c_ifma_from_b_ref`: b → prepared c format (Harvey quotient pairs)
 
-use super::primes::{PrimeSetIfma, Primes40};
+use super::primes::{PrimeSetIfma, Primes42};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compile-time constants for Primes40
+// Compile-time constants for Primes42
 // ─────────────────────────────────────────────────────────────────────────────
 
-const Q: [u64; 3] = <Primes40 as PrimeSetIfma>::Q;
+const Q: [u64; 3] = <Primes42 as PrimeSetIfma>::Q;
 
 /// `oq[k] = Q[k] - (2^63 mod Q[k])`.
 ///
@@ -30,8 +30,8 @@ const OQ: [u64; 3] = {
 /// Garner constants for CRT reconstruction.
 /// INV01 = inv(Q[0], Q[1])
 /// INV012 = inv(Q[0]*Q[1], Q[2])
-const INV01: u64 = Primes40::CRT_CST[0];
-const INV012: u64 = Primes40::CRT_CST[1];
+const INV01: u64 = Primes42::CRT_CST[0];
+const INV012: u64 = Primes42::CRT_CST[1];
 const Q0: u64 = Q[0];
 const Q1: u64 = Q[1];
 const Q2: u64 = Q[2];

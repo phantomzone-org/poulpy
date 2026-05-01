@@ -5,7 +5,7 @@
 //! base-2^k representation.
 //!
 //! The i128 domain operations are backend-independent and are handled by the shared
-//! `NTT120IfmaVecZnxBigDefaults` in `hal_defaults`. This module only provides the
+//! `NTT126IfmaVecZnxBigDefaults` in `hal_defaults`. This module only provides the
 //! `I128BigOps` and `I128NormalizeOps` marker trait impls required by those defaults.
 
 use crate::NTTIfmaRef;

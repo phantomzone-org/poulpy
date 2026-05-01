@@ -4,7 +4,7 @@
 //!
 //! - [`FFT64Ref`]: scalar `f64` FFT arithmetic — see the [`fft64`] module.
 //! - [`NTT120Ref`]: scalar Q120 NTT arithmetic (CRT over four ~30-bit primes) — see the [`ntt120`] module.
-//! - [`NTTIfmaRef`]: scalar Q120 NTT arithmetic (CRT over three ~40-bit primes) — see the [`ntt_ifma`] module.
+//! - [`NTTIfmaRef`]: scalar Q126 NTT arithmetic (CRT over three ~42-bit primes) — see the [`ntt_ifma`] module.
 //!
 //! All are canonical reference implementations: portable across all CPU architectures,
 //! prioritising correctness and debuggability over throughput.

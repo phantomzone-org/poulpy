@@ -1,7 +1,7 @@
-macro_rules! hal_impl_convolution_ntt120_ifma {
+macro_rules! hal_impl_convolution_ntt126_ifma {
     () => {
         fn cnv_prepare_left_tmp_bytes(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_left_tmp_bytes_default(module, res_size, a_size)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_left_tmp_bytes_default(module, res_size, a_size)
         }
 
         fn cnv_prepare_left<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
@@ -9,11 +9,11 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             R: CnvPVecLToMut<Self>,
             A: VecZnxToRef,
         {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_left_default(module, res, a, mask, scratch)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_left_default(module, res, a, mask, scratch)
         }
 
         fn cnv_prepare_right_tmp_bytes(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_right_tmp_bytes_default(module, res_size, a_size)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_right_tmp_bytes_default(module, res_size, a_size)
         }
 
         fn cnv_prepare_right<R, A>(module: &Module<Self>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<Self>)
@@ -21,7 +21,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             R: CnvPVecRToMut<Self>,
             A: VecZnxToRef + ZnxInfos,
         {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_right_default(module, res, a, mask, scratch)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_right_default(module, res, a, mask, scratch)
         }
 
         fn cnv_apply_dft_tmp_bytes(
@@ -31,7 +31,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             a_size: usize,
             b_size: usize,
         ) -> usize {
-            crate::ntt120_ifma::convolution::cnv_apply_dft_ifma_tmp_bytes(a_size, b_size)
+            crate::ntt126_ifma::convolution::cnv_apply_dft_ifma_tmp_bytes(a_size, b_size)
         }
 
         fn cnv_by_const_apply_tmp_bytes(
@@ -41,7 +41,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             a_size: usize,
             b_size: usize,
         ) -> usize {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_by_const_apply_tmp_bytes_default(
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_by_const_apply_tmp_bytes_default(
                 module, cnv_offset, res_size, a_size, b_size,
             )
         }
@@ -60,7 +60,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             R: VecZnxBigToMut<Self>,
             A: VecZnxToRef,
         {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_by_const_apply_default(
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_by_const_apply_default(
                 module, cnv_offset, res, res_col, a, a_col, b, scratch,
             )
         }
@@ -82,9 +82,9 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             B: CnvPVecRToRef<Self>,
         {
             use poulpy_hal::api::TakeSlice;
-            let bytes = crate::ntt120_ifma::convolution::cnv_apply_dft_ifma_tmp_bytes(a.to_ref().size(), b.to_ref().size());
+            let bytes = crate::ntt126_ifma::convolution::cnv_apply_dft_ifma_tmp_bytes(a.to_ref().size(), b.to_ref().size());
             let (tmp, _) = scratch.take_slice::<u8>(bytes);
-            unsafe { crate::ntt120_ifma::convolution::cnv_apply_dft_ifma(res, cnv_offset, res_col, a, a_col, b, b_col, tmp) }
+            unsafe { crate::ntt126_ifma::convolution::cnv_apply_dft_ifma(res, cnv_offset, res_col, a, a_col, b, b_col, tmp) }
         }
 
         fn cnv_pairwise_apply_dft_tmp_bytes(
@@ -94,7 +94,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             a_size: usize,
             b_size: usize,
         ) -> usize {
-            crate::ntt120_ifma::convolution::cnv_pairwise_apply_dft_ifma_tmp_bytes(res_size, a_size, b_size)
+            crate::ntt126_ifma::convolution::cnv_pairwise_apply_dft_ifma_tmp_bytes(res_size, a_size, b_size)
         }
 
         #[allow(clippy::too_many_arguments)]
@@ -114,17 +114,17 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             B: CnvPVecRToRef<Self>,
         {
             use poulpy_hal::api::TakeSlice;
-            let bytes = crate::ntt120_ifma::convolution::cnv_pairwise_apply_dft_ifma_tmp_bytes(
+            let bytes = crate::ntt126_ifma::convolution::cnv_pairwise_apply_dft_ifma_tmp_bytes(
                 res.to_mut().size(),
                 a.to_ref().size(),
                 b.to_ref().size(),
             );
             let (tmp, _) = scratch.take_slice::<u8>(bytes);
-            unsafe { crate::ntt120_ifma::convolution::cnv_pairwise_apply_dft_ifma(res, cnv_offset, res_col, a, b, i, j, tmp) }
+            unsafe { crate::ntt126_ifma::convolution::cnv_pairwise_apply_dft_ifma(res, cnv_offset, res_col, a, b, i, j, tmp) }
         }
 
         fn cnv_prepare_self_tmp_bytes(module: &Module<Self>, res_size: usize, a_size: usize) -> usize {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_self_tmp_bytes_default(module, res_size, a_size)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_self_tmp_bytes_default(module, res_size, a_size)
         }
 
         fn cnv_prepare_self<L, R, A>(
@@ -139,7 +139,7 @@ macro_rules! hal_impl_convolution_ntt120_ifma {
             R: CnvPVecRToMut<Self>,
             A: VecZnxToRef + ZnxInfos,
         {
-            <Self as NTT120IfmaConvolutionDefaults<Self>>::cnv_prepare_self_default(module, left, right, a, mask, scratch)
+            <Self as NTT126IfmaConvolutionDefaults<Self>>::cnv_prepare_self_default(module, left, right, a, mask, scratch)
         }
     };
 }

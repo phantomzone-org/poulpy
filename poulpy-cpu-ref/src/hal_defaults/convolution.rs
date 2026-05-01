@@ -22,7 +22,7 @@ use crate::reference::{
             ntt_ifma_cnv_prepare_right_tmp_bytes, ntt_ifma_cnv_prepare_self, ntt_ifma_cnv_prepare_self_tmp_bytes,
         },
         ntt::NttIfmaTable,
-        primes::Primes40,
+        primes::Primes42,
         vec_znx_dft::NttIfmaModuleHandle,
     },
     ntt120::{
@@ -436,7 +436,7 @@ pub trait NTT120ConvolutionDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120ConvolutionDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaConvolutionDefaults<BE: Backend>: Backend {
     fn cnv_prepare_left_tmp_bytes_default(module: &Module<BE>, _res_size: usize, _a_size: usize) -> usize
     where
         BE: Backend<ScalarPrep = Q120bScalar>,
@@ -447,7 +447,7 @@ pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
     fn cnv_prepare_left_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>>,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>>,
         Scratch<BE>: TakeSlice,
         R: CnvPVecLToMut<BE>,
         A: VecZnxToRef,
@@ -467,7 +467,7 @@ pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
     fn cnv_prepare_right_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, mask: i64, scratch: &mut Scratch<BE>)
     where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaCFromB,
         Scratch<BE>: TakeSlice,
         R: CnvPVecRToMut<BE>,
         A: VecZnxToRef + ZnxInfos,
@@ -601,7 +601,7 @@ pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaCFromB,
         Scratch<BE>: TakeSlice,
         L: CnvPVecLToMut<BE>,
         R: CnvPVecRToMut<BE>,
@@ -613,4 +613,4 @@ pub trait NTT120IfmaConvolutionDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaConvolutionDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaConvolutionDefaults<BE> for BE {}

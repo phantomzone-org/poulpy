@@ -1,7 +1,7 @@
 //! Reference NTT-IFMA CPU backend for the Poulpy lattice cryptography library.
 //!
 //! This crate provides [`NTTIfmaRef`], a backend implementation for [`poulpy_hal`] that uses
-//! scalar 3-prime CRT NTT arithmetic (Chinese Remainder Theorem over three ~40-bit primes).
+//! scalar 3-prime CRT NTT arithmetic (Chinese Remainder Theorem over three ~42-bit primes).
 //! It is the reference IFMA implementation: portable across all CPU architectures, prioritising
 //! correctness and debuggability over throughput.
 //!
@@ -31,7 +31,7 @@
 //!
 //! For the `NTTIfmaRef` backend:
 //!
-//! - `ScalarPrep = Q120bScalar`: coefficients in the NTT / frequency domain (32 bytes = 4 x u64).
+//! - `ScalarPrep = Q120bScalar`: coefficients in the NTT / frequency domain (4 x u64 storage: 3 active residues + padding).
 //! - `ScalarBig  = i128`: coefficients in the large-integer (CRT-reconstructed) domain.
 //!
 //! # Usage
@@ -67,10 +67,10 @@ pub use module::NTTIfmaRefHandle;
 ///
 /// # Backend characteristics
 ///
-/// - **ScalarPrep**: `Q120bScalar` -- NTT-domain coefficients stored as 4 x u64 CRT residues
-///   (3 active + 1 padding).
+/// - **ScalarPrep**: `Q120bScalar` -- NTT-domain coefficients stored as 3 CRT residues
+///   plus 1 padding lane.
 /// - **ScalarBig**: `i128` -- large-coefficient ring elements use 128-bit signed integers.
-/// - **Prime set**: `Primes40` (three ~40-bit primes, Q ~ 2^120).
+/// - **Prime set**: `Primes42` (three ~42-bit primes, Q ~ 2^126).
 /// - **NTT tables**: precomputed twiddle factors stored in the module handle
 ///   (`NTTIfmaRefHandle`), shared across all operations on the same module.
 ///

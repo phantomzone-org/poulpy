@@ -1,5 +1,5 @@
 #[cfg(feature = "enable-ifma")]
-use crate::NTT120Ifma;
+use crate::NTT126Ifma;
 use crate::{FFT64Avx512, NTT120Avx512};
 use poulpy_cpu_ref::hal_defaults::{
     FFT64ConvolutionDefaults, FFT64ModuleDefaults, FFT64SvpDefaults, FFT64VecZnxBigDefaults, FFT64VecZnxDftDefaults,
@@ -8,8 +8,8 @@ use poulpy_cpu_ref::hal_defaults::{
 };
 #[cfg(feature = "enable-ifma")]
 use poulpy_cpu_ref::hal_defaults::{
-    NTT120IfmaConvolutionDefaults, NTT120IfmaModuleDefaults, NTT120IfmaSvpDefaults, NTT120IfmaVecZnxBigDefaults,
-    NTT120IfmaVecZnxDftDefaults, NTT120IfmaVmpDefaults,
+    NTT126IfmaConvolutionDefaults, NTT126IfmaModuleDefaults, NTT126IfmaSvpDefaults, NTT126IfmaVecZnxBigDefaults,
+    NTT126IfmaVecZnxDftDefaults, NTT126IfmaVmpDefaults,
 };
 use poulpy_hal::{
     api::{ScratchTakeBasic, VecZnxDftApply, VecZnxDftZero, VmpApplyDftToDft},
@@ -34,42 +34,42 @@ mod module_fft64;
 mod module_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod module_ntt120_ifma;
+mod module_ntt126_ifma;
 #[macro_use]
 mod vmp_fft64;
 #[macro_use]
 mod vmp_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod vmp_ntt120_ifma;
+mod vmp_ntt126_ifma;
 #[macro_use]
 mod convolution_fft64;
 #[macro_use]
 mod convolution_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod convolution_ntt120_ifma;
+mod convolution_ntt126_ifma;
 #[macro_use]
 mod vec_znx_big_fft64;
 #[macro_use]
 mod vec_znx_big_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod vec_znx_big_ntt120_ifma;
+mod vec_znx_big_ntt126_ifma;
 #[macro_use]
 mod svp_fft64;
 #[macro_use]
 mod svp_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod svp_ntt120_ifma;
+mod svp_ntt126_ifma;
 #[macro_use]
 mod vec_znx_dft_fft64;
 #[macro_use]
 mod vec_znx_dft_ntt120_avx512;
 #[cfg(feature = "enable-ifma")]
 #[macro_use]
-mod vec_znx_dft_ntt120_ifma;
+mod vec_znx_dft_ntt126_ifma;
 
 unsafe impl HalImpl<FFT64Avx512> for FFT64Avx512 {
     hal_impl_scratch!();
@@ -96,14 +96,14 @@ unsafe impl HalImpl<NTT120Avx512> for NTT120Avx512 {
 }
 
 #[cfg(feature = "enable-ifma")]
-unsafe impl HalImpl<NTT120Ifma> for NTT120Ifma {
+unsafe impl HalImpl<NTT126Ifma> for NTT126Ifma {
     hal_impl_scratch!();
     hal_impl_vec_znx!();
     hal_impl_family_common!();
-    hal_impl_module_ntt120_ifma!();
-    hal_impl_vmp_ntt120_ifma!();
-    hal_impl_convolution_ntt120_ifma!();
-    hal_impl_vec_znx_big_ntt120_ifma!();
-    hal_impl_svp_ntt120_ifma!();
-    hal_impl_vec_znx_dft_ntt120_ifma!();
+    hal_impl_module_ntt126_ifma!();
+    hal_impl_vmp_ntt126_ifma!();
+    hal_impl_convolution_ntt126_ifma!();
+    hal_impl_vec_znx_big_ntt126_ifma!();
+    hal_impl_svp_ntt126_ifma!();
+    hal_impl_vec_znx_dft_ntt126_ifma!();
 }

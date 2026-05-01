@@ -17,11 +17,11 @@ use crate::{
 use super::{
     NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64,
     ntt::NttIfmaTable,
-    primes::{PrimeSetIfma, Primes40},
+    primes::{PrimeSetIfma, Primes42},
     vec_znx_dft::NttIfmaModuleHandle,
 };
 
-const Q: [u64; 3] = <Primes40 as PrimeSetIfma>::Q;
+const Q: [u64; 3] = <Primes42 as PrimeSetIfma>::Q;
 
 #[inline(always)]
 fn mul_accumulate_ifma(acc: &mut [u128; 3], a: &[Q120bScalar], a_col: usize, b: &[Q120bScalar], b_col: usize, n_i: usize) {
@@ -38,7 +38,7 @@ pub fn ntt_ifma_cnv_prepare_left_tmp_bytes(_n: usize) -> usize {
 
 pub fn ntt_ifma_cnv_prepare_left<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, mask: i64, _tmp: &mut [u8])
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>>,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>>,
     R: CnvPVecLToMut<BE>,
     A: VecZnxToRef,
 {
@@ -73,7 +73,7 @@ pub fn ntt_ifma_cnv_prepare_right_tmp_bytes(n: usize) -> usize {
 
 pub fn ntt_ifma_cnv_prepare_right<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, mask: i64, tmp: &mut [u64])
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaCFromB,
     R: CnvPVecRToMut<BE>,
     A: VecZnxToRef,
 {
@@ -328,7 +328,7 @@ pub fn ntt_ifma_cnv_prepare_self<L, R, A, BE>(
     mask: i64,
     tmp: &mut [u8],
 ) where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaCFromB,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaFromZnx64 + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaCFromB,
     L: CnvPVecLToMut<BE>,
     R: CnvPVecRToMut<BE>,
     A: VecZnxToRef + ZnxInfos,

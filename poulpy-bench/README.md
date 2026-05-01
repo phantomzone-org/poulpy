@@ -14,7 +14,7 @@ Each benchmark binary covers one subsystem. Binaries that operate on generic pol
 | `NTT120Avx` | NTT120, AVX2/FMA | `enable-avx` | `ntt120-avx` |
 | `FFT64Avx512` | FFT64, AVX-512F | `enable-avx512f` | `fft64-avx512` |
 | `NTT120Avx512` | NTT120, AVX-512F | `enable-avx512f` | `ntt120-avx512` |
-| `NTT120Ifma` | NTT IFMA, AVX512-IFMA | `enable-ifma` | `ntt-ifma` |
+| `NTT126Ifma` | NTT IFMA, AVX512-IFMA | `enable-ifma` | `ntt-ifma` |
 
 The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_arch = "x86_64"`.
 The `enable-avx512f` flag enables the AVX-512F backends in `poulpy-cpu-avx512` and requires `target_arch = "x86_64"` plus `AVX512F`.

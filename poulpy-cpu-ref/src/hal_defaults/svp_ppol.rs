@@ -13,7 +13,7 @@ use crate::reference::{
     ntt_ifma::{
         NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaMulBbc, NttIfmaZero,
         ntt::NttIfmaTable,
-        primes::Primes40,
+        primes::Primes42,
         svp::{ntt_ifma_svp_apply_dft_to_dft, ntt_ifma_svp_apply_dft_to_dft_assign, ntt_ifma_svp_prepare},
         vec_znx_dft::NttIfmaModuleHandle,
     },
@@ -145,11 +145,11 @@ pub trait NTT120SvpDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120SvpDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTT120IfmaSvpDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaSvpDefaults<BE: Backend>: Backend {
     fn svp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaCFromB,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaCFromB,
         R: SvpPPolToMut<BE>,
         A: ScalarZnxToRef,
     {
@@ -160,7 +160,7 @@ pub trait NTT120IfmaSvpDefaults<BE: Backend>: Backend {
     where
         Module<BE>: NttIfmaModuleHandle + VecZnxDftApply<BE>,
         BE: Backend<ScalarPrep = Q120bScalar>
-            + NttIfmaDFTExecute<NttIfmaTable<Primes40>>
+            + NttIfmaDFTExecute<NttIfmaTable<Primes42>>
             + NttIfmaFromZnx64
             + NttIfmaMulBbc
             + NttIfmaZero,
@@ -205,4 +205,4 @@ pub trait NTT120IfmaSvpDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaSvpDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaSvpDefaults<BE> for BE {}

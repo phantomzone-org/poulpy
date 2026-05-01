@@ -20,7 +20,7 @@ use crate::reference::{
         NttIfmaAdd, NttIfmaAddAssign, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateAssign,
         NttIfmaSub, NttIfmaSubAssign, NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
         ntt::{NttIfmaTable, NttIfmaTableInv},
-        primes::Primes40,
+        primes::Primes42,
         vec_znx_dft::{
             NttIfmaModuleHandle, ntt_ifma_vec_znx_dft_add_assign as ntt_ifma_default_vec_znx_dft_add_assign,
             ntt_ifma_vec_znx_dft_add_into as ntt_ifma_default_vec_znx_dft_add_into,
@@ -397,7 +397,7 @@ pub trait NTT120VecZnxDftDefaults<BE: Backend>: Backend {
 impl<BE: Backend> NTT120VecZnxDftDefaults<BE> for BE {}
 
 #[doc(hidden)]
-pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
+pub trait NTT126IfmaVecZnxDftDefaults<BE: Backend>: Backend {
     fn vec_znx_dft_apply_default<R, A>(
         module: &Module<BE>,
         step: usize,
@@ -408,7 +408,7 @@ pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
         a_col: usize,
     ) where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaZero,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaZero,
         R: VecZnxDftToMut<BE>,
         A: VecZnxToRef,
     {
@@ -432,7 +432,7 @@ pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
     ) where
         Module<BE>: NttIfmaModuleHandle,
         BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>
-            + NttIfmaDFTExecute<NttIfmaTableInv<Primes40>>
+            + NttIfmaDFTExecute<NttIfmaTableInv<Primes42>>
             + NttIfmaToZnx128
             + NttIfmaCopy,
         Scratch<BE>: TakeSlice,
@@ -446,7 +446,7 @@ pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
     fn vec_znx_idft_apply_tmpa_default<R, A>(module: &Module<BE>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         Module<BE>: NttIfmaModuleHandle,
-        BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttIfmaDFTExecute<NttIfmaTableInv<Primes40>> + NttIfmaToZnx128,
+        BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + NttIfmaDFTExecute<NttIfmaTableInv<Primes42>> + NttIfmaToZnx128,
         R: VecZnxBigToMut<BE>,
         A: VecZnxDftToMut<BE>,
     {
@@ -459,9 +459,9 @@ pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
         BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128>,
         VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
     {
-        // No IFMA-specific consume variant exists yet (requires Primes40 CRT
+        // No IFMA-specific consume variant exists yet (requires Primes42 CRT
         // compaction).  Backends that need it should override this method.
-        todo!("ntt_ifma_vec_znx_idft_apply_consume: not yet implemented for Primes40")
+        todo!("ntt_ifma_vec_znx_idft_apply_consume: not yet implemented for Primes42")
     }
 
     fn vec_znx_dft_add_into_default<R, A, D>(
@@ -565,4 +565,4 @@ pub trait NTT120IfmaVecZnxDftDefaults<BE: Backend>: Backend {
     }
 }
 
-impl<BE: Backend> NTT120IfmaVecZnxDftDefaults<BE> for BE {}
+impl<BE: Backend> NTT126IfmaVecZnxDftDefaults<BE> for BE {}

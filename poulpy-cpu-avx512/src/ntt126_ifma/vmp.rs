@@ -1,4 +1,4 @@
-//! Vector-matrix product AVX512 kernels for [`NTT120Ifma`](crate::NTT120Ifma).
+//! Vector-matrix product AVX512 kernels for [`NTT126Ifma`](crate::NTT126Ifma).
 //!
 //! This module contains AVX512-IFMA SIMD kernels for vector-matrix product
 //! (VMP) operations in the IFMA NTT layout. These kernels override the generic
@@ -14,7 +14,7 @@ use core::arch::x86_64::{
 use std::mem::size_of;
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
-    NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64, mat_vec::BbcIfmaMeta, primes::Primes40, types::Q_SHIFTED_IFMA,
+    NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaFromZnx64, mat_vec::BbcIfmaMeta, primes::Primes42, types::Q_SHIFTED_IFMA,
     vec_znx_dft::NttIfmaModuleHandle,
 };
 use poulpy_hal::layouts::{
@@ -135,12 +135,12 @@ pub(crate) fn vmp_apply_tmp_bytes_ifma(a_size: usize, b_rows: usize, b_cols_in: 
 /// Plane `p` byte offset = `p * plane_bytes`.
 /// Within a plane, element `(blk_quad, row, col)` offset in u64:
 ///   `blk_quad * nrows * ncols * 8  +  col * nrows * 8  +  row * 8`.
-pub(crate) fn vmp_prepare_ifma<R, A>(module: &Module<crate::NTT120Ifma>, res: &mut R, a: &A, tmp: &mut [u64])
+pub(crate) fn vmp_prepare_ifma<R, A>(module: &Module<crate::NTT126Ifma>, res: &mut R, a: &A, tmp: &mut [u64])
 where
-    R: VmpPMatToMut<crate::NTT120Ifma>,
+    R: VmpPMatToMut<crate::NTT126Ifma>,
     A: MatZnxToRef,
 {
-    let mut res: VmpPMat<&mut [u8], crate::NTT120Ifma> = res.to_mut();
+    let mut res: VmpPMat<&mut [u8], crate::NTT126Ifma> = res.to_mut();
     let a: MatZnx<&[u8]> = a.to_ref();
     let n = res.n();
     let nrows = a.cols_in() * a.rows();
@@ -163,9 +163,9 @@ where
     for row_i in 0..nrows {
         for col_i in 0..ncols {
             let pos = n * (row_i * ncols + col_i);
-            crate::NTT120Ifma::ntt_ifma_from_znx64(tmp_b, &mat_i64[pos..pos + n]);
-            crate::NTT120Ifma::ntt_ifma_dft_execute(module.get_ntt_ifma_table(), tmp_b);
-            crate::NTT120Ifma::ntt_ifma_c_from_b(n, tmp_c, tmp_b);
+            crate::NTT126Ifma::ntt_ifma_from_znx64(tmp_b, &mat_i64[pos..pos + n]);
+            crate::NTT126Ifma::ntt_ifma_dft_execute(module.get_ntt_ifma_table(), tmp_b);
+            crate::NTT126Ifma::ntt_ifma_c_from_b(n, tmp_c, tmp_b);
 
             let tmp_c_u64: &[u64] = bytemuck::cast_slice(tmp_c);
 
@@ -245,7 +245,7 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
     limb_offset: usize,
     nrows: usize,
     ncols: usize,
-    _meta: &BbcIfmaMeta<Primes40>,
+    _meta: &BbcIfmaMeta<Primes42>,
     tmp: &mut [u64],
 ) {
     if n < 2 {
@@ -332,7 +332,7 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
                     acc_hi0,
                     pc[0].q,
                     pc[0].q2,
-                    pc[0].pow40,
+                    pc[0].pow42,
                     pc[0].pow52,
                     pc[0].pow52_quot,
                 );
@@ -341,7 +341,7 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
                     acc_hi1,
                     pc[1].q,
                     pc[1].q2,
-                    pc[1].pow40,
+                    pc[1].pow42,
                     pc[1].pow52,
                     pc[1].pow52_quot,
                 );
@@ -350,7 +350,7 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
                     acc_hi2,
                     pc[2].q,
                     pc[2].q2,
-                    pc[2].pow40,
+                    pc[2].pow42,
                     pc[2].pow52,
                     pc[2].pow52_quot,
                 );
@@ -389,20 +389,20 @@ unsafe fn vmp_apply_core_pm<const OVERWRITE: bool>(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn vmp_apply_dft_to_dft_ifma<R, A, C>(
-    module: &Module<crate::NTT120Ifma>,
+    module: &Module<crate::NTT126Ifma>,
     res: &mut R,
     a: &A,
     pmat: &C,
     limb_offset: usize,
     tmp: &mut [u64],
 ) where
-    R: VecZnxDftToMut<crate::NTT120Ifma>,
-    A: VecZnxDftToRef<crate::NTT120Ifma>,
-    C: VmpPMatToRef<crate::NTT120Ifma>,
+    R: VecZnxDftToMut<crate::NTT126Ifma>,
+    A: VecZnxDftToRef<crate::NTT126Ifma>,
+    C: VmpPMatToRef<crate::NTT126Ifma>,
 {
-    let mut res_ref: VecZnxDft<&mut [u8], crate::NTT120Ifma> = res.to_mut();
-    let a_ref: VecZnxDft<&[u8], crate::NTT120Ifma> = a.to_ref();
-    let pmat_ref: VmpPMat<&[u8], crate::NTT120Ifma> = pmat.to_ref();
+    let mut res_ref: VecZnxDft<&mut [u8], crate::NTT126Ifma> = res.to_mut();
+    let a_ref: VecZnxDft<&[u8], crate::NTT126Ifma> = a.to_ref();
+    let pmat_ref: VmpPMat<&[u8], crate::NTT126Ifma> = pmat.to_ref();
 
     let n = res_ref.n();
     let res_size = res_ref.size();
@@ -432,20 +432,20 @@ pub(crate) fn vmp_apply_dft_to_dft_ifma<R, A, C>(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn vmp_apply_dft_to_dft_accumulate_ifma<R, A, C>(
-    module: &Module<crate::NTT120Ifma>,
+    module: &Module<crate::NTT126Ifma>,
     res: &mut R,
     a: &A,
     pmat: &C,
     limb_offset: usize,
     tmp: &mut [u64],
 ) where
-    R: VecZnxDftToMut<crate::NTT120Ifma>,
-    A: VecZnxDftToRef<crate::NTT120Ifma>,
-    C: VmpPMatToRef<crate::NTT120Ifma>,
+    R: VecZnxDftToMut<crate::NTT126Ifma>,
+    A: VecZnxDftToRef<crate::NTT126Ifma>,
+    C: VmpPMatToRef<crate::NTT126Ifma>,
 {
-    let mut res_ref: VecZnxDft<&mut [u8], crate::NTT120Ifma> = res.to_mut();
-    let a_ref: VecZnxDft<&[u8], crate::NTT120Ifma> = a.to_ref();
-    let pmat_ref: VmpPMat<&[u8], crate::NTT120Ifma> = pmat.to_ref();
+    let mut res_ref: VecZnxDft<&mut [u8], crate::NTT126Ifma> = res.to_mut();
+    let a_ref: VecZnxDft<&[u8], crate::NTT126Ifma> = a.to_ref();
+    let pmat_ref: VmpPMat<&[u8], crate::NTT126Ifma> = pmat.to_ref();
 
     let n = res_ref.n();
     let res_size = res_ref.size();

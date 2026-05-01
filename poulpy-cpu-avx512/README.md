@@ -6,7 +6,7 @@ It exposes three backends, gated behind two layered Cargo features:
 
 - **`FFT64Avx512`** — f64 complex-FFT backend, gated on `enable-avx512f` (requires AVX-512F only).
 - **`NTT120Avx512`** — Q120 NTT backend (CRT over four ~30-bit primes), gated on `enable-avx512f` (requires AVX-512F only). Targets AVX-512F-capable CPUs without IFMA (Skylake-X, Cascade Lake, KNL, Zen 4 SKUs without IFMA).
-- **`NTT120Ifma`** — Q120 NTT backend (CRT over three ~40-bit primes), gated on `enable-ifma` (requires AVX-512F + AVX-512-IFMA + AVX-512VL).
+- **`NTT126Ifma`** — Q126 NTT backend (CRT over three ~42-bit primes), gated on `enable-ifma` (requires AVX-512F + AVX-512-IFMA + AVX-512VL).
 
 `enable-ifma` implies `enable-avx512f`, so enabling IFMA builds all three backends.
 
@@ -24,7 +24,7 @@ To avoid illegal hardware instructions (SIGILL) on unsupported CPUs, the backend
 | Feature | CPU target features required |
 |---------|------------------------------|
 | `enable-avx512f` (builds `FFT64Avx512` and `NTT120Avx512`) | `AVX512F` |
-| `enable-ifma` (additionally builds `NTT120Ifma`) | `AVX512F` + `AVX512IFMA` + `AVX512VL` |
+| `enable-ifma` (additionally builds `NTT126Ifma`) | `AVX512F` + `AVX512IFMA` + `AVX512VL` |
 
 If a feature is enabled but the target does not provide the required capabilities, the build **fails immediately with a clear error message**, rather than generating invalid binaries.
 
@@ -70,7 +70,7 @@ cargo bench --features enable-ifma
 ## Basic Usage
 
 ```rust
-use poulpy_cpu_avx512::{FFT64Avx512, NTT120Avx512, NTT120Ifma};
+use poulpy_cpu_avx512::{FFT64Avx512, NTT120Avx512, NTT126Ifma};
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 let log_n: usize = 10;
@@ -81,8 +81,8 @@ let module: Module<FFT64Avx512> = Module::<FFT64Avx512>::new(1 << log_n);
 // Q120 NTT backend (AVX-512F, CRT over four ~30-bit primes)
 let module: Module<NTT120Avx512> = Module::<NTT120Avx512>::new(1 << log_n);
 
-// Q120 NTT backend (AVX-512-IFMA, CRT over three ~40-bit primes)
-let module: Module<NTT120Ifma> = Module::<NTT120Ifma>::new(1 << log_n);
+// Q126 NTT backend (AVX-512-IFMA, CRT over three ~42-bit primes)
+let module: Module<NTT126Ifma> = Module::<NTT126Ifma>::new(1 << log_n);
 ```
 
 Each backend is usable transparently anywhere Poulpy expects a backend type (`poulpy-hal`, `poulpy-core`, `poulpy-ckks`, `poulpy-bin-fhe`).

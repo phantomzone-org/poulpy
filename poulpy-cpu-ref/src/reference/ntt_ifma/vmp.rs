@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     NttIfmaCFromB, NttIfmaDFTExecute, NttIfmaExtract1BlkContiguous, NttIfmaFromZnx64, NttIfmaMulBbc1ColX2, NttIfmaMulBbc2ColsX2,
-    mat_vec::BbcIfmaMeta, ntt::NttIfmaTable, primes::Primes40, types::Q_SHIFTED_IFMA, vec_znx_dft::NttIfmaModuleHandle,
+    mat_vec::BbcIfmaMeta, ntt::NttIfmaTable, primes::Primes42, types::Q_SHIFTED_IFMA, vec_znx_dft::NttIfmaModuleHandle,
 };
 
 pub fn ntt_ifma_vmp_prepare_tmp_bytes(n: usize) -> usize {
@@ -25,7 +25,7 @@ pub fn ntt_ifma_vmp_prepare_tmp_bytes(n: usize) -> usize {
 /// Encode a polynomial matrix into prepared format.
 pub fn ntt_ifma_vmp_prepare<R, A, BE>(module: &impl NttIfmaModuleHandle, res: &mut R, a: &A, tmp: &mut [u64])
 where
-    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes40>> + NttIfmaFromZnx64 + NttIfmaCFromB,
+    BE: Backend<ScalarPrep = Q120bScalar> + NttIfmaDFTExecute<NttIfmaTable<Primes42>> + NttIfmaFromZnx64 + NttIfmaCFromB,
     R: VmpPMatToMut<BE>,
     A: MatZnxToRef,
 {
@@ -96,7 +96,7 @@ fn vmp_apply_core<const OVERWRITE: bool, BE>(
     limb_offset: usize,
     nrows: usize,
     ncols: usize,
-    meta: &BbcIfmaMeta<Primes40>,
+    meta: &BbcIfmaMeta<Primes42>,
     tmp: &mut [u64],
 ) where
     BE: NttIfmaExtract1BlkContiguous + NttIfmaMulBbc1ColX2 + NttIfmaMulBbc2ColsX2,

@@ -1,4 +1,4 @@
-//! Primitive NTT-domain trait implementations for [`NTT120Ifma`](crate::NTT120Ifma).
+//! Primitive NTT-domain trait implementations for [`NTT126Ifma`](crate::NTT126Ifma).
 //!
 //! This module connects the IFMA backend type to the low-level reference IFMA traits:
 //! NTT execution, b/c domain conversion, BBC multiply-accumulate, and basic
@@ -10,7 +10,7 @@ use poulpy_cpu_ref::reference::ntt_ifma::{
     NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
     mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
-    primes::Primes40,
+    primes::Primes42,
     types::Q_SHIFTED_IFMA,
 };
 
@@ -28,7 +28,7 @@ use poulpy_cpu_ref::reference::ntt120::{
     NttAdd, NttAddAssign, NttCopy, NttNegate, NttNegateAssign, NttSub, NttSubAssign, NttSubNegateAssign, NttZero,
 };
 
-use crate::NTT120Ifma;
+use crate::NTT126Ifma;
 
 /// Q_SHIFTED_IFMA as 256-bit: `[2*Q[0], 2*Q[1], 2*Q[2], 0]`.
 fn q2_vec() -> __m256i {
@@ -37,7 +37,7 @@ fn q2_vec() -> __m256i {
 
 /// Q_SHIFTED_IFMA duplicated for 512-bit: `[2Q0,2Q1,2Q2,0, 2Q0,2Q1,2Q2,0]`.
 const Q2_512: [u64; 8] = {
-    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let q = <Primes42 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
     [2 * q[0], 2 * q[1], 2 * q[2], 0, 2 * q[0], 2 * q[1], 2 * q[2], 0]
 };
 
@@ -198,14 +198,14 @@ unsafe fn simd_negate_assign(res: &mut [u64]) {
 
 /// Q vector (not 2Q) for c_from_b reduction: `[Q[0], Q[1], Q[2], 0]`.
 fn q_vec() -> __m256i {
-    use poulpy_cpu_ref::reference::ntt_ifma::primes::{PrimeSetIfma, Primes40};
-    let q = <Primes40 as PrimeSetIfma>::Q;
+    use poulpy_cpu_ref::reference::ntt_ifma::primes::{PrimeSetIfma, Primes42};
+    let q = <Primes42 as PrimeSetIfma>::Q;
     unsafe { _mm256_set_epi64x(0, q[2] as i64, q[1] as i64, q[0] as i64) }
 }
 
 /// `oq[k] = Q[k] - (2^63 mod Q[k])` for negative i64 handling.
 const OQ_IFMA: [u64; 4] = {
-    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let q = <Primes42 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
     let mut oq = [0u64; 4];
     let mut k = 0;
     while k < 3 {
@@ -215,21 +215,21 @@ const OQ_IFMA: [u64; 4] = {
     oq
 };
 
-/// `2^40 mod Q[k]` — used for two-pass modular reduction of values up to 2^63.
+/// `2^42 mod Q[k]` — used for two-pass modular reduction of values up to 2^63.
 ///
-/// Since Q[k] ≈ 2^40, `2^40 mod Q[k] = 2^40 - Q[k]` which is small (< 2^22).
-const POW40_MOD_Q_IFMA: [u64; 4] = {
-    let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
-    let pow40 = 1u64 << 40;
-    // All three primes are < 2^40, so pow40 mod Q[k] = pow40 - Q[k]
-    [pow40 - q[0], pow40 - q[1], pow40 - q[2], 0]
+/// Since Q[k] ≈ 2^42, `2^42 mod Q[k] = 2^42 - Q[k]` which is small (< 2^23).
+const POW42_MOD_Q_IFMA: [u64; 4] = {
+    let q = <Primes42 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+    let pow42 = 1u64 << 42;
+    // All three primes are < 2^43, so pow42 mod Q[k] = pow42 - Q[k]
+    [pow42 - q[0], pow42 - q[1], pow42 - q[2], 0]
 };
 
 /// SIMD: convert n i64 coefficients to 3-prime CRT b format.
 ///
 /// For each i64 x:
 /// 1. Strip sign bit, conditionally add oq[k] for negative inputs
-/// 2. Two-pass reduction: split at bit 40, multiply high part by (2^40 mod Q),
+/// 2. Two-pass reduction: split at bit 42, multiply high part by (2^42 mod Q),
 ///    add to low part, repeat. Final conditional subtract gives [0, Q).
 ///
 /// Result: `res[4*i+k] = a[i] mod Q[k]` for k in {0,1,2}, `res[4*i+3] = 0`.
@@ -251,8 +251,8 @@ unsafe fn simd_b_from_znx64_impl(n: usize, res: &mut [u64], a: &[i64], mask: i64
         let oq_vec = _mm256_loadu_si256(OQ_IFMA.as_ptr() as *const __m256i);
         let i64_max = _mm256_set1_epi64x(i64::MAX);
         let zero = _mm256_setzero_si256();
-        let mask40 = _mm256_set1_epi64x((1i64 << 40) - 1);
-        let pow40 = _mm256_loadu_si256(POW40_MOD_Q_IFMA.as_ptr() as *const __m256i);
+        let mask42 = _mm256_set1_epi64x((1i64 << 42) - 1);
+        let pow42 = _mm256_loadu_si256(POW42_MOD_Q_IFMA.as_ptr() as *const __m256i);
         let q = q_vec();
         let lane3_zero = _mm256_set_epi64x(0, -1, -1, -1);
         let mask_vec = _mm256_set1_epi64x(mask);
@@ -265,13 +265,13 @@ unsafe fn simd_b_from_znx64_impl(n: usize, res: &mut [u64], a: &[i64], mask: i64
             let add = _mm256_and_si256(sign, oq_vec);
             let val = _mm256_add_epi64(xl, add);
 
-            let hi = _mm256_srli_epi64::<40>(val);
-            let lo = _mm256_and_si256(val, mask40);
-            let y = _mm256_add_epi64(_mm256_mul_epu32(hi, pow40), lo);
+            let hi = _mm256_srli_epi64::<42>(val);
+            let lo = _mm256_and_si256(val, mask42);
+            let y = _mm256_add_epi64(_mm256_mul_epu32(hi, pow42), lo);
 
-            let hi2 = _mm256_srli_epi64::<40>(y);
-            let lo2 = _mm256_and_si256(y, mask40);
-            let z = _mm256_add_epi64(_mm256_mul_epu32(hi2, pow40), lo2);
+            let hi2 = _mm256_srli_epi64::<42>(y);
+            let lo2 = _mm256_and_si256(y, mask42);
+            let z = _mm256_add_epi64(_mm256_mul_epu32(hi2, pow42), lo2);
 
             let result = cond_sub_2q_si256(z, q);
             let result = _mm256_and_si256(result, lane3_zero);
@@ -288,7 +288,7 @@ unsafe fn simd_b_from_znx64_impl(n: usize, res: &mut [u64], a: &[i64], mask: i64
 unsafe fn simd_c_from_b(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_512 = {
-            let q = <Primes40 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
+            let q = <Primes42 as poulpy_cpu_ref::reference::ntt_ifma::primes::PrimeSetIfma>::Q;
             let arr: [u64; 8] = [q[0], q[1], q[2], 0, q[0], q[1], q[2], 0];
             _mm512_loadu_si512(arr.as_ptr() as *const __m512i)
         };
@@ -314,17 +314,17 @@ unsafe fn simd_c_from_b(n: usize, res: &mut [u64], a: &[u64]) {
 // IFMA NTT execution
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaDFTExecute<NttIfmaTable<Primes40>> for NTT120Ifma {
+impl NttIfmaDFTExecute<NttIfmaTable<Primes42>> for NTT126Ifma {
     #[inline(always)]
-    fn ntt_ifma_dft_execute(table: &NttIfmaTable<Primes40>, data: &mut [u64]) {
-        unsafe { ntt_avx512::<Primes40>(table, data) }
+    fn ntt_ifma_dft_execute(table: &NttIfmaTable<Primes42>, data: &mut [u64]) {
+        unsafe { ntt_avx512::<Primes42>(table, data) }
     }
 }
 
-impl NttIfmaDFTExecute<NttIfmaTableInv<Primes40>> for NTT120Ifma {
+impl NttIfmaDFTExecute<NttIfmaTableInv<Primes42>> for NTT126Ifma {
     #[inline(always)]
-    fn ntt_ifma_dft_execute(table: &NttIfmaTableInv<Primes40>, data: &mut [u64]) {
-        unsafe { intt_avx512::<Primes40>(table, data) }
+    fn ntt_ifma_dft_execute(table: &NttIfmaTableInv<Primes42>, data: &mut [u64]) {
+        unsafe { intt_avx512::<Primes42>(table, data) }
     }
 }
 
@@ -332,7 +332,7 @@ impl NttIfmaDFTExecute<NttIfmaTableInv<Primes40>> for NTT120Ifma {
 // Domain conversion
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaFromZnx64 for NTT120Ifma {
+impl NttIfmaFromZnx64 for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_from_znx64(res: &mut [u64], a: &[i64]) {
         unsafe { simd_b_from_znx64(a.len(), res, a) };
@@ -344,7 +344,7 @@ impl NttIfmaFromZnx64 for NTT120Ifma {
     }
 }
 
-impl NttIfmaToZnx128 for NTT120Ifma {
+impl NttIfmaToZnx128 for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_to_znx128(res: &mut [i128], divisor_is_n: usize, a: &[u64]) {
         unsafe { super::vec_znx_dft::simd_b_ifma_to_znx128(divisor_is_n, res, a) };
@@ -355,63 +355,63 @@ impl NttIfmaToZnx128 for NTT120Ifma {
 // IFMA-specific addition / subtraction / negation / copy / zero
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaAdd for NTT120Ifma {
+impl NttIfmaAdd for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_add(res: &mut [u64], a: &[u64], b: &[u64]) {
         unsafe { simd_add(res, a, b) };
     }
 }
 
-impl NttIfmaAddAssign for NTT120Ifma {
+impl NttIfmaAddAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_add_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_add_assign(res, a) };
     }
 }
 
-impl NttIfmaSub for NTT120Ifma {
+impl NttIfmaSub for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_sub(res: &mut [u64], a: &[u64], b: &[u64]) {
         unsafe { simd_sub(res, a, b) };
     }
 }
 
-impl NttIfmaSubAssign for NTT120Ifma {
+impl NttIfmaSubAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_sub_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_assign(res, a) };
     }
 }
 
-impl NttIfmaSubNegateAssign for NTT120Ifma {
+impl NttIfmaSubNegateAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_negate_assign(res, a) };
     }
 }
 
-impl NttIfmaNegate for NTT120Ifma {
+impl NttIfmaNegate for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_negate(res: &mut [u64], a: &[u64]) {
         unsafe { simd_negate(res, a) };
     }
 }
 
-impl NttIfmaNegateAssign for NTT120Ifma {
+impl NttIfmaNegateAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_negate_assign(res: &mut [u64]) {
         unsafe { simd_negate_assign(res) };
     }
 }
 
-impl NttIfmaZero for NTT120Ifma {
+impl NttIfmaZero for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_zero(res: &mut [u64]) {
         res.fill(0);
     }
 }
 
-impl NttIfmaCopy for NTT120Ifma {
+impl NttIfmaCopy for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_copy(res: &mut [u64], a: &[u64]) {
         res.copy_from_slice(a);
@@ -422,9 +422,9 @@ impl NttIfmaCopy for NTT120Ifma {
 // IFMA multiply-accumulate
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaMulBbc for NTT120Ifma {
+impl NttIfmaMulBbc for NTT126Ifma {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
+    fn ntt_ifma_mul_bbc(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
         unsafe { vec_mat1col_product_bbc_ifma(meta, ell, res, ntt_coeff, prepared) };
     }
 }
@@ -433,7 +433,7 @@ impl NttIfmaMulBbc for NTT120Ifma {
 // b -> c conversion
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaCFromB for NTT120Ifma {
+impl NttIfmaCFromB for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_c_from_b(n: usize, res: &mut [u32], a: &[u64]) {
         // c format for IFMA = reduced residues: a[k] mod Q[k].
@@ -448,21 +448,21 @@ impl NttIfmaCFromB for NTT120Ifma {
 // VMP x2-block kernels
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttIfmaMulBbc1ColX2 for NTT120Ifma {
+impl NttIfmaMulBbc1ColX2 for NTT126Ifma {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
+    fn ntt_ifma_mul_bbc_1col_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         unsafe { vec_mat1col_product_x2_bbc_ifma::<false>(meta, ell, res, a, b) };
     }
 }
 
-impl NttIfmaMulBbc2ColsX2 for NTT120Ifma {
+impl NttIfmaMulBbc2ColsX2 for NTT126Ifma {
     #[inline(always)]
-    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes40>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
+    fn ntt_ifma_mul_bbc_2cols_x2(meta: &BbcIfmaMeta<Primes42>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         unsafe { vec_mat2cols_product_x2_bbc_ifma(meta, ell, res, a, b) };
     }
 }
 
-impl NttIfmaExtract1BlkContiguous for NTT120Ifma {
+impl NttIfmaExtract1BlkContiguous for NTT126Ifma {
     #[inline(always)]
     fn ntt_ifma_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
         // Each x2-block = 2 consecutive coefficients = 8 u64 = 1 __m512i
@@ -490,63 +490,63 @@ impl NttIfmaExtract1BlkContiguous for NTT120Ifma {
 // to the NTT120 version but uses Q_SHIFTED_IFMA for the 3 active lanes.
 // ──────────────────────────────────────────────────────────────────────────────
 
-impl NttAdd for NTT120Ifma {
+impl NttAdd for NTT126Ifma {
     #[inline(always)]
     fn ntt_add(res: &mut [u64], a: &[u64], b: &[u64]) {
         unsafe { simd_add(res, a, b) };
     }
 }
 
-impl NttAddAssign for NTT120Ifma {
+impl NttAddAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_add_assign(res, a) };
     }
 }
 
-impl NttSub for NTT120Ifma {
+impl NttSub for NTT126Ifma {
     #[inline(always)]
     fn ntt_sub(res: &mut [u64], a: &[u64], b: &[u64]) {
         unsafe { simd_sub(res, a, b) };
     }
 }
 
-impl NttSubAssign for NTT120Ifma {
+impl NttSubAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_assign(res, a) };
     }
 }
 
-impl NttSubNegateAssign for NTT120Ifma {
+impl NttSubNegateAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         unsafe { simd_sub_negate_assign(res, a) };
     }
 }
 
-impl NttNegate for NTT120Ifma {
+impl NttNegate for NTT126Ifma {
     #[inline(always)]
     fn ntt_negate(res: &mut [u64], a: &[u64]) {
         unsafe { simd_negate(res, a) };
     }
 }
 
-impl NttNegateAssign for NTT120Ifma {
+impl NttNegateAssign for NTT126Ifma {
     #[inline(always)]
     fn ntt_negate_assign(res: &mut [u64]) {
         unsafe { simd_negate_assign(res) };
     }
 }
 
-impl NttZero for NTT120Ifma {
+impl NttZero for NTT126Ifma {
     #[inline(always)]
     fn ntt_zero(res: &mut [u64]) {
         res.fill(0);
     }
 }
 
-impl NttCopy for NTT120Ifma {
+impl NttCopy for NTT126Ifma {
     #[inline(always)]
     fn ntt_copy(res: &mut [u64], a: &[u64]) {
         res.copy_from_slice(a);

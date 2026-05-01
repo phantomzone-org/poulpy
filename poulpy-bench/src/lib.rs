@@ -86,7 +86,7 @@ macro_rules! for_each_fft_backend_family {
 ///
 /// Two reference scalar backends are listed because they cover different CRT layouts:
 /// `NTT120Ref` decomposes Q120 into four ~30-bit primes, while `NTTIfmaRef` decomposes
-/// it into three ~40-bit primes (matching the layout the AVX-512 IFMA backend
+/// it into three ~42-bit primes (matching the layout the AVX-512 IFMA backend
 /// accelerates). Benchmarking both gives an apples-to-apples scalar baseline for
 /// each SIMD backend.
 #[doc(hidden)]
@@ -114,7 +114,7 @@ macro_rules! for_each_ntt_backend_family {
         #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
         {
             use $fn as __f;
-            __f::<poulpy_cpu_avx512::NTT120Ifma>($($arg,)* $c, "ntt-ifma");
+            __f::<poulpy_cpu_avx512::NTT126Ifma>($($arg,)* $c, "ntt-ifma");
         }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::NTT120GPU>($($arg,)* $c, "ntt120-gpu"); }

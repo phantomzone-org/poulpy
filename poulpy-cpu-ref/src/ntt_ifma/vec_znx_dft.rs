@@ -1,6 +1,6 @@
 //! NTT-domain ring element vector operations for [`NTTIfmaRef`](crate::NTTIfmaRef).
 //!
-//! The `HalImpl` DFT-domain methods are now provided by the shared `NTT120IfmaVecZnxDftDefaults`
+//! The `HalImpl` DFT-domain methods are now provided by the shared `NTT126IfmaVecZnxDftDefaults`
 //! and the `hal_impl_vec_znx_dft_ntt_ifma!()` macro. This module retains the
 //! in-place CRT compaction helper (`compact_all_blocks`) and the consume entry
 //! point needed by the macro for `vec_znx_idft_apply_consume`.
@@ -11,7 +11,7 @@ use poulpy_hal::layouts::{Data, Module, VecZnxBig, VecZnxDft, VecZnxDftToMut, Zn
 use crate::NTTIfmaRef;
 use crate::reference::ntt_ifma::{
     ntt::NttIfmaTableInv,
-    primes::{PrimeSetIfma, Primes40},
+    primes::{PrimeSetIfma, Primes42},
     vec_znx_dft::NttIfmaModuleHandle,
 };
 
@@ -19,9 +19,9 @@ use crate::reference::ntt_ifma::{
 // In-place 3-prime CRT -> i128 compaction helper (Garner's algorithm)
 // ──────────────────────────────────────────────────────────────────────────────
 
-const Q: [u64; 3] = Primes40::Q;
-const INV01: u64 = Primes40::CRT_CST[0];
-const INV012: u64 = Primes40::CRT_CST[1];
+const Q: [u64; 3] = Primes42::Q;
+const INV01: u64 = Primes42::CRT_CST[0];
+const INV012: u64 = Primes42::CRT_CST[1];
 const Q0: u64 = Q[0];
 const Q1: u64 = Q[1];
 const Q2: u64 = Q[2];
@@ -47,7 +47,7 @@ const BIG_Q: u128 = Q01 * Q2 as u128;
 /// - `u64_ptr` must be valid for reads and writes of at least `4 * n * n_blocks` u64 values.
 /// - The backing allocation must be at least 16-byte aligned (guaranteed by `DEFAULTALIGN = 64`).
 /// - No other references to the same memory may be live during this call.
-unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttIfmaTableInv<Primes40>) {
+unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttIfmaTableInv<Primes42>) {
     use crate::reference::ntt_ifma::ntt::intt_ifma_ref;
 
     for k in 0..n_blocks {
@@ -57,7 +57,7 @@ unsafe fn compact_all_blocks(n: usize, n_blocks: usize, u64_ptr: *mut u64, table
         // Step 1: inverse NTT in-place.
         {
             let blk: &mut [u64] = unsafe { std::slice::from_raw_parts_mut(u64_ptr.add(src_start), 4 * n) };
-            intt_ifma_ref::<Primes40>(table, blk);
+            intt_ifma_ref::<Primes42>(table, blk);
         }
 
         // Step 2: Garner CRT-compact 4n u64s -> n i128s.

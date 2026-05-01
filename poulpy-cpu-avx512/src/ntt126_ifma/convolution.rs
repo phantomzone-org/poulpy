@@ -1,4 +1,4 @@
-//! Polynomial convolution AVX512 kernels for [`NTT120Ifma`](crate::NTT120Ifma).
+//! Polynomial convolution AVX512 kernels for [`NTT126Ifma`](crate::NTT126Ifma).
 //!
 //! Mirrors the block-outer pack-then-multiply structure used by the AVX
 //! [`NTT120Avx`](poulpy_cpu_avx::NTT120Avx) convolution: for each x2 NTT
@@ -13,13 +13,13 @@
 
 use bytemuck::{cast_slice, cast_slice_mut};
 
-use poulpy_cpu_ref::reference::ntt_ifma::{mat_vec::BbcIfmaMeta, primes::Primes40};
+use poulpy_cpu_ref::reference::ntt_ifma::{mat_vec::BbcIfmaMeta, primes::Primes42};
 use poulpy_cpu_ref::reference::ntt120::types::Q120bScalar;
 use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, VecZnxDftToMut, ZnxInfos, ZnxView, ZnxViewMut};
 
 use super::mat_vec_ifma::vec_mat1col_product_x2_bbc_ifma;
 
-use crate::NTT120Ifma;
+use crate::NTT126Ifma;
 use core::arch::x86_64::{__m512i, _mm_sfence, _mm512_add_epi64, _mm512_loadu_si512, _mm512_storeu_si512};
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +73,7 @@ unsafe fn pack_right_1blk_x2_ifma(dst: &mut [u64], a: &[u64], row_count: usize, 
 
 /// Pairwise pack: gather and lane-add the x2-blocks of two columns.
 ///
-/// Inputs are in `[0, 2Q)` (left side), so the sum is in `[0, 4Q) < 2^42`,
+/// Inputs are in `[0, 2Q)` (left side), so the sum is in `[0, 4Q) < 2^45`,
 /// which stays inside the 52-bit VPMADD52 input window.
 #[target_feature(enable = "avx512f")]
 unsafe fn pairwise_pack_left_1blk_x2_ifma(
@@ -104,7 +104,7 @@ unsafe fn pairwise_pack_left_1blk_x2_ifma(
 }
 
 /// Pairwise pack in reversed row order. Right-side inputs are in `[0, Q)`,
-/// so the sum is in `[0, 2Q) < 2^41`, well within the madd52 window.
+/// so the sum is in `[0, 2Q) < 2^44`, well within the madd52 window.
 #[target_feature(enable = "avx512f")]
 unsafe fn pairwise_pack_right_1blk_x2_ifma(
     dst: &mut [u64],
@@ -179,9 +179,9 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     b_col: usize,
     tmp: &mut [u8],
 ) where
-    R: VecZnxDftToMut<NTT120Ifma>,
-    A: CnvPVecLToRef<NTT120Ifma>,
-    B: CnvPVecRToRef<NTT120Ifma>,
+    R: VecZnxDftToMut<NTT126Ifma>,
+    A: CnvPVecLToRef<NTT126Ifma>,
+    B: CnvPVecRToRef<NTT126Ifma>,
 {
     let mut res = res.to_mut();
     let a = a.to_ref();
@@ -202,7 +202,7 @@ pub(crate) unsafe fn cnv_apply_dft_ifma<R, A, B>(
     let offset = cnv_offset.min(bound);
     let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
-    let meta = BbcIfmaMeta::<Primes40>::new();
+    let meta = BbcIfmaMeta::<Primes42>::new();
     let a_cols = a.cols();
     let b_cols = b.cols();
     let n_blks = n / 2;
@@ -279,9 +279,9 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     col_1: usize,
     tmp: &mut [u8],
 ) where
-    R: VecZnxDftToMut<NTT120Ifma>,
-    A: CnvPVecLToRef<NTT120Ifma>,
-    B: CnvPVecRToRef<NTT120Ifma>,
+    R: VecZnxDftToMut<NTT126Ifma>,
+    A: CnvPVecLToRef<NTT126Ifma>,
+    B: CnvPVecRToRef<NTT126Ifma>,
 {
     if col_0 == col_1 {
         unsafe { cnv_apply_dft_ifma(res, cnv_offset, res_col, a, col_0, b, col_1, tmp) };
@@ -307,7 +307,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_ifma<R, A, B>(
     let offset = cnv_offset.min(bound);
     let min_size = res_size.min((bound + 1).saturating_sub(offset));
 
-    let meta = BbcIfmaMeta::<Primes40>::new();
+    let meta = BbcIfmaMeta::<Primes42>::new();
     let a_cols = a.cols();
     let b_cols = b.cols();
     let n_blks = n / 2;

@@ -5,7 +5,7 @@
 //! Lazy Harvey reduction: butterfly values are kept in `[0, 4q)` internally,
 //! and normalised to `[0, 2q)` at NTT boundaries.  On the difference path of
 //! each butterfly the Harvey multiplier absorbs the wider range directly —
-//! inputs up to `2^52` yield outputs in `[0, 2q)` because `q < 2^40` — so a
+//! inputs up to `2^52` yield outputs in `[0, 2q)` because `q < 2^42` — so a
 //! pre-reduction `cond_sub` before the multiply is unnecessary.  Only the sum
 //! path keeps one `cond_sub` (of `4q`) per butterfly pair.
 //!
@@ -521,15 +521,15 @@ mod tests {
     use super::*;
     use crate::reference::ntt_ifma::{
         arithmetic::{b_ifma_from_znx64_ref, b_ifma_to_znx128_ref},
-        primes::Primes40,
+        primes::Primes42,
     };
 
     #[test]
     fn ntt_intt_identity() {
         for log_n in 1..=10usize {
             let n = 1 << log_n;
-            let fwd = NttIfmaTable::<Primes40>::new(n);
-            let inv = NttIfmaTableInv::<Primes40>::new(n);
+            let fwd = NttIfmaTable::<Primes42>::new(n);
+            let inv = NttIfmaTableInv::<Primes42>::new(n);
 
             let coeffs: Vec<i64> = (0..n as i64).map(|i| (i * 7 + 3) % 201 - 100).collect();
 
@@ -537,13 +537,13 @@ mod tests {
             b_ifma_from_znx64_ref(n, &mut data, &coeffs);
             let data_orig = data.clone();
 
-            ntt_ifma_ref::<Primes40>(&fwd, &mut data);
-            intt_ifma_ref::<Primes40>(&inv, &mut data);
+            ntt_ifma_ref::<Primes42>(&fwd, &mut data);
+            intt_ifma_ref::<Primes42>(&inv, &mut data);
 
             for i in 0..n {
                 for k in 0..3 {
-                    let orig = data_orig[4 * i + k] % Primes40::Q[k];
-                    let got = data[4 * i + k] % Primes40::Q[k];
+                    let orig = data_orig[4 * i + k] % Primes42::Q[k];
+                    let got = data[4 * i + k] % Primes42::Q[k];
                     assert_eq!(orig, got, "n={n} i={i} k={k}: mismatch after NTT+iNTT round-trip");
                 }
             }
@@ -553,8 +553,8 @@ mod tests {
     #[test]
     fn ntt_convolution() {
         let n = 8usize;
-        let fwd = NttIfmaTable::<Primes40>::new(n);
-        let inv = NttIfmaTableInv::<Primes40>::new(n);
+        let fwd = NttIfmaTable::<Primes42>::new(n);
+        let inv = NttIfmaTableInv::<Primes42>::new(n);
 
         let a: Vec<i64> = vec![1, 2, 0, 0, 0, 0, 0, 0];
         let b: Vec<i64> = vec![3, 4, 0, 0, 0, 0, 0, 0];
@@ -564,19 +564,19 @@ mod tests {
         b_ifma_from_znx64_ref(n, &mut da, &a);
         b_ifma_from_znx64_ref(n, &mut db, &b);
 
-        ntt_ifma_ref::<Primes40>(&fwd, &mut da);
-        ntt_ifma_ref::<Primes40>(&fwd, &mut db);
+        ntt_ifma_ref::<Primes42>(&fwd, &mut da);
+        ntt_ifma_ref::<Primes42>(&fwd, &mut db);
 
         // Pointwise multiply (mod each Q[k])
         let mut dc = vec![0u64; 4 * n];
         for i in 0..n {
             for k in 0..3 {
-                let q = Primes40::Q[k];
+                let q = Primes42::Q[k];
                 dc[4 * i + k] = ((da[4 * i + k] % q) as u128 * (db[4 * i + k] % q) as u128 % q as u128) as u64;
             }
         }
 
-        intt_ifma_ref::<Primes40>(&inv, &mut dc);
+        intt_ifma_ref::<Primes42>(&inv, &mut dc);
 
         let mut result = vec![0i128; n];
         b_ifma_to_znx128_ref(n, &mut result, &dc);
@@ -587,7 +587,7 @@ mod tests {
 
     #[test]
     fn harvey_modmul_correctness() {
-        for &q in &Primes40::Q {
+        for &q in &Primes42::Q {
             // Test with inputs in [0, 2q) — the IFMA-native range
             for a in [0u64, 1, q - 1, q, 2 * q - 1, q / 2, 42] {
                 if a >= 2 * q {
