@@ -61,7 +61,7 @@ This module provides the user-facing traits-based API of the hardware accelerati
 
 ### **poulpy-hal/oep**
 
-This module provides open extension points that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`**, **`poulpy-ckks`** and **`poulpy-bin-fhe`** or any other project/application. Poulpy-HAL itself is dispatch-only: default implementations live in `poulpy-cpu-ref`, and accelerated backends (e.g. `poulpy-cpu-avx`) selectively override hot paths.
+This module provides open extension points that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`**, **`poulpy-ckks`** and **`poulpy-bin-fhe`** or any other project/application. Poulpy-HAL itself is dispatch-only: default implementations live in `poulpy-cpu-ref`, and accelerated backends (e.g. `poulpy-cpu-avx`, `poulpy-cpu-avx512`) selectively override hot paths.
 
 
 ---------

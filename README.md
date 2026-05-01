@@ -21,6 +21,7 @@
 - **`poulpy-bin-fhe`**: a backend-agnostic binary/gate-level FHE crate built on **`poulpy-core`** and **`poulpy-hal`**. This replaces the former `poulpy-schemes` crate.
 - **`poulpy-cpu-ref`**: the reference CPU implementation of **`poulpy-hal`**.
 - **`poulpy-cpu-avx`**: an AVX2/FMA accelerated CPU implementation of **`poulpy-hal`**. Enable it with the `enable-avx` feature on crates that expose that feature.
+- **`poulpy-cpu-avx512`**: an AVX-512 accelerated CPU implementation of **`poulpy-hal`**, exposing three backends: `FFT64Avx512` and `NTT120Avx512` (AVX-512F, via `enable-avx512f`) and `NTT120Ifma` (AVX-512F + IFMA + VL, via `enable-ifma`).
 - **`poulpy-bench`**: the consolidated Criterion benchmark suite for the workspace. It is an internal workspace crate and is not published to crates.io.
 
 ## Bivariate Polynomial Representation
@@ -49,6 +50,7 @@ This provides the following benefits:
 - **`poulpy-bin-fhe`**: https://crates.io/crates/poulpy-bin-fhe
 - **`poulpy-cpu-ref`**: https://crates.io/crates/poulpy-cpu-ref
 - **`poulpy-cpu-avx`**: https://crates.io/crates/poulpy-cpu-avx
+- **`poulpy-cpu-avx512`**: https://crates.io/crates/poulpy-cpu-avx512
 
 For example, a CKKS application can depend on:
 
