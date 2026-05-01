@@ -26,7 +26,7 @@ pub unsafe fn znx_mul_power_of_two_avx512(k: i64, res: &mut [i64], a: &[i64]) {
     let span = n >> 3;
 
     if k > 0 {
-        debug_assert!(k <= 63);
+        assert!((1..=63).contains(&k));
         unsafe {
             let cnt: __m128i = _mm_cvtsi32_si128(k as i32);
             let mut rr = res.as_mut_ptr() as *mut __m512i;
@@ -87,7 +87,7 @@ pub unsafe fn znx_mul_power_of_two_assign_avx512(k: i64, res: &mut [i64]) {
     let span = n >> 3;
 
     if k > 0 {
-        debug_assert!(k <= 63);
+        assert!((1..=63).contains(&k));
         unsafe {
             let cnt: __m128i = _mm_cvtsi32_si128(k as i32);
             let mut rr = res.as_mut_ptr() as *mut __m512i;
@@ -148,7 +148,7 @@ pub unsafe fn znx_mul_add_power_of_two_avx512(k: i64, res: &mut [i64], a: &[i64]
     let span = n >> 3;
 
     if k > 0 {
-        debug_assert!(k <= 63);
+        assert!((1..=63).contains(&k));
         unsafe {
             let cnt: __m128i = _mm_cvtsi32_si128(k as i32);
             let mut rr = res.as_mut_ptr() as *mut __m512i;

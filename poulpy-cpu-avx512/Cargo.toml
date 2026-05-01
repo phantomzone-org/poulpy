@@ -5,8 +5,8 @@ edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
 description = "AVX-512 accelerated CPU backends for poulpy-hal: FFT64 (AVX-512F), NTT120 (AVX-512F, 4x30-bit primes), and NTT120 (AVX-512-IFMA, 3x40-bit primes)"
-repository = "https://github.com/phantomzone-org/poulpy"
-homepage = "https://github.com/phantomzone-org/poulpy"
+repository = "https://github.com/poulpy-fhe/poulpy"
+homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [lib]

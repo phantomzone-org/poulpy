@@ -83,6 +83,9 @@ unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
     fn assert_ntt_ifma_runtime_support() {
         #[cfg(target_arch = "x86_64")]
         {
+            if !std::arch::is_x86_feature_detected!("avx512f") {
+                panic!("NTT120Ifma requires x86_64 with AVX512-F support");
+            }
             if !std::arch::is_x86_feature_detected!("avx512ifma") {
                 panic!("NTT120Ifma requires x86_64 with AVX512-IFMA support");
             }
@@ -92,7 +95,7 @@ unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
         }
 
         #[cfg(not(target_arch = "x86_64"))]
-        panic!("NTT120Ifma requires x86_64 with AVX512-IFMA + AVX512-VL support");
+        panic!("NTT120Ifma requires x86_64 with AVX512-F + AVX512-IFMA + AVX512-VL support");
     }
 }
 
