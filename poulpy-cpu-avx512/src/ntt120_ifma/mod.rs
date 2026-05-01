@@ -12,8 +12,8 @@
 //! | Coefficient-domain (`Znx*`) | AVX-512F (reuses `crate::znx_avx512`) |
 //! | NTT forward/inverse | AVX512-IFMA (`kernels` module) |
 //! | mat_vec BBC product (SVP/VMP hot path) | AVX512-IFMA (`mat_vec_ifma` module) |
-//! | VecZnxBig add/sub/negate | AVX-512F (`vec_znx_big_avx512` module) |
-//! | VecZnxBig normalization | AVX-512F (`vec_znx_big_avx512` module) |
+//! | VecZnxBig add/sub/negate | AVX-512F (`crate::vec_znx_big_avx512` module) |
+//! | VecZnxBig normalization | AVX-512F (`crate::vec_znx_big_avx512` module) |
 //!
 //! # Scalar types
 //!
@@ -24,7 +24,6 @@ pub(crate) mod convolution;
 pub(crate) mod mat_vec_ifma;
 mod module;
 mod prim;
-mod vec_znx_big_avx512;
 pub(crate) mod vec_znx_dft;
 pub(crate) mod vmp;
 mod znx;
@@ -60,7 +59,7 @@ pub struct NTT120Ifma;
 
 use poulpy_cpu_ref::reference::ntt120::{I128BigOps, I128NormalizeOps, vec_znx_big::AssignOp};
 
-use vec_znx_big_avx512::{
+use crate::vec_znx_big_avx512::{
     nfc_final_step_add_assign_avx512, nfc_final_step_add_assign_scalar, nfc_final_step_assign_avx512,
     nfc_final_step_assign_scalar, nfc_final_step_sub_assign_avx512, nfc_final_step_sub_assign_scalar,
     nfc_middle_step_add_assign_avx512, nfc_middle_step_add_assign_scalar, nfc_middle_step_assign_avx512,

@@ -226,6 +226,10 @@ mod ntt120_avx512;
 #[cfg(feature = "enable-avx512f")]
 mod znx_avx512;
 
+// AVX-512F i128 kernels shared by both NTT120 backends.
+#[cfg(feature = "enable-avx512f")]
+mod vec_znx_big_avx512;
+
 // `NTT120Ifma` and its IFMA-specific kernels are gated on `enable-ifma`.
 #[cfg(feature = "enable-ifma")]
 mod ntt120_ifma;

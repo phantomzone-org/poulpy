@@ -49,6 +49,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 - Bootstrapping is on the roadmap but not in scope for this iteration.
 
 ### `poulpy-hal`
+- **Breaking:** Add `VmpApplyDftToDftAccumulate` and `VmpApplyDftToDftAccumulateTmpBytes` to the public API and to the `HalImpl` OEP trait. Performs `res += a · pmat` shifted by `limb_offset` and replaces the previous "scattered VMP write + `VecZnxDftAddAssign` fold" pattern in `gglwe_product_dft`. Out-of-tree backends implementing `HalImpl` must add impls for the two new methods (the existing `VmpApplyDftToDft` path is unchanged).
 - **Breaking:** Rename all in-place operation methods from `_assign` to `_assign` across all operation families (`vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, GLWE operations, etc.) to establish a uniform workspace-wide naming convention where `_assign` denotes in-place mutation of the first operand.
 - Fix the convolution API by renaming the output-shift parameter to `cnv_offset`, moving it to the front of the apply calls, and updating delegates and conformance tests to match the corrected calling convention.
 - Replace legacy OEP modules with the unified `oep::HalImpl` entrypoint to provide one consistent extension surface for backends.

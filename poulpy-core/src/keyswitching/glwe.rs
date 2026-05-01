@@ -344,7 +344,10 @@ where
             for di_rev in 0..dsize {
                 let di = dsize - 1 - di_rev;
                 ai_dft.set_size(((a_size + di) / dsize).min(dnum));
-                res.set_size(pmat.size() - ((dsize - di) as isize - 2).max(0) as usize);
+                // Drop the last (dsize - di - 2) limbs (clamped at 0): their error
+                // contribution is negligible vs the dominant e_{dsize-1} term.
+                let drop = (dsize - di).saturating_sub(2);
+                res.set_size(pmat.size() - drop);
 
                 for j in 0..cols {
                     self.vec_znx_dft_copy(dsize, dsize - di - 1, &mut ai_dft, j, a, j);
