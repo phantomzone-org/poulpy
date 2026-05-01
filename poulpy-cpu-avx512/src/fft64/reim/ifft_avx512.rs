@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.

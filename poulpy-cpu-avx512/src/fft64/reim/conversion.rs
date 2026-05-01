@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -307,13 +307,13 @@ mod tests {
         let n = 64usize;
         let a: Vec<i64> = (0..n as i64).map(|i| i * 997 - 32000).collect();
 
-        let mut res_ifma = vec![0f64; n];
+        let mut res_avx512 = vec![0f64; n];
         let mut res_ref = vec![0f64; n];
 
-        unsafe { reim_from_znx_i64_bnd50_fma(&mut res_ifma, &a) };
+        unsafe { reim_from_znx_i64_bnd50_fma(&mut res_avx512, &a) };
         reim_from_znx_i64_ref(&mut res_ref, &a);
 
-        assert_eq!(res_ifma, res_ref, "reim_from_znx_i64: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_from_znx_i64: AVX-512 vs ref mismatch");
     }
 
     /// AVX-512 `reim_to_znx_i64_bnd63_avx512` matches reference for exact-float inputs.
@@ -324,12 +324,12 @@ mod tests {
         // Exact multiples of divisor so rounding is unambiguous
         let a: Vec<f64> = (0..n).map(|i| (i as f64 * 100.0 - 3000.0) * divisor).collect();
 
-        let mut res_ifma = vec![0i64; n];
+        let mut res_avx512 = vec![0i64; n];
         let mut res_ref = vec![0i64; n];
 
-        unsafe { reim_to_znx_i64_bnd63_avx512(&mut res_ifma, divisor, &a) };
+        unsafe { reim_to_znx_i64_bnd63_avx512(&mut res_avx512, divisor, &a) };
         reim_to_znx_i64_ref(&mut res_ref, divisor, &a);
 
-        assert_eq!(res_ifma, res_ref, "reim_to_znx_i64: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_to_znx_i64: AVX-512 vs ref mismatch");
     }
 }

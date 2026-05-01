@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -43,12 +43,15 @@ use poulpy_cpu_ref::reference::ntt120::{
 };
 
 use super::arithmetic_avx512::{
-    b_from_znx64_avx2, b_from_znx64_masked_avx2, b_to_znx128_avx2, c_from_b_avx2, pack_left_1blk_x2_avx2,
-    pack_right_1blk_x2_avx2, pairwise_pack_left_1blk_x2_avx2, pairwise_pack_right_1blk_x2_avx2, vec_mat1col_product_bbb_avx2,
+    b_from_znx64_avx512, b_from_znx64_masked_avx512, b_to_znx128_avx512, c_from_b_avx512, pack_left_1blk_x2_avx512,
+    pack_right_1blk_x2_avx512, pairwise_pack_left_1blk_x2_avx512, pairwise_pack_right_1blk_x2_avx512,
+    vec_mat1col_product_bbb_avx512,
 };
 
-use super::mat_vec_avx512::{vec_mat1col_product_bbc_avx2, vec_mat1col_product_x2_bbc_avx2, vec_mat2cols_product_x2_bbc_avx2};
-use super::ntt::{intt_avx2, ntt_avx2};
+use super::mat_vec_avx512::{
+    vec_mat1col_product_bbc_avx512, vec_mat1col_product_x2_bbc_avx512, vec_mat2cols_product_x2_bbc_avx512,
+};
+use super::ntt::{intt_avx512, ntt_avx512};
 
 use super::NTT120Avx512;
 
@@ -107,7 +110,7 @@ unsafe fn q_shifted_512() -> __m512i {
 
 /// `res[i] = lazy(a[i]) + lazy(b[i])` for `i ∈ 0..n` q120b elements.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_add_avx2(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
+unsafe fn ntt_add_avx512(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -135,7 +138,7 @@ unsafe fn ntt_add_avx2(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
 
 /// `res[i] = lazy(res[i]) + lazy(a[i])` for `i ∈ 0..n` q120b elements.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_add_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
+unsafe fn ntt_add_assign_avx512(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -161,7 +164,7 @@ unsafe fn ntt_add_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
 
 /// `res[i] = lazy(a[i]) + (q_s − lazy(b[i]))` for `i ∈ 0..n` q120b elements.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_sub_avx2(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
+unsafe fn ntt_sub_avx512(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -189,7 +192,7 @@ unsafe fn ntt_sub_avx2(n: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
 
 /// `res[i] = lazy(res[i]) + (q_s − lazy(a[i]))` for `i ∈ 0..n` q120b elements.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_sub_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
+unsafe fn ntt_sub_assign_avx512(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -215,7 +218,7 @@ unsafe fn ntt_sub_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
 
 /// `res[i] = lazy(a[i]) + (q_s − lazy(res[i]))` for `i ∈ 0..n` q120b elements.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_sub_negate_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
+unsafe fn ntt_sub_negate_assign_avx512(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -244,7 +247,7 @@ unsafe fn ntt_sub_negate_assign_avx2(n: usize, res: &mut [u64], a: &[u64]) {
 /// **Output range:** For a zero input the result is `Q_SHIFTED[k]` (≡ 0 mod Q[k]), not `0`.
 /// Output range is `(0, Q_SHIFTED[k]]`. Use `val % Q[k] == 0`, not `val == 0`, to test for zero.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_negate_avx2(n: usize, res: &mut [u64], a: &[u64]) {
+unsafe fn ntt_negate_avx512(n: usize, res: &mut [u64], a: &[u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -271,7 +274,7 @@ unsafe fn ntt_negate_avx2(n: usize, res: &mut [u64], a: &[u64]) {
 /// **Output range:** For a zero input the result is `Q_SHIFTED[k]` (≡ 0 mod Q[k]), not `0`.
 /// Output range is `(0, Q_SHIFTED[k]]`. Use `val % Q[k] == 0`, not `val == 0`, to test for zero.
 #[target_feature(enable = "avx512f")]
-unsafe fn ntt_negate_assign_avx2(n: usize, res: &mut [u64]) {
+unsafe fn ntt_negate_assign_avx512(n: usize, res: &mut [u64]) {
     unsafe {
         let q_s_512 = q_shifted_512();
         let msb_512 = _mm512_set1_epi64(i64::MIN);
@@ -299,7 +302,7 @@ impl NttDFTExecute<NttTable<Primes30>> for NTT120Avx512 {
     #[inline(always)]
     fn ntt_dft_execute(table: &NttTable<Primes30>, data: &mut [u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_avx2::<Primes30>(table, data) }
+        unsafe { ntt_avx512::<Primes30>(table, data) }
     }
 }
 
@@ -307,7 +310,7 @@ impl NttDFTExecute<NttTableInv<Primes30>> for NTT120Avx512 {
     #[inline(always)]
     fn ntt_dft_execute(table: &NttTableInv<Primes30>, data: &mut [u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { intt_avx2::<Primes30>(table, data) }
+        unsafe { intt_avx512::<Primes30>(table, data) }
     }
 }
 
@@ -319,13 +322,13 @@ impl NttFromZnx64 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_from_znx64(res: &mut [u64], a: &[i64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { b_from_znx64_avx2(a.len(), res, a) }
+        unsafe { b_from_znx64_avx512(a.len(), res, a) }
     }
 
     #[inline(always)]
     fn ntt_from_znx64_masked(res: &mut [u64], a: &[i64], mask: i64) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { b_from_znx64_masked_avx2(a.len(), res, a, mask) }
+        unsafe { b_from_znx64_masked_avx512(a.len(), res, a, mask) }
     }
 }
 
@@ -333,7 +336,7 @@ impl NttToZnx128 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_to_znx128(res: &mut [i128], divisor_is_n: usize, a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { b_to_znx128_avx2(divisor_is_n, res, a) }
+        unsafe { b_to_znx128_avx512(divisor_is_n, res, a) }
     }
 }
 
@@ -345,7 +348,7 @@ impl NttAdd for NTT120Avx512 {
     #[inline(always)]
     fn ntt_add(res: &mut [u64], a: &[u64], b: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_add_avx2(res.len() / 4, res, a, b) }
+        unsafe { ntt_add_avx512(res.len() / 4, res, a, b) }
     }
 }
 
@@ -353,7 +356,7 @@ impl NttAddAssign for NTT120Avx512 {
     #[inline(always)]
     fn ntt_add_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_add_assign_avx2(res.len() / 4, res, a) }
+        unsafe { ntt_add_assign_avx512(res.len() / 4, res, a) }
     }
 }
 
@@ -361,7 +364,7 @@ impl NttSub for NTT120Avx512 {
     #[inline(always)]
     fn ntt_sub(res: &mut [u64], a: &[u64], b: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_sub_avx2(res.len() / 4, res, a, b) }
+        unsafe { ntt_sub_avx512(res.len() / 4, res, a, b) }
     }
 }
 
@@ -369,7 +372,7 @@ impl NttSubAssign for NTT120Avx512 {
     #[inline(always)]
     fn ntt_sub_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_sub_assign_avx2(res.len() / 4, res, a) }
+        unsafe { ntt_sub_assign_avx512(res.len() / 4, res, a) }
     }
 }
 
@@ -377,7 +380,7 @@ impl NttSubNegateAssign for NTT120Avx512 {
     #[inline(always)]
     fn ntt_sub_negate_assign(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_sub_negate_assign_avx2(res.len() / 4, res, a) }
+        unsafe { ntt_sub_negate_assign_avx512(res.len() / 4, res, a) }
     }
 }
 
@@ -385,7 +388,7 @@ impl NttNegate for NTT120Avx512 {
     #[inline(always)]
     fn ntt_negate(res: &mut [u64], a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_negate_avx2(res.len() / 4, res, a) }
+        unsafe { ntt_negate_avx512(res.len() / 4, res, a) }
     }
 }
 
@@ -393,7 +396,7 @@ impl NttNegateAssign for NTT120Avx512 {
     #[inline(always)]
     fn ntt_negate_assign(res: &mut [u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { ntt_negate_assign_avx2(res.len() / 4, res) }
+        unsafe { ntt_negate_assign_avx512(res.len() / 4, res) }
     }
 }
 
@@ -419,7 +422,7 @@ impl NttMulBbb for NTT120Avx512 {
     #[inline(always)]
     fn ntt_mul_bbb(meta: &BbbMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u64], b: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { vec_mat1col_product_bbb_avx2(meta, ell, res, a, b) }
+        unsafe { vec_mat1col_product_bbb_avx512(meta, ell, res, a, b) }
     }
 }
 
@@ -427,7 +430,7 @@ impl NttMulBbc for NTT120Avx512 {
     #[inline(always)]
     fn ntt_mul_bbc(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], ntt_coeff: &[u32], prepared: &[u32]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { vec_mat1col_product_bbc_avx2(meta, ell, res, ntt_coeff, prepared) }
+        unsafe { vec_mat1col_product_bbc_avx512(meta, ell, res, ntt_coeff, prepared) }
     }
 }
 
@@ -439,7 +442,7 @@ impl NttCFromB for NTT120Avx512 {
     #[inline(always)]
     fn ntt_c_from_b(n: usize, res: &mut [u32], a: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { c_from_b_avx2(n, res, a) }
+        unsafe { c_from_b_avx512(n, res, a) }
     }
 }
 
@@ -451,7 +454,7 @@ impl NttMulBbc1ColX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_mul_bbc_1col_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { vec_mat1col_product_x2_bbc_avx2::<false>(meta, ell, res, a, b) }
+        unsafe { vec_mat1col_product_x2_bbc_avx512::<false>(meta, ell, res, a, b) }
     }
 }
 
@@ -459,7 +462,7 @@ impl NttMulBbc2ColsX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_mul_bbc_2cols_x2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], a: &[u32], b: &[u32]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { vec_mat2cols_product_x2_bbc_avx2(meta, ell, res, a, b) }
+        unsafe { vec_mat2cols_product_x2_bbc_avx512(meta, ell, res, a, b) }
     }
 }
 
@@ -467,7 +470,7 @@ impl NttExtract1BlkContiguous for NTT120Avx512 {
     #[inline(always)]
     fn ntt_extract_1blk_contiguous(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { crate::ntt120_avx512::vmp::extract_1blk_from_contiguous_q120b_avx2(n, row_max, blk, dst, src) }
+        unsafe { crate::ntt120_avx512::vmp::extract_1blk_from_contiguous_q120b_avx512(n, row_max, blk, dst, src) }
     }
 }
 
@@ -475,7 +478,7 @@ impl NttPackLeft1BlkX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { pack_left_1blk_x2_avx2(dst, a, row_count, row_stride, blk) }
+        unsafe { pack_left_1blk_x2_avx512(dst, a, row_count, row_stride, blk) }
     }
 }
 
@@ -483,7 +486,7 @@ impl NttPackRight1BlkX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { pack_right_1blk_x2_avx2(dst, a, row_count, row_stride, blk) }
+        unsafe { pack_right_1blk_x2_avx512(dst, a, row_count, row_stride, blk) }
     }
 }
 
@@ -491,7 +494,7 @@ impl NttPairwisePackLeft1BlkX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_pairwise_pack_left_1blk_x2(dst: &mut [u32], a: &[u64], b: &[u64], row_count: usize, row_stride: usize, blk: usize) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { pairwise_pack_left_1blk_x2_avx2(dst, a, b, row_count, row_stride, blk) }
+        unsafe { pairwise_pack_left_1blk_x2_avx512(dst, a, b, row_count, row_stride, blk) }
     }
 }
 
@@ -499,6 +502,6 @@ impl NttPairwisePackRight1BlkX2 for NTT120Avx512 {
     #[inline(always)]
     fn ntt_pairwise_pack_right_1blk_x2(dst: &mut [u32], a: &[u32], b: &[u32], row_count: usize, row_stride: usize, blk: usize) {
         // SAFETY: NTT120Avx512::new() verifies AVX-512F availability at construction time.
-        unsafe { pairwise_pack_right_1blk_x2_avx2(dst, a, b, row_count, row_stride, blk) }
+        unsafe { pairwise_pack_right_1blk_x2_avx512(dst, a, b, row_count, row_stride, blk) }
     }
 }

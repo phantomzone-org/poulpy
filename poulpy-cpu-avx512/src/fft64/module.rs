@@ -22,8 +22,8 @@ use crate::{
     FFT64Avx512,
     fft64::{
         convolution::{
-            i64_convolution_by_const_1coeff_ifma, i64_convolution_by_const_2coeffs_ifma, i64_extract_1blk_contiguous_ifma,
-            i64_save_1blk_contiguous_ifma,
+            i64_convolution_by_const_1coeff_avx512, i64_convolution_by_const_2coeffs_avx512, i64_extract_1blk_contiguous_avx512,
+            i64_save_1blk_contiguous_avx512,
         },
         reim::{
             ReimFFTAvx512, ReimIFFTAvx512, reim_add_assign_avx512, reim_add_avx512, reim_addmul_avx512,
@@ -32,20 +32,20 @@ use crate::{
             reim_to_znx_i64_bnd63_avx512,
         },
         reim4::{
-            reim4_convolution_1coeff_ifma, reim4_convolution_2coeffs_ifma, reim4_convolution_by_real_const_1coeff_ifma,
-            reim4_convolution_by_real_const_2coeffs_ifma, reim4_extract_1blk_from_reim_contiguous_ifma,
-            reim4_save_1blk_to_reim_contiguous_ifma, reim4_save_1blk_to_reim_ifma, reim4_save_2blk_to_reim_ifma,
-            reim4_vec_mat1col_product_ifma, reim4_vec_mat2cols_2ndcol_product_ifma, reim4_vec_mat2cols_product_ifma,
+            reim4_convolution_1coeff_avx512, reim4_convolution_2coeffs_avx512, reim4_convolution_by_real_const_1coeff_avx512,
+            reim4_convolution_by_real_const_2coeffs_avx512, reim4_extract_1blk_from_reim_contiguous_avx512,
+            reim4_save_1blk_to_reim_avx512, reim4_save_1blk_to_reim_contiguous_avx512, reim4_save_2blk_to_reim_avx512,
+            reim4_vec_mat1col_product_avx512, reim4_vec_mat2cols_2ndcol_product_avx512, reim4_vec_mat2cols_product_avx512,
         },
     },
     znx_avx512::{
-        znx_add_assign_ifma, znx_add_ifma, znx_automorphism_ifma, znx_extract_digit_addmul_ifma, znx_mul_add_power_of_two_ifma,
-        znx_mul_power_of_two_assign_ifma, znx_mul_power_of_two_ifma, znx_negate_assign_ifma, znx_negate_ifma,
-        znx_normalize_digit_ifma, znx_normalize_final_step_assign_ifma, znx_normalize_final_step_ifma,
-        znx_normalize_final_step_sub_ifma, znx_normalize_first_step_assign_ifma, znx_normalize_first_step_carry_only_ifma,
-        znx_normalize_first_step_ifma, znx_normalize_middle_step_assign_ifma, znx_normalize_middle_step_carry_only_ifma,
-        znx_normalize_middle_step_ifma, znx_normalize_middle_step_sub_ifma, znx_sub_assign_ifma, znx_sub_ifma,
-        znx_sub_negate_assign_ifma, znx_switch_ring_ifma,
+        znx_add_assign_avx512, znx_add_avx512, znx_automorphism_avx512, znx_extract_digit_addmul_avx512,
+        znx_mul_add_power_of_two_avx512, znx_mul_power_of_two_assign_avx512, znx_mul_power_of_two_avx512,
+        znx_negate_assign_avx512, znx_negate_avx512, znx_normalize_digit_avx512, znx_normalize_final_step_assign_avx512,
+        znx_normalize_final_step_avx512, znx_normalize_final_step_sub_avx512, znx_normalize_first_step_assign_avx512,
+        znx_normalize_first_step_avx512, znx_normalize_first_step_carry_only_avx512, znx_normalize_middle_step_assign_avx512,
+        znx_normalize_middle_step_avx512, znx_normalize_middle_step_carry_only_avx512, znx_normalize_middle_step_sub_avx512,
+        znx_sub_assign_avx512, znx_sub_avx512, znx_sub_negate_assign_avx512, znx_switch_ring_avx512,
     },
 };
 
@@ -128,7 +128,7 @@ impl ZnxAdd for FFT64Avx512 {
     #[inline(always)]
     fn znx_add(res: &mut [i64], a: &[i64], b: &[i64]) {
         unsafe {
-            znx_add_ifma(res, a, b);
+            znx_add_avx512(res, a, b);
         }
     }
 }
@@ -137,7 +137,7 @@ impl ZnxAddAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_add_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_add_assign_ifma(res, a);
+            znx_add_assign_avx512(res, a);
         }
     }
 }
@@ -146,7 +146,7 @@ impl ZnxSub for FFT64Avx512 {
     #[inline(always)]
     fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]) {
         unsafe {
-            znx_sub_ifma(res, a, b);
+            znx_sub_avx512(res, a, b);
         }
     }
 }
@@ -155,7 +155,7 @@ impl ZnxSubAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_sub_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_assign_ifma(res, a);
+            znx_sub_assign_avx512(res, a);
         }
     }
 }
@@ -164,7 +164,7 @@ impl ZnxSubNegateAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_sub_negate_assign(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_negate_assign_ifma(res, a);
+            znx_sub_negate_assign_avx512(res, a);
         }
     }
 }
@@ -173,7 +173,7 @@ impl ZnxAutomorphism for FFT64Avx512 {
     #[inline(always)]
     fn znx_automorphism(p: i64, res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_automorphism_ifma(p, res, a);
+            znx_automorphism_avx512(p, res, a);
         }
     }
 }
@@ -189,7 +189,7 @@ impl ZnxNegate for FFT64Avx512 {
     #[inline(always)]
     fn znx_negate(res: &mut [i64], src: &[i64]) {
         unsafe {
-            znx_negate_ifma(res, src);
+            znx_negate_avx512(res, src);
         }
     }
 }
@@ -198,7 +198,7 @@ impl ZnxNegateAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_negate_assign(res: &mut [i64]) {
         unsafe {
-            znx_negate_assign_ifma(res);
+            znx_negate_assign_avx512(res);
         }
     }
 }
@@ -207,7 +207,7 @@ impl ZnxMulAddPowerOfTwo for FFT64Avx512 {
     #[inline(always)]
     fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_mul_add_power_of_two_ifma(k, res, a);
+            znx_mul_add_power_of_two_avx512(k, res, a);
         }
     }
 }
@@ -216,7 +216,7 @@ impl ZnxMulPowerOfTwo for FFT64Avx512 {
     #[inline(always)]
     fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_mul_power_of_two_ifma(k, res, a);
+            znx_mul_power_of_two_avx512(k, res, a);
         }
     }
 }
@@ -225,7 +225,7 @@ impl ZnxMulPowerOfTwoAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_mul_power_of_two_assign(k: i64, res: &mut [i64]) {
         unsafe {
-            znx_mul_power_of_two_assign_ifma(k, res);
+            znx_mul_power_of_two_assign_avx512(k, res);
         }
     }
 }
@@ -248,7 +248,7 @@ impl ZnxSwitchRing for FFT64Avx512 {
     #[inline(always)]
     fn znx_switch_ring(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_switch_ring_ifma(res, a);
+            znx_switch_ring_avx512(res, a);
         }
     }
 }
@@ -257,7 +257,7 @@ impl ZnxNormalizeFinalStep for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_final_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
+            znx_normalize_final_step_avx512::<OVERWRITE>(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -266,7 +266,7 @@ impl ZnxNormalizeFinalStepSub for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_final_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_sub_ifma(base2k, lsh, x, a, carry);
+            znx_normalize_final_step_sub_avx512(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -275,7 +275,7 @@ impl ZnxNormalizeFinalStepAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_final_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_assign_ifma(base2k, lsh, x, carry);
+            znx_normalize_final_step_assign_avx512(base2k, lsh, x, carry);
         }
     }
 }
@@ -284,7 +284,7 @@ impl ZnxNormalizeFirstStep for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_first_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
+            znx_normalize_first_step_avx512::<OVERWRITE>(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -293,7 +293,7 @@ impl ZnxNormalizeFirstStepCarryOnly for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_first_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_carry_only_ifma(base2k, lsh, x, carry);
+            znx_normalize_first_step_carry_only_avx512(base2k, lsh, x, carry);
         }
     }
 }
@@ -302,7 +302,7 @@ impl ZnxNormalizeFirstStepAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_first_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_assign_ifma(base2k, lsh, x, carry);
+            znx_normalize_first_step_assign_avx512(base2k, lsh, x, carry);
         }
     }
 }
@@ -311,7 +311,7 @@ impl ZnxNormalizeMiddleStep for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_middle_step<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_ifma::<OVERWRITE>(base2k, lsh, x, a, carry);
+            znx_normalize_middle_step_avx512::<OVERWRITE>(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -320,7 +320,7 @@ impl ZnxNormalizeMiddleStepSub for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_middle_step_sub(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_sub_ifma(base2k, lsh, x, a, carry);
+            znx_normalize_middle_step_sub_avx512(base2k, lsh, x, a, carry);
         }
     }
 }
@@ -329,7 +329,7 @@ impl ZnxNormalizeMiddleStepCarryOnly for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_middle_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_carry_only_ifma(base2k, lsh, x, carry);
+            znx_normalize_middle_step_carry_only_avx512(base2k, lsh, x, carry);
         }
     }
 }
@@ -338,7 +338,7 @@ impl ZnxNormalizeMiddleStepAssign for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_middle_step_assign(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_assign_ifma(base2k, lsh, x, carry);
+            znx_normalize_middle_step_assign_avx512(base2k, lsh, x, carry);
         }
     }
 }
@@ -347,7 +347,7 @@ impl ZnxExtractDigitAddMul for FFT64Avx512 {
     #[inline(always)]
     fn znx_extract_digit_addmul(base2k: usize, lsh: usize, res: &mut [i64], src: &mut [i64]) {
         unsafe {
-            znx_extract_digit_addmul_ifma(base2k, lsh, res, src);
+            znx_extract_digit_addmul_avx512(base2k, lsh, res, src);
         }
     }
 }
@@ -356,7 +356,7 @@ impl ZnxNormalizeDigit for FFT64Avx512 {
     #[inline(always)]
     fn znx_normalize_digit(base2k: usize, res: &mut [i64], src: &mut [i64]) {
         unsafe {
-            znx_normalize_digit_ifma(base2k, res, src);
+            znx_normalize_digit_avx512(base2k, res, src);
         }
     }
 }
@@ -455,80 +455,80 @@ impl ReimArith for FFT64Avx512 {
 impl Reim4BlkMatVec for FFT64Avx512 {
     #[inline(always)]
     fn reim4_extract_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe { reim4_extract_1blk_from_reim_contiguous_ifma(m, rows, blk, dst, src) }
+        unsafe { reim4_extract_1blk_from_reim_contiguous_avx512(m, rows, blk, dst, src) }
     }
 
     #[inline(always)]
     fn reim4_save_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe { reim4_save_1blk_to_reim_contiguous_ifma(m, rows, blk, dst, src) }
+        unsafe { reim4_save_1blk_to_reim_contiguous_avx512(m, rows, blk, dst, src) }
     }
 
     #[inline(always)]
     fn reim4_save_1blk<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe { reim4_save_1blk_to_reim_ifma::<OVERWRITE>(m, blk, dst, src) }
+        unsafe { reim4_save_1blk_to_reim_avx512::<OVERWRITE>(m, blk, dst, src) }
     }
 
     #[inline(always)]
     fn reim4_save_2blks<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
-        unsafe { reim4_save_2blk_to_reim_ifma::<OVERWRITE>(m, blk, dst, src) }
+        unsafe { reim4_save_2blk_to_reim_avx512::<OVERWRITE>(m, blk, dst, src) }
     }
 
     #[inline(always)]
     fn reim4_mat1col_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe { reim4_vec_mat1col_product_ifma(nrows, dst, u, v) }
+        unsafe { reim4_vec_mat1col_product_avx512(nrows, dst, u, v) }
     }
 
     #[inline(always)]
     fn reim4_mat2cols_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe { reim4_vec_mat2cols_product_ifma(nrows, dst, u, v) }
+        unsafe { reim4_vec_mat2cols_product_avx512(nrows, dst, u, v) }
     }
 
     #[inline(always)]
     fn reim4_mat2cols_2ndcol_prod(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
-        unsafe { reim4_vec_mat2cols_2ndcol_product_ifma(nrows, dst, u, v) }
+        unsafe { reim4_vec_mat2cols_2ndcol_product_avx512(nrows, dst, u, v) }
     }
 }
 
 impl Reim4Convolution for FFT64Avx512 {
     #[inline(always)]
     fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-        unsafe { reim4_convolution_1coeff_ifma(k, dst, a, a_size, b, b_size) }
+        unsafe { reim4_convolution_1coeff_avx512(k, dst, a, a_size, b, b_size) }
     }
 
     #[inline(always)]
     fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
-        unsafe { reim4_convolution_2coeffs_ifma(k, dst, a, a_size, b, b_size) }
+        unsafe { reim4_convolution_2coeffs_avx512(k, dst, a, a_size, b, b_size) }
     }
 
     #[inline(always)]
     fn reim4_convolution_by_real_const_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
-        unsafe { reim4_convolution_by_real_const_1coeff_ifma(k, dst, a, a_size, b) }
+        unsafe { reim4_convolution_by_real_const_1coeff_avx512(k, dst, a, a_size, b) }
     }
 
     #[inline(always)]
     fn reim4_convolution_by_real_const_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
-        unsafe { reim4_convolution_by_real_const_2coeffs_ifma(k, dst, a, a_size, b) }
+        unsafe { reim4_convolution_by_real_const_2coeffs_avx512(k, dst, a, a_size, b) }
     }
 }
 
 impl I64Ops for FFT64Avx512 {
     #[inline(always)]
     fn i64_extract_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
-        unsafe { i64_extract_1blk_contiguous_ifma(n, offset, rows, blk, dst, src) }
+        unsafe { i64_extract_1blk_contiguous_avx512(n, offset, rows, blk, dst, src) }
     }
 
     #[inline(always)]
     fn i64_save_1blk_contiguous(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
-        unsafe { i64_save_1blk_contiguous_ifma(n, offset, rows, blk, dst, src) }
+        unsafe { i64_save_1blk_contiguous_avx512(n, offset, rows, blk, dst, src) }
     }
 
     #[inline(always)]
     fn i64_convolution_by_const_1coeff(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
-        unsafe { i64_convolution_by_const_1coeff_ifma(k, dst, a, a_size, b) }
+        unsafe { i64_convolution_by_const_1coeff_avx512(k, dst, a, a_size, b) }
     }
 
     #[inline(always)]
     fn i64_convolution_by_const_2coeffs(k: usize, dst: &mut [i64; 16], a: &[i64], a_size: usize, b: &[i64]) {
-        unsafe { i64_convolution_by_const_2coeffs_ifma(k, dst, a, a_size, b) }
+        unsafe { i64_convolution_by_const_2coeffs_avx512(k, dst, a, a_size, b) }
     }
 }

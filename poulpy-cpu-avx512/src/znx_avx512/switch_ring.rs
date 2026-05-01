@@ -4,7 +4,7 @@ use core::arch::x86_64::*;
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 /// all inputs must have compatible ring dimensions and must not alias.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_switch_ring_ifma(res: &mut [i64], a: &[i64]) {
+pub unsafe fn znx_switch_ring_avx512(res: &mut [i64], a: &[i64]) {
     let (n_in, n_out) = (a.len(), res.len());
 
     debug_assert!(n_in.is_power_of_two());

@@ -13,9 +13,9 @@ use super::{
     NTT120Avx512,
     arithmetic_avx512::{
         BARRETT_MU, CRT_VEC, POW16_CRT, POW32_CRT, Q_VEC, QM_HI, QM_LO, QM_MID, TOTAL_Q, TOTAL_Q_MULT, bcast_quad,
-        crt_accumulate_avx2, hadd64_pub, reduce_b_and_apply_crt, reduce_b_and_apply_crt_512,
+        crt_accumulate_avx512, hadd64_pub, reduce_b_and_apply_crt, reduce_b_and_apply_crt_512,
     },
-    ntt::intt_avx2,
+    ntt::intt_avx512,
 };
 
 /// AVX-512F accelerated in-place CRT compaction: q120b (32 bytes/coeff) -> i128 (16 bytes/coeff).
@@ -34,7 +34,7 @@ use super::{
 /// - AVX-512F support must be available at runtime.
 /// - no aliased references to the same buffer may be live during the call.
 #[target_feature(enable = "avx512f")]
-unsafe fn compact_all_blocks_avx2(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
+unsafe fn compact_all_blocks_avx512(n: usize, n_blocks: usize, u64_ptr: *mut u64, table: &NttTableInv<Primes30>) {
     use core::arch::x86_64::_mm256_loadu_si256;
 
     let half_q: u128 = TOTAL_Q.div_ceil(2);
@@ -65,7 +65,7 @@ unsafe fn compact_all_blocks_avx2(n: usize, n_blocks: usize, u64_ptr: *mut u64, 
 
         {
             let blk: &mut [u64] = unsafe { std::slice::from_raw_parts_mut(u64_ptr.add(src_start), 4 * n) };
-            unsafe { intt_avx2::<Primes30>(table, blk) };
+            unsafe { intt_avx512::<Primes30>(table, blk) };
         }
 
         // Pair-packed compaction: read 2 q120b coefficients per iteration via __m512i;
@@ -114,7 +114,7 @@ unsafe fn compact_all_blocks_avx2(n: usize, n_blocks: usize, u64_ptr: *mut u64, 
             if n & 1 != 0 {
                 let xv: __m256i = _mm256_loadu_si256(u64_ptr.add(src_start + 4 * c) as *const __m256i);
                 let t = reduce_b_and_apply_crt(xv, q_avx, mu_avx, pow32_crt_avx, pow16_crt_avx, crt_avx);
-                let mut v = crt_accumulate_avx2(t, qm_hi_avx, qm_mid_avx, qm_lo_avx);
+                let mut v = crt_accumulate_avx512(t, qm_hi_avx, qm_mid_avx, qm_lo_avx);
                 let q_approx = (v >> 120) as usize;
                 v -= TOTAL_Q_MULT[q_approx];
                 if v >= TOTAL_Q {
@@ -147,6 +147,6 @@ where
         (n, n_blocks, ptr)
     };
 
-    unsafe { compact_all_blocks_avx2(n, n_blocks, u64_ptr, table) };
+    unsafe { compact_all_blocks_avx512(n, n_blocks, u64_ptr, table) };
     a.into_big()
 }

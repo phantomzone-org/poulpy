@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -40,9 +40,9 @@
 //!
 //! | Function | spqlios C equivalent | Trait |
 //! |---|---|---|
-//! | [`vec_mat1col_product_bbc_avx2`] | `q120_vec_mat1col_product_bbc_avx2` | [`NttMulBbc`] |
-//! | [`vec_mat1col_product_x2_bbc_avx2`] | `q120x2_vec_mat1col_product_bbc_avx2` | [`NttMulBbc1ColX2`] |
-//! | [`vec_mat2cols_product_x2_bbc_avx2`] | `q120x2_vec_mat2cols_product_bbc_avx2` | [`NttMulBbc2ColsX2`] |
+//! | [`vec_mat1col_product_bbc_avx512`] | `q120_vec_mat1col_product_bbc_avx2` | [`NttMulBbc`] |
+//! | [`vec_mat1col_product_x2_bbc_avx512`] | `q120x2_vec_mat1col_product_bbc_avx2` | [`NttMulBbc1ColX2`] |
+//! | [`vec_mat2cols_product_x2_bbc_avx512`] | `q120x2_vec_mat2cols_product_bbc_avx2` | [`NttMulBbc2ColsX2`] |
 
 use core::arch::x86_64::{
     __m256i, __m512i, _mm_cvtsi64_si128, _mm256_add_epi64, _mm256_and_si256, _mm256_loadu_si256, _mm256_mul_epu32,
@@ -90,7 +90,7 @@ unsafe fn reduce_bbc(s_lo: __m256i, s_hi: __m256i, mask_h2: __m256i, h2: u64, s2
 /// Caller must ensure AVX-512F support. Slice lengths must satisfy
 /// `x.len() >= 8 * ell`, `y.len() >= 8 * ell`, `res.len() >= 4`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn vec_mat1col_product_bbc_avx2(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
+pub(crate) unsafe fn vec_mat1col_product_bbc_avx512(meta: &BbcMeta<Primes30>, ell: usize, res: &mut [u64], x: &[u32], y: &[u32]) {
     // Pair-pack: 2 elements per __m512i iteration. Two 256-bit accumulator halves run
     // independent dot products; per-prime sums are folded across halves at the end.
     //
@@ -217,7 +217,7 @@ pub(crate) unsafe fn vec_mat1col_product_bbc_avx2(meta: &BbcMeta<Primes30>, ell:
 /// `_mm256_stream_si256`. The caller must then issue one `_mm_sfence`
 /// before any subsequent load from `res`, and `res` must be 32-byte aligned.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn vec_mat1col_product_x2_bbc_avx2<const NT_STORE: bool>(
+pub(crate) unsafe fn vec_mat1col_product_x2_bbc_avx512<const NT_STORE: bool>(
     meta: &BbcMeta<Primes30>,
     ell: usize,
     res: &mut [u64],
@@ -321,7 +321,7 @@ pub(crate) unsafe fn vec_mat1col_product_x2_bbc_avx2<const NT_STORE: bool>(
 /// The output is two standard q120b x2-blocks laid out as 16 u64:
 /// `[blk0.c0[4], blk0.c1[4], blk1.c0[4], blk1.c1[4]]`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn vec_mat1col_product_blkpair_bbc_pm_avx2(
+pub(crate) unsafe fn vec_mat1col_product_blkpair_bbc_pm_avx512(
     meta: &BbcMeta<Primes30>,
     ell: usize,
     res: &mut [u64],
@@ -477,7 +477,7 @@ pub(crate) unsafe fn vec_mat1col_product_blkpair_bbc_pm_avx2(
 /// Caller must ensure AVX-512F support. Slice lengths must satisfy
 /// `x.len() >= 16 * ell`, `y.len() >= 32 * ell`, `res.len() >= 16`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_avx2(
+pub(crate) unsafe fn vec_mat2cols_product_x2_bbc_avx512(
     meta: &BbcMeta<Primes30>,
     ell: usize,
     res: &mut [u64],
@@ -649,7 +649,7 @@ mod tests {
         let mut res_avx = vec![0u64; 4];
         let mut res_ref = vec![0u64; 4];
 
-        unsafe { vec_mat1col_product_bbc_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        unsafe { vec_mat1col_product_bbc_avx512(&meta, ell, &mut res_avx, &x, &y) };
         vec_mat1col_product_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_avx, res_ref, "vec_mat1col_product_bbc: AVX-512F vs ref mismatch");
@@ -682,7 +682,7 @@ mod tests {
         let mut res_avx = vec![0u64; 8];
         let mut res_ref = vec![0u64; 8];
 
-        unsafe { vec_mat1col_product_x2_bbc_avx2::<false>(&meta, ell, &mut res_avx, &x, &y) };
+        unsafe { vec_mat1col_product_x2_bbc_avx512::<false>(&meta, ell, &mut res_avx, &x, &y) };
         vec_mat1col_product_x2_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_avx, res_ref, "vec_mat1col_product_x2_bbc: AVX-512F vs ref mismatch");
@@ -724,7 +724,7 @@ mod tests {
         let mut res_avx = vec![0u64; 16];
         let mut res_ref = vec![0u64; 16];
 
-        unsafe { vec_mat2cols_product_x2_bbc_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        unsafe { vec_mat2cols_product_x2_bbc_avx512(&meta, ell, &mut res_avx, &x, &y) };
         vec_mat2cols_product_x2_bbc_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_avx, res_ref, "vec_mat2cols_product_x2_bbc: AVX-512F vs ref mismatch");
@@ -795,7 +795,7 @@ mod tests {
         };
 
         let mut res_avx = vec![0u64; 16];
-        unsafe { vec_mat1col_product_blkpair_bbc_pm_avx2(&meta, ell, &mut res_avx, &x_pm, &y_pm, 4 * ell) };
+        unsafe { vec_mat1col_product_blkpair_bbc_pm_avx512(&meta, ell, &mut res_avx, &x_pm, &y_pm, 4 * ell) };
 
         let mut res_ref = vec![0u64; 16];
         for coeff in 0..4usize {

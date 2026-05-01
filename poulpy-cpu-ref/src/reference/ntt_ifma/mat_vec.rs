@@ -41,39 +41,6 @@ impl Default for BbcIfmaMeta<Primes40> {
     }
 }
 
-/// Metadata for `b × b → b` (BBB) lazy multiply-accumulate (3-prime variant).
-pub struct BbbIfmaMeta<P: PrimeSetIfma> {
-    pub h: u64,
-    pub s2l_pow_red: [u64; 4],
-    pub s2h_pow_red: [u64; 4],
-    _phantom: PhantomData<P>,
-}
-
-impl BbbIfmaMeta<Primes40> {
-    pub fn new() -> Self {
-        let q = Primes40::Q;
-        let h = 32u64;
-        let mut s2l = [0u64; 4];
-        let mut s2h = [0u64; 4];
-        for k in 0..3 {
-            s2l[k] = ((1u128 << 32) % q[k] as u128) as u64;
-            s2h[k] = ((1u128 << (32 + h)) % q[k] as u128) as u64;
-        }
-        Self {
-            h,
-            s2l_pow_red: s2l,
-            s2h_pow_red: s2h,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl Default for BbbIfmaMeta<Primes40> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Reference BBC inner product: `res = Σᵢ x[i] · y[i]` for 3-prime IFMA.
 ///
 /// Both `x` and `y` are in `[u32]` view but actually contain u64 data

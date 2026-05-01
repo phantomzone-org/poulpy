@@ -140,3 +140,54 @@ jobs:
     - name: Tests (portable mode)
       if: steps.avxcheck.outputs.supported == 'false'
       run: cargo test --workspace
+
+  # AVX-512 typecheck/clippy lane: GitHub-hosted runners do not expose AVX-512,
+  # so the conditional steps above never fire on PRs. This lane forces the
+  # AVX-512F + IFMA build to compile and lint on every push, ensuring the
+  # poulpy-cpu-avx512 crate stays buildable. Tests are NOT run here (no
+  # AVX-512 silicon to execute on); a self-hosted runner is required for that.
+  avx512-typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install pinned Rust nightly
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly-2026-04-25
+        components: clippy
+
+    - name: Cache cargo deps
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-avx512-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-avx512-
+
+    - name: Build (AVX-512F + IFMA, no run)
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
+        cargo build --workspace --all-targets --features enable-avx,enable-ifma
+
+    - name: Clippy (AVX-512F + IFMA)
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl" \
+        cargo clippy --workspace --all-targets --features enable-avx,enable-ifma -- -D warnings
+
+    - name: Build (AVX-512F only, no IFMA, no run)
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f" \
+        cargo build --workspace --all-targets --features enable-avx,enable-avx512f
+
+    - name: Clippy (AVX-512F only, no IFMA)
+      run: |
+        RUSTFLAGS="-C target-feature=+avx2,+fma,+avx512f" \
+        cargo clippy --workspace --all-targets --features enable-avx,enable-avx512f -- -D warnings

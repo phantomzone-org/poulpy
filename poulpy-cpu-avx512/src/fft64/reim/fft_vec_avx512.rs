@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -373,11 +373,11 @@ mod tests {
         let n = 64usize;
         let a = reim_data(n, 1.7);
         let b = reim_data(n, 2.3);
-        let mut res_ifma = vec![0f64; n];
+        let mut res_avx512 = vec![0f64; n];
         let mut res_ref = vec![0f64; n];
-        unsafe { reim_add_avx512(&mut res_ifma, &a, &b) };
+        unsafe { reim_add_avx512(&mut res_avx512, &a, &b) };
         reim_add_ref(&mut res_ref, &a, &b);
-        assert_eq!(res_ifma, res_ref, "reim_add: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_add: AVX-512 vs ref mismatch");
     }
 
     #[test]
@@ -385,22 +385,22 @@ mod tests {
         let n = 64usize;
         let a = reim_data(n, 3.1);
         let b = reim_data(n, 1.4);
-        let mut res_ifma = vec![0f64; n];
+        let mut res_avx512 = vec![0f64; n];
         let mut res_ref = vec![0f64; n];
-        unsafe { reim_sub_avx512(&mut res_ifma, &a, &b) };
+        unsafe { reim_sub_avx512(&mut res_avx512, &a, &b) };
         reim_sub_ref(&mut res_ref, &a, &b);
-        assert_eq!(res_ifma, res_ref, "reim_sub: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_sub: AVX-512 vs ref mismatch");
     }
 
     #[test]
     fn reim_negate_avx512f_vs_ref() {
         let n = 64usize;
         let a = reim_data(n, 2.9);
-        let mut res_ifma = vec![0f64; n];
+        let mut res_avx512 = vec![0f64; n];
         let mut res_ref = vec![0f64; n];
-        unsafe { reim_negate_avx512(&mut res_ifma, &a) };
+        unsafe { reim_negate_avx512(&mut res_avx512, &a) };
         reim_negate_ref(&mut res_ref, &a);
-        assert_eq!(res_ifma, res_ref, "reim_negate: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_negate: AVX-512 vs ref mismatch");
     }
 
     #[test]
@@ -408,16 +408,16 @@ mod tests {
         let n = 64usize;
         let a = reim_data(n, 1.3);
         let b = reim_data(n, 2.7);
-        let mut res_ifma = vec![0f64; n];
+        let mut res_avx512 = vec![0f64; n];
         let mut res_ref = vec![0f64; n];
-        unsafe { reim_mul_avx512(&mut res_ifma, &a, &b) };
+        unsafe { reim_mul_avx512(&mut res_avx512, &a, &b) };
         reim_mul_ref(&mut res_ref, &a, &b);
         let tol = 1e-14f64;
         for i in 0..n {
             assert!(
-                (res_ifma[i] - res_ref[i]).abs() <= tol,
+                (res_avx512[i] - res_ref[i]).abs() <= tol,
                 "reim_mul idx={i}: AVX-512={} ref={}",
-                res_ifma[i],
+                res_avx512[i],
                 res_ref[i]
             );
         }
@@ -429,16 +429,16 @@ mod tests {
         let a = reim_data(n, 1.1);
         let b = reim_data(n, 2.2);
         let init = reim_data(n, 0.9);
-        let mut res_ifma = init.clone();
+        let mut res_avx512 = init.clone();
         let mut res_ref = init.clone();
-        unsafe { reim_addmul_avx512(&mut res_ifma, &a, &b) };
+        unsafe { reim_addmul_avx512(&mut res_avx512, &a, &b) };
         reim_addmul_ref(&mut res_ref, &a, &b);
         let tol = 1e-14f64;
         for i in 0..n {
             assert!(
-                (res_ifma[i] - res_ref[i]).abs() <= tol,
+                (res_avx512[i] - res_ref[i]).abs() <= tol,
                 "reim_addmul idx={i}: AVX-512={} ref={}",
-                res_ifma[i],
+                res_avx512[i],
                 res_ref[i]
             );
         }
@@ -449,10 +449,10 @@ mod tests {
         let n = 64usize;
         let a = reim_data(n, 1.8);
         let init = reim_data(n, 3.3);
-        let mut res_ifma = init.clone();
+        let mut res_avx512 = init.clone();
         let mut res_ref = init.clone();
-        unsafe { reim_sub_negate_assign_avx512(&mut res_ifma, &a) };
+        unsafe { reim_sub_negate_assign_avx512(&mut res_avx512, &a) };
         reim_sub_negate_assign_ref(&mut res_ref, &a);
-        assert_eq!(res_ifma, res_ref, "reim_sub_negate_assign: AVX-512 vs ref mismatch");
+        assert_eq!(res_avx512, res_ref, "reim_sub_negate_assign: AVX-512 vs ref mismatch");
     }
 }

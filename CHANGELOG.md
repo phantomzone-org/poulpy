@@ -50,7 +50,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 
 ### `poulpy-hal`
 - **Breaking:** Add `VmpApplyDftToDftAccumulate` and `VmpApplyDftToDftAccumulateTmpBytes` to the public API and to the `HalImpl` OEP trait. Performs `res += a · pmat` shifted by `limb_offset` and replaces the previous "scattered VMP write + `VecZnxDftAddAssign` fold" pattern in `gglwe_product_dft`. Out-of-tree backends implementing `HalImpl` must add impls for the two new methods (the existing `VmpApplyDftToDft` path is unchanged).
-- **Breaking:** Rename all in-place operation methods from `_assign` to `_assign` across all operation families (`vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, GLWE operations, etc.) to establish a uniform workspace-wide naming convention where `_assign` denotes in-place mutation of the first operand.
+- **Breaking:** Rename all in-place operation methods from `_inplace` to `_assign` across all operation families (`vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, GLWE operations, etc.) to establish a uniform workspace-wide naming convention where `_assign` denotes in-place mutation of the first operand.
 - Fix the convolution API by renaming the output-shift parameter to `cnv_offset`, moving it to the front of the apply calls, and updating delegates and conformance tests to match the corrected calling convention.
 - Replace legacy OEP modules with the unified `oep::HalImpl` entrypoint to provide one consistent extension surface for backends.
 - Add family defaults for `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat`, and `convolution` to reduce backend boilerplate and make overrides explicit.
@@ -63,7 +63,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 - **Breaking:** Remove `ReaderFrom` / `WriterTo` for prepared DFT layouts (`SvpPPol`); remove `SvpPPolFromBytes`, `VmpPMatFromBytes`, and `from_bytes` on the corresponding prepared types. Document that `SvpPPol` / `VmpPMat` DFT alignment assumes a power-of-two ring degree.
 
 ### `poulpy-core`
-- **Breaking:** Rename all in-place GLWE and LWE operation methods from `_assign` to `_assign` (`glwe_normalize_assign`, `glwe_sub_assign`, `glwe_automorphism_assign`, etc.) to match the workspace-wide naming convention.
+- **Breaking:** Rename all in-place GLWE and LWE operation methods from `_inplace` to `_assign` (`glwe_normalize_assign`, `glwe_sub_assign`, `glwe_automorphism_assign`, etc.) to match the workspace-wide naming convention.
 - Thread the corrected convolution-offset semantics through GLWE constant/plaintext multiply and tensoring paths so scratch sizing, truncation, and normalization all use the same convention.
 - Pass explicit effective-k information into convolution-backed multiply/tensor routines and mask partial bottom limbs correctly instead of assuming every input uses its full stored limb width.
 - Refresh GLWE tensor tests to cover the updated convolution API and the corrected effective-width handling.
@@ -79,7 +79,7 @@ Backends override CKKS algorithms by implementing `unsafe trait CKKSImpl<BE>`, t
 
 ### `poulpy-cpu-ref` / `poulpy-cpu-avx`
 - Add `NTTIfmaRef` — scalar Q120 NTT reference backend with CRT over three ~40-bit primes, mirroring the prime layout of the `NTT120Ifma` AVX-512 backend. Acts as the conformance reference for `NTT120Ifma` and ships full `HalImpl` / `CoreImpl` coverage across `VecZnx`, `VecZnxBig`, `VecZnxDft`, `SvpPPol`, `VmpPMat`, and convolution.
-- **Breaking:** Rename all in-place internal helpers from `_assign` to `_assign` (e.g. `vec_znx_sub_assign`, `reim_sub_assign`, `ntt_negate_assign`, `svp_apply_dft_to_dft_assign`) to match the workspace-wide naming convention. Internal NTT120 normalization helpers that previously used `_assign` to denote a generic out-of-place write are renamed to `_into` (`nfc_middle_step_into`, `nfc_final_step_into`) to restore the distinction.
+- **Breaking:** Rename all in-place internal helpers from `_inplace` to `_assign` (e.g. `vec_znx_sub_assign`, `reim_sub_assign`, `ntt_negate_assign`, `svp_apply_dft_to_dft_assign`) to match the workspace-wide naming convention. Internal NTT120 normalization helpers that previously used `_inplace` to denote a generic out-of-place write are renamed to `_into` (`nfc_middle_step_into`, `nfc_final_step_into`) to restore the distinction.
 - Update FFT64 and NTT120 convolution implementations, references, and tests to the corrected `cnv_offset` API.
 - Optimize NTT120 convolution on the AVX backend by wiring the prep paths to backend-specific kernels and restructuring `cnv_apply_dft` / `cnv_pairwise_apply_dft` around prepacked x2 blocks, substantially reducing GLWE tensoring time on large `ntt120-avx` workloads.
 - Reorganize backend implementations around `hal_impl` modules and `hal_defaults` to mirror the new HAL entrypoint and reduce duplication.

@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -498,18 +498,18 @@ mod tests {
         let inv = ReimIFFTTable::<f64>::new(m);
 
         // Build reim input: real[0..m] then imag[0..m], purely real poly [1,2,0...]
-        let mut a_ifma = vec![0f64; 2 * m];
-        a_ifma[0] = 1.0;
-        a_ifma[1] = 2.0;
-        let mut b_ifma = vec![0f64; 2 * m];
-        b_ifma[0] = 3.0;
-        b_ifma[1] = 4.0;
+        let mut a_avx512 = vec![0f64; 2 * m];
+        a_avx512[0] = 1.0;
+        a_avx512[1] = 2.0;
+        let mut b_avx512 = vec![0f64; 2 * m];
+        b_avx512[0] = 3.0;
+        b_avx512[1] = 4.0;
 
-        let a_ref = a_ifma.clone();
-        let b_ref = b_ifma.clone();
+        let a_ref = a_avx512.clone();
+        let b_ref = b_avx512.clone();
 
-        ReimFFTAvx512::reim_dft_execute(&fwd, &mut a_ifma);
-        ReimFFTAvx512::reim_dft_execute(&fwd, &mut b_ifma);
+        ReimFFTAvx512::reim_dft_execute(&fwd, &mut a_avx512);
+        ReimFFTAvx512::reim_dft_execute(&fwd, &mut b_avx512);
 
         let mut a_ref2 = a_ref;
         let mut b_ref2 = b_ref;
@@ -517,22 +517,22 @@ mod tests {
         ReimFFTRef::reim_dft_execute(&fwd, &mut b_ref2);
 
         // Pointwise complex multiply: reim format = real[0..m], imag[m..2m]
-        let mut c_ifma = vec![0f64; 2 * m];
+        let mut c_avx512 = vec![0f64; 2 * m];
         let mut c_ref = vec![0f64; 2 * m];
         for k in 0..m {
-            c_ifma[k] = a_ifma[k] * b_ifma[k] - a_ifma[k + m] * b_ifma[k + m];
-            c_ifma[k + m] = a_ifma[k] * b_ifma[k + m] + a_ifma[k + m] * b_ifma[k];
+            c_avx512[k] = a_avx512[k] * b_avx512[k] - a_avx512[k + m] * b_avx512[k + m];
+            c_avx512[k + m] = a_avx512[k] * b_avx512[k + m] + a_avx512[k + m] * b_avx512[k];
             c_ref[k] = a_ref2[k] * b_ref2[k] - a_ref2[k + m] * b_ref2[k + m];
             c_ref[k + m] = a_ref2[k] * b_ref2[k + m] + a_ref2[k + m] * b_ref2[k];
         }
 
-        ReimIFFTAvx512::reim_dft_execute(&inv, &mut c_ifma);
+        ReimIFFTAvx512::reim_dft_execute(&inv, &mut c_avx512);
         ReimIFFTRef::reim_dft_execute(&inv, &mut c_ref);
 
         let tol = 1e-8f64;
         for i in 0..2 * m {
-            let diff = (c_ifma[i] - c_ref[i]).abs();
-            assert!(diff <= tol, "idx={i}: AVX-512={} ref={} diff={diff}", c_ifma[i], c_ref[i]);
+            let diff = (c_avx512[i] - c_ref[i]).abs();
+            assert!(diff <= tol, "idx={i}: AVX-512={} ref={} diff={diff}", c_avx512[i], c_ref[i]);
         }
     }
 }

@@ -14,7 +14,7 @@
 use std::ptr::NonNull;
 
 use poulpy_cpu_ref::reference::ntt_ifma::{
-    mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
+    mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
     primes::Primes40,
     vec_znx_dft::{NttIfmaHandleFactory, NttIfmaHandleProvider},
@@ -27,8 +27,7 @@ use crate::NTT120Ifma;
 /// Opaque handle for the [`NTT120Ifma`](super::NTT120Ifma) backend.
 ///
 /// Holds precomputed twiddle-factor tables for the forward NTT and inverse NTT
-/// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` and
-/// `q120b × q120b` products.
+/// of size `n`, and the lazy-accumulation metadata for `q120b × q120c` products.
 ///
 /// This struct is heap-allocated during module creation and freed when the
 /// `Module<NTT120Ifma>` is dropped (via [`Backend::destroy`]).
@@ -37,7 +36,6 @@ pub struct NTT120IfmaHandle {
     table_ntt: NttIfmaTable<Primes40>,
     table_intt: NttIfmaTableInv<Primes40>,
     meta_bbc: BbcIfmaMeta<Primes40>,
-    meta_bbb: BbbIfmaMeta<Primes40>,
 }
 
 impl Backend for NTT120Ifma {
@@ -79,7 +77,6 @@ unsafe impl NttIfmaHandleFactory for NTT120IfmaHandle {
             table_ntt: NttIfmaTable::new(n),
             table_intt: NttIfmaTableInv::new(n),
             meta_bbc: BbcIfmaMeta::new(),
-            meta_bbb: BbbIfmaMeta::new(),
         }
     }
 
@@ -114,9 +111,5 @@ unsafe impl NttIfmaHandleProvider for NTT120IfmaHandle {
 
     fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40> {
         &self.meta_bbc
-    }
-
-    fn get_bbb_ifma_meta(&self) -> &BbbIfmaMeta<Primes40> {
-        &self.meta_bbb
     }
 }

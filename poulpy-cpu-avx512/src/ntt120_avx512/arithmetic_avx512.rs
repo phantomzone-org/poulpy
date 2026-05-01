@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -21,11 +21,11 @@
 //!
 //! | Function | Trait |
 //! |---|---|
-//! | [`b_from_znx64_avx2`] | `NttFromZnx64` |
-//! | [`b_from_znx64_masked_avx2`] | `NttFromZnx64::ntt_from_znx64_masked` |
-//! | [`c_from_b_avx2`] | `NttCFromB` |
-//! | [`vec_mat1col_product_bbb_avx2`] | `NttMulBbb` |
-//! | [`b_to_znx128_avx2`] | `NttToZnx128` |
+//! | [`b_from_znx64_avx512`] | `NttFromZnx64` |
+//! | [`b_from_znx64_masked_avx512`] | `NttFromZnx64::ntt_from_znx64_masked` |
+//! | [`c_from_b_avx512`] | `NttCFromB` |
+//! | [`vec_mat1col_product_bbb_avx512`] | `NttMulBbb` |
+//! | [`b_to_znx128_avx512`] | `NttToZnx128` |
 //!
 //! Inner loops pair-pack two q120b coefficients per `__m512i`; per-prime
 //! constants are broadcast to both halves with `_mm512_broadcast_i64x4`. A
@@ -64,7 +64,7 @@ pub(crate) const Q_VEC: [u64; 4] = [
 
 /// `oq[k] = Q[k] - (2^63 mod Q[k])`.
 ///
-/// Used by `b_from_znx64_avx2`: for a negative input `x`, each prime lane
+/// Used by `b_from_znx64_avx512`: for a negative input `x`, each prime lane
 /// receives `(x as u64 & i64::MAX) + oq[k]`, which equals `x mod Q[k]` as u64.
 pub(crate) const OQ: [u64; 4] = {
     let mut oq = [0u64; 4];
@@ -93,7 +93,7 @@ pub(crate) const BARRETT_MU: [u64; 4] = {
 
 /// `pow32[k] = 2^32 mod Q[k]`.
 ///
-/// Used in `c_from_b_avx2` and `b_to_znx128_avx2`:
+/// Used in `c_from_b_avx512` and `b_to_znx128_avx512`:
 /// - Combines `x_hi_r * pow32 + x_lo` to reduce a 63-bit q120b value.
 /// - Computes `r_shift = r * pow32 mod Q[k]` (i.e., `r * 2^32 mod Q[k]`).
 pub(crate) const POW32: [u64; 4] = {
@@ -106,7 +106,7 @@ pub(crate) const POW32: [u64; 4] = {
     p
 };
 
-/// `CRT_CST[k]` as u64, for `b_to_znx128_avx2`.
+/// `CRT_CST[k]` as u64, for `b_to_znx128_avx512`.
 pub(crate) const CRT_VEC: [u64; 4] = [
     Primes30::CRT_CST[0] as u64,
     Primes30::CRT_CST[1] as u64,
@@ -361,7 +361,7 @@ unsafe fn hadd64(v: __m256i) -> u64 {
 /// `t` must hold values `< Q[k]` in each lane (output of [`reduce_b_and_apply_crt`]).
 /// Caller must ensure AVX-512F support.
 #[inline(always)]
-pub(crate) unsafe fn crt_accumulate_avx2(t: __m256i, qm_hi: __m256i, qm_mid: __m256i, qm_lo: __m256i) -> u128 {
+pub(crate) unsafe fn crt_accumulate_avx512(t: __m256i, qm_hi: __m256i, qm_mid: __m256i, qm_lo: __m256i) -> u128 {
     unsafe {
         let p_hi = _mm256_mul_epu32(t, qm_hi); // t[k] * QM_HI[k]  < 2^57/lane
         let p_mid = _mm256_mul_epu32(t, qm_mid); // t[k] * QM_MID[k] < 2^62/lane
@@ -377,7 +377,7 @@ pub(crate) unsafe fn crt_accumulate_avx2(t: __m256i, qm_hi: __m256i, qm_mid: __m
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// b_from_znx64_avx2
+// b_from_znx64_avx512
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// AVX-512F port of `b_from_znx64_ref`: convert `i64` coefficients to q120b.
@@ -393,14 +393,14 @@ pub(crate) unsafe fn crt_accumulate_avx2(t: __m256i, qm_hi: __m256i, qm_mid: __m
 ///
 /// Caller must ensure AVX-512F support. `res.len() >= 4 * nn`, `x.len() >= nn`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn b_from_znx64_avx2(nn: usize, res: &mut [u64], x: &[i64]) {
+pub(crate) unsafe fn b_from_znx64_avx512(nn: usize, res: &mut [u64], x: &[i64]) {
     assert!(
         res.len() >= 4 * nn,
-        "b_from_znx64_avx2: res.len()={} < 4*nn={}",
+        "b_from_znx64_avx512: res.len()={} < 4*nn={}",
         res.len(),
         4 * nn
     );
-    assert!(x.len() >= nn, "b_from_znx64_avx2: x.len()={} < nn={}", x.len(), nn);
+    assert!(x.len() >= nn, "b_from_znx64_avx512: x.len()={} < nn={}", x.len(), nn);
     unsafe {
         let oq_vec_512 = bcast_quad(OQ.as_ptr());
         let i64_max_512 = _mm512_set1_epi64(i64::MAX);
@@ -440,14 +440,14 @@ pub(crate) unsafe fn b_from_znx64_avx2(nn: usize, res: &mut [u64], x: &[i64]) {
 ///
 /// Caller must ensure AVX-512F support. `res.len() >= 4 * nn`, `x.len() >= nn`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn b_from_znx64_masked_avx2(nn: usize, res: &mut [u64], x: &[i64], mask: i64) {
+pub(crate) unsafe fn b_from_znx64_masked_avx512(nn: usize, res: &mut [u64], x: &[i64], mask: i64) {
     assert!(
         res.len() >= 4 * nn,
-        "b_from_znx64_masked_avx2: res.len()={} < 4*nn={}",
+        "b_from_znx64_masked_avx512: res.len()={} < 4*nn={}",
         res.len(),
         4 * nn
     );
-    assert!(x.len() >= nn, "b_from_znx64_masked_avx2: x.len()={} < nn={}", x.len(), nn);
+    assert!(x.len() >= nn, "b_from_znx64_masked_avx512: x.len()={} < nn={}", x.len(), nn);
     unsafe {
         let oq_vec_512 = bcast_quad(OQ.as_ptr());
         let i64_max_512 = _mm512_set1_epi64(i64::MAX);
@@ -480,7 +480,7 @@ pub(crate) unsafe fn b_from_znx64_masked_avx2(nn: usize, res: &mut [u64], x: &[i
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// c_from_b_avx2
+// c_from_b_avx512
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Reduce a single q120b `__m256i` to the canonical residue in `[0, Q[k])` for each prime.
@@ -562,14 +562,14 @@ pub(crate) unsafe fn reduce_b_and_apply_crt(
 ///
 /// Caller must ensure AVX-512F support. `res.len() >= 8 * nn`, `a.len() >= 4 * nn`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn c_from_b_avx2(nn: usize, res: &mut [u32], a: &[u64]) {
+pub(crate) unsafe fn c_from_b_avx512(nn: usize, res: &mut [u32], a: &[u64]) {
     assert!(
         res.len() >= 8 * nn,
-        "c_from_b_avx2: res.len()={} < 8*nn={}",
+        "c_from_b_avx512: res.len()={} < 8*nn={}",
         res.len(),
         8 * nn
     );
-    assert!(a.len() >= 4 * nn, "c_from_b_avx2: a.len()={} < 4*nn={}", a.len(), 4 * nn);
+    assert!(a.len() >= 4 * nn, "c_from_b_avx512: a.len()={} < 4*nn={}", a.len(), 4 * nn);
     unsafe {
         let q_512 = bcast_quad(Q_VEC.as_ptr());
         let mu_512 = bcast_quad(BARRETT_MU.as_ptr());
@@ -606,7 +606,7 @@ pub(crate) unsafe fn c_from_b_avx2(nn: usize, res: &mut [u32], a: &[u64]) {
 /// For each row, block `blk` is reduced to canonical residues and written to `dst`
 /// in the x2 q120b/u32 layout expected by BBC kernels.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn pack_left_1blk_x2_avx2(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
+pub(crate) unsafe fn pack_left_1blk_x2_avx512(dst: &mut [u32], a: &[u64], row_count: usize, row_stride: usize, blk: usize) {
     debug_assert!(dst.len() >= 16 * row_count);
     debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 8 * blk + 8);
 
@@ -636,7 +636,7 @@ pub(crate) unsafe fn pack_left_1blk_x2_avx2(dst: &mut [u32], a: &[u64], row_coun
 /// For each row, block `blk` is copied to `dst` in reversed row order so convolution
 /// windows can consume contiguous slices directly.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn pack_right_1blk_x2_avx2(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
+pub(crate) unsafe fn pack_right_1blk_x2_avx512(dst: &mut [u32], a: &[u32], row_count: usize, row_stride: usize, blk: usize) {
     debug_assert!(dst.len() >= 16 * row_count);
     debug_assert!(a.len() >= row_stride.saturating_mul(row_count.saturating_sub(1)) + 16 * blk + 16);
 
@@ -659,7 +659,7 @@ pub(crate) unsafe fn pack_right_1blk_x2_avx2(dst: &mut [u32], a: &[u32], row_cou
 /// For each row, block `blk` is reduced to canonical residues, summed mod `Q`,
 /// and written to `dst` in the x2 q120b/u32 layout expected by BBC kernels.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn pairwise_pack_left_1blk_x2_avx2(
+pub(crate) unsafe fn pairwise_pack_left_1blk_x2_avx512(
     dst: &mut [u32],
     a: &[u64],
     b: &[u64],
@@ -700,7 +700,7 @@ pub(crate) unsafe fn pairwise_pack_left_1blk_x2_avx2(
 /// For each row, block `blk` is written to `dst` in reversed row order so convolution windows
 /// can consume contiguous slices directly.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn pairwise_pack_right_1blk_x2_avx2(
+pub(crate) unsafe fn pairwise_pack_right_1blk_x2_avx512(
     dst: &mut [u32],
     a: &[u32],
     b: &[u32],
@@ -731,7 +731,7 @@ pub(crate) unsafe fn pairwise_pack_right_1blk_x2_avx2(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// vec_mat1col_product_bbb_avx2
+// vec_mat1col_product_bbb_avx512
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// AVX-512F port of `vec_mat1col_product_bbb_ref`: q120b × q120b → q120b dot product.
@@ -747,17 +747,17 @@ pub(crate) unsafe fn pairwise_pack_right_1blk_x2_avx2(
 ///
 /// Caller must ensure AVX-512F support. `res.len() >= 4`, `x.len() >= 4 * ell`, `y.len() >= 4 * ell`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn vec_mat1col_product_bbb_avx2(meta: &BbbMeta<Primes30>, ell: usize, res: &mut [u64], x: &[u64], y: &[u64]) {
-    assert!(res.len() >= 4, "vec_mat1col_product_bbb_avx2: res.len()={} < 4", res.len());
+pub(crate) unsafe fn vec_mat1col_product_bbb_avx512(meta: &BbbMeta<Primes30>, ell: usize, res: &mut [u64], x: &[u64], y: &[u64]) {
+    assert!(res.len() >= 4, "vec_mat1col_product_bbb_avx512: res.len()={} < 4", res.len());
     assert!(
         x.len() >= 4 * ell,
-        "vec_mat1col_product_bbb_avx2: x.len()={} < 4*ell={}",
+        "vec_mat1col_product_bbb_avx512: x.len()={} < 4*ell={}",
         x.len(),
         4 * ell
     );
     assert!(
         y.len() >= 4 * ell,
-        "vec_mat1col_product_bbb_avx2: y.len()={} < 4*ell={}",
+        "vec_mat1col_product_bbb_avx512: y.len()={} < 4*ell={}",
         y.len(),
         4 * ell
     );
@@ -876,7 +876,7 @@ pub(crate) unsafe fn vec_mat1col_product_bbb_avx2(meta: &BbbMeta<Primes30>, ell:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// b_to_znx128_avx2
+// b_to_znx128_avx512
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Hybrid AVX-512F / scalar CRT reconstruction: q120b → i128 coefficients.
@@ -894,9 +894,9 @@ pub(crate) unsafe fn vec_mat1col_product_bbb_avx2(meta: &BbbMeta<Primes30>, ell:
 ///
 /// Caller must ensure AVX-512F support. `res.len() >= nn`, `a.len() >= 4 * nn`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn b_to_znx128_avx2(nn: usize, res: &mut [i128], a: &[u64]) {
-    assert!(res.len() >= nn, "b_to_znx128_avx2: res.len()={} < nn={}", res.len(), nn);
-    assert!(a.len() >= 4 * nn, "b_to_znx128_avx2: a.len()={} < 4*nn={}", a.len(), 4 * nn);
+pub(crate) unsafe fn b_to_znx128_avx512(nn: usize, res: &mut [i128], a: &[u64]) {
+    assert!(res.len() >= nn, "b_to_znx128_avx512: res.len()={} < nn={}", res.len(), nn);
+    assert!(a.len() >= 4 * nn, "b_to_znx128_avx512: a.len()={} < 4*nn={}", a.len(), 4 * nn);
     let half_q: u128 = TOTAL_Q.div_ceil(2);
 
     // Pair-packed (2-coefficient) AVX-512 path: vectorize the Barrett pass and the
@@ -963,7 +963,7 @@ pub(crate) unsafe fn b_to_znx128_avx2(nn: usize, res: &mut [i128], a: &[u64]) {
             let qm_lo_vec = _mm256_loadu_si256(QM_LO.as_ptr() as *const __m256i);
             let xv = _mm256_loadu_si256(a_ptr as *const __m256i);
             let t = reduce_b_and_apply_crt(xv, q_vec, mu_vec, pow32_crt_vec, pow16_crt_vec, crt_vec);
-            let mut v = crt_accumulate_avx2(t, qm_hi_vec, qm_mid_vec, qm_lo_vec);
+            let mut v = crt_accumulate_avx512(t, qm_hi_vec, qm_mid_vec, qm_lo_vec);
             let q_approx = (v >> 120) as usize;
             v -= TOTAL_Q_MULT[q_approx];
             if v >= TOTAL_Q {
@@ -996,7 +996,7 @@ mod tests {
         let mut res_avx = vec![0u64; 4 * n];
         let mut res_ref = vec![0u64; 4 * n];
 
-        unsafe { b_from_znx64_avx2(n, &mut res_avx, &coeffs) };
+        unsafe { b_from_znx64_avx512(n, &mut res_avx, &coeffs) };
         b_from_znx64_ref::<Primes30>(n, &mut res_ref, &coeffs);
 
         assert_eq!(res_avx, res_ref, "b_from_znx64: AVX-512F vs ref mismatch");
@@ -1014,7 +1014,7 @@ mod tests {
         let mut res_avx = vec![0u32; 8 * n];
         let mut res_ref = vec![0u32; 8 * n];
 
-        unsafe { c_from_b_avx2(n, &mut res_avx, &b) };
+        unsafe { c_from_b_avx512(n, &mut res_avx, &b) };
         c_from_b_ref::<Primes30>(n, &mut res_ref, &b);
 
         assert_eq!(res_avx, res_ref, "c_from_b: AVX-512F vs ref mismatch");
@@ -1039,7 +1039,7 @@ mod tests {
         let mut res_avx = vec![0u64; 4 * n];
         let mut res_ref = vec![0u64; 4 * n];
 
-        unsafe { vec_mat1col_product_bbb_avx2(&meta, ell, &mut res_avx, &x, &y) };
+        unsafe { vec_mat1col_product_bbb_avx512(&meta, ell, &mut res_avx, &x, &y) };
         vec_mat1col_product_bbb_ref::<Primes30>(&meta, ell, &mut res_ref, &x, &y);
 
         assert_eq!(res_avx, res_ref, "vec_mat1col_product_bbb: AVX-512F vs ref mismatch");
@@ -1088,7 +1088,7 @@ mod tests {
         let mut res_avx = vec![0i128; n];
         let mut res_ref = vec![0i128; n];
 
-        unsafe { b_to_znx128_avx2(n, &mut res_avx, &b) };
+        unsafe { b_to_znx128_avx512(n, &mut res_avx, &b) };
         b_to_znx128_ref::<Primes30>(n, &mut res_ref, &b);
 
         assert_eq!(res_avx, res_ref, "b_to_znx128: AVX-512F vs ref mismatch");

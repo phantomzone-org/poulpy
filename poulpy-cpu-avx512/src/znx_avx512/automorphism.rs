@@ -16,7 +16,7 @@ fn inv_mod_pow2(p: usize, bits: u32) -> usize {
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_automorphism_ifma(p: i64, res: &mut [i64], a: &[i64]) {
+pub unsafe fn znx_automorphism_avx512(p: i64, res: &mut [i64], a: &[i64]) {
     debug_assert_eq!(res.len(), a.len());
     let n = res.len();
     if n == 0 {
@@ -94,13 +94,13 @@ mod tests {
         let mut r1 = vec![0i64; a.len()];
         unsafe {
             znx_automorphism_ref(p, &mut r0, &a);
-            znx_automorphism_ifma(p, &mut r1, &a);
+            znx_automorphism_avx512(p, &mut r1, &a);
         }
         assert_eq!(r0, r1);
     }
 
     #[test]
-    fn test_znx_automorphism_ifma() {
+    fn test_znx_automorphism_avx512() {
         unsafe {
             test_znx_automorphism_internal();
         }

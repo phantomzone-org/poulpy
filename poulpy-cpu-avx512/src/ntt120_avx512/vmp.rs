@@ -20,7 +20,7 @@ use poulpy_hal::layouts::{
     ZnxViewMut,
 };
 
-use super::mat_vec_avx512::vec_mat1col_product_blkpair_bbc_pm_avx2;
+use super::mat_vec_avx512::vec_mat1col_product_blkpair_bbc_pm_avx512;
 use crate::NTT120Avx512;
 
 /// Scratch space (in bytes) required by the AVX VMP prepare kernel.
@@ -98,7 +98,13 @@ pub(crate) fn vmp_apply_tmp_bytes_avx(a_size: usize, b_rows: usize, b_cols_in: u
 ///
 /// Copies one 64-byte block per row using two 256-bit loads and stores.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn extract_1blk_from_contiguous_q120b_avx2(n: usize, row_max: usize, blk: usize, dst: &mut [u64], src: &[u64]) {
+pub(crate) unsafe fn extract_1blk_from_contiguous_q120b_avx512(
+    n: usize,
+    row_max: usize,
+    blk: usize,
+    dst: &mut [u64],
+    src: &[u64],
+) {
     debug_assert!(n >= 2);
     debug_assert!(n.is_power_of_two());
     debug_assert!(blk < n / 2);
@@ -123,7 +129,7 @@ pub(crate) unsafe fn extract_1blk_from_contiguous_q120b_avx2(n: usize, row_max: 
 /// Each plane stores `row_max` rows of 4 u64 with lane order
 /// `[blk0.c0, blk0.c1, blk1.c0, blk1.c1]`.
 #[target_feature(enable = "avx512f")]
-unsafe fn extract_blk_pair_prime_major_avx2(n: usize, row_max: usize, blk_pair: usize, src: &[u64], dst: &mut [u64]) {
+unsafe fn extract_blk_pair_prime_major_avx512(n: usize, row_max: usize, blk_pair: usize, src: &[u64], dst: &mut [u64]) {
     debug_assert!(n.is_multiple_of(4));
     debug_assert!(src.len() >= row_max * 4 * n);
     debug_assert!(dst.len() >= 16 * row_max);
@@ -218,14 +224,14 @@ unsafe fn vmp_apply_core_avx_pm<const OVERWRITE: bool>(
     let col_stride = nrows * 4;
 
     for bp in 0..n_block_pairs {
-        unsafe { extract_blk_pair_prime_major_avx2(n, row_max, bp, a_u64, x_pm) };
+        unsafe { extract_blk_pair_prime_major_avx512(n, row_max, bp, a_u64, x_pm) };
 
         for col_pmat in limb_offset..col_max {
             let col_res = col_pmat - limb_offset;
             let y_off = bp * bp_stride + col_pmat * col_stride;
 
             unsafe {
-                vec_mat1col_product_blkpair_bbc_pm_avx2(meta, row_max, blkpair_output, x_pm, &pmat_u64[y_off..], plane_stride)
+                vec_mat1col_product_blkpair_bbc_pm_avx512(meta, row_max, blkpair_output, x_pm, &pmat_u64[y_off..], plane_stride)
             };
 
             let blk0 = 2 * bp;
@@ -332,7 +338,7 @@ pub(crate) fn vmp_apply_dft_to_dft_accumulate_avx<R, A, M>(
 
 #[cfg(test)]
 mod tests {
-    use super::extract_1blk_from_contiguous_q120b_avx2;
+    use super::extract_1blk_from_contiguous_q120b_avx512;
     use poulpy_cpu_ref::reference::ntt120::mat_vec::extract_1blk_from_contiguous_q120b_ref;
 
     #[test]
@@ -348,7 +354,7 @@ mod tests {
                     let mut dst_avx = vec![0u64; 8 * row_max];
 
                     extract_1blk_from_contiguous_q120b_ref(n, row_max, blk, &mut dst_ref, &src);
-                    unsafe { extract_1blk_from_contiguous_q120b_avx2(n, row_max, blk, &mut dst_avx, &src) };
+                    unsafe { extract_1blk_from_contiguous_q120b_avx512(n, row_max, blk, &mut dst_avx, &src) };
 
                     assert_eq!(dst_avx, dst_ref, "n={n}, row_max={row_max}, blk={blk}");
                 }

@@ -22,7 +22,7 @@ use crate::{
 use super::{
     NttIfmaAdd, NttIfmaAddAssign, NttIfmaCopy, NttIfmaDFTExecute, NttIfmaFromZnx64, NttIfmaNegate, NttIfmaNegateAssign,
     NttIfmaSub, NttIfmaSubAssign, NttIfmaSubNegateAssign, NttIfmaToZnx128, NttIfmaZero,
-    mat_vec::{BbbIfmaMeta, BbcIfmaMeta},
+    mat_vec::BbcIfmaMeta,
     ntt::{NttIfmaTable, NttIfmaTableInv},
     primes::Primes40,
 };
@@ -36,7 +36,6 @@ pub trait NttIfmaModuleHandle {
     fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40>;
     fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40>;
     fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40>;
-    fn get_bbb_ifma_meta(&self) -> &BbbIfmaMeta<Primes40>;
 }
 
 /// Implemented by backend `Handle` types that store IFMA NTT tables.
@@ -49,7 +48,6 @@ pub unsafe trait NttIfmaHandleProvider {
     fn get_ntt_ifma_table(&self) -> &NttIfmaTable<Primes40>;
     fn get_intt_ifma_table(&self) -> &NttIfmaTableInv<Primes40>;
     fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40>;
-    fn get_bbb_ifma_meta(&self) -> &BbbIfmaMeta<Primes40>;
 }
 
 /// Blanket impl: any `Module<B>` whose handle implements `NttIfmaHandleProvider`
@@ -67,9 +65,6 @@ where
     }
     fn get_bbc_ifma_meta(&self) -> &BbcIfmaMeta<Primes40> {
         unsafe { (&*self.ptr()).get_bbc_ifma_meta() }
-    }
-    fn get_bbb_ifma_meta(&self) -> &BbbIfmaMeta<Primes40> {
-        unsafe { (&*self.ptr()).get_bbb_ifma_meta() }
     }
 }
 

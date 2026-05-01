@@ -68,26 +68,6 @@ pub use vec_znx_dft::*;
 pub use vmp::*;
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Shared internal utilities
-// ──────────────────────────────────────────────────────────────────────────────
-
-/// `2^exp mod q` using 128-bit intermediate arithmetic.
-#[allow(dead_code)]
-pub(super) fn pow2_mod_ifma(exp: u64, q: u64) -> u64 {
-    let mut result: u64 = 1;
-    let mut base: u64 = 2 % q;
-    let mut e = exp;
-    while e > 0 {
-        if e & 1 != 0 {
-            result = ((result as u128 * base as u128) % q as u128) as u64;
-        }
-        base = ((base as u128 * base as u128) % q as u128) as u64;
-        e >>= 1;
-    }
-    result
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
 // NTT-domain operation traits (3-prime IFMA variant)
 // ──────────────────────────────────────────────────────────────────────────────
 

@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -18,7 +18,7 @@
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_extract_1blk_from_reim_contiguous_ifma(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+pub fn reim4_extract_1blk_from_reim_contiguous_avx512(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_loadu_pd, _mm256_storeu_pd};
 
     unsafe {
@@ -40,7 +40,7 @@ pub fn reim4_extract_1blk_from_reim_contiguous_ifma(m: usize, rows: usize, blk: 
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_save_1blk_to_reim_contiguous_ifma(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+pub fn reim4_save_1blk_to_reim_contiguous_avx512(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_loadu_pd, _mm256_storeu_pd};
 
     unsafe {
@@ -62,7 +62,7 @@ pub fn reim4_save_1blk_to_reim_contiguous_ifma(m: usize, rows: usize, blk: usize
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_save_1blk_to_reim_ifma<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+pub fn reim4_save_1blk_to_reim_avx512<const OVERWRITE: bool>(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_add_pd, _mm256_loadu_pd, _mm256_storeu_pd};
     unsafe {
         let off: usize = blk * 4;
@@ -89,7 +89,7 @@ pub fn reim4_save_1blk_to_reim_ifma<const OVERWRITE: bool>(m: usize, blk: usize,
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_save_2blk_to_reim_ifma<const OVERWRITE: bool>(
+pub fn reim4_save_2blk_to_reim_avx512<const OVERWRITE: bool>(
     m: usize,        //
     blk: usize,      // block index
     dst: &mut [f64], //
@@ -131,7 +131,7 @@ pub fn reim4_save_2blk_to_reim_ifma<const OVERWRITE: bool>(
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_vec_mat1col_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+pub fn reim4_vec_mat1col_product_avx512(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{
         __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
         _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2,
@@ -184,7 +184,7 @@ pub fn reim4_vec_mat1col_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64], 
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_vec_mat2cols_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+pub fn reim4_vec_mat2cols_product_avx512(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{
         __m256d, __m512d, _mm256_storeu_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd, _mm512_fmadd_pd, _mm512_fnmadd_pd,
         _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2,
@@ -257,7 +257,7 @@ pub fn reim4_vec_mat2cols_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64],
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 #[target_feature(enable = "avx512f")]
-pub fn reim4_vec_mat2cols_2ndcol_product_ifma(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+pub fn reim4_vec_mat2cols_2ndcol_product_avx512(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{
         __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
         _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2,
@@ -304,7 +304,7 @@ pub fn reim4_vec_mat2cols_2ndcol_product_ifma(nrows: usize, dst: &mut [f64], u: 
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn reim4_convolution_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+pub unsafe fn reim4_convolution_1coeff_avx512(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
     use core::arch::x86_64::{
         __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
         _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2, _mm512_storeu_pd,
@@ -352,7 +352,14 @@ pub unsafe fn reim4_convolution_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+pub unsafe fn reim4_convolution_2coeffs_avx512(
+    k: usize,
+    dst: &mut [f64; 16],
+    a: &[f64],
+    a_size: usize,
+    b: &[f64],
+    b_size: usize,
+) {
     use core::arch::x86_64::{
         __m256d, __m512d, _mm256_add_pd, _mm256_storeu_pd, _mm256_sub_pd, _mm512_castpd512_pd256, _mm512_extractf64x4_pd,
         _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_setzero_pd, _mm512_shuffle_f64x2, _mm512_storeu_pd,
@@ -473,7 +480,7 @@ pub unsafe fn reim4_convolution_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn reim4_convolution_by_real_const_1coeff_ifma(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
+pub unsafe fn reim4_convolution_by_real_const_1coeff_avx512(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64]) {
     use core::arch::x86_64::{__m512d, _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_set1_pd, _mm512_setzero_pd, _mm512_storeu_pd};
 
     unsafe {
@@ -510,7 +517,7 @@ pub unsafe fn reim4_convolution_by_real_const_1coeff_ifma(k: usize, dst: &mut [f
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g. `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn reim4_convolution_by_real_const_2coeffs_ifma(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
+pub unsafe fn reim4_convolution_by_real_const_2coeffs_avx512(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64]) {
     use core::arch::x86_64::{__m512d, _mm512_fmadd_pd, _mm512_loadu_pd, _mm512_set1_pd, _mm512_setzero_pd, _mm512_storeu_pd};
 
     let b_size: usize = b.len();
@@ -626,21 +633,21 @@ mod tests {
         let blk = 0usize;
 
         let src: Vec<f64> = (0..2 * rows * m).map(|i| i as f64 + 1.0).collect();
-        let mut dst_ifma = vec![0f64; 2 * rows * 4];
+        let mut dst_avx512 = vec![0f64; 2 * rows * 4];
         let mut dst_ref = vec![0f64; 2 * rows * 4];
 
-        unsafe { reim4_extract_1blk_from_reim_contiguous_ifma(m, rows, blk, &mut dst_ifma, &src) };
+        unsafe { reim4_extract_1blk_from_reim_contiguous_avx512(m, rows, blk, &mut dst_avx512, &src) };
         reim4_extract_1blk_from_reim_contiguous_ref(m, rows, blk, &mut dst_ref, &src);
 
-        assert_eq!(dst_ifma, dst_ref, "reim4_extract_1blk: AVX vs ref mismatch");
+        assert_eq!(dst_avx512, dst_ref, "reim4_extract_1blk: AVX vs ref mismatch");
 
         // Also verify save round-trip
-        let mut out_ifma = vec![0f64; 2 * rows * m];
+        let mut out_avx512 = vec![0f64; 2 * rows * m];
         let mut out_ref = vec![0f64; 2 * rows * m];
-        unsafe { reim4_save_1blk_to_reim_contiguous_ifma(m, rows, blk, &mut out_ifma, &dst_ifma) };
+        unsafe { reim4_save_1blk_to_reim_contiguous_avx512(m, rows, blk, &mut out_avx512, &dst_avx512) };
         reim4_save_1blk_to_reim_contiguous_ref(m, rows, blk, &mut out_ref, &dst_ref);
 
-        assert_eq!(out_ifma, out_ref, "reim4_save_1blk: AVX vs ref mismatch");
+        assert_eq!(out_avx512, out_ref, "reim4_save_1blk: AVX vs ref mismatch");
     }
 
     /// AVX `reim4_vec_mat1col_product` matches reference.
@@ -649,18 +656,18 @@ mod tests {
         let nrows = 8usize;
         let u = reim4_data(nrows, 1.3);
         let v = reim4_data(nrows, 2.7);
-        let mut dst_ifma = vec![0f64; 8];
+        let mut dst_avx512 = vec![0f64; 8];
         let mut dst_ref = vec![0f64; 8];
 
-        unsafe { reim4_vec_mat1col_product_ifma(nrows, &mut dst_ifma, &u, &v) };
+        unsafe { reim4_vec_mat1col_product_avx512(nrows, &mut dst_avx512, &u, &v) };
         reim4_vec_mat1col_product_ref(nrows, &mut dst_ref, &u, &v);
 
         let tol = 1e-12f64;
         for i in 0..8 {
             assert!(
-                (dst_ifma[i] - dst_ref[i]).abs() <= tol,
+                (dst_avx512[i] - dst_ref[i]).abs() <= tol,
                 "mat1col idx={i}: AVX={} ref={}",
-                dst_ifma[i],
+                dst_avx512[i],
                 dst_ref[i]
             );
         }
@@ -672,18 +679,18 @@ mod tests {
         let nrows = 8usize;
         let u = reim4_data(nrows, 1.1);
         let v: Vec<f64> = (0..nrows * 16).map(|i| i as f64 * 0.07 + 0.1).collect();
-        let mut dst_ifma = vec![0f64; 16];
+        let mut dst_avx512 = vec![0f64; 16];
         let mut dst_ref = vec![0f64; 16];
 
-        unsafe { reim4_vec_mat2cols_product_ifma(nrows, &mut dst_ifma, &u, &v) };
+        unsafe { reim4_vec_mat2cols_product_avx512(nrows, &mut dst_avx512, &u, &v) };
         reim4_vec_mat2cols_product_ref(nrows, &mut dst_ref, &u, &v);
 
         let tol = 1e-12f64;
         for i in 0..16 {
             assert!(
-                (dst_ifma[i] - dst_ref[i]).abs() <= tol,
+                (dst_avx512[i] - dst_ref[i]).abs() <= tol,
                 "mat2cols idx={i}: AVX={} ref={}",
-                dst_ifma[i],
+                dst_avx512[i],
                 dst_ref[i]
             );
         }
@@ -698,16 +705,16 @@ mod tests {
         let b = reim4_data(b_size, 2.1);
 
         for k in 0..a_size + b_size + 1 {
-            let mut dst_ifma = [0f64; 8];
+            let mut dst_avx512 = [0f64; 8];
             let mut dst_ref = [0f64; 8];
-            unsafe { reim4_convolution_1coeff_ifma(k, &mut dst_ifma, &a, a_size, &b, b_size) };
+            unsafe { reim4_convolution_1coeff_avx512(k, &mut dst_avx512, &a, a_size, &b, b_size) };
             reim4_convolution_1coeff_ref(k, &mut dst_ref, &a, a_size, &b, b_size);
             let tol = 1e-12f64;
             for i in 0..8 {
                 assert!(
-                    (dst_ifma[i] - dst_ref[i]).abs() <= tol,
+                    (dst_avx512[i] - dst_ref[i]).abs() <= tol,
                     "conv1coeff k={k} i={i}: AVX={} ref={}",
-                    dst_ifma[i],
+                    dst_avx512[i],
                     dst_ref[i]
                 );
             }
@@ -723,16 +730,16 @@ mod tests {
         let b = reim4_data(b_size, 2.3);
 
         for k in 0..a_size + b_size + 1 {
-            let mut dst_ifma = [0f64; 16];
+            let mut dst_avx512 = [0f64; 16];
             let mut dst_ref = [0f64; 16];
-            unsafe { reim4_convolution_2coeffs_ifma(k, &mut dst_ifma, &a, a_size, &b, b_size) };
+            unsafe { reim4_convolution_2coeffs_avx512(k, &mut dst_avx512, &a, a_size, &b, b_size) };
             reim4_convolution_2coeffs_ref(k, &mut dst_ref, &a, a_size, &b, b_size);
             let tol = 1e-12f64;
             for i in 0..16 {
                 assert!(
-                    (dst_ifma[i] - dst_ref[i]).abs() <= tol,
+                    (dst_avx512[i] - dst_ref[i]).abs() <= tol,
                     "conv2coeffs k={k} i={i}: AVX={} ref={}",
-                    dst_ifma[i],
+                    dst_avx512[i],
                     dst_ref[i]
                 );
             }

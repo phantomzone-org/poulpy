@@ -1,14 +1,14 @@
 // ----------------------------------------------------------------------
 // DISCLAIMER
 //
-// This module contains code that has been directly ported from the
+// This module contains code adapted from the AVX2 / FMA C kernels of the
 // spqlios-arithmetic library
 // (https://github.com/tfhe/spqlios-arithmetic), which is licensed
 // under the Apache License, Version 2.0.
 //
-// The porting process from C to Rust was done with minimal changes
-// in order to preserve the semantics and performance characteristics
-// of the original implementation.
+// The 256-bit AVX2 originals were widened to 512-bit AVX-512 and translated
+// to Rust intrinsics; algorithmic structure is preserved one-to-one with the
+// spqlios sources to keep semantics identical.
 //
 // Both Poulpy and spqlios-arithmetic are distributed under the terms
 // of the Apache License, Version 2.0. See the LICENSE file for details.
@@ -946,7 +946,7 @@ unsafe fn intt_iter_red(
 /// Caller must ensure AVX-512F is available (guaranteed by `NTT120Avx512` construction).
 /// `data.len()` must be `>= 4 * table.n`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn ntt_avx2<P: PrimeSet>(table: &NttTable<P>, data: &mut [u64]) {
+pub(crate) unsafe fn ntt_avx512<P: PrimeSet>(table: &NttTable<P>, data: &mut [u64]) {
     let n = table.n;
     if n == 1 {
         return;
@@ -1036,7 +1036,7 @@ pub(crate) unsafe fn ntt_avx2<P: PrimeSet>(table: &NttTable<P>, data: &mut [u64]
 /// Caller must ensure AVX-512F is available (guaranteed by `NTT120Avx512` construction).
 /// `data.len()` must be `>= 4 * table.n`.
 #[target_feature(enable = "avx512f")]
-pub(crate) unsafe fn intt_avx2<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
+pub(crate) unsafe fn intt_avx512<P: PrimeSet>(table: &NttTableInv<P>, data: &mut [u64]) {
     let n = table.n;
     if n == 1 {
         return;
@@ -1119,7 +1119,7 @@ mod tests {
 
     /// AVX-512F NTT followed by AVX-512F iNTT is the identity — mirrors the ref test.
     #[test]
-    fn ntt_intt_identity_avx2() {
+    fn ntt_intt_identity_avx512() {
         for log_n in 1..=8usize {
             let n = 1 << log_n;
             let fwd = NttTable::<Primes30>::new(n);
@@ -1133,8 +1133,8 @@ mod tests {
             let data_orig = data.clone();
 
             unsafe {
-                ntt_avx2::<Primes30>(&fwd, &mut data);
-                intt_avx2::<Primes30>(&inv, &mut data);
+                ntt_avx512::<Primes30>(&fwd, &mut data);
+                intt_avx512::<Primes30>(&inv, &mut data);
             }
 
             for i in 0..n {
@@ -1151,7 +1151,7 @@ mod tests {
     ///
     /// a = [1, 2, 0, …], b = [3, 4, 0, …]; a*b mod (X^8+1) = [3, 10, 8, 0, …]
     #[test]
-    fn ntt_convolution_avx2() {
+    fn ntt_convolution_avx512() {
         let n = 8usize;
         let fwd = NttTable::<Primes30>::new(n);
         let inv = NttTableInv::<Primes30>::new(n);
@@ -1165,8 +1165,8 @@ mod tests {
         b_from_znx64_ref::<Primes30>(n, &mut db, &b);
 
         unsafe {
-            ntt_avx2::<Primes30>(&fwd, &mut da);
-            ntt_avx2::<Primes30>(&fwd, &mut db);
+            ntt_avx512::<Primes30>(&fwd, &mut da);
+            ntt_avx512::<Primes30>(&fwd, &mut db);
         }
 
         // Pointwise multiply (mod each Q[k])
@@ -1179,7 +1179,7 @@ mod tests {
         }
 
         unsafe {
-            intt_avx2::<Primes30>(&inv, &mut dc);
+            intt_avx512::<Primes30>(&inv, &mut dc);
         }
 
         let mut result = vec![0i128; n];
@@ -1203,7 +1203,7 @@ mod tests {
             b_from_znx64_ref::<Primes30>(n, &mut data_avx, &coeffs);
             b_from_znx64_ref::<Primes30>(n, &mut data_ref, &coeffs);
 
-            unsafe { ntt_avx2::<Primes30>(&fwd, &mut data_avx) };
+            unsafe { ntt_avx512::<Primes30>(&fwd, &mut data_avx) };
             ntt_ref::<Primes30>(&fwd, &mut data_ref);
 
             for i in 0..4 * n {

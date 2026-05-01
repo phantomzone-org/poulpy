@@ -2,7 +2,7 @@ use core::arch::x86_64::{__m512i, _mm512_loadu_si512, _mm512_setzero_si512, _mm5
 
 /// AVX-512 vectorised `res[i] = -src[i]`.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_negate_ifma(res: &mut [i64], src: &[i64]) {
+pub unsafe fn znx_negate_avx512(res: &mut [i64], src: &[i64]) {
     debug_assert_eq!(res.len(), src.len());
 
     let n = res.len();
@@ -28,7 +28,7 @@ pub unsafe fn znx_negate_ifma(res: &mut [i64], src: &[i64]) {
 
 /// AVX-512 vectorised `res[i] = -res[i]`.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_negate_assign_ifma(res: &mut [i64]) {
+pub unsafe fn znx_negate_assign_avx512(res: &mut [i64]) {
     let n = res.len();
     let span = n >> 3;
 

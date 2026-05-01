@@ -2,7 +2,7 @@
 /// Caller must ensure the CPU supports AVX-512F.
 /// Assumes all inputs fit in i32 (so i32×i32→i64 is exact).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn i64_convolution_by_const_1coeff_ifma(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
+pub unsafe fn i64_convolution_by_const_1coeff_avx512(k: usize, dst: &mut [i64; 8], a: &[i64], a_size: usize, b: &[i64]) {
     use core::arch::x86_64::{
         __m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_mul_epi32, _mm512_set1_epi32, _mm512_setzero_si512,
         _mm512_storeu_si512,
@@ -49,7 +49,7 @@ pub unsafe fn i64_convolution_by_const_1coeff_ifma(k: usize, dst: &mut [i64; 8],
 /// Caller must ensure the CPU supports AVX-512F.
 /// Assumes all values in `a` and `b` fit in i32 (so i32×i32→i64 is exact).
 #[target_feature(enable = "avx512f")]
-pub unsafe fn i64_convolution_by_const_2coeffs_ifma(
+pub unsafe fn i64_convolution_by_const_2coeffs_avx512(
     k: usize,
     dst: &mut [i64; 16],
     a: &[i64],
@@ -164,7 +164,7 @@ pub unsafe fn i64_convolution_by_const_2coeffs_ifma(
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub fn i64_extract_1blk_contiguous_ifma(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+pub fn i64_extract_1blk_contiguous_avx512(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
     use core::arch::x86_64::{__m512i, _mm512_loadu_si512, _mm512_storeu_si512};
 
     unsafe {
@@ -186,7 +186,7 @@ pub fn i64_extract_1blk_contiguous_ifma(n: usize, offset: usize, rows: usize, bl
 /// # Safety
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`).
 #[target_feature(enable = "avx512f")]
-pub fn i64_save_1blk_contiguous_ifma(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
+pub fn i64_save_1blk_contiguous_avx512(n: usize, offset: usize, rows: usize, blk: usize, dst: &mut [i64], src: &[i64]) {
     use core::arch::x86_64::{__m512i, _mm512_loadu_si512, _mm512_storeu_si512};
 
     unsafe {

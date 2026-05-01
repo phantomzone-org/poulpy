@@ -4,7 +4,7 @@ use core::arch::x86_64::{__m512i, _mm512_add_epi64, _mm512_loadu_si512, _mm512_s
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_add_ifma(res: &mut [i64], a: &[i64], b: &[i64]) {
+pub unsafe fn znx_add_avx512(res: &mut [i64], a: &[i64], b: &[i64]) {
     debug_assert_eq!(res.len(), a.len());
     debug_assert_eq!(res.len(), b.len());
 
@@ -35,7 +35,7 @@ pub unsafe fn znx_add_ifma(res: &mut [i64], a: &[i64], b: &[i64]) {
 /// Caller must ensure the CPU supports AVX-512F (e.g., via `is_x86_feature_detected!("avx512f")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx512f")]
-pub unsafe fn znx_add_assign_ifma(res: &mut [i64], a: &[i64]) {
+pub unsafe fn znx_add_assign_avx512(res: &mut [i64], a: &[i64]) {
     debug_assert_eq!(res.len(), a.len());
 
     let n = res.len();

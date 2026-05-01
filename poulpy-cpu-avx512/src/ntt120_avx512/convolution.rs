@@ -14,9 +14,10 @@ use poulpy_hal::layouts::{CnvPVecLToRef, CnvPVecRToRef, Module, VecZnxDftToMut, 
 
 use super::{
     arithmetic_avx512::{
-        pack_left_1blk_x2_avx2, pack_right_1blk_x2_avx2, pairwise_pack_left_1blk_x2_avx2, pairwise_pack_right_1blk_x2_avx2,
+        pack_left_1blk_x2_avx512, pack_right_1blk_x2_avx512, pairwise_pack_left_1blk_x2_avx512,
+        pairwise_pack_right_1blk_x2_avx512,
     },
-    mat_vec_avx512::vec_mat1col_product_x2_bbc_avx2,
+    mat_vec_avx512::vec_mat1col_product_x2_bbc_avx512,
 };
 use crate::NTT120Avx512;
 
@@ -89,8 +90,8 @@ pub(crate) unsafe fn cnv_apply_dft_avx<R, A, B>(
 
     for blk in 0..n_blks {
         unsafe {
-            pack_left_1blk_x2_avx2(a_tmp, &a_raw_u64[a_col_offset_u64..], a_size, a_row_stride_u64, blk);
-            pack_right_1blk_x2_avx2(b_tmp, &b_raw_u32[b_col_offset_u32..], b_size, b_row_stride_u32, blk);
+            pack_left_1blk_x2_avx512(a_tmp, &a_raw_u64[a_col_offset_u64..], a_size, a_row_stride_u64, blk);
+            pack_right_1blk_x2_avx512(b_tmp, &b_raw_u32[b_col_offset_u32..], b_size, b_row_stride_u32, blk);
         }
 
         for k in 0..min_size {
@@ -103,7 +104,7 @@ pub(crate) unsafe fn cnv_apply_dft_avx<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                vec_mat1col_product_x2_bbc_avx2::<true>(
+                vec_mat1col_product_x2_bbc_avx512::<true>(
                     meta,
                     ell,
                     &mut res_u64[8 * blk..8 * blk + 8],
@@ -182,7 +183,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_avx<R, A, B>(
 
     for blk in 0..n_blks {
         unsafe {
-            pairwise_pack_left_1blk_x2_avx2(
+            pairwise_pack_left_1blk_x2_avx512(
                 a_tmp,
                 &a_raw_u64[a_col_offset_u64_i..],
                 &a_raw_u64[a_col_offset_u64_j..],
@@ -190,7 +191,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_avx<R, A, B>(
                 a_row_stride_u64,
                 blk,
             );
-            pairwise_pack_right_1blk_x2_avx2(
+            pairwise_pack_right_1blk_x2_avx512(
                 b_tmp,
                 &b_raw_u32[b_col_offset_u32_i..],
                 &b_raw_u32[b_col_offset_u32_j..],
@@ -210,7 +211,7 @@ pub(crate) unsafe fn cnv_pairwise_apply_dft_avx<R, A, B>(
 
             let res_u64: &mut [u64] = cast_slice_mut(res.at_mut(res_col, k));
             unsafe {
-                vec_mat1col_product_x2_bbc_avx2::<true>(
+                vec_mat1col_product_x2_bbc_avx512::<true>(
                     meta,
                     ell,
                     &mut res_u64[8 * blk..8 * blk + 8],
