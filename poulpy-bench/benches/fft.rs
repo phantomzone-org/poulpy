@@ -139,12 +139,12 @@ pub fn bench_ifft_avx(c: &mut Criterion) {
     group.finish();
 }
 
-#[cfg(not(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",)))]
+#[cfg(not(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f",)))]
 fn bench_fft_ifma(_c: &mut Criterion) {
-    eprintln!("Skipping: IFMA FFT benchmark requires x86_64 + AVX512F");
+    eprintln!("Skipping: AVX-512 FFT benchmark requires x86_64 + AVX512F");
 }
 
-#[cfg(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",))]
+#[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f",))]
 pub fn bench_fft_ifma(c: &mut Criterion) {
     use poulpy_cpu_avx512::ReimFFTAvx512;
 
@@ -171,12 +171,12 @@ pub fn bench_fft_ifma(c: &mut Criterion) {
     group.finish();
 }
 
-#[cfg(not(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",)))]
+#[cfg(not(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f",)))]
 fn bench_ifft_ifma(_c: &mut Criterion) {
-    eprintln!("Skipping: IFMA IFFT benchmark requires x86_64 + AVX512F");
+    eprintln!("Skipping: AVX-512 IFFT benchmark requires x86_64 + AVX512F");
 }
 
-#[cfg(all(feature = "enable-ifma", target_arch = "x86_64", target_feature = "avx512f",))]
+#[cfg(all(feature = "enable-avx512f", target_arch = "x86_64", target_feature = "avx512f",))]
 pub fn bench_ifft_ifma(c: &mut Criterion) {
     use poulpy_cpu_avx512::ReimIFFTAvx512;
 

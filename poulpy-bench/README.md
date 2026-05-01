@@ -12,9 +12,12 @@ Each benchmark binary covers one subsystem. Binaries that operate on generic pol
 | `NTT120Ref` | NTT120, portable | *(always enabled)* | `ntt120-ref` |
 | `FFT64Avx` | FFT64, AVX2/FMA | `enable-avx` | `fft64-avx` |
 | `NTT120Avx` | NTT120, AVX2/FMA | `enable-avx` | `ntt120-avx` |
+| `FFT64Avx512` | FFT64, AVX-512F | `enable-avx512f` | `fft64-avx512` |
+| `NTT120Avx512` | NTT120, AVX-512F | `enable-avx512f` | `ntt120-avx512` |
 | `NTT120Ifma` | NTT IFMA, AVX512-IFMA | `enable-ifma` | `ntt-ifma` |
 
 The `enable-avx` flag enables the `poulpy-cpu-avx` backend and requires `target_arch = "x86_64"`.
+The `enable-avx512f` flag enables the AVX-512F backends in `poulpy-cpu-avx512` and requires `target_arch = "x86_64"` plus `AVX512F`.
 The `enable-ifma` flag enables the `poulpy-cpu-avx512` backend and requires `target_arch = "x86_64"` plus `AVX512F`, `AVX512IFMA`, and `AVX512VL`.
 
 ## Benchmark binaries
@@ -29,8 +32,8 @@ The `enable-ifma` flag enables the `poulpy-cpu-avx512` backend and requires `tar
 | `convolution` | Polynomial convolution (prepare + apply) | all |
 | `svp` | Scalar-vector product (prepare, DFT-to-DFT) | all |
 | `vmp` | Vector-matrix product (prepare, DFT-to-DFT) | all |
-| `fft` | Raw FFT / iFFT primitive | hardcoded (FFT64 ref + avx) |
-| `ntt` | Raw NTT / iNTT primitive | hardcoded (NTT ref + avx + ifma) |
+| `fft` | Raw FFT / iFFT primitive | hardcoded (FFT64 ref + avx + avx512) |
+| `ntt` | Raw NTT / iNTT primitive | hardcoded (NTT ref + avx + avx512 + ifma) |
 
 ### Core-level (scheme-agnostic FHE operations)
 
