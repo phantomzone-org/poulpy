@@ -22,8 +22,8 @@ does not implement raw backend arithmetic by itself; instead, it composes
 `poulpy-hal` and `poulpy-core`. Default dispatches and fallback implementations
 flow through those lower layers, while `poulpy-ckks` remains free to override
 behavior at the scheme level when CKKS-specific semantics require it. Concrete
-execution still comes from backend crates such as `poulpy-cpu-ref` and
-`poulpy-cpu-avx`.
+execution still comes from backend crates such as `poulpy-cpu-ref`,
+`poulpy-cpu-avx`, and `poulpy-cpu-avx512`.
 
 ## Design Notes
 
@@ -210,6 +210,7 @@ will choose one of:
 
 - `poulpy-cpu-ref` for portable reference execution
 - `poulpy-cpu-avx` for optimized x86_64 execution when AVX2/FMA is available
+- `poulpy-cpu-avx512` for optimized x86_64 execution when AVX-512F (and optionally IFMA) is available
 
 Backend selection happens through the `BE` parameter of `Module<BE>`.
 

@@ -17,8 +17,8 @@
 //! ```
 //!
 //! Use:
-//! - `for_each_fft_backend!` for FFT64-specific operations (DFT domain, convolution, VMP/SVP)
-//! - `for_each_ntt_backend!` for NTT120-specific operations
+//! - `for_each_fft_backend!` for FFT64-specific operations (`fft` primitive benches)
+//! - `for_each_ntt_backend!` for NTT-family-specific operations (`ntt` primitive benches)
 //! - `for_each_backend!` for operations that work with any backend (generic GLWE ops, vec_znx, etc.)
 //!
 //! # Adding a new backend
@@ -71,12 +71,24 @@ macro_rules! for_each_fft_backend_family {
             use $fn as __f;
             __f::<poulpy_cpu_avx::FFT64Avx>($($arg,)* $c, "fft64-avx");
         }
+        #[cfg(all(feature = "enable-avx512f", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_avx512::FFT64Avx512>($($arg,)* $c, "fft64-avx512");
+        }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::FFT64GPU>($($arg,)* $c, "fft64-gpu"); }
     }};
 }
 
-/// Private: expands to every NTT120 backend in tier order (ref → avx → gpu).
+/// Private: expands to every NTT-family backend in tier order
+/// (ntt120-ref → ntt120-avx → ntt-ifma-ref → ntt-ifma → gpu).
+///
+/// Two reference scalar backends are listed because they cover different CRT layouts:
+/// `NTT120Ref` decomposes Q120 into four ~30-bit primes, while `NTTIfmaRef` decomposes
+/// it into three ~42-bit primes (matching the layout the AVX-512 IFMA backend
+/// accelerates). Benchmarking both gives an apples-to-apples scalar baseline for
+/// each SIMD backend.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! for_each_ntt_backend_family {
@@ -89,6 +101,20 @@ macro_rules! for_each_ntt_backend_family {
         {
             use $fn as __f;
             __f::<poulpy_cpu_avx::NTT120Avx>($($arg,)* $c, "ntt120-avx");
+        }
+        #[cfg(all(feature = "enable-avx512f", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_avx512::NTT120Avx512>($($arg,)* $c, "ntt120-avx512");
+        }
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_ref::NTTIfmaRef>($($arg,)* $c, "ntt-ifma-ref");
+        }
+        #[cfg(all(feature = "enable-ifma", target_arch = "x86_64"))]
+        {
+            use $fn as __f;
+            __f::<poulpy_cpu_avx512::NTT126Ifma>($($arg,)* $c, "ntt-ifma");
         }
         // #[cfg(feature = "enable-gpu")]
         // { use $fn as __f; __f::<poulpy_gpu::NTT120GPU>($($arg,)* $c, "ntt120-gpu"); }
@@ -116,7 +142,7 @@ macro_rules! for_each_ntt_backend {
     }};
 }
 
-/// Run a bench function against every available backend (FFT64 and NTT120).
+/// Run a bench function against every available backend (FFT64 and NTT-family).
 ///
 /// Use for operations that work with any backend: generic GLWE operations,
 /// `vec_znx` / `vec_znx_big` arithmetic, encryption, decryption, key-switching, etc.

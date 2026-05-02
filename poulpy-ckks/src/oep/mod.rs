@@ -27,6 +27,10 @@ unsafe impl CKKSImpl<poulpy_cpu_ref::NTT120Ref> for poulpy_cpu_ref::NTT120Ref {
     crate::impl_ckks_default_methods!(poulpy_cpu_ref::NTT120Ref);
 }
 
+unsafe impl CKKSImpl<poulpy_cpu_ref::NTTIfmaRef> for poulpy_cpu_ref::NTTIfmaRef {
+    crate::impl_ckks_default_methods!(poulpy_cpu_ref::NTTIfmaRef);
+}
+
 #[cfg(feature = "enable-avx")]
 unsafe impl CKKSImpl<poulpy_cpu_avx::FFT64Avx> for poulpy_cpu_avx::FFT64Avx {
     crate::impl_ckks_default_methods!(poulpy_cpu_avx::FFT64Avx);
@@ -35,4 +39,19 @@ unsafe impl CKKSImpl<poulpy_cpu_avx::FFT64Avx> for poulpy_cpu_avx::FFT64Avx {
 #[cfg(feature = "enable-avx")]
 unsafe impl CKKSImpl<poulpy_cpu_avx::NTT120Avx> for poulpy_cpu_avx::NTT120Avx {
     crate::impl_ckks_default_methods!(poulpy_cpu_avx::NTT120Avx);
+}
+
+#[cfg(feature = "enable-avx512f")]
+unsafe impl CKKSImpl<poulpy_cpu_avx512::FFT64Avx512> for poulpy_cpu_avx512::FFT64Avx512 {
+    crate::impl_ckks_default_methods!(poulpy_cpu_avx512::FFT64Avx512);
+}
+
+#[cfg(feature = "enable-avx512f")]
+unsafe impl CKKSImpl<poulpy_cpu_avx512::NTT120Avx512> for poulpy_cpu_avx512::NTT120Avx512 {
+    crate::impl_ckks_default_methods!(poulpy_cpu_avx512::NTT120Avx512);
+}
+
+#[cfg(feature = "enable-ifma")]
+unsafe impl CKKSImpl<poulpy_cpu_avx512::NTT126Ifma> for poulpy_cpu_avx512::NTT126Ifma {
+    crate::impl_ckks_default_methods!(poulpy_cpu_avx512::NTT126Ifma);
 }

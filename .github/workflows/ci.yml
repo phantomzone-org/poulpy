@@ -19,7 +19,7 @@ jobs:
     - name: Install pinned Rust nightly
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: nightly-2026-03-21
+        toolchain: nightly-2026-04-25
         components: clippy, rustfmt
 
     - name: Cache cargo deps
@@ -43,29 +43,105 @@ jobs:
           echo "supported=false" >> $GITHUB_OUTPUT
         fi
 
+    # Detect whether runner supports AVX-512F (without requiring IFMA)
+    - name: Detect AVX-512F support
+      id: avx512fcheck
+      run: |
+        if lscpu | grep -qi avx512f; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
+
+    # Detect whether runner supports AVX-512F + AVX-512IFMA + AVX-512VL
+    - name: Detect IFMA support
+      id: ifmacheck
+      run: |
+        if lscpu | grep -qi avx512f && lscpu | grep -qi avx512ifma && lscpu | grep -qi avx512vl; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
+
     # rustfmt always runs — unrelated to AVX support
     - name: rustfmt (check only)
       run: cargo fmt --all --check
 
-    # Build / lint / test WITH AVX
-    - name: Build (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+    # Build / lint / test WITH AVX + IFMA (preferred when available)
+    - name: Build (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl
       run: |
-        RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo build --workspace --all-targets --features enable-avx
+        cargo --config target-applies-to-host=false \
+          build --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-ifma
+
+    - name: Clippy (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl
+      run: |
+        cargo --config target-applies-to-host=false \
+          clippy --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-ifma -- -D warnings
+
+    - name: Tests (AVX + IFMA enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'true'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl
+      run: |
+        cargo --config target-applies-to-host=false \
+          test --workspace --target x86_64-unknown-linux-gnu --features enable-avx,enable-ifma
+
+    # Build / lint / test WITH AVX-512F only (FFT64Avx512 without NTT120Ifma).
+    # Active when the runner has AVX-512F but not IFMA (e.g. Skylake-X / Cascade Lake / KNL).
+    - name: Build (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f
+      run: |
+        cargo --config target-applies-to-host=false \
+          build --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-avx512f
+
+    - name: Clippy (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f
+      run: |
+        cargo --config target-applies-to-host=false \
+          clippy --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-avx512f -- -D warnings
+
+    - name: Tests (AVX + AVX-512F enabled, no IFMA)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'true' && steps.ifmacheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f
+      run: |
+        cargo --config target-applies-to-host=false \
+          test --workspace --target x86_64-unknown-linux-gnu --features enable-avx,enable-avx512f
+
+    # Build / lint / test WITH AVX (no AVX-512 at all)
+    - name: Build (AVX enabled)
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma
+      run: |
+        cargo --config target-applies-to-host=false \
+          build --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx
 
     - name: Clippy (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma
       run: |
-        RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo clippy --workspace --all-targets --features enable-avx -- -D warnings
+        cargo --config target-applies-to-host=false \
+          clippy --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx -- -D warnings
 
     - name: Tests (AVX enabled)
-      if: steps.avxcheck.outputs.supported == 'true'
+      if: steps.avxcheck.outputs.supported == 'true' && steps.avx512fcheck.outputs.supported == 'false'
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma
       run: |
-        RUSTDOCFLAGS="-C target-feature=+avx2 -C target-feature=+fma" \
-        RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo test --workspace --features enable-avx
+        cargo --config target-applies-to-host=false \
+          test --workspace --target x86_64-unknown-linux-gnu --features enable-avx
 
     # Build / lint / test WITHOUT AVX
     - name: Build (portable mode)
@@ -79,3 +155,62 @@ jobs:
     - name: Tests (portable mode)
       if: steps.avxcheck.outputs.supported == 'false'
       run: cargo test --workspace
+
+  # AVX-512 typecheck/clippy lane: GitHub-hosted runners do not expose AVX-512,
+  # so the conditional steps above never fire on PRs. This lane forces the
+  # AVX-512F + IFMA build to compile and lint on every push, ensuring the
+  # poulpy-cpu-avx512 crate stays buildable. Tests are NOT run here (no
+  # AVX-512 silicon to execute on); a self-hosted runner is required for that.
+  avx512-typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install pinned Rust nightly
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: nightly-2026-04-25
+        components: clippy
+
+    - name: Cache cargo deps
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-avx512-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-avx512-
+
+    - name: Build (AVX-512F + IFMA, no run)
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl
+      run: |
+        cargo --config target-applies-to-host=false \
+          build --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-ifma
+
+    - name: Clippy (AVX-512F + IFMA)
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f,+avx512ifma,+avx512vl
+      run: |
+        cargo --config target-applies-to-host=false \
+          clippy --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-ifma -- -D warnings
+
+    - name: Build (AVX-512F only, no IFMA, no run)
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f
+      run: |
+        cargo --config target-applies-to-host=false \
+          build --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-avx512f
+
+    - name: Clippy (AVX-512F only, no IFMA)
+      env:
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS: -C target-feature=+avx2,+fma,+avx512f
+      run: |
+        cargo --config target-applies-to-host=false \
+          clippy --workspace --all-targets --target x86_64-unknown-linux-gnu --features enable-avx,enable-avx512f -- -D warnings

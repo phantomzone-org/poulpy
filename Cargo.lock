@@ -536,6 +536,7 @@ dependencies = [
  "poulpy-ckks",
  "poulpy-core",
  "poulpy-cpu-avx",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
@@ -553,6 +554,7 @@ dependencies = [
  "paste",
  "poulpy-core",
  "poulpy-cpu-avx",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
@@ -567,6 +569,7 @@ dependencies = [
  "f128",
  "poulpy-core",
  "poulpy-cpu-avx",
+ "poulpy-cpu-avx512",
  "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
@@ -590,6 +593,24 @@ dependencies = [
 
 [[package]]
 name = "poulpy-cpu-avx"
+version = "0.5.0"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "itertools 0.14.0",
+ "once_cell",
+ "paste",
+ "poulpy-core",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
+]
+
+[[package]]
+name = "poulpy-cpu-avx512"
 version = "0.5.0"
 dependencies = [
  "bytemuck",
@@ -633,6 +654,7 @@ dependencies = [
  "cmake",
  "dashu-float",
  "itertools 0.14.0",
+ "libc",
  "once_cell",
  "paste",
  "rand",

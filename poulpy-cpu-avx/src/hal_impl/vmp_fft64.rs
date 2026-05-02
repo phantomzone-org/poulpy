@@ -26,6 +26,20 @@ macro_rules! hal_impl_vmp_fft64 {
             )
         }
 
+        fn vmp_apply_dft_to_dft_accumulate_tmp_bytes(
+            module: &Module<Self>,
+            res_size: usize,
+            a_size: usize,
+            b_rows: usize,
+            b_cols_in: usize,
+            b_cols_out: usize,
+            b_size: usize,
+        ) -> usize {
+            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_accumulate_tmp_bytes_default(
+                module, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
+            )
+        }
+
         fn vmp_apply_dft_to_dft<R, A, C>(
             module: &Module<Self>,
             res: &mut R,
@@ -38,7 +52,27 @@ macro_rules! hal_impl_vmp_fft64 {
             A: VecZnxDftToRef<Self>,
             C: VmpPMatToRef<Self>,
         {
-            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, scratch)
+            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_default(module, res, a, b, limb_offset, scratch);
+            unsafe {
+                // AVX overwrite-mode saves use non-temporal stores; fence once
+                // after the delegated apply path before any later load from `res`.
+                core::arch::x86_64::_mm_sfence();
+            }
+        }
+
+        fn vmp_apply_dft_to_dft_accumulate<R, A, C>(
+            module: &Module<Self>,
+            res: &mut R,
+            a: &A,
+            b: &C,
+            limb_offset: usize,
+            scratch: &mut Scratch<Self>,
+        ) where
+            R: VecZnxDftToMut<Self>,
+            A: VecZnxDftToRef<Self>,
+            C: VmpPMatToRef<Self>,
+        {
+            <Self as FFT64VmpDefaults<Self>>::vmp_apply_dft_to_dft_accumulate_default(module, res, a, b, limb_offset, scratch)
         }
 
         fn vmp_zero<R>(module: &Module<Self>, res: &mut R)

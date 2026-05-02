@@ -36,12 +36,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: res.rank(),
         };
 
-        let lvl_0 = GLWETensor::bytes_of_from_infos(&glwe_layout);
-        let lvl_1 = self
-            .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
-            .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
-
-        lvl_0 + lvl_1
+        GLWETensor::bytes_of_from_infos(&glwe_layout)
+            + self
+                .glwe_tensor_apply_tmp_bytes(&glwe_layout, res, res)
+                .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk))
     }
 
     fn ckks_mul_into_default(
@@ -58,6 +56,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, a, b)?;
 
+        let a_ref = a.to_ref();
+        let b_ref = b.to_ref();
+
         let tensor_layout = GLWELayout {
             n: dst.n(),
             base2k: dst.base2k(),
@@ -70,9 +71,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         self.glwe_tensor_apply(
             cnv_offset,
             &mut tmp,
-            &a.to_ref(),
+            &a_ref,
             a.effective_k(),
-            &b.to_ref(),
+            &b_ref,
             b.effective_k(),
             scratch_1,
         );
@@ -138,7 +139,6 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let lvl_1 = self
             .glwe_tensor_square_apply_tmp_bytes(&glwe_layout, res)
             .max(self.glwe_tensor_relinearize_tmp_bytes(res, &glwe_layout, tsk));
-
         lvl_0 + lvl_1
     }
 
@@ -154,7 +154,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, a, a)?;
-
+        let a_ref = a.to_ref();
         let tensor_layout = GLWELayout {
             n: dst.n(),
             base2k: dst.base2k(),
@@ -163,7 +163,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         };
 
         let (mut tmp, scratch_1) = scratch.take_glwe_tensor(&tensor_layout);
-        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a.to_ref(), a.effective_k(), scratch_1);
+        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_ref, a.effective_k(), scratch_1);
         self.glwe_tensor_relinearize(&mut dst.to_mut(), &tmp, tsk, tsk.size(), scratch_1);
 
         dst.meta.log_budget = res_log_budget;
@@ -182,7 +182,6 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_ct_params(dst, dst, dst)?;
-
         let tensor_layout = GLWELayout {
             n: dst.n(),
             base2k: dst.base2k(),

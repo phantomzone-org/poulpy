@@ -12,7 +12,8 @@ This backend integrates transparently with:
 
 - `poulpy-hal`
 - `poulpy-core`
-- `poulpy-schemes` (CKKS, bin-FHE)
+- `poulpy-ckks`
+- `poulpy-bin-fhe`
 
 ---
 
@@ -65,6 +66,12 @@ For maximum performance on x86_64 CPUs with AVX2 + FMA support, consider enablin
 poulpy-cpu-avx (feature: enable-avx)
 ```
 
+For x86_64 CPUs with AVX-512 support, consider the AVX-512 backend:
+
+```
+poulpy-cpu-avx512 (features: enable-avx512f, enable-ifma)
+```
+
 Benchmarks and applications can freely switch between backends without changing source code — backend selection can be handled with feature flags, for example
 
 ```rust
@@ -91,7 +98,8 @@ Your backend will automatically integrate with:
 
 * `poulpy-hal`
 * `poulpy-core`
-* `poulpy-schemes` (CKKS, bin-FHE)
+* `poulpy-ckks`
+* `poulpy-bin-fhe`
 
 No modifications to those crates are necessary — the HAL provides the extension points.
 

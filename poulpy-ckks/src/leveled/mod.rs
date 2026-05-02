@@ -3,8 +3,8 @@
 //! This module provides the core leveled evaluation pipeline:
 //!
 //! - [`api`]: public trait definitions for all CKKS operations.
-//! - [`delegates`]: blanket `impl Trait for Module<BE>` forwarding to OEP/default impls.
-//! - [`oep`]: backend dispatch traits bridging delegates to `CKKSImpl`.
+//! - `delegates` (private): blanket `impl Trait for Module<BE>` forwarding to OEP/default impls.
+//! - `oep` (private): backend dispatch traits bridging delegates to `CKKSImpl`.
 //! - Operation-family modules (`add`, `sub`, `neg`, `mul`, `pow2`, `rotate`,
 //!   `conjugate`, `pt_znx`, `rescale`): default algorithm implementations.
 //!

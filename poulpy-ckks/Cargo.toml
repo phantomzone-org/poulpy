@@ -10,10 +10,13 @@ homepage = "https://github.com/poulpy-fhe/poulpy"
 documentation = "https://docs.rs/poulpy-ckks"
 
 [features]
-enable-avx = ["poulpy-cpu-avx/enable-avx"]
+enable-avx = ["dep:poulpy-cpu-avx", "poulpy-core/enable-avx", "poulpy-cpu-avx/enable-avx"]
+enable-avx512f = ["dep:poulpy-cpu-avx512", "poulpy-core/enable-avx512f", "poulpy-cpu-avx512/enable-avx512f"]
+enable-ifma = ["enable-avx512f", "poulpy-core/enable-ifma", "poulpy-cpu-avx512/enable-ifma"]
 
 [dependencies]
-poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-avx = {workspace = true, optional = true}
+poulpy-cpu-avx512 = {workspace = true, optional = true}
 poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
