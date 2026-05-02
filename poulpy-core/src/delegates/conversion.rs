@@ -4,8 +4,8 @@ use crate::{
     api::{GGSWExpandRows, GGSWFromGGLWE, GLWEFromLWE, LWEFromGLWE},
     conversion::LWEFromGLWEDefault,
     layouts::{
-        GGLWEInfos, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
-        LWEToBackendMut, LWEToBackendRef,
+        GGLWEInfos, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut,
+        LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
     oep::{ConversionImpl, GLWEKeyswitchImpl, GLWERotateImpl},
@@ -123,13 +123,14 @@ impl_conversion_delegate!(
         BE::ggsw_expand_rows_tmp_bytes(self, res_infos, tsk_infos)
     }
 
-    fn ggsw_expand_row<'s, 'r, T>(
+    fn ggsw_expand_row<'s, R, T>(
         &self,
-        res: &mut GGSWBackendMut<'r, BE>,
+        res: &mut R,
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
     {

@@ -1,10 +1,11 @@
 use anyhow::Result;
 use poulpy_core::layouts::{
-    GGLWEInfos, GLWEInfos, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef,
+    GGLWEInfos, GLWEInfos, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+    prepared::GLWETensorKeyPreparedToBackendRef,
 };
 use poulpy_hal::layouts::{Backend, Data, ScratchArena};
 
-use crate::{CKKSInfos, CKKSPlaintexToBackendRef, layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSInfos, layouts::CKKSCiphertext, oep::CKKSImpl};
 
 pub trait CKKSAddManyOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_add_many_tmp_bytes(&self) -> usize;
@@ -34,8 +35,8 @@ pub trait CKKSMulManyOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        CKKSCiphertext<Dst>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
-        CKKSCiphertext<Src>: GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
         GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 }
 
@@ -67,8 +68,8 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        CKKSCiphertext<B>: GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<B>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
         GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
     fn ckks_mul_add_pt_vec_znx_into<Dst: Data, A: Data, P>(
@@ -80,8 +81,8 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
     fn ckks_mul_add_pt_const_znx_into<Dst: Data, A: Data, P>(
         &self,
@@ -92,8 +93,8 @@ pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }
 
 pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
@@ -124,8 +125,8 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        CKKSCiphertext<B>: GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<B>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
         GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
     fn ckks_mul_sub_pt_vec_znx_into<Dst: Data, A: Data, P>(
@@ -137,8 +138,8 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
     fn ckks_mul_sub_pt_const_znx_into<Dst: Data, A: Data, P>(
         &self,
@@ -149,8 +150,8 @@ pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }
 
 pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
@@ -181,8 +182,8 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<D>: GLWEToBackendRef<BE> + GLWEInfos,
-        CKKSCiphertext<E>: GLWEToBackendRef<BE> + GLWEInfos,
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<E>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
         GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
     fn ckks_dot_product_pt_vec_znx<Dst: Data, D: Data, E>(
@@ -194,8 +195,8 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<D>: GLWEToBackendRef<BE> + GLWEInfos,
-        E: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
     fn ckks_dot_product_pt_const_znx<Dst: Data, D: Data, E>(
         &self,
@@ -206,6 +207,6 @@ pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<D>: GLWEToBackendRef<BE> + GLWEInfos,
-        E: CKKSPlaintexToBackendRef<BE> + CKKSInfos;
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }

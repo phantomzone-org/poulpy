@@ -417,30 +417,4 @@ where
         let ggsw: GGSWPreparedBackendRef<'_, BE> = ggsw.to_backend_ref();
         glwe_external_product_dft_fill(self, res_dft, a, &ggsw, scratch);
     }
-
-    fn glwe_external_product_internal<'s, 'r, 'a, G>(
-        &self,
-        mut res_dft: VecZnxDft<BE::BufMut<'r>, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        G: GGSWPreparedToBackendRef<BE>,
-        for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>,
-        BE: 's,
-    {
-        let ggsw: GGSWPreparedBackendRef<'_, BE> = ggsw.to_backend_ref();
-
-        assert_eq!(a.base2k(), ggsw.base2k());
-        assert!(
-            scratch.available() >= self.glwe_external_product_internal_tmp_bytes(&ggsw, a, &ggsw),
-            "scratch.available(): {} < GLWEExternalProductInternal::glwe_external_product_internal_tmp_bytes: {}",
-            scratch.available(),
-            self.glwe_external_product_internal_tmp_bytes(&ggsw, a, &ggsw)
-        );
-
-        let cols: usize = (ggsw.rank() + 1).into();
-        let (mut res_big, mut scratch_1) = scratch.borrow().take_vec_znx_big(self, cols, ggsw.size());
-        glwe_external_product_internal_fill(self, &mut res_big, &mut res_dft, a, &ggsw, &mut scratch_1.borrow());
-    }
 }

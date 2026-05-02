@@ -4,8 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     decryption::{GLWEDecryptDefault, GLWETensorDecryptDefault, LWEDecryptDefault},
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, LWEInfos,
-        LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos,
+        GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
+        LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos,
         prepared::{GLWESecretPreparedToBackendRef, GLWESecretTensorPreparedToBackendRef},
     },
 };
@@ -23,8 +23,8 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
 
     fn glwe_decrypt<'s, R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -47,8 +47,8 @@ pub unsafe trait DecryptionImpl<BE: Backend>: Backend {
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
+        GLWEPlaintext<P>: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos;
 
@@ -65,8 +65,8 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
 
     fn glwe_decrypt<'s, R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -89,8 +89,8 @@ pub trait DecryptionDefaults<BE: Backend>: Backend {
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
+        GLWEPlaintext<P>: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos;
 
@@ -115,8 +115,8 @@ where
 
     fn glwe_decrypt<'s, R, P, S>(module: &Module<BE>, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        R: GLWEToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
@@ -148,8 +148,8 @@ where
         sk_tensor: &GLWESecretTensorPrepared<S1, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        GLWETensor<R>: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
+        GLWEPlaintext<P>: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos,
     {

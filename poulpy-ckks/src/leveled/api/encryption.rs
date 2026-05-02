@@ -1,14 +1,12 @@
 use anyhow::Result;
 use poulpy_core::{
     EncryptionInfos,
-    layouts::{GLWEInfos, GLWESecretPreparedToBackendRef},
+    layouts::{GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::{
     layouts::{Backend, ScratchArena},
     source::Source,
 };
-
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef, CKKSPlaintexToBackendRef, CKKSPlaintextVecZnxToBackendMut};
 
 use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
@@ -30,8 +28,8 @@ pub trait CKKSEncrypt<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         S: GLWESecretPreparedToBackendRef<BE>,
-        Dct: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Dpt: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dct: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dpt: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         BE: 's;
 }
 
@@ -43,6 +41,6 @@ pub trait CKKSDecrypt<BE: Backend + CKKSImpl<BE>> {
     fn ckks_decrypt<Dpt, Dct, S>(&self, pt: &mut Dpt, ct: &Dct, sk: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        Dpt: CKKSPlaintextVecZnxToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Dct: CKKSCiphertextToBackendRef<BE> + CKKSInfos;
+        Dpt: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dct: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 }

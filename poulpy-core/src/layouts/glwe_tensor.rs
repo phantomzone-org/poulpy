@@ -136,6 +136,18 @@ where
     }
 }
 
+impl<BE: Backend, D: Data> GLWEToBackendRef<BE> for &GLWETensor<D>
+where
+    VecZnx<D>: VecZnxToBackendRef<BE>,
+{
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: self.data.to_backend_ref(),
+        }
+    }
+}
+
 impl<BE: Backend, D: Data> GLWEToBackendMut<BE> for GLWETensor<D>
 where
     VecZnx<D>: VecZnxToBackendRef<BE> + VecZnxToBackendMut<BE>,

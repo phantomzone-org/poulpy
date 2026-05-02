@@ -17,10 +17,11 @@ use crate::{
     api::GLWEAutomorphism,
     glwe_packer::{GLWEPacker, pack_core},
     layouts::{
-        GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos, ModuleCoreAlloc,
-        ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
-        glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef,
+        BackendGLWE, GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos,
+        ModuleCoreAlloc, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
+        glwe_backend_ref_from_mut, glwe_backend_ref_from_ref,
+        prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
 };
 
@@ -36,7 +37,7 @@ pub trait GLWETrace<BE: Backend> {
     fn glwe_trace<'s, R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -44,7 +45,7 @@ pub trait GLWETrace<BE: Backend> {
 
     fn glwe_trace_assign<'s, R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -68,7 +69,7 @@ pub trait GLWEPacking<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: crate::layouts::GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendMut<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
@@ -97,11 +98,11 @@ where
         auto_keys: &H,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        A: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        crate::layouts::BackendGLWE<BE>: crate::layouts::GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
         BE: 's,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
@@ -118,31 +119,26 @@ pub trait GLWEMulConst<BE: Backend> {
     fn glwe_mul_const<'s, R, A, B>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWE<R>,
-        a: &GLWE<A>,
-        b: &GLWEPlaintext<B>,
+        res: &mut R,
+        a: &A,
+        b: &B,
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        B: Data,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>,
-        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+        B: GLWEToBackendRef<BE> + GLWEInfos;
 
     fn glwe_mul_const_assign<'s, R, B>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWE<R>,
-        b: &GLWEPlaintext<B>,
+        res: &mut R,
+        b: &B,
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        B: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
-        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        B: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
 pub trait GLWEMulPlain<BE: Backend> {
@@ -156,34 +152,29 @@ pub trait GLWEMulPlain<BE: Backend> {
     fn glwe_mul_plain<'s, R, A, B>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWE<R>,
-        a: &GLWE<A>,
+        res: &mut R,
+        a: &A,
         a_effective_k: usize,
-        b: &GLWEPlaintext<B>,
+        b: &B,
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        B: Data,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>,
-        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+        B: GLWEToBackendRef<BE> + GLWEInfos;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_mul_plain_assign<'s, R, A>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWE<R>,
+        res: &mut R,
         res_effective_k: usize,
-        a: &GLWEPlaintext<A>,
+        a: &A,
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
-        GLWEPlaintext<A>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
 pub trait GLWETensoring<BE: Backend> {
@@ -205,47 +196,40 @@ pub trait GLWETensoring<BE: Backend> {
     fn glwe_tensor_apply<'s, R, A, B>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWETensor<R>,
-        a: &GLWE<A>,
+        res: &mut R,
+        a: &A,
         a_effective_k: usize,
-        b: &GLWE<B>,
+        b: &B,
         b_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        B: Data,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
-        GLWE<B>: crate::layouts::GLWEToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+        B: GLWEToBackendRef<BE> + GLWEInfos;
 
     #[allow(clippy::too_many_arguments)]
     fn glwe_tensor_square_apply<'s, R, A>(
         &self,
         cnv_offset: usize,
-        res: &mut GLWETensor<R>,
-        a: &GLWE<A>,
+        res: &mut R,
+        a: &A,
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        GLWETensor<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos;
 
     fn glwe_tensor_relinearize<'s, R, A, T>(
         &self,
-        res: &mut GLWE<R>,
-        a: &GLWETensor<A>,
+        res: &mut R,
+        a: &A,
         tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: Data,
-        A: Data,
-        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
-        GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize
     where

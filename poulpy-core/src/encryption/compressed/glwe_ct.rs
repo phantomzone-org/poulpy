@@ -9,7 +9,7 @@ use crate::{
     EncryptionInfos, ScratchArenaTakeCore,
     encryption::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToBackendRef, LWEInfos, compressed::GLWECompressedToBackendMut,
+        GLWECompressedSeedMut, GLWEInfos, GLWEToBackendRef, LWEInfos, compressed::GLWECompressedToBackendMut,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -31,7 +31,7 @@ pub trait GLWECompressedEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -63,7 +63,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,

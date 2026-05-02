@@ -5,7 +5,7 @@ use crate::{
     keyswitching::{GGLWEKeyswitchDefault, GGSWKeyswitchDefault, GLWEKeyswitchDefault, LWEKeySwitchDefault},
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, LWEInfos, LWEToBackendMut, LWEToBackendRef,
+        GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -22,22 +22,16 @@ pub unsafe trait GLWEKeyswitchImpl<BE: Backend>: Backend {
         A: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_keyswitch<'s, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'_, BE>,
-        a: &GLWEBackendRef<'_, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_keyswitch_assign<'s, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'_, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch_assign<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 }
@@ -137,22 +131,16 @@ pub trait GLWEKeyswitchDefaults<BE: Backend>: Backend {
         A: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_keyswitch<'s, 'r, 'a, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 
-    fn glwe_keyswitch_assign<'s, 'r, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch_assign<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's;
 }
@@ -246,29 +234,26 @@ where
         <Module<BE> as GLWEKeyswitchDefault<BE>>::glwe_keyswitch_tmp_bytes_default(module, res_infos, a_infos, key_infos)
     }
 
-    fn glwe_keyswitch<'s, 'r, 'a, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch<'s, R, A, K>(module: &Module<BE>, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
-        <Module<BE> as GLWEKeyswitchDefault<BE>>::glwe_keyswitch_default(module, res, a, key, scratch)
+        let mut res = res.to_backend_mut();
+        let a = a.to_backend_ref();
+        <Module<BE> as GLWEKeyswitchDefault<BE>>::glwe_keyswitch_default(module, &mut res, &a, key, scratch)
     }
 
-    fn glwe_keyswitch_assign<'s, 'r, K>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_keyswitch_assign<'s, R, K>(module: &Module<BE>, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
-        <Module<BE> as GLWEKeyswitchDefault<BE>>::glwe_keyswitch_assign_default(module, res, key, scratch)
+        let mut res = res.to_backend_mut();
+        <Module<BE> as GLWEKeyswitchDefault<BE>>::glwe_keyswitch_assign_default(module, &mut res, key, scratch)
     }
 }
 

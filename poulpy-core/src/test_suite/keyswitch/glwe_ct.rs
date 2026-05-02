@@ -135,11 +135,7 @@ where
                     module.glwe_switching_key_prepared_alloc_from_infos(&ksk);
                 module.glwe_switching_key_prepare(&mut ksk_prepared, &ksk, &mut scratch.borrow());
 
-                {
-                    let glwe_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&glwe_in);
-                    let mut glwe_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut glwe_out);
-                    module.glwe_keyswitch(&mut glwe_out_backend, &glwe_in_backend, &ksk_prepared, &mut scratch.borrow());
-                }
+                module.glwe_keyswitch(&mut glwe_out, &glwe_in, &ksk_prepared, &mut scratch.borrow());
 
                 let noise_max: f64 = var_noise_gglwe_product_v2(
                     module.n() as f64,
@@ -278,10 +274,7 @@ where
                 module.glwe_switching_key_prepared_alloc_from_infos(&ksk);
             module.glwe_switching_key_prepare(&mut ksk_prepared, &ksk, &mut scratch.borrow());
 
-            {
-                let mut glwe_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut glwe_out);
-                module.glwe_keyswitch_assign(&mut glwe_out_backend, &ksk_prepared, &mut scratch.borrow());
-            }
+            module.glwe_keyswitch_assign(&mut glwe_out, &ksk_prepared, &mut scratch.borrow());
 
             let noise_max: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,

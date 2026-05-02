@@ -2,9 +2,9 @@ use anyhow::Result;
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWERotate, GLWETensoring, ScratchArenaTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPlaintextToBackendMut,
-        GLWEPlaintextToBackendRef, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
-        ModuleCoreAlloc, TorusPrecision, glwe_backend_data_mut, prepared::GLWETensorKeyPreparedToBackendRef,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEPlaintextLayout, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+        ModuleCoreAlloc, TorusPrecision, glwe_backend_data_mut, glwe_backend_mut_from_mut,
+        prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 use poulpy_hal::{
@@ -12,10 +12,7 @@ use poulpy_hal::{
     layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{
-    CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef, CKKSInfos, CKKSMeta, CKKSPlaintexToBackendRef, SetCKKSInfos,
-    checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget,
-};
+use crate::{CKKSInfos, CKKSMeta, SetCKKSInfos, checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget};
 
 pub(crate) trait CKKSMulDefault<BE: Backend> {
     fn ckks_mul_tmp_bytes_default<R, T>(&self, res: &R, tsk: &T) -> usize
@@ -49,9 +46,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     ) -> Result<()>
     where
         Self: GLWETensoring<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
-        B: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        B: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GLWETensorKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
@@ -63,39 +60,35 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             k: a.max_k().max(b.max_k()),
             rank: dst.rank(),
         };
-
-        let a_owned = copy_ct_to_owned::<BE, _, A>(self, a);
-        let b_owned = copy_ct_to_owned::<BE, _, B>(self, b);
-        let mut dst_owned = self.glwe_alloc_from_infos(dst);
-        let mut tmp = self.glwe_tensor_alloc_from_infos(&tensor_layout);
-        self.glwe_tensor_apply(
-            cnv_offset,
-            &mut tmp,
-            &a_owned,
-            a.effective_k(),
-            &b_owned,
-            b.effective_k(),
-            scratch,
-        );
-        self.glwe_tensor_relinearize(&mut dst_owned, &tmp, tsk, tsk.size(), scratch);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
+        let scratch_local = scratch.borrow();
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
+        {
+            let mut tmp_arg = &mut tmp;
+            self.glwe_tensor_apply(
+                cnv_offset,
+                &mut tmp_arg,
+                a,
+                a.effective_k(),
+                b,
+                b.effective_k(),
+                &mut scratch_local,
+            );
+        }
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_ref;
+        let mut tmp_arg = &mut tmp;
+        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
     }
 
-    fn ckks_mul_assign_default<Dst, A, T>(
-        &self,
-        dst: &mut Dst,
-        a: &A,
-        tsk: &T,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_mul_assign_default<Dst, A, T>(&self, dst: &mut Dst, a: &A, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWETensoring<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GLWETensorKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
@@ -107,22 +100,24 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             k: dst.max_k().max(a.max_k()),
             rank: dst.rank(),
         };
-
-        let dst_owned = copy_ct_to_owned::<BE, _, Dst>(self, dst);
-        let a_owned = copy_ct_to_owned::<BE, _, A>(self, a);
-        let mut res_owned = self.glwe_alloc_from_infos(dst);
-        let mut tmp = self.glwe_tensor_alloc_from_infos(&tensor_layout);
-        self.glwe_tensor_apply(
-            cnv_offset,
-            &mut tmp,
-            &dst_owned,
-            dst.effective_k(),
-            &a_owned,
-            a.effective_k(),
-            scratch,
-        );
-        self.glwe_tensor_relinearize(&mut res_owned, &tmp, tsk, tsk.size(), scratch);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &res_owned);
+        let scratch_local = scratch.borrow();
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
+        {
+            let mut tmp_arg = &mut tmp;
+            self.glwe_tensor_apply(
+                cnv_offset,
+                &mut tmp_arg,
+                &*dst,
+                dst.effective_k(),
+                a,
+                a.effective_k(),
+                &mut scratch_local,
+            );
+        }
+        let mut dst_mut = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_mut;
+        let mut tmp_arg = &mut tmp;
+        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -150,17 +145,11 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         lvl_0 + lvl_1
     }
 
-    fn ckks_square_into_default<Dst, A, T>(
-        &self,
-        dst: &mut Dst,
-        a: &A,
-        tsk: &T,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_square_into_default<Dst, A, T>(&self, dst: &mut Dst, a: &A, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWETensoring<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GLWETensorKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
@@ -172,28 +161,24 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             k: a.max_k(),
             rank: dst.rank(),
         };
+        let scratch_local = scratch.borrow();
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
+        {
+            let mut tmp_arg = tmp.to_backend_mut();
+            self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, a, a.effective_k(), &mut scratch_local);
+        }
 
-        let a_owned = copy_ct_to_owned::<BE, _, A>(self, a);
-        let mut dst_owned = self.glwe_alloc_from_infos(dst);
-        let mut tmp = self.glwe_tensor_alloc_from_infos(&tensor_layout);
-        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &a_owned, a.effective_k(), scratch);
-        self.glwe_tensor_relinearize(&mut dst_owned, &tmp, tsk, tsk.size(), scratch);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
+        self.glwe_tensor_relinearize(dst, &tmp.to_backend_ref(), tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
     }
 
-    fn ckks_square_assign_default<Dst, T>(
-        &self,
-        dst: &mut Dst,
-        tsk: &T,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_square_assign_default<Dst, T>(&self, dst: &mut Dst, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWETensoring<BE> + GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
         T: GLWETensorKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
@@ -205,13 +190,16 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             k: dst.max_k(),
             rank: dst.rank(),
         };
-
-        let dst_owned = copy_ct_to_owned::<BE, _, Dst>(self, dst);
-        let mut res_owned = self.glwe_alloc_from_infos(dst);
-        let mut tmp = self.glwe_tensor_alloc_from_infos(&tensor_layout);
-        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &dst_owned, dst.effective_k(), scratch);
-        self.glwe_tensor_relinearize(&mut res_owned, &tmp, tsk, tsk.size(), scratch);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &res_owned);
+        let scratch_local = scratch.borrow();
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
+        {
+            let mut tmp_arg = &mut tmp;
+            self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, &*dst, dst.effective_k(), &mut scratch_local);
+        }
+        let mut dst_mut = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_mut;
+        let mut tmp_arg = &mut tmp;
+        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -257,26 +245,24 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
         Self: GLWECopy<BE> + GLWEMulPlain<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf> + VecZnxCopyBackend<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
-        let a_owned = copy_ct_to_owned::<BE, _, A>(self, a);
-        let pt_owned = copy_pt_to_owned::<BE, _, P>(self, pt_znx);
-        let mut dst_owned = self.glwe_alloc_from_infos(dst);
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_ref;
         self.glwe_mul_plain(
             cnv_offset,
-            &mut dst_owned,
-            &a_owned,
+            &mut dst_arg,
+            a,
             a.effective_k(),
-            &pt_owned,
+            pt_znx,
             pt_znx.max_k().as_usize(),
             scratch,
         );
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
@@ -289,24 +275,23 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
         Self: GLWECopy<BE> + GLWEMulPlain<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf> + VecZnxCopyBackend<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, dst, pt_znx)?;
         let dst_effective_k = dst.effective_k();
-        let mut dst_owned = copy_ct_to_owned::<BE, _, Dst>(self, dst);
-        let pt_owned = copy_pt_to_owned::<BE, _, P>(self, pt_znx);
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_ref;
         self.glwe_mul_plain_assign(
             cnv_offset,
-            &mut dst_owned,
+            &mut dst_arg,
             dst_effective_k,
-            &pt_owned,
+            pt_znx,
             pt_znx.max_k().as_usize(),
             scratch,
         );
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
@@ -320,26 +305,33 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
         Self: GLWEAdd<BE> + GLWECopy<BE> + GLWEMulConst<BE> + GLWERotate<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_const_params(dst, a, pt_znx.meta())?;
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
         let rotate_by = (dst.n().as_usize() / 2) as i64;
-        let a_owned = copy_ct_to_owned::<BE, _, A>(self, a);
-        let mut dst_owned = self.glwe_alloc_from_infos(dst);
-        let pt_owned = copy_pt_to_owned::<BE, _, P>(self, pt_znx);
-        self.glwe_mul_const(cnv_offset, &mut dst_owned, &a_owned, &pt_owned, 0, scratch);
-        let mut tmp = self.glwe_alloc_from_infos(dst);
-        self.glwe_mul_const(cnv_offset, &mut tmp, &a_owned, &pt_owned, rotate_by as usize, scratch);
+        let scratch_local = scratch.borrow();
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe(dst);
         {
-            let mut tmp_ref = GLWEToBackendMut::<BE>::to_backend_mut(&mut tmp);
-            self.glwe_rotate_assign(rotate_by, &mut tmp_ref, scratch);
+            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+            let mut dst_arg = &mut dst_ref;
+            self.glwe_mul_const(cnv_offset, &mut dst_arg, a, pt_znx, 0, &mut scratch_local);
         }
-        self.glwe_add_assign(&mut dst_owned, &tmp);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
+        {
+            let mut tmp_arg = &mut tmp;
+            self.glwe_mul_const(cnv_offset, &mut tmp_arg, a, pt_znx, rotate_by as usize, &mut scratch_local);
+        }
+        {
+            let mut tmp_ref = glwe_backend_mut_from_mut::<BE>(&mut tmp);
+            self.glwe_rotate_assign(rotate_by, &mut tmp_ref, &mut scratch_local);
+        }
+        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_ref;
+        let mut tmp_arg = &mut tmp;
+        self.glwe_add_assign(&mut dst_arg, &tmp_arg);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -349,76 +341,33 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     fn ckks_mul_pt_const_znx_assign_default<Dst, P>(
         &self,
         dst: &mut Dst,
-        pt_znx: &P,
+        cnst: &P,
+        cnst_coeff: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
-        Self: GLWEAdd<BE> + GLWECopy<BE> + GLWEMulConst<BE> + GLWERotate<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
+        Self: GLWEMulConst<BE>,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_const_params(dst, dst, pt_znx.meta())?;
-        let rotate_by = (dst.n().as_usize() / 2) as i64;
-        let mut dst_owned = copy_ct_to_owned::<BE, _, Dst>(self, dst);
-        let pt_owned = copy_pt_to_owned::<BE, _, P>(self, pt_znx);
-        let mut tmp = self.glwe_alloc_from_infos(dst);
-        let dst_src = copy_ct_to_owned::<BE, _, Dst>(self, dst);
-        self.glwe_mul_const(cnv_offset, &mut tmp, &dst_src, &pt_owned, rotate_by as usize, scratch);
-        self.glwe_mul_const_assign(cnv_offset, &mut dst_owned, &pt_owned, 0, scratch);
-        {
-            let mut tmp_ref = GLWEToBackendMut::<BE>::to_backend_mut(&mut tmp);
-            self.glwe_rotate_assign(rotate_by, &mut tmp_ref, scratch);
-        }
-        self.glwe_add_assign(&mut dst_owned, &tmp);
-        copy_ct_from_owned::<BE, _, Dst>(self, dst, &dst_owned);
+        let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, dst, cnst)?;
+
+        let mut dst_mut = GLWEToBackendMut::to_backend_mut(dst);
+        let mut dst_arg = &mut dst_mut;
+        self.glwe_mul_const_assign(cnv_offset, &mut dst_arg, cnst, cnst_coeff, scratch);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
     }
 }
-
 impl<BE: Backend> CKKSMulDefault<BE> for Module<BE> {}
-
-fn copy_ct_to_owned<BE: Backend, M, A>(module: &M, src: &A) -> GLWE<BE::OwnedBuf>
-where
-    M: GLWECopy<BE> + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf> + ?Sized,
-    A: CKKSCiphertextToBackendRef<BE> + GLWEInfos,
-{
-    let mut dst = module.glwe_alloc_from_infos(src);
-    let src_ref = GLWEToBackendRef::<BE>::to_backend_ref(src);
-    module.glwe_copy(&mut GLWEToBackendMut::<BE>::to_backend_mut(&mut dst), &src_ref);
-    dst
-}
-
-fn copy_ct_from_owned<BE: Backend, M, Dst>(module: &M, dst: &mut Dst, src: &GLWE<BE::OwnedBuf>)
-where
-    M: GLWECopy<BE> + ?Sized,
-    Dst: CKKSCiphertextToBackendMut<BE>,
-{
-    let src_ref = GLWEToBackendRef::<BE>::to_backend_ref(src);
-    module.glwe_copy(&mut GLWEToBackendMut::<BE>::to_backend_mut(dst), &src_ref);
-}
-
-fn copy_pt_to_owned<BE: Backend, M, P>(module: &M, src: &P) -> GLWEPlaintext<BE::OwnedBuf>
-where
-    M: ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf> + VecZnxCopyBackend<BE> + ?Sized,
-    P: CKKSPlaintexToBackendRef<BE> + GLWEInfos,
-{
-    let mut dst = module.glwe_plaintext_alloc_from_infos(src);
-    let src_ref = GLWEPlaintextToBackendRef::<BE>::to_backend_ref(src);
-    {
-        let mut dst_mut = GLWEPlaintextToBackendMut::<BE>::to_backend_mut(&mut dst);
-        module.vec_znx_copy_backend(&mut dst_mut.data, 0, &src_ref.data, 0);
-    }
-    dst
-}
 
 fn zero_ciphertext<BE: Backend, Dst, M>(module: &M, dst: &mut Dst)
 where
     M: VecZnxZeroBackend<BE> + ?Sized,
-    Dst: CKKSCiphertextToBackendMut<BE> + GLWEInfos,
+    Dst: GLWEToBackendMut<BE> + GLWEInfos,
 {
     let cols = dst.rank().as_usize() + 1;
     let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
@@ -430,9 +379,9 @@ where
 
 fn get_mul_ct_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
 where
-    R: poulpy_core::layouts::LWEInfos + CKKSInfos,
-    A: poulpy_core::layouts::LWEInfos + CKKSInfos,
-    B: poulpy_core::layouts::LWEInfos + CKKSInfos,
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+    B: LWEInfos + CKKSInfos,
 {
     let res_log_budget = checked_mul_ct_log_budget("mul", a.log_budget(), b.log_budget(), a.log_delta(), b.log_delta())?;
     let res_log_delta = a.log_delta().min(b.log_delta());
@@ -449,9 +398,9 @@ where
 
 fn get_mul_pt_params<R, A, B>(res: &R, a: &A, b: &B) -> Result<(usize, usize, usize)>
 where
-    R: poulpy_core::layouts::LWEInfos + CKKSInfos,
-    A: poulpy_core::layouts::LWEInfos + CKKSInfos,
-    B: poulpy_core::layouts::LWEInfos + CKKSInfos,
+    R: LWEInfos + CKKSInfos,
+    A: LWEInfos + CKKSInfos,
+    B: LWEInfos + CKKSInfos,
 {
     let res_log_budget = checked_mul_pt_log_budget("mul", a.log_budget(), b.log_budget(), a.log_delta(), b.log_delta())?;
     let res_log_delta = a.log_delta();
@@ -460,23 +409,6 @@ where
 
     Ok((
         checked_log_budget_sub("mul", res_log_budget, res_offset)?,
-        res_log_delta,
-        cnv_offset,
-    ))
-}
-
-fn get_mul_const_params<R, A>(res: &R, a: &A, prec: CKKSMeta) -> Result<(usize, usize, usize)>
-where
-    R: poulpy_core::layouts::LWEInfos + CKKSInfos,
-    A: poulpy_core::layouts::LWEInfos + CKKSInfos,
-{
-    let res_log_budget = checked_mul_pt_log_budget("mul_const", a.log_budget(), prec.log_budget, a.log_delta(), prec.log_delta)?;
-    let res_log_delta = a.log_delta();
-    let res_offset = (res_log_budget + res_log_delta).saturating_sub(res.max_k().as_usize());
-    let cnv_offset = prec.min_k(res.base2k()).as_usize() + res_offset;
-
-    Ok((
-        checked_log_budget_sub("mul_const", res_log_budget, res_offset)?,
         res_log_delta,
         cnv_offset,
     ))

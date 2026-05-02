@@ -26,7 +26,6 @@ use crate::{CKKSCompositionError, CKKSInfos, leveled::api::CKKSPow2Ops};
 use super::helpers::{
     TestContext, TestPow2Backend as Backend, TestScalar, assert_ckks_error, assert_ct_meta, assert_unary_output_meta,
 };
-use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 const SHIFT_BITS: usize = 7;

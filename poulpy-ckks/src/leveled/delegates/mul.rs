@@ -1,18 +1,19 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWERotate, GLWETensoring, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef},
+    layouts::{
+        GGLWEInfos, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, ModuleCoreAlloc,
+        prepared::GLWETensorKeyPreparedToBackendRef,
+    },
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable},
+    api::{ModuleN, ScratchAvailable, VecZnxCopyBackend},
     layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef, CKKSPlaintexToBackendRef};
-
-use crate::{CKKSInfos, SetCKKSInfos, layouts::CKKSCiphertext, oep::CKKSImpl};
-
 use crate::leveled::{api::CKKSMulOps, oep::CKKSMulOep};
+
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSMulOps<BE> for Module<BE>
 where
@@ -23,8 +24,8 @@ where
         + GLWERotate<BE>
         + GLWETensoring<BE>
         + ModuleN
-        + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
-        + poulpy_hal::api::VecZnxCopyBackend<BE>,
+        + ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>
+        + VecZnxCopyBackend<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
 {
     fn ckks_mul_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
@@ -65,70 +66,38 @@ where
 
     fn ckks_mul_into<Dst, A, B, T>(&self, dst: &mut Dst, a: &A, b: &B, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
-        B: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        B: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let a_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(a), a.meta());
-        let b_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(b), b.meta());
-        let tsk_ref = tsk.to_backend_ref();
-        let res = CKKSMulOep::ckks_mul_into(self, &mut dst_ct, &a_ct, &b_ct, &tsk_ref, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_into(self, dst, a, b, tsk, scratch)
     }
 
     fn ckks_mul_assign<Dst, A, T>(&self, dst: &mut Dst, a: &A, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let a_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(a), a.meta());
-        let tsk_ref = tsk.to_backend_ref();
-        let res = CKKSMulOep::ckks_mul_assign(self, &mut dst_ct, &a_ct, &tsk_ref, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_assign(self, dst, a, tsk, scratch)
     }
 
     fn ckks_square_into<Dst, A, T>(&self, dst: &mut Dst, a: &A, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
         T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let a_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(a), a.meta());
-        let tsk_ref = tsk.to_backend_ref();
-        let res = CKKSMulOep::ckks_square_into(self, &mut dst_ct, &a_ct, &tsk_ref, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_square_into(self, dst, a, tsk, scratch)
     }
 
     fn ckks_square_assign<Dst, T>(&self, dst: &mut Dst, tsk: &T, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + CKKSInfos + SetCKKSInfos + GLWEInfos,
         T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let tsk_ref = tsk.to_backend_ref();
-        let res = CKKSMulOep::ckks_square_assign(self, &mut dst_ct, &tsk_ref, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_square_assign(self, dst, tsk, scratch)
     }
 
     fn ckks_mul_pt_vec_znx_into<Dst, A, P>(
@@ -139,32 +108,19 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let a_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(a), a.meta());
-        let res = CKKSMulOep::ckks_mul_pt_vec_znx_into(self, &mut dst_ct, &a_ct, pt_znx, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_pt_vec_znx_into(self, dst, a, pt_znx, scratch)
     }
 
     fn ckks_mul_pt_vec_znx_assign<Dst, P>(&self, dst: &mut Dst, pt_znx: &P, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let res = CKKSMulOep::ckks_mul_pt_vec_znx_assign(self, &mut dst_ct, pt_znx, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_pt_vec_znx_assign(self, dst, pt_znx, scratch)
     }
 
     fn ckks_mul_pt_const_znx_into<Dst, A, P>(
@@ -175,31 +131,24 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        A: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let a_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(a), a.meta());
-        let res = CKKSMulOep::ckks_mul_pt_const_znx_into(self, &mut dst_ct, &a_ct, pt_znx, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_pt_const_znx_into(self, dst, a, pt_znx, scratch)
     }
 
-    fn ckks_mul_pt_const_znx_assign<Dst, P>(&self, dst: &mut Dst, pt_znx: &P, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    fn ckks_mul_pt_const_znx_assign<Dst, P>(
+        &self,
+        dst: &mut Dst,
+        pt_znx: &P,
+        pt_coeff: usize,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSCiphertextToBackendRef<BE> + CKKSInfos + SetCKKSInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + CKKSInfos + SetCKKSInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
-        let dst_meta = dst.meta();
-        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
-        let res = CKKSMulOep::ckks_mul_pt_const_znx_assign(self, &mut dst_ct, pt_znx, scratch);
-        let new_meta = dst_ct.meta();
-        drop(dst_ct);
-        dst.set_meta(new_meta);
-        res
+        CKKSMulOep::ckks_mul_pt_const_znx_assign(self, dst, pt_znx, pt_coeff, scratch)
     }
 }

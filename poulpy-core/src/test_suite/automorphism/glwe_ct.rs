@@ -130,11 +130,7 @@ where
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&autokey_infos);
             module.glwe_automorphism_key_prepare(&mut autokey_prepared, &autokey, &mut scratch.borrow());
 
-            {
-                let ct_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&ct_in);
-                let mut ct_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_out);
-                module.glwe_automorphism(&mut ct_out_backend, &ct_in_backend, &autokey_prepared, &mut scratch.borrow());
-            }
+            module.glwe_automorphism(&mut ct_out, &ct_in, &autokey_prepared, &mut scratch.borrow());
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,
@@ -272,10 +268,7 @@ where
                 module.glwe_automorphism_key_prepared_alloc_from_infos(&autokey);
             module.glwe_automorphism_key_prepare(&mut autokey_prepared, &autokey, &mut scratch.borrow());
 
-            {
-                let mut ct_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct);
-                module.glwe_automorphism_assign(&mut ct_backend, &autokey_prepared, &mut scratch.borrow());
-            }
+            module.glwe_automorphism_assign(&mut ct, &autokey_prepared, &mut scratch.borrow());
 
             let max_noise: f64 = var_noise_gglwe_product_v2(
                 module.n() as f64,

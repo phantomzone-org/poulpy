@@ -8,8 +8,6 @@ use poulpy_hal::{
     layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
-
 use crate::{CKKSInfos, SetCKKSInfos, checked_log_budget_sub, ckks_offset_unary};
 
 pub(crate) trait CKKSNegDefault<BE: Backend> {
@@ -23,8 +21,8 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
     fn ckks_neg_into_default<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWENegate<BE> + GLWEShift<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: CKKSCiphertextToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let offset = ckks_offset_unary(dst, src);
@@ -50,7 +48,7 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
     fn ckks_neg_assign_default<Dst>(&self, dst: &mut Dst) -> Result<()>
     where
         Self: GLWENegate<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
     {
         let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
         self.glwe_negate_assign(&mut dst_ref);

@@ -1,7 +1,6 @@
 use anyhow::Result;
+use poulpy_core::layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
 use poulpy_hal::layouts::{Backend, ScratchArena};
-
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
 
 use crate::{CKKSInfos, SetCKKSInfos};
 
@@ -20,15 +19,15 @@ pub trait CKKSRescaleOps<BE: Backend> {
     /// available `log_budget`.
     fn ckks_rescale_assign<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos;
 
     /// Computes a rescaled copy of `src` into `dst`.
     ///
     /// Errors include `InsufficientHomomorphicCapacity`.
     fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos;
 
     /// Rescales either `a` or `b` in place so both ciphertexts end up with the
     /// same `log_budget`.
@@ -36,8 +35,8 @@ pub trait CKKSRescaleOps<BE: Backend> {
     /// Errors propagate from the underlying rescale operation.
     fn ckks_align_assign<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        A: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        B: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos;
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos;
 
     /// Returns scratch bytes required by [`Self::ckks_align_assign`].
     fn ckks_align_tmp_bytes(&self) -> usize;

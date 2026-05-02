@@ -37,10 +37,7 @@
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | bootstrapping | Planned CKKS bootstrapping |
 
-use poulpy_core::layouts::{
-    Base2K, GLWEInfos, GLWEPlaintextToBackendMut, GLWEPlaintextToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
-    TorusPrecision,
-};
+use poulpy_core::layouts::{Base2K, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, TorusPrecision};
 use poulpy_hal::layouts::Backend;
 
 pub mod encoding;
@@ -52,6 +49,13 @@ pub use error::CKKSCompositionError;
 pub(crate) use error::{
     checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget, ensure_base2k_match, ensure_plaintext_alignment,
 };
+
+pub type CKKSCiphertextRef<'a, BE> = layouts::CKKSCiphertext<<BE as Backend>::BufRef<'a>>;
+pub type CKKSCiphertextMut<'a, BE> = layouts::CKKSCiphertext<<BE as Backend>::BufMut<'a>>;
+
+pub trait CKKSPlaintexToBackendRef<BE: Backend>: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos {}
+
+impl<BE: Backend, T> CKKSPlaintexToBackendRef<BE> for T where T: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos {}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
@@ -126,27 +130,6 @@ pub trait SetCKKSInfos: CKKSInfos {
         self.set_meta(meta);
     }
 }
-
-pub trait CKKSCiphertextToBackendRef<BE: Backend>: GLWEToBackendRef<BE> + LWEInfos {}
-
-impl<BE: Backend, T> CKKSCiphertextToBackendRef<BE> for T where T: GLWEToBackendRef<BE> + LWEInfos {}
-
-pub trait CKKSCiphertextToBackendMut<BE: Backend>: GLWEToBackendMut<BE> + LWEInfos {}
-
-impl<BE: Backend, T> CKKSCiphertextToBackendMut<BE> for T where T: GLWEToBackendMut<BE> + LWEInfos {}
-
-pub trait CKKSPlaintexToBackendRef<BE: Backend>: GLWEPlaintextToBackendRef<BE> + GLWEInfos + LWEInfos {}
-
-impl<BE: Backend, T> CKKSPlaintexToBackendRef<BE> for T where T: GLWEPlaintextToBackendRef<BE> + GLWEInfos + LWEInfos {}
-
-pub trait CKKSPlaintextVecZnxToBackendMut<BE: Backend>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + LWEInfos {}
-
-impl<BE: Backend, T> CKKSPlaintextVecZnxToBackendMut<BE> for T where T: GLWEPlaintextToBackendMut<BE> + GLWEInfos + LWEInfos {}
-
-pub(crate) type CKKSCiphertextRef<'a, BE> = layouts::CKKSCiphertext<<BE as poulpy_hal::layouts::Backend>::BufRef<'a>>;
-pub(crate) type CKKSCiphertextMut<'a, BE> = layouts::CKKSCiphertext<<BE as poulpy_hal::layouts::Backend>::BufMut<'a>>;
-pub(crate) type CKKSPlaintextRef<'a, BE> = layouts::CKKSPlaintext<<BE as poulpy_hal::layouts::Backend>::BufRef<'a>>;
-pub(crate) type CKKSPlaintextMut<'a, BE> = layouts::CKKSPlaintext<<BE as poulpy_hal::layouts::Backend>::BufMut<'a>>;
 
 pub(crate) fn ckks_offset_binary<R, A, B>(res: &R, a: &A, b: &B) -> usize
 where

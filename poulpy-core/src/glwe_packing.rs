@@ -10,7 +10,7 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
         BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
-        GetGaloisElement, ModuleCoreAlloc, glwe_backend_ref_from_mut, prepared::GGLWEPreparedToBackendRef,
+        GetGaloisElement, ModuleCoreAlloc, prepared::GGLWEPreparedToBackendRef,
     },
 };
 
@@ -39,27 +39,10 @@ fn glwe_automorphism_add_assign_on<'s, M, A, K, BE: Backend + 's>(
     scratch: &mut ScratchArena<'s, BE>,
 ) where
     M: GLWEAutomorphism<BE> + ?Sized,
-    A: GLWEToBackendMut<BE>,
+    A: GLWEToBackendMut<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
 {
-    let mut a_backend = a.to_backend_mut();
-    module.glwe_automorphism_add_assign(&mut a_backend, key, scratch)
-}
-
-#[allow(dead_code)]
-fn glwe_automorphism_sub_negate_on<'s, M, A, K, BE: Backend + 's>(
-    module: &M,
-    a: &mut A,
-    tmp: &GLWE<BE::BufMut<'_>>,
-    key: &K,
-    scratch: &mut ScratchArena<'s, BE>,
-) where
-    M: GLWEAutomorphism<BE> + ?Sized,
-    A: GLWEToBackendMut<BE>,
-    K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-{
-    let mut a_backend = a.to_backend_mut();
-    module.glwe_automorphism_sub_negate(&mut a_backend, &glwe_backend_ref_from_mut::<BE>(tmp), key, scratch)
+    module.glwe_automorphism_add_assign(a, key, scratch)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -120,11 +103,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
                 module.glwe_normalize_assign(&mut tmp_b_backend, scratch);
             }
 
-            {
-                let mut tmp_b_backend: GLWEBackendMut<'_, BE> =
-                    <BackendGLWE<BE> as GLWEToBackendMut<BE>>::to_backend_mut(&mut tmp_b);
-                module.glwe_automorphism_assign(&mut tmp_b_backend, auto_key, scratch);
-            }
+            module.glwe_automorphism_assign(&mut tmp_b, auto_key, scratch);
 
             module.glwe_sub_assign(a, &tmp_b);
             glwe_normalize_assign_on(module, a, scratch);
@@ -147,9 +126,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
         }
         module.glwe_rsh(1, &mut tmp_b, scratch);
 
-        let tmp_b_ref = <BackendGLWE<BE> as GLWEToBackendRef<BE>>::to_backend_ref(&tmp_b);
-        let mut b_backend = b.to_backend_mut();
-        module.glwe_automorphism_sub_negate(&mut b_backend, &tmp_b_ref, auto_key, scratch)
+        module.glwe_automorphism_sub_negate(b, &tmp_b, auto_key, scratch)
     }
 }
 

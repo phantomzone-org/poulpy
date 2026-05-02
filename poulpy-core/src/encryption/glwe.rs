@@ -19,7 +19,7 @@ use crate::{
     EncryptionInfos, GetDistribution, ScratchArenaTakeCore,
     dist::Distribution,
     layouts::{
-        GLWEInfos, GLWEPlaintextBackendRef, GLWEPlaintextToBackendRef, GLWEToBackendMut, LWEInfos,
+        GLWEBackendRef, GLWEInfos, GLWEPlaintextBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
     },
 };
@@ -60,7 +60,7 @@ pub trait GLWEEncryptSkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE>,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -114,7 +114,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE>,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -211,7 +211,7 @@ pub trait GLWEEncryptPkDefault<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
@@ -268,7 +268,7 @@ where
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -319,7 +319,7 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
     fn glwe_encrypt_pk_internal<'s, R, K, E>(
         &self,
         res: &mut R,
-        pt: Option<(GLWEPlaintextBackendRef<'_, BE>, usize)>,
+        pt: Option<(GLWEBackendRef<'_, BE>, usize)>,
         pk: &K,
         enc_infos: &E,
         source_xu: &mut Source,
@@ -355,7 +355,7 @@ where
     fn glwe_encrypt_pk_internal<'s, R, K, E>(
         &self,
         res: &mut R,
-        pt: Option<(GLWEPlaintextBackendRef<'_, BE>, usize)>,
+        pt: Option<(GLWEBackendRef<'_, BE>, usize)>,
         pk: &K,
         enc_infos: &E,
         source_xu: &mut Source,
@@ -484,7 +484,7 @@ pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
-type GLWEEncryptSkPlaintext<'a, BE> = Option<(GLWEPlaintextBackendRef<'a, BE>, usize)>;
+type GLWEEncryptSkPlaintext<'a, BE> = Option<(GLWEBackendRef<'a, BE>, usize)>;
 
 impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where

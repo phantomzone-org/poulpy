@@ -3,9 +3,9 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGSWInfos, GGSWPreparedToBackendRef, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
-        GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef,
-        SetLWEInfos,
+        GGSWInfos, GGSWPreparedToBackendRef, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWESecretPrepared,
+        GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut,
+        LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos,
     },
     oep::{
         AutomorphismDefaults, AutomorphismImpl, ConversionDefaults, ConversionImpl, DecryptionDefaults, DecryptionImpl,
@@ -45,7 +45,7 @@ decryption_helper! {
     where [
         BE: Backend + DecryptionDefaults<BE> + HostBackend,
         R: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
-        P: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        P: poulpy_core::layouts::GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
@@ -86,7 +86,7 @@ decryption_helper! {
         R: poulpy_hal::layouts::Data,
         GLWETensor<R>: poulpy_core::layouts::GLWEToBackendRef<BE> + GLWEInfos,
         P: poulpy_hal::layouts::Data,
-        GLWEPlaintext<P>: poulpy_core::layouts::GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        GLWEPlaintext<P>: poulpy_core::layouts::GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S0: poulpy_hal::layouts::Data,
         GLWESecretPrepared<S0, BE>: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         S1: poulpy_hal::layouts::Data,
@@ -198,14 +198,15 @@ conversion_helper! {
     where [BE: Backend + ConversionDefaults<BE>, R: GGSWInfos, A: GGLWEInfos,]
     => ggsw_expand_rows_tmp_bytes(module, res_infos, tsk_infos);
 
-    fn conversion_ggsw_expand_row ['s, 'r, BE, T] (
+    fn conversion_ggsw_expand_row ['s, BE, R, T] (
         module: &Module<BE>,
-        res: &mut poulpy_core::layouts::GGSWBackendMut<'r, BE>,
+        res: &mut R,
         tsk: &T,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
         BE: Backend + ConversionDefaults<BE>,
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 's,
@@ -244,28 +245,31 @@ external_helper! {
     where [BE: Backend + GLWEExternalProductDefaults<BE>, R: GLWEInfos, A: GLWEInfos, G: GGSWInfos,]
     => [GLWEExternalProductDefaults<BE>]::glwe_external_product_tmp_bytes(module, res_infos, a_infos, ggsw_infos);
 
-    fn external_glwe_external_product ['s, 'r, 'a, BE, G] (
+    fn external_glwe_external_product ['s, BE, R, A, G] (
         module: &Module<BE>,
-        res: &mut poulpy_core::layouts::GLWEBackendMut<'r, BE>,
-        a: &poulpy_core::layouts::GLWEBackendRef<'a, BE>,
+        res: &mut R,
+        a: &A,
         ggsw: &G,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
         BE: GLWEExternalProductDefaults<BE>,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     ] => [GLWEExternalProductDefaults<BE>]::glwe_external_product(module, res, a, ggsw, scratch);
 
-    fn external_glwe_external_product_assign ['s, 'r, BE, G] (
+    fn external_glwe_external_product_assign ['s, BE, R, G] (
         module: &Module<BE>,
-        res: &mut poulpy_core::layouts::GLWEBackendMut<'r, BE>,
+        res: &mut R,
         ggsw: &G,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
         BE: Backend + GLWEExternalProductDefaults<BE>,
+        R: GLWEToBackendMut<BE>,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -382,27 +386,30 @@ keyswitch_helper! {
     where [BE: Backend + GLWEKeyswitchDefaults<BE>, R: GLWEInfos, A: GLWEInfos, K: GGLWEInfos,]
     => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos);
 
-    fn keyswitch_glwe_keyswitch ['s, BE, K] (
+    fn keyswitch_glwe_keyswitch ['s, BE, R, A, K] (
         module: &Module<BE>,
-        res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
-        a: &poulpy_core::layouts::GLWEBackendRef<'_, BE>,
+        res: &mut R,
+        a: &A,
         key: &K,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
         BE: Backend + GLWEKeyswitchDefaults<BE>,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch(module, res, a, key, scratch);
 
-    fn keyswitch_glwe_keyswitch_assign ['s, BE, K] (
+    fn keyswitch_glwe_keyswitch_assign ['s, BE, R, K] (
         module: &Module<BE>,
-        res: &mut poulpy_core::layouts::GLWEBackendMut<'_, BE>,
+        res: &mut R,
         key: &K,
         scratch: &mut ScratchArena<'s, BE>
     )
     where [
         BE: Backend + GLWEKeyswitchDefaults<BE>,
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     ] => [GLWEKeyswitchDefaults<BE>]::glwe_keyswitch_assign(module, res, key, scratch);
@@ -525,7 +532,7 @@ macro_rules! impl_decryption_via_helpers {
             fn glwe_decrypt<'s, R, P, S>(module: &Module<Self>, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, Self>)
             where
                 R: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
-                P: poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
+                P: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos + SetLWEInfos,
                 S: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<Self> + GLWEInfos,
                 Self: HostBackend,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
@@ -564,7 +571,7 @@ macro_rules! impl_decryption_via_helpers {
                 R: poulpy_hal::layouts::Data,
                 GLWETensor<R>: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
                 P: poulpy_hal::layouts::Data,
-                GLWEPlaintext<P>: poulpy_core::layouts::GLWEPlaintextToBackendMut<Self> + GLWEInfos + SetLWEInfos,
+                GLWEPlaintext<P>: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos + SetLWEInfos,
                 S0: poulpy_hal::layouts::Data,
                 GLWESecretPrepared<S0, Self>: poulpy_core::layouts::prepared::GLWESecretPreparedToBackendRef<Self> + GLWEInfos,
                 S1: poulpy_hal::layouts::Data,
@@ -679,13 +686,14 @@ macro_rules! impl_conversion_via_helpers {
                 $($helpers)*::conversion_ggsw_expand_rows_tmp_bytes(module, res_infos, tsk_infos)
             }
 
-            fn ggsw_expand_row<'s, 'r, T>(
+            fn ggsw_expand_row<'s, R, T>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GGSWBackendMut<'r, Self>,
+                res: &mut R,
                 tsk: &T,
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
+                R: GGSWToBackendMut<Self> + GGSWInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
             {
@@ -713,14 +721,16 @@ macro_rules! impl_external_product_via_helpers {
                 $($helpers)*::external_glwe_external_product_tmp_bytes(module, res_infos, a_infos, ggsw_infos)
             }
 
-            fn glwe_external_product<'s, 'r, 'a, G>(
+            fn glwe_external_product<'s, R, A, G>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 ggsw: &G,
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 G: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -728,13 +738,14 @@ macro_rules! impl_external_product_via_helpers {
                 $($helpers)*::external_glwe_external_product(module, res, a, ggsw, scratch)
             }
 
-            fn glwe_external_product_assign<'s, 'r, G>(
+            fn glwe_external_product_assign<'s, R, G>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
+                res: &mut R,
                 ggsw: &G,
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
+                R: GLWEToBackendMut<Self>,
                 G: GGSWPreparedToBackendRef<Self> + GGSWInfos,
                 ScratchArena<'s, Self>: ScratchArenaTakeCore<'s, Self>,
                 Self: 's,
@@ -844,27 +855,30 @@ macro_rules! impl_keyswitching_via_helpers {
                 $($helpers)*::keyswitch_glwe_keyswitch_tmp_bytes(module, res_infos, a_infos, key_infos)
             }
 
-            fn glwe_keyswitch<'s, K>(
+            fn glwe_keyswitch<'s, R, A, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'_, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'_, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
+                R: GLWEToBackendMut<Self> + GLWEInfos,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 $($helpers)*::keyswitch_glwe_keyswitch(module, res, a, key, scratch)
             }
 
-            fn glwe_keyswitch_assign<'s, K>(
+            fn glwe_keyswitch_assign<'s, R, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'_, Self>,
+                res: &mut R,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             )
             where
+                R: GLWEToBackendMut<Self> + GLWEToBackendRef<Self> + GLWEInfos,
                 K: GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
@@ -1016,100 +1030,112 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_tmp_bytes_default(module, res_infos, a_infos, key_infos)
             }
 
-            fn glwe_automorphism<'s, 'r, 'a, K>(
+            fn glwe_automorphism<'s, R, A, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_assign<'s, 'r, K>(
+            fn glwe_automorphism_assign<'s, R, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
+                res: &mut R,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_assign_default(module, res, key, scratch)
             }
 
-            fn glwe_automorphism_add<'s, 'r, 'a, K>(
+            fn glwe_automorphism_add<'s, R, A, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_add_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_add_assign<'s, 'r, K>(
+            fn glwe_automorphism_add_assign<'s, R, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
+                res: &mut R,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_add_assign_default(module, res, key, scratch)
             }
 
-            fn glwe_automorphism_sub<'s, 'r, 'a, K>(
+            fn glwe_automorphism_sub<'s, R, A, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_sub_negate<'s, 'r, 'a, K>(
+            fn glwe_automorphism_sub_negate<'s, R, A, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GLWEBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
+                A: GLWEToBackendRef<Self> + GLWEInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_negate_default(module, res, a, key, scratch)
             }
 
-            fn glwe_automorphism_sub_assign<'s, 'r, K>(
+            fn glwe_automorphism_sub_assign<'s, R, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
+                res: &mut R,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
                 <Self as AutomorphismDefaults<Self>>::glwe_automorphism_sub_assign_default(module, res, key, scratch)
             }
 
-            fn glwe_automorphism_sub_negate_assign<'s, 'r, K>(
+            fn glwe_automorphism_sub_negate_assign<'s, R, K>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWEBackendMut<'r, Self>,
+                res: &mut R,
                 key: &K,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GLWEToBackendMut<Self>,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: 's,
             {
@@ -1134,14 +1160,16 @@ macro_rules! impl_automorphism_via_defaults {
                 )
             }
 
-            fn ggsw_automorphism<'s, 'r, 'a, K, T>(
+            fn ggsw_automorphism<'s, R, A, K, T>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GGSWBackendMut<'r, Self>,
-                a: &poulpy_core::layouts::GGSWBackendRef<'a, Self>,
+                res: &mut R,
+                a: &A,
                 key: &K,
                 tsk: &T,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GGSWToBackendMut<Self> + GGSWInfos,
+                A: poulpy_core::layouts::GGSWToBackendRef<Self> + GGSWInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: AutomorphismImpl<Self> + poulpy_core::oep::ConversionImpl<Self>,
@@ -1149,13 +1177,14 @@ macro_rules! impl_automorphism_via_defaults {
                 <Self as AutomorphismDefaults<Self>>::ggsw_automorphism_default(module, res, a, key, tsk, scratch)
             }
 
-            fn ggsw_automorphism_assign<'s, 'r, K, T>(
+            fn ggsw_automorphism_assign<'s, R, K, T>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GGSWBackendMut<'r, Self>,
+                res: &mut R,
                 key: &K,
                 tsk: &T,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
+                R: GGSWToBackendMut<Self> + GGSWInfos,
                 K: poulpy_core::layouts::GetGaloisElement + GGLWEPreparedToBackendRef<Self> + GGLWEInfos,
                 T: GGLWEToGGSWKeyPreparedToBackendRef<Self> + GGLWEInfos,
                 Self: AutomorphismImpl<Self> + poulpy_core::oep::ConversionImpl<Self>,
@@ -1227,18 +1256,15 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_mul_const<'s, R, A, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut poulpy_core::layouts::GLWE<R>,
-                a: &poulpy_core::layouts::GLWE<A>,
-                b: &poulpy_core::layouts::GLWEPlaintext<B>,
+                res: &mut R,
+                a: &A,
+                b: &B,
                 b_coeff: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
-                B: poulpy_hal::layouts::Data,
-                poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
-                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                B: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, b_coeff, scratch)
             }
@@ -1246,16 +1272,13 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_mul_const_assign<'s, R, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut poulpy_core::layouts::GLWE<R>,
-                b: &poulpy_core::layouts::GLWEPlaintext<B>,
+                res: &mut R,
+                b: &B,
                 b_coeff: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                B: poulpy_hal::layouts::Data,
-                poulpy_core::layouts::GLWE<R>:
-                    poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self>,
-                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                B: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_const_assign_default(module, cnv_offset, res, b, b_coeff, scratch)
             }
@@ -1274,19 +1297,16 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_mul_plain<'s, R, A, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut poulpy_core::layouts::GLWE<R>,
-                a: &poulpy_core::layouts::GLWE<A>,
+                res: &mut R,
+                a: &A,
                 a_effective_k: usize,
-                b: &GLWEPlaintext<B>,
+                b: &B,
                 b_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
-                B: poulpy_hal::layouts::Data,
-                poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
-                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                B: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_default(
                     module,
@@ -1303,17 +1323,14 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_mul_plain_assign<'s, R, A>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut poulpy_core::layouts::GLWE<R>,
+                res: &mut R,
                 res_effective_k: usize,
-                a: &GLWEPlaintext<A>,
+                a: &A,
                 a_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
-                poulpy_core::layouts::GLWE<R>:
-                    poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self>,
-                poulpy_core::layouts::GLWEPlaintext<A>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_mul_plain_assign_default(
                     module,
@@ -1348,19 +1365,16 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_tensor_apply<'s, R, A, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut GLWETensor<R>,
-                a: &poulpy_core::layouts::GLWE<A>,
+                res: &mut R,
+                a: &A,
                 a_effective_k: usize,
-                b: &poulpy_core::layouts::GLWE<B>,
+                b: &B,
                 b_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
-                B: poulpy_hal::layouts::Data,
-                GLWETensor<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
-                poulpy_core::layouts::GLWE<B>: poulpy_core::layouts::GLWEToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
+                B: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_apply_default(
                     module,
@@ -1377,15 +1391,13 @@ macro_rules! impl_operations_via_defaults {
             fn glwe_tensor_square_apply<'s, R, A>(
                 module: &Module<Self>,
                 cnv_offset: usize,
-                res: &mut GLWETensor<R>,
-                a: &poulpy_core::layouts::GLWE<A>,
+                res: &mut R,
+                a: &A,
                 a_effective_k: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
-                GLWETensor<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_square_apply_default(
                     module,
@@ -1399,17 +1411,15 @@ macro_rules! impl_operations_via_defaults {
 
             fn glwe_tensor_relinearize<'s, R, A, B>(
                 module: &Module<Self>,
-                res: &mut poulpy_core::layouts::GLWE<R>,
-                a: &GLWETensor<A>,
+                res: &mut R,
+                a: &A,
                 tsk: &B,
                 tsk_size: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
-                R: poulpy_hal::layouts::Data,
-                A: poulpy_hal::layouts::Data,
+                R: poulpy_core::layouts::GLWEToBackendMut<Self> + GLWEInfos,
+                A: poulpy_core::layouts::GLWEToBackendRef<Self> + GLWEInfos,
                 B: GGLWEInfos + poulpy_core::layouts::GLWETensorKeyPreparedToBackendRef<Self>,
-                poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                GLWETensor<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_relinearize_default(module, res, a, tsk, tsk_size, scratch)
             }

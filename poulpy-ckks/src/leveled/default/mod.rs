@@ -10,5 +10,5 @@ pub(crate) mod rotate;
 pub(crate) mod sub;
 
 pub(crate) use add::CKKSAddDefault;
-pub(crate) use pt_znx::CKKSPlaintextZnxDefault;
+pub(crate) use pt_znx::CKKSPlaintextDefault;
 pub(crate) use sub::CKKSSubDefault;

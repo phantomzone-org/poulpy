@@ -6,14 +6,15 @@ use poulpy_hal::{
 
 pub use crate::api::GGSWExternalProduct;
 use crate::{
-    GLWEExternalProduct, ScratchArenaTakeCore,
+    ScratchArenaTakeCore,
+    external_product::GLWEExternalProductDefault,
     layouts::{GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, prepared::GGSWPreparedToBackendRef},
 };
 
 #[doc(hidden)]
 pub trait GGSWExternalProductDefault<BE: Backend>
 where
-    Self: GLWEExternalProduct<BE> + ModuleN + VecZnxZeroBackend<BE>,
+    Self: GLWEExternalProductDefault<BE> + ModuleN + VecZnxZeroBackend<BE>,
 {
     fn ggsw_external_product_tmp_bytes_default<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
@@ -21,7 +22,7 @@ where
         A: GGSWInfos,
         B: GGSWInfos,
     {
-        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
+        self.glwe_external_product_tmp_bytes_default(res_infos, a_infos, b_infos)
     }
 
     fn ggsw_external_product_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
@@ -50,7 +51,7 @@ where
             let a = a.to_backend_ref();
             for row in 0..min_dnum {
                 for col in 0..res_rank {
-                    self.glwe_external_product(
+                    self.glwe_external_product_default(
                         &mut crate::layouts::ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                         &crate::layouts::ggsw_at_backend_ref_from_ref::<BE>(&a, row, col),
                         b,
@@ -95,7 +96,7 @@ where
         let mut res = res.to_backend_mut();
         for row in 0..res_dnum {
             for col in 0..res_rank {
-                self.glwe_external_product_assign(
+                self.glwe_external_product_assign_default(
                     &mut crate::layouts::ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     a,
                     &mut scratch.borrow(),
@@ -106,6 +107,6 @@ where
 }
 
 impl<BE: Backend> GGSWExternalProductDefault<BE> for Module<BE> where
-    Self: GLWEExternalProduct<BE> + ModuleN + VecZnxZeroBackend<BE>
+    Self: GLWEExternalProductDefault<BE> + ModuleN + VecZnxZeroBackend<BE>
 {
 }

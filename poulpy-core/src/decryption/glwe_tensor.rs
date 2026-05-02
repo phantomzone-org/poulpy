@@ -9,8 +9,8 @@ use crate::{
     decryption::GLWEDecryptDefault,
     decryption::glwe::glwe_decrypt_backend_inner,
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared,
-        GLWETensor, GLWEToBackendRef,
+        GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensor, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut,
+        GLWEToBackendRef,
         prepared::{
             GLWESecretPreparedFactory, GLWESecretPreparedToBackendMut, GLWESecretPreparedToBackendRef,
             GLWESecretTensorPreparedToBackendRef, glwe_secret_prepared_backend_ref_from_mut,
@@ -45,7 +45,7 @@ where
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
-        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + crate::layouts::SetLWEInfos,
+        GLWEPlaintext<P>: GLWEToBackendMut<BE> + GLWEInfos + crate::layouts::SetLWEInfos,
         GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos,
     {

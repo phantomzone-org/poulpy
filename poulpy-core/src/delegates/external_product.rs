@@ -4,8 +4,8 @@ use crate::{
     api::{GGLWEExternalProduct, GGSWExternalProduct, GLWEExternalProduct},
     external_product::{GGLWEExternalProductDefault, GGSWExternalProductDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEInfos,
+        GLWEToBackendMut, GLWEToBackendRef, prepared::GGSWPreparedToBackendRef,
     },
     oep::{GGLWEExternalProductImpl, GGSWExternalProductImpl, GLWEExternalProductImpl},
 };
@@ -33,13 +33,14 @@ impl_external_product_delegate!(
         BE::glwe_external_product_tmp_bytes(self, res_infos, a_infos, b_infos)
     }
 
-    fn glwe_external_product_assign<'s, 'r, D>(
+    fn glwe_external_product_assign<'s, R, D>(
         &self,
-        res: &mut GLWEBackendMut<'r, BE>,
+        res: &mut R,
         rhs: &D,
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
+        R: GLWEToBackendMut<BE>,
         D: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -47,14 +48,16 @@ impl_external_product_delegate!(
         BE::glwe_external_product_assign(self, res, rhs, scratch)
     }
 
-    fn glwe_external_product<'s, 'r, 'a, D>(
+    fn glwe_external_product<'s, R, A, D>(
         &self,
-        res: &mut GLWEBackendMut<'r, BE>,
-        lhs: &GLWEBackendRef<'a, BE>,
+        res: &mut R,
+        lhs: &A,
         rhs: &D,
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         D: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -65,7 +68,7 @@ impl_external_product_delegate!(
 
 impl_external_product_delegate!(
     GGLWEExternalProduct<BE>,
-    [BE: Backend + GGLWEExternalProductImpl<BE>, Module<BE>: GGLWEExternalProductDefault<BE>],
+    [BE: Backend + GGLWEExternalProductImpl<BE>, Module<BE>: GLWEExternalProduct<BE> + GGLWEExternalProductDefault<BE>],
     fn gglwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGLWEInfos,
@@ -110,7 +113,7 @@ impl_external_product_delegate!(
 
 impl_external_product_delegate!(
     GGSWExternalProduct<BE>,
-    [BE: Backend + GGSWExternalProductImpl<BE>, Module<BE>: GGSWExternalProductDefault<BE>],
+    [BE: Backend + GGSWExternalProductImpl<BE>, Module<BE>: GLWEExternalProduct<BE> + GGSWExternalProductDefault<BE>],
     fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGSWInfos,

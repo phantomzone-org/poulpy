@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 pub use crate::api::GLWEAutomorphism;
 use crate::{
-    GLWEKeySwitchInternal, GLWEKeyswitch, GLWENormalize, ScratchArenaTakeCore,
+    GLWEKeySwitchInternal, GLWEKeyswitchDefault, GLWENormalize, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GetGaloisElement, LWEInfos, glwe_backend_ref_from_mut,
         prepared::GGLWEPreparedToBackendRef,
@@ -19,7 +19,7 @@ use crate::{
 
 pub(crate) trait GLWEAutomorphismDefault<BE: Backend>:
     Sized
-    + GLWEKeyswitch<BE>
+    + GLWEKeyswitchDefault<BE>
     + GLWEKeySwitchInternal<BE>
     + VecZnxNormalize<BE>
     + VecZnxAutomorphismAssign<BE>
@@ -54,7 +54,7 @@ where
         } else {
             GLWE::<Vec<u8>>::bytes_of_from_infos(a_infos)
         };
-        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
+        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes_default(res_infos, a_infos, key_infos);
         let cols: usize = res_infos.rank().as_usize() + 1;
         let lvl_1: usize = self.vec_znx_automorphism_assign_tmp_bytes();
         let lvl_2: usize = lvl_conv
@@ -85,7 +85,7 @@ where
             self.glwe_automorphism_tmp_bytes_default(res, a, key)
         );
 
-        self.glwe_keyswitch(res, a, key, scratch);
+        self.glwe_keyswitch_default(res, a, key, scratch);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_automorphism_assign(key.p(), &mut res.data, i, &mut scratch.borrow());
@@ -108,7 +108,7 @@ where
             self.glwe_automorphism_tmp_bytes_default(res, res, key)
         );
 
-        self.glwe_keyswitch_assign(res, key, scratch);
+        self.glwe_keyswitch_assign_default(res, key, scratch);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_automorphism_assign(key.p(), &mut res.data, i, &mut scratch.borrow());
@@ -472,7 +472,7 @@ where
 impl<BE: Backend> GLWEAutomorphismDefault<BE> for Module<BE>
 where
     Self: Sized
-        + GLWEKeyswitch<BE>
+        + GLWEKeyswitchDefault<BE>
         + GLWEKeySwitchInternal<BE>
         + VecZnxNormalize<BE>
         + VecZnxAutomorphismAssign<BE>

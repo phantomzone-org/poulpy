@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEKeyswitch, ScratchArenaTakeCore,
+    GLWEKeyswitchDefault, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GLWE, GetGaloisElement, SetGaloisElement,
         gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref, glwe_backend_ref_from_mut,
@@ -16,7 +16,7 @@ use crate::{
 pub trait GLWEAutomorphismKeyAutomorphismDefault<BE: Backend>:
     Sized
     + GaloisElement
-    + GLWEKeyswitch<BE>
+    + GLWEKeyswitchDefault<BE>
     + VecZnxAutomorphismBackend<BE>
     + VecZnxAutomorphismAssign<BE>
     + VecZnxAutomorphismAssignTmpBytes
@@ -34,7 +34,7 @@ where
         assert_eq!(self.n() as u32, a_infos.n());
         assert_eq!(self.n() as u32, key_infos.n());
 
-        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos);
+        let lvl_0: usize = self.glwe_keyswitch_tmp_bytes_default(res_infos, a_infos, key_infos);
         let lvl_1: usize = self.vec_znx_automorphism_assign_tmp_bytes();
 
         if res_infos.glwe_layout() == a_infos.glwe_layout() {
@@ -92,7 +92,7 @@ where
                         }
 
                         let mut scratch_iter = scratch.borrow();
-                        self.glwe_keyswitch_assign(&mut res_tmp, key, &mut scratch_iter);
+                        self.glwe_keyswitch_assign_default(&mut res_tmp, key, &mut scratch_iter);
 
                         for i in 0..cols_out {
                             self.vec_znx_automorphism_assign(p_inv, &mut res_tmp.data, i, &mut scratch_iter);
@@ -105,7 +105,7 @@ where
                         }
 
                         let tmp_glwe_ref = glwe_backend_ref_from_mut::<BE>(&tmp_glwe);
-                        self.glwe_keyswitch(&mut res_tmp, &tmp_glwe_ref, key, &mut scratch_iter);
+                        self.glwe_keyswitch_default(&mut res_tmp, &tmp_glwe_ref, key, &mut scratch_iter);
 
                         for i in 0..cols_out {
                             self.vec_znx_automorphism_assign(p_inv, &mut res_tmp.data, i, &mut scratch_iter);
@@ -151,7 +151,7 @@ where
                         self.vec_znx_automorphism_assign(p, &mut res_tmp.data, i, &mut scratch_iter);
                     }
 
-                    self.glwe_keyswitch_assign(&mut res_tmp, key, &mut scratch_iter);
+                    self.glwe_keyswitch_assign_default(&mut res_tmp, key, &mut scratch_iter);
 
                     for i in 0..cols_out {
                         self.vec_znx_automorphism_assign(p_inv, &mut res_tmp.data, i, &mut scratch_iter);
@@ -167,7 +167,7 @@ where
 impl<BE: Backend> GLWEAutomorphismKeyAutomorphismDefault<BE> for Module<BE>
 where
     Self: GaloisElement
-        + GLWEKeyswitch<BE>
+        + GLWEKeyswitchDefault<BE>
         + VecZnxAutomorphismBackend<BE>
         + VecZnxAutomorphismAssign<BE>
         + VecZnxAutomorphismAssignTmpBytes

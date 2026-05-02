@@ -1,5 +1,5 @@
 use anyhow::Result;
-use poulpy_core::layouts::{GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef};
+use poulpy_core::layouts::{GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
 use poulpy_core::{EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore};
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshTmpBytes},
@@ -7,11 +7,8 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef, CKKSPlaintexToBackendRef, CKKSPlaintextVecZnxToBackendMut};
-
 use crate::{
     CKKSInfos, SetCKKSInfos,
-    layouts::CKKSCiphertext,
     leveled::{
         api::{CKKSDecrypt, CKKSEncrypt},
         oep::CKKSEncryptionOep,
@@ -44,17 +41,11 @@ where
     ) -> Result<()>
     where
         S: GLWESecretPreparedToBackendRef<BE>,
-        Dct: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Dpt: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        Dct: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dpt: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         BE: 's,
     {
-        let ct_meta = ct.meta();
-        let mut ct_ckks = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(ct), ct_meta);
-        let res = CKKSEncryptionOep::ckks_encrypt_sk(self, &mut ct_ckks, pt, sk, enc_infos, source_xa, source_xe, scratch);
-        let new_meta = ct_ckks.meta();
-        drop(ct_ckks);
-        ct.set_meta(new_meta);
-        res
+        CKKSEncryptionOep::ckks_encrypt_sk(self, ct, pt, sk, enc_infos, source_xa, source_xe, scratch)
     }
 }
 
@@ -80,10 +71,9 @@ where
     fn ckks_decrypt<Dpt, Dct, S>(&self, pt: &mut Dpt, ct: &Dct, sk: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
-        Dpt: CKKSPlaintextVecZnxToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Dct: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        Dpt: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dct: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
-        let ct_ckks = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(ct), ct.meta());
-        CKKSEncryptionOep::ckks_decrypt(self, pt, &ct_ckks, sk, scratch)
+        CKKSEncryptionOep::ckks_decrypt(self, pt, ct, sk, scratch)
     }
 }

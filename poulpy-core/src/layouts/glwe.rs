@@ -282,6 +282,18 @@ where
     }
 }
 
+impl<BE: Backend, D: Data> GLWEToBackendRef<BE> for &GLWE<D>
+where
+    VecZnx<D>: VecZnxToBackendRef<BE>,
+{
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: self.data.to_backend_ref(),
+        }
+    }
+}
+
 pub fn glwe_backend_ref_from_ref<'a, 'b, BE: Backend>(glwe: &'a GLWE<BE::BufRef<'b>>) -> GLWEBackendRef<'a, BE> {
     GLWE {
         base2k: glwe.base2k,

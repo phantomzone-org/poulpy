@@ -1,8 +1,9 @@
 use anyhow::Result;
+use poulpy_core::layouts::GLWEToBackendMut;
 use poulpy_core::{GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
+use crate::GLWEToBackendRef;
 
 use crate::{CKKSInfos, SetCKKSInfos, checked_log_budget_sub};
 
@@ -25,7 +26,7 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
     fn ckks_rescale_assign_default<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let log_budget = checked_log_budget_sub("rescale_assign", ct.log_budget(), k)?;
@@ -43,8 +44,8 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: CKKSCiphertextToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let log_budget = checked_log_budget_sub("rescale", src.log_budget(), k)?;
@@ -57,8 +58,8 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
     fn ckks_align_assign_default<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        A: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        B: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if a.log_budget() < b.log_budget() {

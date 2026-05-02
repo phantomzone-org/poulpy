@@ -6,7 +6,8 @@ use poulpy_hal::layouts::{
 
 use crate::api::ModuleTransfer;
 use crate::layouts::{
-    Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank, SetLWEInfos, TorusPrecision,
+    Base2K, Degree, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank,
+    SetLWEInfos, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -43,6 +44,40 @@ pub struct GLWEPlaintext<D: Data> {
 
 pub type GLWEPlaintextBackendRef<'a, BE> = GLWEPlaintext<<BE as Backend>::BufRef<'a>>;
 pub type GLWEPlaintextBackendMut<'a, BE> = GLWEPlaintext<<BE as Backend>::BufMut<'a>>;
+
+pub fn glwe_plaintext_as_glwe_backend_ref_from_ref<'a, 'b, BE: Backend>(
+    pt: &'a GLWEPlaintext<BE::BufRef<'b>>,
+) -> GLWEBackendRef<'a, BE> {
+    GLWE {
+        base2k: pt.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&pt.data),
+    }
+}
+
+pub fn glwe_plaintext_as_glwe_backend_ref_from_mut<'a, 'b, BE: Backend>(
+    pt: &'a GLWEPlaintext<BE::BufMut<'b>>,
+) -> GLWEBackendRef<'a, BE> {
+    GLWE {
+        base2k: pt.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&pt.data),
+    }
+}
+
+pub fn glwe_plaintext_as_glwe_backend_mut_from_mut<'a, 'b, BE: Backend>(
+    pt: &'a mut GLWEPlaintext<BE::BufMut<'b>>,
+) -> GLWEBackendMut<'a, BE> {
+    GLWE {
+        base2k: pt.base2k,
+        data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut pt.data),
+    }
+}
+
+pub fn glwe_plaintext_into_glwe<D: Data>(pt: GLWEPlaintext<D>) -> GLWE<D> {
+    GLWE {
+        base2k: pt.base2k,
+        data: pt.data,
+    }
+}
 
 impl<D: HostDataMut> SetLWEInfos for GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
@@ -174,24 +209,6 @@ where
     }
 }
 
-impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &GLWEPlaintext<BE::BufRef<'b>> {
-    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
-        GLWE {
-            base2k: self.base2k,
-            data: poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&self.data),
-        }
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
-    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
-        GLWE {
-            base2k: self.base2k,
-            data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&self.data),
-        }
-    }
-}
-
 impl<BE: Backend, D: Data> GLWEToBackendMut<BE> for GLWEPlaintext<D>
 where
     VecZnx<D>: VecZnxToBackendRef<BE> + VecZnxToBackendMut<BE>,
@@ -200,74 +217,6 @@ where
         GLWE {
             base2k: self.base2k,
             data: self.data.to_backend_mut(),
-        }
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEToBackendMut<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
-    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
-        GLWE {
-            base2k: self.base2k,
-            data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
-        }
-    }
-}
-
-pub trait GLWEPlaintextToBackendRef<BE: Backend> {
-    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE>;
-}
-
-impl<BE: Backend, D: Data> GLWEPlaintextToBackendRef<BE> for GLWEPlaintext<D>
-where
-    VecZnx<D>: VecZnxToBackendRef<BE>,
-{
-    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE> {
-        GLWEPlaintext {
-            data: self.data.to_backend_ref(),
-            base2k: self.base2k,
-        }
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEPlaintextToBackendRef<BE> for &GLWEPlaintext<BE::BufRef<'b>> {
-    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE> {
-        GLWEPlaintext {
-            data: poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&self.data),
-            base2k: self.base2k,
-        }
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEPlaintextToBackendRef<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
-    fn to_backend_ref(&self) -> GLWEPlaintextBackendRef<'_, BE> {
-        GLWEPlaintext {
-            data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&self.data),
-            base2k: self.base2k,
-        }
-    }
-}
-
-pub trait GLWEPlaintextToBackendMut<BE: Backend>: GLWEPlaintextToBackendRef<BE> {
-    fn to_backend_mut(&mut self) -> GLWEPlaintextBackendMut<'_, BE>;
-}
-
-impl<BE: Backend, D: Data> GLWEPlaintextToBackendMut<BE> for GLWEPlaintext<D>
-where
-    VecZnx<D>: VecZnxToBackendRef<BE> + VecZnxToBackendMut<BE>,
-{
-    fn to_backend_mut(&mut self) -> GLWEPlaintextBackendMut<'_, BE> {
-        GLWEPlaintext {
-            base2k: self.base2k,
-            data: self.data.to_backend_mut(),
-        }
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEPlaintextToBackendMut<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
-    fn to_backend_mut(&mut self) -> GLWEPlaintextBackendMut<'_, BE> {
-        GLWEPlaintext {
-            base2k: self.base2k,
-            data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
         }
     }
 }

@@ -1,37 +1,31 @@
 use anyhow::Result;
-use poulpy_core::{GLWEShift, ScratchArenaTakeCore};
+use poulpy_core::{GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{CKKSCiphertextMut, CKKSCiphertextRef, oep::CKKSImpl};
+use crate::{CKKSInfos, GLWEToBackendMut, GLWEToBackendRef, SetCKKSInfos, oep::CKKSImpl};
 
 pub(crate) trait CKKSRescaleOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_rescale_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>;
 
-    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertextMut<'_, BE>, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    fn ckks_rescale_assign<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_rescale_into(
-        &self,
-        dst: &mut CKKSCiphertextMut<'_, BE>,
-        k: usize,
-        src: &CKKSCiphertextRef<'_, BE>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_align_assign(
-        &self,
-        a: &mut CKKSCiphertextMut<'_, BE>,
-        b: &mut CKKSCiphertextMut<'_, BE>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_align_assign<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -48,35 +42,29 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSRescaleOep<BE> for Module<BE> {
         BE::ckks_rescale_tmp_bytes(self)
     }
 
-    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertextMut<'_, BE>, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    fn ckks_rescale_assign<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         BE::ckks_rescale_assign(self, ct, k, scratch)
     }
 
-    fn ckks_rescale_into(
-        &self,
-        dst: &mut CKKSCiphertextMut<'_, BE>,
-        k: usize,
-        src: &CKKSCiphertextRef<'_, BE>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         BE::ckks_rescale_into(self, dst, k, src, scratch)
     }
 
-    fn ckks_align_assign(
-        &self,
-        a: &mut CKKSCiphertextMut<'_, BE>,
-        b: &mut CKKSCiphertextMut<'_, BE>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_align_assign<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {

@@ -174,7 +174,7 @@ where
         let pt_ref = GLWE {
             base2k: pt.base2k,
             data: VecZnx::from_data_with_max_size(
-                pt.data.data().as_ref(),
+                pt.data.data.as_ref(),
                 pt.data.n(),
                 pt.data.cols(),
                 pt.data.size(),

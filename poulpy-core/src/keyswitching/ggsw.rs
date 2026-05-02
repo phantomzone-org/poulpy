@@ -5,8 +5,9 @@ use poulpy_hal::{
 
 pub use crate::api::GGSWKeyswitch;
 use crate::{
-    GGSWExpandRows, ScratchArenaTakeCore,
-    keyswitching::GLWEKeyswitch,
+    ScratchArenaTakeCore,
+    conversion::GGSWExpandRowsDefault,
+    keyswitching::GLWEKeyswitchDefault,
     layouts::{
         GGLWEInfos, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut,
         ggsw_at_backend_ref_from_ref,
@@ -15,9 +16,9 @@ use crate::{
 };
 
 #[doc(hidden)]
-pub trait GGSWKeyswitchDefault<BE: Backend>
+pub(crate) trait GGSWKeyswitchDefault<BE: Backend>
 where
-    Self: ModuleN + GLWEKeyswitch<BE> + GGSWExpandRows<BE>,
+    Self: ModuleN + GLWEKeyswitchDefault<BE> + GGSWExpandRowsDefault<BE>,
 {
     fn ggsw_keyswitch_tmp_bytes_default<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
     where
@@ -34,8 +35,8 @@ where
         assert_eq!(self.n() as u32, key_infos.n());
         assert_eq!(self.n() as u32, tsk_infos.n());
 
-        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
-            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos))
+        self.glwe_keyswitch_tmp_bytes_default(res_infos, a_infos, key_infos)
+            .max(self.ggsw_expand_rows_tmp_bytes_default(res_infos, tsk_infos))
     }
 
     fn ggsw_keyswitch_assign_default<'s, R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
@@ -55,14 +56,14 @@ where
         );
 
         for row in 0..res.dnum().into() {
-            self.glwe_keyswitch_assign(
+            self.glwe_keyswitch_assign_default(
                 &mut ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, 0),
                 key,
                 &mut scratch.borrow(),
             );
         }
 
-        self.ggsw_expand_row(&mut res, tsk, scratch)
+        self.ggsw_expand_row_default(&mut res, tsk, scratch)
     }
 
     fn ggsw_keyswitch_default<'s, R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
@@ -88,7 +89,7 @@ where
         );
 
         for row in 0..a.dnum().into() {
-            self.glwe_keyswitch(
+            self.glwe_keyswitch_default(
                 &mut ggsw_at_backend_mut_from_mut::<BE>(&mut res, row, 0),
                 &ggsw_at_backend_ref_from_ref::<BE>(&a, row, 0),
                 key,
@@ -96,13 +97,13 @@ where
             );
         }
 
-        self.ggsw_expand_row(&mut res, tsk, scratch)
+        self.ggsw_expand_row_default(&mut res, tsk, scratch)
     }
 }
 
 impl<BE: Backend> GGSWKeyswitchDefault<BE> for Module<BE>
 where
-    Self: ModuleN + GLWEKeyswitch<BE> + GGSWExpandRows<BE>,
+    Self: ModuleN + GLWEKeyswitchDefault<BE> + GGSWExpandRowsDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
 }

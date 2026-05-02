@@ -69,12 +69,9 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
         R: GGSWInfos,
         A: GGLWEInfos;
 
-    fn ggsw_expand_row<'s, 'r, T>(
-        module: &Module<BE>,
-        res: &mut GGSWBackendMut<'r, BE>,
-        tsk: &T,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn ggsw_expand_row<'s, R, T>(module: &Module<BE>, res: &mut R, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
@@ -133,12 +130,9 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
         R: GGSWInfos,
         A: GGLWEInfos;
 
-    fn ggsw_expand_row<'s, 'r, T>(
-        module: &Module<BE>,
-        res: &mut GGSWBackendMut<'r, BE>,
-        tsk: &T,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn ggsw_expand_row<'s, R, T>(module: &Module<BE>, res: &mut R, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
 }
@@ -221,15 +215,13 @@ where
         <Module<BE> as GGSWExpandRowsDefault<BE>>::ggsw_expand_rows_tmp_bytes_default(module, res_infos, tsk_infos)
     }
 
-    fn ggsw_expand_row<'s, 'r, T>(
-        module: &Module<BE>,
-        res: &mut GGSWBackendMut<'r, BE>,
-        tsk: &T,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn ggsw_expand_row<'s, R, T>(module: &Module<BE>, res: &mut R, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GGSWToBackendMut<BE> + GGSWInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
     {
-        <Module<BE> as GGSWExpandRowsDefault<BE>>::ggsw_expand_row_default(module, res, tsk, scratch)
+        let mut res = res.to_backend_mut();
+        <Module<BE> as GGSWExpandRowsDefault<BE>>::ggsw_expand_row_default(module, &mut res, tsk, scratch)
     }
 }

@@ -46,7 +46,7 @@ pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
 
 fn trace_assign_internal<'s, 'r, M, K, H, BE: Backend + 's>(
     module: &M,
-    res: &mut GLWEBackendMut<'r, BE>,
+    mut res: &mut GLWEBackendMut<'r, BE>,
     skip: usize,
     keys: &H,
     scratch: &mut ScratchArena<'s, BE>,
@@ -112,7 +112,7 @@ fn trace_assign_internal<'s, 'r, M, K, H, BE: Backend + 's>(
         let mut res_backend = &mut *res;
         module.glwe_rsh(1, &mut res_backend, scratch);
         if let Some(key) = keys.get_automorphism_key(p) {
-            module.glwe_automorphism_add_assign(res, key, scratch);
+            module.glwe_automorphism_add_assign(&mut res, key, scratch);
         } else {
             panic!("keys[{p}] is empty")
         }

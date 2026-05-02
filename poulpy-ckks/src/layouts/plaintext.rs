@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 use poulpy_core::layouts::{
-    Base2K, Degree, GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWEPlaintextToBackendRef, LWEInfos, Rank, SetLWEInfos,
+    Base2K, Degree, GLWE, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank, SetLWEInfos,
 };
 use poulpy_hal::layouts::{Backend, Data, HostDataMut, HostDataRef};
 use rand_distr::num_traits::{Float, ToPrimitive};
@@ -47,21 +47,21 @@ impl<D: Data> CKKSPlaintext<D> {
     }
 }
 
-impl<BE: Backend, D: Data> GLWEPlaintextToBackendRef<BE> for CKKSPlaintext<D>
+impl<BE: Backend, D: Data> GLWEToBackendRef<BE> for CKKSPlaintext<D>
 where
-    GLWEPlaintext<D>: GLWEPlaintextToBackendRef<BE>,
+    GLWEPlaintext<D>: GLWEToBackendRef<BE>,
 {
-    fn to_backend_ref(&self) -> GLWEPlaintext<BE::BufRef<'_>> {
-        GLWEPlaintextToBackendRef::to_backend_ref(&self.inner)
+    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
+        GLWEToBackendRef::to_backend_ref(&self.inner)
     }
 }
 
-impl<BE: Backend, D: Data> GLWEPlaintextToBackendMut<BE> for CKKSPlaintext<D>
+impl<BE: Backend, D: Data> GLWEToBackendMut<BE> for CKKSPlaintext<D>
 where
-    GLWEPlaintext<D>: GLWEPlaintextToBackendMut<BE>,
+    GLWEPlaintext<D>: GLWEToBackendMut<BE>,
 {
-    fn to_backend_mut(&mut self) -> GLWEPlaintext<BE::BufMut<'_>> {
-        GLWEPlaintextToBackendMut::to_backend_mut(&mut self.inner)
+    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
+        GLWEToBackendMut::to_backend_mut(&mut self.inner)
     }
 }
 
@@ -229,7 +229,7 @@ mod tests {
 
         let mut pt_out = module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
         module
-            .ckks_extract_pt(&mut pt_out, &full_pt_backend, &prec, &mut scratch.borrow())
+            .ckks_extract_pt(&mut pt_out, &full_pt_backend, &mut scratch.borrow())
             .unwrap();
 
         let mut re_out = vec![0.0f64; m];

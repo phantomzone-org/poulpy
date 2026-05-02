@@ -4,11 +4,11 @@ use crate::{
     api::{GGLWEKeyswitch, GGSWKeyswitch, GLWEKeyswitch, LWEKeySwitch},
     keyswitching::{GGLWEKeyswitchDefault, GGSWKeyswitchDefault, LWEKeySwitchDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, LWEInfos, LWEToBackendMut, LWEToBackendRef,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEInfos,
+        GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
-    oep::{GGLWEKeyswitchImpl, GGSWKeyswitchImpl, GLWEKeyswitchImpl, LWEKeyswitchImpl},
+    oep::{ConversionImpl, GGLWEKeyswitchImpl, GGSWKeyswitchImpl, GLWEKeyswitchImpl, LWEKeyswitchImpl},
 };
 
 macro_rules! impl_keyswitching_delegate {
@@ -34,27 +34,19 @@ impl_keyswitching_delegate!(
         BE::glwe_keyswitch_tmp_bytes(self, res_infos, a_infos, key_infos)
     }
 
-    fn glwe_keyswitch<'s, 'r, 'a, K>(
-        &self,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    )
+    fn glwe_keyswitch<'s, R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
+        R: GLWEToBackendMut<BE> + GLWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
         BE::glwe_keyswitch(self, res, a, key, scratch)
     }
 
-    fn glwe_keyswitch_assign<'s, 'r, K>(
-        &self,
-        res: &mut GLWEBackendMut<'r, BE>,
-        key: &K,
-        scratch: &mut ScratchArena<'s, BE>,
-    )
+    fn glwe_keyswitch_assign<'s, R, K>(&self, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
+        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
@@ -64,7 +56,7 @@ impl_keyswitching_delegate!(
 
 impl_keyswitching_delegate!(
     GGLWEKeyswitch<BE>,
-    [BE: Backend + GGLWEKeyswitchImpl<BE>, Module<BE>: GGLWEKeyswitchDefault<BE>],
+    [BE: Backend + GGLWEKeyswitchImpl<BE>, Module<BE>: GLWEKeyswitch<BE> + GGLWEKeyswitchDefault<BE>],
     fn gglwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
@@ -98,7 +90,7 @@ impl_keyswitching_delegate!(
 
 impl_keyswitching_delegate!(
     GGSWKeyswitch<BE>,
-    [BE: Backend + GGSWKeyswitchImpl<BE>, Module<BE>: GGSWKeyswitchDefault<BE>],
+    [BE: Backend + ConversionImpl<BE> + GGSWKeyswitchImpl<BE>, Module<BE>: GLWEKeyswitch<BE> + GGSWKeyswitchDefault<BE>],
     fn ggsw_keyswitch_tmp_bytes<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
     where
         R: GGSWInfos,
@@ -148,7 +140,7 @@ impl_keyswitching_delegate!(
 
 impl_keyswitching_delegate!(
     LWEKeySwitch<BE>,
-    [BE: Backend + LWEKeyswitchImpl<BE>, Module<BE>: LWEKeySwitchDefault<BE>],
+    [BE: Backend + LWEKeyswitchImpl<BE>, Module<BE>: GLWEKeyswitch<BE> + LWEKeySwitchDefault<BE>],
     fn lwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: LWEInfos,

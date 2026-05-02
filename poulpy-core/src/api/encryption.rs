@@ -10,7 +10,7 @@ use crate::{
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToGGSWKeyCompressedToBackendMut, GGLWEToGGSWKeyToBackendMut, GGSWCompressedSeedMut,
         GGSWCompressedToBackendMut, GGSWInfos, GGSWToBackendMut, GLWECompressedSeedMut, GLWECompressedToBackendMut, GLWEInfos,
-        GLWEPlaintextToBackendRef, GLWESecretToBackendRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, LWEInfos,
+        GLWESecretToBackendRef, GLWESwitchingKeyDegreesMut, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendMut, SetGaloisElement, TorusPrecision,
         compressed::{GGLWECompressedSeedMut, GGLWECompressedToBackendMut},
         prepared::{GLWEPreparedToBackendRef, GLWESecretPreparedToBackendRef},
@@ -63,7 +63,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE>,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -101,7 +101,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWEToBackendMut<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendRef<BE> + GLWEInfos,
+        P: GLWEToBackendRef<BE> + GLWEInfos,
         E: EncryptionInfos,
         K: GLWEPreparedToBackendRef<BE> + GetDistribution + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>;
@@ -349,7 +349,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: GLWECompressedToBackendMut<BE> + GLWECompressedSeedMut,
-        P: GLWEPlaintextToBackendRef<BE>,
+        P: GLWEToBackendRef<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,

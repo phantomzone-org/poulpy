@@ -5,7 +5,7 @@ use crate::{
     external_product::{GGLWEExternalProductDefault, GGSWExternalProductDefault, GLWEExternalProductDefault},
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
-        GLWEBackendRef, GLWEInfos, prepared::GGSWPreparedToBackendRef,
+        GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, prepared::GGSWPreparedToBackendRef,
     },
 };
 
@@ -21,23 +21,17 @@ pub unsafe trait GLWEExternalProductImpl<BE: Backend>: Backend {
         A: GLWEInfos,
         G: GGSWInfos;
 
-    fn glwe_external_product<'s, 'r, 'a, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product<'s, R, A, G>(module: &Module<BE>, res: &mut R, a: &A, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_external_product_assign<'s, 'r, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product_assign<'s, R, G>(module: &Module<BE>, res: &mut R, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -107,23 +101,17 @@ pub trait GLWEExternalProductDefaults<BE: Backend>: Backend {
         A: GLWEInfos,
         G: GGSWInfos;
 
-    fn glwe_external_product<'s, 'r, 'a, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product<'s, R, A, G>(module: &Module<BE>, res: &mut R, a: &A, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
 
-    fn glwe_external_product_assign<'s, 'r, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product_assign<'s, R, G>(module: &Module<BE>, res: &mut R, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
@@ -192,31 +180,28 @@ where
         )
     }
 
-    fn glwe_external_product<'s, 'r, 'a, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        a: &GLWEBackendRef<'a, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product<'s, R, A, G>(module: &Module<BE>, res: &mut R, a: &A, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
-        <Module<BE> as GLWEExternalProductDefault<BE>>::glwe_external_product_default(module, res, a, ggsw, scratch)
+        let mut res = res.to_backend_mut();
+        let a = a.to_backend_ref();
+        <Module<BE> as GLWEExternalProductDefault<BE>>::glwe_external_product_default(module, &mut res, &a, ggsw, scratch)
     }
 
-    fn glwe_external_product_assign<'s, 'r, G>(
-        module: &Module<BE>,
-        res: &mut GLWEBackendMut<'r, BE>,
-        ggsw: &G,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
+    fn glwe_external_product_assign<'s, R, G>(module: &Module<BE>, res: &mut R, ggsw: &G, scratch: &mut ScratchArena<'s, BE>)
+    where
+        R: GLWEToBackendMut<BE>,
         G: GGSWPreparedToBackendRef<BE> + GGSWInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
-        <Module<BE> as GLWEExternalProductDefault<BE>>::glwe_external_product_assign_default(module, res, ggsw, scratch)
+        let mut res = res.to_backend_mut();
+        <Module<BE> as GLWEExternalProductDefault<BE>>::glwe_external_product_assign_default(module, &mut res, ggsw, scratch)
     }
 }
 

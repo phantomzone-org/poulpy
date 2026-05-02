@@ -12,7 +12,7 @@ pub use crate::api::GLWEDecrypt;
 use crate::{
     ScratchArenaTakeCore,
     layouts::{
-        GLWEBackendRef, GLWEInfos, GLWEPlaintextBackendMut, GLWEPlaintextToBackendMut, GLWEToBackendRef, LWEInfos, SetLWEInfos,
+        GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, SetLWEInfos,
         prepared::{GLWESecretPreparedBackendRef, GLWESecretPreparedToBackendRef},
     },
 };
@@ -49,7 +49,7 @@ where
     fn glwe_decrypt_default<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        P: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
@@ -80,7 +80,7 @@ where
 pub(crate) fn glwe_decrypt_backend_inner<'arena, 'scratch, M, BE: Backend>(
     module: &M,
     res: &GLWEBackendRef<'_, BE>,
-    pt: &mut GLWEPlaintextBackendMut<'_, BE>,
+    pt: &mut GLWEBackendMut<'_, BE>,
     sk: &GLWESecretPreparedBackendRef<'_, BE>,
     scratch: &'scratch mut ScratchArena<'arena, BE>,
 ) where

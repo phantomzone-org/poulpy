@@ -3,7 +3,6 @@ use crate::{
     layouts::{CKKSModuleAlloc, ciphertext::CKKSMaintainOps},
     leveled::api::{CKKSAddOps, CKKSDotProductOps},
 };
-use poulpy_core::layouts::LWEInfos;
 use poulpy_core::layouts::{Base2K, Degree, TorusPrecision};
 use poulpy_hal::{
     api::ScratchOwnedBorrow,

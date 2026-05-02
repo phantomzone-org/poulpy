@@ -3,16 +3,16 @@ use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 pub use crate::api::GGLWEKeyswitch;
 use crate::{
     ScratchArenaTakeCore,
-    keyswitching::GLWEKeyswitch,
+    keyswitching::GLWEKeyswitchDefault,
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, gglwe_at_backend_mut_from_mut, gglwe_at_backend_ref_from_ref,
         prepared::GGLWEPreparedToBackendRef,
     },
 };
 #[doc(hidden)]
-pub trait GGLWEKeyswitchDefault<BE: Backend>
+pub(crate) trait GGLWEKeyswitchDefault<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE>,
+    Self: GLWEKeyswitchDefault<BE>,
 {
     fn gglwe_keyswitch_tmp_bytes_default<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -20,7 +20,7 @@ where
         A: GGLWEInfos,
         K: GGLWEInfos,
     {
-        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+        self.glwe_keyswitch_tmp_bytes_default(res_infos, a_infos, key_infos)
     }
 
     fn gglwe_keyswitch_default<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
@@ -67,7 +67,7 @@ where
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
-                self.glwe_keyswitch(
+                self.glwe_keyswitch_default(
                     &mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     &gglwe_at_backend_ref_from_ref::<BE>(&a, row, col),
                     b,
@@ -102,7 +102,7 @@ where
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
-                self.glwe_keyswitch_assign(
+                self.glwe_keyswitch_assign_default(
                     &mut gglwe_at_backend_mut_from_mut::<BE>(&mut res, row, col),
                     a,
                     &mut scratch.borrow(),
@@ -112,4 +112,4 @@ where
     }
 }
 
-impl<BE: Backend> GGLWEKeyswitchDefault<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
+impl<BE: Backend> GGLWEKeyswitchDefault<BE> for Module<BE> where Self: GLWEKeyswitchDefault<BE> {}

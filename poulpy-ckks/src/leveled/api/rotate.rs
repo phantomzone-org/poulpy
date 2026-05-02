@@ -1,10 +1,9 @@
 use anyhow::Result;
 use poulpy_core::layouts::{
-    GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement, prepared::GLWEAutomorphismKeyPreparedToBackendRef,
+    GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
+    GetGaloisElement, LWEInfos, prepared::GLWEAutomorphismKeyPreparedToBackendRef,
 };
 use poulpy_hal::layouts::{Backend, ScratchArena};
-
-use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
 
 use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
@@ -23,14 +22,14 @@ pub trait CKKSRotateOps<BE: Backend + CKKSImpl<BE>> {
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
-        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos;
 
     fn ckks_rotate_assign<Dst, H, K>(&self, dst: &mut Dst, k: i64, keys: &H, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos;
 }

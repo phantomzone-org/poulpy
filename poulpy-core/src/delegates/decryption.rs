@@ -3,8 +3,8 @@ use poulpy_hal::layouts::{Backend, Data, HostBackend, Module, ScratchArena};
 use crate::{
     api::{GLWEDecrypt, GLWETensorDecrypt, LWEDecrypt},
     layouts::{
-        GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendMut, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
-        GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos,
+        GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef,
+        LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos,
         prepared::{GLWESecretPreparedToBackendRef, GLWESecretTensorPreparedToBackendRef},
     },
     oep::DecryptionImpl,
@@ -32,7 +32,7 @@ impl_decryption_delegate!(
     fn glwe_decrypt<'s, R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut ScratchArena<'s, BE>)
     where
         R: GLWEToBackendRef<BE> + GLWEInfos,
-        P: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        P: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         for<'a> ScratchArena<'a, BE>: crate::ScratchArenaTakeCore<'a, BE>,
     {
@@ -76,7 +76,7 @@ impl_decryption_delegate!(
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         GLWETensor<R>: GLWEToBackendRef<BE> + GLWEInfos,
-        GLWEPlaintext<P>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + SetLWEInfos,
+        GLWEPlaintext<P>: GLWEToBackendMut<BE> + GLWEInfos + SetLWEInfos,
         GLWESecretPrepared<S0, BE>: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
         GLWESecretTensorPrepared<S1, BE>: GLWESecretTensorPreparedToBackendRef<BE> + GLWEInfos,
     {

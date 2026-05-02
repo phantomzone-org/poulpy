@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSInfos, CKKSPlaintexToBackendRef,
+    CKKSInfos,
     layouts::{CKKSCiphertext, CKKSModuleAlloc, ciphertext::CKKSOffset},
     leveled::api::{
         CKKSAddManyOps, CKKSAddOps, CKKSAddOpsUnsafe, CKKSDotProductOps, CKKSMulAddOps, CKKSMulManyOps, CKKSMulOps,
@@ -203,7 +203,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         let mut tmp = take_mul_tmp(self, dst);
         self.ckks_mul_pt_vec_znx_into(&mut tmp, a, pt_znx, scratch)?;
@@ -220,7 +220,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         let mut tmp = take_mul_tmp(self, dst);
         self.ckks_mul_pt_const_znx_into(&mut tmp, a, pt_znx, scratch)?;
@@ -290,7 +290,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         let mut tmp = take_mul_tmp(self, dst);
         self.ckks_mul_pt_vec_znx_into(&mut tmp, a, pt_znx, scratch)?;
@@ -307,7 +307,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<A>: GLWEToBackendRef<BE> + GLWEInfos,
-        P: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         let mut tmp = take_mul_tmp(self, dst);
         self.ckks_mul_pt_const_znx_into(&mut tmp, a, pt_znx, scratch)?;
@@ -438,7 +438,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<D>: GLWEToBackendRef<BE> + GLWEInfos,
-        E: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         check_lengths("ckks_dot_product_pt_vec_znx", a.len(), b.len())?;
         let n: usize = a.len();
@@ -459,7 +459,7 @@ where
     where
         CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
         CKKSCiphertext<D>: GLWEToBackendRef<BE> + GLWEInfos,
-        E: CKKSPlaintexToBackendRef<BE> + CKKSInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos,
     {
         check_lengths("ckks_dot_product_pt_const_znx", a.len(), b.len())?;
         let n: usize = a.len();

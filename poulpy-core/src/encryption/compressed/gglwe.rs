@@ -5,7 +5,7 @@ use poulpy_hal::{
         ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
-    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef},
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut},
     source::Source,
 };
 
@@ -15,6 +15,7 @@ use crate::{
     layouts::{
         GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, LWEInfos,
         compressed::{GGLWECompressedToBackendMut, gglwe_compressed_at_backend_mut_from_mut},
+        glwe_plaintext_as_glwe_backend_ref_from_mut,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -161,12 +162,7 @@ where
                     let (seed, mut source_xa_tmp) = source_xa.branch();
                     seeds[row_i * rank_in + col_j] = seed;
 
-                    let tmp_pt_backend = GLWEPlaintext {
-                        data: <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(
-                            &tmp_pt.data,
-                        ),
-                        base2k: tmp_pt.base2k,
-                    };
+                    let tmp_pt_backend = glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(&tmp_pt);
                     let base2k = res.base2k().into();
                     let mut ct = gglwe_compressed_at_backend_mut_from_mut::<BE>(&mut res, row_i, col_j);
                     self.glwe_encrypt_sk_internal(
