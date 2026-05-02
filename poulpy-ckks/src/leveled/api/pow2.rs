@@ -1,54 +1,42 @@
 use anyhow::Result;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchArenaTakeCore};
-use poulpy_hal::layouts::{Backend, Data, ScratchArena};
+use poulpy_hal::layouts::{Backend, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
+
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
-    fn ckks_mul_pow2_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>;
+    fn ckks_mul_pow2_tmp_bytes(&self) -> usize;
 
-    fn ckks_mul_pow2_into<Dst: Data, Src: Data>(
+    fn ckks_mul_pow2_into<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
+        dst: &mut Dst,
+        src: &Src,
         bits: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos;
 
-    fn ckks_mul_pow2_assign<Dst: Data>(
+    fn ckks_mul_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    where
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos;
+
+    fn ckks_div_pow2_tmp_bytes(&self) -> usize;
+
+    fn ckks_div_pow2_into<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
+        dst: &mut Dst,
+        src: &Src,
         bits: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos;
 
-    fn ckks_div_pow2_tmp_bytes(&self) -> usize
+    fn ckks_div_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize) -> Result<()>
     where
-        Self: GLWEShift<BE>;
-
-    fn ckks_div_pow2_into<Dst: Data, Src: Data>(
-        &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        bits: usize,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE> + GLWECopy<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
-
-    fn ckks_div_pow2_assign<Dst: Data>(&self, dst: &mut CKKSCiphertext<Dst>, bits: usize) -> Result<()>;
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos;
 }

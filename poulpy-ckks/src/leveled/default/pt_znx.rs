@@ -7,30 +7,23 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{
-        VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshSubBackend, VecZnxRshTmpBytes,
+        VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddCoeffIntoBackend, VecZnxRshAddIntoBackend, VecZnxRshBackend,
+        VecZnxRshSubBackend, VecZnxRshSubCoeffIntoBackend, VecZnxRshTmpBytes,
     },
     layouts::{Backend, Data, Module, ScratchArena},
 };
 
-use crate::{
-    CKKSInfos, ensure_base2k_match, ensure_plaintext_alignment,
-    layouts::{CKKSCiphertext, CKKSPlaintextVecZnx},
-};
+use crate::{CKKSCiphertextToBackendMut, CKKSPlaintexToBackendRef, CKKSPlaintextVecZnxToBackendMut};
+
+use crate::{CKKSInfos, SetCKKSInfos, ensure_base2k_match, ensure_plaintext_alignment};
 
 pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
-    fn ckks_add_pt_vec_znx_into_default<Dct, Dpt>(
-        &self,
-        ct: &mut CKKSCiphertext<Dct>,
-        pt: &CKKSPlaintextVecZnx<Dpt>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_add_pt_vec_znx_into_default<Dst, A>(&self, ct: &mut Dst, pt: &A, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Dct: Data,
-        Dpt: Data,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         Self: VecZnxRshAddIntoBackend<BE>,
-        CKKSCiphertext<Dct>: GLWEToBackendMut<BE>,
-        CKKSPlaintextVecZnx<Dpt>: GLWEPlaintextToBackendRef<BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos,
+        A: CKKSPlaintexToBackendRef<BE> + LWEInfos + CKKSInfos,
     {
         ensure_base2k_match("ckks_add_pt_vec_znx_into", ct.base2k().as_usize(), pt.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
@@ -47,19 +40,72 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_into_default<Dct, Dpt>(
+    fn ckks_add_pt_cst_znx_into_default<Dst, A>(
         &self,
-        ct: &mut CKKSCiphertext<Dct>,
-        pt_znx: &CKKSPlaintextVecZnx<Dpt>,
+        ct: &mut Dst,
+        coeff_ct: usize,
+        pt: &A,
+        coeff_pt: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Dct: Data,
-        Dpt: Data,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxRshAddCoeffIntoBackend<BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos,
+        A: CKKSPlaintexToBackendRef<BE> + LWEInfos + CKKSInfos,
+    {
+        ensure_base2k_match("ckks_add_pt_vec_znx_into", ct.base2k().as_usize(), pt.base2k().as_usize())?;
+        let offset = ensure_plaintext_alignment(
+            "ckks_add_pt_vec_znx_into",
+            ct.log_budget(),
+            pt.log_delta(),
+            pt.max_k().as_usize(),
+        )?;
+        let base2k = ct.base2k().as_usize();
+        let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
+        let pt_ref = GLWEPlaintextToBackendRef::to_backend_ref(pt);
+        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
+        self.vec_znx_rsh_add_coeff_into_backend(base2k, offset, &mut ct_data, 0, &pt_ref.data, 0, coeff_pt, coeff_ct, scratch);
+
+        Ok(())
+    }
+
+    fn ckks_sub_pt_cst_znx_into_default<Dst, A>(
+        &self,
+        ct: &mut Dst,
+        coeff_ct: usize,
+        pt: &A,
+        coeff_pt: usize,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) -> Result<()>
+    where
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxRshSubCoeffIntoBackend<BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos,
+        A: CKKSPlaintexToBackendRef<BE> + LWEInfos + CKKSInfos,
+    {
+        ensure_base2k_match("ckks_add_pt_vec_znx_into", ct.base2k().as_usize(), pt.base2k().as_usize())?;
+        let offset = ensure_plaintext_alignment(
+            "ckks_add_pt_vec_znx_into",
+            ct.log_budget(),
+            pt.log_delta(),
+            pt.max_k().as_usize(),
+        )?;
+        let base2k = ct.base2k().as_usize();
+        let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
+        let pt_ref = GLWEPlaintextToBackendRef::to_backend_ref(pt);
+        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
+        self.vec_znx_rsh_sub_coeff_into_backend(base2k, offset, &mut ct_data, 0, &pt_ref.data, 0, coeff_pt, coeff_ct, scratch);
+
+        Ok(())
+    }
+
+    fn ckks_sub_pt_vec_znx_into_default<Dst, A>(&self, ct: &mut Dst, pt_znx: &A, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    where
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         Self: VecZnxRshSubBackend<BE>,
-        CKKSCiphertext<Dct>: GLWEToBackendMut<BE>,
-        CKKSPlaintextVecZnx<Dpt>: GLWEPlaintextToBackendRef<BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + LWEInfos + CKKSInfos,
+        A: CKKSPlaintexToBackendRef<BE> + LWEInfos + CKKSInfos,
     {
         ensure_base2k_match("ckks_sub_pt_vec_znx_into", ct.base2k().as_usize(), pt_znx.base2k().as_usize())?;
         let offset = ensure_plaintext_alignment(
@@ -85,18 +131,17 @@ pub(crate) trait CKKSPlaintextZnxDefault<BE: Backend> {
 
     fn ckks_extract_pt_znx_default<Dst, Src, S>(
         &self,
-        dst: &mut CKKSPlaintextVecZnx<Dst>,
+        dst: &mut Dst,
         src: &GLWEPlaintext<Src>,
         src_meta: &S,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Dst: Data,
         Src: Data,
+        Dst: CKKSPlaintextVecZnxToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
         S: CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
-        CKKSPlaintextVecZnx<Dst>: GLWEPlaintextToBackendMut<BE>,
         GLWEPlaintext<Src>: GLWEPlaintextToBackendRef<BE>,
     {
         ensure_base2k_match("ckks_extract_pt_znx", src.base2k().as_usize(), dst.base2k().as_usize())?;

@@ -1,11 +1,11 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GLWEAutomorphismKeyPrepared, GLWEInfos},
+    layouts::{GGLWEInfos, GLWEInfos, prepared::GLWEAutomorphismKeyPreparedBackendRef},
 };
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCiphertextMut, CKKSCiphertextRef, oep::CKKSImpl};
 
 pub(crate) trait CKKSConjugateOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
@@ -14,32 +14,25 @@ pub(crate) trait CKKSConjugateOep<BE: Backend + CKKSImpl<BE>> {
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
-    fn ckks_conjugate_into<Dst: Data, Src: Data, K: Data>(
+    fn ckks_conjugate_into(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        src: &CKKSCiphertextRef<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_conjugate_assign<Dst: Data, K: Data>(
+    fn ckks_conjugate_assign(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
@@ -53,35 +46,28 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOep<BE> for Module<BE> {
         BE::ckks_conjugate_tmp_bytes(self, ct_infos, key_infos)
     }
 
-    fn ckks_conjugate_into<Dst: Data, Src: Data, K: Data>(
+    fn ckks_conjugate_into(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        src: &CKKSCiphertextRef<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         BE::ckks_conjugate_into(self, dst, src, key, scratch)
     }
 
-    fn ckks_conjugate_assign<Dst: Data, K: Data>(
+    fn ckks_conjugate_assign(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         BE::ckks_conjugate_assign(self, dst, key, scratch)

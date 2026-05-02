@@ -61,7 +61,7 @@ fn build_factors<F: TestScalar>(ctx: &TestContext<impl Backend, F>, n: usize) ->
 }
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, n: usize) -> ScratchOwned<BE> {
-    let ct_infos = ctx.params.glwe_layout();
+    let ct_infos = ctx.ct_infos();
     let tsk_infos = ctx.params.tsk_layout();
     let bytes = ctx.module.ckks_mul_many_tmp_bytes(n, &ct_infos, &tsk_infos);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))

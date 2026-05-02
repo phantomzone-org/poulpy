@@ -1,5 +1,5 @@
 use crate::{
-    CKKSMeta,
+    CKKSInfos,
     leveled::api::{
         CKKSAddOps, CKKSAllOpsTmpBytes, CKKSConjugateOps, CKKSDecrypt, CKKSEncrypt, CKKSMulOps, CKKSNegOps, CKKSPow2Ops,
         CKKSRescaleOps, CKKSRotateOps, CKKSSubOps,
@@ -49,20 +49,19 @@ where
         + VecZnxRshSubBackend<BE>
         + VecZnxRshTmpBytes,
 {
-    fn ckks_all_ops_tmp_bytes<C, T>(&self, ct_infos: &C, tsk_infos: &T, pt_prec: &CKKSMeta) -> usize
+    fn ckks_all_ops_tmp_bytes<C, T, P>(&self, ct_infos: &C, tsk_infos: &T, pt_prec: &P) -> usize
     where
-        C: GLWEInfos,
+        C: GLWEInfos + CKKSInfos,
         T: GGLWEInfos,
+        P: CKKSInfos,
     {
         self.ckks_encrypt_sk_tmp_bytes(ct_infos)
             .max(self.ckks_decrypt_tmp_bytes(ct_infos))
             .max(self.ckks_add_tmp_bytes())
             .max(self.ckks_add_pt_vec_znx_tmp_bytes())
-            .max(self.ckks_add_pt_vec_rnx_tmp_bytes(ct_infos, ct_infos, pt_prec))
             .max(self.ckks_add_pt_const_tmp_bytes())
             .max(self.ckks_sub_tmp_bytes())
             .max(self.ckks_sub_pt_vec_znx_tmp_bytes())
-            .max(self.ckks_sub_pt_vec_rnx_tmp_bytes(ct_infos, ct_infos, pt_prec))
             .max(self.ckks_sub_pt_const_tmp_bytes())
             .max(self.ckks_neg_tmp_bytes())
             .max(self.ckks_mul_pow2_tmp_bytes())
@@ -72,17 +71,17 @@ where
             .max(self.ckks_mul_tmp_bytes(ct_infos, tsk_infos))
             .max(self.ckks_square_tmp_bytes(ct_infos, tsk_infos))
             .max(self.ckks_mul_pt_vec_znx_tmp_bytes(ct_infos, ct_infos, pt_prec))
-            .max(self.ckks_mul_pt_vec_rnx_tmp_bytes(ct_infos, ct_infos, pt_prec))
             .max(self.ckks_mul_pt_const_tmp_bytes(ct_infos, ct_infos, pt_prec))
             .max(self.prepare_tensor_key_tmp_bytes(tsk_infos))
             .max(self.glwe_tensor_key_encrypt_sk_tmp_bytes(tsk_infos))
     }
 
-    fn ckks_all_ops_with_atk_tmp_bytes<C, T, A>(&self, ct_infos: &C, tsk_infos: &T, atk_infos: &A, pt_prec: &CKKSMeta) -> usize
+    fn ckks_all_ops_with_atk_tmp_bytes<C, T, A, P>(&self, ct_infos: &C, tsk_infos: &T, atk_infos: &A, pt_prec: &P) -> usize
     where
-        C: GLWEInfos,
+        C: GLWEInfos + CKKSInfos,
         T: GGLWEInfos,
         A: GGLWEInfos,
+        P: CKKSInfos,
     {
         self.ckks_all_ops_tmp_bytes(ct_infos, tsk_infos, pt_prec)
             .max(self.ckks_rotate_tmp_bytes(ct_infos, atk_infos))

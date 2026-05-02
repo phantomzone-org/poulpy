@@ -21,10 +21,7 @@ use anyhow::Result;
 use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     encoding::Encoder,
-    layouts::{
-        CKKSCiphertext, CKKSMaintainOps, CKKSModuleAlloc, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx,
-        CKKSPlaintextVecZnx,
-    },
+    layouts::{CKKSCiphertext, CKKSMaintainOps, CKKSModuleAlloc, CKKSPlaintext, CKKSPlaintextVecHostCodec},
     leveled::api::{CKKSAddOpsUnsafe, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulAddOps, CKKSMulOps},
 };
 use poulpy_core::{
@@ -85,11 +82,11 @@ struct EncodingArtifacts {
     x_re: Vec<f64>,
     x_im: Vec<f64>,
     coeffs: PolynomialCoeffs,
-    cst_a: CKKSPlaintextCstRnx<f64>,
-    cst_b: CKKSPlaintextCstRnx<f64>,
-    cst_c: CKKSPlaintextCstRnx<f64>,
-    cst_d: CKKSPlaintextCstRnx<f64>,
-    pt_znx: CKKSPlaintextVecZnx<Vec<u8>>,
+    cst_a: CKKSPlaintext<Vec<u8>>,
+    cst_b: CKKSPlaintext<Vec<u8>>,
+    cst_c: CKKSPlaintext<Vec<u8>>,
+    cst_d: CKKSPlaintext<Vec<u8>>,
+    pt_znx: CKKSPlaintext<Vec<u8>>,
 }
 
 /// Ciphertexts produced by the encryption phase.
@@ -106,6 +103,39 @@ struct EvaluationArtifacts {
 struct DecryptionArtifacts {
     have_re: Vec<f64>,
     have_im: Vec<f64>,
+}
+
+fn encode_const_reim(
+    module: &Module<BakcendImpl>,
+    re: Option<f64>,
+    im: Option<f64>,
+    base2k: usize,
+    prec: CKKSMeta,
+) -> Result<CKKSPlaintext<Vec<u8>>> {
+    let mut pt = module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
+    let n = module.n() as usize;
+    let scale = 2f64.powi(prec.log_delta() as i32);
+    let k = prec.effective_k().into();
+    if prec.effective_k() <= 63 {
+        let mut coeffs = vec![0i64; n];
+        if let Some(re) = re {
+            coeffs[0] = (re * scale).round() as i64;
+        }
+        if let Some(im) = im {
+            coeffs[n / 2] = (im * scale).round() as i64;
+        }
+        pt.encode_vec_i64(&coeffs, k);
+    } else {
+        let mut coeffs = vec![0i128; n];
+        if let Some(re) = re {
+            coeffs[0] = (re * scale).round() as i128;
+        }
+        if let Some(im) = im {
+            coeffs[n / 2] = (im * scale).round() as i128;
+        }
+        pt.encode_vec_i128(&coeffs, k);
+    }
+    Ok(pt)
 }
 
 /// Returns the GLWE ciphertext layout used throughout the example.
@@ -172,7 +202,7 @@ fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
 }
 
 /// Prints the semantic and storage metadata of a CKKS plaintext.
-fn print_pt_meta(label: &str, pt: &CKKSPlaintextVecZnx<Vec<u8>>) {
+fn print_pt_meta(label: &str, pt: &CKKSPlaintext<Vec<u8>>) {
     println!(
         "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
         pt.log_delta(),
@@ -214,8 +244,9 @@ fn setup() -> Result<SetupArtifacts> {
     let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_layout());
     module.glwe_secret_prepare(&mut sk, &sk_raw);
     println!("  prepared secret key");
+    let ct_infos = module.ckks_ciphertext_alloc_from_infos(&glwe_layout());
     let scratch_bytes = module
-        .ckks_all_ops_tmp_bytes(&glwe_layout(), &tsk_layout(), &PREC_PT)
+        .ckks_all_ops_tmp_bytes(&ct_infos, &tsk_layout(), &PREC_PT)
         .max(module.glwe_normalize_tmp_bytes());
     let mut scratch = ScratchOwned::<BakcendImpl>::alloc(scratch_bytes);
     println!("  scratch bytes: {scratch_bytes}");
@@ -255,8 +286,8 @@ fn setup() -> Result<SetupArtifacts> {
 /// coefficients `(a, b, c, d)`, and encodes `x` from slot form into a quantized
 /// ZNX plaintext suitable for encryption.
 ///
-/// The constant coefficients stay as RNX scalars because the evaluation APIs
-/// can quantize them on demand with the correct metadata.
+/// The constant coefficients are prepared as host-side ZNX constants and later
+/// uploaded or consumed directly by the backend.
 fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
     print_phase("encoding");
 
@@ -279,16 +310,12 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
     println!("    c = {}", format_complex(coeffs.c.0, coeffs.c.1, 4));
     println!("    d = {}", format_complex(coeffs.d.0, coeffs.d.1, 4));
 
-    let cst_a = CKKSPlaintextCstRnx::new(Some(coeffs.a.0), Some(coeffs.a.1));
-    let cst_b = CKKSPlaintextCstRnx::new(Some(coeffs.b.0), Some(coeffs.b.1));
-    let cst_c = CKKSPlaintextCstRnx::new(Some(coeffs.c.0), Some(coeffs.c.1));
-    let cst_d = CKKSPlaintextCstRnx::new(Some(coeffs.d.0), Some(coeffs.d.1));
-
-    let mut pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N)?;
-    setup.encoder.encode_reim(&mut pt_rnx, &x_re, &x_im)?;
-
+    let cst_a = encode_const_reim(&setup.module, Some(coeffs.a.0), Some(coeffs.a.1), BASE2K, PREC_PT)?;
+    let cst_b = encode_const_reim(&setup.module, Some(coeffs.b.0), Some(coeffs.b.1), BASE2K, PREC_PT)?;
+    let cst_c = encode_const_reim(&setup.module, Some(coeffs.c.0), Some(coeffs.c.1), BASE2K, PREC_PT)?;
+    let cst_d = encode_const_reim(&setup.module, Some(coeffs.d.0), Some(coeffs.d.1), BASE2K, PREC_PT)?;
     let mut pt_znx = setup.module.ckks_pt_vec_znx_alloc(BASE2K.into(), PREC_CT);
-    pt_rnx.to_znx(&mut pt_znx)?;
+    setup.encoder.encode_reim(&mut pt_znx, &x_re, &x_im)?;
     print_pt_meta("encoded plaintext x", &pt_znx);
     println!("  slot[0] cleartext = {}", format_complex(x_re[0], x_im[0], 6));
 
@@ -350,7 +377,7 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 ///   steps; limbs are only K-normalized at the final step or just before a
 ///   ct-ct multiply that requires normalized inputs
 /// - `glwe_normalize` is applied before ct-ct multiplication
-/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_rnx_into`, which
+/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_znx_into`, which
 ///   normalizes the output as the last operation
 fn evaluation(
     setup: &mut SetupArtifacts,
@@ -383,14 +410,14 @@ fn evaluation(
         let mut scratch = setup.scratch.borrow();
         setup
             .module
-            .ckks_mul_pt_const_rnx_into(&mut right_linear, &encryption.ct_x, &encoding.cst_d, PREC_PT, &mut scratch)?;
+            .ckks_mul_pt_const_znx_into(&mut right_linear, &encryption.ct_x, &encoding.cst_d, &mut scratch)?;
     }
     print_ct_meta("d * x", &right_linear);
     unsafe {
         let mut scratch = setup.scratch.borrow();
         setup
             .module
-            .ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &encoding.cst_c, PREC_PT, &mut scratch)?;
+            .ckks_add_pt_const_znx_assign_unsafe(&mut right_linear, 0, &encoding.cst_c, 0, &mut scratch)?;
     }
     print_ct_meta("c + d * x (not normalized)", &right_linear);
 
@@ -426,14 +453,14 @@ fn evaluation(
         let mut scratch = setup.scratch.borrow();
         setup
             .module
-            .ckks_add_pt_const_rnx_into_unsafe(&mut poly, &right_branch, &encoding.cst_a, PREC_PT, &mut scratch)?;
+            .ckks_add_pt_const_znx_into_unsafe(&mut poly, &right_branch, 0, &encoding.cst_a, 0, &mut scratch)?;
     }
     print_ct_meta("right_branch + a (not normalized)", &poly);
     {
         let mut scratch = setup.scratch.borrow();
         setup
             .module
-            .ckks_mul_add_pt_const_rnx_into(&mut poly, &encryption.ct_x, &encoding.cst_b, PREC_PT, &mut scratch)?;
+            .ckks_mul_add_pt_const_znx_into(&mut poly, &encryption.ct_x, &encoding.cst_b, &mut scratch)?;
     }
     print_ct_meta("final polynomial", &poly);
 
@@ -459,12 +486,9 @@ fn decryption(setup: &mut SetupArtifacts, evaluation: &EvaluationArtifacts) -> R
     }
     print_pt_meta("decrypted plaintext", &pt_znx);
 
-    let mut pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N)?;
-    pt_rnx.decode_from_znx(&pt_znx)?;
-
     let mut have_re = vec![0.0; M];
     let mut have_im = vec![0.0; M];
-    setup.encoder.decode_reim(&pt_rnx, &mut have_re, &mut have_im)?;
+    setup.encoder.decode_reim(&pt_znx, &mut have_re, &mut have_im)?;
     println!("  slot[0] decrypted = {}", format_complex(have_re[0], have_im[0], 6));
 
     Ok(DecryptionArtifacts { have_re, have_im })

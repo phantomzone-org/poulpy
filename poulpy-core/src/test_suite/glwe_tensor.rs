@@ -533,7 +533,7 @@ where
     let in_base2k: usize = base2k;
     let out_base2k: usize = base2k;
     let k: usize = 8 * base2k + 1;
-    let b_size: usize = 3;
+    let b_coeff: usize = 0;
 
     for rank in 1_usize..=3 {
         let n: usize = module.n();
@@ -565,7 +565,7 @@ where
             (module)
                 .glwe_encrypt_sk_tmp_bytes(&glwe_in_infos)
                 .max((module).glwe_decrypt_tmp_bytes(&glwe_out_infos))
-                .max(module.glwe_mul_const_tmp_bytes(&res, &a, b_size)),
+                .max(module.glwe_mul_const_tmp_bytes(&res, &a, &pt_b)),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
@@ -582,12 +582,10 @@ where
 
         pt_a.data_mut().fill_uniform(17, &mut source_xa);
 
-        let mut b_const = vec![0i64; b_size];
         let mask = (1 << in_base2k) - 1;
-        for (j, x) in b_const[..1].iter_mut().enumerate() {
+        for j in 0..1 {
             let r = source_xa.next_u64() & mask;
-            *x = ((r << (64 - 17)) as i64) >> (64 - 17);
-            pt_b.data_mut().at_mut(0, j)[0] = *x
+            pt_b.data_mut().at_mut(0, j)[b_coeff] = ((r << (64 - 17)) as i64) >> (64 - 17);
         }
 
         let mut pt_want_base2k_in: VecZnx<Vec<u8>> = module.vec_znx_alloc(1, pt_a.size() + pt_b.size());
@@ -615,7 +613,7 @@ where
         );
 
         for res_offset in 0..scale {
-            module.glwe_mul_const(scale + res_offset, &mut res, &a, &b_const, &mut scratch.borrow());
+            module.glwe_mul_const(scale + res_offset, &mut res, &a, &pt_b, b_coeff, &mut scratch.borrow());
 
             module.glwe_decrypt(&res, &mut pt_have, &sk_dft, &mut scratch.borrow());
             module.vec_znx_normalize(

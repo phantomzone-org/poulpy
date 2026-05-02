@@ -1,11 +1,11 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
+    layouts::{GGLWEInfos, GLWEInfos, prepared::GLWEAutomorphismKeyPreparedBackendRef},
 };
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCiphertextMut, CKKSCiphertextRef, oep::CKKSImpl};
 
 pub(crate) trait CKKSRotateOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_rotate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
@@ -14,34 +14,25 @@ pub(crate) trait CKKSRotateOep<BE: Backend + CKKSImpl<BE>> {
         K: GGLWEInfos,
         Self: GLWEAutomorphism<BE>;
 
-    fn ckks_rotate_into<Dst: Data, Src: Data, H, K>(
+    fn ckks_rotate_into(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        k: i64,
-        keys: &H,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        src: &CKKSCiphertextRef<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_rotate_assign<Dst: Data, H, K>(
+    fn ckks_rotate_assign(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        k: i64,
-        keys: &H,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 }
 
@@ -55,39 +46,30 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSRotateOep<BE> for Module<BE> {
         BE::ckks_rotate_tmp_bytes(self, ct_infos, key_infos)
     }
 
-    fn ckks_rotate_into<Dst: Data, Src: Data, H, K>(
+    fn ckks_rotate_into(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        k: i64,
-        keys: &H,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        src: &CKKSCiphertextRef<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        BE::ckks_rotate_into(self, dst, src, k, keys, scratch)
+        BE::ckks_rotate_into(self, dst, src, key, scratch)
     }
 
-    fn ckks_rotate_assign<Dst: Data, H, K>(
+    fn ckks_rotate_assign(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        k: i64,
-        keys: &H,
+        dst: &mut CKKSCiphertextMut<'_, BE>,
+        key: &GLWEAutomorphismKeyPreparedBackendRef<'_, BE>,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        BE::ckks_rotate_assign(self, dst, k, keys, scratch)
+        BE::ckks_rotate_assign(self, dst, key, scratch)
     }
 }

@@ -77,10 +77,12 @@ impl_convolution_delegate!(
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-        b: &[i64],
+        b: &VecZnxBackendRef<'_, BE>,
+        b_col: usize,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) {
-        <BE as HalConvolutionImpl<BE>>::cnv_by_const_apply(self, cnv_offset, res, res_col, a, a_col, b, scratch)
+        <BE as HalConvolutionImpl<BE>>::cnv_by_const_apply(self, cnv_offset, res, res_col, a, a_col, b, b_col, b_coeff, scratch)
     },
     fn cnv_apply_dft<'s>(
         &self,

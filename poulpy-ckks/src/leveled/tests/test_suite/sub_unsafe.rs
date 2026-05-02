@@ -18,13 +18,12 @@
 //! | [`test_sub_ct_aligned_unsafe`] | ct-ct, `glwe_sub` / shift-sub fast path |
 //! | [`test_sub_ct_assign_aligned_unsafe`] | ct-ct inplace, `glwe_sub_assign` |
 //! | [`test_sub_pt_vec_znx_into_unsafe`] | ct - ZNX plaintext, `VecZnxRshSubBackend` |
-//! | [`test_sub_pt_vec_rnx_into_unsafe`] | ct - RNX plaintext, rnx→znx wrapper |
 //! | [`test_sub_pt_const_znx_into_aligned_unsafe`] | ct - ZNX const, raw `data_mut()[..] -= digit` path |
 
 use poulpy_core::{GLWENormalize, layouts::GLWEToBackendMut};
 use poulpy_hal::api::ScratchOwnedBorrow;
 
-use crate::{CKKSInfos, layouts::plaintext::CKKSConstPlaintextConversion, leveled::api::CKKSSubOpsUnsafe};
+use crate::{CKKSInfos, leveled::api::CKKSSubOpsUnsafe};
 
 use super::helpers::{
     TestContext, TestScalar, TestSubBackend as Backend, assert_binary_output_meta, assert_ct_meta, assert_unary_output_meta,
@@ -103,31 +102,6 @@ pub fn test_sub_pt_vec_znx_into_unsafe<BE: Backend, F: TestScalar>(ctx: &TestCon
     );
 }
 
-pub fn test_sub_pt_vec_rnx_into_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
-    let mut scratch = ctx.alloc_scratch();
-    let ct1 = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
-    let pt_rnx = ctx.encode_pt_rnx(&ctx.re2, &ctx.im2);
-    let (want_re, want_im) = ctx.want_sub();
-    let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    unsafe {
-        ctx.module
-            .ckks_sub_pt_vec_rnx_into_unsafe(&mut ct_res, &ct1, &pt_rnx, ctx.meta(), &mut scratch.borrow())
-            .unwrap();
-    }
-    assert_unary_output_meta("sub_pt_vec_rnx_into_unsafe", &ct_res, &ct1);
-    ctx.module.glwe_normalize_assign(
-        &mut <crate::layouts::CKKSCiphertext<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_res),
-        &mut scratch.borrow(),
-    );
-    ctx.assert_decrypt_precision(
-        "sub_pt_vec_rnx_into_unsafe",
-        &ct_res,
-        &want_re,
-        &want_im,
-        &mut scratch.borrow(),
-    );
-}
-
 pub fn test_sub_pt_const_znx_into_aligned_unsafe<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
@@ -135,19 +109,10 @@ pub fn test_sub_pt_const_znx_into_aligned_unsafe<BE: Backend, F: TestScalar>(ctx
     let want_re: Vec<F> = ctx.re1.iter().map(|x| *x - const_re).collect();
     let want_im: Vec<F> = ctx.im1.iter().map(|x| *x - const_im).collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    let cst_rnx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM));
-    let cst_znx = cst_rnx
-        .to_znx_at_k(
-            ctx.base2k(),
-            ct.log_budget()
-                .checked_add(ctx.meta().log_delta)
-                .expect("aligned precision overflow"),
-            ctx.meta().log_delta,
-        )
-        .unwrap();
+    let cst_znx = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM), ctx.meta());
     unsafe {
         ctx.module
-            .ckks_sub_pt_const_znx_into_unsafe(&mut ct_res, &ct, &cst_znx, &mut scratch.borrow())
+            .ckks_sub_pt_const_znx_into_unsafe(&mut ct_res, &ct, 0, &cst_znx, 0, &mut scratch.borrow())
             .unwrap();
     }
     assert_unary_output_meta("sub_pt_const_znx_into_aligned_unsafe", &ct_res, &ct);

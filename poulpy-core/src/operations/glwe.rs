@@ -23,35 +23,47 @@ use crate::{
     GGLWEProduct, ScratchArenaTakeCore,
     layouts::{
         Base2K, GGLWEInfos, GLWE, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWEPlaintextToBackendRef,
-        GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, glwe_backend_mut_from_mut,
-        glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
+        GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        glwe_backend_ref_from_ref, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
 #[doc(hidden)]
 pub trait GLWEMulConstDefault<BE: Backend> {
-    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
-        A: GLWEInfos;
+        A: GLWEInfos,
+        B: GLWEInfos;
 
-    fn glwe_mul_const<'s, R, A>(
+    fn glwe_mul_const<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>;
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>;
 
-    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
-    where
+    fn glwe_mul_const_assign<'s, R, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         R: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
+        B: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>;
 }
 
 impl<BE: Backend> GLWEMulConstDefault<BE> for Module<BE>
@@ -60,16 +72,18 @@ where
     Self: VecZnxCopyBackend<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
-    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
+        B: GLWEInfos,
     {
         assert_eq!(self.n() as u32, res.n());
         assert_eq!(self.n() as u32, a.n());
 
         let a_base2k: usize = a.base2k().as_usize();
         let res_base2k: usize = res.base2k().as_usize();
+        let b_size = b.size();
         let cnv_offset = a.size().max(b_size);
         let res_size: usize = (res.size() * res_base2k).div_ceil(a_base2k);
         let res_dft_size: usize = a.size() + b_size - cnv_offset.saturating_sub(1);
@@ -81,26 +95,30 @@ where
         lvl_0 + lvl_1
     }
 
-    fn glwe_mul_const<'s, R, A>(
+    fn glwe_mul_const<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>,
     {
         let scratch = scratch.borrow();
         assert_eq!(res.rank(), a.rank());
+        let b_size = b.size();
         assert!(
-            scratch.available() >= self.glwe_mul_const_tmp_bytes(res, a, b.len()),
+            scratch.available() >= self.glwe_mul_const_tmp_bytes(res, a, b),
             "scratch.available(): {} < GLWEMulConst::glwe_mul_const_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_mul_const_tmp_bytes(res, a, b.len())
+            self.glwe_mul_const_tmp_bytes(res, a, b)
         );
 
         let cols: usize = res.rank().as_usize() + 1;
@@ -114,10 +132,11 @@ where
             ((cnv_offset / a_base2k).saturating_sub(1), (cnv_offset % a_base2k) as i64)
         };
 
-        let res_dft_size = a.size() + b.len() - cnv_offset_hi;
+        let res_dft_size = a.size() + b_size - cnv_offset_hi;
 
         let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res_dft_size);
         let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let b_backend = <GLWEPlaintext<B> as GLWEPlaintextToBackendRef<BE>>::to_backend_ref(b);
         for i in 0..cols {
             {
                 let mut scratch_iter = scratch.borrow();
@@ -128,7 +147,9 @@ where
                     0,
                     &a_backend.data,
                     i,
-                    b,
+                    &poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&b_backend.data),
+                    0,
+                    b_coeff,
                     &mut scratch_iter,
                 );
             }
@@ -152,17 +173,25 @@ where
         }
     }
 
-    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
-    where
+    fn glwe_mul_const_assign<'s, R, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         R: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: GLWEPlaintextToBackendRef<BE>,
     {
         let scratch = scratch.borrow();
         assert!(
-            scratch.available() >= self.glwe_mul_const_tmp_bytes(res, res, b.len()),
+            scratch.available() >= self.glwe_mul_const_tmp_bytes(res, res, b),
             "scratch.available(): {} < GLWEMulConst::glwe_mul_const_tmp_bytes: {}",
             scratch.available(),
-            self.glwe_mul_const_tmp_bytes(res, res, b.len())
+            self.glwe_mul_const_tmp_bytes(res, res, b)
         );
 
         let cols: usize = res.rank().as_usize() + 1;
@@ -176,6 +205,7 @@ where
 
         let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res.size());
         let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let b_backend = <GLWEPlaintext<B> as GLWEPlaintextToBackendRef<BE>>::to_backend_ref(b);
         for i in 0..cols {
             {
                 let res_backend = <GLWE<R> as GLWEToBackendRef<BE>>::to_backend_ref(res);
@@ -187,7 +217,9 @@ where
                     0,
                     &res_backend.data,
                     i,
-                    b,
+                    &poulpy_hal::layouts::vec_znx_backend_ref_from_ref::<BE>(&b_backend.data),
+                    0,
+                    b_coeff,
                     &mut scratch_iter,
                 );
             }
@@ -515,15 +547,14 @@ pub trait GLWETensoringDefault<BE: Backend> {
         &self,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &B,
         tsk_size: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        B: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>;
 
     #[allow(clippy::too_many_arguments)]
@@ -706,15 +737,14 @@ where
         &self,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &B,
         tsk_size: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        B: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: GLWEToBackendRef<BE>,
     {
         let scratch = scratch.borrow();

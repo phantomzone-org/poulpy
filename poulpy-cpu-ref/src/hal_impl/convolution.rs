@@ -59,7 +59,9 @@ macro_rules! hal_impl_convolution {
             res_col: usize,
             a: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
             a_col: usize,
-            b: &[i64],
+            b: &poulpy_hal::layouts::VecZnxBackendRef<'_, Self>,
+            b_col: usize,
+            b_coeff: usize,
             scratch: &mut poulpy_hal::layouts::ScratchArena<'s, Self>,
         ) {
             let mut scratch = scratch.borrow();
@@ -71,6 +73,8 @@ macro_rules! hal_impl_convolution {
                 a,
                 a_col,
                 b,
+                b_col,
+                b_coeff,
                 &mut scratch,
             );
         }

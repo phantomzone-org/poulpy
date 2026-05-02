@@ -12,19 +12,14 @@
 //! | [`test_dot_product_ct_delta_log_delta`] | ct · ct fallback with non-uniform `log_delta` |
 //! | [`test_dot_product_ct_smaller_output`] | ct · ct, output narrower than inputs |
 //! | [`test_dot_product_pt_vec_znx_aligned`] | ct · ZNX plaintext |
-//! | [`test_dot_product_pt_vec_rnx_aligned`] | ct · RNX plaintext |
 //! | [`test_dot_product_const_znx_aligned`] | ct · ZNX constant |
-//! | [`test_dot_product_const_rnx_aligned`] | ct · RNX constant |
 
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::ScratchOwned,
 };
 
-use crate::{
-    layouts::plaintext::{CKKSConstPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx},
-    leveled::api::CKKSDotProductOps,
-};
+use crate::{layouts::plaintext::CKKSPlaintext, leveled::api::CKKSDotProductOps};
 
 use super::helpers::{TestContext, TestMulBackend as Backend, TestScalar, TestVector};
 
@@ -32,19 +27,16 @@ const N: usize = 3;
 const DELTA_LOG_DELTA: usize = 8;
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> ScratchOwned<BE> {
-    let ct_infos = ctx.params.glwe_layout();
+    let ct_infos = ctx.ct_infos();
     let tsk_infos = ctx.params.tsk_layout();
     let ct_bytes = ctx.module.ckks_dot_product_ct_tmp_bytes(N, &ct_infos, &tsk_infos);
     let pt_znx_bytes = ctx
         .module
         .ckks_dot_product_pt_vec_znx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let pt_rnx_bytes = ctx
-        .module
-        .ckks_dot_product_pt_vec_rnx_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
     let const_bytes = ctx
         .module
         .ckks_dot_product_pt_const_tmp_bytes(&ct_infos, &ct_infos, &ctx.meta());
-    let bytes = ct_bytes.max(pt_znx_bytes).max(pt_rnx_bytes).max(const_bytes);
+    let bytes = ct_bytes.max(pt_znx_bytes).max(const_bytes);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
 }
 
@@ -355,46 +347,6 @@ pub fn test_dot_product_pt_vec_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Tes
     );
 }
 
-pub fn test_dot_product_pt_vec_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
-    let mut scratch = alloc_scratch(ctx);
-    let a_vecs = three_vectors(ctx);
-    let b_vecs = three_vectors(ctx);
-
-    let m = ctx.re1.len();
-    let mut want_re = vec![F::zero(); m];
-    let mut want_im = vec![F::zero(); m];
-    for i in 0..N {
-        cmul_acc(
-            &mut want_re,
-            &mut want_im,
-            &a_vecs[i].0,
-            &a_vecs[i].1,
-            &b_vecs[i].0,
-            &b_vecs[i].1,
-        );
-    }
-
-    let a_cts: Vec<_> = a_vecs
-        .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
-        .collect();
-    let pts: Vec<_> = b_vecs.iter().map(|(re, im)| ctx.encode_pt_rnx(re, im)).collect();
-    let a_refs: Vec<&_> = a_cts.iter().collect();
-    let pt_refs: Vec<&_> = pts.iter().collect();
-
-    let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module
-        .ckks_dot_product_pt_vec_rnx(&mut ct_res, &a_refs, &pt_refs, ctx.meta(), &mut scratch.borrow())
-        .unwrap();
-    ctx.assert_decrypt_precision(
-        "dot_product_pt_vec_rnx_aligned",
-        &ct_res,
-        &want_re,
-        &want_im,
-        &mut scratch.borrow(),
-    );
-}
-
 pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx);
     let a_vecs = three_vectors(ctx);
@@ -423,8 +375,10 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
         .iter()
         .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
-    let cst_rnxs: Vec<CKKSPlaintextCstRnx<F>> = const_pairs.iter().map(|(r, i)| ctx.const_rnx(Some(*r), Some(*i))).collect();
-    let cst_znxs: Vec<CKKSPlaintextCstZnx> = cst_rnxs.iter().map(|c| c.to_znx(ctx.base2k(), ctx.meta()).unwrap()).collect();
+    let cst_znxs: Vec<CKKSPlaintext<Vec<u8>>> = const_pairs
+        .iter()
+        .map(|(r, i)| ctx.const_rnx(Some(*r), Some(*i), ctx.meta()))
+        .collect();
 
     let a_refs: Vec<&_> = a_cts.iter().collect();
     let cst_refs: Vec<&_> = cst_znxs.iter().collect();
@@ -435,52 +389,6 @@ pub fn test_dot_product_const_znx_aligned<BE: Backend, F: TestScalar>(ctx: &Test
         .unwrap();
     ctx.assert_decrypt_precision(
         "dot_product_const_znx_aligned",
-        &ct_res,
-        &want_re,
-        &want_im,
-        &mut scratch.borrow(),
-    );
-}
-
-pub fn test_dot_product_const_rnx_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
-    let mut scratch = alloc_scratch(ctx);
-    let a_vecs = three_vectors(ctx);
-
-    let const_pairs: [(f64, f64); 3] = [(0.25, -0.125), (0.125, 0.0625), (-0.3125, 0.25)];
-    let quantized: Vec<(F, F)> = const_pairs
-        .iter()
-        .map(|(r, i)| ctx.quantized_const(*r, *i, ctx.meta().log_delta))
-        .collect();
-
-    let m = ctx.re1.len();
-    let mut want_re = vec![F::zero(); m];
-    let mut want_im = vec![F::zero(); m];
-    for i in 0..N {
-        cmul_scalar_acc(
-            &mut want_re,
-            &mut want_im,
-            &a_vecs[i].0,
-            &a_vecs[i].1,
-            quantized[i].0,
-            quantized[i].1,
-        );
-    }
-
-    let a_cts: Vec<_> = a_vecs
-        .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
-        .collect();
-    let csts: Vec<CKKSPlaintextCstRnx<F>> = const_pairs.iter().map(|(r, i)| ctx.const_rnx(Some(*r), Some(*i))).collect();
-
-    let a_refs: Vec<&_> = a_cts.iter().collect();
-    let cst_refs: Vec<&_> = csts.iter().collect();
-
-    let mut ct_res = ctx.alloc_ct(ctx.max_k());
-    ctx.module
-        .ckks_dot_product_pt_const_rnx(&mut ct_res, &a_refs, &cst_refs, ctx.meta(), &mut scratch.borrow())
-        .unwrap();
-    ctx.assert_decrypt_precision(
-        "dot_product_const_rnx_aligned",
         &ct_res,
         &want_re,
         &want_im,

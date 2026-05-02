@@ -37,7 +37,11 @@
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | bootstrapping | Planned CKKS bootstrapping |
 
-use poulpy_core::layouts::{Base2K, TorusPrecision};
+use poulpy_core::layouts::{
+    Base2K, GLWEInfos, GLWEPlaintextToBackendMut, GLWEPlaintextToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+    TorusPrecision,
+};
+use poulpy_hal::layouts::Backend;
 
 pub mod encoding;
 mod error;
@@ -101,4 +105,62 @@ impl CKKSInfos for CKKSMeta {
     fn log_budget(&self) -> usize {
         self.log_budget
     }
+}
+
+/// Mutable CKKS metadata access for ciphertext/plaintext containers.
+pub trait SetCKKSInfos: CKKSInfos {
+    /// Replaces the semantic CKKS metadata.
+    fn set_meta(&mut self, meta: CKKSMeta);
+
+    /// Updates only the base-2 logarithm of the encoded scaling factor.
+    fn set_log_delta(&mut self, log_delta: usize) {
+        let mut meta = self.meta();
+        meta.log_delta = log_delta;
+        self.set_meta(meta);
+    }
+
+    /// Updates only the base-2 logarithm of the remaining homomorphic budget.
+    fn set_log_budget(&mut self, log_budget: usize) {
+        let mut meta = self.meta();
+        meta.log_budget = log_budget;
+        self.set_meta(meta);
+    }
+}
+
+pub trait CKKSCiphertextToBackendRef<BE: Backend>: GLWEToBackendRef<BE> + LWEInfos {}
+
+impl<BE: Backend, T> CKKSCiphertextToBackendRef<BE> for T where T: GLWEToBackendRef<BE> + LWEInfos {}
+
+pub trait CKKSCiphertextToBackendMut<BE: Backend>: GLWEToBackendMut<BE> + LWEInfos {}
+
+impl<BE: Backend, T> CKKSCiphertextToBackendMut<BE> for T where T: GLWEToBackendMut<BE> + LWEInfos {}
+
+pub trait CKKSPlaintexToBackendRef<BE: Backend>: GLWEPlaintextToBackendRef<BE> + GLWEInfos + LWEInfos {}
+
+impl<BE: Backend, T> CKKSPlaintexToBackendRef<BE> for T where T: GLWEPlaintextToBackendRef<BE> + GLWEInfos + LWEInfos {}
+
+pub trait CKKSPlaintextVecZnxToBackendMut<BE: Backend>: GLWEPlaintextToBackendMut<BE> + GLWEInfos + LWEInfos {}
+
+impl<BE: Backend, T> CKKSPlaintextVecZnxToBackendMut<BE> for T where T: GLWEPlaintextToBackendMut<BE> + GLWEInfos + LWEInfos {}
+
+pub(crate) type CKKSCiphertextRef<'a, BE> = layouts::CKKSCiphertext<<BE as poulpy_hal::layouts::Backend>::BufRef<'a>>;
+pub(crate) type CKKSCiphertextMut<'a, BE> = layouts::CKKSCiphertext<<BE as poulpy_hal::layouts::Backend>::BufMut<'a>>;
+pub(crate) type CKKSPlaintextRef<'a, BE> = layouts::CKKSPlaintext<<BE as poulpy_hal::layouts::Backend>::BufRef<'a>>;
+pub(crate) type CKKSPlaintextMut<'a, BE> = layouts::CKKSPlaintext<<BE as poulpy_hal::layouts::Backend>::BufMut<'a>>;
+
+pub(crate) fn ckks_offset_binary<R, A, B>(res: &R, a: &A, b: &B) -> usize
+where
+    R: LWEInfos + CKKSInfos + ?Sized,
+    A: LWEInfos + CKKSInfos + ?Sized,
+    B: LWEInfos + CKKSInfos + ?Sized,
+{
+    a.effective_k().min(b.effective_k()).saturating_sub(res.max_k().as_usize())
+}
+
+pub(crate) fn ckks_offset_unary<R, A>(res: &R, a: &A) -> usize
+where
+    R: LWEInfos + CKKSInfos + ?Sized,
+    A: LWEInfos + CKKSInfos + ?Sized,
+{
+    a.effective_k().saturating_sub(res.max_k().as_usize())
 }

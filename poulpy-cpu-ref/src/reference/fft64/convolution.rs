@@ -148,7 +148,9 @@ pub fn convolution_by_const_apply<BE>(
     res_col: usize,
     a: &VecZnxBackendRef<'_, BE>,
     a_col: usize,
-    b: &[i64],
+    b: &VecZnxBackendRef<'_, BE>,
+    b_col: usize,
+    b_coeff: usize,
     tmp: &mut [i64],
 ) where
     BE: Backend<ScalarBig = i64> + I64Ops + 'static,
@@ -160,7 +162,7 @@ pub fn convolution_by_const_apply<BE>(
 
     let res_size: usize = res.size();
     let a_size: usize = a.size();
-    let b_size: usize = b.len();
+    let b_size: usize = b.size();
 
     let bound: usize = a_size + b_size - 1;
     let min_size: usize = res_size.min(bound);
@@ -176,10 +178,14 @@ pub fn convolution_by_const_apply<BE>(
     let res_idx: usize = n * res_col;
 
     let (res_blk, a_blk) = tmp[..(min_size + a_size) * 8].split_at_mut(min_size * 8);
+    let mut b_digits = vec![0i64; b_size];
+    for (j, digit) in b_digits.iter_mut().enumerate() {
+        *digit = b.at(b_col, j)[b_coeff];
+    }
 
     for blk_i in 0..n / 8 {
         BE::i64_extract_1blk_contiguous(a_sl, a_idx, a_size, blk_i, a_blk, a_raw);
-        BE::i64_convolution_by_const(res_blk, min_size, offset, a_blk, a_size, b);
+        BE::i64_convolution_by_const(res_blk, min_size, offset, a_blk, a_size, &b_digits);
         BE::i64_save_1blk_contiguous(res_sl, res_idx, min_size, blk_i, res_raw, res_blk);
     }
 

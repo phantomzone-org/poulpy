@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena, vmp_pmat_backend_ref_from_ref},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
@@ -46,7 +46,43 @@ impl<D: Data, B: Backend> LWEInfos for GLWEAutomorphismKeyPrepared<D, B> {
     }
 }
 
+impl<D: Data, B: Backend> LWEInfos for &GLWEAutomorphismKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+
+impl<D: Data, B: Backend> LWEInfos for &mut GLWEAutomorphismKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+
 impl<D: Data, B: Backend> GetGaloisElement for GLWEAutomorphismKeyPrepared<D, B> {
+    fn p(&self) -> i64 {
+        self.p
+    }
+}
+
+impl<D: Data, B: Backend> GetGaloisElement for &GLWEAutomorphismKeyPrepared<D, B> {
+    fn p(&self) -> i64 {
+        self.p
+    }
+}
+
+impl<D: Data, B: Backend> GetGaloisElement for &mut GLWEAutomorphismKeyPrepared<D, B> {
     fn p(&self) -> i64 {
         self.p
     }
@@ -59,6 +95,18 @@ impl<D: Data, B: Backend> SetGaloisElement for GLWEAutomorphismKeyPrepared<D, B>
 }
 
 impl<D: Data, B: Backend> GLWEInfos for GLWEAutomorphismKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for &GLWEAutomorphismKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for &mut GLWEAutomorphismKeyPrepared<D, B> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
@@ -77,6 +125,36 @@ impl<D: Data, B: Backend> GGLWEInfos for GLWEAutomorphismKeyPrepared<D, B> {
         self.key.dsize()
     }
 
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWEInfos for &GLWEAutomorphismKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
+    }
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWEInfos for &mut GLWEAutomorphismKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
+    }
     fn dnum(&self) -> Dnum {
         self.key.dnum()
     }
@@ -189,12 +267,36 @@ where
     }
 }
 
+impl<'b, B: Backend + 'b> GLWEAutomorphismKeyPreparedToBackendRef<B> for &GLWEAutomorphismKeyPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GLWEAutomorphismKeyPreparedBackendRef<'_, B> {
+        let key = &self.key;
+        GLWEAutomorphismKeyPrepared {
+            key: GGLWEPrepared {
+                data: vmp_pmat_backend_ref_from_ref::<B>(&key.data),
+                base2k: key.base2k,
+                dsize: key.dsize,
+            },
+            p: self.p,
+        }
+    }
+}
+
 impl<D: Data, B: Backend> GGLWEPreparedToBackendRef<B> for GLWEAutomorphismKeyPrepared<D, B>
 where
     GGLWEPrepared<D, B>: GGLWEPreparedToBackendRef<B>,
 {
     fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
         self.key.to_backend_ref()
+    }
+}
+
+impl<'b, B: Backend + 'b> GGLWEPreparedToBackendRef<B> for &GLWEAutomorphismKeyPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GGLWEPreparedBackendRef<'_, B> {
+        GGLWEPrepared {
+            data: vmp_pmat_backend_ref_from_ref::<B>(&self.key.data),
+            base2k: self.key.base2k,
+            dsize: self.key.dsize,
+        }
     }
 }
 

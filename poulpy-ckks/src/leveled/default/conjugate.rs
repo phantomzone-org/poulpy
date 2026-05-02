@@ -1,16 +1,11 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
-    layouts::{
-        GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyPrepared, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement},
 };
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{
-    CKKSInfos, checked_log_budget_sub,
-    layouts::{CKKSCiphertext, ciphertext::CKKSOffset},
-};
+use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef, CKKSInfos, SetCKKSInfos, checked_log_budget_sub, layouts::ciphertext::CKKSOffset};
 
 pub(crate) trait CKKSConjugateDefault<BE: Backend> {
     fn ckks_conjugate_tmp_bytes_default<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
@@ -24,19 +19,16 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
 
     fn ckks_conjugate_into_default<'s, Dst, Src, K>(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut Dst,
+        src: &Src,
+        key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
-        Dst: Data,
-        Src: Data,
-        K: Data,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: GLWEToBackendRef<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSOffset + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
@@ -51,23 +43,21 @@ pub(crate) trait CKKSConjugateDefault<BE: Backend> {
             self.glwe_automorphism(&mut dst_ref, &src_ref, key, scratch);
         }
 
-        dst.meta = src.meta();
-        dst.meta.log_budget = checked_log_budget_sub("conjugate", dst.log_budget(), offset)?;
+        dst.set_meta(src.meta());
+        dst.set_log_budget(checked_log_budget_sub("conjugate", dst.log_budget(), offset)?);
         Ok(())
     }
 
     fn ckks_conjugate_assign_default<'s, Dst, K>(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut Dst,
+        key: &K,
         scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
-        Dst: Data,
-        K: Data,
         Self: GLWEAutomorphism<BE>,
-        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
+        Dst: CKKSCiphertextToBackendMut<BE>,
+        K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {

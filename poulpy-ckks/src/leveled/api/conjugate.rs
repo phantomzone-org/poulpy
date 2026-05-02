@@ -1,44 +1,31 @@
 use anyhow::Result;
-use poulpy_core::{
-    GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GGLWEInfos, GLWEAutomorphismKeyPrepared, GLWEInfos},
-};
-use poulpy_hal::layouts::{Backend, Data, ScratchArena};
+use poulpy_core::layouts::{GGLWEInfos, GLWEInfos, prepared::GLWEAutomorphismKeyPreparedToBackendRef};
+use poulpy_hal::layouts::{Backend, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
+
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 pub trait CKKSConjugateOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
-        C: GLWEInfos,
-        K: GGLWEInfos,
-        Self: GLWEAutomorphism<BE>;
+        C: GLWEInfos + CKKSInfos,
+        K: GGLWEInfos;
 
-    fn ckks_conjugate_into<Dst: Data, Src: Data, K: Data>(
+    fn ckks_conjugate_into<Dst, Src, K>(
         &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
+        dst: &mut Dst,
+        src: &Src,
+        key: &K,
         scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEInfos;
 
-    fn ckks_conjugate_assign<Dst: Data, K: Data>(
-        &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        key: &GLWEAutomorphismKeyPrepared<K, BE>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_conjugate_assign<Dst, K>(&self, dst: &mut Dst, key: &K, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        GLWEAutomorphismKeyPrepared<K, BE>:
-            poulpy_core::layouts::GGLWEPreparedToBackendRef<BE> + poulpy_core::layouts::GGLWEInfos,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEInfos;
 }

@@ -72,7 +72,9 @@ pub trait Convolution<BE: Backend> {
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-        b: &[i64],
+        b: &VecZnxBackendRef<'_, BE>,
+        b_col: usize,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     );
 

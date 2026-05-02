@@ -1215,42 +1215,49 @@ macro_rules! impl_automorphism_via_defaults {
 macro_rules! impl_operations_via_defaults {
     ($be:ty) => {
         unsafe impl GLWEMulConstImpl<$be> for $be {
-            fn glwe_mul_const_tmp_bytes<R, A>(module: &Module<Self>, res: &R, a: &A, b_size: usize) -> usize
+            fn glwe_mul_const_tmp_bytes<R, A, B>(module: &Module<Self>, res: &R, a: &A, b: &B) -> usize
             where
                 R: GLWEInfos,
                 A: GLWEInfos,
+                B: GLWEInfos,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_const_tmp_bytes_default(module, res, a, b_size)
+                <Self as OperationsDefaults<Self>>::glwe_mul_const_tmp_bytes_default(module, res, a, b)
             }
 
-            fn glwe_mul_const<'s, R, A>(
+            fn glwe_mul_const<'s, R, A, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
                 res: &mut poulpy_core::layouts::GLWE<R>,
                 a: &poulpy_core::layouts::GLWE<A>,
-                b: &[i64],
+                b: &poulpy_core::layouts::GLWEPlaintext<B>,
+                b_coeff: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
                 R: poulpy_hal::layouts::Data,
                 A: poulpy_hal::layouts::Data,
+                B: poulpy_hal::layouts::Data,
                 poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
                 poulpy_core::layouts::GLWE<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
+                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_mul_const_default(module, cnv_offset, res, a, b, b_coeff, scratch)
             }
 
-            fn glwe_mul_const_assign<'s, R>(
+            fn glwe_mul_const_assign<'s, R, B>(
                 module: &Module<Self>,
                 cnv_offset: usize,
                 res: &mut poulpy_core::layouts::GLWE<R>,
-                b: &[i64],
+                b: &poulpy_core::layouts::GLWEPlaintext<B>,
+                b_coeff: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
                 R: poulpy_hal::layouts::Data,
+                B: poulpy_hal::layouts::Data,
                 poulpy_core::layouts::GLWE<R>:
                     poulpy_core::layouts::GLWEToBackendMut<Self> + poulpy_core::layouts::GLWEToBackendRef<Self>,
+                poulpy_core::layouts::GLWEPlaintext<B>: poulpy_core::layouts::GLWEPlaintextToBackendRef<Self>,
             {
-                <Self as OperationsDefaults<Self>>::glwe_mul_const_assign_default(module, cnv_offset, res, b, scratch)
+                <Self as OperationsDefaults<Self>>::glwe_mul_const_assign_default(module, cnv_offset, res, b, b_coeff, scratch)
             }
         }
 
@@ -1394,16 +1401,14 @@ macro_rules! impl_operations_via_defaults {
                 module: &Module<Self>,
                 res: &mut poulpy_core::layouts::GLWE<R>,
                 a: &GLWETensor<A>,
-                tsk: &poulpy_core::layouts::GLWETensorKeyPrepared<B, Self>,
+                tsk: &B,
                 tsk_size: usize,
                 scratch: &mut ScratchArena<'s, Self>,
             ) where
                 R: poulpy_hal::layouts::Data,
                 A: poulpy_hal::layouts::Data,
-                B: poulpy_hal::layouts::Data,
+                B: GGLWEInfos + poulpy_core::layouts::GLWETensorKeyPreparedToBackendRef<Self>,
                 poulpy_core::layouts::GLWE<R>: poulpy_core::layouts::GLWEToBackendMut<Self>,
-                poulpy_core::layouts::GLWETensorKeyPrepared<B, Self>:
-                    poulpy_core::layouts::GLWETensorKeyPreparedToBackendRef<Self>,
                 GLWETensor<A>: poulpy_core::layouts::GLWEToBackendRef<Self>,
             {
                 <Self as OperationsDefaults<Self>>::glwe_tensor_relinearize_default(module, res, a, tsk, tsk_size, scratch)

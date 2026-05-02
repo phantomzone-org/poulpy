@@ -8,13 +8,9 @@ use std::{collections::HashMap, f64::consts::TAU, fmt::Debug, marker::PhantomDat
 
 use super::CKKSTestParams;
 use crate::{
-    CKKSCompositionError, CKKSInfos, CKKSMeta,
+    CKKSCompositionError, CKKSInfos, CKKSMeta, SetCKKSInfos,
     encoding::reim::Encoder,
-    layouts::{
-        CKKSCiphertext, CKKSModuleAlloc,
-        ciphertext::CKKSOffset,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx},
-    },
+    layouts::{CKKSCiphertext, CKKSModuleAlloc, CKKSPlaintextVecHostCodec, ciphertext::CKKSOffset, plaintext::CKKSPlaintext},
     leveled::api::{CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt},
     oep::CKKSImpl,
 };
@@ -357,12 +353,10 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
         let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
         module.glwe_secret_prepare(&mut sk, &sk_raw);
 
-        let mut scratch = ScratchOwned::<BE>::alloc(module.ckks_all_ops_with_atk_tmp_bytes(
-            &params.glwe_layout(),
-            &tsk_infos,
-            &atk_infos,
-            &params.prec,
-        ));
+        let mut ct_infos = host_module.ckks_ciphertext_alloc_from_infos(&params.glwe_layout());
+        ct_infos.set_meta(params.prec);
+        let mut scratch =
+            ScratchOwned::<BE>::alloc(module.ckks_all_ops_with_atk_tmp_bytes(&ct_infos, &tsk_infos, &atk_infos, &params.prec));
 
         let mut tsk = module.glwe_tensor_key_alloc_from_infos(&tsk_infos);
         {
@@ -406,7 +400,6 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
             atks.insert(index, atk_prepared);
         }
 
-        let ct_infos = params.glwe_layout();
         let scratch_size = module.ckks_all_ops_with_atk_tmp_bytes(&ct_infos, &tsk_infos, &atk_infos, &params.prec);
 
         let tau = Self::to_scalar(TAU);
@@ -474,8 +467,39 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         (re, im)
     }
 
-    pub fn const_rnx(&self, re: Option<f64>, im: Option<f64>) -> crate::layouts::plaintext::CKKSPlaintextCstRnx<F> {
-        crate::layouts::plaintext::CKKSPlaintextCstRnx::new(re.map(Self::to_scalar), im.map(Self::to_scalar))
+    pub fn const_rnx_with_prec(&self, re: Option<f64>, im: Option<f64>, prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
+        let mut pt = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
+        let n = self.degree().as_usize();
+        let k = prec.effective_k().into();
+        let scale = Self::to_scalar(2.0).powi(prec.log_delta() as i32);
+        if prec.effective_k() <= 63 {
+            let mut coeffs = vec![0i64; n];
+            if let Some(re) = re {
+                coeffs[0] = (Self::to_scalar(re) * scale).round().to_i64().unwrap();
+            }
+            if let Some(im) = im {
+                coeffs[n / 2] = (Self::to_scalar(im) * scale).round().to_i64().unwrap();
+            }
+            pt.encode_vec_i64(&coeffs, k);
+        } else {
+            let mut coeffs = vec![0i128; n];
+            if let Some(re) = re {
+                coeffs[0] = (Self::to_scalar(re) * scale).round().to_i128().unwrap();
+            }
+            if let Some(im) = im {
+                coeffs[n / 2] = (Self::to_scalar(im) * scale).round().to_i128().unwrap();
+            }
+            pt.encode_vec_i128(&coeffs, k);
+        }
+        pt
+    }
+
+    pub fn const_rnx(&self, re: Option<f64>, im: Option<f64>, prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
+        self.const_rnx_with_prec(re, im, prec)
+    }
+
+    pub fn encode_pt_rnx(&self, re: &[F], im: &[F]) -> CKKSPlaintext<Vec<u8>> {
+        self.encode_pt_znx(re, im)
     }
 
     pub fn tsk(&self) -> &GLWETensorKeyPrepared<BE::OwnedBuf, BE> {
@@ -515,12 +539,8 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         BE: 'a,
     {
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-
-        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
-
         let mut pt_znx = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
-        pt_rnx.to_znx(&mut pt_znx).unwrap();
+        self.encoder.encode_reim(&mut pt_znx, re, im).unwrap();
 
         let mut ct = self.alloc_ct(k);
         let mut xa = Source::new([3u8; 32]);
@@ -574,7 +594,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         ct: &CKKSCiphertext<Vec<u8>>,
         prec: CKKSMeta,
         scratch: &mut ScratchArena<'_, BE>,
-    ) -> anyhow::Result<CKKSPlaintextZnx<Vec<u8>>>
+    ) -> anyhow::Result<CKKSPlaintext<Vec<u8>>>
     where
         Module<BE>: CKKSDecrypt<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
@@ -593,20 +613,17 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     /// - `(re, im)` slot vectors decoded through the current test encoder
     ///
     /// Behavior:
-    /// - converts ZNX to RNX, then decodes RNX into slot-domain real and
+    /// - decodes the host-side ZNX plaintext back into slot-domain real and
     ///   imaginary vectors
     ///
     /// Errors:
     /// - this helper unwraps internal conversion/decoder results and therefore
     ///   panics instead of returning an error in tests
-    pub fn decode_pt_znx(&self, pt_znx: &CKKSPlaintextZnx<Vec<u8>>) -> (Vec<F>, Vec<F>) {
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx(pt_znx).unwrap();
-
+    pub fn decode_pt_znx(&self, pt_znx: &CKKSPlaintext<Vec<u8>>) -> (Vec<F>, Vec<F>) {
         let m = self.params.n / 2;
         let mut re = vec![F::zero(); m];
         let mut im = vec![F::zero(); m];
-        self.encoder.decode_reim(&pt_rnx, &mut re, &mut im).unwrap();
+        self.encoder.decode_reim(pt_znx, &mut re, &mut im).unwrap();
 
         (re, im)
     }
@@ -750,34 +767,31 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         self.host_module.ckks_ciphertext_alloc_from_infos(&layout)
     }
 
-    /// Encodes (re2, im2) into an RNX plaintext via IFFT.
-    pub fn encode_pt_rnx(&self, re: &[F], im: &[F]) -> CKKSPlaintextRnx<F> {
-        let mut pt_rnx = CKKSPlaintextRnx::<F>::alloc(self.params.n).unwrap();
-        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
-        pt_rnx
+    /// Returns a representative ciphertext infos object carrying both GLWE
+    /// layout information and CKKS metadata for tmp-bytes estimation helpers.
+    pub fn ct_infos(&self) -> CKKSCiphertext<Vec<u8>> {
+        let mut ct = self.alloc_ct(self.max_k());
+        ct.set_meta(self.meta());
+        ct
     }
 
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
-    pub fn encode_pt_znx(&self, re: &[F], im: &[F]) -> CKKSPlaintextZnx<Vec<u8>> {
+    pub fn encode_pt_znx(&self, re: &[F], im: &[F]) -> CKKSPlaintext<Vec<u8>> {
         self.encode_pt_znx_with_prec(re, im, self.meta())
     }
 
-    pub fn encode_pt_znx_with_prec(&self, re: &[F], im: &[F], prec: CKKSMeta) -> CKKSPlaintextZnx<Vec<u8>> {
-        let pt_rnx = self.encode_pt_rnx(re, im);
+    pub fn encode_pt_znx_with_prec(&self, re: &[F], im: &[F], prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
         let mut pt_znx = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
-        pt_rnx.to_znx(&mut pt_znx).unwrap();
+        self.encoder.encode_reim(&mut pt_znx, re, im).unwrap();
         pt_znx
     }
 
     pub fn quantized_slots(&self, re: &[F], im: &[F], prec: CKKSMeta) -> (Vec<F>, Vec<F>) {
         let pt_znx = self.encode_pt_znx_with_prec(re, im, prec);
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx(&pt_znx).unwrap();
-
         let m = self.params.n / 2;
         let mut re_out = vec![F::zero(); m];
         let mut im_out = vec![F::zero(); m];
-        self.encoder.decode_reim(&pt_rnx, &mut re_out, &mut im_out).unwrap();
+        self.encoder.decode_reim(&pt_znx, &mut re_out, &mut im_out).unwrap();
         (re_out, im_out)
     }
 

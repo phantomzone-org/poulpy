@@ -12,7 +12,7 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWETensor,
-        GLWETensorKeyPrepared, GLWEToBackendMut, GetGaloisElement,
+        GLWEToBackendMut, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     oep::{
@@ -41,34 +41,46 @@ impl_operations_delegate!(
     GLWEMulConst<BE>,
     GLWEMulConstImpl<BE>,
     GLWEMulConstDefault<BE>,
-    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
+        B: GLWEInfos,
     {
-        BE::glwe_mul_const_tmp_bytes(self, res, a, b_size)
+        BE::glwe_mul_const_tmp_bytes(self, res, a, b)
     },
-    fn glwe_mul_const<'s, R, A>(
+    fn glwe_mul_const<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
-        BE::glwe_mul_const(self, cnv_offset, res, a, b, scratch)
+        BE::glwe_mul_const(self, cnv_offset, res, a, b, b_coeff, scratch)
     },
-    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
-    where
+    fn glwe_mul_const_assign<'s, R, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         R: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE> + crate::layouts::GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
-        BE::glwe_mul_const_assign(self, cnv_offset, res, b, scratch)
+        BE::glwe_mul_const_assign(self, cnv_offset, res, b, b_coeff, scratch)
     }
 );
 
@@ -174,19 +186,18 @@ impl_operations_delegate!(
     {
         BE::glwe_tensor_square_apply(self, cnv_offset, res, a, a_effective_k, scratch)
     },
-    fn glwe_tensor_relinearize<'s, R, A, B>(
+    fn glwe_tensor_relinearize<'s, R, A, T>(
         &self,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
     {
         BE::glwe_tensor_relinearize(self, res, a, tsk, tsk_size, scratch)

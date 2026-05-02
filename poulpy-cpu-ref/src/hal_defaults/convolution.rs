@@ -146,7 +146,9 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-        b: &[i64],
+        b: &VecZnxBackendRef<'_, BE>,
+        b_col: usize,
+        b_coeff: usize,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i64> + I64Ops + 'static,
@@ -156,9 +158,9 @@ where
         R: VecZnxBigToBackendMut<BE>,
     {
         let mut res_ref = res.to_backend_mut();
-        let bytes = convolution_by_const_apply_tmp_bytes(res_ref.size(), a.size(), b.len());
+        let bytes = convolution_by_const_apply_tmp_bytes(res_ref.size(), a.size(), b.size());
         let (tmp, _) = take_host_typed::<BE, i64>(scratch.borrow(), bytes / size_of::<i64>());
-        convolution_by_const_apply(cnv_offset, &mut res_ref, res_col, a, a_col, b, tmp);
+        convolution_by_const_apply(cnv_offset, &mut res_ref, res_col, a, a_col, b, b_col, b_coeff, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -339,7 +341,9 @@ where
         res_col: usize,
         a: &VecZnxBackendRef<'_, BE>,
         a_col: usize,
-        b: &[i64],
+        b: &VecZnxBackendRef<'_, BE>,
+        b_col: usize,
+        b_coeff: usize,
         scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         BE: Backend<ScalarBig = i128, ScalarPrep = Q120bScalar> + 'static,
@@ -351,7 +355,7 @@ where
         let mut res_ref = res.to_backend_mut();
         let bytes = ntt120_cnv_by_const_apply_tmp_bytes(0, 0, 0);
         let (tmp, _) = take_host_typed::<BE, u8>(scratch.borrow(), bytes);
-        ntt120_cnv_by_const_apply::<BE>(cnv_offset, &mut res_ref, res_col, a, a_col, b, tmp);
+        ntt120_cnv_by_const_apply::<BE>(cnv_offset, &mut res_ref, res_col, a, a_col, b, b_col, b_coeff, tmp);
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -361,7 +361,9 @@ pub fn ntt120_cnv_by_const_apply<BE>(
     res_col: usize,
     a: &VecZnxBackendRef<'_, BE>,
     a_col: usize,
-    b: &[i64],
+    b: &VecZnxBackendRef<'_, BE>,
+    b_col: usize,
+    b_coeff: usize,
     _tmp: &mut [u8],
 ) where
     BE: Backend<ScalarPrep = Q120bScalar, ScalarBig = i128> + 'static,
@@ -370,7 +372,7 @@ pub fn ntt120_cnv_by_const_apply<BE>(
 {
     let res_size = res.size();
     let a_size = a.size();
-    let b_size = b.len();
+    let b_size = b.size();
     if res_size == 0 || a_size == 0 || b_size == 0 {
         for j in 0..res_size {
             res.at_mut(res_col, j).fill(0i128);
@@ -389,7 +391,8 @@ pub fn ntt120_cnv_by_const_apply<BE>(
         let res_limb: &mut [i128] = res.at_mut(res_col, k);
         for (n_i, r) in res_limb.iter_mut().enumerate() {
             let mut acc: i128 = 0;
-            for (j, &b_j) in b.iter().enumerate().take(j_max).skip(j_min) {
+            for j in j_min..j_max {
+                let b_j = b.at(b_col, j)[b_coeff];
                 acc += a.at(a_col, k_abs - j)[n_i] as i128 * b_j as i128;
             }
             *r = acc;

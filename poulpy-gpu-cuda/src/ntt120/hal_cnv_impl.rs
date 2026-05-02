@@ -12,9 +12,10 @@
 use std::mem::size_of;
 
 use poulpy_hal::{
+    api::{ScratchArenaTakeBasic, VecZnxExtractCoeffBackend},
     layouts::{
         Backend, CnvPVecLBackendMut, CnvPVecLBackendRef, CnvPVecRBackendMut, CnvPVecRBackendRef, DataView, DataViewMut, Module,
-        ScratchArena, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut,
+        ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBigBackendMut, VecZnxDftBackendMut,
     },
     oep::HalConvolutionImpl,
 };
@@ -228,9 +229,9 @@ unsafe impl HalConvolutionImpl<CudaNtt120Backend> for CudaNtt120Backend {
         _cnv_offset: usize,
         _res_size: usize,
         _a_size: usize,
-        _b_size: usize,
+        b_size: usize,
     ) -> usize {
-        0
+        VecZnx::<Vec<u8>>::bytes_of(1, 1, b_size)
     }
 
     fn cnv_pairwise_apply_dft_tmp_bytes(
@@ -657,13 +658,15 @@ unsafe impl HalConvolutionImpl<CudaNtt120Backend> for CudaNtt120Backend {
         res_col: usize,
         a: &VecZnxBackendRef<'_, CudaNtt120Backend>,
         a_col: usize,
-        b: &[i64],
-        _scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+        b: &VecZnxBackendRef<'_, CudaNtt120Backend>,
+        b_col: usize,
+        b_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
     ) {
         let n = module.n();
 
         let a_size = a.size();
-        let b_size = b.len();
+        let b_size = b.size();
         let res_size = res.size();
 
         let (active_ovs, kernel_offset) = conv_active_ovs(cnv_offset, a_size, b_size, res_size);
@@ -682,9 +685,10 @@ unsafe impl HalConvolutionImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_col_off = res.data.offset + res_col * res_size * big_lb;
         let res_ptr = buf_device_ptr(res_buf, res_col_off) as *mut u32;
 
-        // Upload constant array b to device.
-        let b_device = CudaNtt120Backend::from_host_bytes(bytemuck::cast_slice(b));
-        let b_ptr = b_device.raw_device_ptr(0) as *const i64;
+        let (mut b_tmp, _) = scratch.borrow().take_vec_znx(1, 1, b_size);
+        module.vec_znx_extract_coeff_backend(&mut b_tmp, 0, b, b_col, b_coeff);
+        let b_buf: &CudaBuf = unsafe { b_tmp.data.ptr.as_ref() };
+        let b_ptr = buf_device_ptr(b_buf, b_tmp.data.offset) as *const i64;
 
         if active_ovs > 0 {
             unsafe {
@@ -711,7 +715,6 @@ unsafe impl HalConvolutionImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
 
         stream.synchronize().expect("CUDA sync failed in cnv_by_const_apply");
-        drop(b_device);
     }
 }
 

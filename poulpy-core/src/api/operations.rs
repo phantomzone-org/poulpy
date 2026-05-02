@@ -18,10 +18,9 @@ use crate::{
     glwe_packer::{GLWEPacker, pack_core},
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
-        LWEInfos, ModuleCoreAlloc, ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut,
-        glwe_backend_ref_from_mut, glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef,
-        prepared::GLWETensorKeyPreparedToBackendRef,
+        GLWEInfos, GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos, ModuleCoreAlloc,
+        ggsw_at_backend_mut_from_mut, ggsw_at_backend_ref_from_ref, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut,
+        glwe_backend_ref_from_ref, prepared::GGLWEPreparedToBackendRef, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 
@@ -110,28 +109,40 @@ where
 }
 
 pub trait GLWEMulConst<BE: Backend> {
-    fn glwe_mul_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A, B>(&self, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
-        A: GLWEInfos;
+        A: GLWEInfos,
+        B: GLWEInfos;
 
-    fn glwe_mul_const<'s, R, A>(
+    fn glwe_mul_const<'s, R, A, B>(
         &self,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>;
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
-    fn glwe_mul_const_assign<'s, R>(&self, cnv_offset: usize, res: &mut GLWE<R>, b: &[i64], scratch: &mut ScratchArena<'s, BE>)
-    where
+    fn glwe_mul_const_assign<'s, R, B>(
+        &self,
+        cnv_offset: usize,
+        res: &mut GLWE<R>,
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
+        scratch: &mut ScratchArena<'s, BE>,
+    ) where
         R: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
+        B: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 }
 
 pub trait GLWEMulPlain<BE: Backend> {
@@ -222,19 +233,18 @@ pub trait GLWETensoring<BE: Backend> {
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
-    fn glwe_tensor_relinearize<'s, R, A, B>(
+    fn glwe_tensor_relinearize<'s, R, A, T>(
         &self,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(&self, res: &R, a: &A, tsk: &B) -> usize

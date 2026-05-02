@@ -28,6 +28,34 @@ pub trait VecZnxCopyRangeBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxExtractCoeffBackend<B: Backend> {
+    fn vec_znx_extract_coeff_backend<'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
+    );
+}
+
+pub trait VecZnxNormalizeCoeffBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    /// Normalizes the selected coefficient of `a` across its limbs into a 1-coeff destination column.
+    fn vec_znx_normalize_coeff_backend<'s, 'r, 'a>(
+        &self,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_base2k: usize,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
 pub trait VecZnxSubInnerProductAssignBackend<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_inner_product_assign_backend<'r, 'a, 'b>(
@@ -73,6 +101,17 @@ pub trait VecZnxNormalizeAssignBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxNormalizeCoeffAssignBackend<B: Backend> {
+    fn vec_znx_normalize_coeff_assign_backend<'s, 'r>(
+        &self,
+        base2k: usize,
+        a: &mut VecZnxBackendMut<'r, B>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
 pub trait VecZnxAddIntoBackend<B: Backend> {
     /// Adds the selected backend-native column of `a` to the selected backend-native column of `b`.
     fn vec_znx_add_into_backend<'r, 'a>(
@@ -104,7 +143,9 @@ pub trait VecZnxAddConstIntoBackend<B: Backend> {
         res_col: usize,
         a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
-        cnst: &[i64],
+        cnst: &VecZnxBackendRef<'a, B>,
+        cnst_col: usize,
+        cnst_coeff: usize,
         res_limb: usize,
         res_coeff: usize,
     );
@@ -112,11 +153,13 @@ pub trait VecZnxAddConstIntoBackend<B: Backend> {
 
 pub trait VecZnxAddConstAssignBackend<B: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_add_const_assign_backend<'r>(
+    fn vec_znx_add_const_assign_backend<'r, 'a>(
         &self,
         res: &mut VecZnxBackendMut<'r, B>,
         res_col: usize,
-        cnst: &[i64],
+        cnst: &VecZnxBackendRef<'a, B>,
+        cnst_col: usize,
+        cnst_coeff: usize,
         res_limb: usize,
         res_coeff: usize,
     );
@@ -238,6 +281,21 @@ pub trait VecZnxLshBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxLshCoeffBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_coeff_backend<'s, 'r, 'a>(
+        &self,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
 pub trait VecZnxLshAddIntoBackend<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
@@ -249,6 +307,21 @@ pub trait VecZnxLshAddIntoBackend<B: Backend> {
         res_col: usize,
         a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
+pub trait VecZnxLshAddCoeffIntoBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_add_coeff_into_backend<'s, 'r, 'a>(
+        &self,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
         scratch: &mut ScratchArena<'s, B>,
     );
 }
@@ -273,6 +346,21 @@ pub trait VecZnxRshBackend<B: Backend> {
     );
 }
 
+pub trait VecZnxRshCoeffBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_coeff_backend<'s, 'r, 'a>(
+        &self,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
 pub trait VecZnxRshAddIntoBackend<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
@@ -284,6 +372,38 @@ pub trait VecZnxRshAddIntoBackend<B: Backend> {
         res_col: usize,
         a: &VecZnxBackendRef<'a, B>,
         a_col: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
+pub trait VecZnxRshAddCoeffIntoBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_add_coeff_into_backend<'s, 'r, 'a>(
+        &self,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
+        res_coeff: usize,
+        scratch: &mut ScratchArena<'s, B>,
+    );
+}
+
+pub trait VecZnxRshSubCoeffIntoBackend<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_sub_coeff_into_backend<'s, 'r, 'a>(
+        &self,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, B>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, B>,
+        a_col: usize,
+        a_coeff: usize,
+        res_coeff: usize,
         scratch: &mut ScratchArena<'s, B>,
     );
 }

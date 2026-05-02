@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, Module, ScratchArena},
+    layouts::{Backend, Data, Module, ScratchArena, vmp_pmat_backend_ref_from_ref},
 };
 
 use crate::layouts::prepared::{GGLWEPreparedToBackendMut, GGLWEPreparedToBackendRef};
@@ -30,9 +30,49 @@ impl<D: Data, B: Backend> LWEInfos for GLWETensorKeyPrepared<D, B> {
     }
 }
 
+impl<D: Data, B: Backend> LWEInfos for &GLWETensorKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        (*self).n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        (*self).base2k()
+    }
+
+    fn size(&self) -> usize {
+        (*self).size()
+    }
+}
+
+impl<D: Data, B: Backend> LWEInfos for &mut GLWETensorKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        (**self).n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        (**self).base2k()
+    }
+
+    fn size(&self) -> usize {
+        (**self).size()
+    }
+}
+
 impl<D: Data, B: Backend> GLWEInfos for GLWETensorKeyPrepared<D, B> {
     fn rank(&self) -> Rank {
         self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for &GLWETensorKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        (*self).rank()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for &mut GLWETensorKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        (**self).rank()
     }
 }
 
@@ -51,6 +91,42 @@ impl<D: Data, B: Backend> GGLWEInfos for GLWETensorKeyPrepared<D, B> {
 
     fn dnum(&self) -> Dnum {
         self.0.dnum()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWEInfos for &GLWETensorKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        (*self).rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        (*self).rank_out()
+    }
+
+    fn dsize(&self) -> Dsize {
+        (*self).dsize()
+    }
+
+    fn dnum(&self) -> Dnum {
+        (*self).dnum()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWEInfos for &mut GLWETensorKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        (**self).rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        (**self).rank_out()
+    }
+
+    fn dsize(&self) -> Dsize {
+        (**self).dsize()
+    }
+
+    fn dnum(&self) -> Dnum {
+        (**self).dnum()
     }
 }
 
@@ -139,6 +215,17 @@ where
 {
     fn to_backend_ref(&self) -> GLWETensorKeyPreparedBackendRef<'_, B> {
         GLWETensorKeyPrepared(self.0.to_backend_ref())
+    }
+}
+
+impl<'b, B: Backend + 'b> GLWETensorKeyPreparedToBackendRef<B> for &GLWETensorKeyPrepared<B::BufRef<'b>, B> {
+    fn to_backend_ref(&self) -> GLWETensorKeyPreparedBackendRef<'_, B> {
+        let inner = &self.0;
+        GLWETensorKeyPrepared(GGLWEPrepared {
+            data: vmp_pmat_backend_ref_from_ref::<B>(&inner.data),
+            base2k: inner.base2k,
+            dsize: inner.dsize,
+        })
     }
 }
 

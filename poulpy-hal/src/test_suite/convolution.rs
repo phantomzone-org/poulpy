@@ -46,15 +46,14 @@ where
 
     a.fill_uniform(17, &mut source);
 
-    let mut b_const = vec![0i64; b_size];
     let mask = (1 << base2k) - 1;
-    for (j, x) in b_const[..1].iter_mut().enumerate() {
+    for j in 0..1 {
         let r = source.next_u64() & mask;
-        *x = ((r << (64 - 17)) as i64) >> (64 - 17);
-        b.at_mut(0, j)[0] = *x;
+        b.at_mut(0, j)[0] = ((r << (64 - 17)) as i64) >> (64 - 17);
     }
 
     let a_backend = upload_vec_znx::<BE>(&a);
+    let b_backend = upload_vec_znx::<BE>(&b);
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         module
             .cnv_by_const_apply_tmp_bytes(0, res_size, a_size, b_size)
@@ -69,7 +68,9 @@ where
                 0,
                 &vec_znx_backend_ref::<BE>(&a_backend),
                 a_col,
-                &b_const,
+                &vec_znx_backend_ref::<BE>(&b_backend),
+                0,
+                0,
                 &mut scratch.arena(),
             );
 

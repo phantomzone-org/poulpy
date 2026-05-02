@@ -8,10 +8,7 @@
 //! | Type | Role |
 //! |------|------|
 //! | `CKKSCiphertext<D>` | Encrypted CKKS value: CKKS wrapper over the core GLWE ciphertext |
-//! | `CKKSPlaintextVecZnx<D>` | Quantized vector CKKS plaintext in the torus / ZNX domain |
-//! | `CKKSPlaintextVecRnx<F>` | Floating-point vector CKKS plaintext in the RNX domain |
-//! | `CKKSPlaintextCstZnx` | Quantized constant CKKS plaintext in the torus / ZNX domain |
-//! | `CKKSPlaintextCstRnx<F>` | Floating-point constant CKKS plaintext in the RNX domain |
+//! | `CKKSPlaintext<D>` | Quantized CKKS plaintext in the torus / ZNX domain |
 
 mod alloc;
 pub mod ciphertext;
@@ -19,8 +16,13 @@ pub mod plaintext;
 
 pub use alloc::CKKSModuleAlloc;
 pub use ciphertext::{CKKSCiphertext, CKKSMaintainOps};
-pub use plaintext::{
-    CKKSConstPlaintextConversion, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx,
-    CKKSPlaintextVecZnx,
-};
-pub use plaintext::{CKKSPlaintextRnx, CKKSPlaintextZnx};
+pub use plaintext::CKKSPlaintext;
+
+use std::fmt::Debug;
+
+use rand_distr::num_traits::{Float, FromPrimitive, ToPrimitive};
+pub trait CKKSRnxScalar: Float + FromPrimitive + ToPrimitive + Debug {}
+
+impl<T> CKKSRnxScalar for T where T: Float + FromPrimitive + ToPrimitive + Debug {}
+
+pub use plaintext::CKKSPlaintextVecHostCodec;

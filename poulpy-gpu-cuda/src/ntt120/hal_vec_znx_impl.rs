@@ -9,8 +9,8 @@ use std::mem::size_of;
 use poulpy_cpu_ref::reference::znx::{znx_add_normal_f64_ref, znx_fill_normal_f64_ref, znx_fill_uniform_ref};
 use poulpy_hal::{
     layouts::{
-        Backend, HostBytesBackend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena,
-        VecZnxBackendMut, VecZnxBackendRef,
+        Backend, HostBytesBackend, Module, NoiseInfos, ScalarZnx, ScalarZnxBackendMut, ScalarZnxBackendRef, ScratchArena, VecZnx,
+        VecZnxBackendMut, VecZnxBackendRef, VecZnxReborrowBackendRef, VecZnxToBackendMut, VecZnxToBackendRef,
     },
     oep::HalVecZnxImpl,
     source::Source,
@@ -18,7 +18,7 @@ use poulpy_hal::{
 
 use super::hal_impl::buf_device_ptr;
 use crate::ntt120::CudaNtt120Backend;
-use crate::{CudaBuf, cuda_stream};
+use crate::{CudaBuf, CudaBufMut, cuda_stream};
 
 // ── extern "C" kernel launchers ──────────────────────────────────────────────
 
@@ -461,6 +461,104 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
+    fn vec_znx_normalize_coeff_assign_backend<'s, 'r>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        a: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        let a_ref = <VecZnx<CudaBufMut<'_>> as VecZnxReborrowBackendRef<CudaNtt120Backend>>::reborrow_backend_ref(a);
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            &a_ref,
+            a_col,
+            a_coeff,
+        );
+        Self::vec_znx_normalize_assign_backend(
+            module,
+            base2k,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            scratch,
+        );
+        let stream = cuda_stream();
+        let stream_raw = stream.cu_stream() as *mut std::ffi::c_void;
+        let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
+        let tmp_ref = <VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp);
+        let tmp_buf: &CudaBuf = unsafe { tmp_ref.data.ptr.as_ref() };
+        let n = module.n();
+        for limb in 0..a.size() {
+            let dst = vec_znx_coeff_ptr(a_buf, a.data.offset, a_col, a.size(), limb, a_coeff, n) as *mut std::ffi::c_void;
+            let src = vec_znx_coeff_ptr(tmp_buf, tmp_ref.data.offset, 0, tmp.size(), limb, 0, 1) as *const std::ffi::c_void;
+            unsafe {
+                cudaMemcpyAsync(dst, src, size_of::<i64>(), 3, stream_raw);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_normalize_coeff_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_base2k: usize,
+        res_offset: i64,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_base2k: usize,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                res.n(),
+                1,
+                "vec_znx_normalize_coeff expects a 1-coeff destination, got {}",
+                res.n()
+            );
+        }
+
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        Self::vec_znx_normalize(
+            module,
+            res,
+            res_base2k,
+            res_offset,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            a_base2k,
+            0,
+            scratch,
+        );
+    }
+
     // ── add / sub ────────────────────────────────────────────────────────────
 
     fn vec_znx_add_into_backend<'r, 'a>(
@@ -524,7 +622,9 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         res_col: usize,
         a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
         a_col: usize,
-        cnst: &[i64],
+        cnst: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        cnst_col: usize,
+        cnst_coeff: usize,
         res_limb: usize,
         res_coeff: usize,
     ) {
@@ -554,32 +654,44 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                 cudaMemsetAsync(zero_ptr, 0, (res.size() - min_size) * n * size_of::<i64>(), stream_raw);
             }
         }
-        Self::vec_znx_add_const_assign_backend(module, res, res_col, cnst, res_limb, res_coeff);
+        Self::vec_znx_add_const_assign_backend(module, res, res_col, cnst, cnst_col, cnst_coeff, res_limb, res_coeff);
     }
 
-    fn vec_znx_add_const_assign_backend<'r>(
+    fn vec_znx_add_const_assign_backend<'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
         res_col: usize,
-        cnst: &[i64],
+        cnst: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        cnst_col: usize,
+        cnst_coeff: usize,
         res_limb: usize,
         res_coeff: usize,
     ) {
         let n = module.n();
-        if res_coeff >= n || res_limb >= res.size() || cnst.is_empty() {
+        if res_coeff >= n || res_limb >= res.size() || cnst_coeff >= cnst.n() || cnst.size() == 0 {
             return;
         }
         let res_buf: &CudaBuf = unsafe { res.data.ptr.as_ref() };
+        let cnst_buf: &CudaBuf = unsafe { cnst.data.ptr.as_ref() };
         let stream = cuda_stream();
         stream
             .synchronize()
             .expect("CUDA sync failed in vec_znx_add_const_assign_backend");
-        let digit_count = cnst.len().min(res.size() - res_limb);
-        for (idx, digit) in cnst[..digit_count].iter().enumerate() {
+        let digit_count = cnst.size().min(res.size() - res_limb);
+        for idx in 0..digit_count {
             let dev_ptr =
                 vec_znx_coeff_ptr(res_buf, res.data.offset, res_col, res.size(), res_limb + idx, res_coeff, n) as *mut i64;
+            let cnst_ptr =
+                vec_znx_coeff_ptr(cnst_buf, cnst.data.offset, cnst_col, cnst.size(), idx, cnst_coeff, cnst.n()) as *mut i64;
+            let mut digit = 0i64;
             let mut coeff = 0i64;
             unsafe {
+                cudaMemcpy(
+                    (&mut digit as *mut i64).cast(),
+                    cnst_ptr.cast(),
+                    size_of::<i64>(),
+                    2, /*D2H*/
+                );
                 cudaMemcpy(
                     (&mut coeff as *mut i64).cast(),
                     dev_ptr.cast(),
@@ -587,7 +699,7 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                     2, /*D2H*/
                 );
             }
-            coeff += *digit;
+            coeff += digit;
             unsafe {
                 cudaMemcpy(
                     dev_ptr.cast(),
@@ -595,6 +707,45 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                     size_of::<i64>(),
                     1, /*H2D*/
                 );
+            }
+        }
+    }
+
+    fn vec_znx_extract_coeff_backend<'r, 'a>(
+        _module: &Module<CudaNtt120Backend>,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                res.n(),
+                1,
+                "vec_znx_extract_coeff expects a 1-coeff destination, got {}",
+                res.n()
+            );
+            assert!(a_coeff < a.n(), "a_coeff: {a_coeff} >= a.n(): {}", a.n());
+        }
+
+        let min_size = res.size().min(a.size());
+        let stream = cuda_stream();
+        let stream_raw = stream.cu_stream() as *mut std::ffi::c_void;
+        let res_buf: &CudaBuf = unsafe { res.data.ptr.as_ref() };
+        let a_buf: &CudaBuf = unsafe { a.data.ptr.as_ref() };
+        let res_ptr = vec_znx_col_ptr(res_buf, res.data.offset, res_col, res.size(), 1) as *mut std::ffi::c_void;
+
+        unsafe {
+            cudaMemsetAsync(res_ptr, 0, res.size() * size_of::<i64>(), stream_raw);
+        }
+
+        for limb in 0..min_size {
+            let dst = vec_znx_coeff_ptr(res_buf, res.data.offset, res_col, res.size(), limb, 0, 1) as *mut std::ffi::c_void;
+            let src = vec_znx_coeff_ptr(a_buf, a.data.offset, a_col, a.size(), limb, a_coeff, a.n()) as *const std::ffi::c_void;
+            unsafe {
+                cudaMemcpyAsync(dst, src, size_of::<i64>(), 3, stream_raw);
             }
         }
     }
@@ -872,6 +1023,44 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
+    fn vec_znx_rsh_coeff_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        Self::vec_znx_rsh_backend(
+            module,
+            base2k,
+            k,
+            res,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            0,
+            scratch,
+        );
+    }
+
     fn vec_znx_rsh_add_into_backend<'s, 'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         base2k: usize,
@@ -909,6 +1098,132 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                 1,
             );
         }
+    }
+
+    fn vec_znx_rsh_add_coeff_into_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        res_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        let tmp_shifted = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, res.size())),
+            1,
+            1,
+            res.size(),
+        );
+        let mut tmp_shifted = tmp_shifted.with_size(res.size());
+        Self::vec_znx_rsh_backend(
+            module,
+            base2k,
+            k,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp_shifted),
+            0,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            0,
+            scratch,
+        );
+        Self::vec_znx_add_const_assign_backend(
+            module,
+            res,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp_shifted),
+            0,
+            0,
+            0,
+            res_coeff,
+        );
+    }
+
+    fn vec_znx_rsh_sub_coeff_into_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        res_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        let tmp_shifted = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, res.size())),
+            1,
+            1,
+            res.size(),
+        );
+        let mut tmp_shifted = tmp_shifted.with_size(res.size());
+        Self::vec_znx_rsh_backend(
+            module,
+            base2k,
+            k,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp_shifted),
+            0,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            0,
+            scratch,
+        );
+        let tmp_neg = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, res.size())),
+            1,
+            1,
+            res.size(),
+        );
+        let mut tmp_neg = tmp_neg.with_size(res.size());
+        Self::vec_znx_sub_assign_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp_neg),
+            0,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp_shifted),
+            0,
+        );
+        Self::vec_znx_add_const_assign_backend(
+            module,
+            res,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp_neg),
+            0,
+            0,
+            0,
+            res_coeff,
+        );
     }
 
     fn vec_znx_lsh_tmp_bytes(_module: &Module<CudaNtt120Backend>) -> usize {
@@ -950,6 +1265,44 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
         }
     }
 
+    fn vec_znx_lsh_coeff_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        Self::vec_znx_lsh_backend(
+            module,
+            base2k,
+            k,
+            res,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            0,
+            scratch,
+        );
+    }
+
     fn vec_znx_lsh_add_into_backend<'s, 'r, 'a>(
         module: &Module<CudaNtt120Backend>,
         base2k: usize,
@@ -983,6 +1336,44 @@ unsafe impl HalVecZnxImpl<CudaNtt120Backend> for CudaNtt120Backend {
                 1,
             );
         }
+    }
+
+    fn vec_znx_lsh_add_coeff_into_backend<'s, 'r, 'a>(
+        module: &Module<CudaNtt120Backend>,
+        base2k: usize,
+        k: usize,
+        res: &mut VecZnxBackendMut<'r, CudaNtt120Backend>,
+        res_col: usize,
+        a: &VecZnxBackendRef<'a, CudaNtt120Backend>,
+        a_col: usize,
+        a_coeff: usize,
+        scratch: &mut ScratchArena<'s, CudaNtt120Backend>,
+    ) {
+        let tmp = VecZnx::from_data(
+            CudaNtt120Backend::alloc_zeroed_bytes(VecZnx::<Vec<u8>>::bytes_of(1, 1, a.size())),
+            1,
+            1,
+            a.size(),
+        );
+        let mut tmp = tmp.with_size(a.size());
+        Self::vec_znx_extract_coeff_backend(
+            module,
+            &mut <VecZnx<CudaBuf> as VecZnxToBackendMut<CudaNtt120Backend>>::to_backend_mut(&mut tmp),
+            0,
+            a,
+            a_col,
+            a_coeff,
+        );
+        Self::vec_znx_lsh_add_into_backend(
+            module,
+            base2k,
+            k,
+            res,
+            res_col,
+            &<VecZnx<CudaBuf> as VecZnxToBackendRef<CudaNtt120Backend>>::to_backend_ref(&tmp),
+            0,
+            scratch,
+        );
     }
 
     fn vec_znx_lsh_sub_backend<'s, 'r, 'a>(

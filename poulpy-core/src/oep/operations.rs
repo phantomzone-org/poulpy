@@ -9,7 +9,7 @@ use crate::{
     glwe_trace::GLWETraceDefault,
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEPlaintext, GLWETensor, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     operations::{
@@ -24,33 +24,40 @@ use crate::{
 /// Implementations must respect the provided layout metadata, conversion offset, and scratch-space
 /// contracts, and must not read or write outside the specified backend-owned buffers.
 pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
-    fn glwe_mul_const_tmp_bytes<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
-        A: GLWEInfos;
+        A: GLWEInfos,
+        B: GLWEInfos;
 
-    fn glwe_mul_const<'s, R, A>(
+    fn glwe_mul_const<'s, R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>;
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
-    fn glwe_mul_const_assign<'s, R>(
+    fn glwe_mul_const_assign<'s, R, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
+        B: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 }
 
 /// Backend-provided GLWE-by-plaintext multiplication operations.
@@ -146,19 +153,18 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
-    fn glwe_tensor_relinearize<'s, R, A, B>(
+    fn glwe_tensor_relinearize<'s, R, A, T>(
         module: &Module<BE>,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes<R, A, B>(module: &Module<BE>, res: &R, a: &A, tsk: &B) -> usize
@@ -384,33 +390,40 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
 
 #[doc(hidden)]
 pub trait OperationsDefaults<BE: Backend>: Backend {
-    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
-        A: GLWEInfos;
+        A: GLWEInfos,
+        B: GLWEInfos;
 
-    fn glwe_mul_const_default<'s, R, A>(
+    fn glwe_mul_const_default<'s, R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWE<A>: GLWEToBackendRef<BE>;
+        GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
-    fn glwe_mul_const_assign_default<'s, R>(
+    fn glwe_mul_const_assign_default<'s, R, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
-        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
+        B: Data,
+        GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>;
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
@@ -494,19 +507,18 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         GLWETensor<R>: GLWEToBackendMut<BE>,
         GLWE<A>: crate::layouts::GLWEToBackendRef<BE>;
 
-    fn glwe_tensor_relinearize_default<'s, R, A, B>(
+    fn glwe_tensor_relinearize_default<'s, R, A, T>(
         module: &Module<BE>,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>;
 
     fn glwe_tensor_relinearize_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, tsk: &B) -> usize
@@ -691,41 +703,48 @@ where
         + GLWEPackerOpsDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
-    fn glwe_mul_const_tmp_bytes_default<R, A>(module: &Module<BE>, res: &R, a: &A, b_size: usize) -> usize
+    fn glwe_mul_const_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
+        B: GLWEInfos,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_tmp_bytes(module, res, a, b_size)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_tmp_bytes(module, res, a, b)
     }
 
-    fn glwe_mul_const_default<'s, R, A>(
+    fn glwe_mul_const_default<'s, R, A, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
         a: &GLWE<A>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE>,
         GLWE<A>: GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, scratch)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const(module, cnv_offset, res, a, b, b_coeff, scratch)
     }
 
-    fn glwe_mul_const_assign_default<'s, R>(
+    fn glwe_mul_const_assign_default<'s, R, B>(
         module: &Module<BE>,
         cnv_offset: usize,
         res: &mut GLWE<R>,
-        b: &[i64],
+        b: &GLWEPlaintext<B>,
+        b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
+        B: Data,
         GLWE<R>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWEPlaintext<B>: crate::layouts::GLWEPlaintextToBackendRef<BE>,
     {
-        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, scratch)
+        <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, b_coeff, scratch)
     }
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
@@ -853,19 +872,18 @@ where
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_square_apply(module, cnv_offset, res, a, a_effective_k, scratch)
     }
 
-    fn glwe_tensor_relinearize_default<'s, R, A, B>(
+    fn glwe_tensor_relinearize_default<'s, R, A, T>(
         module: &Module<BE>,
         res: &mut GLWE<R>,
         a: &GLWETensor<A>,
-        tsk: &GLWETensorKeyPrepared<B, BE>,
+        tsk: &T,
         tsk_size: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
         R: Data,
         A: Data,
-        B: Data,
+        T: GGLWEInfos + GLWETensorKeyPreparedToBackendRef<BE>,
         GLWE<R>: GLWEToBackendMut<BE>,
-        GLWETensorKeyPrepared<B, BE>: GLWETensorKeyPreparedToBackendRef<BE>,
         GLWETensor<A>: crate::layouts::GLWEToBackendRef<BE>,
     {
         <Module<BE> as GLWETensoringDefault<BE>>::glwe_tensor_relinearize(module, res, a, tsk, tsk_size, scratch)

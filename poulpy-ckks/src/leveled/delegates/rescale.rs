@@ -3,68 +3,74 @@ use poulpy_core::{
     GLWEShift, ScratchArenaTakeCore,
     layouts::{GLWEToBackendMut, GLWEToBackendRef},
 };
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
+
+use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
 
 use crate::{
+    CKKSInfos, SetCKKSInfos,
     layouts::CKKSCiphertext,
-    leveled::{api::CKKSRescaleOps, default::CKKSRescaleOpsDefault},
+    leveled::{api::CKKSRescaleOps, oep::CKKSRescaleOep},
+    oep::CKKSImpl,
 };
 
-impl<BE: Backend> CKKSRescaleOps<BE> for Module<BE>
+impl<BE: Backend + CKKSImpl<BE>> CKKSRescaleOps<BE> for Module<BE>
 where
-    Module<BE>: CKKSRescaleOpsDefault<BE>,
+    Module<BE>: CKKSRescaleOep<BE> + GLWEShift<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
-    fn ckks_rescale_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>,
-    {
-        self.ckks_rescale_tmp_bytes_default()
+    fn ckks_rescale_tmp_bytes(&self) -> usize {
+        CKKSRescaleOep::ckks_rescale_tmp_bytes(self)
     }
 
-    fn ckks_rescale_assign<D: Data>(&self, ct: &mut CKKSCiphertext<D>, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
+    fn ckks_rescale_assign<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        CKKSCiphertext<D>: GLWEToBackendMut<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
     {
-        self.ckks_rescale_assign_default(ct, k, scratch)
+        let ct_meta = ct.meta();
+        let mut ct_ckks = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(ct), ct_meta);
+        let res = CKKSRescaleOep::ckks_rescale_assign(self, &mut ct_ckks, k, scratch);
+        let new_meta = ct_ckks.meta();
+        drop(ct_ckks);
+        ct.set_meta(new_meta);
+        res
     }
 
-    fn ckks_rescale_into<Dst: Data, Src: Data>(
-        &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        k: usize,
-        src: &CKKSCiphertext<Src>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: GLWEToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
     {
-        self.ckks_rescale_into_default(dst, k, src, scratch)
+        let dst_meta = dst.meta();
+        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
+        let src_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(src), src.meta());
+        let res = CKKSRescaleOep::ckks_rescale_into(self, &mut dst_ct, k, &src_ct, scratch);
+        let new_meta = dst_ct.meta();
+        drop(dst_ct);
+        dst.set_meta(new_meta);
+        res
     }
 
-    fn ckks_align_assign<A: Data, B: Data>(
-        &self,
-        a: &mut CKKSCiphertext<A>,
-        b: &mut CKKSCiphertext<B>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_align_assign<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        CKKSCiphertext<A>: GLWEToBackendMut<BE>,
-        CKKSCiphertext<B>: GLWEToBackendMut<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        A: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        B: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
     {
-        self.ckks_align_assign_default(a, b, scratch)
+        let a_meta = a.meta();
+        let b_meta = b.meta();
+        let mut a_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(a), a_meta);
+        let mut b_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(b), b_meta);
+        let res = CKKSRescaleOep::ckks_align_assign(self, &mut a_ct, &mut b_ct, scratch);
+        let new_a_meta = a_ct.meta();
+        let new_b_meta = b_ct.meta();
+        drop(a_ct);
+        drop(b_ct);
+        a.set_meta(new_a_meta);
+        b.set_meta(new_b_meta);
+        res
     }
 
-    fn ckks_align_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>,
-    {
-        self.ckks_align_tmp_bytes_default()
+    fn ckks_align_tmp_bytes(&self) -> usize {
+        CKKSRescaleOep::ckks_align_tmp_bytes(self)
     }
 }

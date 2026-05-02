@@ -1,42 +1,53 @@
 use anyhow::Result;
-use poulpy_core::{GLWENegate, GLWEShift, ScratchArenaTakeCore};
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEToBackendMut, GLWEToBackendRef},
+};
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, Data, Module, ScratchArena},
+    layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCiphertextToBackendMut, CKKSCiphertextToBackendRef};
+
+use crate::{CKKSInfos, SetCKKSInfos, layouts::CKKSCiphertext, oep::CKKSImpl};
 
 use crate::leveled::{api::CKKSNegOps, oep::CKKSNegOep};
 
-impl<BE: Backend + CKKSImpl<BE>> CKKSNegOps<BE> for Module<BE> {
-    fn ckks_neg_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>,
-    {
+impl<BE: Backend + CKKSImpl<BE>> CKKSNegOps<BE> for Module<BE>
+where
+    Module<BE>: GLWENegate<BE> + GLWEShift<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
+{
+    fn ckks_neg_tmp_bytes(&self) -> usize {
         CKKSNegOep::ckks_neg_tmp_bytes(self)
     }
 
-    fn ckks_neg_into<Dst: Data, Src: Data>(
-        &self,
-        dst: &mut CKKSCiphertext<Dst>,
-        src: &CKKSCiphertext<Src>,
-        scratch: &mut ScratchArena<'_, BE>,
-    ) -> Result<()>
+    fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWENegate<BE> + GLWEShift<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
-        CKKSCiphertext<Src>: poulpy_core::layouts::GLWEToBackendRef<BE>,
-        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        Src: CKKSCiphertextToBackendRef<BE> + CKKSInfos,
     {
-        CKKSNegOep::ckks_neg_into(self, dst, src, scratch)
+        let dst_meta = dst.meta();
+        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
+        let src_ct = CKKSCiphertext::from_inner(GLWEToBackendRef::to_backend_ref(src), src.meta());
+        let res = CKKSNegOep::ckks_neg_into(self, &mut dst_ct, &src_ct, scratch);
+        let new_meta = dst_ct.meta();
+        drop(dst_ct);
+        dst.set_meta(new_meta);
+        res
     }
 
-    fn ckks_neg_assign<Dst: Data>(&self, dst: &mut CKKSCiphertext<Dst>) -> Result<()>
+    fn ckks_neg_assign<Dst>(&self, dst: &mut Dst) -> Result<()>
     where
-        Self: GLWENegate<BE>,
-        CKKSCiphertext<Dst>: poulpy_core::layouts::GLWEToBackendMut<BE>,
+        Dst: CKKSCiphertextToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
     {
-        CKKSNegOep::ckks_neg_assign(self, dst)
+        let dst_meta = dst.meta();
+        let mut dst_ct = CKKSCiphertext::from_inner(GLWEToBackendMut::to_backend_mut(dst), dst_meta);
+        let res = CKKSNegOep::ckks_neg_assign(self, &mut dst_ct);
+        let new_meta = dst_ct.meta();
+        drop(dst_ct);
+        dst.set_meta(new_meta);
+        res
     }
 }
