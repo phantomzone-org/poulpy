@@ -1,6 +1,9 @@
 use anyhow::Result;
 use poulpy_core::layouts::GLWEToBackendMut;
-use poulpy_core::{GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::GLWEToBackendRef;
@@ -45,7 +48,7 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
     where
         Self: GLWEShift<BE>,
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let log_budget = checked_log_budget_sub("rescale", src.log_budget(), k)?;

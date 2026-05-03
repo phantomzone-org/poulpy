@@ -1,5 +1,8 @@
 use anyhow::Result;
-use poulpy_core::{GLWENegate, GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
 use poulpy_hal::{
     api::ScratchAvailable,
     layouts::{Backend, Module, ScratchArena},
@@ -15,7 +18,7 @@ pub(crate) trait CKKSNegOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWENegate<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
@@ -36,7 +39,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSNegOep<BE> for Module<BE> {
     fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWENegate<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {

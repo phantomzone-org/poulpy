@@ -1,8 +1,5 @@
 use anyhow::Result;
-use poulpy_core::layouts::{
-    GLWEInfos, GLWEPlaintext, GLWESecretPreparedToBackendRef, GLWEToBackendMut, LWEInfos, glwe_backend_mut_from_mut,
-    glwe_plaintext_as_glwe_backend_mut_from_mut,
-};
+use poulpy_core::layouts::{GLWEInfos, GLWEPlaintext, GLWESecretPreparedToBackendRef, GLWEToBackendMut, LWEInfos};
 use poulpy_core::{EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore};
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshTmpBytes},
@@ -11,8 +8,6 @@ use poulpy_hal::{
 };
 
 use crate::GLWEToBackendRef;
-use crate::layouts::CKKSPlaintext;
-
 use crate::{CKKSInfos, SetCKKSInfos, checked_log_budget_sub};
 
 use super::CKKSPlaintextDefault;
@@ -80,16 +75,14 @@ pub(crate) trait CKKSEncryptionDefault<BE: Backend> {
         Self: GLWEDecrypt<BE> + CKKSPlaintextDefault<BE> + VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        let (mut full_pt, scratch_1) = scratch.borrow().take_glwe_plaintext(ct);
-        let mut pt_ref = glwe_plaintext_as_glwe_backend_mut_from_mut::<BE>(&mut full_pt);
-        self.glwe_decrypt(ct, &mut pt_ref.to_backend_mut(), sk, scratch);
+        let (mut full_pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(ct);
+        {
+            let mut full_pt_ref = &mut full_pt;
+            self.glwe_decrypt(ct, &mut full_pt_ref, sk, &mut scratch_1);
+        }
 
-        let pt_backend = CKKSPlaintext {
-            inner: full_pt,
-            meta: ct.meta(),
-        };
-
-        CKKSPlaintextDefault::ckks_extract_pt_znx_default(self, pt, &pt_backend, scratch);
+        let mut full_pt_ref = &mut full_pt;
+        CKKSPlaintextDefault::ckks_extract_pt_znx_with_meta_default(self, pt, &mut full_pt_ref, ct.meta(), &mut scratch_1)?;
 
         Ok(())
     }

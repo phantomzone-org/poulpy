@@ -1,7 +1,7 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWENegate, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+    layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::{
     api::ScratchAvailable,
@@ -24,7 +24,7 @@ where
     fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSNegOep::ckks_neg_into(self, dst, src, scratch)
     }

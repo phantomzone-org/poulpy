@@ -1,19 +1,19 @@
 use anyhow::Result;
 use poulpy_core::{
     ScratchArenaTakeCore,
-    layouts::{GLWEToBackendMut, LWEInfos, glwe_backend_data_mut, glwe_backend_data_ref},
+    layouts::{GLWEInfos, GLWEToBackendMut, LWEInfos, glwe_backend_data_mut, glwe_backend_data_ref},
 };
 use poulpy_hal::{
     api::{
         VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddCoeffIntoBackend, VecZnxRshAddIntoBackend, VecZnxRshBackend,
         VecZnxRshSubBackend, VecZnxRshSubCoeffIntoBackend, VecZnxRshTmpBytes,
     },
-    layouts::{Backend, Data, Module, ScratchArena},
+    layouts::{Backend, Module, ScratchArena},
 };
 
 use crate::GLWEToBackendRef;
 
-use crate::{CKKSInfos, SetCKKSInfos, ensure_base2k_match, ensure_plaintext_alignment};
+use crate::{CKKSInfos, CKKSMeta, SetCKKSInfos, ensure_base2k_match, ensure_plaintext_alignment};
 
 pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
     fn ckks_add_pt_vec_znx_into_default<Dst, A>(&self, ct: &mut Dst, pt: &A, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
@@ -134,16 +134,32 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
     fn ckks_extract_pt_znx_default<D, S>(&self, dst: &mut D, src: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         D: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        S: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
+    {
+        self.ckks_extract_pt_znx_with_meta_default(dst, src, src.meta(), scratch)
+    }
+
+    fn ckks_extract_pt_znx_with_meta_default<D, S>(
+        &self,
+        dst: &mut D,
+        src: &S,
+        src_meta: CKKSMeta,
+        scratch: &mut ScratchArena<'_, BE>,
+    ) -> Result<()>
+    where
+        D: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
     {
         ensure_base2k_match("ckks_extract_pt_znx", src.base2k().as_usize(), dst.base2k().as_usize())?;
-        let available = src.log_budget() + dst.log_delta();
+        let available = src_meta.log_budget() + dst.log_delta();
         if available < dst.effective_k() {
             return Err(crate::CKKSCompositionError::PlaintextAlignmentImpossible {
                 op: "ckks_extract_pt_znx",
-                ct_log_budget: src.log_budget(),
+                ct_log_budget: src_meta.log_budget(),
                 pt_log_delta: dst.log_delta(),
                 pt_max_k: dst.max_k().as_usize(),
             }

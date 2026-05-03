@@ -1,5 +1,5 @@
 use anyhow::Result;
-use poulpy_core::layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
+use poulpy_core::layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
 use poulpy_hal::layouts::{Backend, ScratchArena};
 
 use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
@@ -16,7 +16,7 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos;
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 
     fn ckks_mul_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
@@ -33,7 +33,7 @@ pub trait CKKSPow2Ops<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos;
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 
     fn ckks_div_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize) -> Result<()>
     where

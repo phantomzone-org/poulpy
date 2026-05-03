@@ -23,7 +23,7 @@ pub(crate) trait CKKSConjugateOep<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
@@ -55,7 +55,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSConjugateOep<BE> for Module<BE> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

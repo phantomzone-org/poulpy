@@ -79,7 +79,13 @@ pub fn glwe_plaintext_into_glwe<D: Data>(pt: GLWEPlaintext<D>) -> GLWE<D> {
     }
 }
 
-impl<D: HostDataMut> SetLWEInfos for GLWEPlaintext<D> {
+impl<D: Data> SetLWEInfos for GLWEPlaintext<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
+        self.base2k = base2k
+    }
+}
+
+impl<D: Data> SetLWEInfos for &mut GLWEPlaintext<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
@@ -99,7 +105,27 @@ impl<D: Data> LWEInfos for GLWEPlaintext<D> {
     }
 }
 
+impl<D: Data> LWEInfos for &mut GLWEPlaintext<D> {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+}
+
 impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
+    fn rank(&self) -> Rank {
+        Rank(self.data.cols() as u32 - 1)
+    }
+}
+
+impl<D: Data> GLWEInfos for &mut GLWEPlaintext<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32 - 1)
     }
@@ -218,6 +244,18 @@ where
             base2k: self.base2k,
             data: self.data.to_backend_mut(),
         }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
+        glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(self)
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWEToBackendMut<BE> for &mut GLWEPlaintext<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
+        glwe_plaintext_as_glwe_backend_mut_from_mut::<BE>(self)
     }
 }
 

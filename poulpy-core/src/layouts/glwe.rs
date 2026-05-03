@@ -129,7 +129,27 @@ impl<D: Data> LWEInfos for GLWE<D> {
     }
 }
 
+impl<D: Data> LWEInfos for &mut GLWE<D> {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
+}
+
 impl<D: Data> GLWEInfos for GLWE<D> {
+    fn rank(&self) -> Rank {
+        Rank(self.data.cols() as u32 - 1)
+    }
+}
+
+impl<D: Data> GLWEInfos for &mut GLWE<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32 - 1)
     }

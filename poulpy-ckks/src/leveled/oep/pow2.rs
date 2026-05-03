@@ -1,5 +1,8 @@
 use anyhow::Result;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWECopy, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{CKKSInfos, GLWEToBackendMut, GLWEToBackendRef, SetCKKSInfos, oep::CKKSImpl};
@@ -18,7 +21,7 @@ pub(crate) trait CKKSPow2Oep<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -41,7 +44,7 @@ pub(crate) trait CKKSPow2Oep<BE: Backend + CKKSImpl<BE>> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE> + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -67,7 +70,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Oep<BE> for Module<BE> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
@@ -99,7 +102,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Oep<BE> for Module<BE> {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Self: GLWEShift<BE> + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {

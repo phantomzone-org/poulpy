@@ -1,7 +1,7 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWENegate, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+    layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::{
     api::ScratchAvailable,
@@ -22,7 +22,7 @@ pub(crate) trait CKKSNegDefault<BE: Backend> {
     where
         Self: GLWENegate<BE> + GLWEShift<BE>,
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let offset = ckks_offset_unary(dst, src);

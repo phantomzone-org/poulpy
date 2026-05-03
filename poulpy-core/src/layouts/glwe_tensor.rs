@@ -51,8 +51,28 @@ impl<D: Data> LWEInfos for GLWETensor<D> {
     }
 }
 
+impl<D: Data> LWEInfos for &mut GLWETensor<D> {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
+}
+
 impl<D: Data> GLWEInfos for GLWETensor<D> {
     ///NOTE: self.rank() != self.to_ref().rank() if self is of type [GLWETensor]
+    fn rank(&self) -> Rank {
+        self.rank
+    }
+}
+
+impl<D: Data> GLWEInfos for &mut GLWETensor<D> {
     fn rank(&self) -> Rank {
         self.rank
     }
@@ -156,6 +176,24 @@ where
         GLWE {
             base2k: self.base2k,
             data: self.data.to_backend_mut(),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &mut GLWETensor<BE::BufMut<'b>> {
+    fn to_backend_ref(&self) -> GLWEBackendRef<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: poulpy_hal::layouts::vec_znx_backend_ref_from_mut::<BE>(&self.data),
+        }
+    }
+}
+
+impl<'b, BE: Backend + 'b> GLWEToBackendMut<BE> for &mut GLWETensor<BE::BufMut<'b>> {
+    fn to_backend_mut(&mut self) -> GLWEBackendMut<'_, BE> {
+        GLWE {
+            base2k: self.base2k,
+            data: poulpy_hal::layouts::vec_znx_backend_mut_from_mut::<BE>(&mut self.data),
         }
     }
 }

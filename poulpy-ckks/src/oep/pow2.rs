@@ -17,7 +17,10 @@ macro_rules! impl_ckks_pow2_default_methods {
         ) -> anyhow::Result<()>
         where
             Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
-            Src: $crate::GLWEToBackendRef<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos,
+            Src: $crate::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
+                + poulpy_core::layouts::LWEInfos
+                + $crate::CKKSInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEShift<$backend>,
             for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {
@@ -54,7 +57,10 @@ macro_rules! impl_ckks_pow2_default_methods {
         ) -> anyhow::Result<()>
         where
             Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
-            Src: $crate::GLWEToBackendRef<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos,
+            Src: $crate::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
+                + poulpy_core::layouts::LWEInfos
+                + $crate::CKKSInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEShift<$backend> + poulpy_core::GLWECopy<$backend>,
             for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {

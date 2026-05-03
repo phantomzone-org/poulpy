@@ -17,7 +17,7 @@ pub(crate) trait CKKSRotateOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_rotate_into<Dst, Src, K>(&self, dst: &mut Dst, src: &Src, key: &K, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
@@ -43,7 +43,7 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSRotateOep<BE> for Module<BE> {
     fn ckks_rotate_into<Dst, Src, K>(&self, dst: &mut Dst, src: &Src, key: &K, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,

@@ -27,7 +27,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
     where
         Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
@@ -36,12 +36,9 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
 
         if offset != 0 {
             self.glwe_lsh(dst, src, offset, scratch);
-            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-            self.glwe_automorphism_assign(&mut dst_ref, key, scratch);
+            self.glwe_automorphism_assign(dst, key, scratch);
         } else {
-            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-            let src_ref = GLWEToBackendRef::<BE>::to_backend_ref(src);
-            self.glwe_automorphism(&mut dst_ref, &src_ref, key, scratch);
+            self.glwe_automorphism(dst, src, key, scratch);
         }
 
         dst.set_meta(src.meta());
@@ -57,8 +54,7 @@ pub(crate) trait CKKSRotateDefault<BE: Backend> {
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's,
     {
-        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        self.glwe_automorphism_assign(&mut dst_ref, key, scratch);
+        self.glwe_automorphism_assign(dst, key, scratch);
         Ok(())
     }
 }

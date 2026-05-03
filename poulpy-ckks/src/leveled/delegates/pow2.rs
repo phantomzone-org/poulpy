@@ -1,7 +1,7 @@
 use anyhow::Result;
 use poulpy_core::{
     GLWECopy, GLWEShift, ScratchArenaTakeCore,
-    layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+    layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
@@ -27,7 +27,7 @@ where
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSPow2Oep::ckks_mul_pow2_into(self, dst, src, bits, scratch)
     }
@@ -52,7 +52,7 @@ where
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSPow2Oep::ckks_div_pow2_into(self, dst, src, bits, scratch)
     }

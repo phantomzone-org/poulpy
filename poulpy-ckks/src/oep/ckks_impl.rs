@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use anyhow::Result;
-use poulpy_core::layouts::{GGLWEInfos, GLWEInfos, GLWESecretPreparedToBackendRef, GLWETensorKeyPreparedBackendRef, LWEInfos};
+use poulpy_core::layouts::{GGLWEInfos, GLWEInfos, GLWESecretPreparedToBackendRef, LWEInfos};
 use poulpy_core::{
     EncryptionInfos, GLWEAdd, GLWECopy, GLWEDecrypt, GLWEMulConst, GLWEMulPlain, GLWENegate, GLWENormalize, GLWERotate, GLWESub,
     GLWETensoring,
@@ -11,8 +11,7 @@ use poulpy_core::{
     layouts::{GGLWEPreparedToBackendRef, GetGaloisElement},
 };
 use poulpy_hal::api::{
-    VecZnxAddConstAssignBackend, VecZnxCopyBackend, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshCoeffBackend,
-    VecZnxRshSubBackend, VecZnxRshSubCoeffIntoBackend, VecZnxSubAssignBackend,
+    VecZnxCopyBackend, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshSubBackend, VecZnxRshSubCoeffIntoBackend,
 };
 use poulpy_hal::{
     api::{ScratchAvailable, VecZnxRshAddCoeffIntoBackend, VecZnxRshAddIntoBackend, VecZnxRshTmpBytes},
@@ -21,8 +20,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    CKKSCiphertextMut, CKKSCiphertextRef, CKKSInfos, CKKSMeta, CKKSPlaintexToBackendRef, GLWEToBackendMut, GLWEToBackendRef,
-    SetCKKSInfos, leveled::default::pt_znx::CKKSPlaintextDefault,
+    CKKSInfos, CKKSMeta, GLWEToBackendMut, GLWEToBackendRef, SetCKKSInfos, leveled::default::pt_znx::CKKSPlaintextDefault,
 };
 
 /// Backend-owned CKKS leveled-operations extension point.
@@ -48,7 +46,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Module<BE>: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -278,7 +276,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     fn ckks_neg_into<Dst, Src>(module: &Module<BE>, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Module<BE>: GLWENegate<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
@@ -300,7 +298,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Module<BE>: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -328,7 +326,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Module<BE>: GLWEShift<BE> + GLWECopy<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -355,7 +353,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         Module<BE>: GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
 
@@ -383,7 +381,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;
@@ -408,7 +406,7 @@ pub unsafe trait CKKSImpl<BE: Backend>: Backend {
     ) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         K: GetGaloisElement + GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>;

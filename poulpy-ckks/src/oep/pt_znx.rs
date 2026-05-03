@@ -22,6 +22,7 @@ macro_rules! impl_ckks_pt_znx_default_methods {
                 + $crate::CKKSInfos
                 + $crate::SetCKKSInfos,
             Src: poulpy_core::layouts::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
                 + poulpy_core::layouts::LWEInfos
                 + $crate::CKKSInfos,
         {

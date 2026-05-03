@@ -1,6 +1,9 @@
 use anyhow::Result;
 use poulpy_core::layouts::GLWEToBackendMut;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchArenaTakeCore, layouts::LWEInfos};
+use poulpy_core::{
+    GLWECopy, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::GLWEToBackendRef;
@@ -32,7 +35,7 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
     where
         Self: GLWEShift<BE>,
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let offset = ckks_offset_unary(dst, src);
@@ -62,7 +65,7 @@ pub(crate) trait CKKSPow2Default<BE: Backend> {
     where
         Self: GLWEShift<BE> + GLWECopy<BE>,
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let offset = ckks_offset_unary(dst, src);

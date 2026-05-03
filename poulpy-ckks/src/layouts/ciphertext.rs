@@ -6,10 +6,7 @@
 use std::ops::{Deref, DerefMut};
 
 use anyhow::Result;
-use poulpy_core::layouts::{
-    Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank, glwe_backend_mut_from_mut,
-    glwe_backend_ref_from_mut, glwe_backend_ref_from_ref,
-};
+use poulpy_core::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, Rank};
 use poulpy_hal::layouts::{Backend, Data, HostBackend, HostDataRef, Module};
 
 use crate::{CKKSInfos, CKKSMeta, SetCKKSInfos, error::CKKSCompositionError, layouts::CKKSModuleAlloc};
@@ -92,43 +89,7 @@ impl<D: Data> LWEInfos for CKKSCiphertext<D> {
     }
 }
 
-impl<D: Data> LWEInfos for &CKKSCiphertext<D> {
-    fn base2k(&self) -> Base2K {
-        self.inner.base2k()
-    }
-    fn n(&self) -> Degree {
-        self.inner.n()
-    }
-    fn size(&self) -> usize {
-        self.inner.size()
-    }
-}
-
-impl<D: Data> LWEInfos for &mut CKKSCiphertext<D> {
-    fn base2k(&self) -> Base2K {
-        self.inner.base2k()
-    }
-    fn n(&self) -> Degree {
-        self.inner.n()
-    }
-    fn size(&self) -> usize {
-        self.inner.size()
-    }
-}
-
 impl<D: Data> GLWEInfos for CKKSCiphertext<D> {
-    fn rank(&self) -> Rank {
-        self.inner.rank()
-    }
-}
-
-impl<D: Data> GLWEInfos for &CKKSCiphertext<D> {
-    fn rank(&self) -> Rank {
-        self.inner.rank()
-    }
-}
-
-impl<D: Data> GLWEInfos for &mut CKKSCiphertext<D> {
     fn rank(&self) -> Rank {
         self.inner.rank()
     }
@@ -148,37 +109,7 @@ impl<D: Data> CKKSInfos for CKKSCiphertext<D> {
     }
 }
 
-impl<D: Data> CKKSInfos for &CKKSCiphertext<D> {
-    fn meta(&self) -> CKKSMeta {
-        self.meta
-    }
-    fn log_delta(&self) -> usize {
-        self.meta.log_delta()
-    }
-    fn log_budget(&self) -> usize {
-        self.meta.log_budget()
-    }
-}
-
-impl<D: Data> CKKSInfos for &mut CKKSCiphertext<D> {
-    fn meta(&self) -> CKKSMeta {
-        self.meta
-    }
-    fn log_delta(&self) -> usize {
-        self.meta.log_delta()
-    }
-    fn log_budget(&self) -> usize {
-        self.meta.log_budget()
-    }
-}
-
 impl<D: Data> SetCKKSInfos for CKKSCiphertext<D> {
-    fn set_meta(&mut self, meta: CKKSMeta) {
-        self.meta = meta;
-    }
-}
-
-impl<D: Data> SetCKKSInfos for &mut CKKSCiphertext<D> {
     fn set_meta(&mut self, meta: CKKSMeta) {
         self.meta = meta;
     }
@@ -193,30 +124,12 @@ where
     }
 }
 
-impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &CKKSCiphertext<BE::BufRef<'b>> {
-    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
-        glwe_backend_ref_from_ref::<BE>(&self.inner)
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEToBackendRef<BE> for &mut CKKSCiphertext<BE::BufMut<'b>> {
-    fn to_backend_ref(&self) -> GLWE<BE::BufRef<'_>> {
-        glwe_backend_ref_from_mut::<BE>(&self.inner)
-    }
-}
-
 impl<BE: Backend, D: Data> GLWEToBackendMut<BE> for CKKSCiphertext<D>
 where
     GLWE<D>: GLWEToBackendMut<BE>,
 {
     fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
         GLWEToBackendMut::to_backend_mut(&mut self.inner)
-    }
-}
-
-impl<'b, BE: Backend + 'b> GLWEToBackendMut<BE> for &mut CKKSCiphertext<BE::BufMut<'b>> {
-    fn to_backend_mut(&mut self) -> GLWE<BE::BufMut<'_>> {
-        glwe_backend_mut_from_mut::<BE>(&mut self.inner)
     }
 }
 

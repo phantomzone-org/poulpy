@@ -1,7 +1,7 @@
 use anyhow::Result;
 use poulpy_core::{
     ScratchArenaTakeCore,
-    layouts::{GLWEToBackendRef, LWEInfos},
+    layouts::{GLWEInfos, GLWEToBackendRef, LWEInfos},
 };
 use poulpy_hal::{
     api::{VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshTmpBytes},
@@ -26,7 +26,7 @@ where
     fn ckks_extract_pt<D, S>(&self, dst: &mut D, src: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         D: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
-        S: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSPlaintextZnxOep::ckks_extract_pt_znx(self, dst, src, scratch)
     }

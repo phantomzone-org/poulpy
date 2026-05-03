@@ -21,7 +21,10 @@ macro_rules! impl_ckks_conjugate_default_methods {
         ) -> anyhow::Result<()>
         where
             Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
-            Src: $crate::GLWEToBackendRef<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos,
+            Src: $crate::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
+                + poulpy_core::layouts::LWEInfos
+                + $crate::CKKSInfos,
             K: poulpy_core::layouts::GetGaloisElement
                 + poulpy_core::layouts::prepared::GGLWEPreparedToBackendRef<$backend>
                 + poulpy_core::layouts::GGLWEInfos,

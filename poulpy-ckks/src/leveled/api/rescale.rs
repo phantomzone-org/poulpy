@@ -1,5 +1,5 @@
 use anyhow::Result;
-use poulpy_core::layouts::{GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
+use poulpy_core::layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
 use poulpy_hal::layouts::{Backend, ScratchArena};
 
 use crate::{CKKSInfos, SetCKKSInfos};
@@ -27,7 +27,7 @@ pub trait CKKSRescaleOps<BE: Backend> {
     fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
-        Src: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos;
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 
     /// Rescales either `a` or `b` in place so both ciphertexts end up with the
     /// same `log_budget`.

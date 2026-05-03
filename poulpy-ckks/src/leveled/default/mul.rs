@@ -73,11 +73,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
                 b.effective_k(),
                 &mut scratch_local,
             );
+            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
         }
-        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_ref;
-        let mut tmp_arg = &mut tmp;
-        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -113,11 +110,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
                 a.effective_k(),
                 &mut scratch_local,
             );
+            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
         }
-        let mut dst_mut = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_mut;
-        let mut tmp_arg = &mut tmp;
-        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -164,11 +158,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let scratch_local = scratch.borrow();
         let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
         {
-            let mut tmp_arg = tmp.to_backend_mut();
+            let mut tmp_arg = &mut tmp;
             self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, a, a.effective_k(), &mut scratch_local);
+            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
         }
-
-        self.glwe_tensor_relinearize(dst, &tmp.to_backend_ref(), tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -195,11 +188,8 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         {
             let mut tmp_arg = &mut tmp;
             self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, &*dst, dst.effective_k(), &mut scratch_local);
+            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
         }
-        let mut dst_mut = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_mut;
-        let mut tmp_arg = &mut tmp;
-        self.glwe_tensor_relinearize(&mut dst_arg, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -252,11 +242,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
-        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_ref;
         self.glwe_mul_plain(
             cnv_offset,
-            &mut dst_arg,
+            dst,
             a,
             a.effective_k(),
             pt_znx,
@@ -282,16 +270,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, dst, pt_znx)?;
         let dst_effective_k = dst.effective_k();
-        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_ref;
-        self.glwe_mul_plain_assign(
-            cnv_offset,
-            &mut dst_arg,
-            dst_effective_k,
-            pt_znx,
-            pt_znx.max_k().as_usize(),
-            scratch,
-        );
+        self.glwe_mul_plain_assign(cnv_offset, dst, dst_effective_k, pt_znx, pt_znx.max_k().as_usize(), scratch);
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
         Ok(())
@@ -315,11 +294,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let rotate_by = (dst.n().as_usize() / 2) as i64;
         let scratch_local = scratch.borrow();
         let (mut tmp, mut scratch_local) = scratch_local.take_glwe(dst);
-        {
-            let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-            let mut dst_arg = &mut dst_ref;
-            self.glwe_mul_const(cnv_offset, &mut dst_arg, a, pt_znx, 0, &mut scratch_local);
-        }
+        self.glwe_mul_const(cnv_offset, dst, a, pt_znx, 0, &mut scratch_local);
         {
             let mut tmp_arg = &mut tmp;
             self.glwe_mul_const(cnv_offset, &mut tmp_arg, a, pt_znx, rotate_by as usize, &mut scratch_local);
@@ -328,10 +303,10 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             let mut tmp_ref = glwe_backend_mut_from_mut::<BE>(&mut tmp);
             self.glwe_rotate_assign(rotate_by, &mut tmp_ref, &mut scratch_local);
         }
-        let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_ref;
-        let mut tmp_arg = &mut tmp;
-        self.glwe_add_assign(&mut dst_arg, &tmp_arg);
+        {
+            let tmp_arg = &mut tmp;
+            self.glwe_add_assign(dst, &tmp_arg);
+        }
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -353,9 +328,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
     {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, dst, cnst)?;
 
-        let mut dst_mut = GLWEToBackendMut::to_backend_mut(dst);
-        let mut dst_arg = &mut dst_mut;
-        self.glwe_mul_const_assign(cnv_offset, &mut dst_arg, cnst, cnst_coeff, scratch);
+        self.glwe_mul_const_assign(cnv_offset, dst, cnst, cnst_coeff, scratch);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
