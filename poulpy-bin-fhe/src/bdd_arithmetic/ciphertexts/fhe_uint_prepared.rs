@@ -8,7 +8,7 @@ use poulpy_core::layouts::{
     GGLWEInfos, GGLWEPreparedToBackendRef, GGSW, GGSWLayout, GGSWPreparedToBackendMut, GLWEAutomorphismKeyHelper,
     GetGaloisElement, LWE,
 };
-use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
+use poulpy_core::{EncryptionInfos, GLWECopy, GLWEDecrypt, GLWEKeyswitch, GLWEPacking, LWEFromGLWE};
 
 use poulpy_core::{GGSWEncryptSk, ScratchArenaTakeCore, layouts::GLWESecretPreparedToBackendRef};
 use poulpy_hal::api::{ModuleLogN, ScratchArenaTakeBasic};
@@ -388,7 +388,7 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, BE: Backend<OwnedBuf = Vec<u8>>
 
 impl<BRA: BlindRotationAlgo, BE: Backend> FheUintPrepare<BRA, BE> for Module<BE>
 where
-    Self: LWEFromGLWE<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
+    Self: LWEFromGLWE<BE> + GLWEKeyswitch<BE> + CircuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     BE: Backend<OwnedBuf = Vec<u8>>,
     BE::OwnedBuf: HostDataRef,

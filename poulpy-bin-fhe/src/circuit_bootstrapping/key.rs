@@ -8,7 +8,6 @@ use poulpy_core::{
         GLWESecretPreparedFactory, GLWESecretToBackendRef, LWEInfos, LWESecretToBackendRef, ModuleCoreAlloc,
         prepared::GLWESecretPrepared,
     },
-    trace_galois_elements,
 };
 use std::collections::HashMap;
 
@@ -26,6 +25,7 @@ use poulpy_hal::{
 use crate::blind_rotation::{
     BlindRotationAlgo, BlindRotationKey, BlindRotationKeyEncryptSk, BlindRotationKeyInfos, BlindRotationKeyLayout,
 };
+use crate::circuit_bootstrapping::trace_galois_elements;
 
 /// Encryption noise parameters for all three sub-keys of a circuit bootstrapping key bundle.
 ///

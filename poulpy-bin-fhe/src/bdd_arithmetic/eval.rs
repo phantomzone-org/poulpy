@@ -659,6 +659,7 @@ where
         + GLWEExternalProductInternal<BE>
         + GLWECopy<BE>
         + GLWESub<BE>
+        + ModuleN
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigBytesOf
         + GLWENormalize<BE>
@@ -901,6 +902,7 @@ where
         + GLWEExternalProductInternal<BE>
         + GLWECopy<BE>
         + GLWESub<BE>
+        + ModuleN
         + VecZnxBigAddSmallAssign<BE>
         + VecZnxBigBytesOf
         + GLWENormalize<BE>

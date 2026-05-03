@@ -453,7 +453,7 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
         Self: GLWEToBackendRef<BE>,
         KGLWE: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         KLWE: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
-        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + LWEFromGLWE<BE> + GLWERotate<BE> + GLWEKeyswitch<BE>,
+        M: ModuleLogN + ModuleCoreAlloc<OwnedBuf = Vec<u8>> + LWEFromGLWE<BE> + GLWEKeyswitch<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
         for<'a> BE::BufMut<'a>: HostDataMut,
     {
@@ -463,11 +463,9 @@ impl<D: HostDataRef, T: UnsignedInteger> FheUint<D, T> {
             // in host-owned memory for compatibility with the current core API.
             let mut res_tmp: GLWE<BE::OwnedBuf> = module.glwe_alloc(ks_glwe.base2k(), ks_glwe.max_k(), ks_glwe.rank_out());
             let mut scratch_1 = scratch.borrow();
-            let self_backend = <FheUint<D, T> as GLWEToBackendRef<BE>>::to_backend_ref(self);
             {
-                let mut res_tmp_backend = <GLWE<BE::OwnedBuf> as GLWEToBackendMut<BE>>::to_backend_mut(&mut res_tmp);
                 let mut scratch_op = scratch_1.borrow();
-                module.glwe_keyswitch(&mut res_tmp_backend, &self_backend, ks_glwe, &mut scratch_op);
+                module.glwe_keyswitch(&mut res_tmp, self, ks_glwe, &mut scratch_op);
             }
             let mut scratch_op = scratch_1.borrow();
             module.lwe_from_glwe(res, &res_tmp, T::bit_index(bit) << log_gap, ks_lwe, &mut scratch_op);

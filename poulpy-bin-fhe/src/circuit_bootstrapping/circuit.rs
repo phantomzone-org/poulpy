@@ -9,9 +9,9 @@ use poulpy_core::{
     GGSWExpandRows, GGSWFromGGLWE, GLWECopy, GLWEDecrypt, GLWENormalize, GLWEPacking, GLWERotate, GLWETrace,
     ScratchArenaTakeCore,
     layouts::{
-        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut,
-        GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
-        GetGaloisElement, LWEInfos, LWEToBackendRef, ModuleCoreAlloc, Rank, glwe_backend_mut_from_mut,
+        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToBackendRef, GGSWInfos, GGSWToBackendMut, GLWEAutomorphismKeyHelper,
+        GLWEInfos, GLWELayout, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos,
+        LWEToBackendRef, ModuleCoreAlloc, Rank, glwe_backend_mut_from_mut,
     },
 };
 
@@ -249,7 +249,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
 ) where
     BRA: BlindRotationAlgo,
     BE: Backend<OwnedBuf = Vec<u8>> + 'static,
-    R: GGSWToBackendMut<BE>,
+    R: GGSWToBackendMut<BE> + GGSWInfos,
     L: LWEToBackendRef<BE>,
     M: ModuleN
         + ModuleCoreAlloc<OwnedBuf = Vec<u8>>
@@ -407,8 +407,7 @@ pub fn circuit_bootstrap_core<R, L, M, BRA, BE>(
     }
 
     // Expands GGLWE to GGSW using GGLWE(s^2)
-    let mut res_backend: GGSWBackendMut<'_, BE> = <R as GGSWToBackendMut<BE>>::to_backend_mut(res);
-    module.ggsw_expand_row(&mut res_backend, &key.tsk, &mut scratch_1.borrow());
+    module.ggsw_expand_row(res, &key.tsk, &mut scratch_1.borrow());
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Module, ScalarZnx, ScalarZnxToBackendRef, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopyBackend},
+    layouts::{Module, ScalarZnx, ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScalarZnxToBackendRef, ScratchOwned},
     source::Source,
     test_suite::TestParams,
 };
@@ -14,7 +14,6 @@ use crate::{
         GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, ModuleCoreAlloc,
         ModuleCoreCompressedAlloc, prepared::GLWESecretPrepared,
     },
-    vec_znx_host_ops::vec_znx_copy,
 };
 
 pub fn test_gglwe_to_ggsw_key_encrypt_sk<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
@@ -26,7 +25,8 @@ where
         + GLWESecretTensorFactory<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
-        + GGLWENoise<BE>,
+        + GGLWENoise<BE>
+        + VecZnxCopyBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -83,7 +83,13 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+                let (row, col) = if i > j { (j, i) } else { (i, j) };
+                let sk_tensor_col = row * rank + col - (row * (row + 1) / 2);
+                let mut pt_want_backend =
+                    <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_want);
+                let sk_tensor_backend =
+                    <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_tensor.data);
+                module.vec_znx_copy_backend(&mut pt_want_backend, j, &sk_tensor_backend, sk_tensor_col);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);
@@ -121,7 +127,8 @@ where
         + GGLWENoise<BE>
         + GGLWEDecompress
         + GGLWEToGGSWKeyDecompress
-        + crate::layouts::compressed::GLWEDecompress<Backend = BE>,
+        + crate::layouts::compressed::GLWEDecompress<Backend = BE>
+        + VecZnxCopyBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -183,7 +190,13 @@ where
 
         for i in 0..rank {
             for j in 0..rank {
-                vec_znx_copy(&mut pt_want.as_vec_znx_mut(), j, &sk_tensor.at(i, j).as_vec_znx(), 0);
+                let (row, col) = if i > j { (j, i) } else { (i, j) };
+                let sk_tensor_col = row * rank + col - (row * (row + 1) / 2);
+                let mut pt_want_backend =
+                    <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendMut<BE>>::as_vec_znx_backend_mut(&mut pt_want);
+                let sk_tensor_backend =
+                    <ScalarZnx<Vec<u8>> as ScalarZnxAsVecZnxBackendRef<BE>>::as_vec_znx_backend(&sk_tensor.data);
+                module.vec_znx_copy_backend(&mut pt_want_backend, j, &sk_tensor_backend, sk_tensor_col);
             }
 
             let ksk: &GGLWE<Vec<u8>> = key.at(i);

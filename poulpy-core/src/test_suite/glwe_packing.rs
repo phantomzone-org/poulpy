@@ -125,7 +125,7 @@ where
             );
             {
                 let mut pt_backend = <GLWEPlaintext<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut pt);
-                module.glwe_rotate_assign(-5, &mut pt_backend, &mut scratch.borrow()); // X^-batch * pt
+                module.glwe_rotate_assign(-5, &mut pt_backend, &mut scratch.borrow());
             }
             ct
         })

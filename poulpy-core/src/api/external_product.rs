@@ -1,8 +1,4 @@
-use poulpy_hal::{
-    api::ModuleN,
-    api::VecZnxZeroBackend,
-    layouts::{Backend, ScratchArena, VecZnxDft},
-};
+use poulpy_hal::layouts::{Backend, ScratchArena, VecZnxDft};
 
 use crate::{
     ScratchArenaTakeCore,
@@ -54,18 +50,12 @@ pub trait GLWEExternalProductInternal<BE: Backend> {
         for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>;
 }
 
-pub trait GGLWEExternalProduct<BE: Backend>
-where
-    Self: GLWEExternalProduct<BE> + VecZnxZeroBackend<BE>,
-{
+pub trait GGLWEExternalProduct<BE: Backend> {
     fn gglwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
-        B: GGSWInfos,
-    {
-        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
+        B: GGSWInfos;
 
     fn gglwe_external_product<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where
@@ -83,18 +73,12 @@ where
         for<'b> ScratchArena<'b, BE>: ScratchArenaTakeCore<'b, BE>;
 }
 
-pub trait GGSWExternalProduct<BE: Backend>
-where
-    Self: GLWEExternalProduct<BE> + ModuleN + VecZnxZeroBackend<BE>,
-{
+pub trait GGSWExternalProduct<BE: Backend> {
     fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGSWInfos,
         A: GGSWInfos,
-        B: GGSWInfos,
-    {
-        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
-    }
+        B: GGSWInfos;
 
     fn ggsw_external_product<'s, R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut ScratchArena<'s, BE>)
     where

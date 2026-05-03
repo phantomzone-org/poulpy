@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeAssignBackend},
-    layouts::{Module, ScratchOwned, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeAssignBackend, VecZnxSubAssignBackend},
+    layouts::{Module, ScratchOwned, VecZnxToBackendMut, VecZnxToBackendRef, ZnxViewMut},
     source::Source,
     test_suite::{TestParams, vec_znx_backend_mut},
 };
 
 use crate::{
-    EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore,
+    EncryptionLayout, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWETrace, ScratchArenaTakeCore,
     encryption::DEFAULT_SIGMA_XE,
-    glwe_trace::GLWETrace,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
         GLWESecret, GLWESecretPreparedFactory, LWEInfos, ModuleCoreAlloc,
@@ -18,7 +17,6 @@ use crate::{
     },
     noise::var_noise_gglwe_product,
     test_suite::{download_glwe_plaintext, upload_glwe, upload_glwe_automorphism_key, upload_glwe_plaintext, upload_glwe_secret},
-    vec_znx_host_ops::vec_znx_sub_assign,
 };
 
 pub fn test_glwe_trace_assign<BE: crate::test_suite::TestBackend>(params: &TestParams, module: &Module<BE>)
@@ -32,7 +30,8 @@ where
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWESecretPreparedFactory<BE>
-        + VecZnxNormalizeAssignBackend<BE>,
+        + VecZnxNormalizeAssignBackend<BE>
+        + VecZnxSubAssignBackend<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
@@ -135,7 +134,12 @@ where
         module.glwe_decrypt(&glwe_out, &mut pt_have_backend, &sk_dft, &mut scratch.borrow());
         let pt_have: GLWEPlaintext<Vec<u8>> = download_glwe_plaintext(module, &pt_have_backend);
 
-        vec_znx_sub_assign(&mut pt_want.data, 0, &pt_have.data, 0);
+        {
+            let mut pt_want_data =
+                <poulpy_hal::layouts::VecZnx<Vec<u8>> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut pt_want.data);
+            let pt_have_data = <poulpy_hal::layouts::VecZnx<Vec<u8>> as VecZnxToBackendRef<BE>>::to_backend_ref(&pt_have.data);
+            module.vec_znx_sub_assign_backend(&mut pt_want_data, 0, &pt_have_data, 0);
+        }
         let mut pt_noise = upload_glwe_plaintext(module, &pt_want);
         module.vec_znx_normalize_assign_backend(
             pt_noise.base2k().as_usize(),

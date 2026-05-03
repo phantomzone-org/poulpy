@@ -1,11 +1,8 @@
 use itertools::Itertools;
-use poulpy_core::{
-    layouts::{
-        GGLWEInfos, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos,
-        GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
-        GLWETensorKeyPreparedFactory, LWEInfos, prepared::GLWEAutomorphismKeyPrepared,
-    },
-    trace_galois_elements,
+use poulpy_core::layouts::{
+    GGLWEInfos, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos,
+    GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
+    GLWETensorKeyPreparedFactory, LWEInfos, prepared::GLWEAutomorphismKeyPrepared,
 };
 use std::collections::HashMap;
 
@@ -14,6 +11,7 @@ use poulpy_hal::{
     layouts::{Backend, Data, Module, ScratchArena},
 };
 
+use crate::circuit_bootstrapping::trace_galois_elements;
 use crate::{
     blind_rotation::{
         BlindRotationAlgo, BlindRotationKeyInfos, BlindRotationKeyLayout, BlindRotationKeyPrepared,

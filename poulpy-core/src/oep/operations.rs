@@ -1,20 +1,18 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
-    glwe_packer::{GLWEPacker, GLWEPackerOpsDefault},
-    glwe_packing::GLWEPackingDefault,
-    glwe_trace::GLWETraceDefault,
+    default::{glwe_packing::GLWEPackingDefault, glwe_trace::GLWETraceDefault},
     layouts::{
-        BackendGLWE, GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
+        GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     operations::{
-        GGSWRotateDefault, GLWEMulConstDefault, GLWEMulPlainDefault, GLWEMulXpMinusOneDefault, GLWENormalizeDefault,
-        GLWERotateDefault, GLWEShiftDefault, GLWETensoringDefault,
+        GGSWRotateDefault, GLWEAddDefault, GLWECopyDefault, GLWEMulConstDefault, GLWEMulPlainDefault, GLWEMulXpMinusOneDefault,
+        GLWENegateDefault, GLWENormalizeDefault, GLWERotateDefault, GLWEShiftDefault, GLWESubDefault, GLWETensoringDefault,
     },
 };
 
@@ -155,6 +153,76 @@ pub unsafe trait GLWETensoringImpl<BE: Backend>: Backend {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos;
+}
+
+/// Backend-provided GLWE addition operations.
+///
+/// # Safety
+/// Implementations must preserve GLWE layout invariants and respect all backend buffer bounds.
+pub unsafe trait GLWEAddImpl<BE: Backend>: Backend {
+    fn glwe_add_into<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>;
+
+    fn glwe_add_assign<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+
+    fn glwe_add_assign_backend(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+}
+
+/// Backend-provided GLWE negation operations.
+///
+/// # Safety
+/// Implementations must preserve GLWE layout invariants and respect all backend buffer bounds.
+pub unsafe trait GLWENegateImpl<BE: Backend>: Backend {
+    fn glwe_negate(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_negate_assign(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>);
+}
+
+/// Backend-provided GLWE subtraction operations.
+///
+/// # Safety
+/// Implementations must preserve GLWE layout invariants and respect all backend buffer bounds.
+pub unsafe trait GLWESubImpl<BE: Backend>: Backend {
+    fn glwe_sub_backend<'a>(
+        module: &Module<BE>,
+        res: &mut GLWEBackendMut<'_, BE>,
+        a: &GLWEBackendRef<'a, BE>,
+        b: &GLWEBackendRef<'a, BE>,
+    );
+
+    fn glwe_sub<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>;
+
+    fn glwe_sub_assign_backend(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_sub_assign<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+
+    fn glwe_sub_negate_assign_backend(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_sub_negate_assign<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+}
+
+/// Backend-provided GLWE copy operations.
+///
+/// # Safety
+/// Implementations must preserve GLWE layout invariants and respect all backend buffer bounds.
+pub unsafe trait GLWECopyImpl<BE: Backend>: Backend {
+    fn glwe_copy(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
 }
 
 /// Backend-provided GLWE rotation operations.
@@ -355,24 +423,56 @@ pub unsafe trait GLWEPackImpl<BE: Backend>: Backend {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
         BE: 's;
-
-    fn packer_add<'s, A, K, H>(
-        module: &Module<BE>,
-        packer: &mut GLWEPacker<BE::OwnedBuf>,
-        a: Option<&A>,
-        i: usize,
-        auto_keys: &H,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: GLWEToBackendRef<BE> + GLWEInfos,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
-        ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>;
 }
 
 #[doc(hidden)]
 pub trait OperationsDefaults<BE: Backend>: Backend {
+    fn glwe_add_into_default<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>;
+
+    fn glwe_add_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+
+    fn glwe_add_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_negate_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_negate_assign_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>);
+
+    fn glwe_sub_backend_default<'a>(
+        module: &Module<BE>,
+        res: &mut GLWEBackendMut<'_, BE>,
+        a: &GLWEBackendRef<'a, BE>,
+        b: &GLWEBackendRef<'a, BE>,
+    );
+
+    fn glwe_sub_default<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>;
+
+    fn glwe_sub_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_sub_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+
+    fn glwe_sub_negate_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
+    fn glwe_sub_negate_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>;
+
+    fn glwe_copy_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>);
+
     fn glwe_mul_const_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
@@ -639,24 +739,15 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
         GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
-
-    fn packer_add_default<'s, A, K, H>(
-        module: &Module<BE>,
-        packer: &mut GLWEPacker<BE::OwnedBuf>,
-        a: Option<&A>,
-        i: usize,
-        auto_keys: &H,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: GLWEToBackendRef<BE> + GLWEInfos,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        BE: Backend<OwnedBuf = Vec<u8>>;
 }
 
 impl<BE: Backend> OperationsDefaults<BE> for BE
 where
-    Module<BE>: GLWEMulConstDefault<BE>
+    Module<BE>: GLWEAddDefault<BE>
+        + GLWENegateDefault<BE>
+        + GLWESubDefault<BE>
+        + GLWECopyDefault<BE>
+        + GLWEMulConstDefault<BE>
         + GLWEMulPlainDefault<BE>
         + GLWETensoringDefault<BE>
         + GLWERotateDefault<BE>
@@ -665,10 +756,84 @@ where
         + GLWEShiftDefault<BE>
         + GLWENormalizeDefault<BE>
         + GLWETraceDefault<BE>
-        + GLWEPackingDefault<BE>
-        + GLWEPackerOpsDefault<BE>,
+        + GLWEPackingDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
+    fn glwe_add_into_default<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
+    {
+        <Module<BE> as GLWEAddDefault<BE>>::glwe_add_into(module, res, a, b)
+    }
+
+    fn glwe_add_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        <Module<BE> as GLWEAddDefault<BE>>::glwe_add_assign(module, res, a)
+    }
+
+    fn glwe_add_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        <Module<BE> as GLWEAddDefault<BE>>::glwe_add_assign_backend(module, res, a)
+    }
+
+    fn glwe_negate_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        <Module<BE> as GLWENegateDefault<BE>>::glwe_negate(module, res, a)
+    }
+
+    fn glwe_negate_assign_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>) {
+        <Module<BE> as GLWENegateDefault<BE>>::glwe_negate_assign(module, res)
+    }
+
+    fn glwe_sub_backend_default<'a>(
+        module: &Module<BE>,
+        res: &mut GLWEBackendMut<'_, BE>,
+        a: &GLWEBackendRef<'a, BE>,
+        b: &GLWEBackendRef<'a, BE>,
+    ) {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub_backend(module, res, a, b)
+    }
+
+    fn glwe_sub_default<R, A, B>(module: &Module<BE>, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
+    {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub(module, res, a, b)
+    }
+
+    fn glwe_sub_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub_assign_backend(module, res, a)
+    }
+
+    fn glwe_sub_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub_assign(module, res, a)
+    }
+
+    fn glwe_sub_negate_assign_backend_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub_negate_assign_backend(module, res, a)
+    }
+
+    fn glwe_sub_negate_assign_default<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        <Module<BE> as GLWESubDefault<BE>>::glwe_sub_negate_assign(module, res, a)
+    }
+
+    fn glwe_copy_default(module: &Module<BE>, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        <Module<BE> as GLWECopyDefault<BE>>::glwe_copy(module, res, a)
+    }
+
     fn glwe_mul_const_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
     where
         R: GLWEInfos,
@@ -1072,22 +1237,6 @@ where
     {
         let mut scratch_local = scratch.borrow();
         <Module<BE> as GLWEPackingDefault<BE>>::glwe_pack_default(module, res, a, log_gap_out, keys, &mut scratch_local)
-    }
-
-    fn packer_add_default<'s, A, K, H>(
-        module: &Module<BE>,
-        packer: &mut GLWEPacker<BE::OwnedBuf>,
-        a: Option<&A>,
-        i: usize,
-        auto_keys: &H,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: GLWEToBackendRef<BE> + GLWEInfos,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        BE: Backend,
-    {
-        <Module<BE> as GLWEPackerOpsDefault<BE>>::packer_add_default(module, packer, a, i, auto_keys, scratch)
     }
 }
 

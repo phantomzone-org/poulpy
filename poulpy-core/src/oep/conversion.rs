@@ -2,10 +2,10 @@ use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
-    conversion::{GGSWExpandRowsDefault, GGSWFromGGLWEDefault, GLWEFromLWEDefault, LWEFromGLWEDefault},
+    conversion::{GGSWExpandRowsDefault, GGSWFromGGLWEDefault, GLWEFromLWEDefault, LWEFromGLWEDefault, LWESampleExtractDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendRef, GGSWBackendMut, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut,
-        GLWEToBackendRef, LWEInfos, LWEToBackendMut, LWEToBackendRef,
+        GGLWEInfos, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+        LWEToBackendMut, LWEToBackendRef,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -17,6 +17,11 @@ use crate::{
 /// scratch-space requirements, and produce results equivalent to the documented conversion
 /// semantics for the backend.
 pub unsafe trait ConversionImpl<BE: Backend>: Backend {
+    fn lwe_sample_extract<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos;
+
     fn glwe_from_lwe_tmp_bytes<R, A, K>(module: &Module<BE>, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
         R: GLWEInfos,
@@ -78,6 +83,11 @@ pub unsafe trait ConversionImpl<BE: Backend>: Backend {
 
 #[doc(hidden)]
 pub trait ConversionDefaults<BE: Backend>: Backend {
+    fn lwe_sample_extract<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos;
+
     fn glwe_from_lwe_tmp_bytes<R, A, K>(module: &Module<BE>, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
         R: GLWEInfos,
@@ -139,9 +149,21 @@ pub trait ConversionDefaults<BE: Backend>: Backend {
 
 impl<BE: Backend> ConversionDefaults<BE> for BE
 where
-    Module<BE>: GLWEFromLWEDefault<BE> + LWEFromGLWEDefault<BE> + GGSWFromGGLWEDefault<BE> + GGSWExpandRowsDefault<BE>,
+    Module<BE>: LWESampleExtractDefault<BE>
+        + GLWEFromLWEDefault<BE>
+        + LWEFromGLWEDefault<BE>
+        + GGSWFromGGLWEDefault<BE>
+        + GGSWExpandRowsDefault<BE>,
     for<'s> ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
 {
+    fn lwe_sample_extract<R, A>(module: &Module<BE>, res: &mut R, a: &A)
+    where
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+    {
+        <Module<BE> as LWESampleExtractDefault<BE>>::lwe_sample_extract_default(module, res, a)
+    }
+
     fn glwe_from_lwe_tmp_bytes<R, A, K>(module: &Module<BE>, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
         R: GLWEInfos,

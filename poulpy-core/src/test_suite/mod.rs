@@ -5,22 +5,20 @@ pub mod glwe_tensor;
 pub mod keyswitch;
 
 mod conversion;
-mod glwe_packer;
 mod glwe_packing;
 mod rotate;
 mod trace;
 
 pub use conversion::*;
-pub use glwe_packer::*;
 pub use glwe_packing::*;
 pub use rotate::*;
 pub use trace::*;
 
 use crate::oep::{
     AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl, GGSWExternalProductImpl,
-    GGSWKeyswitchImpl, GGSWRotateImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl, GLWEMulConstImpl, GLWEMulPlainImpl,
-    GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWETensoringImpl, GLWETraceImpl,
-    LWEKeyswitchImpl,
+    GGSWKeyswitchImpl, GGSWRotateImpl, GLWEAddImpl, GLWECopyImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl, GLWEMulConstImpl,
+    GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENegateImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl,
+    GLWESubImpl, GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl,
 };
 use crate::{
     api::ModuleTransfer,
@@ -32,6 +30,7 @@ use poulpy_hal::{
         Backend, DataView, HostBackend, HostBytesBackend as HB, HostDataMut, HostDataRef, Module, ScalarZnx,
         ScalarZnxAsVecZnxBackendMut, ScalarZnxAsVecZnxBackendRef, ScratchArena, ScratchOwned, VecZnxBackendMut, VecZnxBackendRef,
     },
+    oep::HalVecZnxImpl,
     test_suite::TestBackend as HalTestBackend,
     test_suite::{download_scalar_znx as hal_download_scalar_znx, upload_scalar_znx as hal_upload_scalar_znx},
 };
@@ -44,6 +43,11 @@ pub trait TestBackend:
     + GGLWEKeyswitchImpl<Self>
     + GGSWKeyswitchImpl<Self>
     + LWEKeyswitchImpl<Self>
+    + GLWEAddImpl<Self>
+    + GLWENegateImpl<Self>
+    + GLWESubImpl<Self>
+    + GLWECopyImpl<Self>
+    + HalVecZnxImpl<Self>
     + GLWEExternalProductImpl<Self>
     + GGLWEExternalProductImpl<Self>
     + GGSWExternalProductImpl<Self>
@@ -77,6 +81,11 @@ where
         + GGLWEKeyswitchImpl<BE>
         + GGSWKeyswitchImpl<BE>
         + LWEKeyswitchImpl<BE>
+        + GLWEAddImpl<BE>
+        + GLWENegateImpl<BE>
+        + GLWESubImpl<BE>
+        + GLWECopyImpl<BE>
+        + HalVecZnxImpl<BE>
         + GLWEExternalProductImpl<BE>
         + GGLWEExternalProductImpl<BE>
         + GGSWExternalProductImpl<BE>
@@ -281,7 +290,6 @@ macro_rules! core_backend_test_suite {
                 glwe_rotate => $crate::test_suite::test_glwe_rotate,
                 glwe_trace_assign => $crate::test_suite::test_glwe_trace_assign,
                 glwe_packing => $crate::test_suite::test_glwe_packing,
-                glwe_packer => $crate::test_suite::test_glwe_packer,
                 gglwe_switching_key_encrypt_sk => $crate::test_suite::encryption::test_gglwe_switching_key_encrypt_sk,
                 gglwe_switching_key_compressed_encrypt_sk =>
                     $crate::test_suite::encryption::test_gglwe_switching_key_compressed_encrypt_sk,

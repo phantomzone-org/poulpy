@@ -19,7 +19,7 @@ use poulpy_core::{
     EncryptionLayout, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk,
     layouts::{
         Dsize, GGLWEToGGSWKeyLayout, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWEInfos,
-        GLWESecretPreparedFactory, GLWEToBackendMut, LWELayout, ModuleCoreAlloc,
+        GLWESecretPreparedFactory, LWELayout, ModuleCoreAlloc,
     },
 };
 
@@ -223,8 +223,7 @@ pub fn test_circuit_bootstrapping_to_exponent<BE: Backend<OwnedBuf = Vec<u8>> + 
     module.ggsw_prepare(&mut res_prepared, &res, &mut scratch.borrow());
 
     {
-        let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-        module.glwe_external_product_assign(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+        module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, &mut scratch.borrow());
     }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ggsw_infos);
@@ -421,8 +420,7 @@ pub fn test_circuit_bootstrapping_to_constant<BE: Backend<OwnedBuf = Vec<u8>> + 
     module.ggsw_prepare(&mut res_prepared, &res, &mut scratch.borrow());
 
     {
-        let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-        module.glwe_external_product_assign(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+        module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, &mut scratch.borrow());
     }
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = module.glwe_plaintext_alloc_from_infos(&ggsw_infos);

@@ -2,7 +2,6 @@ use poulpy_hal::layouts::{Backend, ScratchArena};
 
 use crate::{
     ScratchArenaTakeCore,
-    api::GGSWExpandRows,
     layouts::{
         GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEInfos,
         GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, SetGaloisElement,
@@ -70,22 +69,13 @@ pub trait GLWEAutomorphism<BE: Backend> {
         BE: 's;
 }
 
-pub trait GGSWAutomorphism<BE: Backend>
-where
-    Self: GLWEAutomorphism<BE> + GGSWExpandRows<BE>,
-{
+pub trait GGSWAutomorphism<BE: Backend> {
     fn ggsw_automorphism_tmp_bytes<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
     where
         R: GGSWInfos,
         A: GGSWInfos,
         K: GGLWEInfos,
-        T: GGLWEInfos,
-    {
-        let lvl_0: usize = self
-            .glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
-            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos));
-        lvl_0
-    }
+        T: GGLWEInfos;
 
     fn ggsw_automorphism<'s, R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut ScratchArena<'s, BE>)
     where

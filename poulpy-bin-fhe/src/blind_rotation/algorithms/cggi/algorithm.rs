@@ -47,6 +47,7 @@ where
         + VecZnxBigNormalize<BE>
         + GLWEMulXpMinusOne<BE>
         + GLWEAdd<BE>
+        + GLWECopy<BE>
         + GLWENormalize<BE>
         + VecZnxZeroBackend<BE>,
     // TODO(device): CGGI blind rotation still contains host-visible sub-steps
@@ -56,7 +57,6 @@ where
     for<'a> BE::BufMut<'a>: HostDataMut,
     for<'a> BE::BufRef<'a>: HostDataRef,
     for<'a> BE::OwnedBuf: HostDataRef,
-    for<'a> BE: Backend<BufMut<'a> = &'a mut [u8], BufRef<'a> = &'a [u8]>,
     BE: HalVecZnxImpl<BE>,
 {
     fn blind_rotation_execute_tmp_bytes<G, B>(
@@ -141,7 +141,7 @@ where
     }
 }
 
-fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> + 'static>(
     module: &M,
     res: &mut R,
     lwe: &LWE<DataIn>,
@@ -350,7 +350,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     }
 }
 
-fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
+fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> + 'static>(
     module: &M,
     res: &mut R,
     lwe: &LWE<DataIn>,
@@ -576,9 +576,8 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
     for (ai, ski) in izip!(a.iter(), brk.data.iter()) {
         // acc_tmp = sk[i] * acc
         {
-            let out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);
-            let out_backend_ref = glwe_backend_ref_from_mut::<BE>(&out_backend);
-            module.glwe_external_product(&mut acc_tmp, &out_backend_ref, ski, &mut scratch_1.borrow());
+            let mut acc_tmp_ref = &mut acc_tmp;
+            module.glwe_external_product(&mut acc_tmp_ref, &out_tmp, ski, &mut scratch_1.borrow());
         }
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)

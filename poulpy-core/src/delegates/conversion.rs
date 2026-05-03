@@ -1,7 +1,7 @@
 use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
-    api::{GGSWExpandRows, GGSWFromGGLWE, GLWEFromLWE, LWEFromGLWE},
+    api::{GGSWExpandRows, GGSWFromGGLWE, GLWEFromLWE, LWEFromGLWE, LWESampleExtract},
     conversion::LWEFromGLWEDefault,
     layouts::{
         GGLWEInfos, GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEToBackendMut,
@@ -21,6 +21,18 @@ macro_rules! impl_conversion_delegate {
         }
     };
 }
+
+impl_conversion_delegate!(
+    LWESampleExtract<BE>,
+    [BE: Backend + ConversionImpl<BE>],
+    fn lwe_sample_extract<R, A>(&self, res: &mut R, a: &A)
+    where
+        R: LWEToBackendMut<BE> + LWEInfos,
+        A: GLWEToBackendRef<BE> + GLWEInfos,
+    {
+        BE::lwe_sample_extract(self, res, a)
+    }
+);
 
 impl_conversion_delegate!(
     GLWEFromLWE<BE>,

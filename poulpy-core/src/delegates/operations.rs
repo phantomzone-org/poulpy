@@ -1,27 +1,25 @@
 use std::collections::HashMap;
 
-use poulpy_hal::layouts::{Backend, Data, Module, ScratchArena};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
 use crate::{
     api::{
-        GGSWRotate, GLWEMulConst, GLWEMulPlain, GLWEMulXpMinusOne, GLWENormalize, GLWEPackerOps, GLWEPacking, GLWERotate,
-        GLWEShift, GLWETensoring, GLWETrace,
+        GGSWRotate, GLWEAdd, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWEMulXpMinusOne, GLWENegate, GLWENormalize, GLWEPacking,
+        GLWERotate, GLWEShift, GLWESub, GLWETensoring, GLWETrace,
     },
-    glwe_packer::GLWEPackerOpsDefault,
-    glwe_packing::GLWEPackingDefault,
-    glwe_trace::GLWETraceDefault,
+    default::{glwe_packing::GLWEPackingDefault, glwe_trace::GLWETraceDefault},
     layouts::{
-        BackendGLWE, GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef,
-        GLWEInfos, GLWEPlaintext, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
+        GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     oep::{
-        GGSWRotateImpl, GLWEMulConstImpl, GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl,
-        GLWERotateImpl, GLWEShiftImpl, GLWETensoringImpl, GLWETraceImpl,
+        GGSWRotateImpl, GLWEAddImpl, GLWECopyImpl, GLWEMulConstImpl, GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENegateImpl,
+        GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWESubImpl, GLWETensoringImpl, GLWETraceImpl,
     },
     operations::{
-        GGSWRotateDefault, GLWEMulConstDefault, GLWEMulPlainDefault, GLWEMulXpMinusOneDefault, GLWENormalizeDefault,
-        GLWERotateDefault, GLWEShiftDefault, GLWETensoringDefault,
+        GGSWRotateDefault, GLWEAddDefault, GLWECopyDefault, GLWEMulConstDefault, GLWEMulPlainDefault, GLWEMulXpMinusOneDefault,
+        GLWENegateDefault, GLWENormalizeDefault, GLWERotateDefault, GLWEShiftDefault, GLWESubDefault, GLWETensoringDefault,
     },
 };
 
@@ -36,6 +34,88 @@ macro_rules! impl_operations_delegate {
         }
     };
 }
+
+impl_operations_delegate!(
+    GLWEAdd<BE>,
+    GLWEAddImpl<BE>,
+    GLWEAddDefault<BE>,
+    fn glwe_add_into<R, A, B>(&self, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
+    {
+        BE::glwe_add_into(self, res, a, b)
+    },
+    fn glwe_add_assign<R, A>(&self, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        BE::glwe_add_assign(self, res, a)
+    },
+    fn glwe_add_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        BE::glwe_add_assign_backend(self, res, a)
+    }
+);
+
+impl_operations_delegate!(
+    GLWENegate<BE>,
+    GLWENegateImpl<BE>,
+    GLWENegateDefault<BE>,
+    fn glwe_negate(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        BE::glwe_negate(self, res, a)
+    },
+    fn glwe_negate_assign(&self, res: &mut GLWEBackendMut<'_, BE>) {
+        BE::glwe_negate_assign(self, res)
+    }
+);
+
+impl_operations_delegate!(
+    GLWESub<BE>,
+    GLWESubImpl<BE>,
+    GLWESubDefault<BE>,
+    fn glwe_sub_backend<'a>(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'a, BE>, b: &GLWEBackendRef<'a, BE>) {
+        BE::glwe_sub_backend(self, res, a, b)
+    },
+    fn glwe_sub<R, A, B>(&self, res: &mut R, a: &A, b: &B)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+        B: GLWEToBackendRef<BE>,
+    {
+        BE::glwe_sub(self, res, a, b)
+    },
+    fn glwe_sub_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        BE::glwe_sub_assign_backend(self, res, a)
+    },
+    fn glwe_sub_assign<R, A>(&self, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        BE::glwe_sub_assign(self, res, a)
+    },
+    fn glwe_sub_negate_assign_backend(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        BE::glwe_sub_negate_assign_backend(self, res, a)
+    },
+    fn glwe_sub_negate_assign<R, A>(&self, res: &mut R, a: &A)
+    where
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
+    {
+        BE::glwe_sub_negate_assign(self, res, a)
+    }
+);
+
+impl_operations_delegate!(
+    GLWECopy<BE>,
+    GLWECopyImpl<BE>,
+    GLWECopyDefault<BE>,
+    fn glwe_copy(&self, res: &mut GLWEBackendMut<'_, BE>, a: &GLWEBackendRef<'_, BE>) {
+        BE::glwe_copy(self, res, a)
+    }
+);
 
 impl_operations_delegate!(
     GLWEMulConst<BE>,
@@ -414,28 +494,5 @@ impl_operations_delegate!(
         BE: 's,
     {
         BE::glwe_pack(self, res, a, log_gap_out, keys, scratch)
-    }
-);
-
-impl_operations_delegate!(
-    GLWEPackerOps<BE>,
-    GLWEPackImpl<BE>,
-    GLWEPackerOpsDefault<BE>,
-    fn packer_add<'s, A, K, H>(
-        &self,
-        packer: &mut crate::GLWEPacker<BE::OwnedBuf>,
-        a: Option<&A>,
-        i: usize,
-        auto_keys: &H,
-        scratch: &mut ScratchArena<'s, BE>,
-    ) where
-        A: GLWEToBackendRef<BE> + GLWEInfos,
-        K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
-        H: GLWEAutomorphismKeyHelper<K, BE>,
-        ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
-        BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
-        BE: 's,
-    {
-        BE::packer_add(self, packer, a, i, auto_keys, scratch)
     }
 );

@@ -4,9 +4,8 @@ use crate::{
     ScratchArenaTakeCore,
     automorphism::{GGSWAutomorphismDefault, GLWEAutomorphismDefault, GLWEAutomorphismKeyAutomorphismDefault},
     layouts::{
-        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWBackendMut, GGSWBackendRef, GGSWInfos, GGSWToBackendMut,
-        GGSWToBackendRef, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
-        SetGaloisElement,
+        GGLWEInfos, GGLWEToBackendMut, GGLWEToBackendRef, GGSWInfos, GGSWToBackendMut, GGSWToBackendRef, GLWEBackendMut,
+        GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, SetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef},
     },
 };
@@ -157,6 +156,7 @@ pub unsafe trait AutomorphismImpl<BE: Backend>: Backend {
 }
 
 #[doc(hidden)]
+#[allow(private_bounds)]
 pub trait AutomorphismDefaults<BE: Backend>: Backend {
     fn glwe_automorphism_tmp_bytes_default<R, A, K>(module: &Module<BE>, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -403,6 +403,7 @@ fn glwe_automorphism_sub_negate_assign_default_forward<'s, 'r, BE: Backend + 's,
     <Module<BE> as GLWEAutomorphismDefault<BE>>::glwe_automorphism_sub_negate_assign_default(module, res, key, scratch)
 }
 
+#[allow(private_bounds)]
 impl<BE: Backend> AutomorphismDefaults<BE> for BE
 where
     Module<BE>: GLWEAutomorphismDefault<BE>,

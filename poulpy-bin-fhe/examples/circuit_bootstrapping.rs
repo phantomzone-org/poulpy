@@ -292,9 +292,7 @@ fn main() {
 
     // Apply GLWE x GGSW
     {
-        let mut ct_glwe_backend =
-            <GLWE<Vec<u8>> as poulpy_core::layouts::GLWEToBackendMut<BackendImpl>>::to_backend_mut(&mut ct_glwe);
-        module.glwe_external_product_assign(&mut ct_glwe_backend, &res_prepared, &mut scratch.borrow());
+        module.glwe_external_product_assign(&mut ct_glwe, &res_prepared, &mut scratch.borrow());
     }
 
     // Decrypt
