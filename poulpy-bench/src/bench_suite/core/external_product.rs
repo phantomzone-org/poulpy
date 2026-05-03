@@ -1,8 +1,7 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct,
     layouts::{
-        GGSW, GGSWInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut, GLWEToBackendRef,
-        ModuleCoreAlloc,
+        GGSW, GGSWInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc,
         prepared::{GGSWPrepared, GGSWPreparedFactory, GLWESecretPrepared},
     },
 };
@@ -82,14 +81,7 @@ pub fn bench_glwe_external_product<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            let mut ct_glwe_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe_out);
-            let ct_glwe_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&ct_glwe_in);
-            module.glwe_external_product(
-                &mut ct_glwe_out_backend,
-                &ct_glwe_in_backend,
-                &ggsw_prepared,
-                &mut scratch.borrow(),
-            );
+            module.glwe_external_product(&mut ct_glwe_out, &ct_glwe_in, &ggsw_prepared, &mut scratch.borrow());
             black_box(());
         })
     });
@@ -157,8 +149,7 @@ where
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            let mut ct_glwe_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_glwe);
-            module.glwe_external_product_assign(&mut ct_glwe_backend, &ggsw_prepared, &mut scratch.borrow());
+            module.glwe_external_product_assign(&mut ct_glwe, &ggsw_prepared, &mut scratch.borrow());
             black_box(());
         })
     });

@@ -59,10 +59,10 @@ where
 
         let (mut sk_grouped, mut scratch_1) = scratch
             .borrow()
-            .take_glwe_secret_prepared(self, (GLWESecretTensor::pairs(rank) + rank).into());
+            .take_glwe_secret_prepared_scratch(self, (GLWESecretTensor::pairs(rank) + rank).into());
 
         {
-            let mut binding = &mut sk_grouped;
+            let binding = &mut sk_grouped;
             let mut grouped_backend = binding.to_backend_mut();
             let sk_backend = sk.to_backend_ref();
             let sk_tensor_backend = sk_tensor.to_backend_ref();

@@ -34,7 +34,7 @@ macro_rules! hal_impl_vmp {
 
             scratch.consume(|scratch| {
                 let (mut a_dft, mut scratch) =
-                    poulpy_hal::api::ScratchArenaTakeBasic::take_vec_znx_dft(scratch, module, b.cols_in(), a_dft_size);
+                    poulpy_hal::api::ScratchArenaTakeBasic::take_vec_znx_dft_scratch(scratch, module, b.cols_in(), a_dft_size);
 
                 for j in 0..offset {
                     <Module<Self> as VecZnxDftZero<Self>>::vec_znx_dft_zero(module, &mut a_dft, j);
@@ -55,7 +55,7 @@ macro_rules! hal_impl_vmp {
                 <Module<Self> as VmpApplyDftToDft<Self>>::vmp_apply_dft_to_dft(
                     module,
                     res,
-                    &poulpy_hal::layouts::VecZnxDftReborrowBackendRef::reborrow_backend_ref(&a_dft),
+                    &a_dft.to_backend_ref(),
                     b,
                     0,
                     &mut scratch,

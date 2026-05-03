@@ -7,7 +7,7 @@ use crate::{
     default::{glwe_packing::GLWEPackingDefault, glwe_trace::GLWETraceDefault},
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GLWEScratchMut, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     operations::{
@@ -49,7 +49,7 @@ pub unsafe trait GLWEMulConstImpl<BE: Backend>: Backend {
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: crate::layouts::GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -89,7 +89,7 @@ pub unsafe trait GLWEMulPlainImpl<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -326,7 +326,7 @@ pub unsafe trait GLWENormalizeImpl<BE: Backend>: Backend {
         module: &Module<BE>,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE>
     where
@@ -336,7 +336,7 @@ pub unsafe trait GLWENormalizeImpl<BE: Backend>: Backend {
         module: &Module<BE>,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE>
     where
@@ -500,7 +500,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos;
 
     fn glwe_mul_plain_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
@@ -534,7 +534,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos;
 
     fn glwe_tensor_apply_tmp_bytes_default<R, A, B>(module: &Module<BE>, res: &R, a: &A, b: &B) -> usize
@@ -656,7 +656,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         module: &Module<BE>,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE>;
 
@@ -664,7 +664,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         module: &Module<BE>,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE>;
 
@@ -738,7 +738,7 @@ pub trait OperationsDefaults<BE: Backend>: Backend {
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>;
+        GLWE<Vec<u8>>: GLWEToBackendMut<BE>;
 }
 
 impl<BE: Backend> OperationsDefaults<BE> for BE
@@ -867,7 +867,7 @@ where
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos,
     {
         <Module<BE> as GLWEMulConstDefault<BE>>::glwe_mul_const_assign(module, cnv_offset, res, b, b_coeff, scratch)
@@ -917,7 +917,7 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos,
     {
         <Module<BE> as GLWEMulPlainDefault<BE>>::glwe_mul_plain_assign(
@@ -1113,7 +1113,7 @@ where
         module: &Module<BE>,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE> {
         <Module<BE> as GLWENormalizeDefault<BE>>::glwe_maybe_cross_normalize_to_ref(
@@ -1129,7 +1129,7 @@ where
         module: &Module<BE>,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE> {
         <Module<BE> as GLWENormalizeDefault<BE>>::glwe_maybe_cross_normalize_to_mut(
@@ -1233,7 +1233,7 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
         BE: 's,
         for<'x> ScratchArena<'x, BE>: ScratchArenaTakeCore<'x, BE>,
-        GLWE<Vec<u8>>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        GLWE<Vec<u8>>: GLWEToBackendMut<BE>,
     {
         let mut scratch_local = scratch.borrow();
         <Module<BE> as GLWEPackingDefault<BE>>::glwe_pack_default(module, res, a, log_gap_out, keys, &mut scratch_local)

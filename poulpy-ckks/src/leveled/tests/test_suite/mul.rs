@@ -365,12 +365,12 @@ pub fn test_mul_pt_const_into_aligned<BE: Backend, F: TestScalar>(ctx: &TestCont
 pub fn test_mul_pt_const_assign<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
     let mut ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
-    let (const_re, const_im) = ctx.quantized_const(CONST_RE, CONST_IM, ctx.meta().log_delta);
+    let (const_re, const_im) = ctx.quantized_const(CONST_RE, 0.0, ctx.meta().log_delta);
     let (want_re, want_im) = ctx.want_mul_const_from(&ctx.re1, &ctx.im1, const_re, const_im);
     let ct_meta = ct.meta();
-    let cst = ctx.const_rnx(Some(CONST_RE), Some(CONST_IM), ctx.meta());
+    let cst = ctx.const_rnx(Some(CONST_RE), None, ctx.meta());
     ctx.module
-        .ckks_mul_pt_const_znx_assign(&mut ct, &cst, &mut scratch.borrow())
+        .ckks_mul_pt_const_znx_assign(&mut ct, &cst, 0, &mut scratch.borrow())
         .unwrap();
     assert_mul_pt_output_meta("mul_const_assign", &ct, &ct_meta, &ctx.meta());
     ctx.assert_decrypt_precision("mul_const_assign", &ct, &want_re, &want_im, &mut scratch.borrow());

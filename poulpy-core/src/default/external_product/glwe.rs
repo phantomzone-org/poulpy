@@ -40,7 +40,7 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
     let dsize: usize = ggsw.dsize().into();
     let a_size: usize = a.size();
     scratch.scope(|scratch_phase| {
-        let (mut a_dft, mut scratch_1) = scratch_phase.take_vec_znx_dft(module, cols, a_size.div_ceil(dsize));
+        let (mut a_dft, mut scratch_1) = scratch_phase.take_vec_znx_dft_scratch(module, cols, a_size.div_ceil(dsize));
         for col in 0..a_dft.cols() {
             module.vec_znx_dft_zero(&mut a_dft, col);
         }
@@ -54,7 +54,7 @@ fn glwe_external_product_dft_fill<'s, 'r, 'a, BE, M>(
             let a_dft_ref = a_dft.reborrow_backend_ref();
             module.vmp_apply_dft_to_dft_backend_ref(res_dft, &a_dft_ref, &ggsw.data, 0, &mut scratch_1.borrow());
         } else {
-            let (mut res_dft_tmp, mut scratch_2) = scratch_1.take_vec_znx_dft(module, res_dft.cols(), ggsw.size());
+            let (mut res_dft_tmp, mut scratch_2) = scratch_1.take_vec_znx_dft_scratch(module, res_dft.cols(), ggsw.size());
 
             for di in 0..dsize {
                 a_dft.set_size((a.size() + di) / dsize);
@@ -184,7 +184,9 @@ where
         let ggsw_base2k: usize = ggsw.base2k().as_usize();
         let ggsw: GGSWPreparedBackendRef<'_, BE> = ggsw.to_backend_ref();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size());
+        let (mut res_dft, scratch_1) = scratch
+            .borrow()
+            .take_vec_znx_dft_scratch(self, (res.rank() + 1).into(), ggsw.size());
         for col in 0..res_dft.cols() {
             self.vec_znx_dft_zero(&mut res_dft, col);
         }
@@ -192,7 +194,7 @@ where
         let mut scratch = scratch_1;
         if res_base2k != ggsw_base2k {
             scratch.scope(|scratch_phase| {
-                let (mut res_conv, mut scratch_2) = scratch_phase.take_glwe(&GLWELayout {
+                let (mut res_conv, mut scratch_2) = scratch_phase.take_glwe_scratch(&GLWELayout {
                     n: res.n(),
                     base2k: ggsw.base2k(),
                     k: res.max_k(),
@@ -221,7 +223,7 @@ where
             );
         }
 
-        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size());
+        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, res_dft.size());
         let res_dft_ref = res_dft.reborrow_backend_ref();
         for col in 0..cols {
             self.vec_znx_idft_apply(&mut res_big, col, &res_dft_ref, col, &mut scratch.borrow());
@@ -267,7 +269,9 @@ where
         let res_base2k: usize = res.base2k().into();
         let ggsw: GGSWPreparedBackendRef<'_, BE> = ggsw.to_backend_ref();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, (res.rank() + 1).into(), ggsw.size());
+        let (mut res_dft, scratch_1) = scratch
+            .borrow()
+            .take_vec_znx_dft_scratch(self, (res.rank() + 1).into(), ggsw.size());
         for col in 0..res_dft.cols() {
             self.vec_znx_dft_zero(&mut res_dft, col);
         }
@@ -275,7 +279,7 @@ where
         let mut scratch = scratch_1;
         if a_base2k != ggsw_base2k {
             scratch.scope(|scratch_phase| {
-                let (mut a_conv, mut scratch_2) = scratch_phase.take_glwe(&GLWELayout {
+                let (mut a_conv, mut scratch_2) = scratch_phase.take_glwe_scratch(&GLWELayout {
                     n: a.n(),
                     base2k: ggsw.base2k(),
                     k: a.max_k(),
@@ -294,7 +298,7 @@ where
             glwe_external_product_dft_fill(self, &mut res_dft, a, &ggsw, &mut scratch.borrow());
         }
 
-        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, res_dft.size());
+        let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, res_dft.size());
         let res_dft_ref = res_dft.reborrow_backend_ref();
         for col in 0..cols {
             self.vec_znx_idft_apply(&mut res_big, col, &res_dft_ref, col, &mut scratch.borrow());

@@ -75,14 +75,10 @@ pub(crate) trait CKKSEncryptionDefault<BE: Backend> {
         Self: GLWEDecrypt<BE> + CKKSPlaintextDefault<BE> + VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        let (mut full_pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(ct);
-        {
-            let mut full_pt_ref = &mut full_pt;
-            self.glwe_decrypt(ct, &mut full_pt_ref, sk, &mut scratch_1);
-        }
+        let (mut full_pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext_scratch(ct);
+        self.glwe_decrypt(ct, &mut full_pt, sk, &mut scratch_1);
 
-        let mut full_pt_ref = &mut full_pt;
-        CKKSPlaintextDefault::ckks_extract_pt_znx_with_meta_default(self, pt, &mut full_pt_ref, ct.meta(), &mut scratch_1)?;
+        CKKSPlaintextDefault::ckks_extract_pt_znx_with_meta_default(self, pt, &full_pt, ct.meta(), &mut scratch_1)?;
 
         Ok(())
     }

@@ -47,7 +47,7 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
 
         let scratch = scratch.borrow();
 
-        let (mut tmp, mut scratch_1) = scratch.take_lwe_plaintext(&res);
+        let (mut tmp, mut scratch_1) = scratch.take_lwe_plaintext_scratch(&res);
         for i in 0..res.size() {
             tmp.data.at_mut(0, i)[0] = res.data.at(0, i)[0]
                 + res.data.at(0, i)[1..]

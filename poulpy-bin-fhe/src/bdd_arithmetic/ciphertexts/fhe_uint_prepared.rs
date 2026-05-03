@@ -213,7 +213,7 @@ where
         assert_eq!(sk.n(), self.n() as u32);
 
         let mut tmp_ggsw: GGSW<BE::OwnedBuf> = self.ggsw_alloc_from_infos(res);
-        let (mut pt, mut scratch_1) = scratch.borrow().take_scalar_znx(self.n(), 1);
+        let (mut pt, mut scratch_1) = scratch.borrow().take_scalar_znx_scratch(self.n(), 1);
         pt.zero();
 
         for i in 0..T::BITS as usize {

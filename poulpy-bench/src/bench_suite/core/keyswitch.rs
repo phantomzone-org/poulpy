@@ -2,7 +2,7 @@ use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEEncryptSk, GLWEKeyswitch, GLWESwitchingKeyEncryptSk,
     layouts::{
         GGLWEInfos, GLWE, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyPrepared,
-        GLWESwitchingKeyPreparedFactory, GLWEToBackendMut, GLWEToBackendRef, ModuleCoreAlloc, prepared::GLWESecretPrepared,
+        GLWESwitchingKeyPreparedFactory, ModuleCoreAlloc, prepared::GLWESecretPrepared,
     },
 };
 use poulpy_hal::{
@@ -87,9 +87,7 @@ pub fn bench_glwe_keyswitch<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            let mut ct_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_out);
-            let ct_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&ct_in);
-            module.glwe_keyswitch(&mut ct_out_backend, &ct_in_backend, &ksk_prepared, &mut scratch.borrow());
+            module.glwe_keyswitch(&mut ct_out, &ct_in, &ksk_prepared, &mut scratch.borrow());
             black_box(());
         })
     });

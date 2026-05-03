@@ -10,9 +10,8 @@ use crate::{
     EncryptionInfos, GGSWNoise, ScratchArenaTakeCore,
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GGSWCompressedSeedMut, GGSWInfos, LWEInfos,
+        GGSWCompressedSeedMut, GGSWInfos, GLWEToBackendRef, LWEInfos,
         compressed::{GGSWCompressedToBackendMut, ggsw_compressed_at_backend_mut_from_mut},
-        glwe_plaintext_as_glwe_backend_ref_from_mut,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -101,7 +100,7 @@ where
             let mut res = res.to_backend_mut();
 
             let scratch = scratch.borrow();
-            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(&res);
+            let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext_scratch(&res);
 
             let mut source = Source::new(seed_xa);
 
@@ -131,7 +130,7 @@ where
 
                     seeds[row_i * cols + col_j] = seed;
 
-                    let tmp_pt_backend = glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(&tmp_pt);
+                    let tmp_pt_backend = tmp_pt.to_backend_ref();
                     let base2k = res.base2k().into();
                     let mut ct = ggsw_compressed_at_backend_mut_from_mut::<BE>(&mut res, row_i, col_j);
                     self.glwe_encrypt_sk_internal(

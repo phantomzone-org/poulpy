@@ -36,8 +36,8 @@ impl_keyswitching_delegate!(
 
     fn glwe_keyswitch<'s, R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToBackendMut<BE> + GLWEInfos,
-        A: GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE>,
+        A: GLWEToBackendRef<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
@@ -46,7 +46,7 @@ impl_keyswitching_delegate!(
 
     fn glwe_keyswitch_assign<'s, R, K>(&self, res: &mut R, key: &K, scratch: &mut ScratchArena<'s, BE>)
     where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         BE: 's,
     {
@@ -110,8 +110,8 @@ impl_keyswitching_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGSWToBackendMut<BE> + GGSWInfos,
-        A: GGSWToBackendRef<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE>,
+        A: GGSWToBackendRef<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,
@@ -128,7 +128,7 @@ impl_keyswitching_delegate!(
         scratch: &mut ScratchArena<'s, BE>,
     )
     where
-        R: GGSWToBackendMut<BE> + GGSWInfos,
+        R: GGSWToBackendMut<BE>,
         K: GGLWEPreparedToBackendRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToBackendRef<BE> + GGLWEInfos,
         ScratchArena<'s, BE>: crate::ScratchArenaTakeCore<'s, BE>,

@@ -92,9 +92,9 @@ where
         );
 
         let scratch = scratch.borrow();
-        let (mut sk_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_glwe_in, mut enc_scratch) = scratch_2.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_glwe_src, scratch_1) = scratch.take_glwe_secret_scratch(self.n().into(), Rank(1));
+        let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret_scratch(self.n().into(), Rank(1));
+        let (mut sk_glwe_in, mut enc_scratch) = scratch_2.take_glwe_secret_scratch(self.n().into(), Rank(1));
 
         sk_glwe_out.dist = sk_lwe_out.dist;
         sk_glwe_src.dist = sk_lwe_out.dist;
@@ -144,12 +144,10 @@ where
             self.vec_znx_automorphism_backend(-1, &mut sk_glwe_in_backend, 0, &sk_glwe_src_backend, 0);
         }
 
-        let sk_glwe_in_ref = &mut sk_glwe_in;
-        let sk_glwe_out_ref = &mut sk_glwe_out;
         self.glwe_switching_key_encrypt_sk(
             res,
-            &sk_glwe_in_ref,
-            &sk_glwe_out_ref,
+            &sk_glwe_in,
+            &sk_glwe_out,
             enc_infos,
             source_xe,
             source_xa,

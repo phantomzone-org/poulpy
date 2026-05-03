@@ -10,7 +10,7 @@ use super::CKKSTestParams;
 use crate::{
     CKKSCompositionError, CKKSInfos, CKKSMeta, SetCKKSInfos,
     encoding::reim::Encoder,
-    layouts::{CKKSCiphertext, CKKSModuleAlloc, CKKSPlaintextVecHostCodec, ciphertext::CKKSOffset, plaintext::CKKSPlaintext},
+    layouts::{CKKSCiphertext, CKKSModuleAlloc, ciphertext::CKKSOffset, plaintext::CKKSPlaintext},
     leveled::api::{CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt},
     oep::CKKSImpl,
 };
@@ -23,9 +23,9 @@ use poulpy_core::{
     },
     oep::{
         AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl, GGSWExternalProductImpl,
-        GGSWKeyswitchImpl, GGSWRotateImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl, GLWEMulConstImpl, GLWEMulPlainImpl,
-        GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWETensoringImpl, GLWETraceImpl,
-        LWEKeyswitchImpl,
+        GGSWKeyswitchImpl, GGSWRotateImpl, GLWEAddImpl, GLWECopyImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl,
+        GLWEMulConstImpl, GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENegateImpl, GLWENormalizeImpl, GLWEPackImpl,
+        GLWERotateImpl, GLWEShiftImpl, GLWESubImpl, GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl,
     },
 };
 use rand_distr::num_traits::{Float, FloatConst, FromPrimitive, ToPrimitive};
@@ -43,6 +43,10 @@ pub trait TestBackend:
     Backend
     + HostBackend<OwnedBuf = Vec<u8>>
     + GLWEKeyswitchImpl<Self>
+    + GLWEAddImpl<Self>
+    + GLWESubImpl<Self>
+    + GLWENegateImpl<Self>
+    + GLWECopyImpl<Self>
     + GGLWEKeyswitchImpl<Self>
     + GGSWKeyswitchImpl<Self>
     + LWEKeyswitchImpl<Self>
@@ -77,6 +81,10 @@ impl<T> TestBackend for T where
     T: Backend
         + HostBackend<OwnedBuf = Vec<u8>>
         + GLWEKeyswitchImpl<T>
+        + GLWEAddImpl<T>
+        + GLWESubImpl<T>
+        + GLWENegateImpl<T>
+        + GLWECopyImpl<T>
         + GGLWEKeyswitchImpl<T>
         + GGSWKeyswitchImpl<T>
         + LWEKeyswitchImpl<T>
@@ -470,7 +478,7 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     pub fn const_rnx_with_prec(&self, re: Option<f64>, im: Option<f64>, prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
         let mut pt = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
         let n = self.degree().as_usize();
-        let k = prec.effective_k().into();
+        let k = pt.max_k();
         let scale = Self::to_scalar(2.0).powi(prec.log_delta() as i32);
         if prec.effective_k() <= 63 {
             let mut coeffs = vec![0i64; n];

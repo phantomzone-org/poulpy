@@ -86,7 +86,7 @@ fn trace_assign_internal<'s, 'r, M, K, H, BE: Backend + 's>(
             rank: res.rank(),
         };
         let scratch_local = scratch.borrow();
-        let (mut res_conv, scratch_1) = scratch_local.take_glwe(&res_conv_layout);
+        let (mut res_conv, scratch_1) = scratch_local.take_glwe_scratch(&res_conv_layout);
         let mut scratch_1 = scratch_1;
 
         scratch_1 = scratch_1.apply_mut(|scratch| {
@@ -203,7 +203,7 @@ where
         );
 
         let scratch_local = scratch.borrow();
-        let (mut tmp, scratch_1) = scratch_local.take_glwe(&GLWELayout {
+        let (mut tmp, scratch_1) = scratch_local.take_glwe_scratch(&GLWELayout {
             n: res.n(),
             base2k: atk_layout.base2k(),
             k: a.max_k().max(res.max_k()),
@@ -230,7 +230,7 @@ where
         if res.base2k() == atk_layout.base2k() {
             self.glwe_copy(&mut res.to_backend_mut(), &glwe_backend_ref_from_mut::<BE>(&tmp));
         } else {
-            let (mut res_out, scratch_2) = scratch_1.take_glwe(&res.glwe_layout());
+            let (mut res_out, scratch_2) = scratch_1.take_glwe_scratch(&res.glwe_layout());
             {
                 let mut res_out_backend = glwe_backend_mut_from_mut::<BE>(&mut res_out);
                 scratch_2.apply_mut(|scratch| {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use poulpy_core::{
     ScratchArenaTakeCore,
-    layouts::{GLWEInfos, GLWEToBackendMut, LWEInfos, glwe_backend_data_mut, glwe_backend_data_ref},
+    layouts::{GLWEInfos, GLWEToBackendMut, LWEInfos},
 };
 use poulpy_hal::{
     api::{
@@ -33,9 +33,7 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
         let base2k = ct.base2k().as_usize();
         let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
         let pt_ref = GLWEToBackendRef::to_backend_ref(pt);
-        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
-        let pt_data = glwe_backend_data_ref::<BE>(&pt_ref);
-        self.vec_znx_rsh_add_into_backend(base2k, offset, &mut ct_data, 0, &pt_data, 0, scratch);
+        self.vec_znx_rsh_add_into_backend(base2k, offset, ct_ref.data_mut(), 0, pt_ref.data(), 0, scratch);
         Ok(())
     }
 
@@ -63,9 +61,17 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
         let base2k = ct.base2k().as_usize();
         let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
         let pt_ref = GLWEToBackendRef::to_backend_ref(pt);
-        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
-        let pt_data = glwe_backend_data_ref::<BE>(&pt_ref);
-        self.vec_znx_rsh_add_coeff_into_backend(base2k, offset, &mut ct_data, 0, &pt_data, 0, coeff_pt, coeff_ct, scratch);
+        self.vec_znx_rsh_add_coeff_into_backend(
+            base2k,
+            offset,
+            ct_ref.data_mut(),
+            0,
+            pt_ref.data(),
+            0,
+            coeff_pt,
+            coeff_ct,
+            scratch,
+        );
 
         Ok(())
     }
@@ -94,9 +100,17 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
         let base2k = ct.base2k().as_usize();
         let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
         let pt_ref = GLWEToBackendRef::to_backend_ref(pt);
-        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
-        let pt_data = glwe_backend_data_ref::<BE>(&pt_ref);
-        self.vec_znx_rsh_sub_coeff_into_backend(base2k, offset, &mut ct_data, 0, &pt_data, 0, coeff_pt, coeff_ct, scratch);
+        self.vec_znx_rsh_sub_coeff_into_backend(
+            base2k,
+            offset,
+            ct_ref.data_mut(),
+            0,
+            pt_ref.data(),
+            0,
+            coeff_pt,
+            coeff_ct,
+            scratch,
+        );
 
         Ok(())
     }
@@ -118,9 +132,7 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
         let base2k = ct.base2k().as_usize();
         let mut ct_ref = GLWEToBackendMut::to_backend_mut(ct);
         let pt_ref = GLWEToBackendRef::to_backend_ref(pt_znx);
-        let mut ct_data = glwe_backend_data_mut::<BE>(&mut ct_ref);
-        let pt_data = glwe_backend_data_ref::<BE>(&pt_ref);
-        self.vec_znx_rsh_sub_backend(base2k, offset, &mut ct_data, 0, &pt_data, 0, scratch);
+        self.vec_znx_rsh_sub_backend(base2k, offset, ct_ref.data_mut(), 0, pt_ref.data(), 0, scratch);
         Ok(())
     }
 
@@ -170,15 +182,28 @@ pub(crate) trait CKKSPlaintextDefault<BE: Backend> {
         let mut dst_ref = GLWEToBackendMut::to_backend_mut(dst);
         let src_ref = GLWEToBackendRef::to_backend_ref(src);
 
-        let src_data = glwe_backend_data_ref::<BE>(&src_ref);
-        let mut dst_data = glwe_backend_data_mut::<BE>(&mut dst_ref);
-
         if available < dst_k {
-            self.vec_znx_rsh_backend(dst_base2k, dst_k - available, &mut dst_data, 0, &src_data, 0, scratch);
+            self.vec_znx_rsh_backend(
+                dst_base2k,
+                dst_k - available,
+                dst_ref.data_mut(),
+                0,
+                src_ref.data(),
+                0,
+                scratch,
+            );
         } else if available > dst_k {
-            self.vec_znx_lsh_backend(dst_base2k, available - dst_k, &mut dst_data, 0, &src_data, 0, scratch);
+            self.vec_znx_lsh_backend(
+                dst_base2k,
+                available - dst_k,
+                dst_ref.data_mut(),
+                0,
+                src_ref.data(),
+                0,
+                scratch,
+            );
         } else {
-            self.vec_znx_rsh_backend(dst_base2k, 0, &mut dst_data, 0, &src_data, 0, scratch);
+            self.vec_znx_rsh_backend(dst_base2k, 0, dst_ref.data_mut(), 0, src_ref.data(), 0, scratch);
         }
         Ok(())
     }

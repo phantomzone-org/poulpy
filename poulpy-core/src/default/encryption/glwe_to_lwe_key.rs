@@ -90,9 +90,9 @@ where
         );
 
         let scratch = scratch.borrow();
-        let (mut sk_lwe_as_glwe_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, Rank(1));
-        let (mut sk_lwe_as_glwe_src, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_lwe_as_glwe, _scratch_3) = scratch_2.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_lwe_as_glwe_prep, scratch_1) = scratch.take_glwe_secret_prepared_scratch(self, Rank(1));
+        let (mut sk_lwe_as_glwe_src, scratch_2) = scratch_1.take_glwe_secret_scratch(self.n().into(), Rank(1));
+        let (mut sk_lwe_as_glwe, _scratch_3) = scratch_2.take_glwe_secret_scratch(self.n().into(), Rank(1));
 
         sk_lwe_as_glwe_src.dist = sk_lwe.dist;
         sk_lwe_as_glwe.dist = sk_lwe.dist;
@@ -117,16 +117,14 @@ where
             let mut sk_lwe_as_glwe_backend = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_lwe_as_glwe.data);
             self.vec_znx_automorphism_backend(-1, &mut sk_lwe_as_glwe_backend, 0, &sk_lwe_as_glwe_src_backend, 0);
         }
-        let sk_lwe_as_glwe_ref = &mut sk_lwe_as_glwe;
-        let mut sk_lwe_as_glwe_prep_ref = &mut sk_lwe_as_glwe_prep;
-        self.glwe_secret_prepare(&mut sk_lwe_as_glwe_prep_ref, &sk_lwe_as_glwe_ref);
+        self.glwe_secret_prepare(&mut sk_lwe_as_glwe_prep, &sk_lwe_as_glwe);
 
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
         let sk_glwe_data_ref = &sk_glwe.data;
         self.gglwe_encrypt_sk(
             res,
             &sk_glwe_data_ref,
-            &sk_lwe_as_glwe_prep_ref,
+            &sk_lwe_as_glwe_prep,
             enc_infos,
             source_xe,
             source_xa,

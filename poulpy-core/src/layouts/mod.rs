@@ -45,6 +45,7 @@ mod lwe_plaintext;
 mod lwe_secret;
 mod lwe_switching_key;
 mod lwe_to_glwe_key;
+mod scratch_views;
 
 pub mod compressed;
 pub mod prepared;
@@ -69,6 +70,7 @@ pub use lwe_secret::*;
 pub use lwe_switching_key::*;
 pub use lwe_to_glwe_key::*;
 pub use prepared::*;
+pub use scratch_views::*;
 
 use crate::dist::Distribution;
 use poulpy_hal::layouts::{Backend, Data, MatZnx, Module, ScalarZnx, VecZnx};

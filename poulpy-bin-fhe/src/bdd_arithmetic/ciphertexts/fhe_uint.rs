@@ -422,10 +422,10 @@ where
     where
         A: GLWEInfos,
     {
-        let (glwe, scratch) = self.take_glwe(infos);
+        let (glwe, scratch) = self.take_glwe_scratch(infos);
         (
             FheUint {
-                bits: glwe,
+                bits: glwe.into_inner(),
                 _phantom: PhantomData,
             },
             scratch,

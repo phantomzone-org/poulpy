@@ -12,8 +12,8 @@ use crate::{
     api::{GGLWENoise, GLWENoise},
     decryption::{GLWEDecrypt, GLWEDecryptDefault},
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToBackendRef, GLWEInfos, gglwe_at_backend_ref_from_ref,
-        glwe_plaintext_as_glwe_backend_ref_from_mut, prepared::GLWESecretPreparedToBackendRef,
+        GGLWE, GGLWEInfos, GGLWEToBackendRef, GLWEInfos, GLWEToBackendRef, gglwe_at_backend_ref_from_ref,
+        prepared::GLWESecretPreparedToBackendRef,
     },
 };
 use crate::{ScratchArenaTakeCore, layouts::GLWEPlaintext};
@@ -89,7 +89,7 @@ where
         let res_backend = res.to_backend_ref();
         let sk_backend = sk_prepared.to_backend_ref();
         let dsize: usize = res_backend.dsize().into();
-        let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_backend);
+        let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext_scratch(&res_backend);
         pt.data_mut().zero();
         let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
             ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n(), pt_want.cols());
@@ -105,7 +105,7 @@ where
             );
         }
         let res_at_backend = gglwe_at_backend_ref_from_ref::<BE>(&res_backend, res_row, res_col);
-        let pt_backend = glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(&pt);
+        let pt_backend = pt.to_backend_ref();
         glwe_noise_backend_inner(self, &res_at_backend, &pt_backend, &sk_backend, &mut scratch_1)
     }
 }

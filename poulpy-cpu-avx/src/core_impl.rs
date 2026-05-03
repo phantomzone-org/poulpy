@@ -3,15 +3,16 @@ use poulpy_core::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGLWEPreparedToBackendRef, GGLWEToBackendMut, GGLWEToBackendRef, GGLWEToGGSWKeyPreparedToBackendRef,
-        GGSWInfos, GGSWPreparedToBackendRef, GLWEInfos, GLWEPlaintext, GLWESecretPrepared, GLWESecretTensorPrepared, GLWETensor,
-        GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef,
-        SetLWEInfos,
+        GGSWInfos, GGSWPreparedToBackendRef, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWEScratchMut, GLWESecretPrepared,
+        GLWESecretTensorPrepared, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, LWEPlaintextToBackendMut,
+        LWESecretToBackendRef, LWEToBackendMut, LWEToBackendRef, SetLWEInfos,
     },
     oep::{
         AutomorphismDefaults, AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl,
-        GGSWExternalProductImpl, GGSWKeyswitchImpl, GGSWRotateImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl, GLWEMulConstImpl,
-        GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENormalizeImpl, GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl,
-        GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl, OperationsDefaults,
+        GGSWExternalProductImpl, GGSWKeyswitchImpl, GGSWRotateImpl, GLWEAddImpl, GLWECopyImpl, GLWEExternalProductImpl,
+        GLWEKeyswitchImpl, GLWEMulConstImpl, GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENegateImpl, GLWENormalizeImpl,
+        GLWEPackImpl, GLWERotateImpl, GLWEShiftImpl, GLWESubImpl, GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl,
+        OperationsDefaults,
     },
 };
 use poulpy_hal::layouts::{Backend, HostBackend, HostDataMut, Module, ScratchArena};

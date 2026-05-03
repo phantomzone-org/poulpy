@@ -181,11 +181,11 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> +
     let cols: usize = (res.rank() + 1).into();
 
     let scratch = scratch.borrow();
-    let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
-    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(module, extension_factor, cols, dnum);
-    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
-    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
-    let (mut vmp_xai, mut scratch_5) = scratch_4.take_vec_znx_dft(module, 1, brk.size());
+    let (mut acc, scratch_1) = scratch.take_vec_znx_slice_scratch(extension_factor, n_glwe, cols, res.size());
+    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice_scratch(module, extension_factor, cols, dnum);
+    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice_scratch(module, extension_factor, cols, brk.size());
+    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice_scratch(module, extension_factor, cols, brk.size());
+    let (mut vmp_xai, mut scratch_5) = scratch_4.take_vec_znx_dft_scratch(module, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
@@ -243,9 +243,8 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> +
             for i in 0..extension_factor {
                 let skii_ref = skii.data().to_backend_ref();
                 scratch_5.scope(|mut scratch_local| {
-                    let mut vmp_res_i = &mut vmp_res[i];
                     module.vmp_apply_dft_to_dft(
-                        &mut vmp_res_i,
+                        &mut vmp_res[i],
                         &acc_dft[i].reborrow_backend_ref(),
                         &skii_ref,
                         0,
@@ -320,7 +319,7 @@ fn execute_block_binary_extended<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> +
         }
 
         scratch_5.scope(|scratch_local| {
-            let (mut acc_add_big, mut scratch7) = scratch_local.take_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, mut scratch7) = scratch_local.take_vec_znx_big_scratch(module, 1, brk.size());
 
             for j in 0..extension_factor {
                 for i in 0..cols {
@@ -412,10 +411,10 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> + 'static>
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
     let scratch = scratch.borrow();
-    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, dnum);
-    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(module, cols, brk.size());
-    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, cols, brk.size());
-    let (mut vmp_xai, mut scratch_4) = scratch_3.take_vec_znx_dft(module, 1, brk.size());
+    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft_scratch(module, cols, dnum);
+    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft_scratch(module, cols, brk.size());
+    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft_scratch(module, cols, brk.size());
+    let (mut vmp_xai, mut scratch_4) = scratch_3.take_vec_znx_dft_scratch(module, 1, brk.size());
 
     let x_pow_a: &Vec<SvpPPolOwned<BE>>;
     if let Some(b) = &brk.x_pow_a {
@@ -436,9 +435,8 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> + 'static>
 
             // vmp_res = DFT(acc) * BRK[i]
             let skii_ref = skii.data().to_backend_ref();
-            let mut vmp_res_backend = &mut vmp_res;
             module.vmp_apply_dft_to_dft(
-                &mut vmp_res_backend,
+                &mut vmp_res,
                 &acc_dft.reborrow_backend_ref(),
                 &skii_ref,
                 0,
@@ -461,7 +459,7 @@ fn execute_block_binary<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>> + 'static>
         }
 
         {
-            let (mut acc_add_big, mut scratch_5) = scratch_4.borrow().take_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, mut scratch_5) = scratch_4.borrow().take_vec_znx_big_scratch(module, 1, brk.size());
 
             for i in 0..cols {
                 let acc_add_dft_ref = vec_znx_dft_backend_ref_from_mut::<BE>(&acc_add_dft);
@@ -569,20 +567,18 @@ fn execute_standard<R, DataIn, M, BE: Backend<OwnedBuf = Vec<u8>>>(
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
     let scratch = scratch.borrow();
-    let (mut acc_tmp, mut scratch_1) = scratch.take_glwe(&out_tmp);
+    let (mut acc_tmp, mut scratch_1) = scratch.take_glwe_scratch(&out_tmp);
 
     // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
     // TODO: first iteration can be optimized to be a gglwe product
     for (ai, ski) in izip!(a.iter(), brk.data.iter()) {
         // acc_tmp = sk[i] * acc
         {
-            let mut acc_tmp_ref = &mut acc_tmp;
-            module.glwe_external_product(&mut acc_tmp_ref, &out_tmp, ski, &mut scratch_1.borrow());
+            module.glwe_external_product(&mut acc_tmp, &out_tmp, ski, &mut scratch_1.borrow());
         }
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
-        let mut acc_tmp_ref = &mut acc_tmp;
-        module.glwe_mul_xp_minus_one_assign(*ai, &mut acc_tmp_ref, &mut scratch_1.borrow());
+        module.glwe_mul_xp_minus_one_assign(*ai, &mut acc_tmp, &mut scratch_1.borrow());
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
         let mut out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut out_tmp);

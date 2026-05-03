@@ -3,8 +3,7 @@ use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWERotate, GLWETensoring, ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEPlaintextLayout, GLWETensor, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
-        ModuleCoreAlloc, TorusPrecision, glwe_backend_data_mut, glwe_backend_mut_from_mut,
-        prepared::GLWETensorKeyPreparedToBackendRef,
+        ModuleCoreAlloc, TorusPrecision, prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
 use poulpy_hal::{
@@ -61,20 +60,17 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: dst.rank(),
         };
         let scratch_local = scratch.borrow();
-        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
-        {
-            let mut tmp_arg = &mut tmp;
-            self.glwe_tensor_apply(
-                cnv_offset,
-                &mut tmp_arg,
-                a,
-                a.effective_k(),
-                b,
-                b.effective_k(),
-                &mut scratch_local,
-            );
-            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
-        }
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor_scratch(&tensor_layout);
+        self.glwe_tensor_apply(
+            cnv_offset,
+            &mut tmp,
+            a,
+            a.effective_k(),
+            b,
+            b.effective_k(),
+            &mut scratch_local,
+        );
+        self.glwe_tensor_relinearize(dst, &tmp, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -98,20 +94,17 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: dst.rank(),
         };
         let scratch_local = scratch.borrow();
-        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
-        {
-            let mut tmp_arg = &mut tmp;
-            self.glwe_tensor_apply(
-                cnv_offset,
-                &mut tmp_arg,
-                &*dst,
-                dst.effective_k(),
-                a,
-                a.effective_k(),
-                &mut scratch_local,
-            );
-            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
-        }
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor_scratch(&tensor_layout);
+        self.glwe_tensor_apply(
+            cnv_offset,
+            &mut tmp,
+            &*dst,
+            dst.effective_k(),
+            a,
+            a.effective_k(),
+            &mut scratch_local,
+        );
+        self.glwe_tensor_relinearize(dst, &tmp, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -156,12 +149,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: dst.rank(),
         };
         let scratch_local = scratch.borrow();
-        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
-        {
-            let mut tmp_arg = &mut tmp;
-            self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, a, a.effective_k(), &mut scratch_local);
-            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
-        }
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor_scratch(&tensor_layout);
+        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, a, a.effective_k(), &mut scratch_local);
+        self.glwe_tensor_relinearize(dst, &tmp, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -184,12 +174,9 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
             rank: dst.rank(),
         };
         let scratch_local = scratch.borrow();
-        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor(&tensor_layout);
-        {
-            let mut tmp_arg = &mut tmp;
-            self.glwe_tensor_square_apply(cnv_offset, &mut tmp_arg, &*dst, dst.effective_k(), &mut scratch_local);
-            self.glwe_tensor_relinearize(dst, &tmp_arg, tsk, tsk.size(), &mut scratch_local);
-        }
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_tensor_scratch(&tensor_layout);
+        self.glwe_tensor_square_apply(cnv_offset, &mut tmp, &*dst, dst.effective_k(), &mut scratch_local);
+        self.glwe_tensor_relinearize(dst, &tmp, tsk, tsk.size(), &mut scratch_local);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -293,20 +280,11 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
         let (res_log_budget, res_log_delta, cnv_offset) = get_mul_pt_params(dst, a, pt_znx)?;
         let rotate_by = (dst.n().as_usize() / 2) as i64;
         let scratch_local = scratch.borrow();
-        let (mut tmp, mut scratch_local) = scratch_local.take_glwe(dst);
+        let (mut tmp, mut scratch_local) = scratch_local.take_glwe_scratch(dst);
         self.glwe_mul_const(cnv_offset, dst, a, pt_znx, 0, &mut scratch_local);
-        {
-            let mut tmp_arg = &mut tmp;
-            self.glwe_mul_const(cnv_offset, &mut tmp_arg, a, pt_znx, rotate_by as usize, &mut scratch_local);
-        }
-        {
-            let mut tmp_ref = glwe_backend_mut_from_mut::<BE>(&mut tmp);
-            self.glwe_rotate_assign(rotate_by, &mut tmp_ref, &mut scratch_local);
-        }
-        {
-            let tmp_arg = &mut tmp;
-            self.glwe_add_assign(dst, &tmp_arg);
-        }
+        self.glwe_mul_const(cnv_offset, &mut tmp, a, pt_znx, rotate_by as usize, &mut scratch_local);
+        self.glwe_rotate_assign(rotate_by, &mut tmp, &mut scratch_local);
+        self.glwe_add_assign(dst, &tmp);
 
         dst.set_log_budget(res_log_budget);
         dst.set_log_delta(res_log_delta);
@@ -344,9 +322,8 @@ where
 {
     let cols = dst.rank().as_usize() + 1;
     let mut dst_ref = GLWEToBackendMut::<BE>::to_backend_mut(dst);
-    let mut dst_data = glwe_backend_data_mut::<BE>(&mut dst_ref);
     for col in 0..cols {
-        module.vec_znx_zero_backend(&mut dst_data, col);
+        module.vec_znx_zero_backend(dst_ref.data_mut(), col);
     }
 }
 

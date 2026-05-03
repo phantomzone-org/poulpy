@@ -76,9 +76,9 @@ fn cuda_scratch_arena_take_vec_znx_roundtrips_through_device() {
         // Borrow the owned scratch as a backend-native ScratchArena.
         let arena = scratch.borrow();
         // Carve the first temporary VecZnx out of the CUDA scratch arena.
-        let (lhs, arena) = arena.take_vec_znx(n, cols, size);
+        let (lhs, arena) = arena.take_vec_znx_scratch(n, cols, size);
         // Carve the second temporary from the remaining arena.
-        let (rhs, _) = arena.take_vec_znx(n, cols, size);
+        let (rhs, _) = arena.take_vec_znx_scratch(n, cols, size);
 
         // Both carved views should refer to the same owned CUDA buffer.
         assert_eq!(lhs.data.ptr, rhs.data.ptr);
@@ -127,7 +127,7 @@ fn cuda_scratch_vec_znx_supports_backend_reborrows() {
         };
 
     let arena = scratch.borrow();
-    let (mut vec, _) = arena.take_vec_znx(n, cols, size);
+    let (mut vec, _) = arena.take_vec_znx_scratch(n, cols, size);
     let raw_range = vec_range_cuda(&vec);
     let raw_ptr = vec.data.ptr;
     let raw_len = vec.data.len;

@@ -141,8 +141,8 @@ where
 
         let res_conv_size: usize = res.max_k().as_usize().div_ceil(tsk_base2k);
         {
-            let (mut a_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols - 1, res_conv_size);
-            let (mut a_0, mut scratch_2) = scratch_1.take_vec_znx(self.n(), 1, res_conv_size);
+            let (mut a_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols - 1, res_conv_size);
+            let (mut a_0, mut scratch_2) = scratch_1.take_vec_znx_scratch(self.n(), 1, res_conv_size);
 
             // Keyswitch the j-th row of the col 0
             for row in 0..res.dnum().as_usize() {
@@ -250,7 +250,7 @@ fn ggsw_expand_rows_internal<'r, 'a, 'b, M, T, BE: Backend>(
     // col 3: (-(d0s0 + d1s1 + d2s2)       , d0       , d1       , d2 + M[i])
     for col in 1..cols {
         let scratch_row = scratch.borrow();
-        let (mut res_dft, mut scratch_1) = scratch_row.take_vec_znx_dft(module, cols, tsk.size()); // Todo optimise
+        let (mut res_dft, mut scratch_1) = scratch_row.take_vec_znx_dft_scratch(module, cols, tsk.size()); // Todo optimise
         for j in 0..cols {
             module.vec_znx_dft_zero(&mut res_dft, j);
         }
@@ -271,7 +271,7 @@ fn ggsw_expand_rows_internal<'r, 'a, 'b, M, T, BE: Backend>(
             module.gglwe_product_dft(&mut res_dft, a_dft, tsk.at(col - 1), &mut scratch_prod);
         }
 
-        let (mut res_big, mut scratch_2) = scratch_1.take_vec_znx_big(module, cols, res_dft.size());
+        let (mut res_big, mut scratch_2) = scratch_1.take_vec_znx_big_scratch(module, cols, res_dft.size());
         let res_dft_ref = res_dft.reborrow_backend_ref();
         for j in 0..cols {
             scratch_2 = scratch_2.apply_mut(|scratch| module.vec_znx_idft_apply(&mut res_big, j, &res_dft_ref, j, scratch));

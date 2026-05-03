@@ -685,7 +685,7 @@ unsafe impl HalConvolutionImpl<CudaNtt120Backend> for CudaNtt120Backend {
         let res_col_off = res.data.offset + res_col * res_size * big_lb;
         let res_ptr = buf_device_ptr(res_buf, res_col_off) as *mut u32;
 
-        let (mut b_tmp, _) = scratch.borrow().take_vec_znx(1, 1, b_size);
+        let (mut b_tmp, _) = scratch.borrow().take_vec_znx_scratch(1, 1, b_size);
         module.vec_znx_extract_coeff_backend(&mut b_tmp, 0, b, b_col, b_coeff);
         let b_buf: &CudaBuf = unsafe { b_tmp.data.ptr.as_ref() };
         let b_ptr = buf_device_ptr(b_buf, b_tmp.data.offset) as *const i64;

@@ -253,16 +253,25 @@ where
         let a = crate::upload_host_vec_znx::<BE>(&a);
         let mut c_big: VecZnxBig<BE::OwnedBuf, BE> = module.vec_znx_big_alloc(1, c_size);
 
-        let mut b = vec![0i64; size];
-        for x in &mut b {
-            *x = source.next_i64();
-        }
+        let b = crate::random_host_vec_znx(module.n(), 1, size, &mut source);
+        let b = crate::upload_host_vec_znx::<BE>(&b);
 
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(module.cnv_by_const_apply_tmp_bytes(0, c_size, size, size));
         move || {
             let mut c_big_backend = c_big.to_backend_mut();
             let a_backend = crate::vec_znx_backend_ref::<BE>(&a);
-            module.cnv_by_const_apply(0, &mut c_big_backend, 0, &a_backend, 0, &b, &mut scratch.borrow());
+            let b_backend = crate::vec_znx_backend_ref::<BE>(&b);
+            module.cnv_by_const_apply(
+                0,
+                &mut c_big_backend,
+                0,
+                &a_backend,
+                0,
+                &b_backend,
+                0,
+                0,
+                &mut scratch.borrow(),
+            );
             black_box(());
         }
     }

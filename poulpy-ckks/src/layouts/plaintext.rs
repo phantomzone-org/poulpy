@@ -225,7 +225,10 @@ mod tests {
 
         let mut full_pt = host_module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
         encoder.encode_reim(&mut full_pt, &re_in, &im_in).unwrap();
-        let full_pt_backend = module.upload_glwe_plaintext::<HostBytesBackend>(&full_pt.inner);
+        let full_pt_backend = CKKSPlaintext::from_inner(
+            module.upload_glwe_plaintext::<HostBytesBackend>(&full_pt.inner),
+            full_pt.meta(),
+        );
 
         let mut pt_out = module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
         module

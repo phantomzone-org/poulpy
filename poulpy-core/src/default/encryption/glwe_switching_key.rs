@@ -85,23 +85,21 @@ where
             <Module<BE> as GLWESwitchingKeyEncryptSkDefault<BE>>::glwe_switching_key_encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_in_tmp, scratch_1) = scratch.borrow().take_scalar_znx(self.n(), sk_in.rank().into());
+        let (mut sk_in_tmp, scratch_1) = scratch.borrow().take_scalar_znx_scratch(self.n(), sk_in.rank().into());
         let sk_in_backend_vec = scalar_znx_as_vec_znx_backend_ref_from_ref::<BE>(&sk_in.data);
         for i in 0..sk_in.rank().into() {
             let mut sk_in_tmp_backend_vec = scalar_znx_as_vec_znx_backend_mut_from_mut::<BE>(&mut sk_in_tmp);
             self.vec_znx_switch_ring_backend(&mut sk_in_tmp_backend_vec, i, &sk_in_backend_vec, i);
         }
 
-        let (mut sk_out_tmp, _scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out_ref.rank());
-        let mut sk_out_tmp_ref = &mut sk_out_tmp;
-        self.glwe_secret_prepare(&mut sk_out_tmp_ref, sk_out);
+        let (mut sk_out_tmp, _scratch_2) = scratch_1.take_glwe_secret_prepared_scratch(self, sk_out_ref.rank());
+        self.glwe_secret_prepare(&mut sk_out_tmp, sk_out);
 
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
-        let sk_in_tmp_ref = &mut sk_in_tmp;
         self.gglwe_encrypt_sk(
             res,
-            &sk_in_tmp_ref,
-            &sk_out_tmp_ref,
+            &sk_in_tmp,
+            &sk_out_tmp,
             enc_infos,
             source_xe,
             source_xa,

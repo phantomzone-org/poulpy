@@ -9,7 +9,7 @@ use crate::{
     ScratchArenaTakeCore,
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GLWEScratchMut, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
 };
@@ -93,7 +93,7 @@ pub trait GLWEMulConst<BE: Backend> {
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -129,7 +129,7 @@ pub trait GLWEMulPlain<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -310,7 +310,7 @@ pub trait GLWENormalize<BE: Backend> {
         &self,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE>
     where
@@ -320,7 +320,7 @@ pub trait GLWENormalize<BE: Backend> {
         &self,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE>
     where

@@ -242,7 +242,7 @@ where
         let rank: usize = a.rank().into();
 
         let scratch = scratch.borrow();
-        let (mut a_prepared, _scratch_1) = scratch.take_glwe_secret_prepared(self, rank.into());
+        let (mut a_prepared, _scratch_1) = scratch.take_glwe_secret_prepared_scratch(self, rank.into());
         {
             let mut a_prepared_data = a_prepared.data.reborrow_backend_mut();
             for i in 0..rank {

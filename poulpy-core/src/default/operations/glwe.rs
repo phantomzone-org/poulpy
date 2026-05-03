@@ -20,8 +20,8 @@ use crate::{
     ScratchArenaTakeCore,
     default::keyswitching::GGLWEProductDefault,
     layouts::{
-        Base2K, GGLWEInfos, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
-        glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, glwe_backend_ref_from_ref,
+        Base2K, GGLWEInfos, GLWEBackendMut, GLWEBackendRef, GLWEInfos, GLWEScratchMut, GLWEToBackendMut, GLWEToBackendRef,
+        LWEInfos, glwe_backend_mut_from_mut, glwe_backend_ref_from_mut, glwe_backend_ref_from_ref,
         prepared::GLWETensorKeyPreparedToBackendRef,
     },
 };
@@ -55,7 +55,7 @@ pub trait GLWEMulConstDefault<BE: Backend> {
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -124,8 +124,8 @@ where
 
         let res_dft_size = a.size() + b_size - cnv_offset_hi;
 
-        let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res_dft_size);
-        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let (mut res_big, scratch) = scratch.take_vec_znx_big_scratch(self, 1, res_dft_size);
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx_scratch(self.n(), 1, res.size());
         let b_backend = b.to_backend_ref();
         for i in 0..cols {
             {
@@ -171,7 +171,7 @@ where
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos,
     {
         let scratch = scratch.borrow();
@@ -191,8 +191,8 @@ where
             ((cnv_offset / res_base2k).saturating_sub(1), (cnv_offset % res_base2k) as i64)
         };
 
-        let (mut res_big, scratch) = scratch.take_vec_znx_big(self, 1, res.size());
-        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let (mut res_big, scratch) = scratch.take_vec_znx_big_scratch(self, 1, res.size());
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx_scratch(self.n(), 1, res.size());
         let b_backend = b.to_backend_ref();
         for i in 0..cols {
             {
@@ -313,8 +313,8 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, 1, b.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left_scratch(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right_scratch(self, 1, b.size());
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
@@ -331,10 +331,10 @@ where
         };
 
         let res_dft_size = a.size() + b.size() - cnv_offset_hi;
-        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx_scratch(self.n(), 1, res.size());
 
         for i in 0..cols {
-            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, res_dft_size);
             {
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.cnv_apply_dft(
@@ -348,7 +348,7 @@ where
                     &mut scratch_3,
                 );
             }
-            let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big(self, 1, res_dft_size);
+            let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, res_dft_size);
             {
                 let mut res_big_backend = res_big.reborrow_backend_mut();
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
@@ -384,7 +384,7 @@ where
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos,
     {
         let scratch = scratch.borrow();
@@ -402,8 +402,8 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut res_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, res.size());
-        let (mut a_prep, mut scratch) = scratch.take_cnv_pvec_right(self, 1, a.size());
+        let (mut res_prep, scratch) = scratch.take_cnv_pvec_left_scratch(self, cols, res.size());
+        let (mut a_prep, mut scratch) = scratch.take_cnv_pvec_right_scratch(self, 1, a.size());
 
         let mask_res = msb_mask_bottom_limb(ab_base2k, res_effective_k);
         let mask_a = msb_mask_bottom_limb(ab_base2k, a_effective_k);
@@ -422,10 +422,10 @@ where
         };
 
         let res_dft_size = a.size() + res.size() - cnv_offset_hi;
-        let (mut res_tmp, mut scratch) = scratch.take_vec_znx(self.n(), 1, res.size());
+        let (mut res_tmp, mut scratch) = scratch.take_vec_znx_scratch(self.n(), 1, res.size());
 
         for i in 0..cols {
-            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, res_dft_size);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, res_dft_size);
             {
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.cnv_apply_dft(
@@ -439,7 +439,7 @@ where
                     &mut scratch_3,
                 );
             }
-            let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big(self, 1, res_dft_size);
+            let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, res_dft_size);
             {
                 let mut res_big_backend = res_big.reborrow_backend_mut();
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
@@ -498,7 +498,7 @@ pub trait GLWEMulPlainDefault<BE: Backend> {
         a_effective_k: usize,
         scratch: &mut ScratchArena<'_, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos;
 }
 
@@ -725,10 +725,10 @@ where
 
         let a_dft_size: usize = (a.size() * a_base2k).div_ceil(key_base2k);
 
-        let (mut a_dft, mut scratch) = scratch.take_vec_znx_dft(self, pairs, a_dft_size);
+        let (mut a_dft, mut scratch) = scratch.take_vec_znx_dft_scratch(self, pairs, a_dft_size);
 
         {
-            let (mut a_conv, mut scratch_norm) = scratch.borrow().take_vec_znx(self.n(), 1, a_dft_size);
+            let (mut a_conv, mut scratch_norm) = scratch.borrow().take_vec_znx_scratch(self.n(), 1, a_dft_size);
             for i in 0..pairs {
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_normalize(
@@ -746,13 +746,13 @@ where
             }
         }
 
-        let (mut res_dft, mut scratch_2) = scratch.borrow().take_vec_znx_dft(self, cols, tsk_size); // Todo optimise
+        let (mut res_dft, mut scratch_2) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, tsk_size); // Todo optimise
         let tsk = tsk.to_backend_ref();
 
         let a_dft_ref =
             <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendRef<BE>>::reborrow_backend_ref(&a_dft);
         self.gglwe_product_dft(&mut res_dft, &a_dft_ref, &tsk.0, &mut scratch_2);
-        let (mut res_big, mut scratch_3) = scratch_2.take_vec_znx_big(self, cols, tsk_size);
+        let (mut res_big, mut scratch_3) = scratch_2.take_vec_znx_big_scratch(self, cols, tsk_size);
         {
             let mut res_big_backend = res_big.reborrow_backend_mut();
             let mut res_dft_backend = res_dft.reborrow_backend_mut();
@@ -762,7 +762,7 @@ where
         }
 
         {
-            let (mut a_conv, mut scratch_norm) = scratch_3.borrow().take_vec_znx(self.n(), 1, a_dft_size);
+            let (mut a_conv, mut scratch_norm) = scratch_3.borrow().take_vec_znx_scratch(self.n(), 1, a_dft_size);
             for i in 0..cols {
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, &a_backend.data, a_base2k, i, &mut scratch_iter);
@@ -772,7 +772,7 @@ where
         }
 
         {
-            let (mut res_tmp, mut scratch_norm) = scratch_3.borrow().take_vec_znx(self.n(), 1, res.size());
+            let (mut res_tmp, mut scratch_norm) = scratch_3.borrow().take_vec_znx_scratch(self.n(), 1, res.size());
             for i in 0..(res.rank() + 1).into() {
                 let res_big_ref =
                     <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<BE>>::reborrow_backend_ref(
@@ -813,15 +813,15 @@ where
         let res_base2k: usize = res.base2k().as_usize();
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, cols, a.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left_scratch(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right_scratch(self, cols, a.size());
 
         let a_mask = msb_mask_bottom_limb(a_base2k, a_effective_k);
         let a_backend = a.to_backend_ref();
 
         let mut prep_scratch = scratch.borrow();
         self.cnv_prepare_self(&mut a_prep, &mut b_prep, &a_backend.data, a_mask, &mut prep_scratch);
-        let (mut diag_terms, mut scratch) = scratch.take_vec_znx(self.n(), cols, res.size());
+        let (mut diag_terms, mut scratch) = scratch.take_vec_znx_scratch(self.n(), cols, res.size());
 
         let (cnv_offset_hi, cnv_offset_lo) = if cnv_offset < a_base2k {
             (0, -((a_base2k - (cnv_offset % a_base2k)) as i64))
@@ -837,7 +837,7 @@ where
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, diag_dft_size);
             {
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.cnv_apply_dft(
@@ -851,13 +851,13 @@ where
                     &mut scratch_4,
                 );
             }
-            let (mut res_big, scratch_5) = scratch_4.take_vec_znx_big(self, 1, diag_dft_size);
+            let (mut res_big, scratch_5) = scratch_4.take_vec_znx_big_scratch(self, 1, diag_dft_size);
             {
                 let mut res_big_backend = res_big.reborrow_backend_mut();
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
-            let (mut tmp, mut scratch_6) = scratch_5.take_vec_znx(self.n(), 1, res.size());
+            let (mut tmp, mut scratch_6) = scratch_5.take_vec_znx_scratch(self.n(), 1, res.size());
             let res_big_ref = res_big.reborrow_backend_ref();
             let mut scratch_iter = scratch_6.borrow();
             self.vec_znx_big_normalize(
@@ -889,7 +889,7 @@ where
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
             for j in i + 1..cols {
-                let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
+                let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, pairwise_dft_size);
                 {
                     let mut res_dft_backend = res_dft.reborrow_backend_mut();
                     self.cnv_pairwise_apply_dft(
@@ -903,13 +903,13 @@ where
                         &mut scratch_4,
                     );
                 }
-                let (mut res_big, scratch_6) = scratch_4.take_vec_znx_big(self, 1, pairwise_dft_size);
+                let (mut res_big, scratch_6) = scratch_4.take_vec_znx_big_scratch(self, 1, pairwise_dft_size);
                 {
                     let mut res_big_backend = res_big.reborrow_backend_mut();
                     let mut res_dft_backend = res_dft.reborrow_backend_mut();
                     self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
                 }
-                let (mut tmp, mut scratch_7) = scratch_6.take_vec_znx(self.n(), 1, res.size());
+                let (mut tmp, mut scratch_7) = scratch_6.take_vec_znx_scratch(self.n(), 1, res.size());
                 let res_big_ref = res_big.reborrow_backend_ref();
                 let mut scratch_iter = scratch_7.borrow();
                 self.vec_znx_big_normalize(
@@ -969,8 +969,8 @@ where
 
         let cols: usize = res.rank().as_usize() + 1;
 
-        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left(self, cols, a.size());
-        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right(self, cols, b.size());
+        let (mut a_prep, scratch) = scratch.take_cnv_pvec_left_scratch(self, cols, a.size());
+        let (mut b_prep, mut scratch) = scratch.take_cnv_pvec_right_scratch(self, cols, b.size());
 
         let a_mask = msb_mask_bottom_limb(ab_base2k, a_effective_k);
         let b_mask = msb_mask_bottom_limb(ab_base2k, b_effective_k);
@@ -1022,7 +1022,7 @@ where
         for i in 0..cols {
             let col_i: usize = i * cols - (i * (i + 1) / 2);
 
-            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, diag_dft_size);
+            let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, diag_dft_size);
             {
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.cnv_apply_dft(
@@ -1036,13 +1036,13 @@ where
                     &mut scratch_3,
                 );
             }
-            let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big(self, 1, diag_dft_size);
+            let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, diag_dft_size);
             {
                 let mut res_big_backend = res_big.reborrow_backend_mut();
                 let mut res_dft_backend = res_dft.reborrow_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
-            let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
+            let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx_scratch(self.n(), 1, res.size());
             let res_big_ref = res_big.reborrow_backend_ref();
             let mut scratch_iter = scratch_5.borrow();
             self.vec_znx_big_normalize(
@@ -1086,7 +1086,7 @@ where
             for j in i..cols {
                 if j != i {
                     // res_dft = (a[i] + a[j]) * (b[i] + b[j])
-                    let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft(self, 1, pairwise_dft_size);
+                    let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, pairwise_dft_size);
                     {
                         let mut res_dft_backend = res_dft.reborrow_backend_mut();
                         self.cnv_pairwise_apply_dft(
@@ -1100,13 +1100,13 @@ where
                             &mut scratch_3,
                         );
                     }
-                    let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big(self, 1, pairwise_dft_size);
+                    let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, pairwise_dft_size);
                     {
                         let mut res_big_backend = res_big.reborrow_backend_mut();
                         let mut res_dft_backend = res_dft.reborrow_backend_mut();
                         self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
                     }
-                    let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx(self.n(), 1, res.size());
+                    let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx_scratch(self.n(), 1, res.size());
                     let res_big_ref = res_big.reborrow_backend_ref();
                     let mut scratch_iter = scratch_5.borrow();
                     self.vec_znx_big_normalize(
@@ -1674,7 +1674,7 @@ where
         &self,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE>
     where
@@ -1688,7 +1688,7 @@ where
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe_scratch(&layout);
         *tmp_slot = Some(tmp);
 
         let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
@@ -1696,14 +1696,14 @@ where
         let glwe_ref = glwe_backend_ref_from_ref::<BE>(glwe);
         self.glwe_normalize(tmp_ref, &glwe_ref, &mut scratch2);
 
-        glwe_backend_ref_from_mut::<BE>(tmp_ref)
+        tmp_ref.to_backend_ref()
     }
 
     fn glwe_maybe_cross_normalize_to_mut<'a>(
         &self,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE>
     where
@@ -1717,14 +1717,14 @@ where
         let mut layout = glwe.glwe_layout();
         layout.base2k = target_base2k.into();
 
-        let (tmp, mut scratch2) = scratch.borrow().take_glwe(&layout);
+        let (tmp, mut scratch2) = scratch.borrow().take_glwe_scratch(&layout);
         *tmp_slot = Some(tmp);
 
         let tmp_ref = tmp_slot.as_mut().expect("tmp_slot just set to Some, but found None");
 
         self.glwe_normalize(tmp_ref, &glwe_backend_ref_from_mut::<BE>(&*glwe), &mut scratch2);
 
-        glwe_backend_mut_from_mut::<BE>(tmp_ref)
+        tmp_ref.to_backend_mut()
     }
 
     fn glwe_normalize<'s, 'r, 'a>(

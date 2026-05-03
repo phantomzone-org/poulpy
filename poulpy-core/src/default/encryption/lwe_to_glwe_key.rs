@@ -93,8 +93,8 @@ where
         );
 
         let scratch = scratch.borrow();
-        let (mut sk_lwe_as_glwe_src, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_lwe_as_glwe, _scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_lwe_as_glwe_src, scratch_1) = scratch.take_glwe_secret_scratch(self.n().into(), Rank(1));
+        let (mut sk_lwe_as_glwe, _scratch_2) = scratch_1.take_glwe_secret_scratch(self.n().into(), Rank(1));
 
         sk_lwe_as_glwe_src.dist = sk_lwe.dist;
         sk_lwe_as_glwe.dist = sk_lwe.dist;

@@ -383,10 +383,10 @@ where
 
         // Generates u according to the underlying secret distribution.
         let scratch = scratch.borrow();
-        let (mut u_dft, mut scratch_1) = scratch.take_svp_ppol(self, 1);
+        let (mut u_dft, mut scratch_1) = scratch.take_svp_ppol_scratch(self, 1);
 
         {
-            let (mut u_backend, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
+            let (mut u_backend, scratch_2) = scratch_1.take_scalar_znx_scratch(self.n(), 1);
             match pk.dist() {
                 Distribution::NONE => panic!(
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
@@ -421,7 +421,7 @@ where
 
             // ct[i] = pk[i] * u + ei (+ m if col = i)
             for i in 0..cols {
-                let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, size_pk);
+                let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft_scratch(self, 1, size_pk);
                 // ci_dft = DFT(u) * DFT(pk[i])
                 let u_dft_ref = u_dft.reborrow_backend_ref();
                 {
@@ -430,7 +430,7 @@ where
                 }
 
                 // ci_big = u * p[i]
-                let (mut ci_big, scratch_3) = scratch_2.take_vec_znx_big(self, 1, size_pk);
+                let (mut ci_big, scratch_3) = scratch_2.take_vec_znx_big_scratch(self, 1, size_pk);
                 {
                     let mut ci_big_backend = ci_big.reborrow_backend_mut();
                     let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
@@ -440,7 +440,7 @@ where
                 // ci_big = u * pk[i] + e
                 self.vec_znx_big_add_normal(base2k, &mut ci_big, 0, enc_infos.noise_infos(), source_xe);
 
-                let (mut ci, scratch_4) = scratch_3.take_vec_znx(self.n(), 1, size_pk);
+                let (mut ci, scratch_4) = scratch_3.take_vec_znx_scratch(self.n(), 1, size_pk);
                 let scratch_next = {
                     let ci_big_ref = ci_big.reborrow_backend_ref();
                     scratch_4
@@ -540,8 +540,8 @@ where
         let size: usize = ct.size();
 
         let scratch_local = scratch.borrow();
-        let (mut c0, scratch_1) = scratch_local.take_vec_znx(self.n(), 1, size);
-        let (mut ci, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, size);
+        let (mut c0, scratch_1) = scratch_local.take_vec_znx_scratch(self.n(), 1, size);
+        let (mut ci, scratch_2) = scratch_1.take_vec_znx_scratch(self.n(), 1, size);
         let mut scratch_2 = scratch_2;
         self.vec_znx_zero_backend(&mut c0, 0);
 
@@ -576,7 +576,7 @@ where
 
             {
                 let scratch_dft = scratch_2.borrow();
-                let (mut ci_dft, scratch_3) = scratch_dft.take_vec_znx_dft(self, 1, size);
+                let (mut ci_dft, scratch_3) = scratch_dft.take_vec_znx_dft_scratch(self, 1, size);
                 {
                     let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
                     let mut ci_dft_mut = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
@@ -589,7 +589,7 @@ where
                     let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
                     self.svp_apply_dft_to_dft_assign(&mut ci_dft_backend, 0, &sk.data, i - 1);
                 }
-                let (mut ci_big, mut scratch_4) = scratch_3.take_vec_znx_big(self, 1, size);
+                let (mut ci_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, size);
                 {
                     let mut ci_big_backend = ci_big.reborrow_backend_mut();
                     let mut ci_dft_backend = ci_dft.reborrow_backend_mut();

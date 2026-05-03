@@ -299,10 +299,7 @@ impl<'b, B: Backend + 'b> ScalarZnxToBackendRef<B> for &ScalarZnx<B::BufRef<'b>>
 
 impl<'b, B: Backend + 'b> ScalarZnxToBackendRef<B> for &mut ScalarZnx<B::BufMut<'b>> {
     fn to_backend_ref(&self) -> ScalarZnxBackendRef<'_, B> {
-        ScalarZnx {
-            data: B::view_ref_mut(&self.data),
-            shape: self.shape,
-        }
+        scalar_znx_backend_ref_from_mut::<B>(self)
     }
 }
 
@@ -322,10 +319,23 @@ impl<B: Backend> ScalarZnxToBackendMut<B> for ScalarZnx<B::OwnedBuf> {
 
 impl<'b, B: Backend + 'b> ScalarZnxToBackendMut<B> for &mut ScalarZnx<B::BufMut<'b>> {
     fn to_backend_mut(&mut self) -> ScalarZnxBackendMut<'_, B> {
-        ScalarZnx {
-            data: B::view_mut_ref(&mut self.data),
-            shape: self.shape,
-        }
+        scalar_znx_backend_mut_from_mut::<B>(self)
+    }
+}
+
+fn scalar_znx_backend_ref_from_mut<'a, 'b, B: Backend + 'b>(scalar: &'a ScalarZnx<B::BufMut<'b>>) -> ScalarZnxBackendRef<'a, B> {
+    ScalarZnx {
+        data: B::view_ref_mut(&scalar.data),
+        shape: scalar.shape,
+    }
+}
+
+fn scalar_znx_backend_mut_from_mut<'a, 'b, B: Backend + 'b>(
+    scalar: &'a mut ScalarZnx<B::BufMut<'b>>,
+) -> ScalarZnxBackendMut<'a, B> {
+    ScalarZnx {
+        data: B::view_mut_ref(&mut scalar.data),
+        shape: scalar.shape,
     }
 }
 

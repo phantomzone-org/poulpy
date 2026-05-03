@@ -10,7 +10,7 @@ use crate::{
     default::{glwe_packing::GLWEPackingDefault, glwe_trace::GLWETraceDefault},
     layouts::{
         GGLWEInfos, GGSWBackendMut, GGSWBackendRef, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEBackendRef, GLWEInfos,
-        GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
+        GLWEScratchMut, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement,
         prepared::{GGLWEPreparedToBackendRef, GLWETensorKeyPreparedToBackendRef},
     },
     oep::{
@@ -152,7 +152,7 @@ impl_operations_delegate!(
         b_coeff: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         B: GLWEToBackendRef<BE> + GLWEInfos,
     {
         BE::glwe_mul_const_assign(self, cnv_offset, res, b, b_coeff, scratch)
@@ -196,7 +196,7 @@ impl_operations_delegate!(
         a_effective_k: usize,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + GLWEInfos,
+        R: GLWEToBackendMut<BE> + GLWEInfos,
         A: GLWEToBackendRef<BE> + GLWEInfos,
     {
         BE::glwe_mul_plain_assign(self, cnv_offset, res, res_effective_k, a, a_effective_k, scratch)
@@ -388,7 +388,7 @@ impl_operations_delegate!(
         &self,
         glwe: &'a GLWEBackendRef<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendRef<'a, BE>
     where
@@ -400,7 +400,7 @@ impl_operations_delegate!(
         &self,
         glwe: &'a mut GLWEBackendMut<'a, BE>,
         target_base2k: usize,
-        tmp_slot: &'a mut Option<GLWEBackendMut<'a, BE>>,
+        tmp_slot: &'a mut Option<GLWEScratchMut<'a, BE>>,
         scratch: &'a mut ScratchArena<'a, BE>,
     ) -> GLWEBackendMut<'a, BE>
     where

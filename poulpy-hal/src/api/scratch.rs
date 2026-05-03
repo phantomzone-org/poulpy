@@ -6,7 +6,11 @@
 
 use crate::{
     api::{CnvPVecBytesOf, ModuleN, SvpPPolBytesOf, VecZnxBigBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
-    layouts::{Backend, CnvPVecL, CnvPVecR, MatZnx, ScalarZnx, ScratchArena, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    layouts::{
+        Backend, CnvPVecL, CnvPVecLScratchMut, CnvPVecR, CnvPVecRScratchMut, MatZnx, MatZnxScratchMut, ScalarZnx,
+        ScalarZnxScratchMut, ScratchArena, SvpPPol, SvpPPolScratchMut, VecZnx, VecZnxBig, VecZnxBigScratchMut, VecZnxDft,
+        VecZnxDftScratchMut, VecZnxScratchMut, VmpPMat, VmpPMatScratchMut,
+    },
 };
 
 /// Allocates a new [crate::layouts::ScratchOwned] of `size` aligned bytes.
@@ -46,165 +50,219 @@ impl<'a> HostBufMut<'a> for &'a mut [u8] {
 /// by value and returns the carved layout together with the remaining arena.
 pub trait ScratchArenaTakeBasic<'a, B: Backend>: Sized {
     /// Takes a [`CnvPVecL`] from the scratch arena.
-    fn take_cnv_pvec_left<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecL<B::BufMut<'a>, B>, Self)
+    fn take_cnv_pvec_left_scratch<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecLScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: ModuleN + CnvPVecBytesOf;
 
     /// Takes a [`CnvPVecR`] from the scratch arena.
-    fn take_cnv_pvec_right<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecR<B::BufMut<'a>, B>, Self)
+    fn take_cnv_pvec_right_scratch<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecRScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: ModuleN + CnvPVecBytesOf;
 
     /// Takes a [`ScalarZnx`] from the scratch arena.
-    fn take_scalar_znx(self, n: usize, cols: usize) -> (ScalarZnx<B::BufMut<'a>>, Self);
+    fn take_scalar_znx_scratch(self, n: usize, cols: usize) -> (ScalarZnxScratchMut<'a, B>, Self)
+    where
+        B: 'a;
 
     /// Takes a [`SvpPPol`] from the scratch arena.
-    fn take_svp_ppol<M>(self, module: &M, cols: usize) -> (SvpPPol<B::BufMut<'a>, B>, Self)
+    fn take_svp_ppol_scratch<M>(self, module: &M, cols: usize) -> (SvpPPolScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: SvpPPolBytesOf + ModuleN;
 
     /// Takes a [`VecZnx`] from the scratch arena.
-    fn take_vec_znx(self, n: usize, cols: usize, size: usize) -> (VecZnx<B::BufMut<'a>>, Self);
+    fn take_vec_znx_scratch(self, n: usize, cols: usize, size: usize) -> (VecZnxScratchMut<'a, B>, Self)
+    where
+        B: 'a;
 
     /// Takes a [`VecZnxBig`] from the scratch arena.
-    fn take_vec_znx_big<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxBig<B::BufMut<'a>, B>, Self)
+    fn take_vec_znx_big_scratch<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxBigScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: VecZnxBigBytesOf + ModuleN;
 
     /// Takes a [`VecZnxDft`] from the scratch arena.
-    fn take_vec_znx_dft<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxDft<B::BufMut<'a>, B>, Self)
+    fn take_vec_znx_dft_scratch<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxDftScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: VecZnxDftBytesOf + ModuleN;
 
     /// Takes `len` consecutive [`VecZnxDft`] objects from the scratch arena.
-    fn take_vec_znx_dft_slice<M>(
+    fn take_vec_znx_dft_slice_scratch<M>(
         self,
         module: &M,
         len: usize,
         cols: usize,
         size: usize,
-    ) -> (Vec<VecZnxDft<B::BufMut<'a>, B>>, Self)
+    ) -> (Vec<VecZnxDftScratchMut<'a, B>>, Self)
     where
-        M: VecZnxDftBytesOf + ModuleN;
+        B: 'a,
+        M: VecZnxDftBytesOf + ModuleN,
+    {
+        let mut scratch: Self = self;
+        let mut slice: Vec<VecZnxDftScratchMut<'a, B>> = Vec::with_capacity(len);
+        for _ in 0..len {
+            let (znx, rem) = scratch.take_vec_znx_dft_scratch(module, cols, size);
+            scratch = rem;
+            slice.push(znx);
+        }
+        (slice, scratch)
+    }
 
     /// Takes `len` consecutive [`VecZnx`] objects from the scratch arena.
-    fn take_vec_znx_slice(self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnx<B::BufMut<'a>>>, Self);
+    fn take_vec_znx_slice_scratch(self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnxScratchMut<'a, B>>, Self)
+    where
+        B: 'a,
+    {
+        let mut scratch: Self = self;
+        let mut slice: Vec<VecZnxScratchMut<'a, B>> = Vec::with_capacity(len);
+        for _ in 0..len {
+            let (znx, rem) = scratch.take_vec_znx_scratch(n, cols, size);
+            scratch = rem;
+            slice.push(znx);
+        }
+        (slice, scratch)
+    }
 
     /// Takes a [`VmpPMat`] from the scratch arena.
-    fn take_vmp_pmat<M>(
+    fn take_vmp_pmat_scratch<M>(
         self,
         module: &M,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (VmpPMat<B::BufMut<'a>, B>, Self)
+    ) -> (VmpPMatScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: VmpPMatBytesOf + ModuleN;
 
     /// Takes a [`MatZnx`] from the scratch arena.
-    fn take_mat_znx(self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> (MatZnx<B::BufMut<'a>>, Self);
+    fn take_mat_znx_scratch(
+        self,
+        n: usize,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> (MatZnxScratchMut<'a, B>, Self)
+    where
+        B: 'a;
 }
 
 impl<'a, B: Backend> ScratchArenaTakeBasic<'a, B> for ScratchArena<'a, B> {
-    fn take_cnv_pvec_left<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecL<B::BufMut<'a>, B>, Self)
+    fn take_cnv_pvec_left_scratch<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecLScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: ModuleN + CnvPVecBytesOf,
     {
         let (data, arena) = self.take_region(module.bytes_of_cnv_pvec_left(cols, size));
-        (CnvPVecL::from_data(data, module.n(), cols, size), arena)
+        (
+            CnvPVecLScratchMut::from_inner(CnvPVecL::from_data(data, module.n(), cols, size)),
+            arena,
+        )
     }
 
-    fn take_cnv_pvec_right<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecR<B::BufMut<'a>, B>, Self)
+    fn take_cnv_pvec_right_scratch<M>(self, module: &M, cols: usize, size: usize) -> (CnvPVecRScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: ModuleN + CnvPVecBytesOf,
     {
         let (data, arena) = self.take_region(module.bytes_of_cnv_pvec_right(cols, size));
-        (CnvPVecR::from_data(data, module.n(), cols, size), arena)
+        (
+            CnvPVecRScratchMut::from_inner(CnvPVecR::from_data(data, module.n(), cols, size)),
+            arena,
+        )
     }
 
-    fn take_scalar_znx(self, n: usize, cols: usize) -> (ScalarZnx<B::BufMut<'a>>, Self) {
-        let (data, arena) = self.take_region(ScalarZnx::bytes_of(n, cols));
-        (ScalarZnx::from_data(data, n, cols), arena)
-    }
-
-    fn take_svp_ppol<M>(self, module: &M, cols: usize) -> (SvpPPol<B::BufMut<'a>, B>, Self)
+    fn take_scalar_znx_scratch(self, n: usize, cols: usize) -> (ScalarZnxScratchMut<'a, B>, Self)
     where
+        B: 'a,
+    {
+        let (data, arena) = self.take_region(ScalarZnx::bytes_of(n, cols));
+        (ScalarZnxScratchMut::from_inner(ScalarZnx::from_data(data, n, cols)), arena)
+    }
+
+    fn take_svp_ppol_scratch<M>(self, module: &M, cols: usize) -> (SvpPPolScratchMut<'a, B>, Self)
+    where
+        B: 'a,
         M: SvpPPolBytesOf + ModuleN,
     {
         let (data, arena) = self.take_region(module.bytes_of_svp_ppol(cols));
-        (SvpPPol::from_data(data, module.n(), cols), arena)
+        (
+            SvpPPolScratchMut::from_inner(SvpPPol::from_data(data, module.n(), cols)),
+            arena,
+        )
     }
 
-    fn take_vec_znx(self, n: usize, cols: usize, size: usize) -> (VecZnx<B::BufMut<'a>>, Self) {
-        let (data, arena) = self.take_region(VecZnx::bytes_of(n, cols, size));
-        (VecZnx::from_data(data, n, cols, size), arena)
-    }
-
-    fn take_vec_znx_big<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxBig<B::BufMut<'a>, B>, Self)
+    fn take_vec_znx_scratch(self, n: usize, cols: usize, size: usize) -> (VecZnxScratchMut<'a, B>, Self)
     where
+        B: 'a,
+    {
+        let (data, arena) = self.take_region(VecZnx::bytes_of(n, cols, size));
+        (VecZnxScratchMut::from_inner(VecZnx::from_data(data, n, cols, size)), arena)
+    }
+
+    fn take_vec_znx_big_scratch<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxBigScratchMut<'a, B>, Self)
+    where
+        B: 'a,
         M: VecZnxBigBytesOf + ModuleN,
     {
         let (data, arena) = self.take_region(module.bytes_of_vec_znx_big(cols, size));
-        (VecZnxBig::from_data(data, module.n(), cols, size), arena)
+        (
+            VecZnxBigScratchMut::from_inner(VecZnxBig::from_data(data, module.n(), cols, size)),
+            arena,
+        )
     }
 
-    fn take_vec_znx_dft<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxDft<B::BufMut<'a>, B>, Self)
+    fn take_vec_znx_dft_scratch<M>(self, module: &M, cols: usize, size: usize) -> (VecZnxDftScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: VecZnxDftBytesOf + ModuleN,
     {
         let (data, arena) = self.take_region(module.bytes_of_vec_znx_dft(cols, size));
-        (VecZnxDft::from_data(data, module.n(), cols, size), arena)
+        (
+            VecZnxDftScratchMut::from_inner(VecZnxDft::from_data(data, module.n(), cols, size)),
+            arena,
+        )
     }
 
-    fn take_vec_znx_dft_slice<M>(
-        self,
-        module: &M,
-        len: usize,
-        cols: usize,
-        size: usize,
-    ) -> (Vec<VecZnxDft<B::BufMut<'a>, B>>, Self)
-    where
-        M: VecZnxDftBytesOf + ModuleN,
-    {
-        let mut arena: Self = self;
-        let mut slice: Vec<VecZnxDft<B::BufMut<'a>, B>> = Vec::with_capacity(len);
-        for _ in 0..len {
-            let (znx, rem) = arena.take_vec_znx_dft(module, cols, size);
-            arena = rem;
-            slice.push(znx);
-        }
-        (slice, arena)
-    }
-
-    fn take_vec_znx_slice(self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnx<B::BufMut<'a>>>, Self) {
-        let mut arena: Self = self;
-        let mut slice: Vec<VecZnx<B::BufMut<'a>>> = Vec::with_capacity(len);
-        for _ in 0..len {
-            let (znx, rem) = arena.take_vec_znx(n, cols, size);
-            arena = rem;
-            slice.push(znx);
-        }
-        (slice, arena)
-    }
-
-    fn take_vmp_pmat<M>(
+    fn take_vmp_pmat_scratch<M>(
         self,
         module: &M,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (VmpPMat<B::BufMut<'a>, B>, Self)
+    ) -> (VmpPMatScratchMut<'a, B>, Self)
     where
+        B: 'a,
         M: VmpPMatBytesOf + ModuleN,
     {
         let (data, arena) = self.take_region(module.bytes_of_vmp_pmat(rows, cols_in, cols_out, size));
-        (VmpPMat::from_data(data, module.n(), rows, cols_in, cols_out, size), arena)
+        (
+            VmpPMatScratchMut::from_inner(VmpPMat::from_data(data, module.n(), rows, cols_in, cols_out, size)),
+            arena,
+        )
     }
 
-    fn take_mat_znx(self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> (MatZnx<B::BufMut<'a>>, Self) {
+    fn take_mat_znx_scratch(
+        self,
+        n: usize,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> (MatZnxScratchMut<'a, B>, Self)
+    where
+        B: 'a,
+    {
         let (data, arena) = self.take_region(MatZnx::bytes_of(n, rows, cols_in, cols_out, size));
-        (MatZnx::from_data(data, n, rows, cols_in, cols_out, size), arena)
+        (
+            MatZnxScratchMut::from_inner(MatZnx::from_data(data, n, rows, cols_in, cols_out, size)),
+            arena,
+        )
     }
 }

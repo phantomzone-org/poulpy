@@ -11,8 +11,8 @@ use crate::{
     EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
-        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, LWEInfos, ggsw_at_backend_mut_from_mut,
-        glwe_plaintext_as_glwe_backend_ref_from_mut, prepared::GLWESecretPreparedToBackendRef,
+        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWEToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut,
+        prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -97,7 +97,7 @@ where
         let dsize: usize = res.dsize().into();
         let cols: usize = rank + 1;
         let scratch = scratch.borrow();
-        let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext(res);
+        let (mut tmp_pt, mut scratch_1) = scratch.take_glwe_plaintext_scratch(res);
 
         for row_i in 0..res.dnum().into() {
             self.vec_znx_zero_backend(&mut tmp_pt.data, 0);
@@ -115,7 +115,7 @@ where
             for col_j in 0..rank + 1 {
                 {
                     let mut scratch = scratch_1.borrow();
-                    let tmp_pt_backend = glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(&tmp_pt);
+                    let tmp_pt_backend = tmp_pt.to_backend_ref();
                     let mut ct = ggsw_at_backend_mut_from_mut::<BE>(res, row_i, col_j);
                     <Module<BE> as GLWEEncryptSkInternal<BE>>::glwe_encrypt_sk_internal(
                         self,

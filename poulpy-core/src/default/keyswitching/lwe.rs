@@ -67,7 +67,7 @@ where
 
         let scratch = scratch.borrow();
         let a_backend = a.to_backend_ref();
-        let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
+        let (mut glwe_in, scratch_1) = scratch.take_glwe_scratch(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
             k: a.max_k(),
@@ -83,7 +83,7 @@ where
             self.vec_znx_copy_range_backend(&mut glwe_in.data, 1, i, 0, &a_backend.data, 0, i, 1, n_lwe);
         }
 
-        let (mut glwe_out, mut scratch_2) = scratch_1.take_glwe(&GLWELayout {
+        let (mut glwe_out, mut scratch_2) = scratch_1.take_glwe_scratch(&GLWELayout {
             n: ksk.n(),
             base2k: res.base2k(),
             k: res.max_k(),

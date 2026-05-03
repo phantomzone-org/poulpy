@@ -8,8 +8,7 @@ use crate::{
     api::GLWENoise,
     decryption::{GLWEDecrypt, GLWEDecryptDefault, glwe_decrypt_backend_inner},
     layouts::{
-        GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWEToBackendRef, LWEInfos, glwe_plaintext_as_glwe_backend_mut_from_mut,
-        glwe_plaintext_into_glwe,
+        GLWEBackendRef, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         prepared::{GLWESecretPreparedBackendRef, GLWESecretPreparedToBackendRef},
     },
 };
@@ -34,17 +33,17 @@ where
         module.glwe_noise_tmp_bytes(res_backend)
     );
 
-    let (mut pt_have, mut scratch_1) = scratch.borrow().take_glwe_plaintext(res_backend);
+    let (mut pt_have, mut scratch_1) = scratch.borrow().take_glwe_plaintext_scratch(res_backend);
     {
-        let mut pt_have_backend = glwe_plaintext_as_glwe_backend_mut_from_mut::<BE>(&mut pt_have);
+        let mut pt_have_backend = pt_have.to_backend_mut();
         glwe_decrypt_backend_inner(module, res_backend, &mut pt_have_backend, sk_backend, &mut scratch_1);
     }
     {
-        let mut pt_have_backend = glwe_plaintext_as_glwe_backend_mut_from_mut::<BE>(&mut pt_have);
+        let mut pt_have_backend = pt_have.to_backend_mut();
         module.vec_znx_sub_assign_backend(&mut pt_have_backend.data, 0, &pt_want_backend.data, 0);
     }
     let pt_base2k = pt_have.base2k();
-    let mut pt_have_backend = glwe_plaintext_into_glwe(pt_have);
+    let mut pt_have_backend = pt_have.to_backend_mut();
     module.glwe_normalize_assign(&mut pt_have_backend, &mut scratch_1);
     pt_have_backend.data.stats(pt_base2k.into(), 0)
 }

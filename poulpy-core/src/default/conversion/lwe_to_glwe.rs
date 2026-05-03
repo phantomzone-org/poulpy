@@ -72,7 +72,7 @@ where
 
         let scratch = scratch.borrow();
 
-        let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
+        let (mut glwe, scratch_1) = scratch.take_glwe_scratch(&GLWELayout {
             n: ksk.n(),
             base2k: ksk.base2k(),
             k: lwe.max_k(),
@@ -91,7 +91,7 @@ where
             scratch_1
         } else {
             {
-                let (mut a_conv, mut scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.size());
+                let (mut a_conv, mut scratch_2) = scratch_1.take_vec_znx_scratch(self.n(), 1, lwe.size());
                 self.vec_znx_zero_backend(&mut a_conv, 0);
                 for j in 0..lwe.size() {
                     self.vec_znx_copy_range_backend(&mut a_conv, 0, j, 0, &lwe.data, 0, j, 0, 1);

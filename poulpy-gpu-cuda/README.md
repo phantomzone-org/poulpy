@@ -96,7 +96,7 @@ Current focus:
 - backend-owned byte storage
 - explicit CPU/CUDA transfer hooks
 - `ScratchOwned<CudaGpuBackend>` borrowing into a CUDA-backed `ScratchArena`
-- typed arena carving such as `take_vec_znx(...)`
+- typed arena carving such as `take_vec_znx_scratch(...)`
 
 That gives us a minimal, testable device slice without committing to a wider
 backend-native arithmetic API yet.

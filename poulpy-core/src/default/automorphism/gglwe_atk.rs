@@ -99,7 +99,7 @@ where
                             self.vec_znx_automorphism_assign(p_inv, &mut res_tmp.data, i, &mut scratch_iter);
                         }
                     } else {
-                        let (mut tmp_glwe, mut scratch_iter) = scratch.borrow().take_glwe(&a_ct_backend);
+                        let (mut tmp_glwe, mut scratch_iter) = scratch.borrow().take_glwe_scratch(&a_ct_backend);
 
                         for i in 0..cols_out {
                             self.vec_znx_automorphism_backend(p, &mut tmp_glwe.data, i, &a_ct_backend.data, i);

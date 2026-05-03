@@ -136,17 +136,17 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut a_layout = a.glwe_layout();
         a_layout.base2k = key.base2k();
-        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe(&a_layout);
+        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&a_layout);
         self.glwe_normalize(&mut a_conv, a, &mut scratch_2);
         let a_norm = glwe_backend_ref_from_mut::<BE>(&a_conv);
 
         {
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
@@ -193,10 +193,10 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut res_layout = res.glwe_layout();
         res_layout.base2k = key.base2k();
-        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe(&res_layout);
+        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&res_layout);
         let scratch = {
             let res_ref = glwe_backend_ref_from_mut::<BE>(&*res);
             self.glwe_normalize(&mut res_conv, &res_ref, &mut scratch_2);
@@ -207,7 +207,7 @@ where
         {
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
@@ -255,17 +255,17 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut a_layout = a.glwe_layout();
         a_layout.base2k = key.base2k();
-        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe(&a_layout);
+        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&a_layout);
         self.glwe_normalize(&mut a_conv, a, &mut scratch_2);
         let a_norm = glwe_backend_ref_from_mut::<BE>(&a_conv);
 
         {
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
@@ -312,17 +312,17 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut a_layout = a.glwe_layout();
         a_layout.base2k = key.base2k();
-        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe(&a_layout);
+        let (mut a_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&a_layout);
         self.glwe_normalize(&mut a_conv, a, &mut scratch_2);
         let a_norm = glwe_backend_ref_from_mut::<BE>(&a_conv);
 
         {
             let mut scratch = scratch_2;
             self.glwe_keyswitch_internal(&mut res_dft, &a_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
@@ -368,10 +368,10 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut res_layout = res.glwe_layout();
         res_layout.base2k = key.base2k();
-        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe(&res_layout);
+        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&res_layout);
         let scratch = {
             let res_ref = glwe_backend_ref_from_mut::<BE>(&*res);
             self.glwe_normalize(&mut res_conv, &res_ref, &mut scratch_2);
@@ -382,7 +382,7 @@ where
         {
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));
@@ -428,10 +428,10 @@ where
         let key_base2k: usize = key.base2k().into();
         let res_base2k: usize = res.base2k().into();
         let cols: usize = (res.rank() + 1).into();
-        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft(self, cols, key.size());
+        let (mut res_dft, scratch_1) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, key.size());
         let mut res_layout = res.glwe_layout();
         res_layout.base2k = key.base2k();
-        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe(&res_layout);
+        let (mut res_conv, mut scratch_2) = scratch_1.take_glwe_scratch(&res_layout);
         let scratch = {
             let res_ref = glwe_backend_ref_from_mut::<BE>(&*res);
             self.glwe_normalize(&mut res_conv, &res_ref, &mut scratch_2);
@@ -442,7 +442,7 @@ where
         {
             let mut scratch = scratch;
             self.glwe_keyswitch_internal(&mut res_dft, &res_norm, key, &mut scratch);
-            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big(self, cols, key.size());
+            let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
             let res_dft_ref = res_dft.reborrow_backend_ref();
             for i in 0..cols {
                 scratch = scratch.apply_mut(|scratch| self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, scratch));

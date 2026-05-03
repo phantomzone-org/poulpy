@@ -1,8 +1,7 @@
 use poulpy_core::{
     DEFAULT_BOUND_XE, DEFAULT_SIGMA_XE, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEEncryptSk,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWEToBackendMut,
-        GLWEToBackendRef, ModuleCoreAlloc,
+        GGLWEInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, ModuleCoreAlloc,
         prepared::{GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecretPrepared},
     },
 };
@@ -89,9 +88,7 @@ pub fn bench_glwe_automorphism<BE: Backend<OwnedBuf = Vec<u8>>>(
     let mut group = c.benchmark_group(group_name);
     group.bench_function(format!("n={n}"), |bench| {
         bench.iter(|| {
-            let mut ct_out_backend = <GLWE<Vec<u8>> as GLWEToBackendMut<BE>>::to_backend_mut(&mut ct_out);
-            let ct_in_backend = <GLWE<Vec<u8>> as GLWEToBackendRef<BE>>::to_backend_ref(&ct_in);
-            module.glwe_automorphism(&mut ct_out_backend, &ct_in_backend, &atk_prepared, &mut scratch.borrow());
+            module.glwe_automorphism(&mut ct_out, &ct_in, &atk_prepared, &mut scratch.borrow());
             black_box(());
         })
     });

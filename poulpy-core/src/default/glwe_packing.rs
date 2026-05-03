@@ -8,7 +8,7 @@ use poulpy_hal::{
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
-        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
+        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut,
         GetGaloisElement, ModuleCoreAlloc, prepared::GGLWEPreparedToBackendRef,
     },
 };
@@ -65,7 +65,7 @@ fn pack_internal<'s, M, A, B, K, BE: Backend + 's>(
     B: GLWEToBackendMut<BE> + GLWEInfos,
     K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
     ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-    BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+    BackendGLWE<BE>: GLWEToBackendMut<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
@@ -171,7 +171,7 @@ where
         K: GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         ScratchArena<'s, BE>: ScratchArenaTakeCore<'s, BE>,
-        BackendGLWE<BE>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE>,
+        BackendGLWE<BE>: GLWEToBackendMut<BE>,
         BE: 's,
     {
         assert!(*a.keys().max().unwrap() < self.n());

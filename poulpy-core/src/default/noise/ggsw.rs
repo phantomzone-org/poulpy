@@ -10,7 +10,7 @@ use poulpy_hal::{
     },
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GGSWToBackendRef, LWEInfos, glwe_plaintext_as_glwe_backend_ref_from_mut};
+use crate::layouts::{GGSW, GGSWInfos, GGSWToBackendRef, GLWEToBackendRef, LWEInfos};
 use crate::noise::glwe::glwe_noise_backend_inner;
 use crate::{
     GLWENormalize,
@@ -106,7 +106,7 @@ where
             self.ggsw_noise_tmp_bytes(res)
         );
 
-        let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext(&res_backend);
+        let (mut pt, mut scratch_1) = scratch.borrow().take_glwe_plaintext_scratch(&res_backend);
         pt.data_mut().zero();
         let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
             ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n(), pt_want.cols());
@@ -125,7 +125,7 @@ where
         // mul with sk[col_j-1]
         if res_col > 0 {
             let scratch_mul = scratch_1.borrow();
-            let (mut pt_dft, scratch_2) = scratch_mul.take_vec_znx_dft(self, 1, res_backend.size());
+            let (mut pt_dft, scratch_2) = scratch_mul.take_vec_znx_dft_scratch(self, 1, res_backend.size());
             self.vec_znx_dft_apply(
                 1,
                 0,
@@ -138,7 +138,7 @@ where
                 let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
                 self.svp_apply_dft_to_dft_assign(&mut pt_dft_backend, 0, &sk_backend.data, res_col - 1);
             }
-            let (mut pt_big, mut scratch_3) = scratch_2.take_vec_znx_big(self, 1, res_backend.size());
+            let (mut pt_big, mut scratch_3) = scratch_2.take_vec_znx_big_scratch(self, 1, res_backend.size());
             {
                 let mut pt_big_backend = pt_big.reborrow_backend_mut();
                 let mut pt_dft_backend = pt_dft.reborrow_backend_mut();
@@ -159,7 +159,7 @@ where
         }
 
         let res_at_backend = ggsw_at_backend_ref_from_ref::<BE>(&res_backend, res_row, res_col);
-        let pt_backend = glwe_plaintext_as_glwe_backend_ref_from_mut::<BE>(&pt);
+        let pt_backend = pt.to_backend_ref();
         glwe_noise_backend_inner(self, &res_at_backend, &pt_backend, &sk_backend, &mut scratch_1)
     }
 }

@@ -21,7 +21,7 @@ use anyhow::Result;
 use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     encoding::Encoder,
-    layouts::{CKKSCiphertext, CKKSMaintainOps, CKKSModuleAlloc, CKKSPlaintext, CKKSPlaintextVecHostCodec},
+    layouts::{CKKSCiphertext, CKKSMaintainOps, CKKSModuleAlloc, CKKSPlaintext},
     leveled::api::{CKKSAddOpsUnsafe, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulAddOps, CKKSMulOps},
 };
 use poulpy_core::{

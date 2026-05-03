@@ -85,13 +85,11 @@ where
         );
 
         let scratch = scratch.borrow();
-        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
-        let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
-        let (mut sk_ij, mut tensor_scratch) = scratch_2.take_scalar_znx(self.n(), rank);
-        let mut sk_prepared_ref = &mut sk_prepared;
-        let mut sk_tensor_ref = &mut sk_tensor;
-        self.glwe_secret_prepare(&mut sk_prepared_ref, sk);
-        self.glwe_secret_tensor_prepare(&mut sk_tensor_ref, sk, &mut tensor_scratch);
+        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared_scratch(self, res.rank());
+        let (mut sk_tensor, scratch_2) = scratch_1.take_glwe_secret_tensor_scratch(self.n().into(), res.rank());
+        let (mut sk_ij, mut tensor_scratch) = scratch_2.take_scalar_znx_scratch(self.n(), rank);
+        self.glwe_secret_prepare(&mut sk_prepared, sk);
+        self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, &mut tensor_scratch);
 
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(&res));
         let sk_tensor_backend = scalar_znx_as_vec_znx_backend_ref_from_mut::<BE>(&sk_tensor.data);
@@ -108,12 +106,11 @@ where
 
             let mut ct = gglwe_to_ggsw_key_at_backend_mut_from_mut::<BE>(&mut res, i);
             let mut ct_ref = &mut ct;
-            let sk_ij_ref = &mut sk_ij;
 
             self.gglwe_encrypt_sk(
                 &mut ct_ref,
-                &sk_ij_ref,
-                &sk_prepared_ref,
+                &sk_ij,
+                &sk_prepared,
                 enc_infos,
                 source_xe,
                 source_xa,

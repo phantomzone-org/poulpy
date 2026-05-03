@@ -14,6 +14,7 @@
 
 use super::helpers::{TestCiphertextBackend as Backend, TestContext, TestScalar, assert_ckks_error, assert_ct_meta};
 use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::CKKSModuleAlloc, leveled::api::CKKSDecrypt};
+use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
 fn extract_src_prec<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> CKKSMeta {

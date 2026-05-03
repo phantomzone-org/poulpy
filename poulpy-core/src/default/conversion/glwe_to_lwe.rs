@@ -100,7 +100,7 @@ where
         };
 
         let scratch = scratch.borrow();
-        let (mut tmp_glwe_rank_1, mut scratch_1) = scratch.take_glwe(&glwe_layout);
+        let (mut tmp_glwe_rank_1, mut scratch_1) = scratch.take_glwe_scratch(&glwe_layout);
 
         self.glwe_keyswitch_default(&mut tmp_glwe_rank_1, &a_backend, key, &mut scratch_1);
         if a_idx != 0 {

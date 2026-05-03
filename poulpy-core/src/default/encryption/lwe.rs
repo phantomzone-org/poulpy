@@ -114,7 +114,7 @@ where
         self.vec_znx_fill_uniform_source_backend(base2k, &mut res.data, 0, source_xa);
 
         let scratch = scratch.borrow();
-        let (mut tmp_znx, scratch_1) = scratch.take_vec_znx(1, 1, res_size);
+        let (mut tmp_znx, scratch_1) = scratch.take_vec_znx_scratch(1, 1, res_size);
         self.vec_znx_zero_backend(&mut tmp_znx, 0);
 
         let min_size: usize = res_size.min(pt.size());

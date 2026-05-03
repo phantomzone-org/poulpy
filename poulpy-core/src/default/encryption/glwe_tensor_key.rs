@@ -79,19 +79,17 @@ where
         );
 
         let scratch = scratch.borrow();
-        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
-        let (mut sk_tensor, mut tensor_scratch) = scratch_1.take_glwe_secret_tensor(self.n().into(), res.rank());
-        let mut sk_prepared_ref = &mut sk_prepared;
-        let mut sk_tensor_ref = &mut sk_tensor;
-        self.glwe_secret_prepare(&mut sk_prepared_ref, sk);
-        self.glwe_secret_tensor_prepare(&mut sk_tensor_ref, sk, &mut tensor_scratch);
+        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared_scratch(self, res.rank());
+        let (mut sk_tensor, mut tensor_scratch) = scratch_1.take_glwe_secret_tensor_scratch(self.n().into(), res.rank());
+        self.glwe_secret_prepare(&mut sk_prepared, sk);
+        self.glwe_secret_tensor_prepare(&mut sk_tensor, sk, &mut tensor_scratch);
 
         let mut enc_scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.gglwe_encrypt_sk_tmp_bytes(res));
         let sk_tensor_data = &mut sk_tensor.data;
         self.gglwe_encrypt_sk(
             res,
             &sk_tensor_data,
-            &sk_prepared_ref,
+            &sk_prepared,
             enc_infos,
             source_xe,
             source_xa,

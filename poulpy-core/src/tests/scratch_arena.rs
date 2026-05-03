@@ -144,13 +144,13 @@ fn scratch_arena_take_core_returns_disjoint_backend_regions() {
     let arena = scratch.arena();
     let available_before = arena.available();
 
-    let (glwe, arena) = arena.take_glwe(&glwe_infos);
-    let glwe_bytes = glwe.data.data;
+    let (mut glwe, arena) = arena.take_glwe_scratch(&glwe_infos);
+    let glwe_bytes = glwe.data_mut().data_mut();
     glwe_bytes[0] = 0x5a;
     let glwe_ptr = glwe_bytes.as_mut_ptr() as usize;
     let glwe_len = glwe_bytes.len();
 
-    let (mut prepared, arena) = arena.take_ggsw_prepared(&module, &ggsw_infos);
+    let (mut prepared, arena) = arena.take_ggsw_prepared_scratch(&module, &ggsw_infos);
     let prepared_bytes = prepared.data.data_mut();
     prepared_bytes[0] = 0xa5;
     let prepared_ptr = prepared_bytes.as_mut_ptr() as usize;
@@ -174,11 +174,14 @@ fn scratch_arena_split_yields_independent_chunks() {
     assert_eq!(chunks.len(), 2);
 
     let mut it = chunks.into_iter();
-    let (lhs, _) = it.next().expect("missing first scratch chunk").take_vec_znx(64, 2, 2);
-    let (rhs, _) = it.next().expect("missing second scratch chunk").take_vec_znx(64, 2, 2);
+    let (mut lhs, _) = it.next().expect("missing first scratch chunk").take_vec_znx_scratch(64, 2, 2);
+    let (mut rhs, _) = it
+        .next()
+        .expect("missing second scratch chunk")
+        .take_vec_znx_scratch(64, 2, 2);
 
-    let lhs_bytes = lhs.data;
-    let rhs_bytes = rhs.data;
+    let lhs_bytes = lhs.data_mut();
+    let rhs_bytes = rhs.data_mut();
     lhs_bytes[0] = 1;
     rhs_bytes[0] = 2;
 
