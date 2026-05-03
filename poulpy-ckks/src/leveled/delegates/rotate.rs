@@ -1,54 +1,65 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement},
+    GLWEAutomorphism, GLWEShift, ScratchArenaTakeCore,
+    layouts::{
+        GGLWEInfos, GGLWEPreparedToBackendRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef,
+        GetGaloisElement, LWEInfos, prepared::GLWEAutomorphismKeyPreparedToBackendRef,
+    },
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSCompositionError, CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 use crate::leveled::{api::CKKSRotateOps, oep::CKKSRotateOep};
 
-impl<BE: Backend + CKKSImpl<BE>> CKKSRotateOps<BE> for Module<BE> {
+impl<BE: Backend + CKKSImpl<BE>> CKKSRotateOps<BE> for Module<BE>
+where
+    Module<BE>: GLWEAutomorphism<BE> + GLWEShift<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+{
     fn ckks_rotate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
-        C: GLWEInfos,
+        C: GLWEInfos + CKKSInfos,
         K: GGLWEInfos,
-        Self: GLWEAutomorphism<BE>,
     {
         CKKSRotateOep::ckks_rotate_tmp_bytes(self, ct_infos, key_infos)
     }
 
-    fn ckks_rotate_into<H, K>(
+    fn ckks_rotate_into<Dst, Src, H, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut Dst,
+        src: &Src,
         k: i64,
         keys: &H,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
-        CKKSRotateOep::ckks_rotate_into(self, dst, src, k, keys, scratch)
+        let key = keys
+            .get_automorphism_key(k)
+            .ok_or(CKKSCompositionError::MissingAutomorphismKey {
+                op: "rotate",
+                rotation: k,
+            })?;
+        CKKSRotateOep::ckks_rotate_into(self, dst, src, key, scratch)
     }
 
-    fn ckks_rotate_assign<H, K>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        k: i64,
-        keys: &H,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_rotate_assign<Dst, H, K>(&self, dst: &mut Dst, k: i64, keys: &H, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE>,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
     {
-        CKKSRotateOep::ckks_rotate_assign(self, dst, k, keys, scratch)
+        let key = keys
+            .get_automorphism_key(k)
+            .ok_or(CKKSCompositionError::MissingAutomorphismKey {
+                op: "rotate_assign",
+                rotation: k,
+            })?;
+        CKKSRotateOep::ckks_rotate_assign(self, dst, key, scratch)
     }
 }

@@ -1,10 +1,10 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEInfos, GGLWEToMut, GLWEInfos,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressedToBackendMut, GGLWECompressedToBackendRef, GGLWEInfos, GLWEInfos,
     GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
@@ -53,38 +53,38 @@ impl<D: Data> GGLWEInfos for LWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for LWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for LWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for LWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for LWESwitchingKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.0.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for LWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for LWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(LWESwitchingKeyCompressed) {}", self.0)
     }
 }
 
-impl<D: DataMut> ReaderFrom for LWESwitchingKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for LWESwitchingKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.0.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for LWESwitchingKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for LWESwitchingKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.write_to(writer)
     }
 }
 
 impl LWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -102,7 +102,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
         Self::alloc(infos.n(), infos.base2k(), infos.max_k(), infos.dnum())
     }
 
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
         LWESwitchingKeyCompressed(GLWESwitchingKeyCompressed::alloc(
             n,
             base2k,
@@ -143,8 +143,8 @@ where
 {
     fn decompress_lwe_switching_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
-        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
+        R: crate::layouts::GGLWEToBackendMut<Self::Backend> + GLWESwitchingKeyDegreesMut,
+        O: GGLWECompressedToBackendRef<Self::Backend> + GLWESwitchingKeyDegrees,
     {
         self.decompress_glwe_switching_key(res, other);
     }
@@ -154,14 +154,14 @@ impl<B: Backend> LWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchi
 
 // module-only API: decompression is provided by `LWESwitchingKeyDecompress` on `Module`.
 
-impl<D: DataRef> GGLWECompressedToRef for LWESwitchingKeyCompressed<D> {
-    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
-        self.0.to_ref()
+impl<BE: Backend> crate::layouts::compressed::GGLWECompressedToBackendRef<BE> for LWESwitchingKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> crate::layouts::compressed::GGLWECompressedBackendRef<'_, BE> {
+        <crate::layouts::GLWESwitchingKeyCompressed<BE::OwnedBuf> as GGLWECompressedToBackendRef<BE>>::to_backend_ref(&self.0)
     }
 }
 
-impl<D: DataMut> GGLWECompressedToMut for LWESwitchingKeyCompressed<D> {
-    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
-        self.0.to_mut()
+impl<BE: Backend> crate::layouts::compressed::GGLWECompressedToBackendMut<BE> for LWESwitchingKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> crate::layouts::compressed::GGLWECompressedBackendMut<'_, BE> {
+        <crate::layouts::GLWESwitchingKeyCompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.0)
     }
 }

@@ -45,6 +45,13 @@ RUSTFLAGS="-C target-feature=+avx2,+fma" \
 cargo bench --features enable-avx
 ```
 
+### Running Tests
+
+```bash
+RUSTFLAGS="-C target-feature=+avx2,+fma" \
+cargo test --features enable-avx
+```
+
 ## Basic Usage
 
 This crate exposes two AVX2-accelerated backends:

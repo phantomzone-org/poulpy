@@ -1,3 +1,4 @@
+#[cfg(feature = "ckks-bench")]
 pub mod ckks;
 pub mod core;
 pub mod hal;

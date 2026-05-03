@@ -1,30 +1,31 @@
 use anyhow::Result;
-use poulpy_core::{GLWENegate, GLWEShift, ScratchTakeCore};
+use poulpy_core::{
+    GLWENegate, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSInfos, GLWEToBackendMut, GLWEToBackendRef, SetCKKSInfos, oep::CKKSImpl};
 
 pub(crate) trait CKKSNegOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_neg_tmp_bytes(&self) -> usize
     where
         Self: GLWEShift<BE>;
 
-    fn ckks_neg_into(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWENegate + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        Self: GLWENegate<BE> + GLWEShift<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>;
 
-    fn ckks_neg_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
+    fn ckks_neg_assign<Dst>(&self, dst: &mut Dst) -> Result<()>
     where
-        Self: GLWENegate;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Self: GLWENegate<BE>;
 }
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSNegOep<BE> for Module<BE> {
@@ -35,22 +36,20 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSNegOep<BE> for Module<BE> {
         BE::ckks_neg_tmp_bytes(self)
     }
 
-    fn ckks_neg_into(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_neg_into<Dst, Src>(&self, dst: &mut Dst, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWENegate + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        Self: GLWENegate<BE> + GLWEShift<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         BE::ckks_neg_into(self, dst, src, scratch)
     }
 
-    fn ckks_neg_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>) -> Result<()>
+    fn ckks_neg_assign<Dst>(&self, dst: &mut Dst) -> Result<()>
     where
-        Self: GLWENegate,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Self: GLWENegate<BE>,
     {
         BE::ckks_neg_assign(self, dst)
     }

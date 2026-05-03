@@ -1,354 +1,212 @@
 use anyhow::Result;
-use poulpy_core::{
-    GLWEAdd, GLWEMulConst, GLWEMulPlain, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETensoring, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWEInfos, GLWETensorKeyPrepared},
+use poulpy_core::layouts::{
+    GGLWEInfos, GLWEInfos, GLWETensorKeyPrepared, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+    prepared::GLWETensorKeyPreparedToBackendRef,
 };
-use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxAddAssign, VecZnxRshAddInto},
-    layouts::{Backend, DataMut, DataRef, Scratch},
-};
+use poulpy_hal::layouts::{Backend, Data, ScratchArena};
 
-use crate::{
-    CKKSMeta,
-    layouts::{
-        CKKSCiphertext,
-        plaintext::{
-            CKKSConstPlaintextConversion, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx,
-            CKKSPlaintextVecZnx,
-        },
-    },
-    leveled::api::{
-        add::{CKKSAddOps, CKKSAddOpsUnsafe},
-        mul::CKKSMulOps,
-        sub::CKKSSubOps,
-    },
-    oep::CKKSImpl,
-};
+use crate::{CKKSInfos, layouts::CKKSCiphertext, oep::CKKSImpl};
 
 pub trait CKKSAddManyOps<BE: Backend + CKKSImpl<BE>> {
-    fn ckks_add_many_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE> + CKKSAddOps<BE>;
+    fn ckks_add_many_tmp_bytes(&self) -> usize;
 
-    fn ckks_add_many<D: DataRef>(
+    fn ckks_add_many<Dst: Data, Src: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        inputs: &[&CKKSCiphertext<D>],
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        inputs: &[&CKKSCiphertext<Src>],
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEShift<BE> + GLWENormalize<BE> + CKKSAddOpsUnsafe<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE>;
 }
 
 pub trait CKKSMulManyOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_mul_many_tmp_bytes<R, T>(&self, n: usize, res: &R, tsk: &T) -> usize
     where
-        R: GLWEInfos,
-        T: GGLWEInfos,
-        Self: GLWETensoring<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        T: GGLWEInfos;
 
-    fn ckks_mul_many<D: DataRef>(
+    fn ckks_mul_many<Dst: Data, Src: Data, T: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        inputs: &[&CKKSCiphertext<D>],
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        inputs: &[&CKKSCiphertext<Src>],
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE> + GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<Src>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 }
 
 pub trait CKKSMulAddOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_mul_add_ct_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
     where
-        R: GLWEInfos,
-        T: GGLWEInfos,
-        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        T: GGLWEInfos;
 
-    fn ckks_mul_add_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_add_pt_vec_znx_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_mul_add_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_add_pt_const_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_mul_add_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
-
-    fn ckks_mul_add_ct_into(
+    fn ckks_mul_add_ct_into<Dst: Data, A: Data, B: Data, T: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        b: &CKKSCiphertext<B>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEShift<BE> + GLWETensoring<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<B>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
-    fn ckks_mul_add_pt_vec_znx_into(
+    fn ckks_mul_add_pt_vec_znx_into<Dst: Data, A: Data, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
-    fn ckks_mul_add_pt_vec_rnx_into<F>(
+    fn ckks_mul_add_pt_const_znx_into<Dst: Data, A: Data, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + GLWEAdd + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
-
-    fn ckks_mul_add_pt_const_znx_into(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
-
-    fn ckks_mul_add_pt_const_rnx_into<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }
 
 pub trait CKKSMulSubOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_mul_sub_ct_tmp_bytes<R, T>(&self, res: &R, tsk: &T) -> usize
     where
-        R: GLWEInfos,
-        T: GGLWEInfos,
-        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        T: GGLWEInfos;
 
-    fn ckks_mul_sub_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_sub_pt_vec_znx_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_mul_sub_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_mul_sub_pt_const_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_mul_sub_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>;
-
-    fn ckks_mul_sub_ct_into(
+    fn ckks_mul_sub_ct_into<Dst: Data, A: Data, B: Data, T: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        b: &CKKSCiphertext<B>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE> + GLWETensoring<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<B>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
-    fn ckks_mul_sub_pt_vec_znx_into(
+    fn ckks_mul_sub_pt_vec_znx_into<Dst: Data, A: Data, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWESub + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
-    fn ckks_mul_sub_pt_vec_rnx_into<F>(
+    fn ckks_mul_sub_pt_const_znx_into<Dst: Data, A: Data, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        dst: &mut CKKSCiphertext<Dst>,
+        a: &CKKSCiphertext<A>,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + GLWESub + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
-
-    fn ckks_mul_sub_pt_const_znx_into(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd + GLWESub + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
-
-    fn ckks_mul_sub_pt_const_rnx_into<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd + GLWESub + GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSSubOps<BE> + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<A>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }
 
 pub trait CKKSDotProductOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_dot_product_ct_tmp_bytes<R, T>(&self, n: usize, res: &R, tsk: &T) -> usize
     where
-        R: GLWEInfos,
-        T: GGLWEInfos,
-        Self: GLWEShift<BE> + GLWETensoring<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        T: GGLWEInfos;
 
-    fn ckks_dot_product_pt_vec_znx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_dot_product_pt_vec_znx_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_dot_product_pt_vec_rnx_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
+    fn ckks_dot_product_pt_const_tmp_bytes<R, A, P>(&self, res: &R, a: &A, b: &P) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: ModuleN + GLWEMulPlain<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
+        R: GLWEInfos + CKKSInfos,
+        A: GLWEInfos + CKKSInfos,
+        P: CKKSInfos;
 
-    fn ckks_dot_product_pt_const_tmp_bytes<R, A>(&self, res: &R, a: &A, b: &CKKSMeta) -> usize
-    where
-        R: GLWEInfos,
-        A: GLWEInfos,
-        Self: GLWEMulConst<BE> + GLWERotate<BE> + GLWEShift<BE> + CKKSAddOps<BE> + CKKSMulOps<BE>;
-
-    fn ckks_dot_product_ct<D: DataRef, E: DataRef>(
+    fn ckks_dot_product_ct<Dst: Data, D: Data, E: Data, T: Data>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         a: &[&CKKSCiphertext<D>],
         b: &[&CKKSCiphertext<E>],
-        tsk: &GLWETensorKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        tsk: &GLWETensorKeyPrepared<T, BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd
-            + GLWEShift<BE>
-            + GLWENormalize<BE>
-            + GLWETensoring<BE>
-            + VecZnxAddAssign
-            + CKKSAddOpsUnsafe<BE>
-            + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        CKKSCiphertext<E>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        GLWETensorKeyPrepared<T, BE>: GLWETensorKeyPreparedToBackendRef<BE>;
 
-    fn ckks_dot_product_pt_vec_znx<D: DataRef, E: DataRef>(
+    fn ckks_dot_product_pt_vec_znx<Dst: Data, D: Data, E>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         a: &[&CKKSCiphertext<D>],
-        b: &[&CKKSPlaintextVecZnx<E>],
-        scratch: &mut Scratch<BE>,
+        b: &[&E],
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAdd
-            + GLWEMulPlain<BE>
-            + GLWEShift<BE>
-            + GLWENormalize<BE>
-            + VecZnxRshAddInto<BE>
-            + CKKSAddOpsUnsafe<BE>
-            + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 
-    fn ckks_dot_product_pt_vec_rnx<D: DataRef, F>(
+    fn ckks_dot_product_pt_const_znx<Dst: Data, D: Data, E>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut CKKSCiphertext<Dst>,
         a: &[&CKKSCiphertext<D>],
-        b: &[&CKKSPlaintextVecRnx<F>],
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        b: &[&E],
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: ModuleN
-            + GLWEAdd
-            + GLWEMulPlain<BE>
-            + GLWEShift<BE>
-            + GLWENormalize<BE>
-            + VecZnxRshAddInto<BE>
-            + CKKSAddOpsUnsafe<BE>
-            + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion;
-
-    fn ckks_dot_product_pt_const_znx<D: DataRef>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &[&CKKSCiphertext<D>],
-        b: &[&CKKSPlaintextCstZnx],
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd
-            + GLWEMulConst<BE>
-            + GLWERotate<BE>
-            + GLWEShift<BE>
-            + GLWENormalize<BE>
-            + CKKSAddOpsUnsafe<BE>
-            + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
-
-    fn ckks_dot_product_pt_const_rnx<D: DataRef, F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &[&CKKSCiphertext<D>],
-        b: &[&CKKSPlaintextCstRnx<F>],
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEAdd
-            + GLWEMulConst<BE>
-            + GLWERotate<BE>
-            + GLWEShift<BE>
-            + GLWENormalize<BE>
-            + CKKSAddOpsUnsafe<BE>
-            + CKKSMulOps<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion;
+        CKKSCiphertext<Dst>: GLWEToBackendMut<BE>,
+        CKKSCiphertext<D>: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos,
+        E: GLWEToBackendRef<BE> + LWEInfos + GLWEInfos + CKKSInfos;
 }
-
-// Suppress unused import warnings
-#[allow(unused_imports)]
-use poulpy_core::layouts::LWEInfos;

@@ -8,38 +8,112 @@ use std::{collections::HashMap, f64::consts::TAU, fmt::Debug, marker::PhantomDat
 
 use super::CKKSTestParams;
 use crate::{
-    CKKSCompositionError, CKKSInfos, CKKSMeta,
+    CKKSCompositionError, CKKSInfos, CKKSMeta, SetCKKSInfos,
     encoding::reim::Encoder,
-    layouts::{
-        CKKSCiphertext,
-        ciphertext::CKKSOffset,
-        plaintext::{CKKSPlaintextConversion, CKKSPlaintextRnx, CKKSPlaintextZnx, alloc_pt_vec_znx},
-    },
+    layouts::{CKKSCiphertext, CKKSModuleAlloc, ciphertext::CKKSOffset, plaintext::CKKSPlaintext},
     leveled::api::{CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt},
     oep::CKKSImpl,
 };
 use poulpy_core::{
     EncryptionLayout, GLWEAdd, GLWEAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWECopy, GLWEMulConst, GLWEMulPlain, GLWENegate,
-    GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchTakeCore,
+    GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETensorKeyEncryptSk, GLWETensoring, ScratchArenaTakeCore,
     layouts::{
-        Base2K, Degree, GLWEAutomorphismKey, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecret,
-        GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos,
-        prepared::GLWESecretPrepared,
+        Base2K, Degree, GLWEAutomorphismKeyPrepared, GLWEAutomorphismKeyPreparedFactory, GLWESecretPreparedFactory,
+        GLWETensorKeyPrepared, GLWETensorKeyPreparedFactory, LWEInfos, ModuleCoreAlloc, prepared::GLWESecretPrepared,
     },
-    oep::CoreImpl,
+    oep::{
+        AutomorphismImpl, ConversionImpl, DecryptionImpl, GGLWEExternalProductImpl, GGLWEKeyswitchImpl, GGSWExternalProductImpl,
+        GGSWKeyswitchImpl, GGSWRotateImpl, GLWEAddImpl, GLWECopyImpl, GLWEExternalProductImpl, GLWEKeyswitchImpl,
+        GLWEMulConstImpl, GLWEMulPlainImpl, GLWEMulXpMinusOneImpl, GLWENegateImpl, GLWENormalizeImpl, GLWEPackImpl,
+        GLWERotateImpl, GLWEShiftImpl, GLWESubImpl, GLWETensoringImpl, GLWETraceImpl, LWEKeyswitchImpl,
+    },
 };
 use rand_distr::num_traits::{Float, FloatConst, FromPrimitive, ToPrimitive};
 
 use poulpy_hal::{
-    api::{ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRshAddInto, VecZnxRshSub},
-    layouts::{Backend, DataRef, DeviceBuf, GaloisElement, Module, Scratch, ScratchOwned},
-    oep::HalImpl,
+    api::{
+        ModuleN, ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRshAddIntoBackend, VecZnxRshSubBackend,
+    },
+    layouts::{Backend, Data, GaloisElement, HostBackend, HostBytesBackend, Module, ScratchArena, ScratchOwned},
+    oep::{HalConvolutionImpl, HalModuleImpl, HalSvpImpl, HalVecZnxBigImpl, HalVecZnxDftImpl, HalVecZnxImpl, HalVmpImpl},
     source::Source,
 };
 
-pub trait TestBackend: Backend + CoreImpl<Self> + HalImpl<Self> + CKKSImpl<Self> {}
+pub trait TestBackend:
+    Backend
+    + HostBackend<OwnedBuf = Vec<u8>>
+    + GLWEKeyswitchImpl<Self>
+    + GLWEAddImpl<Self>
+    + GLWESubImpl<Self>
+    + GLWENegateImpl<Self>
+    + GLWECopyImpl<Self>
+    + GGLWEKeyswitchImpl<Self>
+    + GGSWKeyswitchImpl<Self>
+    + LWEKeyswitchImpl<Self>
+    + GLWEExternalProductImpl<Self>
+    + GGLWEExternalProductImpl<Self>
+    + GGSWExternalProductImpl<Self>
+    + GLWETensoringImpl<Self>
+    + GLWEMulConstImpl<Self>
+    + GLWEMulPlainImpl<Self>
+    + GLWERotateImpl<Self>
+    + GLWEMulXpMinusOneImpl<Self>
+    + GLWEShiftImpl<Self>
+    + GLWENormalizeImpl<Self>
+    + GLWETraceImpl<Self>
+    + GLWEPackImpl<Self>
+    + GGSWRotateImpl<Self>
+    + DecryptionImpl<Self>
+    + ConversionImpl<Self>
+    + AutomorphismImpl<Self>
+    + HalModuleImpl<Self>
+    + HalVecZnxImpl<Self>
+    + HalVecZnxBigImpl<Self>
+    + HalVecZnxDftImpl<Self>
+    + HalSvpImpl<Self>
+    + HalVmpImpl<Self>
+    + HalConvolutionImpl<Self>
+    + CKKSImpl<Self>
+{
+}
 
-impl<T> TestBackend for T where T: Backend + CoreImpl<T> + HalImpl<T> + CKKSImpl<T> {}
+impl<T> TestBackend for T where
+    T: Backend
+        + HostBackend<OwnedBuf = Vec<u8>>
+        + GLWEKeyswitchImpl<T>
+        + GLWEAddImpl<T>
+        + GLWESubImpl<T>
+        + GLWENegateImpl<T>
+        + GLWECopyImpl<T>
+        + GGLWEKeyswitchImpl<T>
+        + GGSWKeyswitchImpl<T>
+        + LWEKeyswitchImpl<T>
+        + GLWEExternalProductImpl<T>
+        + GGLWEExternalProductImpl<T>
+        + GGSWExternalProductImpl<T>
+        + GLWETensoringImpl<T>
+        + GLWEMulConstImpl<T>
+        + GLWEMulPlainImpl<T>
+        + GLWERotateImpl<T>
+        + GLWEMulXpMinusOneImpl<T>
+        + GLWEShiftImpl<T>
+        + GLWENormalizeImpl<T>
+        + GLWETraceImpl<T>
+        + GLWEPackImpl<T>
+        + GGSWRotateImpl<T>
+        + DecryptionImpl<T>
+        + ConversionImpl<T>
+        + AutomorphismImpl<T>
+        + HalModuleImpl<T>
+        + HalVecZnxImpl<T>
+        + HalVecZnxBigImpl<T>
+        + HalVecZnxDftImpl<T>
+        + HalSvpImpl<T>
+        + HalVmpImpl<T>
+        + HalConvolutionImpl<T>
+        + CKKSImpl<T>
+{
+}
 
 pub trait TestContextBackend: TestBackend
 where
@@ -54,7 +128,7 @@ where
         + CKKSEncrypt<Self>
         + CKKSDecrypt<Self>,
     ScratchOwned<Self>: ScratchOwnedAlloc<Self> + ScratchOwnedBorrow<Self>,
-    Scratch<Self>: ScratchTakeCore<Self>,
+    for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
 {
 }
 
@@ -72,7 +146,7 @@ where
         + CKKSEncrypt<T>
         + CKKSDecrypt<T>,
     ScratchOwned<T>: ScratchOwnedAlloc<T> + ScratchOwnedBorrow<T>,
-    Scratch<T>: ScratchTakeCore<T>,
+    for<'a> ScratchArena<'a, T>: ScratchArenaTakeCore<'a, T>,
 {
 }
 
@@ -80,7 +154,7 @@ pub trait TestCiphertextBackend: TestBackend
 where
     Module<Self>: CKKSEncrypt<Self> + CKKSDecrypt<Self>,
     ScratchOwned<Self>: ScratchOwnedAlloc<Self> + ScratchOwnedBorrow<Self>,
-    Scratch<Self>: ScratchTakeCore<Self>,
+    for<'a> ScratchArena<'a, Self>: ScratchArenaTakeCore<'a, Self>,
 {
 }
 
@@ -89,59 +163,59 @@ where
     T: TestBackend,
     Module<T>: CKKSEncrypt<T> + CKKSDecrypt<T>,
     ScratchOwned<T>: ScratchOwnedAlloc<T> + ScratchOwnedBorrow<T>,
-    Scratch<T>: ScratchTakeCore<T>,
+    for<'a> ScratchArena<'a, T>: ScratchArenaTakeCore<'a, T>,
 {
 }
 
 pub trait TestAddBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWEAdd + GLWEShift<Self> + VecZnxRshAddInto<Self>,
-    Scratch<Self>: ScratchAvailable,
+    Module<Self>: GLWEAdd<Self> + GLWEShift<Self> + VecZnxRshAddIntoBackend<Self>,
+    for<'a> ScratchArena<'a, Self>: ScratchAvailable,
 {
 }
 
 impl<T> TestAddBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWEAdd + GLWEShift<T> + VecZnxRshAddInto<T>,
-    Scratch<T>: ScratchAvailable,
+    Module<T>: GLWEAdd<T> + GLWEShift<T> + VecZnxRshAddIntoBackend<T>,
+    for<'a> ScratchArena<'a, T>: ScratchAvailable,
 {
 }
 
 pub trait TestSubBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWESub + GLWEShift<Self> + VecZnxRshSub<Self>,
-    Scratch<Self>: ScratchAvailable,
+    Module<Self>: GLWESub<Self> + GLWEShift<Self> + VecZnxRshSubBackend<Self>,
+    for<'a> ScratchArena<'a, Self>: ScratchAvailable,
 {
 }
 
 impl<T> TestSubBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWESub + GLWEShift<T> + VecZnxRshSub<T>,
-    Scratch<T>: ScratchAvailable,
+    Module<T>: GLWESub<T> + GLWEShift<T> + VecZnxRshSubBackend<T>,
+    for<'a> ScratchArena<'a, T>: ScratchAvailable,
 {
 }
 
 pub trait TestNegBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWENegate + GLWEShift<Self>,
-    Scratch<Self>: ScratchAvailable,
+    Module<Self>: GLWENegate<Self> + GLWEShift<Self>,
+    for<'a> ScratchArena<'a, Self>: ScratchAvailable,
 {
 }
 
 impl<T> TestNegBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWENegate + GLWEShift<T>,
-    Scratch<T>: ScratchAvailable,
+    Module<T>: GLWENegate<T> + GLWEShift<T>,
+    for<'a> ScratchArena<'a, T>: ScratchAvailable,
 {
 }
 
 pub trait TestRotateBackend: TestCiphertextBackend
 where
     Module<Self>: GLWEAutomorphism<Self>,
-    Scratch<Self>: ScratchAvailable,
+    for<'a> ScratchArena<'a, Self>: ScratchAvailable,
 {
 }
 
@@ -149,14 +223,14 @@ impl<T> TestRotateBackend for T
 where
     T: TestCiphertextBackend,
     Module<T>: GLWEAutomorphism<T>,
-    Scratch<T>: ScratchAvailable,
+    for<'a> ScratchArena<'a, T>: ScratchAvailable,
 {
 }
 
 pub trait TestMulBackend: TestCiphertextBackend
 where
     Module<Self>: GLWEMulConst<Self> + GLWERotate<Self> + GLWETensoring<Self> + GLWEShift<Self>,
-    Scratch<Self>: ScratchAvailable,
+    for<'a> ScratchArena<'a, Self>: ScratchAvailable,
 {
 }
 
@@ -164,46 +238,46 @@ impl<T> TestMulBackend for T
 where
     T: TestCiphertextBackend,
     Module<T>: GLWEMulConst<T> + GLWERotate<T> + GLWETensoring<T> + GLWEShift<T>,
-    Scratch<T>: ScratchAvailable,
+    for<'a> ScratchArena<'a, T>: ScratchAvailable,
 {
 }
 
 pub trait TestPow2Backend: TestCiphertextBackend
 where
-    Module<Self>: GLWEShift<Self> + GLWECopy,
+    Module<Self>: GLWEShift<Self> + GLWECopy<Self>,
 {
 }
 
 impl<T> TestPow2Backend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWEShift<T> + GLWECopy,
+    Module<T>: GLWEShift<T> + GLWECopy<T>,
 {
 }
 
 pub trait TestLevelBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWEShift<Self> + GLWECopy,
+    Module<Self>: GLWEShift<Self> + GLWECopy<Self>,
 {
 }
 
 impl<T> TestLevelBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWEShift<T> + GLWECopy,
+    Module<T>: GLWEShift<T> + GLWECopy<T>,
 {
 }
 
 pub trait TestCompositionBackend: TestCiphertextBackend
 where
-    Module<Self>: GLWEAdd + GLWEMulPlain<Self> + GLWENormalize<Self> + GLWEShift<Self> + GLWETensoring<Self>,
+    Module<Self>: GLWEAdd<Self> + GLWEMulPlain<Self> + GLWENormalize<Self> + GLWEShift<Self> + GLWETensoring<Self>,
 {
 }
 
 impl<T> TestCompositionBackend for T
 where
     T: TestCiphertextBackend,
-    Module<T>: GLWEAdd + GLWEMulPlain<T> + GLWENormalize<T> + GLWEShift<T> + GLWETensoring<T>,
+    Module<T>: GLWEAdd<T> + GLWEMulPlain<T> + GLWENormalize<T> + GLWEShift<T> + GLWETensoring<T>,
 {
 }
 
@@ -225,11 +299,12 @@ impl<T> TestScalar for T where T: Copy + Float + FloatConst + FromPrimitive + To
 /// (adds automorphism keys for rotation and conjugation).
 pub struct TestContext<BE: TestBackend, F: TestScalar = f64> {
     pub module: Module<BE>,
+    pub host_module: Module<HostBytesBackend>,
     pub encoder: Encoder<F>,
     pub params: CKKSTestParams,
-    pub sk: GLWESecretPrepared<DeviceBuf<BE>, BE>,
-    pub tsk: GLWETensorKeyPrepared<DeviceBuf<BE>, BE>,
-    pub atks: HashMap<i64, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>>,
+    pub sk: GLWESecretPrepared<BE::OwnedBuf, BE>,
+    pub tsk: GLWETensorKeyPrepared<BE::OwnedBuf, BE>,
+    pub atks: HashMap<i64, GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE>>,
     pub scratch_size: usize,
     pub re1: Vec<F>,
     pub im1: Vec<F>,
@@ -271,6 +346,7 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
     /// Creates a base context with a prepared secret key and two test messages.
     pub fn new(params: CKKSTestParams, rotations: &[i64]) -> Self {
         let module = Module::<BE>::new(params.n as u64);
+        let host_module = Module::<HostBytesBackend>::new(params.n as u64);
         let m = module.n() / 2;
         let glwe_infos = params.glwe_layout();
         let tsk_infos = params.tsk_layout();
@@ -280,22 +356,26 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
         let mut xe = Source::new([2u8; 32]);
 
         let mut source_xs = Source::new([0u8; 32]);
-        let mut sk_raw = GLWESecret::alloc_from_infos(&glwe_infos);
+        let mut sk_raw = module.glwe_secret_alloc_from_infos(&glwe_infos);
         sk_raw.fill_ternary_hw(params.hw, &mut source_xs);
         let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_infos);
         module.glwe_secret_prepare(&mut sk, &sk_raw);
 
-        let mut scratch = ScratchOwned::<BE>::alloc(module.ckks_all_ops_with_atk_tmp_bytes(
-            &params.glwe_layout(),
-            &tsk_infos,
-            &atk_infos,
-            &params.prec,
-        ));
+        let mut ct_infos = host_module.ckks_ciphertext_alloc_from_infos(&params.glwe_layout());
+        ct_infos.set_meta(params.prec);
+        let mut scratch =
+            ScratchOwned::<BE>::alloc(module.ckks_all_ops_with_atk_tmp_bytes(&ct_infos, &tsk_infos, &atk_infos, &params.prec));
 
-        let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_infos);
-        module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk_raw, &tsk_infos, &mut xa, &mut xe, scratch.borrow());
+        let mut tsk = module.glwe_tensor_key_alloc_from_infos(&tsk_infos);
+        {
+            let mut scratch_local = scratch.borrow();
+            module.glwe_tensor_key_encrypt_sk(&mut tsk, &sk_raw, &tsk_infos, &mut xa, &mut xe, &mut scratch_local);
+        }
         let mut tsk_prepared = module.alloc_tensor_key_prepared_from_infos(&tsk_infos);
-        module.prepare_tensor_key(&mut tsk_prepared, &tsk, scratch.borrow());
+        {
+            let mut scratch_local = scratch.borrow();
+            module.prepare_tensor_key(&mut tsk_prepared, &tsk, &mut scratch_local);
+        }
 
         // Store keys by the public index used by operations/tests:
         // rotation shift `k` for slot rotations, and `-1` for conjugation.
@@ -306,23 +386,28 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
 
         let mut atks = HashMap::new();
         for &index in &automorphism_indices {
-            let mut atk = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
+            let mut atk = module.glwe_automorphism_key_alloc_from_infos(&atk_infos);
             let galois_element = if index == -1 { -1 } else { module.galois_element(index) };
-            module.glwe_automorphism_key_encrypt_sk(
-                &mut atk,
-                galois_element,
-                &sk_raw,
-                &atk_infos,
-                &mut xa,
-                &mut xe,
-                scratch.borrow(),
-            );
+            {
+                let mut scratch_local = scratch.borrow();
+                module.glwe_automorphism_key_encrypt_sk(
+                    &mut atk,
+                    galois_element,
+                    &sk_raw,
+                    &atk_infos,
+                    &mut xa,
+                    &mut xe,
+                    &mut scratch_local,
+                );
+            }
             let mut atk_prepared = module.glwe_automorphism_key_prepared_alloc_from_infos(&atk_infos);
-            module.glwe_automorphism_key_prepare(&mut atk_prepared, &atk, scratch.borrow());
+            {
+                let mut scratch_local = scratch.borrow();
+                module.glwe_automorphism_key_prepare(&mut atk_prepared, &atk, &mut scratch_local);
+            }
             atks.insert(index, atk_prepared);
         }
 
-        let ct_infos = params.glwe_layout();
         let scratch_size = module.ckks_all_ops_with_atk_tmp_bytes(&ct_infos, &tsk_infos, &atk_infos, &params.prec);
 
         let tau = Self::to_scalar(TAU);
@@ -359,6 +444,7 @@ impl<BE: TestContextBackend, F: TestScalar> TestContext<BE, F> {
 
         Self {
             module,
+            host_module,
             encoder: Encoder::<F>::new(m).unwrap(),
             params,
             sk,
@@ -389,51 +475,80 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
         (re, im)
     }
 
-    pub fn const_rnx(&self, re: Option<f64>, im: Option<f64>) -> crate::layouts::plaintext::CKKSPlaintextCstRnx<F> {
-        crate::layouts::plaintext::CKKSPlaintextCstRnx::new(re.map(Self::to_scalar), im.map(Self::to_scalar))
+    pub fn const_rnx_with_prec(&self, re: Option<f64>, im: Option<f64>, prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
+        let mut pt = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
+        let n = self.degree().as_usize();
+        let k = pt.max_k();
+        let scale = Self::to_scalar(2.0).powi(prec.log_delta() as i32);
+        if prec.effective_k() <= 63 {
+            let mut coeffs = vec![0i64; n];
+            if let Some(re) = re {
+                coeffs[0] = (Self::to_scalar(re) * scale).round().to_i64().unwrap();
+            }
+            if let Some(im) = im {
+                coeffs[n / 2] = (Self::to_scalar(im) * scale).round().to_i64().unwrap();
+            }
+            pt.encode_vec_i64(&coeffs, k);
+        } else {
+            let mut coeffs = vec![0i128; n];
+            if let Some(re) = re {
+                coeffs[0] = (Self::to_scalar(re) * scale).round().to_i128().unwrap();
+            }
+            if let Some(im) = im {
+                coeffs[n / 2] = (Self::to_scalar(im) * scale).round().to_i128().unwrap();
+            }
+            pt.encode_vec_i128(&coeffs, k);
+        }
+        pt
     }
 
-    pub fn tsk(&self) -> &GLWETensorKeyPrepared<DeviceBuf<BE>, BE> {
+    pub fn const_rnx(&self, re: Option<f64>, im: Option<f64>, prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
+        self.const_rnx_with_prec(re, im, prec)
+    }
+
+    pub fn encode_pt_rnx(&self, re: &[F], im: &[F]) -> CKKSPlaintext<Vec<u8>> {
+        self.encode_pt_znx(re, im)
+    }
+
+    pub fn tsk(&self) -> &GLWETensorKeyPrepared<BE::OwnedBuf, BE> {
         &self.tsk
     }
 
-    pub fn atks(&self) -> &HashMap<i64, GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE>> {
+    pub fn atks(&self) -> &HashMap<i64, GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE>> {
         &self.atks
     }
 
-    pub fn atk(&self, index: i64) -> &GLWEAutomorphismKeyPrepared<DeviceBuf<BE>, BE> {
+    pub fn atk(&self, index: i64) -> &GLWEAutomorphismKeyPrepared<BE::OwnedBuf, BE> {
         self.atks()
             .get(&index)
             .unwrap_or_else(|| panic!("missing automorphism key for index {index}"))
     }
 
     /// Encodes and encrypts complex slot values into a fresh ciphertext.
-    pub fn encrypt(&self, k: usize, re: &[F], im: &[F], scratch: &mut Scratch<BE>) -> CKKSCiphertext<Vec<u8>>
+    pub fn encrypt<'a>(&self, k: usize, re: &[F], im: &[F], scratch: &mut ScratchArena<'a, BE>) -> CKKSCiphertext<Vec<u8>>
     where
         Module<BE>: CKKSEncrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        BE: 'a,
     {
         self.encrypt_with_prec(k, re, im, self.meta(), scratch)
     }
 
-    pub fn encrypt_with_prec(
+    pub fn encrypt_with_prec<'a>(
         &self,
         k: usize,
         re: &[F],
         im: &[F],
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'a, BE>,
     ) -> CKKSCiphertext<Vec<u8>>
     where
         Module<BE>: CKKSEncrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        BE: 'a,
     {
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-
-        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
-
-        let mut pt_znx = alloc_pt_vec_znx(self.degree(), self.base2k(), prec);
-        pt_rnx.to_znx(&mut pt_znx).unwrap();
+        let mut pt_znx = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
+        self.encoder.encode_reim(&mut pt_znx, re, im).unwrap();
 
         let mut ct = self.alloc_ct(k);
         let mut xa = Source::new([3u8; 32]);
@@ -450,10 +565,10 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     }
 
     /// Decrypts and decodes a ciphertext back to complex slot values.
-    pub fn decrypt_decode(&self, ct: &CKKSCiphertext<impl DataRef>, scratch: &mut Scratch<BE>) -> (Vec<F>, Vec<F>)
+    pub fn decrypt_decode(&self, ct: &CKKSCiphertext<Vec<u8>>, scratch: &mut ScratchArena<'_, BE>) -> (Vec<F>, Vec<F>)
     where
         Module<BE>: CKKSDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let prec = CKKSMeta {
             log_delta: ct.log_delta(),
@@ -484,15 +599,15 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     ///   plaintext alignment failures
     pub fn decrypt_with_prec(
         &self,
-        ct: &CKKSCiphertext<impl DataRef>,
+        ct: &CKKSCiphertext<Vec<u8>>,
         prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> anyhow::Result<CKKSPlaintextZnx<Vec<u8>>>
+        scratch: &mut ScratchArena<'_, BE>,
+    ) -> anyhow::Result<CKKSPlaintext<Vec<u8>>>
     where
         Module<BE>: CKKSDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        let mut pt_znx = alloc_pt_vec_znx(self.degree(), ct.base2k(), prec);
+        let mut pt_znx = self.host_module.ckks_pt_vec_znx_alloc(ct.base2k(), prec);
         self.module.ckks_decrypt(&mut pt_znx, ct, &self.sk, scratch)?;
         Ok(pt_znx)
     }
@@ -506,20 +621,17 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     /// - `(re, im)` slot vectors decoded through the current test encoder
     ///
     /// Behavior:
-    /// - converts ZNX to RNX, then decodes RNX into slot-domain real and
+    /// - decodes the host-side ZNX plaintext back into slot-domain real and
     ///   imaginary vectors
     ///
     /// Errors:
     /// - this helper unwraps internal conversion/decoder results and therefore
     ///   panics instead of returning an error in tests
-    pub fn decode_pt_znx(&self, pt_znx: &CKKSPlaintextZnx<impl DataRef>) -> (Vec<F>, Vec<F>) {
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx(pt_znx).unwrap();
-
+    pub fn decode_pt_znx(&self, pt_znx: &CKKSPlaintext<Vec<u8>>) -> (Vec<F>, Vec<F>) {
         let m = self.params.n / 2;
         let mut re = vec![F::zero(); m];
         let mut im = vec![F::zero(); m];
-        self.encoder.decode_reim(&pt_rnx, &mut re, &mut im).unwrap();
+        self.encoder.decode_reim(pt_znx, &mut re, &mut im).unwrap();
 
         (re, im)
     }
@@ -660,37 +772,34 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     pub fn alloc_ct(&self, k: usize) -> CKKSCiphertext<Vec<u8>> {
         let mut layout = self.params.glwe_layout();
         layout.layout.k = k.into();
-        CKKSCiphertext::alloc_from_infos(&layout).unwrap()
+        self.host_module.ckks_ciphertext_alloc_from_infos(&layout)
     }
 
-    /// Encodes (re2, im2) into an RNX plaintext via IFFT.
-    pub fn encode_pt_rnx(&self, re: &[F], im: &[F]) -> CKKSPlaintextRnx<F> {
-        let mut pt_rnx = CKKSPlaintextRnx::<F>::alloc(self.params.n).unwrap();
-        self.encoder.encode_reim(&mut pt_rnx, re, im).unwrap();
-        pt_rnx
+    /// Returns a representative ciphertext infos object carrying both GLWE
+    /// layout information and CKKS metadata for tmp-bytes estimation helpers.
+    pub fn ct_infos(&self) -> CKKSCiphertext<Vec<u8>> {
+        let mut ct = self.alloc_ct(self.max_k());
+        ct.set_meta(self.meta());
+        ct
     }
 
     /// Encodes (re2, im2) into a ZNX plaintext (IFFT + quantise).
-    pub fn encode_pt_znx(&self, re: &[F], im: &[F]) -> CKKSPlaintextZnx<Vec<u8>> {
+    pub fn encode_pt_znx(&self, re: &[F], im: &[F]) -> CKKSPlaintext<Vec<u8>> {
         self.encode_pt_znx_with_prec(re, im, self.meta())
     }
 
-    pub fn encode_pt_znx_with_prec(&self, re: &[F], im: &[F], prec: CKKSMeta) -> CKKSPlaintextZnx<Vec<u8>> {
-        let pt_rnx = self.encode_pt_rnx(re, im);
-        let mut pt_znx = alloc_pt_vec_znx(self.degree(), self.base2k(), prec);
-        pt_rnx.to_znx(&mut pt_znx).unwrap();
+    pub fn encode_pt_znx_with_prec(&self, re: &[F], im: &[F], prec: CKKSMeta) -> CKKSPlaintext<Vec<u8>> {
+        let mut pt_znx = self.host_module.ckks_pt_vec_znx_alloc(self.base2k(), prec);
+        self.encoder.encode_reim(&mut pt_znx, re, im).unwrap();
         pt_znx
     }
 
     pub fn quantized_slots(&self, re: &[F], im: &[F], prec: CKKSMeta) -> (Vec<F>, Vec<F>) {
         let pt_znx = self.encode_pt_znx_with_prec(re, im, prec);
-        let mut pt_rnx = CKKSPlaintextRnx::alloc(self.params.n).unwrap();
-        pt_rnx.decode_from_znx(&pt_znx).unwrap();
-
         let m = self.params.n / 2;
         let mut re_out = vec![F::zero(); m];
         let mut im_out = vec![F::zero(); m];
-        self.encoder.decode_reim(&pt_rnx, &mut re_out, &mut im_out).unwrap();
+        self.encoder.decode_reim(&pt_znx, &mut re_out, &mut im_out).unwrap();
         (re_out, im_out)
     }
 
@@ -723,14 +832,14 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     pub fn assert_decrypt_precision_at_log_delta(
         &self,
         label: &str,
-        ct: &CKKSCiphertext<impl DataRef>,
+        ct: &CKKSCiphertext<Vec<u8>>,
         want_re: &[F],
         want_im: &[F],
         log_delta: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         Module<BE>: CKKSDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let (re_out, im_out) = self.decrypt_decode(ct, scratch);
         self.assert_precision_for_log_delta(&format!("{label} re"), &re_out, want_re, log_delta);
@@ -742,13 +851,13 @@ impl<BE: TestBackend, F: TestScalar> TestContext<BE, F> {
     pub fn assert_decrypt_precision(
         &self,
         label: &str,
-        ct: &CKKSCiphertext<impl DataRef>,
+        ct: &CKKSCiphertext<Vec<u8>>,
         want_re: &[F],
         want_im: &[F],
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) where
         Module<BE>: CKKSDecrypt<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         self.assert_decrypt_precision_at_log_delta(label, ct, want_re, want_im, ct.log_delta(), scratch);
     }
@@ -848,7 +957,7 @@ where
     );
 }
 
-pub fn assert_ct_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, log_delta: usize, log_budget: usize) {
+pub fn assert_ct_meta(label: &str, ct: &CKKSCiphertext<impl Data>, log_delta: usize, log_budget: usize) {
     assert_eq!(ct.log_delta(), log_delta, "{label}: unexpected log_delta");
     assert_eq!(ct.log_budget(), log_budget, "{label}: unexpected log_budget");
 }
@@ -858,15 +967,15 @@ pub fn assert_ckks_error(label: &str, err: &anyhow::Error, want: CKKSComposition
     assert_eq!(got, Some(&want), "{label}: unexpected error: {err}");
 }
 
-pub fn assert_unary_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, input: &CKKSCiphertext<impl DataRef>) {
+pub fn assert_unary_output_meta(label: &str, ct: &CKKSCiphertext<impl Data>, input: &CKKSCiphertext<impl Data>) {
     assert_ct_meta(label, ct, input.log_delta(), input.log_budget() - ct.offset_unary(input));
 }
 
 pub fn assert_binary_output_meta(
     label: &str,
-    ct: &CKKSCiphertext<impl DataRef>,
-    a: &CKKSCiphertext<impl DataRef>,
-    b: &CKKSCiphertext<impl DataRef>,
+    ct: &CKKSCiphertext<impl Data>,
+    a: &CKKSCiphertext<impl Data>,
+    b: &CKKSCiphertext<impl Data>,
 ) {
     assert_ct_meta(
         label,
@@ -876,14 +985,14 @@ pub fn assert_binary_output_meta(
     );
 }
 
-pub fn assert_mul_ct_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+pub fn assert_mul_ct_output_meta(label: &str, ct: &CKKSCiphertext<impl Data>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_budget = a.log_budget().min(b.log_budget()) - a.log_delta().max(b.log_delta());
     let log_delta = a.log_delta().min(b.log_delta());
     let offset = (log_budget + log_delta).saturating_sub(ct.max_k().as_usize());
     assert_ct_meta(label, ct, log_delta, log_budget - offset);
 }
 
-pub fn assert_mul_pt_output_meta(label: &str, ct: &CKKSCiphertext<impl DataRef>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
+pub fn assert_mul_pt_output_meta(label: &str, ct: &CKKSCiphertext<impl Data>, a: &impl CKKSInfos, b: &impl CKKSInfos) {
     let log_budget = a.log_budget() - a.log_delta().min(b.log_delta());
     let log_delta = a.log_delta().max(b.log_delta());
     let offset = (log_budget + log_delta).saturating_sub(ct.max_k().as_usize());

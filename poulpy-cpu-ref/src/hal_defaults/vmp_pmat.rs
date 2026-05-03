@@ -27,15 +27,39 @@ use crate::reference::{
     },
 };
 use poulpy_hal::{
-    api::TakeSlice,
+    api::HostBufMut,
     layouts::{
-        Backend, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToMut, VmpPMatToRef,
-        ZnxInfos,
+        Backend, HostDataMut, HostDataRef, MatZnxBackendRef, Module, ScratchArena, VecZnxDftBackendMut, VecZnxDftBackendRef,
+        VmpPMatBackendMut, VmpPMatBackendRef,
     },
 };
 
+#[inline]
+fn take_host_typed<'a, BE, T>(arena: ScratchArena<'a, BE>, len: usize) -> (&'a mut [T], ScratchArena<'a, BE>)
+where
+    BE: Backend + 'a,
+    BE::BufMut<'a>: HostBufMut<'a>,
+    T: Copy,
+{
+    debug_assert!(
+        BE::SCRATCH_ALIGN.is_multiple_of(std::mem::align_of::<T>()),
+        "B::SCRATCH_ALIGN ({}) must be a multiple of align_of::<T>() ({})",
+        BE::SCRATCH_ALIGN,
+        std::mem::align_of::<T>()
+    );
+    let (buf, arena) = arena.take_region(len * std::mem::size_of::<T>());
+    let bytes: &'a mut [u8] = buf.into_bytes();
+    let slice = unsafe { std::slice::from_raw_parts_mut(bytes.as_mut_ptr() as *mut T, len) };
+    (slice, arena)
+}
+
 #[doc(hidden)]
-pub trait FFT64VmpDefaults<BE: Backend>: Backend {
+pub trait FFT64VmpDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+{
     fn vmp_prepare_tmp_bytes_default(module: &Module<BE>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize
     where
         BE: Backend<ScalarPrep = f64>,
@@ -43,16 +67,21 @@ pub trait FFT64VmpDefaults<BE: Backend>: Backend {
         fft64_vmp_prepare_tmp_bytes(module.n())
     }
 
-    fn vmp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
-    where
+    fn vmp_prepare_default<'s>(
+        module: &Module<BE>,
+        res: &mut VmpPMatBackendMut<'_, BE>,
+        a: &MatZnxBackendRef<'_, BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
         Module<BE>: FFTModuleHandle<f64>,
-        BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64>,
-        Scratch<BE>: TakeSlice,
-        R: VmpPMatToMut<BE>,
-        A: MatZnxToRef,
+        BE: 's,
+        BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec + ReimFFTExecute<ReimFFTTable<f64>, f64> + 'static,
+        for<'x> BE: Backend<BufRef<'x> = &'x [u8], BufMut<'x> = &'x mut [u8]>,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
         let bytes = fft64_vmp_prepare_tmp_bytes(module.n());
-        let (tmp, _) = scratch.take_slice::<f64>(bytes / size_of::<f64>());
+        let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
         fft64_vmp_prepare(module.get_fft_table(), res, a, tmp);
     }
 
@@ -71,41 +100,70 @@ pub trait FFT64VmpDefaults<BE: Backend>: Backend {
         fft64_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
     }
 
-    fn vmp_apply_dft_to_dft_default<R, A, C>(
+    fn vmp_apply_dft_to_dft_default<'s, 'b>(
         _module: &Module<BE>,
-        res: &mut R,
-        a: &A,
-        b: &C,
+        res: &mut VecZnxDftBackendMut<'_, BE>,
+        a: &VecZnxDftBackendRef<'_, BE>,
+        b: &VmpPMatBackendRef<'b, BE>,
         limb_offset: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
+        BE: 's,
+        BE: 'b,
         BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
-        Scratch<BE>: TakeSlice,
-        R: VecZnxDftToMut<BE>,
-        A: VecZnxDftToRef<BE>,
-        C: VmpPMatToRef<BE>,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let mut res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], BE> = a.to_ref();
-        let b_ref: VmpPMat<&[u8], BE> = b.to_ref();
-
-        let bytes = fft64_vmp_apply_dft_to_dft_tmp_bytes(a_ref.size(), b_ref.rows(), b_ref.cols_in());
-        let (tmp, _) = scratch.take_slice::<f64>(bytes / size_of::<f64>());
-        fft64_vmp_apply_dft_to_dft(&mut res_ref, &a_ref, &b_ref, limb_offset, tmp);
+        let bytes = fft64_vmp_apply_dft_to_dft_tmp_bytes(a.size(), b.rows(), b.cols_in());
+        let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
+        fft64_vmp_apply_dft_to_dft(res, a, b, limb_offset, tmp);
     }
 
-    fn vmp_zero_default<R>(_module: &Module<BE>, res: &mut R)
+    fn vmp_apply_dft_to_dft_backend_ref_default<'s, 'r, 'a, 'b>(
+        _module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        a: &VecZnxDftBackendRef<'a, BE>,
+        b: &VmpPMatBackendRef<'b, BE>,
+        limb_offset: usize,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
+        BE: 's,
+        BE: 'b,
+        BE: Backend<ScalarPrep = f64> + ReimArith + Reim4BlkMatVec,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
+        BE::BufMut<'s>: HostBufMut<'s>,
+    {
+        let bytes = fft64_vmp_apply_dft_to_dft_tmp_bytes(a.size(), b.rows(), b.cols_in());
+        let (tmp, _) = take_host_typed::<BE, f64>(scratch.borrow(), bytes / size_of::<f64>());
+        fft64_vmp_apply_dft_to_dft(res, a, b, limb_offset, tmp);
+    }
+
+    fn vmp_zero_default(_module: &Module<BE>, res: &mut VmpPMatBackendMut<'_, BE>)
     where
-        R: VmpPMatToMut<BE>,
+        BE: Backend<ScalarPrep = f64>,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
     {
         fft64_vmp_zero(res);
     }
 }
 
-impl<BE: Backend> FFT64VmpDefaults<BE> for BE {}
+impl<BE: Backend> FFT64VmpDefaults<BE> for BE
+where
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+{
+}
 
 #[doc(hidden)]
-pub trait NTT120VmpDefaults<BE: Backend>: Backend {
+pub trait NTT120VmpDefaults<BE: Backend>: Backend
+where
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+{
     fn vmp_prepare_tmp_bytes_default(module: &Module<BE>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize
     where
         BE: Backend<ScalarPrep = Q120bScalar>,
@@ -113,17 +171,22 @@ pub trait NTT120VmpDefaults<BE: Backend>: Backend {
         ntt120_vmp_prepare_tmp_bytes(module.n())
     }
 
-    fn vmp_prepare_default<R, A>(module: &Module<BE>, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
-    where
+    fn vmp_prepare_default<'s>(
+        module: &Module<BE>,
+        res: &mut VmpPMatBackendMut<'_, BE>,
+        a: &MatZnxBackendRef<'_, BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
         Module<BE>: NttModuleHandle,
+        BE: 's,
         BE: Backend<ScalarPrep = Q120bScalar> + NttDFTExecute<NttTable<Primes30>> + NttFromZnx64 + NttCFromB,
-        Scratch<BE>: TakeSlice,
-        R: VmpPMatToMut<BE>,
-        A: MatZnxToRef,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
         let bytes = ntt120_vmp_prepare_tmp_bytes(module.n());
-        let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
-        ntt120_vmp_prepare::<R, A, BE>(module, res, a, tmp);
+        let (tmp, _) = take_host_typed::<BE, u64>(scratch.borrow(), bytes / size_of::<u64>());
+        ntt120_vmp_prepare::<BE>(module, res, a, tmp);
     }
 
     fn vmp_apply_dft_to_dft_tmp_bytes_default(
@@ -141,36 +204,60 @@ pub trait NTT120VmpDefaults<BE: Backend>: Backend {
         ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
     }
 
-    fn vmp_apply_dft_to_dft_default<R, A, C>(
+    fn vmp_apply_dft_to_dft_default<'s, 'b>(
         module: &Module<BE>,
-        res: &mut R,
-        a: &A,
-        b: &C,
+        res: &mut VecZnxDftBackendMut<'_, BE>,
+        a: &VecZnxDftBackendRef<'_, BE>,
+        b: &VmpPMatBackendRef<'b, BE>,
         limb_offset: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &'s mut ScratchArena<'s, BE>,
     ) where
         Module<BE>: NttModuleHandle,
+        BE: 's,
+        BE: 'b,
         BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
-        Scratch<BE>: TakeSlice,
-        R: VecZnxDftToMut<BE>,
-        A: VecZnxDftToRef<BE>,
-        C: VmpPMatToRef<BE>,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        let mut res_ref: VecZnxDft<&mut [u8], BE> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], BE> = a.to_ref();
-        let b_ref: VmpPMat<&[u8], BE> = b.to_ref();
-
-        let bytes = ntt120_vmp_apply_dft_to_dft_tmp_bytes(a_ref.size(), b_ref.rows(), b_ref.cols_in());
-        let (tmp, _) = scratch.take_slice::<u64>(bytes / size_of::<u64>());
-        ntt120_vmp_apply_dft_to_dft::<_, _, _, BE>(module, &mut res_ref, &a_ref, &b_ref, limb_offset, tmp);
+        let bytes = ntt120_vmp_apply_dft_to_dft_tmp_bytes(a.size(), b.rows(), b.cols_in());
+        let (tmp, _) = take_host_typed::<BE, u64>(scratch.borrow(), bytes / size_of::<u64>());
+        ntt120_vmp_apply_dft_to_dft::<BE>(module, res, a, b, limb_offset, tmp);
     }
 
-    fn vmp_zero_default<R>(_module: &Module<BE>, res: &mut R)
-    where
-        R: VmpPMatToMut<BE>,
+    fn vmp_apply_dft_to_dft_backend_ref_default<'s, 'r, 'a, 'b>(
+        module: &Module<BE>,
+        res: &mut VecZnxDftBackendMut<'r, BE>,
+        a: &VecZnxDftBackendRef<'a, BE>,
+        b: &VmpPMatBackendRef<'b, BE>,
+        limb_offset: usize,
+        scratch: &'s mut ScratchArena<'s, BE>,
+    ) where
+        Module<BE>: NttModuleHandle,
+        BE: 's,
+        BE: 'b,
+        BE: Backend<ScalarPrep = Q120bScalar> + NttExtract1BlkContiguous + NttMulBbc1ColX2 + NttMulBbc2ColsX2,
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+        for<'x> <BE as Backend>::BufRef<'x>: HostDataRef,
+        BE::BufMut<'s>: HostBufMut<'s>,
     {
-        ntt120_vmp_zero::<R, BE>(res);
+        let bytes = ntt120_vmp_apply_dft_to_dft_tmp_bytes(a.size(), b.rows(), b.cols_in());
+        let (tmp, _) = take_host_typed::<BE, u64>(scratch.borrow(), bytes / size_of::<u64>());
+        ntt120_vmp_apply_dft_to_dft::<BE>(module, res, a, b, limb_offset, tmp);
+    }
+
+    fn vmp_zero_default(_module: &Module<BE>, res: &mut VmpPMatBackendMut<'_, BE>)
+    where
+        for<'x> <BE as Backend>::BufMut<'x>: HostDataMut,
+    {
+        ntt120_vmp_zero(res);
     }
 }
 
-impl<BE: Backend> NTT120VmpDefaults<BE> for BE {}
+impl<BE: Backend> NTT120VmpDefaults<BE> for BE
+where
+    BE::OwnedBuf: poulpy_hal::layouts::HostDataMut,
+    for<'a> BE::BufMut<'a>: HostDataMut,
+    for<'a> BE::BufRef<'a>: HostDataRef,
+{
+}

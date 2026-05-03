@@ -1,34 +1,33 @@
 use anyhow::Result;
-use poulpy_core::{ScratchTakeCore, layouts::GLWEPlaintext};
+use poulpy_core::{
+    ScratchArenaTakeCore,
+    layouts::{GLWEInfos, GLWEToBackendRef, LWEInfos},
+};
 use poulpy_hal::{
-    api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    api::{VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshTmpBytes},
+    layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
+use crate::GLWEToBackendMut;
 
-use crate::leveled::{api::CKKSPlaintextZnxOps, oep::CKKSPlaintextZnxOep};
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
-impl<BE: Backend + CKKSImpl<BE>> CKKSPlaintextZnxOps<BE> for Module<BE> {
-    fn ckks_extract_pt_znx_tmp_bytes(&self) -> usize
-    where
-        Self: VecZnxLshTmpBytes + VecZnxRshTmpBytes,
-    {
+use crate::leveled::{api::CKKSPlaintextVecOps, oep::CKKSPlaintextZnxOep};
+
+impl<BE: Backend + CKKSImpl<BE>> CKKSPlaintextVecOps<BE> for Module<BE>
+where
+    Module<BE>: VecZnxLshBackend<BE> + VecZnxLshTmpBytes + VecZnxRshBackend<BE> + VecZnxRshTmpBytes,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+{
+    fn ckks_extract_pt_tmp_bytes(&self) -> usize {
         CKKSPlaintextZnxOep::ckks_extract_pt_znx_tmp_bytes(self)
     }
 
-    fn ckks_extract_pt_znx<S>(
-        &self,
-        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        src: &GLWEPlaintext<impl DataRef>,
-        src_meta: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_extract_pt<D, S>(&self, dst: &mut D, src: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        S: CKKSInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxLsh<BE> + VecZnxRsh<BE>,
+        D: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
-        CKKSPlaintextZnxOep::ckks_extract_pt_znx(self, dst, src, src_meta, scratch)
+        CKKSPlaintextZnxOep::ckks_extract_pt_znx(self, dst, src, scratch)
     }
 }

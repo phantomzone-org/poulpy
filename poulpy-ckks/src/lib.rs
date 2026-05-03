@@ -1,3 +1,5 @@
+#![allow(private_bounds)]
+
 //! # poulpy-ckks
 //!
 //! Backend-agnostic implementation of the CKKS (Cheon-Kim-Kim-Song)
@@ -37,7 +39,8 @@
 //! | [`leveled`] | Leveled arithmetic (add, sub, mul, neg, rotate, conjugate), encryption, decryption, and rescale |
 //! | bootstrapping | Planned CKKS bootstrapping |
 
-use poulpy_core::layouts::{Base2K, TorusPrecision};
+use poulpy_core::layouts::{Base2K, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos, TorusPrecision};
+use poulpy_hal::layouts::Backend;
 
 pub mod encoding;
 mod error;
@@ -48,6 +51,13 @@ pub use error::CKKSCompositionError;
 pub(crate) use error::{
     checked_log_budget_sub, checked_mul_ct_log_budget, checked_mul_pt_log_budget, ensure_base2k_match, ensure_plaintext_alignment,
 };
+
+pub type CKKSCiphertextRef<'a, BE> = layouts::CKKSCiphertext<<BE as Backend>::BufRef<'a>>;
+pub type CKKSCiphertextMut<'a, BE> = layouts::CKKSCiphertext<<BE as Backend>::BufMut<'a>>;
+
+pub trait CKKSPlaintexToBackendRef<BE: Backend>: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos {}
+
+impl<BE: Backend, T> CKKSPlaintexToBackendRef<BE> for T where T: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos {}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// CKKS semantic precision metadata carried by ciphertexts and plaintexts.
@@ -101,4 +111,41 @@ impl CKKSInfos for CKKSMeta {
     fn log_budget(&self) -> usize {
         self.log_budget
     }
+}
+
+/// Mutable CKKS metadata access for ciphertext/plaintext containers.
+pub trait SetCKKSInfos: CKKSInfos {
+    /// Replaces the semantic CKKS metadata.
+    fn set_meta(&mut self, meta: CKKSMeta);
+
+    /// Updates only the base-2 logarithm of the encoded scaling factor.
+    fn set_log_delta(&mut self, log_delta: usize) {
+        let mut meta = self.meta();
+        meta.log_delta = log_delta;
+        self.set_meta(meta);
+    }
+
+    /// Updates only the base-2 logarithm of the remaining homomorphic budget.
+    fn set_log_budget(&mut self, log_budget: usize) {
+        let mut meta = self.meta();
+        meta.log_budget = log_budget;
+        self.set_meta(meta);
+    }
+}
+
+pub(crate) fn ckks_offset_binary<R, A, B>(res: &R, a: &A, b: &B) -> usize
+where
+    R: LWEInfos + CKKSInfos + ?Sized,
+    A: LWEInfos + CKKSInfos + ?Sized,
+    B: LWEInfos + CKKSInfos + ?Sized,
+{
+    a.effective_k().min(b.effective_k()).saturating_sub(res.max_k().as_usize())
+}
+
+pub(crate) fn ckks_offset_unary<R, A>(res: &R, a: &A) -> usize
+where
+    R: LWEInfos + CKKSInfos + ?Sized,
+    A: LWEInfos + CKKSInfos + ?Sized,
+{
+    a.effective_k().saturating_sub(res.max_k().as_usize())
 }

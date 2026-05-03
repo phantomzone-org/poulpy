@@ -1,11 +1,12 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, FillUniform, HostDataMut, HostDataRef, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos,
-    GGLWEToGGSWKey, GGLWEToGGSWKeyToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedBackendMut, GGLWECompressedToBackendMut,
+    GGLWECompressedToBackendRef, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKeyToBackendMut, GLWEInfos, LWEInfos, Rank,
+    TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -20,6 +21,9 @@ use std::fmt;
 pub struct GGLWEToGGSWKeyCompressed<D: Data> {
     pub(crate) keys: Vec<GGLWECompressed<D>>,
 }
+
+pub type GGLWEToGGSWKeyCompressedBackendRef<'a, BE> = GGLWEToGGSWKeyCompressed<<BE as Backend>::BufRef<'a>>;
+pub type GGLWEToGGSWKeyCompressedBackendMut<'a, BE> = GGLWEToGGSWKeyCompressed<<BE as Backend>::BufMut<'a>>;
 
 impl<D: Data> LWEInfos for GGLWEToGGSWKeyCompressed<D> {
     fn n(&self) -> Degree {
@@ -59,13 +63,13 @@ impl<D: Data> GGLWEInfos for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Debug for GGLWEToGGSWKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
@@ -73,7 +77,7 @@ impl<D: DataMut> FillUniform for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GGLWEToGGSWKeyCompressed)",)?;
         for (i, key) in self.keys.iter().enumerate() {
@@ -85,7 +89,7 @@ impl<D: DataRef> fmt::Display for GGLWEToGGSWKeyCompressed<D> {
 
 impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
     /// Allocates a new compressed GGLWE-to-GGSW key by copying parameters from an existing info provider.
-    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    pub(crate) fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
@@ -105,7 +109,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
     }
 
     /// Allocates a new compressed GGLWE-to-GGSW key with the given parameters.
-    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+    pub(crate) fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GGLWEToGGSWKeyCompressed {
             keys: (0..rank.as_usize())
                 .map(|_| GGLWECompressed::alloc(n, base2k, k, rank, rank, dnum, dsize))
@@ -139,7 +143,7 @@ impl GGLWEToGGSWKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> GGLWEToGGSWKeyCompressed<D> {
     // Returns a mutable reference to GGLWE_{s}([s[i]*s[0], s[i]*s[1], ..., s[i]*s[rank]])
     pub fn at_mut(&mut self, i: usize) -> &mut GGLWECompressed<D> {
         assert!((i as u32) < self.rank());
@@ -147,7 +151,7 @@ impl<D: DataMut> GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> GGLWEToGGSWKeyCompressed<D> {
     // Returns a reference to GGLWE_{s}(s[i] * s[j])
     pub fn at(&self, i: usize) -> &GGLWECompressed<D> {
         assert!((i as u32) < self.rank());
@@ -155,7 +159,7 @@ impl<D: DataRef> GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
@@ -171,7 +175,7 @@ impl<D: DataMut> ReaderFrom for GGLWEToGGSWKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWEToGGSWKeyCompressed<D> {
+impl<D: HostDataRef> WriterTo for GGLWEToGGSWKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
         for key in &self.keys {
@@ -189,52 +193,79 @@ where
     /// Decompresses `other` into `res` by decompressing each GGLWE entry.
     fn decompress_gglwe_to_ggsw_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GGLWEToGGSWKeyToMut,
-        O: GGLWEToGGSWKeyCompressedToRef,
+        R: GGLWEToGGSWKeyToBackendMut<Self::Backend>,
+        O: GGLWEToGGSWKeyCompressedToBackendRef<Self::Backend>,
     {
-        let res: &mut GGLWEToGGSWKey<&mut [u8]> = &mut res.to_mut();
-        let other: &GGLWEToGGSWKeyCompressed<&[u8]> = &other.to_ref();
+        let mut res = res.to_backend_mut();
+        let other = other.to_backend_ref();
 
         assert_eq!(res.keys.len(), other.keys.len());
 
         for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
-            self.decompress_gglwe(a, b);
+            let mut a_ref = a;
+            let b_ref = b;
+            self.decompress_gglwe(&mut a_ref, &b_ref);
         }
     }
 }
 
 // module-only API: decompression is provided by `GGLWEToGGSWKeyDecompress` on `Module`.
 
-/// Converts a compressed GGLWE-to-GGSW key to an immutably-borrowed variant.
-pub trait GGLWEToGGSWKeyCompressedToRef {
-    /// Returns an immutably-borrowed view.
-    fn to_ref(&self) -> GGLWEToGGSWKeyCompressed<&[u8]>;
+pub trait GGLWEToGGSWKeyCompressedToBackendRef<BE: Backend> {
+    fn to_backend_ref(&self) -> GGLWEToGGSWKeyCompressedBackendRef<'_, BE>;
 }
 
-impl<D: DataRef> GGLWEToGGSWKeyCompressedToRef for GGLWEToGGSWKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToRef,
-{
-    fn to_ref(&self) -> GGLWEToGGSWKeyCompressed<&[u8]> {
+impl<BE: Backend> GGLWEToGGSWKeyCompressedToBackendRef<BE> for GGLWEToGGSWKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_ref(&self) -> GGLWEToGGSWKeyCompressedBackendRef<'_, BE> {
         GGLWEToGGSWKeyCompressed {
-            keys: self.keys.iter().map(|c| c.to_ref()).collect(),
+            keys: self
+                .keys
+                .iter()
+                .map(GGLWECompressedToBackendRef::<BE>::to_backend_ref)
+                .collect(),
         }
     }
 }
 
-/// Converts a compressed GGLWE-to-GGSW key to a mutably-borrowed variant.
-pub trait GGLWEToGGSWKeyCompressedToMut {
-    /// Returns a mutably-borrowed view.
-    fn to_mut(&mut self) -> GGLWEToGGSWKeyCompressed<&mut [u8]>;
+pub trait GGLWEToGGSWKeyCompressedToBackendMut<BE: Backend>: GGLWEToGGSWKeyCompressedToBackendRef<BE> {
+    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyCompressedBackendMut<'_, BE>;
 }
 
-impl<D: DataMut> GGLWEToGGSWKeyCompressedToMut for GGLWEToGGSWKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToMut,
-{
-    fn to_mut(&mut self) -> GGLWEToGGSWKeyCompressed<&mut [u8]> {
+impl<BE: Backend> GGLWEToGGSWKeyCompressedToBackendMut<BE> for GGLWEToGGSWKeyCompressed<BE::OwnedBuf> {
+    fn to_backend_mut(&mut self) -> GGLWEToGGSWKeyCompressedBackendMut<'_, BE> {
         GGLWEToGGSWKeyCompressed {
-            keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
+            keys: self
+                .keys
+                .iter_mut()
+                .map(GGLWECompressedToBackendMut::<BE>::to_backend_mut)
+                .collect(),
         }
+    }
+}
+
+pub trait GGLWEToGGSWKeyCompressedAtBackendMut<BE: Backend> {
+    fn at_backend_mut(&mut self, i: usize) -> GGLWECompressedBackendMut<'_, BE>;
+}
+
+impl<BE: Backend> GGLWEToGGSWKeyCompressedAtBackendMut<BE> for GGLWEToGGSWKeyCompressed<BE::OwnedBuf> {
+    fn at_backend_mut(&mut self, i: usize) -> GGLWECompressedBackendMut<'_, BE> {
+        assert!((i as u32) < self.rank());
+        <GGLWECompressed<BE::OwnedBuf> as GGLWECompressedToBackendMut<BE>>::to_backend_mut(&mut self.keys[i])
+    }
+}
+
+pub fn gglwe_to_ggsw_key_compressed_at_backend_mut_from_mut<'a, 'b, BE: Backend>(
+    key: &'a mut GGLWEToGGSWKeyCompressed<BE::BufMut<'b>>,
+    i: usize,
+) -> GGLWECompressedBackendMut<'a, BE> {
+    assert!((i as u32) < key.rank());
+    let key_i = &mut key.keys[i];
+    GGLWECompressed {
+        k: key_i.k,
+        base2k: key_i.base2k,
+        dsize: key_i.dsize,
+        seed: key_i.seed.clone(),
+        rank_out: key_i.rank_out,
+        data: poulpy_hal::layouts::mat_znx_backend_mut_from_mut::<BE>(&mut key_i.data),
     }
 }

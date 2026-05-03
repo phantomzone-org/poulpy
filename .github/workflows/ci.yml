@@ -43,39 +43,62 @@ jobs:
           echo "supported=false" >> $GITHUB_OUTPUT
         fi
 
-    # rustfmt always runs — unrelated to AVX support
+    # Detect whether runner has a CUDA-capable GPU
+    - name: Detect CUDA support
+      id: cudacheck
+      run: |
+        if command -v nvidia-smi &>/dev/null && nvidia-smi -L &>/dev/null; then
+          echo "supported=true" >> $GITHUB_OUTPUT
+        else
+          echo "supported=false" >> $GITHUB_OUTPUT
+        fi
+
+    # rustfmt always runs — unrelated to AVX/CUDA support
     - name: rustfmt (check only)
       run: cargo fmt --all --check
 
-    # Build / lint / test WITH AVX
+    # Build / lint / test WITH AVX (poulpy-gpu-cuda excluded — needs CUDA device)
     - name: Build (AVX enabled)
       if: steps.avxcheck.outputs.supported == 'true'
       run: |
         RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo build --workspace --all-targets --features enable-avx
+        cargo build --workspace --all-targets --features enable-avx --exclude poulpy-gpu-cuda
 
     - name: Clippy (AVX enabled)
       if: steps.avxcheck.outputs.supported == 'true'
       run: |
         RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo clippy --workspace --all-targets --features enable-avx -- -D warnings
+        cargo clippy --workspace --all-targets --features enable-avx --exclude poulpy-gpu-cuda -- -D warnings
 
     - name: Tests (AVX enabled)
       if: steps.avxcheck.outputs.supported == 'true'
       run: |
         RUSTDOCFLAGS="-C target-feature=+avx2 -C target-feature=+fma" \
         RUSTFLAGS="-C target-feature=+avx2,+fma" \
-        cargo test --workspace --features enable-avx
+        cargo test --workspace --features enable-avx --exclude poulpy-gpu-cuda
 
-    # Build / lint / test WITHOUT AVX
+    # Build / lint / test WITHOUT AVX (poulpy-gpu-cuda excluded — needs CUDA device)
     - name: Build (portable mode)
       if: steps.avxcheck.outputs.supported == 'false'
-      run: cargo build --workspace --all-targets
+      run: cargo build --workspace --all-targets --exclude poulpy-gpu-cuda
 
     - name: Clippy (portable mode)
       if: steps.avxcheck.outputs.supported == 'false'
-      run: cargo clippy --workspace --all-targets -- -D warnings
+      run: cargo clippy --workspace --all-targets --exclude poulpy-gpu-cuda -- -D warnings
 
     - name: Tests (portable mode)
       if: steps.avxcheck.outputs.supported == 'false'
-      run: cargo test --workspace
+      run: cargo test --workspace --exclude poulpy-gpu-cuda
+
+    # Build / lint / test poulpy-gpu-cuda — only when a CUDA device is present
+    - name: Build poulpy-gpu-cuda
+      if: steps.cudacheck.outputs.supported == 'true'
+      run: cargo build -p poulpy-gpu-cuda --all-targets
+
+    - name: Clippy poulpy-gpu-cuda
+      if: steps.cudacheck.outputs.supported == 'true'
+      run: cargo clippy -p poulpy-gpu-cuda --all-targets -- -D warnings
+
+    - name: Tests poulpy-gpu-cuda
+      if: steps.cudacheck.outputs.supported == 'true'
+      run: cargo test -p poulpy-gpu-cuda

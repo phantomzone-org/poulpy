@@ -5,7 +5,7 @@ use poulpy_cpu_ref::reference::fft64::reim::{ReimFFTTable, ReimIFFTTable};
 use poulpy_hal::GALOISGENERATOR;
 use rand_distr::num_traits::{Float, FloatConst, NumCast};
 
-use crate::layouts::plaintext::CKKSPlaintextVecRnx;
+use crate::{layouts::CKKSRnxScalar, layouts::plaintext::CKKSPlaintextVecHostCodec};
 
 /// Slot encoder/decoder for CKKS real and imaginary vectors.
 ///
@@ -49,84 +49,67 @@ where
         })
     }
 
-    /// Encodes complex slot values into an RNX plaintext buffer.
-    ///
-    /// Inputs:
-    /// - `pt`: destination plaintext polynomial of size `2m`
-    /// - `re`, `im`: real and imaginary slot vectors, each of length `m`
-    ///
-    /// Output:
-    /// - fills `pt` with the packed coefficient representation
-    ///
-    /// Behavior:
-    /// - writes slots according to the internal CKKS slot permutation
-    /// - runs the inverse FFT and normalizes by `1/m`
-    ///
-    /// Errors:
-    /// - returns an error if `pt`, `re`, and `im` do not match the encoder's
-    ///   configured slot count
-    pub fn encode_reim(&self, pt: &mut CKKSPlaintextVecRnx<F>, re: &[F], im: &[F]) -> Result<()> {
-        let n = pt.n();
+    fn pack_reim_coeffs(&self, coeffs: &mut [F], re: &[F], im: &[F]) -> Result<()> {
+        let n = coeffs.len();
         let m = n / 2;
-
         let table = &self.ifft_table;
-
         anyhow::ensure!(table.m() == m);
         anyhow::ensure!(re.len() == m);
         anyhow::ensure!(im.len() == m);
-
-        pt.data_mut().fill(F::zero());
+        coeffs.fill(F::zero());
         for k in 0..m {
             let idx = self.slot_map[k];
-            pt.data_mut()[idx] = re[k];
-            pt.data_mut()[m + idx] = im[k];
+            coeffs[idx] = re[k];
+            coeffs[m + idx] = im[k];
         }
-
-        table.execute(pt.data_mut());
-
+        table.execute(coeffs);
         let inv_m = <F as NumCast>::from(m).unwrap().recip();
-        pt.data_mut().iter_mut().for_each(|x| *x = *x * inv_m);
-
+        coeffs.iter_mut().for_each(|x| *x = *x * inv_m);
         Ok(())
     }
 
-    /// Decodes an RNX plaintext buffer back into complex slot vectors.
-    ///
-    /// Inputs:
-    /// - `pt`: source RNX plaintext polynomial of size `2m`
-    /// - `re`, `im`: output slot buffers of length `m`
-    ///
-    /// Output:
-    /// - fills `re` and `im` with the decoded slot values
-    ///
-    /// Behavior:
-    /// - runs the forward FFT and applies the inverse of the encoder slot map
-    ///
-    /// Errors:
-    /// - returns an error if the provided buffers do not match the encoder's
-    ///   configured slot count
-    pub fn decode_reim(&self, pt: &CKKSPlaintextVecRnx<F>, re: &mut [F], im: &mut [F]) -> Result<()> {
-        let n = pt.n();
+    fn unpack_reim_coeffs(&self, coeffs: &[F], re: &mut [F], im: &mut [F]) -> Result<()> {
+        let n = coeffs.len();
         let m = n / 2;
-
         let table = &self.fft_table;
-
         anyhow::ensure!(table.m() == m);
         anyhow::ensure!(re.len() == m);
         anyhow::ensure!(im.len() == m);
-
         let mut reim_tmp = vec![F::zero(); n];
-        reim_tmp.copy_from_slice(pt.data());
-
+        reim_tmp.copy_from_slice(coeffs);
         table.execute(&mut reim_tmp);
-
         for k in 0..m {
             let idx = self.slot_map[k];
             re[k] = reim_tmp[idx];
             im[k] = reim_tmp[m + idx];
         }
-
         Ok(())
+    }
+
+    /// Encodes complex slot values into a host-backed ZNX plaintext buffer.
+    pub fn encode_reim<P>(&self, pt: &mut P, re: &[F], im: &[F]) -> Result<()>
+    where
+        F: CKKSRnxScalar,
+        P: CKKSPlaintextVecHostCodec<F>,
+    {
+        let n = pt.n().as_usize();
+        let mut coeffs = vec![F::zero(); n];
+        self.pack_reim_coeffs(&mut coeffs, re, im)?;
+        pt.encode_host_floats(&coeffs)
+    }
+
+    /// Decodes a host-backed ZNX plaintext buffer into complex slot values.
+    pub fn decode_reim<P>(&self, pt: &P, re: &mut [F], im: &mut [F]) -> Result<()>
+    where
+        F: CKKSRnxScalar,
+        P: CKKSPlaintextVecHostCodec<F>,
+    {
+        let n = pt.n().as_usize();
+        anyhow::ensure!(re.len() == n / 2);
+        anyhow::ensure!(im.len() == n / 2);
+        let mut coeffs = vec![F::zero(); n];
+        pt.decode_host_floats(&mut coeffs)?;
+        self.unpack_reim_coeffs(&coeffs, re, im)
     }
 }
 
@@ -148,12 +131,20 @@ mod tests {
 
         let encoder = Encoder::<f64>::new(m).unwrap();
 
-        let mut rnx = CKKSPlaintextVecRnx::<f64>::alloc(n).unwrap();
-        encoder.encode_reim(&mut rnx, &re_in, &im_in).unwrap();
+        let host_module = poulpy_hal::layouts::Module::<poulpy_hal::layouts::HostBytesBackend>::new(n as u64);
+        let mut pt = crate::layouts::CKKSModuleAlloc::ckks_pt_vec_znx_alloc(
+            &host_module,
+            poulpy_core::layouts::Base2K(16),
+            crate::CKKSMeta {
+                log_delta: 40,
+                log_budget: 10,
+            },
+        );
+        encoder.encode_reim(&mut pt, &re_in, &im_in).unwrap();
 
         let mut re_out = vec![0.0f64; m];
         let mut im_out = vec![0.0f64; m];
-        encoder.decode_reim(&rnx, &mut re_out, &mut im_out).unwrap();
+        encoder.decode_reim(&pt, &mut re_out, &mut im_out).unwrap();
 
         let err_re = max_err(&re_in, &re_out);
         let err_im = max_err(&im_in, &im_out);

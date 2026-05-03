@@ -1,8 +1,8 @@
 use anyhow::Result;
-use poulpy_core::{GLWEShift, ScratchTakeCore};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
+use poulpy_core::layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
+use poulpy_hal::layouts::{Backend, ScratchArena};
 
-use crate::layouts::CKKSCiphertext;
+use crate::{CKKSInfos, SetCKKSInfos};
 
 /// CKKS rescaling and level-alignment APIs.
 ///
@@ -11,49 +11,33 @@ use crate::layouts::CKKSCiphertext;
 /// more remaining capacity.
 pub trait CKKSRescaleOps<BE: Backend> {
     /// Returns scratch bytes required by [`Self::ckks_rescale_into`].
-    fn ckks_rescale_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>;
+    fn ckks_rescale_tmp_bytes(&self) -> usize;
 
     /// Rescales a ciphertext in place by `k` bits.
     ///
     /// Errors include `InsufficientHomomorphicCapacity` if `k` exceeds the
     /// available `log_budget`.
-    fn ckks_rescale_assign(&self, ct: &mut CKKSCiphertext<impl DataMut>, k: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_rescale_assign<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos;
 
     /// Computes a rescaled copy of `src` into `dst`.
     ///
     /// Errors include `InsufficientHomomorphicCapacity`.
-    fn ckks_rescale_into(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        k: usize,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_rescale_into<Dst, Src>(&self, dst: &mut Dst, k: usize, src: &Src, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 
     /// Rescales either `a` or `b` in place so both ciphertexts end up with the
     /// same `log_budget`.
     ///
     /// Errors propagate from the underlying rescale operation.
-    fn ckks_align_assign(
-        &self,
-        a: &mut CKKSCiphertext<impl DataMut>,
-        b: &mut CKKSCiphertext<impl DataMut>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_align_assign<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos;
 
     /// Returns scratch bytes required by [`Self::ckks_align_assign`].
-    fn ckks_align_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>;
+    fn ckks_align_tmp_bytes(&self) -> usize;
 }

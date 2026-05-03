@@ -12,37 +12,43 @@ macro_rules! impl_ckks_rotate_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_tmp_bytes_default(module, ct_infos, key_infos)
         }
 
-        fn ckks_rotate_into<H, K>(
+        fn ckks_rotate_into<Dst, Src, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
-            dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
-            src: &$crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
-            k: i64,
-            keys: &H,
-            scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
+            dst: &mut Dst,
+            src: &Src,
+            key: &K,
+            scratch: &mut poulpy_hal::layouts::ScratchArena<'_, $backend>,
         ) -> anyhow::Result<()>
         where
+            Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
+            Src: $crate::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
+                + poulpy_core::layouts::LWEInfos
+                + $crate::CKKSInfos,
+            K: poulpy_core::layouts::GetGaloisElement
+                + poulpy_core::layouts::prepared::GGLWEPreparedToBackendRef<$backend>
+                + poulpy_core::layouts::GGLWEInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend> + poulpy_core::GLWEShift<$backend>,
-            K: poulpy_core::layouts::GGLWEPreparedToRef<$backend> + poulpy_core::layouts::GetGaloisElement + poulpy_core::layouts::GGLWEInfos,
-            H: poulpy_core::layouts::GLWEAutomorphismKeyHelper<K, $backend>,
-            poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
+            for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_into_default(module, dst, src, k, keys, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_into_default(module, dst, src, key, scratch)
         }
 
-        fn ckks_rotate_assign<H, K>(
+        fn ckks_rotate_assign<Dst, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
-            dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
-            k: i64,
-            keys: &H,
-            scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
+            dst: &mut Dst,
+            key: &K,
+            scratch: &mut poulpy_hal::layouts::ScratchArena<'_, $backend>,
         ) -> anyhow::Result<()>
         where
+            Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
+            K: poulpy_core::layouts::GetGaloisElement
+                + poulpy_core::layouts::prepared::GGLWEPreparedToBackendRef<$backend>
+                + poulpy_core::layouts::GGLWEInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend>,
-            K: poulpy_core::layouts::GGLWEPreparedToRef<$backend> + poulpy_core::layouts::GetGaloisElement + poulpy_core::layouts::GGLWEInfos,
-            H: poulpy_core::layouts::GLWEAutomorphismKeyHelper<K, $backend>,
-            poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
+            for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {
-            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_assign_default(module, dst, k, keys, scratch)
+            <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::rotate::CKKSRotateDefault<$backend>>::ckks_rotate_assign_default(module, dst, key, scratch)
         }
     };
 }

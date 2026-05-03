@@ -1,8 +1,14 @@
 use anyhow::Result;
-use poulpy_core::{GLWEShift, ScratchTakeCore};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_core::layouts::GLWEToBackendMut;
+use poulpy_core::{
+    GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, LWEInfos},
+};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{CKKSInfos, checked_log_budget_sub, layouts::CKKSCiphertext};
+use crate::GLWEToBackendRef;
+
+use crate::{CKKSInfos, SetCKKSInfos, checked_log_budget_sub};
 
 #[doc(hidden)]
 pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
@@ -20,49 +26,44 @@ pub(crate) trait CKKSRescaleOpsDefault<BE: Backend> {
         self.glwe_shift_tmp_bytes()
     }
 
-    fn ckks_rescale_assign_default(
-        &self,
-        ct: &mut CKKSCiphertext<impl DataMut>,
-        k: usize,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_rescale_assign_default<Dst>(&self, ct: &mut Dst, k: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let log_budget = checked_log_budget_sub("rescale_assign", ct.log_budget(), k)?;
         self.glwe_lsh_assign(ct, k, scratch);
-        ct.meta.log_budget = log_budget;
+        ct.set_log_budget(log_budget);
         Ok(())
     }
 
-    fn ckks_rescale_into_default(
+    fn ckks_rescale_into_default<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
+        dst: &mut Dst,
         k: usize,
-        src: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        src: &Src,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         let log_budget = checked_log_budget_sub("rescale", src.log_budget(), k)?;
         self.glwe_lsh(dst, src, k, scratch);
-        dst.meta = src.meta();
-        dst.meta.log_budget = log_budget;
+        dst.set_meta(src.meta());
+        dst.set_log_budget(log_budget);
         Ok(())
     }
 
-    fn ckks_align_assign_default(
-        &self,
-        a: &mut CKKSCiphertext<impl DataMut>,
-        b: &mut CKKSCiphertext<impl DataMut>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_align_assign_default<A, B>(&self, a: &mut A, b: &mut B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
         Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        A: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        B: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
         if a.log_budget() < b.log_budget() {
             self.ckks_rescale_assign_default(b, b.log_budget() - a.log_budget(), scratch)

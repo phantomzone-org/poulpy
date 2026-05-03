@@ -1,24 +1,16 @@
 use anyhow::Result;
 use poulpy_core::{
-    GLWENormalize, GLWEShift, GLWESub, ScratchTakeCore,
-    layouts::{GLWEInfos, GLWEPlaintext, GLWEPlaintextLayout, LWEInfos},
+    GLWENormalize, GLWEShift, GLWESub, ScratchArenaTakeCore,
+    layouts::{GLWEPlaintext, GLWEPlaintextLayout, GLWEToBackendMut, LWEInfos},
 };
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, VecZnxRshSub, VecZnxRshTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxViewMut},
+    api::{ModuleN, ScratchAvailable, VecZnxRshSubBackend, VecZnxRshSubCoeffIntoBackend, VecZnxRshTmpBytes},
+    layouts::{Backend, Module, ScratchArena},
 };
 
 use crate::{
-    CKKSInfos, CKKSMeta, checked_log_budget_sub,
-    layouts::{
-        CKKSCiphertext,
-        ciphertext::CKKSOffset,
-        plaintext::{
-            CKKSConstPlaintextConversion, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextCstZnx, CKKSPlaintextVecRnx,
-            CKKSPlaintextVecZnx,
-        },
-    },
-    leveled::default::CKKSPlaintextZnxDefault,
+    CKKSInfos, CKKSMeta, GLWEToBackendRef, SetCKKSInfos, checked_log_budget_sub, ckks_offset_binary, ckks_offset_unary,
+    leveled::default::CKKSPlaintextDefault,
 };
 
 pub(crate) trait CKKSSubDefault<BE: Backend> {
@@ -38,10 +30,11 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         self.ckks_sub_tmp_bytes_default()
     }
 
+    #[allow(dead_code)]
     fn ckks_sub_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, _a: &A, b: &CKKSMeta) -> usize
     where
-        R: GLWEInfos,
-        A: GLWEInfos,
+        R: LWEInfos,
+        A: LWEInfos,
         Self: ModuleN + GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
         let b_infos = GLWEPlaintextLayout {
@@ -54,39 +47,41 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
 
     fn ckks_sub_pt_const_tmp_bytes_default(&self) -> usize
     where
-        Self: GLWEShift<BE> + GLWENormalize<BE>,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshTmpBytes,
     {
-        self.glwe_shift_tmp_bytes().max(self.glwe_normalize_tmp_bytes())
+        self.glwe_shift_tmp_bytes()
+            .max(self.glwe_normalize_tmp_bytes())
+            .max(self.vec_znx_rsh_tmp_bytes())
     }
 
-    fn ckks_sub_into_default(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_sub_into_default<Dst, A, B>(&self, dst: &mut Dst, a: &A, b: &B, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: GLWESub<BE> + GLWEShift<BE> + GLWENormalize<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + SetCKKSInfos + CKKSInfos,
+        A: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        B: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_sub_into_unsafe_default(dst, a, b, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_into_unsafe_default(
+    fn ckks_sub_into_unsafe_default<Dst, A, B>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        b: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        a: &A,
+        b: &B,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: GLWESub<BE> + GLWEShift<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + SetCKKSInfos + CKKSInfos,
+        A: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        B: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        let offset = dst.offset_binary(a, b);
+        let offset = ckks_offset_binary(dst, a, b);
 
         if offset == 0 && a.log_budget() == b.log_budget() {
             self.glwe_sub(dst, a, b);
@@ -99,35 +94,29 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         }
 
         let log_budget = checked_log_budget_sub("sub", a.log_budget().min(b.log_budget()), offset)?;
-        dst.meta.log_delta = a.log_delta().min(b.log_delta());
-        dst.meta.log_budget = log_budget;
+        dst.set_log_delta(a.log_delta().min(b.log_delta()));
+        dst.set_log_budget(log_budget);
         Ok(())
     }
 
-    fn ckks_sub_assign_default(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_sub_assign_default<Dst, A>(&self, dst: &mut Dst, a: &A, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE> + GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: GLWESub<BE> + GLWEShift<BE> + GLWENormalize<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_sub_assign_unsafe_default(dst, a, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_assign_unsafe_default(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_sub_assign_unsafe_default<Dst, A>(&self, dst: &mut Dst, a: &A, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWESub + GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: GLWESub<BE> + GLWEShift<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         let dst_log_budget = dst.log_budget();
 
@@ -140,329 +129,164 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
             self.glwe_sub_assign(dst, a);
         }
 
-        dst.meta.log_budget = dst_log_budget.min(a.log_budget());
-        dst.meta.log_delta = dst.log_delta().min(a.log_delta());
+        dst.set_log_budget(dst_log_budget.min(a.log_budget()));
+        dst.set_log_delta(dst.log_delta().min(a.log_delta()));
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_into_default(
+    fn ckks_sub_pt_vec_znx_into_default<Dst, A, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        a: &A,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubBackend<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_sub_pt_vec_znx_into_unsafe_default(dst, a, pt_znx, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_into_unsafe_default(
+    fn ckks_sub_pt_vec_znx_into_unsafe_default<Dst, A, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        a: &A,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubBackend<BE> + GLWEShift<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        let offset = dst.offset_unary(a);
+        let offset = ckks_offset_unary(dst, a);
         self.glwe_lsh(dst, a, offset, scratch);
-        dst.meta = a.meta();
-        dst.meta.log_budget = checked_log_budget_sub("sub_pt_vec_znx", a.log_budget(), offset)?;
+        dst.set_meta(a.meta());
+        dst.set_log_budget(checked_log_budget_sub("sub_pt_vec_znx", a.log_budget(), offset)?);
         self.ckks_sub_pt_vec_znx_assign_unsafe_default(dst, pt_znx, scratch)?;
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_assign_default(
+    fn ckks_sub_pt_vec_znx_assign_default<Dst, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubBackend<BE> + GLWENormalize<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
         self.ckks_sub_pt_vec_znx_assign_unsafe_default(dst, pt_znx, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_znx_assign_unsafe_default(
+    fn ckks_sub_pt_vec_znx_assign_unsafe_default<Dst, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_znx: &CKKSPlaintextVecZnx<impl DataRef>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        pt_znx: &P,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: VecZnxRshSub<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubBackend<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        CKKSPlaintextZnxDefault::ckks_sub_pt_vec_znx_into_default(self, dst, pt_znx, scratch)?;
+        CKKSPlaintextDefault::ckks_sub_pt_vec_znx_into_default(self, dst, pt_znx, scratch)?;
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_rnx_into_default<F>(
+    fn ckks_sub_pt_const_znx_into_default<Dst, A, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        a: &A,
+        dst_coeff: usize,
+        cst_znx: &P,
+        cst_coeff: usize,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
+        Self: GLWEShift<BE> + GLWENormalize<BE> + VecZnxRshSubCoeffIntoBackend<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        self.ckks_sub_pt_vec_rnx_into_unsafe_default(dst, a, pt_rnx, prec, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.ckks_sub_pt_const_znx_into_unsafe_default(dst, a, dst_coeff, cst_znx, cst_coeff, scratch)?;
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_pt_vec_rnx_into_unsafe_default<F>(
+    fn ckks_sub_pt_const_znx_into_unsafe_default<Dst, A, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        a: &A,
+        dst_coeff: usize,
+        cst_znx: &P,
+        cst_coeff: usize,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: ModuleN + VecZnxRshSub<BE> + GLWEShift<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
+        Self: GLWEShift<BE> + VecZnxRshSubCoeffIntoBackend<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + SetCKKSInfos + LWEInfos,
+        A: GLWEToBackendRef<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
-            n: self.n().into(),
-            base2k: dst.base2k(),
-            k: prec.min_k(dst.base2k()),
-        });
-        let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
-        pt_rnx.to_znx(&mut pt_znx)?;
-        CKKSSubDefault::ckks_sub_pt_vec_znx_into_unsafe_default(self, dst, a, &pt_znx, scratch_1)?;
-        Ok(())
-    }
-
-    fn ckks_sub_pt_vec_rnx_assign_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: ModuleN + VecZnxRshSub<BE> + GLWENormalize<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
-    {
-        self.ckks_sub_pt_vec_rnx_assign_unsafe_default(dst, pt_rnx, prec, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
-        Ok(())
-    }
-
-    fn ckks_sub_pt_vec_rnx_assign_unsafe_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        pt_rnx: &CKKSPlaintextVecRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: ModuleN + VecZnxRshSub<BE> + CKKSPlaintextZnxDefault<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextVecRnx<F>: CKKSPlaintextConversion,
-    {
-        let (pt_glwe, scratch_1) = scratch.take_glwe_plaintext(&GLWEPlaintextLayout {
-            n: self.n().into(),
-            base2k: dst.base2k(),
-            k: prec.min_k(dst.base2k()),
-        });
-        let mut pt_znx = CKKSPlaintextVecZnx::from_plaintext_with_meta(pt_glwe, prec);
-        pt_rnx.to_znx(&mut pt_znx)?;
-        self.ckks_sub_pt_vec_znx_assign_unsafe_default(dst, &pt_znx, scratch_1)?;
-        Ok(())
-    }
-
-    fn ckks_sub_pt_const_znx_into_default(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE> + GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-    {
-        self.ckks_sub_pt_const_znx_into_unsafe_default(dst, a, cst_znx, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
-        Ok(())
-    }
-
-    fn ckks_sub_pt_const_znx_into_unsafe_default(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-    {
-        let offset = dst.offset_unary(a);
+        let offset = ckks_offset_unary(dst, a);
         self.glwe_lsh(dst, a, offset, scratch);
-        dst.meta = a.meta();
-        dst.meta.log_budget = checked_log_budget_sub("sub_pt_const_znx", a.log_budget(), offset)?;
-        self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, cst_znx, scratch)
+        dst.set_meta(a.meta());
+        dst.set_log_budget(checked_log_budget_sub("sub_pt_const_znx", a.log_budget(), offset)?);
+        self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, dst_coeff, cst_znx, cst_coeff, scratch)
     }
 
-    fn ckks_sub_pt_const_znx_assign_default(
+    fn ckks_sub_pt_const_znx_assign_default<Dst, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        dst_coeff: usize,
+        cst_znx: &P,
+        cst_coeff: usize,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubCoeffIntoBackend<BE> + CKKSPlaintextDefault<BE> + GLWENormalize<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, cst_znx, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
+        self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, dst_coeff, cst_znx, cst_coeff, scratch)?;
+        self.glwe_normalize_assign(&mut GLWEToBackendMut::to_backend_mut(dst), scratch);
         Ok(())
     }
 
-    fn ckks_sub_pt_const_znx_assign_unsafe_default(
+    fn ckks_sub_pt_const_znx_assign_unsafe_default<Dst, P>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_znx: &CKKSPlaintextCstZnx,
-        _scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        dst_coeff: usize,
+        cst_znx: &P,
+        cst_coeff: usize,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Self: VecZnxRshSubCoeffIntoBackend<BE> + CKKSPlaintextDefault<BE>,
+        Dst: GLWEToBackendMut<BE> + CKKSInfos + LWEInfos,
+        P: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
     {
-        if cst_znx.re().is_none() && cst_znx.im().is_none() {
-            return Ok(());
-        }
-
-        let _offset = crate::ensure_plaintext_alignment(
-            "ckks_sub_pt_const_znx_into",
-            dst.log_budget(),
-            cst_znx.log_delta(),
-            cst_znx.effective_k(),
-        )?;
-        let n = dst.n().as_usize();
-        if let Some(coeff) = cst_znx.re() {
-            for (limb, digit) in coeff.iter().enumerate() {
-                dst.data_mut().at_mut(0, limb)[0] -= *digit;
-            }
-        }
-        if let Some(coeff) = cst_znx.im() {
-            for (limb, digit) in coeff.iter().enumerate() {
-                dst.data_mut().at_mut(0, limb)[n / 2] -= *digit;
-            }
-        }
+        CKKSPlaintextDefault::ckks_sub_pt_cst_znx_into_default(self, dst, dst_coeff, cst_znx, cst_coeff, scratch)?;
         Ok(())
-    }
-
-    fn ckks_sub_pt_const_rnx_into_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE> + GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        self.ckks_sub_pt_const_rnx_into_unsafe_default(dst, a, cst_rnx, prec, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
-        Ok(())
-    }
-
-    fn ckks_sub_pt_const_rnx_into_unsafe_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        a: &CKKSCiphertext<impl DataRef>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        let offset = dst.offset_unary(a);
-        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
-            self.glwe_lsh(dst, a, offset, scratch);
-            dst.meta = a.meta();
-            dst.meta.log_budget = checked_log_budget_sub("sub_pt_const_rnx", a.log_budget(), offset)?;
-            return Ok(());
-        }
-
-        let res_log_budget = checked_log_budget_sub("sub_pt_const_rnx", a.log_budget(), offset)?;
-        let cst_znx = cst_rnx.to_znx_at_k(
-            dst.base2k(),
-            res_log_budget
-                .checked_add(prec.log_delta)
-                .ok_or_else(|| anyhow::anyhow!("sub_pt_const_rnx: aligned precision overflow"))?,
-            prec.log_delta,
-        )?;
-        self.ckks_sub_pt_const_znx_into_unsafe_default(dst, a, &cst_znx, scratch)
-    }
-
-    fn ckks_sub_pt_const_rnx_assign_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Self: GLWENormalize<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        self.ckks_sub_pt_const_rnx_assign_unsafe_default(dst, cst_rnx, prec, scratch)?;
-        self.glwe_normalize_assign(dst, scratch);
-        Ok(())
-    }
-
-    fn ckks_sub_pt_const_rnx_assign_unsafe_default<F>(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        cst_rnx: &CKKSPlaintextCstRnx<F>,
-        prec: CKKSMeta,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
-    where
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
-        CKKSPlaintextCstRnx<F>: CKKSConstPlaintextConversion,
-    {
-        if cst_rnx.re().is_none() && cst_rnx.im().is_none() {
-            return Ok(());
-        }
-
-        let cst_znx = cst_rnx.to_znx_at_k(
-            dst.base2k(),
-            dst.log_budget()
-                .checked_add(prec.log_delta)
-                .ok_or_else(|| anyhow::anyhow!("sub_pt_const_rnx_assign: aligned precision overflow"))?,
-            prec.log_delta,
-        )?;
-        self.ckks_sub_pt_const_znx_assign_unsafe_default(dst, &cst_znx, scratch)
     }
 }
 

@@ -13,7 +13,7 @@
 //! | [`test_decrypt_extract_base2k_mismatch_error`] | plaintext/ciphertext `base2k` mismatch |
 
 use super::helpers::{TestCiphertextBackend as Backend, TestContext, TestScalar, assert_ckks_error, assert_ct_meta};
-use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::plaintext::alloc_pt_vec_znx, leveled::api::CKKSDecrypt};
+use crate::{CKKSCompositionError, CKKSInfos, CKKSMeta, layouts::CKKSModuleAlloc, leveled::api::CKKSDecrypt};
 use poulpy_core::layouts::LWEInfos;
 use poulpy_hal::api::ScratchOwnedBorrow;
 
@@ -31,9 +31,9 @@ fn extract_src_prec<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) -> CKK
     }
 }
 
-fn extract_fixture<BE: Backend, F: TestScalar>(
+fn extract_fixture<'a, BE: Backend + 'a, F: TestScalar>(
     ctx: &TestContext<BE, F>,
-    scratch: &mut poulpy_hal::layouts::Scratch<BE>,
+    scratch: &mut poulpy_hal::layouts::ScratchArena<'a, BE>,
 ) -> crate::layouts::CKKSCiphertext<Vec<u8>> {
     let src_prec = extract_src_prec(ctx);
     ctx.encrypt_with_prec(src_prec.effective_k(), &ctx.re1, &ctx.im1, src_prec, scratch)
@@ -42,14 +42,14 @@ fn extract_fixture<BE: Backend, F: TestScalar>(
 fn assert_decrypt_extract_success<BE: Backend, F: TestScalar>(label: &str, ctx: &TestContext<BE, F>, dst_prec: CKKSMeta)
 where
     poulpy_hal::layouts::Module<BE>: CKKSDecrypt<BE>,
-    poulpy_hal::layouts::Scratch<BE>: poulpy_core::ScratchTakeCore<BE>,
+    for<'a> poulpy_hal::layouts::ScratchArena<'a, BE>: poulpy_core::ScratchArenaTakeCore<'a, BE>,
 {
     let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
-    let ct = extract_fixture(ctx, scratch.borrow());
+    let ct = extract_fixture(ctx, &mut scratch.borrow());
     assert_ct_meta(&format!("{label} src"), &ct, src_prec.log_delta, src_prec.log_budget);
 
-    let pt = ctx.decrypt_with_prec(&ct, dst_prec, scratch.borrow()).unwrap();
+    let pt = ctx.decrypt_with_prec(&ct, dst_prec, &mut scratch.borrow()).unwrap();
     assert_eq!(pt.meta, dst_prec, "{label}: decrypt changed destination metadata");
 
     let (re_out, im_out) = ctx.decode_pt_znx(&pt);
@@ -69,14 +69,14 @@ where
 /// Verifies that encrypt → decrypt → decode recovers the original message.
 pub fn test_encrypt_decrypt<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = ctx.alloc_scratch();
-    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
     assert_ct_meta(
         "encrypt_decrypt",
         &ct,
         ctx.meta().log_delta,
         ctx.max_k() - ctx.meta().log_delta,
     );
-    let (re_out, im_out) = ctx.decrypt_decode(&ct, scratch.borrow());
+    let (re_out, im_out) = ctx.decrypt_decode(&ct, &mut scratch.borrow());
     ctx.assert_precision_for_log_delta("encrypt_decrypt re", &re_out, &ctx.re1, ct.log_delta());
     ctx.assert_precision_for_log_delta("encrypt_decrypt im", &im_out, &ctx.im1, ct.log_delta());
 }
@@ -124,16 +124,18 @@ pub fn test_decrypt_extract_lsh_for_larger_log_delta<BE: Backend, F: TestScalar>
 pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
-    let ct = extract_fixture(ctx, scratch.borrow());
-    let mut pt = alloc_pt_vec_znx(
-        ctx.degree(),
+    let ct = extract_fixture(ctx, &mut scratch.borrow());
+    let mut pt = ctx.host_module.ckks_pt_vec_znx_alloc(
         ctx.base2k(),
         CKKSMeta {
             log_delta: src_prec.log_delta,
             log_budget: src_prec.log_budget + 1,
         },
     );
-    let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
+    let err = ctx
+        .module
+        .ckks_decrypt(&mut pt, &ct, &ctx.sk, &mut scratch.borrow())
+        .unwrap_err();
     assert_ckks_error(
         "decrypt_extract_output_hom_rem_too_large",
         &err,
@@ -149,10 +151,13 @@ pub fn test_decrypt_extract_output_hom_rem_too_large<BE: Backend, F: TestScalar>
 pub fn test_decrypt_extract_base2k_mismatch_error<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let src_prec = extract_src_prec(ctx);
     let mut scratch = ctx.alloc_scratch();
-    let ct = extract_fixture(ctx, scratch.borrow());
+    let ct = extract_fixture(ctx, &mut scratch.borrow());
     let mismatched_base2k = (ctx.base2k().as_usize() / 2).into();
-    let mut pt = alloc_pt_vec_znx(ctx.degree(), mismatched_base2k, src_prec);
-    let err = ctx.module.ckks_decrypt(&mut pt, &ct, &ctx.sk, scratch.borrow()).unwrap_err();
+    let mut pt = ctx.host_module.ckks_pt_vec_znx_alloc(mismatched_base2k, src_prec);
+    let err = ctx
+        .module
+        .ckks_decrypt(&mut pt, &ct, &ctx.sk, &mut scratch.borrow())
+        .unwrap_err();
     assert_ckks_error(
         "decrypt_extract_base2k_mismatch",
         &err,

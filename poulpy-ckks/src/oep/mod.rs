@@ -1,10 +1,12 @@
 mod add;
 mod ckks_impl;
 mod conjugate;
+mod encryption;
 mod mul;
 mod neg;
 mod pow2;
 mod pt_znx;
+mod rescale;
 mod rotate;
 mod sub;
 
@@ -12,10 +14,12 @@ pub use add::impl_ckks_add_default_methods;
 pub use ckks_impl::CKKSImpl;
 pub use ckks_impl::impl_ckks_default_methods;
 pub use conjugate::impl_ckks_conjugate_default_methods;
+pub use encryption::impl_ckks_encryption_default_methods;
 pub use mul::impl_ckks_mul_default_methods;
 pub use neg::impl_ckks_neg_default_methods;
 pub use pow2::impl_ckks_pow2_default_methods;
 pub use pt_znx::impl_ckks_pt_znx_default_methods;
+pub use rescale::impl_ckks_rescale_default_methods;
 pub use rotate::impl_ckks_rotate_default_methods;
 pub use sub::impl_ckks_sub_default_methods;
 

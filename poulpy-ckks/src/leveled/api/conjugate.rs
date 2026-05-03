@@ -1,37 +1,30 @@
 use anyhow::Result;
-use poulpy_core::{
-    GLWEAutomorphism, GLWEShift, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWEAutomorphismKeyPrepared, GLWEInfos},
-};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch};
+use poulpy_core::layouts::{GGLWEInfos, GLWEInfos, prepared::GLWEAutomorphismKeyPreparedToBackendRef};
+use poulpy_core::layouts::{GGLWEPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, GetGaloisElement, LWEInfos};
+use poulpy_hal::layouts::{Backend, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 pub trait CKKSConjugateOps<BE: Backend + CKKSImpl<BE>> {
     fn ckks_conjugate_tmp_bytes<C, K>(&self, ct_infos: &C, key_infos: &K) -> usize
     where
-        C: GLWEInfos,
-        K: GGLWEInfos,
-        Self: GLWEAutomorphism<BE>;
+        C: GLWEInfos + CKKSInfos,
+        K: GGLWEInfos;
 
-    fn ckks_conjugate_into(
+    fn ckks_conjugate_into<Dst, Src, K>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
-        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
+        dst: &mut Dst,
+        src: &Src,
+        key: &K,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE> + GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 
-    fn ckks_conjugate_assign(
-        &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        key: &GLWEAutomorphismKeyPrepared<impl DataRef, BE>,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_conjugate_assign<Dst, K>(&self, dst: &mut Dst, key: &K, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEAutomorphism<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        K: GLWEAutomorphismKeyPreparedToBackendRef<BE> + GGLWEPreparedToBackendRef<BE> + GetGaloisElement + GGLWEInfos;
 }

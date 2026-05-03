@@ -1,65 +1,46 @@
 use anyhow::Result;
-use poulpy_core::{EncryptionInfos, ScratchTakeCore, layouts::GLWEInfos};
+use poulpy_core::{
+    EncryptionInfos,
+    layouts::{GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+};
 use poulpy_hal::{
-    api::ScratchAvailable,
-    layouts::{Backend, DataMut, DataRef, Scratch},
+    layouts::{Backend, ScratchArena},
+    source::Source,
 };
 
-use crate::{
-    layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
-    oep::CKKSImpl,
-};
-use poulpy_core::layouts::GLWESecretPreparedToRef;
-use poulpy_hal::source::Source;
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 pub trait CKKSEncrypt<BE: Backend + CKKSImpl<BE>> {
-    /// Returns the scratch size, in bytes, required by [`Self::ckks_encrypt_sk`].
-    ///
-    /// The returned size depends on the ciphertext layout and backend.
     fn ckks_encrypt_sk_tmp_bytes<A>(&self, ct_infos: &A) -> usize
     where
-        A: GLWEInfos;
+        A: GLWEInfos + CKKSInfos;
 
-    /// Encrypts a CKKS plaintext vector under a secret key.
     #[allow(clippy::too_many_arguments)]
-    fn ckks_encrypt_sk<S, E: EncryptionInfos>(
+    fn ckks_encrypt_sk<'s, Dct, Dpt, S, E: EncryptionInfos>(
         &self,
-        ct: &mut CKKSCiphertext<impl DataMut>,
-        pt: &CKKSPlaintextVecZnx<impl DataRef>,
+        ct: &mut Dct,
+        pt: &Dpt,
         sk: &S,
         enc_infos: &E,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
-        S: GLWESecretPreparedToRef<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>;
+        S: GLWESecretPreparedToBackendRef<BE>,
+        Dct: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dpt: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        BE: 's;
 }
 
 pub trait CKKSDecrypt<BE: Backend + CKKSImpl<BE>> {
-    /// Returns the scratch size, in bytes, required by [`Self::ckks_decrypt`].
-    ///
-    /// The returned size includes raw GLWE decryption plus plaintext extraction.
     fn ckks_decrypt_tmp_bytes<A>(&self, ct_infos: &A) -> usize
     where
-        A: GLWEInfos;
+        A: GLWEInfos + CKKSInfos;
 
-    /// Decrypts a ciphertext into a caller-provided CKKS plaintext layout.
-    fn ckks_decrypt<S>(
-        &self,
-        pt: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        ct: &CKKSCiphertext<impl DataRef>,
-        sk: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_decrypt<Dpt, Dct, S>(&self, pt: &mut Dpt, ct: &Dct, sk: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        Dpt: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dct: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos;
 }
-
-// Suppress unused import warnings for trait bounds used only in delegates
-#[allow(unused_imports)]
-use poulpy_hal::api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshTmpBytes};
-#[allow(unused_imports)]
-use poulpy_hal::layouts::Module;

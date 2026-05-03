@@ -21,28 +21,26 @@ use anyhow::Result;
 use poulpy_ckks::{
     CKKSInfos, CKKSMeta,
     encoding::Encoder,
-    layouts::{
-        CKKSCiphertext, CKKSMaintainOps, CKKSPlaintextConversion, CKKSPlaintextCstRnx, CKKSPlaintextVecRnx, CKKSPlaintextVecZnx,
-    },
+    layouts::{CKKSCiphertext, CKKSMaintainOps, CKKSModuleAlloc, CKKSPlaintext},
     leveled::api::{CKKSAddOpsUnsafe, CKKSAllOpsTmpBytes, CKKSDecrypt, CKKSEncrypt, CKKSMulAddOps, CKKSMulOps},
 };
 use poulpy_core::{
     EncryptionLayout, GLWENormalize, GLWETensorKeyEncryptSk,
     layouts::{
-        GLWELayout, GLWESecret, GLWETensorKey, GLWETensorKeyLayout, GLWETensorKeyPreparedFactory, LWEInfos, Rank,
+        GLWELayout, GLWETensorKeyLayout, GLWETensorKeyPreparedFactory, GLWEToBackendMut, LWEInfos, ModuleCoreAlloc, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory, GLWETensorKeyPrepared},
     },
 };
 use poulpy_cpu_ref::NTT120Ref;
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{DeviceBuf, Module, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, ScratchOwned},
     source::Source,
 };
 
 type BakcendImpl = NTT120Ref;
-type SecretKeyPrepared = GLWESecretPrepared<DeviceBuf<BakcendImpl>, BakcendImpl>;
-type TensorKeyPrepared = GLWETensorKeyPrepared<DeviceBuf<BakcendImpl>, BakcendImpl>;
+type SecretKeyPrepared = GLWESecretPrepared<<BakcendImpl as Backend>::OwnedBuf, BakcendImpl>;
+type TensorKeyPrepared = GLWETensorKeyPrepared<<BakcendImpl as Backend>::OwnedBuf, BakcendImpl>;
 
 const N: usize = 4096;
 const M: usize = N / 2;
@@ -84,11 +82,11 @@ struct EncodingArtifacts {
     x_re: Vec<f64>,
     x_im: Vec<f64>,
     coeffs: PolynomialCoeffs,
-    cst_a: CKKSPlaintextCstRnx<f64>,
-    cst_b: CKKSPlaintextCstRnx<f64>,
-    cst_c: CKKSPlaintextCstRnx<f64>,
-    cst_d: CKKSPlaintextCstRnx<f64>,
-    pt_znx: CKKSPlaintextVecZnx<Vec<u8>>,
+    cst_a: CKKSPlaintext<Vec<u8>>,
+    cst_b: CKKSPlaintext<Vec<u8>>,
+    cst_c: CKKSPlaintext<Vec<u8>>,
+    cst_d: CKKSPlaintext<Vec<u8>>,
+    pt_znx: CKKSPlaintext<Vec<u8>>,
 }
 
 /// Ciphertexts produced by the encryption phase.
@@ -105,6 +103,39 @@ struct EvaluationArtifacts {
 struct DecryptionArtifacts {
     have_re: Vec<f64>,
     have_im: Vec<f64>,
+}
+
+fn encode_const_reim(
+    module: &Module<BakcendImpl>,
+    re: Option<f64>,
+    im: Option<f64>,
+    base2k: usize,
+    prec: CKKSMeta,
+) -> Result<CKKSPlaintext<Vec<u8>>> {
+    let mut pt = module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
+    let n = module.n();
+    let scale = 2f64.powi(prec.log_delta() as i32);
+    let k = prec.effective_k().into();
+    if prec.effective_k() <= 63 {
+        let mut coeffs = vec![0i64; n];
+        if let Some(re) = re {
+            coeffs[0] = (re * scale).round() as i64;
+        }
+        if let Some(im) = im {
+            coeffs[n / 2] = (im * scale).round() as i64;
+        }
+        pt.encode_vec_i64(&coeffs, k);
+    } else {
+        let mut coeffs = vec![0i128; n];
+        if let Some(re) = re {
+            coeffs[0] = (re * scale).round() as i128;
+        }
+        if let Some(im) = im {
+            coeffs[n / 2] = (im * scale).round() as i128;
+        }
+        pt.encode_vec_i128(&coeffs, k);
+    }
+    Ok(pt)
 }
 
 /// Returns the GLWE ciphertext layout used throughout the example.
@@ -171,7 +202,7 @@ fn print_ct_meta(label: &str, ct: &CKKSCiphertext<Vec<u8>>) {
 }
 
 /// Prints the semantic and storage metadata of a CKKS plaintext.
-fn print_pt_meta(label: &str, pt: &CKKSPlaintextVecZnx<Vec<u8>>) {
+fn print_pt_meta(label: &str, pt: &CKKSPlaintext<Vec<u8>>) {
     println!(
         "  {label:<28} dec={:>2} hom={:>2} eff={:>3} limbs={:>2} max={:>3}",
         pt.log_delta(),
@@ -207,30 +238,37 @@ fn setup() -> Result<SetupArtifacts> {
     let mut source_xa = Source::new([1u8; 32]);
     let mut source_xe = Source::new([2u8; 32]);
 
-    let mut sk_raw = GLWESecret::alloc_from_infos(&glwe_layout());
+    let mut sk_raw = module.glwe_secret_alloc_from_infos(&glwe_layout());
     sk_raw.fill_ternary_hw(HW, &mut source_xs);
 
     let mut sk = module.glwe_secret_prepared_alloc_from_infos(&glwe_layout());
     module.glwe_secret_prepare(&mut sk, &sk_raw);
     println!("  prepared secret key");
+    let ct_infos = module.ckks_ciphertext_alloc_from_infos(&glwe_layout());
     let scratch_bytes = module
-        .ckks_all_ops_tmp_bytes(&glwe_layout(), &tsk_layout(), &PREC_PT)
+        .ckks_all_ops_tmp_bytes(&ct_infos, &tsk_layout(), &PREC_PT)
         .max(module.glwe_normalize_tmp_bytes());
     let mut scratch = ScratchOwned::<BakcendImpl>::alloc(scratch_bytes);
     println!("  scratch bytes: {scratch_bytes}");
 
-    let mut tsk = GLWETensorKey::alloc_from_infos(&tsk_layout());
-    module.glwe_tensor_key_encrypt_sk(
-        &mut tsk,
-        &sk_raw,
-        &tsk_layout(),
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
+    let mut tsk = module.glwe_tensor_key_alloc_from_infos(&tsk_layout());
+    {
+        let mut scratch_local = scratch.borrow();
+        module.glwe_tensor_key_encrypt_sk(
+            &mut tsk,
+            &sk_raw,
+            &tsk_layout(),
+            &mut source_xa,
+            &mut source_xe,
+            &mut scratch_local,
+        );
+    }
 
     let mut tsk_prepared = module.alloc_tensor_key_prepared_from_infos(&tsk_layout());
-    module.prepare_tensor_key(&mut tsk_prepared, &tsk, scratch.borrow());
+    {
+        let mut scratch_local = scratch.borrow();
+        module.prepare_tensor_key(&mut tsk_prepared, &tsk, &mut scratch_local);
+    }
     println!("  prepared tensor key");
 
     Ok(SetupArtifacts {
@@ -248,8 +286,8 @@ fn setup() -> Result<SetupArtifacts> {
 /// coefficients `(a, b, c, d)`, and encodes `x` from slot form into a quantized
 /// ZNX plaintext suitable for encryption.
 ///
-/// The constant coefficients stay as RNX scalars because the evaluation APIs
-/// can quantize them on demand with the correct metadata.
+/// The constant coefficients are prepared as host-side ZNX constants and later
+/// uploaded or consumed directly by the backend.
 fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
     print_phase("encoding");
 
@@ -272,16 +310,12 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
     println!("    c = {}", format_complex(coeffs.c.0, coeffs.c.1, 4));
     println!("    d = {}", format_complex(coeffs.d.0, coeffs.d.1, 4));
 
-    let cst_a = CKKSPlaintextCstRnx::new(Some(coeffs.a.0), Some(coeffs.a.1));
-    let cst_b = CKKSPlaintextCstRnx::new(Some(coeffs.b.0), Some(coeffs.b.1));
-    let cst_c = CKKSPlaintextCstRnx::new(Some(coeffs.c.0), Some(coeffs.c.1));
-    let cst_d = CKKSPlaintextCstRnx::new(Some(coeffs.d.0), Some(coeffs.d.1));
-
-    let mut pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N)?;
-    setup.encoder.encode_reim(&mut pt_rnx, &x_re, &x_im)?;
-
-    let mut pt_znx = CKKSPlaintextVecZnx::alloc(N.into(), BASE2K.into(), PREC_CT);
-    pt_rnx.to_znx(&mut pt_znx)?;
+    let cst_a = encode_const_reim(&setup.module, Some(coeffs.a.0), Some(coeffs.a.1), BASE2K, PREC_PT)?;
+    let cst_b = encode_const_reim(&setup.module, Some(coeffs.b.0), Some(coeffs.b.1), BASE2K, PREC_PT)?;
+    let cst_c = encode_const_reim(&setup.module, Some(coeffs.c.0), Some(coeffs.c.1), BASE2K, PREC_PT)?;
+    let cst_d = encode_const_reim(&setup.module, Some(coeffs.d.0), Some(coeffs.d.1), BASE2K, PREC_PT)?;
+    let mut pt_znx = setup.module.ckks_pt_vec_znx_alloc(BASE2K.into(), PREC_CT);
+    setup.encoder.encode_reim(&mut pt_znx, &x_re, &x_im)?;
     print_pt_meta("encoded plaintext x", &pt_znx);
     println!("  slot[0] cleartext = {}", format_complex(x_re[0], x_im[0], 6));
 
@@ -306,19 +340,22 @@ fn encoding(setup: &SetupArtifacts) -> Result<EncodingArtifacts> {
 fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Result<EncryptionArtifacts> {
     print_phase("encryption");
 
-    let mut ct_x = CKKSCiphertext::alloc(N.into(), CT_K.into(), BASE2K.into());
+    let mut ct_x = setup.module.ckks_ciphertext_alloc(BASE2K.into(), CT_K.into());
     let mut source_xa = Source::new([3u8; 32]);
     let mut source_xe = Source::new([4u8; 32]);
 
-    setup.module.ckks_encrypt_sk(
-        &mut ct_x,
-        &encoding.pt_znx,
-        &setup.sk,
-        &glwe_layout(),
-        &mut source_xa,
-        &mut source_xe,
-        setup.scratch.borrow(),
-    )?;
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup.module.ckks_encrypt_sk(
+            &mut ct_x,
+            &encoding.pt_znx,
+            &setup.sk,
+            &glwe_layout(),
+            &mut source_xa,
+            &mut source_xe,
+            &mut scratch,
+        )?;
+    }
 
     print_ct_meta("ciphertext x", &ct_x);
 
@@ -340,7 +377,7 @@ fn encryption(setup: &mut SetupArtifacts, encoding: &EncodingArtifacts) -> Resul
 ///   steps; limbs are only K-normalized at the final step or just before a
 ///   ct-ct multiply that requires normalized inputs
 /// - `glwe_normalize` is applied before ct-ct multiplication
-/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_rnx_into`, which
+/// - the final step fuses `+= b*x` via `ckks_mul_add_pt_const_znx_into`, which
 ///   normalizes the output as the last operation
 fn evaluation(
     setup: &mut SetupArtifacts,
@@ -351,10 +388,15 @@ fn evaluation(
     print_ct_meta("input x", &encryption.ct_x);
 
     println!("  -> square x");
-    let mut ct_x2 = CKKSCiphertext::alloc(N.into(), encryption.ct_x.log_budget().into(), BASE2K.into());
-    setup
+    let mut ct_x2 = setup
         .module
-        .ckks_square_into(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, setup.scratch.borrow())?;
+        .ckks_ciphertext_alloc(BASE2K.into(), encryption.ct_x.log_budget().into());
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_square_into(&mut ct_x2, &encryption.ct_x, &setup.tsk_prepared, &mut scratch)?;
+    }
     print_ct_meta("x^2", &ct_x2);
     println!("  -> compact limbs after square");
     setup.module.ckks_compact_limbs(&mut ct_x2)?;
@@ -363,56 +405,63 @@ fn evaluation(
     let linear_k = encryption.ct_x.effective_k() - PREC_PT.log_delta;
 
     println!("  -> build right branch: c + d*x (unsafe add, normalize before ct-ct mul)");
-    let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
-    setup.module.ckks_mul_pt_const_rnx_into(
-        &mut right_linear,
-        &encryption.ct_x,
-        &encoding.cst_d,
-        PREC_PT,
-        setup.scratch.borrow(),
-    )?;
-    print_ct_meta("d * x", &right_linear);
-    unsafe {
+    let mut right_linear = setup.module.ckks_ciphertext_alloc(BASE2K.into(), linear_k.into());
+    {
+        let mut scratch = setup.scratch.borrow();
         setup
             .module
-            .ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &encoding.cst_c, PREC_PT, setup.scratch.borrow())?;
+            .ckks_mul_pt_const_znx_into(&mut right_linear, &encryption.ct_x, &encoding.cst_d, &mut scratch)?;
+    }
+    print_ct_meta("d * x", &right_linear);
+    unsafe {
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_add_pt_const_znx_assign_unsafe(&mut right_linear, 0, &encoding.cst_c, 0, &mut scratch)?;
     }
     print_ct_meta("c + d * x (not normalized)", &right_linear);
 
     println!("  -> normalize right branch before ct-ct multiply");
-    setup.module.glwe_normalize_assign(&mut right_linear, setup.scratch.borrow());
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup.module.glwe_normalize_assign(
+            &mut <CKKSCiphertext<Vec<u8>> as GLWEToBackendMut<BakcendImpl>>::to_backend_mut(&mut right_linear),
+            &mut scratch,
+        );
+    }
     print_ct_meta("c + d * x normalized", &right_linear);
 
     println!("  -> multiply right branch by x^2");
     let right_branch_k = ct_x2.effective_k() - ct_x2.log_delta();
-    let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
-    setup.module.ckks_mul_into(
-        &mut right_branch,
-        &right_linear,
-        &ct_x2,
-        &setup.tsk_prepared,
-        setup.scratch.borrow(),
-    )?;
+    let mut right_branch = setup.module.ckks_ciphertext_alloc(BASE2K.into(), right_branch_k.into());
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_mul_into(&mut right_branch, &right_linear, &ct_x2, &setup.tsk_prepared, &mut scratch)?;
+    }
     print_ct_meta("(c + d * x) * x^2", &right_branch);
     println!("  -> compact limbs after ct-ct multiply");
     setup.module.ckks_compact_limbs(&mut right_branch)?;
     print_ct_meta("(c + d * x) * x^2 compacted", &right_branch);
 
     println!("  -> final assembly: right_branch + a (unsafe), then += b*x (normalizing)");
-    let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
+    let mut poly = setup
+        .module
+        .ckks_ciphertext_alloc(BASE2K.into(), right_branch.effective_k().into());
     unsafe {
-        setup.module.ckks_add_pt_const_rnx_into_unsafe(
-            &mut poly,
-            &right_branch,
-            &encoding.cst_a,
-            PREC_PT,
-            setup.scratch.borrow(),
-        )?;
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_add_pt_const_znx_into_unsafe(&mut poly, &right_branch, 0, &encoding.cst_a, 0, &mut scratch)?;
     }
     print_ct_meta("right_branch + a (not normalized)", &poly);
-    setup
-        .module
-        .ckks_mul_add_pt_const_rnx_into(&mut poly, &encryption.ct_x, &encoding.cst_b, PREC_PT, setup.scratch.borrow())?;
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_mul_add_pt_const_znx_into(&mut poly, &encryption.ct_x, &encoding.cst_b, &mut scratch)?;
+    }
     print_ct_meta("final polynomial", &poly);
 
     Ok(EvaluationArtifacts { poly })
@@ -428,18 +477,18 @@ fn evaluation(
 fn decryption(setup: &mut SetupArtifacts, evaluation: &EvaluationArtifacts) -> Result<DecryptionArtifacts> {
     print_phase("decryption");
 
-    let mut pt_znx = CKKSPlaintextVecZnx::alloc_from_infos(&evaluation.poly);
-    setup
-        .module
-        .ckks_decrypt(&mut pt_znx, &evaluation.poly, &setup.sk, setup.scratch.borrow())?;
+    let mut pt_znx = setup.module.ckks_pt_vec_znx_alloc_from_infos(&evaluation.poly);
+    {
+        let mut scratch = setup.scratch.borrow();
+        setup
+            .module
+            .ckks_decrypt(&mut pt_znx, &evaluation.poly, &setup.sk, &mut scratch)?;
+    }
     print_pt_meta("decrypted plaintext", &pt_znx);
-
-    let mut pt_rnx = CKKSPlaintextVecRnx::<f64>::alloc(N)?;
-    pt_rnx.decode_from_znx(&pt_znx)?;
 
     let mut have_re = vec![0.0; M];
     let mut have_im = vec![0.0; M];
-    setup.encoder.decode_reim(&pt_rnx, &mut have_re, &mut have_im)?;
+    setup.encoder.decode_reim(&pt_znx, &mut have_re, &mut have_im)?;
     println!("  slot[0] decrypted = {}", format_complex(have_re[0], have_im[0], 6));
 
     Ok(DecryptionArtifacts { have_re, have_im })

@@ -18,7 +18,7 @@ pub use encryption::{CKKSDecrypt, CKKSEncrypt};
 pub use mul::CKKSMulOps;
 pub use neg::CKKSNegOps;
 pub use pow2::CKKSPow2Ops;
-pub use pt_znx::CKKSPlaintextZnxOps;
+pub use pt_znx::CKKSPlaintextVecOps;
 pub use rescale::CKKSRescaleOps;
 pub use rotate::CKKSRotateOps;
 pub use sub::{CKKSSubOps, CKKSSubOpsUnsafe};

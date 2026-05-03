@@ -144,18 +144,18 @@ The evaluation phase follows the same operation order as the runnable example:
 ```rust,ignore
 use poulpy_ckks::{
     CKKSInfos,
-    layouts::{CKKSCiphertext, CKKSMaintainOps},
+    layouts::{CKKSMaintainOps, CKKSModuleAlloc},
     leveled::{CKKSAddOpsUnsafe, CKKSMulAddOps, CKKSMulOps},
 };
 use poulpy_core::GLWENormalize;
 
-let mut ct_x2 = CKKSCiphertext::alloc(N.into(), ct_x.log_budget().into(), BASE2K.into());
+let mut ct_x2 = module.ckks_ciphertext_alloc(BASE2K.into(), ct_x.log_budget().into());
 module.ckks_square(&mut ct_x2, &ct_x, &tsk_prepared, scratch.borrow())?;
 module.ckks_compact_limbs(&mut ct_x2)?;
 
 let linear_k = ct_x.effective_k() - PREC_PT.log_delta;
 
-let mut right_linear = CKKSCiphertext::alloc(N.into(), linear_k.into(), BASE2K.into());
+let mut right_linear = module.ckks_ciphertext_alloc(BASE2K.into(), linear_k.into());
 module.ckks_mul_pt_const_rnx(&mut right_linear, &ct_x, &cst_d, PREC_PT, scratch.borrow())?;
 unsafe {
     module.ckks_add_pt_const_rnx_assign_unsafe(&mut right_linear, &cst_c, PREC_PT, scratch.borrow())?;
@@ -163,11 +163,11 @@ unsafe {
 module.glwe_normalize_assign(&mut right_linear, scratch.borrow());
 
 let right_branch_k = ct_x2.effective_k() - ct_x2.log_delta();
-let mut right_branch = CKKSCiphertext::alloc(N.into(), right_branch_k.into(), BASE2K.into());
+let mut right_branch = module.ckks_ciphertext_alloc(BASE2K.into(), right_branch_k.into());
 module.ckks_mul(&mut right_branch, &right_linear, &ct_x2, &tsk_prepared, scratch.borrow())?;
 module.ckks_compact_limbs(&mut right_branch)?;
 
-let mut poly = CKKSCiphertext::alloc(N.into(), right_branch.effective_k().into(), BASE2K.into());
+let mut poly = module.ckks_ciphertext_alloc(BASE2K.into(), right_branch.effective_k().into());
 unsafe {
     module.ckks_add_pt_const_rnx_unsafe(&mut poly, &right_branch, &cst_a, PREC_PT, scratch.borrow())?;
 }

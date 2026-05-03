@@ -61,7 +61,7 @@ fn build_factors<F: TestScalar>(ctx: &TestContext<impl Backend, F>, n: usize) ->
 }
 
 fn alloc_scratch<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, n: usize) -> ScratchOwned<BE> {
-    let ct_infos = ctx.params.glwe_layout();
+    let ct_infos = ctx.ct_infos();
     let tsk_infos = ctx.params.tsk_layout();
     let bytes = ctx.module.ckks_mul_many_tmp_bytes(n, &ct_infos, &tsk_infos);
     ScratchOwned::<BE>::alloc(ctx.scratch_size.max(bytes))
@@ -72,14 +72,14 @@ fn run<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>, n: usize, output_k:
     let (factors, want_re, want_im) = build_factors(ctx, n);
     let cts: Vec<_> = factors
         .iter()
-        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, scratch.borrow()))
+        .map(|(re, im)| ctx.encrypt(ctx.max_k(), re, im, &mut scratch.borrow()))
         .collect();
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(output_k);
     ctx.module
-        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
+        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision(label, &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(label, &ct_res, &want_re, &want_im, &mut scratch.borrow());
 }
 
 pub fn test_mul_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
@@ -88,18 +88,18 @@ pub fn test_mul_many_aligned<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F
 
 pub fn test_mul_many_single_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {
     let mut scratch = alloc_scratch(ctx, 1);
-    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, scratch.borrow());
+    let ct = ctx.encrypt(ctx.max_k(), &ctx.re1, &ctx.im1, &mut scratch.borrow());
     let ct_refs = vec![&ct];
     let mut ct_res = ctx.alloc_ct(ctx.max_k() - ctx.base2k().as_usize() - 1);
     ctx.module
-        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
+        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
     ctx.assert_decrypt_precision(
         "mul_many_single_smaller_output",
         &ct_res,
         &ctx.re1,
         &ctx.im1,
-        scratch.borrow(),
+        &mut scratch.borrow(),
     );
 }
 
@@ -117,15 +117,21 @@ pub fn test_mul_many_unaligned_log_budget<BE: Backend, F: TestScalar>(ctx: &Test
         .enumerate()
         .map(|(i, (re, im))| {
             let k = if i == 2 { smaller_k } else { ctx.max_k() };
-            ctx.encrypt(k, re, im, scratch.borrow())
+            ctx.encrypt(k, re, im, &mut scratch.borrow())
         })
         .collect();
     let ct_refs: Vec<&_> = cts.iter().collect();
     let mut ct_res = ctx.alloc_ct(ctx.max_k());
     ctx.module
-        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), scratch.borrow())
+        .ckks_mul_many(&mut ct_res, &ct_refs, ctx.tsk(), &mut scratch.borrow())
         .unwrap();
-    ctx.assert_decrypt_precision("mul_many unaligned_log_budget", &ct_res, &want_re, &want_im, scratch.borrow());
+    ctx.assert_decrypt_precision(
+        "mul_many unaligned_log_budget",
+        &ct_res,
+        &want_re,
+        &want_im,
+        &mut scratch.borrow(),
+    );
 }
 
 pub fn test_mul_many_smaller_output<BE: Backend, F: TestScalar>(ctx: &TestContext<BE, F>) {

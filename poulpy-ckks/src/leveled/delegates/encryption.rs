@@ -1,83 +1,79 @@
 use anyhow::Result;
-use poulpy_core::layouts::{GLWEPlaintext, GLWESecretPreparedToRef};
-use poulpy_core::{EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, GLWEShift, ScratchTakeCore, layouts::GLWEInfos};
+use poulpy_core::layouts::{GLWEInfos, GLWESecretPreparedToBackendRef, GLWEToBackendMut, GLWEToBackendRef, LWEInfos};
+use poulpy_core::{EncryptionInfos, GLWEDecrypt, GLWEEncryptSk, ScratchArenaTakeCore};
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshAddInto, VecZnxRshTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    api::{ScratchAvailable, VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshAddIntoBackend, VecZnxRshBackend, VecZnxRshTmpBytes},
+    layouts::{Backend, HostDataMut, Module, ScratchArena},
     source::Source,
 };
 
 use crate::{
-    CKKSInfos, checked_log_budget_sub,
-    layouts::{CKKSCiphertext, plaintext::CKKSPlaintextVecZnx},
-    leveled::api::{CKKSAddOps, CKKSDecrypt, CKKSEncrypt, CKKSPlaintextZnxOps},
+    CKKSInfos, SetCKKSInfos,
+    leveled::{
+        api::{CKKSDecrypt, CKKSEncrypt},
+        oep::CKKSEncryptionOep,
+    },
     oep::CKKSImpl,
 };
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSEncrypt<BE> for Module<BE>
 where
-    Self: GLWEEncryptSk<BE> + GLWEShift<BE> + VecZnxRshAddInto<BE> + VecZnxRshTmpBytes,
+    Self: CKKSEncryptionOep<BE> + GLWEEncryptSk<BE> + VecZnxRshAddIntoBackend<BE> + VecZnxRshTmpBytes,
+    for<'a> ScratchArena<'a, BE>: ScratchAvailable + ScratchArenaTakeCore<'a, BE>,
 {
     fn ckks_encrypt_sk_tmp_bytes<A>(&self, ct_infos: &A) -> usize
     where
-        A: GLWEInfos,
+        A: GLWEInfos + CKKSInfos,
     {
-        self.glwe_encrypt_sk_tmp_bytes(ct_infos)
-            .max(self.ckks_add_pt_vec_znx_tmp_bytes())
+        CKKSEncryptionOep::ckks_encrypt_sk_tmp_bytes(self, ct_infos)
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn ckks_encrypt_sk<S, E: EncryptionInfos>(
+    fn ckks_encrypt_sk<'s, Dct, Dpt, S, E: EncryptionInfos>(
         &self,
-        ct: &mut CKKSCiphertext<impl DataMut>,
-        pt: &CKKSPlaintextVecZnx<impl DataRef>,
+        ct: &mut Dct,
+        pt: &Dpt,
         sk: &S,
         enc_infos: &E,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'s, BE>,
     ) -> Result<()>
     where
-        S: GLWESecretPreparedToRef<BE>,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        S: GLWESecretPreparedToBackendRef<BE>,
+        Dct: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dpt: GLWEToBackendRef<BE> + LWEInfos + CKKSInfos,
+        BE: 's,
     {
-        self.glwe_encrypt_zero_sk(ct, sk, enc_infos, source_xe, source_xa, scratch);
-        let log_budget = checked_log_budget_sub("ckks_encrypt_sk", enc_infos.noise_infos().k, pt.log_delta())?;
-        ct.meta.log_budget = log_budget;
-        ct.meta.log_delta = pt.log_delta();
-        self.ckks_add_pt_vec_znx_assign(ct, pt, scratch)?;
-        Ok(())
+        CKKSEncryptionOep::ckks_encrypt_sk(self, ct, pt, sk, enc_infos, source_xa, source_xe, scratch)
     }
 }
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSDecrypt<BE> for Module<BE>
 where
-    Self: GLWEDecrypt<BE> + VecZnxLsh<BE> + VecZnxLshTmpBytes + VecZnxRsh<BE> + VecZnxRshTmpBytes,
+    Self: CKKSEncryptionOep<BE>
+        + GLWEDecrypt<BE>
+        + VecZnxLshBackend<BE>
+        + VecZnxLshTmpBytes
+        + VecZnxRshBackend<BE>
+        + VecZnxRshTmpBytes
+        + poulpy_core::layouts::ModuleCoreAlloc<OwnedBuf = BE::OwnedBuf>,
+    BE::OwnedBuf: HostDataMut,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
 {
     fn ckks_decrypt_tmp_bytes<A>(&self, ct_infos: &A) -> usize
     where
-        A: GLWEInfos,
+        A: GLWEInfos + CKKSInfos,
     {
-        GLWEPlaintext::<Vec<u8>>::bytes_of_from_infos(ct_infos)
-            + self
-                .glwe_decrypt_tmp_bytes(ct_infos)
-                .max(self.ckks_extract_pt_znx_tmp_bytes())
+        CKKSEncryptionOep::ckks_decrypt_tmp_bytes(self, ct_infos)
     }
 
-    fn ckks_decrypt<S>(
-        &self,
-        pt: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        ct: &CKKSCiphertext<impl DataRef>,
-        sk: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_decrypt<Dpt, Dct, S>(&self, pt: &mut Dpt, ct: &Dct, sk: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        S: GLWESecretPreparedToBackendRef<BE> + GLWEInfos,
+        Dpt: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Dct: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
-        let (mut full_pt, scratch_rest) = scratch.take_glwe_plaintext(ct);
-        self.glwe_decrypt(ct, &mut full_pt, sk, scratch_rest);
-        self.ckks_extract_pt_znx(pt, &full_pt, ct, scratch_rest)?;
-        Ok(())
+        CKKSEncryptionOep::ckks_decrypt(self, pt, ct, sk, scratch)
     }
 }

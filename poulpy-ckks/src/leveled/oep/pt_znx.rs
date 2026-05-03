@@ -1,28 +1,28 @@
 use anyhow::Result;
-use poulpy_core::{ScratchTakeCore, layouts::GLWEPlaintext};
+use poulpy_core::{
+    ScratchArenaTakeCore,
+    layouts::{GLWEInfos, GLWEToBackendRef, LWEInfos},
+};
 use poulpy_hal::{
-    api::{VecZnxLsh, VecZnxLshTmpBytes, VecZnxRsh, VecZnxRshTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    api::{VecZnxLshBackend, VecZnxLshTmpBytes, VecZnxRshBackend, VecZnxRshTmpBytes},
+    layouts::{Backend, Module, ScratchArena},
 };
 
-use crate::{CKKSInfos, layouts::CKKSPlaintextVecZnx, oep::CKKSImpl};
+use crate::GLWEToBackendMut;
+
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 pub(crate) trait CKKSPlaintextZnxOep<BE: Backend + CKKSImpl<BE>> {
     fn ckks_extract_pt_znx_tmp_bytes(&self) -> usize
     where
         Self: VecZnxLshTmpBytes + VecZnxRshTmpBytes;
 
-    fn ckks_extract_pt_znx<S>(
-        &self,
-        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        src: &GLWEPlaintext<impl DataRef>,
-        src_meta: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_extract_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        S: CKKSInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxLsh<BE> + VecZnxRsh<BE>;
+        D: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>;
 }
 
 impl<BE: Backend + CKKSImpl<BE>> CKKSPlaintextZnxOep<BE> for Module<BE> {
@@ -33,18 +33,13 @@ impl<BE: Backend + CKKSImpl<BE>> CKKSPlaintextZnxOep<BE> for Module<BE> {
         BE::ckks_extract_pt_znx_tmp_bytes(self)
     }
 
-    fn ckks_extract_pt_znx<S>(
-        &self,
-        dst: &mut CKKSPlaintextVecZnx<impl DataMut>,
-        src: &GLWEPlaintext<impl DataRef>,
-        src_meta: &S,
-        scratch: &mut Scratch<BE>,
-    ) -> Result<()>
+    fn ckks_extract_pt_znx<D, S>(&self, dst: &mut D, src: &S, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        S: CKKSInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
-        Self: VecZnxLsh<BE> + VecZnxRsh<BE>,
+        D: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        S: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
+        for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+        Self: VecZnxLshBackend<BE> + VecZnxRshBackend<BE>,
     {
-        BE::ckks_extract_pt_znx(self, dst, src, src_meta, scratch)
+        BE::ckks_extract_pt_znx(self, dst, src, scratch)
     }
 }

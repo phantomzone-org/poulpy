@@ -27,8 +27,8 @@
 //! ## Scratch-space allocation
 //!
 //! Operations never allocate on the heap internally. Instead, callers
-//! supply a [`poulpy_hal::layouts::Scratch`] buffer from which temporaries are
-//! arena-allocated via [`ScratchTakeCore`]. Every operation that needs
+//! supply a [`poulpy_hal::layouts::ScratchArena`] borrow from which temporaries are
+//! arena-allocated via [`ScratchArenaTakeCore`]. Every operation that needs
 //! scratch space has a companion `*_tmp_bytes` method returning the
 //! required byte count.
 //!
@@ -67,39 +67,76 @@
 //! | scratch | Arena-style scratch allocation for ciphertext temporaries |
 
 pub mod api;
-mod automorphism;
-mod conversion;
-mod decryption;
+mod default;
 mod delegates;
 mod dist;
-mod encryption;
-mod external_product;
-mod glwe_packer;
-mod glwe_packing;
-mod glwe_trace;
-mod keyswitching;
-mod noise;
 pub mod oep;
-mod operations;
 mod scratch;
 mod utils;
 
-pub use operations::*;
 pub mod layouts;
-pub use automorphism::*;
-pub use conversion::*;
-pub use decryption::*;
+pub use api::*;
+pub use default::encryption::*;
+pub use default::noise::*;
+pub use default::operations::*;
 pub use dist::*;
-pub use encryption::*;
-pub use external_product::*;
-pub use glwe_packer::*;
-pub use glwe_packing::*;
-pub use glwe_trace::*;
-pub use keyswitching::*;
-pub use noise::*;
 pub use scratch::*;
 
-pub use encryption::DEFAULT_SIGMA_XE;
+pub(crate) mod automorphism {
+    pub(crate) mod glwe_ct {
+        pub(crate) use crate::default::automorphism::glwe_ct::*;
+    }
+
+    pub(crate) use crate::default::automorphism::*;
+}
+
+pub(crate) mod conversion {
+    pub(crate) use crate::default::conversion::*;
+}
+
+pub(crate) mod decryption {
+    pub(crate) mod glwe {
+        pub(crate) use crate::default::decryption::glwe::*;
+    }
+
+    pub(crate) use crate::default::decryption::*;
+}
+
+pub(crate) mod encryption {
+    pub(crate) mod gglwe {
+        pub(crate) use crate::default::encryption::gglwe::*;
+    }
+
+    pub(crate) mod glwe {
+        pub(crate) use crate::default::encryption::glwe::*;
+    }
+
+    pub(crate) mod glwe_switching_key {
+        pub(crate) use crate::default::encryption::glwe_switching_key::*;
+    }
+
+    pub(crate) use crate::default::encryption::*;
+}
+
+pub(crate) mod external_product {
+    pub(crate) use crate::default::external_product::*;
+}
+
+pub(crate) mod keyswitching {
+    pub(crate) use crate::default::keyswitching::*;
+}
+
+pub(crate) mod noise {
+    pub(crate) mod glwe {
+        pub(crate) use crate::default::noise::glwe::*;
+    }
+
+    pub(crate) use crate::default::noise::*;
+}
+
+pub(crate) mod operations {
+    pub(crate) use crate::default::operations::*;
+}
 
 pub mod test_suite;
 

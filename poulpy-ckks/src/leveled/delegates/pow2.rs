@@ -1,63 +1,66 @@
 use anyhow::Result;
-use poulpy_core::{GLWECopy, GLWEShift, ScratchTakeCore};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_core::{
+    GLWECopy, GLWEShift, ScratchArenaTakeCore,
+    layouts::{GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos},
+};
+use poulpy_hal::layouts::{Backend, Module, ScratchArena};
 
-use crate::{layouts::CKKSCiphertext, oep::CKKSImpl};
+use crate::{CKKSInfos, SetCKKSInfos, oep::CKKSImpl};
 
 use crate::leveled::{api::CKKSPow2Ops, oep::CKKSPow2Oep};
 
-impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE> {
-    fn ckks_mul_pow2_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>,
-    {
+impl<BE: Backend + CKKSImpl<BE>> CKKSPow2Ops<BE> for Module<BE>
+where
+    Module<BE>: GLWECopy<BE> + GLWEShift<BE>,
+    for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
+{
+    fn ckks_mul_pow2_tmp_bytes(&self) -> usize {
         CKKSPow2Oep::ckks_mul_pow2_tmp_bytes(self)
     }
 
-    fn ckks_mul_pow2_into(
+    fn ckks_mul_pow2_into<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut Dst,
+        src: &Src,
         bits: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSPow2Oep::ckks_mul_pow2_into(self, dst, src, bits, scratch)
     }
 
-    fn ckks_mul_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize, scratch: &mut Scratch<BE>) -> Result<()>
+    fn ckks_mul_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize, scratch: &mut ScratchArena<'_, BE>) -> Result<()>
     where
-        Self: GLWEShift<BE>,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
     {
         CKKSPow2Oep::ckks_mul_pow2_assign(self, dst, bits, scratch)
     }
 
-    fn ckks_div_pow2_tmp_bytes(&self) -> usize
-    where
-        Self: GLWEShift<BE>,
-    {
+    fn ckks_div_pow2_tmp_bytes(&self) -> usize {
         CKKSPow2Oep::ckks_div_pow2_tmp_bytes(self)
     }
 
-    fn ckks_div_pow2_into(
+    fn ckks_div_pow2_into<Dst, Src>(
         &self,
-        dst: &mut CKKSCiphertext<impl DataMut>,
-        src: &CKKSCiphertext<impl DataRef>,
+        dst: &mut Dst,
+        src: &Src,
         bits: usize,
-        scratch: &mut Scratch<BE>,
+        scratch: &mut ScratchArena<'_, BE>,
     ) -> Result<()>
     where
-        Self: GLWEShift<BE> + GLWECopy,
-        Scratch<BE>: ScratchTakeCore<BE>,
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+        Src: GLWEToBackendRef<BE> + GLWEInfos + LWEInfos + CKKSInfos,
     {
         CKKSPow2Oep::ckks_div_pow2_into(self, dst, src, bits, scratch)
     }
 
-    fn ckks_div_pow2_assign(&self, dst: &mut CKKSCiphertext<impl DataMut>, bits: usize) -> Result<()> {
+    fn ckks_div_pow2_assign<Dst>(&self, dst: &mut Dst, bits: usize) -> Result<()>
+    where
+        Dst: GLWEToBackendMut<BE> + LWEInfos + CKKSInfos + SetCKKSInfos,
+    {
         CKKSPow2Oep::ckks_div_pow2_assign(self, dst, bits)
     }
 }

@@ -12,29 +12,41 @@ macro_rules! impl_ckks_conjugate_default_methods {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::conjugate::CKKSConjugateDefault<$backend>>::ckks_conjugate_tmp_bytes_default(module, ct_infos, key_infos)
         }
 
-        fn ckks_conjugate_into(
+        fn ckks_conjugate_into<Dst, Src, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
-            dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
-            src: &$crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataRef>,
-            key: &poulpy_core::layouts::GLWEAutomorphismKeyPrepared<impl poulpy_hal::layouts::DataRef, $backend>,
-            scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
+            dst: &mut Dst,
+            src: &Src,
+            key: &K,
+            scratch: &mut poulpy_hal::layouts::ScratchArena<'_, $backend>,
         ) -> anyhow::Result<()>
         where
+            Dst: $crate::GLWEToBackendMut<$backend> + poulpy_core::layouts::LWEInfos + $crate::CKKSInfos + $crate::SetCKKSInfos,
+            Src: $crate::GLWEToBackendRef<$backend>
+                + poulpy_core::layouts::GLWEInfos
+                + poulpy_core::layouts::LWEInfos
+                + $crate::CKKSInfos,
+            K: poulpy_core::layouts::GetGaloisElement
+                + poulpy_core::layouts::prepared::GGLWEPreparedToBackendRef<$backend>
+                + poulpy_core::layouts::GGLWEInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend> + poulpy_core::GLWEShift<$backend>,
-            poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
+            for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::conjugate::CKKSConjugateDefault<$backend>>::ckks_conjugate_into_default(module, dst, src, key, scratch)
         }
 
-        fn ckks_conjugate_assign(
+        fn ckks_conjugate_assign<Dst, K>(
             module: &poulpy_hal::layouts::Module<$backend>,
-            dst: &mut $crate::layouts::CKKSCiphertext<impl poulpy_hal::layouts::DataMut>,
-            key: &poulpy_core::layouts::GLWEAutomorphismKeyPrepared<impl poulpy_hal::layouts::DataRef, $backend>,
-            scratch: &mut poulpy_hal::layouts::Scratch<$backend>,
+            dst: &mut Dst,
+            key: &K,
+            scratch: &mut poulpy_hal::layouts::ScratchArena<'_, $backend>,
         ) -> anyhow::Result<()>
         where
+            Dst: $crate::GLWEToBackendMut<$backend> + $crate::SetCKKSInfos,
+            K: poulpy_core::layouts::GetGaloisElement
+                + poulpy_core::layouts::prepared::GGLWEPreparedToBackendRef<$backend>
+                + poulpy_core::layouts::GGLWEInfos,
             poulpy_hal::layouts::Module<$backend>: poulpy_core::GLWEAutomorphism<$backend>,
-            poulpy_hal::layouts::Scratch<$backend>: poulpy_core::ScratchTakeCore<$backend>,
+            for<'a> poulpy_hal::layouts::ScratchArena<'a, $backend>: poulpy_core::ScratchArenaTakeCore<'a, $backend>,
         {
             <poulpy_hal::layouts::Module<$backend> as $crate::leveled::default::conjugate::CKKSConjugateDefault<$backend>>::ckks_conjugate_assign_default(module, dst, key, scratch)
         }
