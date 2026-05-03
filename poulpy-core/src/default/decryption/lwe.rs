@@ -1,13 +1,14 @@
 use poulpy_hal::{
     api::{VecZnxNormalize, VecZnxNormalizeTmpBytes},
-    layouts::{
-        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, VecZnxReborrowBackendRef, ZnxView, ZnxViewMut,
-    },
+    layouts::{Backend, HostBackend, HostDataMut, HostDataRef, Module, ScratchArena, ZnxView, ZnxViewMut},
 };
 
 use crate::{
     ScratchArenaTakeCore,
-    layouts::{LWEInfos, LWEPlaintext, LWEPlaintextToBackendMut, LWESecretToBackendRef, LWEToBackendRef, SetLWEInfos},
+    layouts::{
+        LWEInfos, LWEPlaintext, LWEPlaintextToBackendMut, LWEPlaintextToBackendRef, LWESecretToBackendRef, LWEToBackendRef,
+        SetLWEInfos,
+    },
 };
 
 pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + VecZnxNormalizeTmpBytes {
@@ -60,9 +61,8 @@ pub(crate) trait LWEDecryptDefault<BE: Backend>: Sized + VecZnxNormalize<BE> + V
         let pt_base2k = pt.base2k().into();
         let res_base2k = res.base2k().into();
         let mut pt = pt.to_backend_mut();
-        let tmp_ref =
-            <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp.data);
-        self.vec_znx_normalize(&mut pt.data, pt_base2k, 0, 0, &tmp_ref, res_base2k, 0, &mut scratch_1);
+        let tmp_ref = tmp.to_backend_ref();
+        self.vec_znx_normalize(&mut pt.data, pt_base2k, 0, 0, &tmp_ref.data, res_base2k, 0, &mut scratch_1);
     }
 }
 

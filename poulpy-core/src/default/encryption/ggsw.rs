@@ -3,7 +3,7 @@ use poulpy_hal::{
         ModuleN, VecZnxAddScalarAssignBackend, VecZnxDftBytesOf, VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes,
         VecZnxZeroBackend,
     },
-    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut},
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena},
     source::Source,
 };
 
@@ -11,8 +11,8 @@ use crate::{
     EncryptionInfos, GLWEEncryptSk, GLWEEncryptSkInternal, ScratchArenaTakeCore,
     encryption::glwe::normalize_scratch_vec_znx,
     layouts::{
-        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWEToBackendRef, LWEInfos, ggsw_at_backend_mut_from_mut,
-        prepared::GLWESecretPreparedToBackendRef,
+        GGSWInfos, GGSWToBackendMut, GLWEInfos, GLWEPlaintext, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
+        ggsw_at_backend_mut_from_mut, prepared::GLWESecretPreparedToBackendRef,
     },
 };
 
@@ -103,11 +103,8 @@ where
             self.vec_znx_zero_backend(&mut tmp_pt.data, 0);
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             {
-                let mut tmp_pt_data =
-                    <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
-                        &mut tmp_pt.data,
-                    );
-                self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_data, 0, (dsize - 1) + row_i * dsize, &pt_backend, 0);
+                let mut tmp_pt_backend = tmp_pt.to_backend_mut();
+                self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_backend.data, 0, (dsize - 1) + row_i * dsize, &pt_backend, 0);
             }
             scratch_1.scope(|mut scratch| {
                 normalize_scratch_vec_znx(self, base2k, &mut tmp_pt.data, &mut scratch);

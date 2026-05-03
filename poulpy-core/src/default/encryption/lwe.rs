@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchArenaTakeBasic, VecZnxAddNormalSourceBackend, VecZnxCopyRangeBackend, VecZnxFillUniformSourceBackend,
         VecZnxNormalizeAssignBackend, VecZnxNormalizeTmpBytes, VecZnxSubInnerProductAssignBackend, VecZnxZeroBackend,
     },
-    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxReborrowBackendMut, vec_znx_backend_ref_from_mut},
+    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxToBackendMut, VecZnxToBackendRef, vec_znx_backend_ref_from_mut},
     source::Source,
 };
 
@@ -126,13 +126,13 @@ where
         lwe_encrypt_sk_sub_mask(self, &mut tmp_znx, &res.data, &sk.data, res_size, res_n);
 
         {
-            let mut tmp_znx_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp_znx);
+            let mut tmp_znx_mut = tmp_znx.to_backend_mut();
             self.vec_znx_add_normal_source_backend(base2k, &mut tmp_znx_mut, 0, enc_infos.noise_infos(), source_xe);
         }
 
         let _ = scratch_1.apply_mut(|scratch| self.vec_znx_normalize_assign_backend(base2k, &mut tmp_znx, 0, scratch));
 
-        let tmp_znx_ref = vec_znx_backend_ref_from_mut::<BE>(&tmp_znx);
+        let tmp_znx_ref = tmp_znx.to_backend_ref();
         for i in 0..res_size {
             self.vec_znx_copy_range_backend(&mut res.data, 0, i, 0, &tmp_znx_ref, 0, i, 0, 1);
         }

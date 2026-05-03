@@ -113,7 +113,7 @@ fn encode_const_reim(
     prec: CKKSMeta,
 ) -> Result<CKKSPlaintext<Vec<u8>>> {
     let mut pt = module.ckks_pt_vec_znx_alloc(base2k.into(), prec);
-    let n = module.n() as usize;
+    let n = module.n();
     let scale = 2f64.powi(prec.log_delta() as i32);
     let k = prec.effective_k().into();
     if prec.effective_k() <= 63 {

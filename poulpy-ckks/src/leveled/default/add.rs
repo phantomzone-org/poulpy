@@ -30,6 +30,7 @@ pub(crate) trait CKKSAddDefault<BE: Backend> {
             .max(self.glwe_normalize_tmp_bytes())
     }
 
+    #[allow(dead_code)]
     fn ckks_add_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, _a: &A, b: &CKKSMeta) -> usize
     where
         R: GLWEInfos,

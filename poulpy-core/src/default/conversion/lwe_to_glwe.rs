@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchArenaTakeBasic, VecZnxCopyRangeBackend, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxZeroBackend},
-    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxReborrowBackendRef},
+    layouts::{Backend, Module, ScratchArena, VecZnx, VecZnxToBackendRef},
 };
 
 use crate::{
@@ -102,7 +102,7 @@ where
                     ksk.base2k().into(),
                     0,
                     0,
-                    &<VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv),
+                    &a_conv.to_backend_ref(),
                     lwe.base2k().into(),
                     0,
                     &mut scratch_2.borrow(),
@@ -118,7 +118,7 @@ where
                     ksk.base2k().into(),
                     0,
                     1,
-                    &<VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv),
+                    &a_conv.to_backend_ref(),
                     lwe.base2k().into(),
                     0,
                     &mut scratch_2.borrow(),

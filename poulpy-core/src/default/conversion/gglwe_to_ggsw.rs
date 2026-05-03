@@ -5,8 +5,8 @@ use poulpy_hal::{
         VecZnxNormalize, VecZnxNormalizeTmpBytes,
     },
     layouts::{
-        Backend, Module, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBigReborrowBackendRef, VecZnxDftBackendRef,
-        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendRef,
+        Backend, Module, ScratchArena, VecZnx, VecZnxBackendRef, VecZnxBigToBackendRef, VecZnxDftBackendRef,
+        VecZnxDftToBackendRef, VecZnxToBackendRef,
     },
 };
 
@@ -160,8 +160,7 @@ where
                             i + 1,
                             &mut scratch_2.borrow(),
                         );
-                        let a_0_ref: VecZnxBackendRef<'_, BE> =
-                            <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_0);
+                        let a_0_ref: VecZnxBackendRef<'_, BE> = a_0.to_backend_ref();
                         self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_0_ref, 0);
                     }
                     self.vec_znx_normalize(
@@ -176,12 +175,8 @@ where
                     );
                 }
 
-                let a_0_ref: VecZnxBackendRef<'_, BE> =
-                    <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_0);
-                let a_dft_ref: VecZnxDftBackendRef<'_, BE> =
-                    <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendRef<BE>>::reborrow_backend_ref(
-                        &a_dft,
-                    );
+                let a_0_ref: VecZnxBackendRef<'_, BE> = a_0.to_backend_ref();
+                let a_dft_ref: VecZnxDftBackendRef<'_, BE> = a_dft.to_backend_ref();
                 let mut scratch_row = scratch_2.borrow();
                 ggsw_expand_rows_internal(self, row, res, &a_0_ref, &a_dft_ref, tsk, &mut scratch_row);
             }
@@ -272,7 +267,7 @@ fn ggsw_expand_rows_internal<'r, 'a, 'b, M, T, BE: Backend>(
         }
 
         let (mut res_big, mut scratch_2) = scratch_1.take_vec_znx_big_scratch(module, cols, res_dft.size());
-        let res_dft_ref = res_dft.reborrow_backend_ref();
+        let res_dft_ref = res_dft.to_backend_ref();
         for j in 0..cols {
             scratch_2 = scratch_2.apply_mut(|scratch| module.vec_znx_idft_apply(&mut res_big, j, &res_dft_ref, j, scratch));
         }
@@ -287,7 +282,7 @@ fn ggsw_expand_rows_internal<'r, 'a, 'b, M, T, BE: Backend>(
         // =
         // (-(x0s0 + x1s1 + x2s2), x0 + M[i], x1, x2)
         module.vec_znx_big_add_small_assign(&mut res_big, col, a_0, 0);
-        let res_big_ref = res_big.reborrow_backend_ref();
+        let res_big_ref = res_big.to_backend_ref();
 
         let res_base2k: usize = res.base2k().as_usize();
 

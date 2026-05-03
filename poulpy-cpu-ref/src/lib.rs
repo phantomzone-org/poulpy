@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 //! Reference (portable) CPU backend for the Poulpy lattice cryptography library.
 //!
 //! This crate provides two backend implementations for [`poulpy_hal`]:

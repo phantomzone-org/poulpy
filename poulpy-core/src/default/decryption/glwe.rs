@@ -3,9 +3,7 @@ use poulpy_hal::{
         ModuleN, ScratchArenaTakeBasic, SvpApplyDftToDftAssign, VecZnxBigAddAssign, VecZnxBigBytesOf, VecZnxBigFromSmallBackend,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
-    layouts::{
-        Backend, Module, ScratchArena, VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut,
-    },
+    layouts::{Backend, Module, ScratchArena, VecZnxBigToBackendMut, VecZnxBigToBackendRef, VecZnxDftToBackendMut},
 };
 
 pub use crate::api::GLWEDecrypt;
@@ -118,20 +116,20 @@ pub(crate) fn glwe_decrypt_backend_inner<'arena, 'scratch, M, BE: Backend>(
         let (mut ci_dft, scratch_2) = scratch_1.borrow().take_vec_znx_dft_scratch(module, 1, res.size());
         module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &res.data, i);
         {
-            let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+            let mut ci_dft_backend = ci_dft.to_backend_mut();
             module.svp_apply_dft_to_dft_assign(&mut ci_dft_backend, 0, &sk.data, i - 1);
         }
         let (mut ci_big, _) = scratch_2.take_vec_znx_big_scratch(module, 1, res.size());
         {
-            let mut ci_big_backend = ci_big.reborrow_backend_mut();
-            let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+            let mut ci_big_backend = ci_big.to_backend_mut();
+            let mut ci_dft_backend = ci_dft.to_backend_mut();
             module.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
         }
-        let ci_big_ref = ci_big.reborrow_backend_ref();
+        let ci_big_ref = ci_big.to_backend_ref();
         module.vec_znx_big_add_assign(&mut c0_big, 0, &ci_big_ref, 0);
     }
 
-    let c0_big_ref = c0_big.reborrow_backend_ref();
+    let c0_big_ref = c0_big.to_backend_ref();
     let pt_base2k = pt.base2k();
     let _ = scratch_1.apply_mut(|scratch| {
         module.vec_znx_big_normalize(

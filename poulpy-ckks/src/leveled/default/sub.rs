@@ -30,6 +30,7 @@ pub(crate) trait CKKSSubDefault<BE: Backend> {
         self.ckks_sub_tmp_bytes_default()
     }
 
+    #[allow(dead_code)]
     fn ckks_sub_pt_vec_rnx_tmp_bytes_default<R, A>(&self, res: &R, _a: &A, b: &CKKSMeta) -> usize
     where
         R: LWEInfos,

@@ -315,6 +315,7 @@ pub(crate) trait CKKSMulDefault<BE: Backend> {
 }
 impl<BE: Backend> CKKSMulDefault<BE> for Module<BE> {}
 
+#[allow(dead_code)]
 fn zero_ciphertext<BE: Backend, Dst, M>(module: &M, dst: &mut Dst)
 where
     M: VecZnxZeroBackend<BE> + ?Sized,

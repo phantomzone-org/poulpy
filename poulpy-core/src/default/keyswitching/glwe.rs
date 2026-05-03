@@ -6,8 +6,8 @@ use poulpy_hal::{
         VmpApplyDftToDftBackendRef, VmpApplyDftToDftTmpBytes,
     },
     layouts::{
-        Backend, Module, ScratchArena, VecZnxBackendRef, VecZnxBigReborrowBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
-        VecZnxDftReborrowBackendRef, VecZnxReborrowBackendRef,
+        Backend, Module, ScratchArena, VecZnxBackendRef, VecZnxBigToBackendRef, VecZnxDftBackendMut, VecZnxDftBackendRef,
+        VecZnxDftToBackendRef, VecZnxToBackendRef,
     },
 };
 
@@ -46,7 +46,7 @@ fn glwe_keyswitch_dft_fill<'s, 'r, 'a, BE, M>(
             let a_data: &VecZnxBackendRef<'_, BE> = &a.data;
             module.vec_znx_dft_apply(1, 0, &mut a_dft, col_i, a_data, col_i + 1);
         }
-        let a_dft_ref = a_dft.reborrow_backend_ref();
+        let a_dft_ref = a_dft.to_backend_ref();
         module.gglwe_product_dft(res, &a_dft_ref, key, &mut scratch_1.borrow());
     });
 }
@@ -176,7 +176,7 @@ where
         }
 
         let (mut res_big, mut scratch) = scratch.borrow().take_vec_znx_big_scratch(self, cols, key.size());
-        let res_dft_ref = res_dft.reborrow_backend_ref();
+        let res_dft_ref = res_dft.to_backend_ref();
         for i in 0..cols {
             self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, &mut scratch.borrow());
         }
@@ -192,13 +192,12 @@ where
                 0,
                 &mut scratch_2.borrow(),
             );
-            let res_small_ref =
-                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_small);
+            let res_small_ref = res_small.to_backend_ref();
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &res_small_ref, 0);
         } else {
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &a.data, 0);
         }
-        let res_big_ref = res_big.reborrow_backend_ref();
+        let res_big_ref = res_big.to_backend_ref();
         for i in 0..cols {
             self.vec_znx_big_normalize(
                 &mut res.data,
@@ -270,7 +269,7 @@ where
             self.glwe_keyswitch_internal(&mut res_dft, &res_conv_ref, key, &mut scratch_3);
 
             let (mut res_big, mut scratch) = scratch_3.take_vec_znx_big_scratch(self, cols, key.size());
-            let res_dft_ref = res_dft.reborrow_backend_ref();
+            let res_dft_ref = res_dft.to_backend_ref();
             for i in 0..cols {
                 self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, &mut scratch);
             }
@@ -286,8 +285,7 @@ where
                 0,
                 &mut scratch_2.borrow(),
             );
-            let res_small_ref =
-                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_small);
+            let res_small_ref = res_small.to_backend_ref();
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &res_small_ref, 0);
             (res_big, scratch_2)
         } else {
@@ -297,14 +295,14 @@ where
                 self.glwe_keyswitch_internal(&mut res_dft, &res_ref, key, &mut ks_scratch);
             }
             let (mut res_big, mut scratch) = scratch_1.take_vec_znx_big_scratch(self, cols, key.size());
-            let res_dft_ref = res_dft.reborrow_backend_ref();
+            let res_dft_ref = res_dft.to_backend_ref();
             for i in 0..cols {
                 self.vec_znx_idft_apply(&mut res_big, i, &res_dft_ref, i, &mut scratch);
             }
             self.vec_znx_big_add_small_assign(&mut res_big, 0, &res_ref.data, 0);
             (res_big, scratch)
         };
-        let res_big_ref = res_big.reborrow_backend_ref();
+        let res_big_ref = res_big.to_backend_ref();
         for i in 0..cols {
             self.vec_znx_big_normalize(
                 &mut res.data,
@@ -384,7 +382,7 @@ where
                 let a_data: &VecZnxBackendRef<'_, BE> = &a.data;
                 self.vec_znx_dft_apply(1, 0, &mut a_dft, col_i, a_data, col_i + 1);
             }
-            let a_dft_ref = a_dft.reborrow_backend_ref();
+            let a_dft_ref = a_dft.to_backend_ref();
             self.gglwe_product_dft(res, &a_dft_ref, &key, &mut scratch_1.borrow());
         });
     }
@@ -521,15 +519,15 @@ where
 
                 if di == 0 {
                     // res = pmat * ai_dft
-                    let ai_dft_ref = ai_dft.reborrow_backend_ref();
+                    let ai_dft_ref = ai_dft.to_backend_ref();
                     self.vmp_apply_dft_to_dft_backend_ref(res, &ai_dft_ref, &key.data, 0, &mut scratch_2.borrow());
                 } else {
                     // Overwrite tmp with shifted product, then fold into res.
                     // This avoids scattered read-add-write on the res DFT buffer.
                     res_dft_tmp.set_size(res.size());
-                    let ai_dft_ref = ai_dft.reborrow_backend_ref();
+                    let ai_dft_ref = ai_dft.to_backend_ref();
                     self.vmp_apply_dft_to_dft_backend_ref(&mut res_dft_tmp, &ai_dft_ref, &key.data, di, &mut scratch_2.borrow());
-                    let res_dft_tmp_ref = res_dft_tmp.reborrow_backend_ref();
+                    let res_dft_tmp_ref = res_dft_tmp.to_backend_ref();
                     for col in 0..cols_out {
                         self.vec_znx_dft_add_assign(res, col, &res_dft_tmp_ref, col);
                     }

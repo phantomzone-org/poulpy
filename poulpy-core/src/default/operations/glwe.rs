@@ -9,9 +9,8 @@ use poulpy_hal::{
         VecZnxSubAssignBackend, VecZnxSubBackend, VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, CnvPVecLReborrowBackendRef, CnvPVecRReborrowBackendRef, Module, ScratchArena, VecZnx,
-        VecZnxBigReborrowBackendMut, VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxDftReborrowBackendRef,
-        VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
+        Backend, CnvPVecLToBackendRef, CnvPVecRToBackendRef, Module, ScratchArena, VecZnx, VecZnxBigToBackendMut,
+        VecZnxBigToBackendRef, VecZnxDftToBackendMut, VecZnxDftToBackendRef, VecZnxToBackendMut, VecZnxToBackendRef,
     },
 };
 
@@ -130,7 +129,7 @@ where
         for i in 0..cols {
             {
                 let mut scratch_iter = scratch.borrow();
-                let mut res_big_backend = res_big.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
                 self.cnv_by_const_apply(
                     cnv_offset_hi,
                     &mut res_big_backend,
@@ -143,7 +142,7 @@ where
                     &mut scratch_iter,
                 );
             }
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             {
                 let mut scratch_iter = scratch.borrow();
                 self.vec_znx_big_normalize(
@@ -158,7 +157,7 @@ where
                 );
             }
             let mut res_backend = res.to_backend_mut();
-            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            let res_tmp_ref = res_tmp.to_backend_ref();
             self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
@@ -198,7 +197,7 @@ where
             {
                 let res_backend = res.to_backend_ref();
                 let mut scratch_iter = scratch.borrow();
-                let mut res_big_backend = res_big.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
                 self.cnv_by_const_apply(
                     cnv_offset_hi,
                     &mut res_big_backend,
@@ -211,7 +210,7 @@ where
                     &mut scratch_iter,
                 );
             }
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             {
                 let mut scratch_iter = scratch.borrow();
                 self.vec_znx_big_normalize(
@@ -226,7 +225,7 @@ where
                 );
             }
             let mut res_backend = res.to_backend_mut();
-            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            let res_tmp_ref = res_tmp.to_backend_ref();
             self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
@@ -336,25 +335,25 @@ where
         for i in 0..cols {
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, res_dft_size);
             {
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.cnv_apply_dft(
                     cnv_offset_hi,
                     &mut res_dft_backend,
                     0,
-                    &a_prep.reborrow_backend_ref(),
+                    &a_prep.to_backend_ref(),
                     i,
-                    &b_prep.reborrow_backend_ref(),
+                    &b_prep.to_backend_ref(),
                     0,
                     &mut scratch_3,
                 );
             }
             let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, res_dft_size);
             {
-                let mut res_big_backend = res_big.reborrow_backend_mut();
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             {
                 let mut scratch_iter = scratch_4.borrow();
                 self.vec_znx_big_normalize(
@@ -369,7 +368,7 @@ where
                 );
             }
             let mut res_backend = res.to_backend_mut();
-            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            let res_tmp_ref = res_tmp.to_backend_ref();
             self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
@@ -427,25 +426,25 @@ where
         for i in 0..cols {
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, res_dft_size);
             {
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.cnv_apply_dft(
                     cnv_offset_hi,
                     &mut res_dft_backend,
                     0,
-                    &res_prep.reborrow_backend_ref(),
+                    &res_prep.to_backend_ref(),
                     i,
-                    &a_prep.reborrow_backend_ref(),
+                    &a_prep.to_backend_ref(),
                     0,
                     &mut scratch_3,
                 );
             }
             let (mut res_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, res_dft_size);
             {
-                let mut res_big_backend = res_big.reborrow_backend_mut();
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             {
                 let mut scratch_iter = scratch_4.borrow();
                 self.vec_znx_big_normalize(
@@ -460,7 +459,7 @@ where
                 );
             }
             let mut res_backend = res.to_backend_mut();
-            let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+            let res_tmp_ref = res_tmp.to_backend_ref();
             self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
         }
     }
@@ -741,7 +740,7 @@ where
                     cols + i,
                     &mut scratch_iter,
                 );
-                let a_conv_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv);
+                let a_conv_ref = a_conv.to_backend_ref();
                 self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv_ref, 0);
             }
         }
@@ -749,13 +748,12 @@ where
         let (mut res_dft, mut scratch_2) = scratch.borrow().take_vec_znx_dft_scratch(self, cols, tsk_size); // Todo optimise
         let tsk = tsk.to_backend_ref();
 
-        let a_dft_ref =
-            <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendRef<BE>>::reborrow_backend_ref(&a_dft);
+        let a_dft_ref = a_dft.to_backend_ref();
         self.gglwe_product_dft(&mut res_dft, &a_dft_ref, &tsk.0, &mut scratch_2);
         let (mut res_big, mut scratch_3) = scratch_2.take_vec_znx_big_scratch(self, cols, tsk_size);
         {
-            let mut res_big_backend = res_big.reborrow_backend_mut();
-            let mut res_dft_backend = res_dft.reborrow_backend_mut();
+            let mut res_big_backend = res_big.to_backend_mut();
+            let mut res_dft_backend = res_dft.to_backend_mut();
             for i in 0..cols {
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, i, &mut res_dft_backend, i);
             }
@@ -766,7 +764,7 @@ where
             for i in 0..cols {
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_normalize(&mut a_conv, key_base2k, 0, 0, &a_backend.data, a_base2k, i, &mut scratch_iter);
-                let a_conv_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&a_conv);
+                let a_conv_ref = a_conv.to_backend_ref();
                 self.vec_znx_big_add_small_assign(&mut res_big, i, &a_conv_ref, 0);
             }
         }
@@ -774,14 +772,11 @@ where
         {
             let (mut res_tmp, mut scratch_norm) = scratch_3.borrow().take_vec_znx_scratch(self.n(), 1, res.size());
             for i in 0..(res.rank() + 1).into() {
-                let res_big_ref =
-                    <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<BE>>::reborrow_backend_ref(
-                        &res_big,
-                    );
+                let res_big_ref = res_big.to_backend_ref();
                 let mut scratch_iter = scratch_norm.borrow();
                 self.vec_znx_big_normalize(&mut res_tmp, res_base2k, 0, 0, &res_big_ref, key_base2k, i, &mut scratch_iter);
                 let mut res_backend = res.to_backend_mut();
-                let res_tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&res_tmp);
+                let res_tmp_ref = res_tmp.to_backend_ref();
                 self.vec_znx_copy_backend(&mut res_backend.data, i, &res_tmp_ref, 0);
             }
         }
@@ -839,26 +834,26 @@ where
 
             let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, diag_dft_size);
             {
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.cnv_apply_dft(
                     cnv_offset_hi,
                     &mut res_dft_backend,
                     0,
-                    &a_prep.reborrow_backend_ref(),
+                    &a_prep.to_backend_ref(),
                     i,
-                    &b_prep.reborrow_backend_ref(),
+                    &b_prep.to_backend_ref(),
                     i,
                     &mut scratch_4,
                 );
             }
             let (mut res_big, scratch_5) = scratch_4.take_vec_znx_big_scratch(self, 1, diag_dft_size);
             {
-                let mut res_big_backend = res_big.reborrow_backend_mut();
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
             let (mut tmp, mut scratch_6) = scratch_5.take_vec_znx_scratch(self.n(), 1, res.size());
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             let mut scratch_iter = scratch_6.borrow();
             self.vec_znx_big_normalize(
                 &mut tmp,
@@ -873,14 +868,13 @@ where
 
             // TODO: Do we need 2 copies?
             {
-                let mut diag_terms_mut =
-                    <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut diag_terms);
-                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                let mut diag_terms_mut = diag_terms.to_backend_mut();
+                let tmp_ref = tmp.to_backend_ref();
                 self.vec_znx_copy_backend(&mut diag_terms_mut, i, &tmp_ref, 0);
             }
             {
                 let mut res_backend = res.to_backend_mut();
-                let diag_terms_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&diag_terms);
+                let diag_terms_ref = diag_terms.to_backend_ref();
                 self.vec_znx_copy_backend(&mut res_backend.data, col_i + i, &diag_terms_ref, i);
             }
         }
@@ -891,13 +885,13 @@ where
             for j in i + 1..cols {
                 let (mut res_dft, mut scratch_4) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, pairwise_dft_size);
                 {
-                    let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                    let mut res_dft_backend = res_dft.to_backend_mut();
                     self.cnv_pairwise_apply_dft(
                         cnv_offset_hi,
                         &mut res_dft_backend,
                         0,
-                        &a_prep.reborrow_backend_ref(),
-                        &b_prep.reborrow_backend_ref(),
+                        &a_prep.to_backend_ref(),
+                        &b_prep.to_backend_ref(),
                         i,
                         j,
                         &mut scratch_4,
@@ -905,12 +899,12 @@ where
                 }
                 let (mut res_big, scratch_6) = scratch_4.take_vec_znx_big_scratch(self, 1, pairwise_dft_size);
                 {
-                    let mut res_big_backend = res_big.reborrow_backend_mut();
-                    let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                    let mut res_big_backend = res_big.to_backend_mut();
+                    let mut res_dft_backend = res_dft.to_backend_mut();
                     self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
                 }
                 let (mut tmp, mut scratch_7) = scratch_6.take_vec_znx_scratch(self.n(), 1, res.size());
-                let res_big_ref = res_big.reborrow_backend_ref();
+                let res_big_ref = res_big.to_backend_ref();
                 let mut scratch_iter = scratch_7.borrow();
                 self.vec_znx_big_normalize(
                     &mut tmp,
@@ -923,16 +917,15 @@ where
                     &mut scratch_iter,
                 );
                 {
-                    let mut tmp_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut tmp);
-                    let diag_terms_ref =
-                        <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&diag_terms);
+                    let mut tmp_mut = tmp.to_backend_mut();
+                    let diag_terms_ref = diag_terms.to_backend_ref();
                     self.vec_znx_sub_assign_backend(&mut tmp_mut, 0, &diag_terms_ref, i);
                     self.vec_znx_sub_assign_backend(&mut tmp_mut, 0, &diag_terms_ref, j);
                 }
 
                 // TODO: Do we need copy?
                 let mut res_backend = res.to_backend_mut();
-                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                let tmp_ref = tmp.to_backend_ref();
                 self.vec_znx_copy_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
             }
         }
@@ -1024,26 +1017,26 @@ where
 
             let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, diag_dft_size);
             {
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.cnv_apply_dft(
                     cnv_offset_hi,
                     &mut res_dft_backend,
                     0,
-                    &a_prep.reborrow_backend_ref(),
+                    &a_prep.to_backend_ref(),
                     i,
-                    &b_prep.reborrow_backend_ref(),
+                    &b_prep.to_backend_ref(),
                     i,
                     &mut scratch_3,
                 );
             }
             let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, diag_dft_size);
             {
-                let mut res_big_backend = res_big.reborrow_backend_mut();
-                let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                let mut res_big_backend = res_big.to_backend_mut();
+                let mut res_dft_backend = res_dft.to_backend_mut();
                 self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
             }
             let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx_scratch(self.n(), 1, res.size());
-            let res_big_ref = res_big.reborrow_backend_ref();
+            let res_big_ref = res_big.to_backend_ref();
             let mut scratch_iter = scratch_5.borrow();
             self.vec_znx_big_normalize(
                 &mut tmp,
@@ -1058,7 +1051,7 @@ where
 
             {
                 let mut res_backend = res.to_backend_mut();
-                let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                let tmp_ref = tmp.to_backend_ref();
                 self.vec_znx_copy_backend(&mut res_backend.data, col_i + i, &tmp_ref, 0);
             }
 
@@ -1069,11 +1062,11 @@ where
                     if j < i {
                         let col_j = j * cols - (j * (j + 1) / 2);
                         let mut res_backend = res.to_backend_mut();
-                        let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                        let tmp_ref = tmp.to_backend_ref();
                         self.vec_znx_sub_assign_backend(&mut res_backend.data, col_j + i, &tmp_ref, 0);
                     } else {
                         let mut res_backend = res.to_backend_mut();
-                        let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                        let tmp_ref = tmp.to_backend_ref();
                         self.vec_znx_negate_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
                     }
                 }
@@ -1088,13 +1081,13 @@ where
                     // res_dft = (a[i] + a[j]) * (b[i] + b[j])
                     let (mut res_dft, mut scratch_3) = scratch.borrow().take_vec_znx_dft_scratch(self, 1, pairwise_dft_size);
                     {
-                        let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                        let mut res_dft_backend = res_dft.to_backend_mut();
                         self.cnv_pairwise_apply_dft(
                             cnv_offset_hi,
                             &mut res_dft_backend,
                             0,
-                            &a_prep.reborrow_backend_ref(),
-                            &b_prep.reborrow_backend_ref(),
+                            &a_prep.to_backend_ref(),
+                            &b_prep.to_backend_ref(),
                             i,
                             j,
                             &mut scratch_3,
@@ -1102,12 +1095,12 @@ where
                     }
                     let (mut res_big, scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, pairwise_dft_size);
                     {
-                        let mut res_big_backend = res_big.reborrow_backend_mut();
-                        let mut res_dft_backend = res_dft.reborrow_backend_mut();
+                        let mut res_big_backend = res_big.to_backend_mut();
+                        let mut res_dft_backend = res_dft.to_backend_mut();
                         self.vec_znx_idft_apply_tmpa(&mut res_big_backend, 0, &mut res_dft_backend, 0);
                     }
                     let (mut tmp, mut scratch_5) = scratch_4.take_vec_znx_scratch(self.n(), 1, res.size());
-                    let res_big_ref = res_big.reborrow_backend_ref();
+                    let res_big_ref = res_big.to_backend_ref();
                     let mut scratch_iter = scratch_5.borrow();
                     self.vec_znx_big_normalize(
                         &mut tmp,
@@ -1121,7 +1114,7 @@ where
                     );
 
                     let mut res_backend = res.to_backend_mut();
-                    let tmp_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&tmp);
+                    let tmp_ref = tmp.to_backend_ref();
                     self.vec_znx_add_assign_backend(&mut res_backend.data, col_i + j, &tmp_ref, 0);
                 }
             }

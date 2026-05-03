@@ -240,6 +240,7 @@ where
 }
 
 pub(crate) trait CKKSOffset: LWEInfos + CKKSInfos {
+    #[allow(dead_code)]
     fn offset_binary<A, B>(&self, a: &A, b: &B) -> usize
     where
         A: LWEInfos + CKKSInfos,

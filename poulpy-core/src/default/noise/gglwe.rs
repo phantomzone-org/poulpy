@@ -1,8 +1,7 @@
 use poulpy_hal::{
     api::{VecZnxAddScalarAssignBackend, VecZnxSubAssignBackend},
     layouts::{
-        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats,
-        VecZnxReborrowBackendMut, ZnxZero,
+        Backend, HostBackend, HostDataMut, HostDataRef, Module, ScalarZnx, ScalarZnxToBackendRef, ScratchArena, Stats, ZnxZero,
     },
 };
 
@@ -12,7 +11,7 @@ use crate::{
     api::{GGLWENoise, GLWENoise},
     decryption::{GLWEDecrypt, GLWEDecryptDefault},
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToBackendRef, GLWEInfos, GLWEToBackendRef, gglwe_at_backend_ref_from_ref,
+        GGLWE, GGLWEInfos, GGLWEToBackendRef, GLWEInfos, GLWEToBackendMut, GLWEToBackendRef, gglwe_at_backend_ref_from_ref,
         prepared::GLWESecretPreparedToBackendRef,
     },
 };
@@ -94,10 +93,9 @@ where
         let pt_want_backend: ScalarZnx<BE::OwnedBuf> =
             ScalarZnx::from_data(BE::from_host_bytes(pt_want.data), pt_want.n(), pt_want.cols());
         {
-            let mut pt_data =
-                <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut pt.data);
+            let mut pt_backend = pt.to_backend_mut();
             self.vec_znx_add_scalar_assign_backend(
-                &mut pt_data,
+                &mut pt_backend.data,
                 0,
                 (dsize - 1) + res_row * dsize,
                 &<ScalarZnx<BE::OwnedBuf> as ScalarZnxToBackendRef<BE>>::to_backend_ref(&pt_want_backend),

@@ -8,8 +8,8 @@ use poulpy_hal::{
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchArenaTakeCore,
     layouts::{
-        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut,
-        GetGaloisElement, ModuleCoreAlloc, prepared::GGLWEPreparedToBackendRef,
+        BackendGLWE, GGLWEInfos, GLWE, GLWEAutomorphismKeyHelper, GLWEBackendMut, GLWEInfos, GLWEToBackendMut, GetGaloisElement,
+        ModuleCoreAlloc, prepared::GGLWEPreparedToBackendRef,
     },
 };
 

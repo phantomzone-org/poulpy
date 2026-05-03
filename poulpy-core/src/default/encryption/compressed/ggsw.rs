@@ -2,7 +2,7 @@
 
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarAssignBackend, VecZnxNormalizeAssignBackend, VecZnxZeroBackend},
-    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena, VecZnxReborrowBackendMut},
+    layouts::{Backend, Module, ScalarZnxToBackendRef, ScratchArena},
     source::Source,
 };
 
@@ -10,7 +10,7 @@ use crate::{
     EncryptionInfos, GGSWNoise, ScratchArenaTakeCore,
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GGSWCompressedSeedMut, GGSWInfos, GLWEToBackendRef, LWEInfos,
+        GGSWCompressedSeedMut, GGSWInfos, GLWEToBackendMut, GLWEToBackendRef, LWEInfos,
         compressed::{GGSWCompressedToBackendMut, ggsw_compressed_at_backend_mut_from_mut},
         prepared::GLWESecretPreparedToBackendRef,
     },
@@ -109,18 +109,18 @@ where
 
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 {
-                    let mut tmp_pt_data =
-                        <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
-                            &mut tmp_pt.data,
-                        );
-                    self.vec_znx_add_scalar_assign_backend(&mut tmp_pt_data, 0, (dsize - 1) + row_i * dsize, &pt_backend, 0);
+                    let mut tmp_pt_backend = tmp_pt.to_backend_mut();
+                    self.vec_znx_add_scalar_assign_backend(
+                        &mut tmp_pt_backend.data,
+                        0,
+                        (dsize - 1) + row_i * dsize,
+                        &pt_backend,
+                        0,
+                    );
                 }
                 scratch_1 = scratch_1.apply_mut(|scratch| {
-                    let mut tmp_pt_data =
-                        <poulpy_hal::layouts::VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(
-                            &mut tmp_pt.data,
-                        );
-                    self.vec_znx_normalize_assign_backend(base2k, &mut tmp_pt_data, 0, scratch)
+                    let mut tmp_pt_backend = tmp_pt.to_backend_mut();
+                    self.vec_znx_normalize_assign_backend(base2k, &mut tmp_pt_backend.data, 0, scratch)
                 });
 
                 for col_j in 0..rank + 1 {

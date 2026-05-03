@@ -8,9 +8,9 @@ use poulpy_hal::{
         VecZnxNormalizeTmpBytes, VecZnxSubAssignBackend, VecZnxSubNegateAssignBackend, VecZnxZeroBackend,
     },
     layouts::{
-        Backend, Module, ScalarZnx, ScratchArena, SvpPPolReborrowBackendRef, VecZnx, VecZnxBigReborrowBackendMut,
-        VecZnxBigReborrowBackendRef, VecZnxDftReborrowBackendMut, VecZnxReborrowBackendMut, VecZnxReborrowBackendRef,
-        scalar_znx_as_vec_znx_backend_mut_from_mut,
+        Backend, Module, ScalarZnx, ScratchArena, SvpPPolToBackendRef, VecZnx, VecZnxBigToBackendMut, VecZnxBigToBackendRef,
+        VecZnxDftToBackendMut, VecZnxToBackendMut, VecZnxToBackendRef, scalar_znx_as_vec_znx_backend_mut_from_mut,
+        vec_znx_backend_ref_from_mut,
     },
     source::Source,
 };
@@ -32,7 +32,8 @@ pub(crate) fn normalize_scratch_vec_znx<'a, BE: Backend + 'a>(
     Module<BE>: VecZnxNormalizeAssignBackend<BE>,
 {
     scratch.scope(|mut scratch| {
-        let mut vec_mut = <VecZnx<BE::BufMut<'a>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(vec);
+        let mut vec_ref = vec;
+        let mut vec_mut = <&mut VecZnx<BE::BufMut<'a>> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut vec_ref);
         <Module<BE> as VecZnxNormalizeAssignBackend<BE>>::vec_znx_normalize_assign_backend(
             module,
             base2k,
@@ -423,17 +424,17 @@ where
             for i in 0..cols {
                 let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft_scratch(self, 1, size_pk);
                 // ci_dft = DFT(u) * DFT(pk[i])
-                let u_dft_ref = u_dft.reborrow_backend_ref();
+                let u_dft_ref = u_dft.to_backend_ref();
                 {
-                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    let mut ci_dft_backend = ci_dft.to_backend_mut();
                     self.svp_apply_dft_to_dft(&mut ci_dft_backend, 0, &u_dft_ref, 0, &pk.data, i);
                 }
 
                 // ci_big = u * p[i]
                 let (mut ci_big, scratch_3) = scratch_2.take_vec_znx_big_scratch(self, 1, size_pk);
                 {
-                    let mut ci_big_backend = ci_big.reborrow_backend_mut();
-                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    let mut ci_big_backend = ci_big.to_backend_mut();
+                    let mut ci_dft_backend = ci_dft.to_backend_mut();
                     self.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
                 }
 
@@ -442,7 +443,7 @@ where
 
                 let (mut ci, scratch_4) = scratch_3.take_vec_znx_scratch(self.n(), 1, size_pk);
                 let scratch_next = {
-                    let ci_big_ref = ci_big.reborrow_backend_ref();
+                    let ci_big_ref = ci_big.to_backend_ref();
                     scratch_4
                         .apply_mut(|scratch| self.vec_znx_big_normalize(&mut ci, base2k, 0, 0, &ci_big_ref, base2k, 0, scratch))
                 };
@@ -451,11 +452,11 @@ where
                 if let Some((pt, col)) = &pt
                     && *col == i
                 {
-                    let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
+                    let mut ci_mut = ci.to_backend_mut();
                     self.vec_znx_add_assign_backend(&mut ci_mut, 0, &pt.data, 0);
                 }
 
-                let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
+                let ci_ref = ci.to_backend_ref();
                 self.vec_znx_copy_backend(&mut res.data, i, &ci_ref, 0);
             }
         }
@@ -464,10 +465,10 @@ where
 
 pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn glwe_encrypt_sk_internal<'s, 'pt, R, S, E>(
+    fn glwe_encrypt_sk_internal<'s, 'pt, S, E>(
         &self,
         base2k: usize,
-        res: &mut R,
+        res: &mut VecZnx<BE::BufMut<'_>>,
         cols: usize,
         compressed: bool,
         pt: GLWEEncryptSkPlaintext<'pt, BE>,
@@ -477,7 +478,6 @@ pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: VecZnxReborrowBackendMut<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
@@ -506,10 +506,10 @@ where
         + VecZnxSubNegateAssignBackend<BE>
         + VecZnxBigNormalizeTmpBytes,
 {
-    fn glwe_encrypt_sk_internal<'s, 'pt, R, S, E>(
+    fn glwe_encrypt_sk_internal<'s, 'pt, S, E>(
         &self,
         base2k: usize,
-        res: &mut R,
+        res: &mut VecZnx<BE::BufMut<'_>>,
         cols: usize,
         compressed: bool,
         pt: GLWEEncryptSkPlaintext<'pt, BE>,
@@ -519,13 +519,13 @@ where
         source_xa: &mut Source,
         scratch: &mut ScratchArena<'s, BE>,
     ) where
-        R: VecZnxReborrowBackendMut<BE>,
         E: EncryptionInfos,
         S: GLWESecretPreparedToBackendRef<BE>,
         BE: 's,
         for<'a> ScratchArena<'a, BE>: ScratchArenaTakeCore<'a, BE>,
     {
-        let mut ct = res.reborrow_backend_mut();
+        let mut res_ref = res;
+        let mut ct = <&mut VecZnx<BE::BufMut<'_>> as VecZnxToBackendMut<BE>>::to_backend_mut(&mut res_ref);
         let sk = sk.to_backend_ref();
 
         if compressed {
@@ -552,11 +552,11 @@ where
             if let Some((pt, col)) = pt.as_ref() {
                 if i == *col {
                     self.vec_znx_copy_backend(&mut ci, 0, &pt.data, 0);
-                    let ct_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ct);
+                    let ct_ref = vec_znx_backend_ref_from_mut::<BE>(&ct);
                     self.vec_znx_sub_negate_assign_backend(&mut ci, 0, &ct_ref, col_ct);
                     {
                         let mut scratch_norm = scratch_2.borrow();
-                        let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
+                        let mut ci_mut = ci.to_backend_mut();
                         <Module<BE> as VecZnxNormalizeAssignBackend<BE>>::vec_znx_normalize_assign_backend(
                             self,
                             base2k,
@@ -566,11 +566,11 @@ where
                         );
                     }
                 } else {
-                    let ct_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ct);
+                    let ct_ref = vec_znx_backend_ref_from_mut::<BE>(&ct);
                     self.vec_znx_copy_backend(&mut ci, 0, &ct_ref, col_ct);
                 }
             } else {
-                let ct_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ct);
+                let ct_ref = vec_znx_backend_ref_from_mut::<BE>(&ct);
                 self.vec_znx_copy_backend(&mut ci, 0, &ct_ref, col_ct);
             }
 
@@ -578,29 +578,25 @@ where
                 let scratch_dft = scratch_2.borrow();
                 let (mut ci_dft, scratch_3) = scratch_dft.take_vec_znx_dft_scratch(self, 1, size);
                 {
-                    let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
-                    let mut ci_dft_mut = <poulpy_hal::layouts::VecZnxDft<BE::BufMut<'_>, BE> as VecZnxDftReborrowBackendMut<
-                        BE,
-                    >>::reborrow_backend_mut(&mut ci_dft);
+                    let ci_ref = ci.to_backend_ref();
+                    let mut ci_dft_mut = ci_dft.to_backend_mut();
                     <Module<BE> as VecZnxDftApply<BE>>::vec_znx_dft_apply(self, 1, 0, &mut ci_dft_mut, 0, &ci_ref, 0);
                 }
 
                 {
-                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    let mut ci_dft_backend = ci_dft.to_backend_mut();
                     self.svp_apply_dft_to_dft_assign(&mut ci_dft_backend, 0, &sk.data, i - 1);
                 }
                 let (mut ci_big, mut scratch_4) = scratch_3.take_vec_znx_big_scratch(self, 1, size);
                 {
-                    let mut ci_big_backend = ci_big.reborrow_backend_mut();
-                    let mut ci_dft_backend = ci_dft.reborrow_backend_mut();
+                    let mut ci_big_backend = ci_big.to_backend_mut();
+                    let mut ci_dft_backend = ci_dft.to_backend_mut();
                     self.vec_znx_idft_apply_tmpa(&mut ci_big_backend, 0, &mut ci_dft_backend, 0);
                 }
                 {
                     let mut scratch_norm = scratch_4.borrow();
-                    let ci_big_ref = <poulpy_hal::layouts::VecZnxBig<BE::BufMut<'_>, BE> as VecZnxBigReborrowBackendRef<
-                        BE,
-                    >>::reborrow_backend_ref(&ci_big);
-                    let mut ci_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut ci);
+                    let ci_big_ref = ci_big.to_backend_ref();
+                    let mut ci_mut = ci.to_backend_mut();
                     <Module<BE> as VecZnxBigNormalize<BE>>::vec_znx_big_normalize(
                         self,
                         &mut ci_mut,
@@ -615,13 +611,13 @@ where
                 }
             }
 
-            let ci_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&ci);
+            let ci_ref = ci.to_backend_ref();
             self.vec_znx_sub_assign_backend(&mut c0, 0, &ci_ref, 0);
         }
 
         // c[0] += e
         {
-            let mut c0_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut c0);
+            let mut c0_mut = c0.to_backend_mut();
             self.vec_znx_add_normal_source_backend(base2k, &mut c0_mut, 0, enc_infos.noise_infos(), source_xe);
         }
 
@@ -629,13 +625,13 @@ where
         if let Some((pt, col)) = &pt
             && *col == 0
         {
-            let mut c0_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut c0);
+            let mut c0_mut = c0.to_backend_mut();
             self.vec_znx_add_assign_backend(&mut c0_mut, 0, &pt.data, 0);
         }
 
         {
             let mut scratch_norm = scratch_2.borrow();
-            let mut c0_mut = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendMut<BE>>::reborrow_backend_mut(&mut c0);
+            let mut c0_mut = c0.to_backend_mut();
             <Module<BE> as VecZnxNormalizeAssignBackend<BE>>::vec_znx_normalize_assign_backend(
                 self,
                 base2k,
@@ -644,7 +640,7 @@ where
                 &mut scratch_norm,
             );
         }
-        let c0_ref = <VecZnx<BE::BufMut<'_>> as VecZnxReborrowBackendRef<BE>>::reborrow_backend_ref(&c0);
+        let c0_ref = c0.to_backend_ref();
         self.vec_znx_copy_backend(&mut ct, 0, &c0_ref, 0);
     }
 }
